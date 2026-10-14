@@ -108,6 +108,7 @@
 .emptyClipCopy p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .clipOptional { font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
 .emptyClip > button { white-space: normal; }
+.emptyClipActions { width: 100%; min-width: 0; max-width: 360px; }
 /* Empty clips share one layout; their title and guidance stay together. */
 .clipPreviewCard[data-clip-empty="true"] { align-self: start; container-type: inline-size; }
 .clipPreviewCard[data-clip-empty="true"] > section { align-items: stretch; gap: 0; }
@@ -115,6 +116,7 @@
 @container (max-width: 439px) {
   .emptyClip { grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
   .emptyClip > button { grid-column: 1 / -1; width: 100%; }
+  .emptyClipActions { grid-column: 1 / -1; max-width: none; }
 }
 @container (min-width: 440px) {
   .clipPreviews:not([data-has-clips="false"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }

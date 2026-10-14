@@ -7,7 +7,7 @@ import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import { workflowSourceVideoError, type WorkflowVideoMode } from "@/lib/explore/workflow-source-video";
 import type { MediaAsset } from "@/lib/media/types";
 
-export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, library = "creative_assets", onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; library?: "creative_assets" | "content"; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void }) {
+export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, library = "creative_assets", assetLibrary = library, onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; library?: "creative_assets" | "content"; assetLibrary?: "creative_assets" | "content"; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void }) {
   const [mode, setMode] = useState<WorkflowVideoMode>(initialMode);
   const local = useLocalWorkflowMedia("video");
   const [uploaded, setUploaded] = useState<MediaAsset | null>(null);
@@ -55,7 +55,7 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
     } finally { if (active.current && request === revision.current) setBusy(false); }
   }
   function selectAsset(asset: MediaAsset) {
-    if (library === "content" && asset.sourceType !== "demo_upload") { setAssetError("Choose footage from the Demo screen."); return false; }
+    if (assetLibrary === "content" && asset.sourceType !== "demo_upload") { setAssetError("Choose footage from the Demo screen."); return false; }
     const problem = workflowSourceVideoError(asset) ?? (asset.durationSeconds !== null && asset.durationSeconds < minDuration ? `Choose a video at least ${minDuration} second long.` : null);
     if (problem) { setAssetError(problem); return false; }
     setSelected(asset); setAssetError(null); onSelected?.(asset, { name: asset.title, url: asset.url, duration: asset.durationSeconds }, "assets"); return true;

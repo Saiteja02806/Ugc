@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlatforms, selectWorkflowAccount } from "@/lib/explore/workflow-scheduling-draft";
 import type { WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { formatScheduleDraftKey, readFormatScheduleDraft, serializeFormatScheduleDraft } from "@/lib/explore/format-schedule-draft";
-import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, ScheduleRequestError, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
 import { parseWorkflowConnectedAccounts } from "@/lib/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ScheduleMediaOption } from "@/lib/scheduling/types";
@@ -83,12 +83,12 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     if (currentKey.current !== requestKey) throw new Error("Your video changed. Review its schedule again.");
     const response = await fetch(url, { ...init, cache: "no-store", headers: { ...init?.headers, Authorization: `Bearer ${token}` } });
     const data = await response.json(); if (!alive.current || currentKey.current !== requestKey) throw new Error("This workflow changed. Review its schedule again.");
-    if (!response.ok || !data?.ok) throw new Error(data?.message ?? "Could not confirm scheduling. Resume the same request.");
+    if (!response.ok || !data?.ok) throw new ScheduleRequestError(data?.message ?? "Could not confirm scheduling. Resume the same request.", response.status, data?.code);
     return data;
   }
   function accept(entry: ScheduleReceipt, data: unknown) {
     const schedule = verifySavedSchedule(data, entry);
-    const next = { ...entry, scheduleId: schedule.id };
+    const next = { ...entry, scheduleId: schedule.id, timeRejected: undefined };
     setReceipt(next); setMessage(scheduleReceiptMessage(schedule)); setOpen(false);
     if (draftKey) try { localStorage.removeItem(draftKey); } catch { /* The confirmed receipt remains the scheduling authority. */ }
     try { localStorage.setItem(key, JSON.stringify(next)); } catch { setError("The post is saved. Review it in Scheduling."); }
@@ -97,7 +97,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     const timer = setTimeout(() => {
       setOpen(false); setReviewedKey(null); setReceipt(null); setMessage(null); setError(null);
       if (!user || !output || localPreview) return;
-      try { const prior = saved(); setReceipt(prior); if (prior) setMessage(prior.scheduleId ? "This output already has a saved schedule. Review it in Scheduling." : "An interrupted schedule is ready to resume."); }
+      try { const prior = saved(); setReceipt(prior); if (prior) setMessage(prior.scheduleId ? "This output already has a saved schedule. Review it in Scheduling." : prior.timeRejected ? SCHEDULE_TIME_REJECTED_MESSAGE : "An interrupted schedule is ready to resume."); }
       catch (e) { setError(e instanceof Error ? e.message : "Could not restore scheduling."); }
     }, 0);
     return () => clearTimeout(timer);
@@ -105,17 +105,33 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, localPreview]);
   async function loadConnections() { const value = await authorized("/api/social/connections"); parseWorkflowConnectedAccounts(value); setConnections(value.connections); return true; }
-  async function send(entry: ScheduleReceipt) { accept(entry, await authorized("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry.input) })); }
+  async function send(entry: ScheduleReceipt) {
+    try { accept(entry, await authorized("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry.input) })); }
+    catch (e) {
+      if (isScheduleTimeRejected(e) && !entry.scheduleId) {
+        const rejected = { ...entry, timeRejected: true as const };
+        localStorage.setItem(key, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
+      }
+      throw e;
+    }
+  }
   async function review() {
     if (!user || !output || localPreview || pendingSource || working.current) return;
     working.current = true; setBusy(true); setError(null);
     try {
-      const prior = saved();
-      if (prior) {
-        if (prior.scheduleId) accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`));
-        else await send(prior);
-        return;
-      }
+      if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
+      let recovered = false;
+      await navigator.locks.request(key, { ifAvailable: true }, async lock => {
+        if (!lock) throw new Error("Another tab is scheduling this output.");
+        const prior = saved();
+        if (!prior) return;
+        if (prior.scheduleId) { accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); recovered = true; }
+        else {
+          try { await send(prior); recovered = true; }
+          catch (e) { if (!isScheduleTimeRejected(e)) throw e; }
+        }
+      });
+      if (recovered) return;
       const [config] = await Promise.all([authorized("/api/schedules?configOnly=1"), loadConnections()]);
       if (typeof config.minimumScheduleLeadMinutes !== "number") throw new Error("Could not load scheduling limits.");
       setLead(config.minimumScheduleLeadMinutes); setReviewedKey(key); setOpen(true);
@@ -133,8 +149,8 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       await navigator.locks.request(key, { ifAvailable: true }, async lock => {
         if (!lock) throw new Error("Another tab is scheduling this output.");
         const prior = saved();
-        if (prior) { if (prior.scheduleId) accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); else await send(prior); return; }
-        const entry: ScheduleReceipt = { version: 1, owner: user.uid, kind: "hook", input: { source: submission.scheduledSource, title: output.title, caption: submission.caption, targets: submission.targets, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: `explore:${crypto.randomUUID()}`, metadata: { mediaMode: imageOnly ? "carousel" : "single_video", exploreWorkflow: "format" } } };
+        if (prior && (!prior.timeRejected || prior.scheduleId)) { if (prior.scheduleId) accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); else await send(prior); return; }
+        const entry: ScheduleReceipt = { version: 1, owner: user.uid, kind: "hook", input: { source: submission.scheduledSource, title: output.title, caption: submission.caption, targets: submission.targets, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: imageOnly ? "carousel" : "single_video", exploreWorkflow: "format" } } };
         readScheduleReceipt(JSON.stringify(entry), user.uid, "hook", output.kind);
         localStorage.setItem(key, JSON.stringify(entry)); setReceipt(entry); await send(entry);
       });
@@ -157,7 +173,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void review()}>{busy ? "Checking…" : receipt && !receipt.scheduleId ? "Resume schedule" : receipt?.scheduleId ? "Check saved schedule" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void review()}>{busy ? "Checking…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Resume schedule" : receipt?.scheduleId ? "Check saved schedule" : "Review schedule"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
     {receipt?.scheduleId ? <Link href="/scheduling" className="text-sm text-primary underline">View in Scheduling</Link> : null}

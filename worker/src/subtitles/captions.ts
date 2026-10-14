@@ -15,7 +15,7 @@ export function getSubtitleLayout(width: number, height: number, style: Subtitle
   return { width, height, fontSize, maxLineWidth: Math.floor(width * 0.82), bold: style !== "clean" };
 }
 
-export type MeasureText = (text: string) => Promise<number>;
+export type MeasureText = ((text: string) => Promise<number>) & { preload?: (texts: string[]) => Promise<void> };
 
 /** Width-based wrapping. No character-count approximation or timestamp invention. */
 async function wrapWords(words: TimedWord[], maxWidth: number, measure: MeasureText): Promise<number[][] | null> {

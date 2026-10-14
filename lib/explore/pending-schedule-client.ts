@@ -9,13 +9,14 @@ export type ExploreScheduleComposition = {
   error: string | null;
   resolve: () => Promise<ExploreFinishDraft>;
 };
-export type SavedExploreSchedule = { version: 1; owner: string; signature: string; confirmed: boolean; input: ExplorePendingScheduleInput };
+export type SavedExploreSchedule = { version: 1; owner: string; signature: string; confirmed: boolean; input: ExplorePendingScheduleInput; timeRejected?: true };
 export function readSavedExploreSchedule(raw: string | null, owner: string): SavedExploreSchedule | null {
   if (!raw) return null;
   if (raw.length > 400000) throw new Error("The saved schedule request is too large to verify.");
   const value = JSON.parse(raw);
   if (value?.version !== 1 || value.owner !== owner || typeof value.signature !== "string" || value.signature.length > 131072 || typeof value.confirmed !== "boolean") throw new Error("The saved schedule belongs to a different workflow or account.");
-  return { version: 1, owner, signature: value.signature, confirmed: value.confirmed, input: parseExplorePendingSchedule(value.input) };
+  if (value.timeRejected !== undefined && value.timeRejected !== true) throw new Error("The saved schedule rejection could not be verified.");
+  return { version: 1, owner, signature: value.signature, confirmed: value.confirmed, input: parseExplorePendingSchedule(value.input), ...(value.timeRejected ? { timeRejected: true } : {}) };
 }
 export function verifyExploreScheduleReply(raw: unknown, saved: SavedExploreSchedule): ExplorePendingScheduleResult {
   const value = raw as ExplorePendingScheduleResult;

@@ -12,7 +12,7 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import type { SocialConnection } from "@/lib/social/types";
 import type { ScheduleMediaOption } from "@/lib/scheduling/types";
-import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
+import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, ScheduleRequestError, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
 import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
 import { trimmedDemoFraming } from "@/lib/explore/format-demo";
 import { useTalkingHeadPendingComposition } from "./talking-head-pending-composition";
@@ -75,12 +75,12 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     const response = await fetch(url, { ...init, cache: "no-store", headers: { ...init?.headers, Authorization: `Bearer ${token}` } });
     const value = await response.json().catch(() => null);
     if (!active.current) throw new Error("This account's workflow is no longer active.");
-    if (!response.ok || !value?.ok) throw new Error(value?.message ?? "Could not confirm scheduling. Keep the saved request and try again.");
+    if (!response.ok || !value?.ok) throw new ScheduleRequestError(value?.message ?? "Could not confirm scheduling. Keep the saved request and try again.", response.status, value?.code);
     return value;
   }, [ownerId]);
   const accept = useCallback((saved: ScheduleReceipt, value: unknown) => {
     const schedule = verifySavedSchedule(value, saved);
-    const next = { ...saved, scheduleId: schedule.id };
+    const next = { ...saved, scheduleId: schedule.id, timeRejected: undefined };
     setReceipt(next); setConfirmedSource(saved.input.source.id); setOpen(false); setMessage(scheduleReceiptMessage(schedule));
     // A cache failure cannot undo a confirmed server schedule.
     try { localStorage.setItem(storageKey, JSON.stringify(next)); }
@@ -92,7 +92,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     if (!Array.isArray(value.schedules)) throw new Error("Could not verify the saved scheduling request.");
     const match = value.schedules.find((s: { idempotencyKey?: string }) => s.idempotencyKey === saved.input.idempotencyKey);
     if (match) accept(saved, { ok: true, schedule: match });
-    else setMessage("An interrupted schedule is saved. Click Schedule post to resume that same request without creating a duplicate.");
+    else setMessage(saved.timeRejected ? SCHEDULE_TIME_REJECTED_MESSAGE : "An interrupted schedule is saved. Click Schedule post to resume that same request without creating a duplicate.");
   }, [accept, authorized]);
   useEffect(() => {
     if (!enabled || !ownerId) return;
@@ -113,7 +113,15 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     parseWorkflowConnectedAccounts(value); setConnections(value.connections); return true;
   }
   async function send(saved: ScheduleReceipt) {
-    accept(saved, await authorized("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved.input) }));
+    try {
+      accept(saved, await authorized("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved.input) }));
+    } catch (e) {
+      if (isScheduleTimeRejected(e) && !saved.scheduleId) {
+        const rejected = { ...saved, timeRejected: true as const };
+        localStorage.setItem(storageKey, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
+      }
+      throw e;
+    }
   }
   async function locked(run: (saved: ScheduleReceipt | null) => Promise<void>) {
     if (!navigator.locks || !ownerId) throw new Error("Use a browser with Web Locks support to schedule safely across tabs.");
@@ -138,7 +146,10 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       let resume = false;
       await locked(async saved => {
         setReceipt(saved);
-        if (saved && !saved.scheduleId) { resume = true; await send(saved); }
+        if (saved && !saved.scheduleId) {
+          try { await send(saved); resume = true; }
+          catch (e) { if (!isScheduleTimeRejected(e)) throw e; }
+        }
         else if (saved && (saved.input.source.id === finishing.output?.id || !finishing.output)) { resume = true; await check(saved); }
       });
       if (resume) return;
@@ -157,11 +168,12 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       if (submission.scheduledSource.kind !== "media_asset" || submission.scheduledSource.id !== finishing.output.id || !selectedTargets.length || submission.targets.length !== selectedTargets.length || !selectedTargets.every(target => submission.targets.some(candidate => candidate.connectionId === target.connectionId && candidate.platform === target.platform))) throw new Error("Confirm the selected finished video and an account for every selected platform.");
       onScheduleDraftChange?.({ ...scheduleDraft, caption: submission.caption, date: submission.scheduledDate, time: submission.scheduledTime, timezone: submission.timezone });
       await locked(async prior => {
-        if (prior && (!prior.scheduleId || prior.input.source.id === finishing.output!.id)) { setReceipt(prior); await send(prior); return; }
+        if (prior && (!prior.timeRejected || prior.scheduleId) && (!prior.scheduleId || prior.input.source.id === finishing.output!.id)) { setReceipt(prior); await send(prior); return; }
+        if (prior?.timeRejected && prior.input.source.id !== finishing.output!.id) throw new Error("Review the video from the rejected request before confirming its new time.");
         // Never discard an uncertain request. An older confirmed output stays
         // in Scheduling while a different finished video gets its own key.
-        if (prior) await check(prior);
-        const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output!.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
+        if (prior && !prior.timeRejected) await check(prior);
+        const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output!.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
         readScheduleReceipt(JSON.stringify(saved), ownerId, kind);
         localStorage.setItem(storageKey, JSON.stringify(saved)); setReceipt(saved);
         await send(saved);

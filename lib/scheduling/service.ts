@@ -220,7 +220,8 @@ export async function createUserSchedule(params: {
   if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish"))) {
     throw new SchedulingRequestError("Use the Explore workflow to save a video preparation schedule.", 409, "explore_schedule_contract_required");
   }
-  const normalized = await normalizeScheduleCreateInput(params.input);
+  // Recover accepted requests before applying a time-dependent lead check.
+  const normalized = await normalizeScheduleCreateInput(params.input, false);
   assertScheduleTargetSelection(normalized);
 
   if (normalized.source.kind === "wall_text_pending") {
@@ -271,6 +272,9 @@ export async function createUserSchedule(params: {
       };
     }
   }
+
+  const plannedTime = getMetadataString(normalized.metadata.plannedScheduledFor);
+  if (plannedTime) assertMinimumScheduleLead(plannedTime);
 
   const source =
     normalized.source.kind === "wall_text_pending"
@@ -1730,7 +1734,7 @@ function assertScheduleTargetSelection(input: {
   );
 }
 
-async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
+async function normalizeScheduleCreateInput(input: ScheduleCreateInput, enforceLeadTime = true) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new SchedulingRequestError("Send schedule details as JSON.");
   }
@@ -1765,6 +1769,7 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
         targets.length > 0 ||
           plannedTargets.length > 0 ||
           Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
+        enforceLeadTime,
       );
   const metadata = applyTrustedScheduleTimeMetadata(rawMetadata, scheduleTime);
 

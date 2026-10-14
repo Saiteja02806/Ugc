@@ -1,11 +1,12 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FolderOpen, Upload, Video } from "lucide-react";
+import { ArrowLeft, Video } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { WorkflowFilePicker } from "@/components/explore/hook-workflow-media-controls";
 import { WorkflowVideoAssetPicker } from "@/components/explore/workflow-video-asset-picker";
+import { WorkflowClipSourceActions } from "@/components/explore/workflow-clip-source-actions";
 import { WorkflowDemoControls } from "@/components/explore/workflow-demo-controls";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
 import { WorkflowBackgroundAudioPicker } from "@/components/explore/workflow-background-audio-picker";
@@ -137,12 +138,12 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
             try { localStorage.setItem(key, JSON.stringify(draft)); } catch { /* Restored assets still require owned reads. */ }
         }
     }, [owner, key, draft, selectionChanged]);
-    const alive = useRef(true), fileInput = useRef<HTMLInputElement>(null), previewPlayer = useRef<HTMLVideoElement>(null), editPlayer = useRef<HTMLVideoElement>(null), editAudio = useRef<HTMLAudioElement>(null);
+    const alive = useRef(true), previewPlayer = useRef<HTMLVideoElement>(null), editPlayer = useRef<HTMLVideoElement>(null), editAudio = useRef<HTMLAudioElement>(null);
     useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
     useEffect(() => { if (!active)
         previewPlayer.current?.pause(); }, [active]);
     useEffect(() => { if (!editActive && !editPreviewActive) { editPlayer.current?.pause(); editAudio.current?.pause(); } }, [editActive, editPreviewActive]);
-    const selection = useWorkflowSourceVideo({ enabled: !localPreview, ownerId: owner, initialMode: "upload", minDuration: 1, library: "content", onSelected: (asset, preview) => {
+    const selection = useWorkflowSourceVideo({ enabled: !localPreview, ownerId: owner, initialMode: "upload", minDuration: 1, library: "content", assetLibrary: "creative_assets", onSelected: (asset, preview) => {
             demoDraftTouched.current = false;
             const next: FormatDemoDraft = { version: 1, demoId: asset?.id ?? null, audioId: null, editing: defaultDemoEdit(preview.duration ?? 5), framing: null, playback: "once", ...(draft.backgroundMusic !== undefined ? { backgroundMusic: draft.backgroundMusic } : {}), ...(draft.backgroundAudioId !== undefined ? { backgroundAudioId: draft.backgroundAudioId } : {}), ...(draft.backgroundPlayback !== undefined ? { backgroundPlayback: draft.backgroundPlayback } : {}) };
             setDraft(next);
@@ -411,11 +412,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     const controls = <div className={`${styles.demoControls} space-y-4`}>
       <h2 className="text-sm font-semibold">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h2>
       <fieldset disabled={busy} className="min-w-0 space-y-4">
-        <div className={styles.demoSourceActions}>
-          <Button type="button" variant="outline" data-demo-source="upload" onClick={() => fileInput.current?.click()}><span className={styles.demoSourceIcon} aria-hidden="true"><Upload className="size-5" /></span><span>{preview ? "Replace demo" : "Upload demo"}</span></Button>
-          <Button type="button" variant="outline" onClick={() => setAssetsOpen(true)}><span className={styles.demoSourceIcon} aria-hidden="true"><FolderOpen className="size-5" /></span><span>Demo</span></Button>
-          <input ref={fileInput} type="file" accept="video/mp4,video/quicktime,video/webm" className="sr-only" aria-label="Upload demo video" onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void chooseVideo(file); }}/>
-        </div>
+        <WorkflowClipSourceActions label="demo video" disabled={busy} selectedMode={preview ? selection.mode === "assets" ? "assets" : "upload" : undefined} onUpload={chooseVideo} onChooseAssets={() => setAssetsOpen(true)} />
         {preview ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs text-muted" title={preview.name}>{preview.name}</p><Button type="button" size="sm" variant="ghost" onClick={removeDemo}>Remove</Button></div>
           : <p className="text-xs leading-5 text-muted">MP4, MOV or WebM · 1–60 seconds · Up to 100 MB. Uploads appear on the Demo screen.</p>}
         <section className={creation.editGroup} aria-label="Background audio settings">
@@ -490,7 +487,8 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
           <div className={styles.emptyClipTitle}><h3>Demo video</h3><span className={styles.clipOptional}>Optional</span></div>
           <p aria-live="polite">{selection.busy ? "Preparing your demo…" : draft.demoId ? localPreview ? "This preview clip is unavailable. Upload or choose another demo." : "Restoring your demo…" : active ? "Upload or choose a demo to preview it here." : "Your demo plays after the opening."}</p>
         </div>
-        {onAdd && !active ? <Button type="button" variant="outline" disabled={busy} onClick={onAdd}>{draft.demoId ? "Choose another demo" : "Add demo"}</Button> : null}
+        <div className={styles.emptyClipActions}><WorkflowClipSourceActions label="demo video" disabled={busy} onUpload={chooseVideo} onChooseAssets={() => setAssetsOpen(true)} /></div>
+        {selection.error || videoError ? <p role="alert" className="col-span-full text-xs text-destructive">{videoError ?? selection.error}</p> : null}
       </div>}
       {previewAudioUrl ? <audio ref={editAudio} src={previewAudioUrl} loop={draft.playback === "repeat"} preload="metadata" aria-label="Demo added audio preview" /> : null}
       {!editActive && preview ? <><p className="max-w-full truncate text-xs text-muted" title={preview.name}>{preview.name}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="demo" disabled={busy || !onEdit} onClick={onEdit}>Edit demo video</Button><Button type="button" variant="outline" aria-label="Change demo video" disabled={busy || !onAdd} onClick={onAdd}>Change</Button></div>{draft.framing ? <p className="text-xs leading-5 text-muted">Full clip preview. Your crop applies when you save.</p> : null}</> : editActive && draft.framing ? <p className="max-w-md text-center text-xs leading-5 text-muted">Full clip preview. Review your crop in Crop & zoom; it applies when you save.</p> : null}
@@ -564,7 +562,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         {enabled && (hasOpening || hasDemo) && (!hasOpening || !openingPreparation?.busy) ? <Button type="button" variant="outline" disabled={busy} onClick={onContinue}>{preparationError ? "Retry preparation" : "Prepare final video"}</Button> : null}
       </> : null}
     </section>;
-    return <>{active && controlsTarget ? createPortal(controls, controlsTarget) : null}{active && resultsTarget ? createPortal(results, resultsTarget) : null}{actionsTarget ? createPortal(actions, actionsTarget) : null}{scheduleActive && scheduleResultsTarget ? createPortal(schedulePreview, scheduleResultsTarget) : null}{activeSave ? <DemoSaveRun key={JSON.stringify([activeSave.opening?.id ?? null, activeSave.openingRevision, activeSave.demo?.id ?? "opening-only", activeSave.draft])} save={activeSave} ownerId={owner} format={format} enabled={enabled} pendingSource={pendingSource} onBusy={reportSaveBusy} onSaved={saved} onContinue={onContinue} compact actionsTarget={scheduleProgressTarget} /> : null}{editActive && editControlsTarget ? createPortal(editingControls, editControlsTarget) : null}{(editActive || editPreviewActive) && editResultsTarget ? createPortal(editingPreview, editResultsTarget) : null}{editActive && editActionsTarget ? createPortal(editingActions, editActionsTarget) : null}<WorkflowVideoAssetPicker library="content" open={assetsOpen && active} onOpenChange={setAssetsOpen} ownerId={owner} selectedId={demo?.id} description="Choose reusable footage saved on the Demo screen." previewAssets={previewAssets} onSelect={asset => { if (busy || !selection.selectAsset(asset))
+    return <>{active && controlsTarget ? createPortal(controls, controlsTarget) : null}{active && resultsTarget ? createPortal(results, resultsTarget) : null}{actionsTarget ? createPortal(actions, actionsTarget) : null}{scheduleActive && scheduleResultsTarget ? createPortal(schedulePreview, scheduleResultsTarget) : null}{activeSave ? <DemoSaveRun key={JSON.stringify([activeSave.opening?.id ?? null, activeSave.openingRevision, activeSave.demo?.id ?? "opening-only", activeSave.draft])} save={activeSave} ownerId={owner} format={format} enabled={enabled} pendingSource={pendingSource} onBusy={reportSaveBusy} onSaved={saved} onContinue={onContinue} compact actionsTarget={scheduleProgressTarget} /> : null}{editActive && editControlsTarget ? createPortal(editingControls, editControlsTarget) : null}{(editActive || editPreviewActive) && editResultsTarget ? createPortal(editingPreview, editResultsTarget) : null}{editActive && editActionsTarget ? createPortal(editingActions, editActionsTarget) : null}<WorkflowVideoAssetPicker open={assetsOpen && (active || editActive || editPreviewActive)} onOpenChange={setAssetsOpen} ownerId={owner} selectedId={demo?.id} description="Choose a video from Creative Assets to use as your demo." previewAssets={previewAssets} onSelect={asset => { if (busy || !selection.selectAsset(asset))
         return false; setVideoError(null); prepareSelection(); selection.setMode("assets"); return true; }}/></>;
 }
 /** An explicit Save freezes the inputs. Each stage has its own durable receipt;

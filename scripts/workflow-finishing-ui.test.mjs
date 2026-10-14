@@ -536,7 +536,7 @@ test("a lost upload completion response is recovered through GET and never delet
   }
 });
 
-function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false } = {}) {
+function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], store = new Map();
   const storageKey = `ugc-explore:schedule:v1:owner:${kind}`;
@@ -570,6 +570,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     fetch: async (url, init) => {
       calls.push({ url, ...init });
       assert.equal(init.cache, "no-store"); assert.equal(init.headers.Authorization, "Bearer owner-token");
+      if (transport) { const response = await transport(url, init); if (response) return response; }
       if (url === "/api/social/connections") return Response.json({ ok: true, connections: [{ id: connectionId, platform: "instagram" }, ...(multiple ? [{ id: youtubeId, platform: "youtube" }] : [])] });
       if (url === "/api/schedules?configOnly=1") return Response.json({ ok: true, minimumScheduleLeadMinutes: 5 });
       if (init.method === "POST") {
@@ -590,6 +591,29 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     return { view: tree.props.children[0].props.value, editor: tree.props.children[1]?.props ?? null };
   }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
+
+test("a rejected old time can be corrected without losing the schedule identity", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const saved = { version: 1, owner: "owner", kind, input: { source: { kind: "media_asset", id: output.id }, targets: [{ platform: "instagram", connectionId: randomUUID() }], caption: "Original", timezone: "Asia/Calcutta", scheduledDate: "2026-10-14", scheduledTime: "04:10", scheduledFor: "2026-10-13T22:40:00.000Z", idempotencyKey: `explore:${randomUUID()}` } };
+    const h = schedulingHarness({ kind, saved, transport: async (_url, init) => init.method === "POST" && JSON.parse(init.body).scheduledTime === "04:10" ? Response.json({ ok: false, code: "schedule_time_too_soon", message: "Choose a time at least 5 minutes from now." }, { status: 409 }) : null });
+    h.props.inlineSchedule = true;
+    h.props.scheduleDraft = { ...h.props.scheduleDraft, date: "2026-10-14", time: "04:18" };
+    h.render(); await tick(); let screen = h.render();
+    assert.equal(h.calls.some(call => call.method === "POST"), false);
+    screen.view.schedule.onAction(); await tick(); screen = h.render();
+    const editor = screen.view.scheduleReview.props;
+    assert.equal(editor.initialScheduledTime, "04:18");
+    assert.match(screen.view.schedule.message, /earlier request's time was rejected/);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).timeRejected, true);
+    const updated = { ...h.submission, scheduledDate: "2026-10-14", scheduledTime: "04:18", scheduledFor: "2026-10-13T22:48:00.000Z" };
+    editor.onSave(updated); await tick(); screen = h.render();
+    const posted = JSON.parse(h.calls.filter(call => call.method === "POST").at(-1).body);
+    assert.equal(posted.scheduledTime, "04:18"); assert.equal(posted.scheduledFor, updated.scheduledFor);
+    assert.equal(posted.idempotencyKey, saved.input.idempotencyKey);
+    assert.match(screen.view.schedule.message, /is scheduled/);
+    h.unmount();
+  }
+});
 
 test("both Explore workflows confirm one or both platforms and keep all exact settings on retry", async () => {
   for (const kind of ["hook", "phone"]) for (const multiple of [false, true]) {

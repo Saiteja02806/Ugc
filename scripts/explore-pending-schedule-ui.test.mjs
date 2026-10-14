@@ -7,6 +7,7 @@ import ts from "typescript";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as contract from "../lib/explore/pending-schedule-contract.ts";
 import * as client from "../lib/explore/pending-schedule-client.ts";
+import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const element = (type, props) => ({ type, props });
@@ -53,6 +54,7 @@ function fixture(options = {}) {
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" }, "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); return value.connections; } },
     "@/lib/explore/pending-schedule-contract": contract, "@/lib/explore/pending-schedule-client": client,
+    "@/lib/explore/workflow-schedule-client": scheduleClient,
     "@/components/explore/workflow-schedule-review.module.css": { __esModule: true, default: new Proxy({}, { get: (_, name) => name }) },
   };
   const exports = {};
@@ -75,7 +77,7 @@ function fixture(options = {}) {
         return Response.json(serverReply, { status: 202 });
       }
       assert.match(url, /\/api\/explore\/schedules\?requestKey=/);
-      return Response.json(serverReply ?? reply(options.saved?.input ?? input(), "unconfirmed"));
+      return Response.json(serverReply ?? reply(JSON.parse(values.get(storageKey) ?? "null")?.input ?? options.saved?.input ?? input(), "unconfirmed"));
     },
   });
   const props = { owner: "owner-a", scope: "hook", composition: { signature: "exact-clips-v1", sourceId: id(1), title: "My video", draft: finishDraft, error: null, resolve: async () => finishDraft },
@@ -142,6 +144,29 @@ test("lost POST reply is recovered by read-only check or reload without a duplic
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1); assert.match(h.text(), /Your schedule is saved/); h.unmount();
   const reloaded = fixture({ saved, serverReply: reply(saved.input) }); reloaded.render(); await settle(); reloaded.render();
   assert.equal(reloaded.calls.length, 1); assert.equal(reloaded.calls[0].method, "GET"); assert.equal(JSON.parse(reloaded.values.values().next().value).confirmed, true); reloaded.unmount();
+});
+
+test("background workflows recover from an explicit time rejection and confirm the current time", async () => {
+  const h = fixture({ transport: async (url, init) => url === "/api/explore/schedules" && init.method === "POST" && JSON.parse(init.body).schedule.scheduledTime === "04:10" ? Response.json({ ok: false, code: "schedule_time_too_soon", message: "Choose a time at least 5 minutes from now." }, { status: 409 }) : null });
+  let editor = await h.review();
+  editor.props.onSave({ ...submission, scheduledDate: "2026-10-14", scheduledTime: "04:10", scheduledFor: "2026-10-13T22:40:00.000Z" }); await settle(); h.render();
+  const rejected = JSON.parse(h.values.values().next().value);
+  assert.equal(rejected.timeRejected, true); assert.equal(rejected.confirmed, false);
+  assert.ok(h.button("Review schedule")); assert.equal(h.button("Confirm the same saved request"), undefined);
+  editor = await h.review(); assert.ok(editor);
+  const updated = { ...submission, scheduledDate: "2026-10-14", scheduledTime: "04:18", scheduledFor: "2026-10-13T22:48:00.000Z" };
+  editor.props.onSave(updated); await settle(); h.render();
+  const mutations = h.calls.filter(call => call.method === "POST"); assert.equal(mutations.length, 2);
+  const request = JSON.parse(mutations[1].body);
+  assert.notEqual(request.requestKey, rejected.input.requestKey); assert.equal(request.schedule.scheduledTime, "04:18");
+  assert.equal(JSON.parse(h.values.values().next().value).confirmed, true); h.unmount();
+});
+
+test("rejected background requests survive reload without automatic submissions", async () => {
+  const saved = { ...savedEntry(), timeRejected: true };
+  const h = fixture({ saved }); h.render(); await settle(); h.render();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.ok(await h.review()); assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
 });
 
 test("an absent server receipt permits only explicit replay of the same durable input", async () => {

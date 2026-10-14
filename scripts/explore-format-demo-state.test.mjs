@@ -194,6 +194,22 @@ test("Content demo edits reopen and save independently of rendering availability
 });
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: empty Demo card uploads and chooses Creative Assets without opening the side panel`, async () => {
+    const h = harness(); h.render({ active: false, editActive: false, editPreviewActive: true });
+    const sourceActions = () => h.find(n => n.type === "WorkflowClipSourceActions");
+    assert.ok(sourceActions()); assert.equal(sourceActions().props.label, "demo video");
+    sourceActions().props.onChooseAssets(); h.render();
+    const library = h.find(n => n.type === "WorkflowVideoAssetPicker"); assert.equal(library.props.open, true);
+    assert.notEqual(library.props.library, "content");
+    assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "creative_assets");
+    library.props.onOpenChange(false); h.render(); assert.equal(h.dirty, 0, "Cancelling the chooser does not change a draft");
+    const pending = sourceActions().props.onUpload({ name: "demo.mp4" }); h.render();
+    assert.equal(sourceActions().props.disabled, true);
+    h.completeVideoUpload(asset(2)); await pending; h.render();
+    assert.equal(h.find(n => n.type === "video" && n.props.src === asset(2).url).props.src, asset(2).url);
+    assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).demoId, id(2));
+    assert.equal(h.saveRun(), undefined, "Uploading does not start a render");
+  });
   for (const playback of ["once", "repeat"]) test(`${format}: background library selection saves ${playback} and keeps demo edits`, async () => {
     const stored = { ...draft(), backgroundMusic: false };
     const h = harness({ format, storage: new Map([[draftKey("owner", format), JSON.stringify(stored)]]) });
@@ -303,7 +319,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.deepEqual(h.draftSaves[0].editing.text, overlay);
     assert.equal(h.saveRun(), undefined, "Apply edits does not render the publishing file");
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
-    assert.equal(h.input("Upload demo video").props.type, "file");
+    assert.ok(h.find(n => n.type === "WorkflowClipSourceActions"), "Demo source menu remains available");
     assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined);
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.deepEqual(normalize(restored.find(n => n.type === textFields.FormatVideoTextFields).props.editing.text), overlay);
@@ -330,7 +346,7 @@ for (const format of ["hook", "wall_text"]) {
     const h = harness({ format, storage }); h.props.opening = output(1); h.render();
     assert.equal(h.button("Save final video").props.disabled, false);
     const previousDirty = h.dirty;
-    const pending = h.input("Upload demo video").props.onChange({ currentTarget: { files: [{ name: "invalid.mp4" }], value: "" } });
+    const pending = h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "invalid.mp4" });
     h.render(); h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
     assert.ok(h.find(n => n.props?.["aria-label"] === "Selected demo video" && n.props.src === asset(2).url));
     assert.deepEqual(JSON.parse(storage.get(draftKey("owner", format))), stored);
@@ -346,8 +362,8 @@ for (const format of ["hook", "wall_text"]) {
   });
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
-    assert.equal(h.button("Upload demo").props.disabled, undefined);
-    assert.equal(h.button("Demo").props.disabled, undefined);
+    assert.equal(h.find(n => n.type === "WorkflowClipSourceActions").props.disabled, false);
+    assert.equal(h.find(n => n.type === "WorkflowClipSourceActions").props.disabled, false);
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();
@@ -393,8 +409,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: a demo upload completing after opening selection or replacement remains selected`, async () => {
     const h = harness({ format }); h.render();
     const event = { currentTarget: { files: [{ name: "demo.mp4" }], value: "demo.mp4" } };
-    h.input("Upload demo video").props.onChange(event); h.render();
-    assert.equal(event.currentTarget.value, "");
+    h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload(event.currentTarget.files[0]); h.render();
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, true);
     h.render({ videoId: id(1), opening: output(1), openingRevision: 1 });
     h.render({ videoId: id(3), opening: null, openingRevision: 2 });
@@ -484,7 +499,7 @@ test("signed-in preview selection and removal preserve the real workflow draft a
   assert.equal(h.find(node => node.props?.["aria-label"] === "Selected demo video"), undefined);
   assert.equal(storage.get(previewKey), undefined, "Preview must not migrate the legacy opening draft");
   const event = { currentTarget: { files: [{ name: "local-demo.mp4" }], value: "local-demo.mp4" } };
-  h.input("Upload demo video").props.onChange(event); h.render();
+  h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload(event.currentTarget.files[0]); h.render();
   h.completeVideoUpload(null); await Promise.resolve(); h.render();
   assert.equal(h.input("Selected demo video").props.src, "blob:local-demo");
   assert.equal(readFormatDemoDraft(storage.get(previewKey)).demoId, null);

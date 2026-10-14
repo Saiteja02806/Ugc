@@ -2,6 +2,34 @@
 
 Last updated: 2026-10-14
 
+## 2026-10-14 Trending content-plan partial-reservation reuse (production)
+
+- The deployed idea allocator now treats `released_partial` as a terminal
+  reservation eligible for reuse of its already consumed, successful ideas,
+  alongside `completed` and `expired_partial`. Both the selection predicate
+  and final item-update predicate are changed. Active reservations, original
+  request replay, owner/profile/period checks, locking and usage history retain
+  their existing behavior; the 30-day plan stays active.
+- The 14 October pack requested 50 slideshows but only 43 ideas qualified:
+  40 available and three reusable consumed ideas. Another 107 successful ideas
+  were incorrectly excluded by their earlier `released_partial` reservations.
+  Eight five-item reservations were released before dispatch; no writer jobs
+  had been created. Three bounded recovery attempts left all 50 slots failed.
+- Migration `20261014034706_reuse_released_partial_carousel_content_plan_items`
+  is applied in production. It patches only the two expected predicates and
+  refuses an unexpected allocator definition. Its source and permissions were
+  compared to the inspected production function before/after application.
+- Ten actual PostgreSQL regressions and 49 existing lifecycle/replenishment/
+  writer-ownership checks pass. A production verification reserved 50 ideas
+  in ten disjoint partitions with exact request replays, then rolled back all
+  test writes and verified the original item/reservation/use snapshot.
+- The failed pack was restarted through production Trending's Try again
+  control. Fifty candidate records and ten writer jobs now exist; the first
+  ten slideshows completed with all 60 expected slides ready. Production
+  Trending shows their cards again. The remaining 40 candidates are generating
+  through the existing queue; all 50 completions are not yet claimed. See
+  `docs/trending-partial-content-plan-reuse-fix-2026-10-14.md` for evidence.
+
 ## 2026-10-14 Hook Remix text overview and readiness (local, not deployed)
 
 - The Hook Demo panel uses the heading **Remix text**. Its introductory helper
@@ -7012,6 +7040,27 @@ The records below are retained from the deployed branch during release reconcili
   activation. Production Serif preview is one line and caption review is centered.
   Ongoing SEO and subsequent inline Demo action work remain outside the frozen
   follow-up release. See docs/demo-creative-assets-separation-2026-10-14.md.
+
+## 2026-10-14 Explore schedule time rejection recovery (local)
+
+- Explore Talking Head + Demo, Hook, Wall of Text and Slideshow distinguish an
+  explicit HTTP 409 `schedule_time_too_soon` rejection from an uncertain request.
+  After a rejection, Review schedule opens the current form and explicit
+  confirmation submits its current time. Ordinary finished-media scheduling
+  retains the original idempotency key; accepted server schedules recover
+  before the time-dependent minimum lead check. New requests still require
+  the full five-minute lead and valid timezone/date/account selection.
+- Background preparation permits a new immutable request only after an
+  explicit time rejection and a read confirming the old request is unconfirmed.
+  Confirmation and replay share the browser lock. Lost responses, missing GET
+  results alone, accepted requests and existing publishing targets do not
+  authorize replacement or automatic posting.
+- Real production records confirm one Explore-format Instagram Reel reached
+  publication on 2026-10-12. The caption in the reported 2026-10-14 screenshot
+  has no matching server schedule in the connected account. This is evidence
+  for the existing publishing pipeline, not a new production test of every
+  workflow or deployment of this fix. Details and validation are recorded in
+  `docs/explore-schedule-time-recovery-2026-10-14.md`.
 
 ## 2026-10-14 Approved workflow sidebar width
 

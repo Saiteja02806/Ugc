@@ -33,7 +33,7 @@ export const videoFinishDraftSchema = z.strictObject({
     originalVolume: z.number().min(0).max(1), musicVolume: z.number().min(0).max(1),
     text: text.nullable(), textOverlays: z.array(text).max(MAX_FORMAT_TEXT_OVERLAYS).optional(),
   }).optional().describe("Independent single-clip preparation. Finish it first, then compose its output with a demo."),
-  subtitles: z.strictObject({ language: z.literal("en"), style: z.enum(EXPLORE_FINISH_STYLES), placement: z.enum(["bottom", "middle", "top"]).optional() }).nullable().default(null),
+  subtitles: z.strictObject({ language: z.literal("en"), style: z.enum(EXPLORE_FINISH_STYLES), placement: z.enum(["bottom", "middle", "top"]).optional(), version: z.literal(2).optional() }).nullable().default(null),
 });
 
 const finishOutput = z.strictObject({
@@ -107,7 +107,7 @@ export function registerFinishingMcpTools(server: McpServer) {
     let draft;
     try { draft = parseExploreFinishDraft(args.draft); }
     catch (error) { throw new ToolFailure("INVALID_INPUT", error instanceof Error ? error.message : "Choose a valid video finishing draft."); }
-    try { return toOutput((await startWorkflowFinishingForOwner(owner, args.request_key, draft)).result); }
+    try { return toOutput((await startWorkflowFinishingForOwner(owner, args.request_key, draft, { modernSubtitles: true })).result); }
     catch (error) { return finishingFailure(error); }
   }));
 

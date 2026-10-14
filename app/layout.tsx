@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { Suspense } from "react";
+import { SiteAnalytics } from "@/components/marketing/site-analytics";
 
 import { GoogleAuthRedirectHandler } from "@/components/auth/google-auth-redirect-handler";
 import { AuthProvider } from "@/contexts/auth-context";
@@ -164,6 +166,7 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
+          <Suspense fallback={null}><SiteAnalytics /></Suspense>
           <AuthProvider>
             <GoogleAuthRedirectHandler />
             <JobQueryProvider>

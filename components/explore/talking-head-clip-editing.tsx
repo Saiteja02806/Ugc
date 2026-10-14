@@ -63,10 +63,20 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
   const uploadState = upload?.url === demo.asset?.url ? upload : null;
   const target = requested && requested.key === (requested.target === "opening" ? openingKey : demoKey) ? requested.target : null;
   const editing = active && Boolean(target);
+  useEffect(() => {
+    if (!editing) return;
+    // The overview and clip editor share these scroll areas. Always open the
+    // selected clip at its first field/frame, even after scrolling the overview.
+    controlsTarget?.closest<HTMLElement>("[data-workflow-section-content]")?.scrollTo({ top: 0 });
+    resultsTarget?.closest<HTMLElement>("#hook-workflow-preview")?.scrollTo({ top: 0 });
+  }, [editing, target, controlsTarget, resultsTarget]);
+  const draftBusy = Boolean((selectedOpeningState?.draftBusy ?? selectedOpeningState?.busy) || (selectedDemoState?.draftBusy ?? selectedDemoState?.busy));
+  const draftError = (selectedOpeningState?.draftError !== undefined ? selectedOpeningState.draftError : selectedOpeningState?.error)
+    ?? (selectedDemoState?.draftError !== undefined ? selectedDemoState.draftError : selectedDemoState?.error);
   const error = uploadState?.busy ? "Preparing your demo for editing…" : uploadState?.error
     ?? (source && !selectedOpeningState || ownedDemo && !selectedDemoState ? "Loading your saved clip edits…" : null)
-    ?? (selectedOpeningState?.busy || selectedDemoState?.busy ? "Wait for your clip edits to finish saving." : null)
-    ?? selectedOpeningState?.error ?? selectedDemoState?.error
+    ?? (draftBusy ? "Wait for your clip edits to finish saving." : null)
+    ?? draftError
     ?? (selectedOpeningState?.needsDraftSaving && (selectedOpeningState.needsSaving || selectedOpeningState.savedDraft) ? "Save your talking-head clip edits before preparing the final video." : null)
     ?? (selectedDemoState?.needsDraftSaving && (selectedDemoState.needsSaving || selectedDemoState.savedDraft) ? "Save your demo clip edits before preparing the final video." : null);
 
@@ -96,7 +106,7 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
       demoSource: ownedDemo,
       demo: ownedDemo ? null : demo.asset,
       demoFraming,
-      error, editing, busy: Boolean(uploadState?.busy || selectedOpeningState?.busy || selectedDemoState?.busy),
+      error, editing, busy: Boolean(uploadState?.busy || draftBusy),
       controls: <div hidden={!editing} ref={setControlsTarget} className={sections.clipControls} />,
       preview: <div hidden={!editing} ref={setResultsTarget} className={sections.clipPreview} />,
       actions: <div ref={setActionsTarget} />,

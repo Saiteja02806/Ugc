@@ -6,10 +6,10 @@ import ts from "typescript";
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
 const asset = number => ({ id: `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`, title: "Owned clip", url: `https://owned.test/${number}.mp4`, durationSeconds: 10 });
 function fixture(backgroundScheduling = false) {
-  const slots = []; let cursor = 0;
+  const slots = [], effects = []; let cursor = 0;
   const react = { useRef(value) { return slots[cursor++] ??= { current: value }; },
     useState(value) { const index = cursor++; if (!(index in slots)) slots[index] = value; return [slots[index], next => { slots[index] = typeof next === "function" ? next(slots[index]) : next; }]; },
-    useCallback(value) { cursor++; return value; }, useEffect() { cursor++; } };
+    useCallback(value) { cursor++; return value; }, useEffect(fn) { cursor++; effects.push(fn); } };
   const imports = { react, "react/jsx-runtime": jsx, "@/components/explore/format-video-editor": { FormatVideoEditor: "editor" },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia() { throw new Error("Recovery must not upload"); } },
     "@/lib/explore/format-video-source": { formatVideoFromAsset: source => ({ ...source, mediaAssetId: source.id }) },
@@ -18,7 +18,7 @@ function fixture(backgroundScheduling = false) {
   vm.runInNewContext(ts.transpileModule(readFileSync("components/explore/talking-head-clip-editing.tsx", "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText,
     { exports, require: key => { assert.ok(key in imports, key); return imports[key]; } });
   const props = { enabled: true, ownerId: "owner", source: asset(1), sourcePreview: null, demo: { asset: null }, demoSource: asset(2), active: true, backgroundScheduling, onDirty() {}, children: value => value };
-  const render = () => { cursor = 0; return exports.TalkingHeadClipEditing(props); };
+  const render = () => { cursor = 0; const tree = exports.TalkingHeadClipEditing(props); while (effects.length) effects.shift()(); return tree; };
   return { props, render, view: () => render().props.children[0].props.value, editors: () => render().props.children.filter(node => node?.type === "editor") };
 }
 test("saved JSON clip drafts reach final composition independently of background capability", () => {
@@ -44,4 +44,31 @@ test("unsaved changes and missing current clip states block final preparation", 
   opening.props.onClipStateChange({ sourceId: h.props.source.id, needsSaving: false, needsDraftSaving: true, savedDraft: { revision: 1 }, busy: false, error: null });
   assert.match(h.view().error, /Save your talking-head clip edits/, "Returning to default settings must save over a different existing draft first");
   h.props.source = asset(3); assert.match(h.view().error, /Loading your saved clip edits/);
+});
+
+test("a separate clip export cannot block a saved raw composition, while draft writes still block", () => {
+  const h = fixture(); const [opening, demo] = h.editors();
+  const state = sourceId => ({ sourceId, needsSaving: true, needsDraftSaving: false, savedDraft: { revision: 1 },
+    busy: true, error: "The earlier publishing export failed.", draftBusy: false, draftError: null });
+  opening.props.onClipStateChange(state(h.props.source.id)); demo.props.onClipStateChange(state(h.props.demoSource.id));
+  assert.equal(h.view().error, null); assert.equal(h.view().busy, false);
+  h.view().openOpening(); assert.equal(h.view().editing, true, "Saved clips remain editable during separate publishing preparation");
+  opening.props.onClipStateChange({ ...state(h.props.source.id), draftBusy: true });
+  assert.equal(h.view().busy, true); assert.match(h.view().error, /finish saving/);
+  opening.props.onClipStateChange({ ...state(h.props.source.id), draftError: "The edited audio could not load." });
+  assert.match(h.view().error, /edited audio could not load/);
+  opening.props.onClipStateChange({ ...state(h.props.source.id), draftError: "Loading your saved clip edits…" });
+  assert.match(h.view().error, /Loading your saved clip edits/);
+  opening.props.onClipStateChange({ ...state(h.props.source.id), needsDraftSaving: true });
+  assert.match(h.view().error, /Save your talking-head clip edits/);
+});
+
+test("opening or switching the clip editor resets the shared control and preview scroll", () => {
+  const h = fixture(), resets = [];
+  const target = name => ({ closest(selector) { return { scrollTo(value) { resets.push([name, selector, value.top]); } }; } });
+  let view = h.view(); view.controls.props.ref(target("controls")); view.preview.props.ref(target("preview"));
+  h.view().openOpening(); view = h.view();
+  assert.deepEqual(resets.slice(-2), [["controls", "[data-workflow-section-content]", 0], ["preview", "#hook-workflow-preview", 0]]);
+  view.openDemo(); assert.equal(h.view().editing, true);
+  assert.deepEqual(resets.slice(-2), [["controls", "[data-workflow-section-content]", 0], ["preview", "#hook-workflow-preview", 0]]);
 });

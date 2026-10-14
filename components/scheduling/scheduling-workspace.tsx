@@ -27,14 +27,12 @@ import type {
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { useAuth } from "@/contexts/auth-context";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getDefaultAccountScheduleSlot } from "@/lib/scheduling/account-timezone";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
-import {
-  isContentSecondaryClipMediaAsset,
-  isScheduledVideoMediaAsset,
-} from "@/lib/scheduling/secondary-clip-media";
+import { isScheduledVideoMediaAsset } from "@/lib/scheduling/secondary-clip-media";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -428,9 +426,8 @@ export function SchedulingWorkspace() {
           const scheduledVideoAssets = videoAssets.filter(isScheduledVideoMediaAsset);
 
           return {
-            availableScheduledVideoIds: scheduledVideoAssets.map((asset) => asset.id),
+            availableScheduledVideoIds: [...scheduledVideoAssets, ...influencerData.assets.filter(isCreativeAssetHookMediaAsset)].map((asset) => asset.id),
             demoMediaOptions: scheduledVideoAssets
-              .filter(isContentSecondaryClipMediaAsset)
               .map(mapMediaAssetToScheduleMediaOption),
             hookMediaOptions: dedupeScheduleMediaOptions([
               ...influencerData.assets
@@ -1467,6 +1464,12 @@ export function SchedulingWorkspace() {
           onRefreshConnections={async () =>
             (await loadSocialConnections({ force: true })) !== null
           }
+          onUploadVideo={async (file) => {
+            if (!user?.uid) throw new Error("Sign in before uploading a video.");
+            if (!file.size || file.size > 250 * 1024 * 1024) throw new Error("Choose a video up to 250 MB.");
+            const uploaded = await uploadAIStudioReferenceMedia(file, "video", 86_400, user.uid, { requireVideoReferenceRatio: false });
+            return mapMediaAssetToScheduleMediaOption(uploaded.asset);
+          }}
           onSave={handleSaveScheduleDraft}
           requireScheduleTarget={requireScheduleTarget}
           saving={savingSchedule}

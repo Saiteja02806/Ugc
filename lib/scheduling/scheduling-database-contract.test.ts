@@ -782,15 +782,12 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
   );
 });
 
-test("new schedules preselect available hook and secondary clips", () => {
+test("new schedules preselect one video and keep legacy saved selection support", () => {
   assert.match(
     scheduleEditor,
-    /editingSchedule \|\|[\s\S]*demoMediaOptions\.length === 0[\s\S]*if \(!selectedDemoMediaId\)[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
+    /editingSchedule \|\|[\s\S]*videoOptions\.length === 0[\s\S]*if \(!selectedDemoMediaId\)[\s\S]*setSelectedDemoMediaId\(videoOptions\[0\]!\.id\)/,
   );
-  assert.match(
-    scheduleEditor,
-    /editingSchedule \|\|[\s\S]*localHookMediaOptions\.length === 0[\s\S]*if \(!selectedHookMediaId\)[\s\S]*setSelectedHookMediaId\(localHookMediaOptions\[0\]!\.id\)/,
-  );
+  assert.doesNotMatch(scheduleEditor, /setSelectedHookMediaId/);
   assert.match(scheduleEditor, /function getInitialClipSelection/);
   assert.match(schedulingWorkspace, /clipSelection: submission\.clipSelection/);
   assert.match(
@@ -1098,36 +1095,17 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   );
 });
 
-test("the main scheduler uses compact role-based clip and time controls", () => {
-  assert.match(
-    schedulingWorkspace,
-    /const scheduledVideoAssets = videoAssets\.filter\(isScheduledVideoMediaAsset\)/,
-  );
-  assert.match(
-    schedulingWorkspace,
-    /demoMediaOptions: scheduledVideoAssets[\s\S]*filter\(isContentSecondaryClipMediaAsset\)/,
-  );
-  assert.match(scheduleEditor, /Hook clip/);
-  assert.match(scheduleEditor, /title="Secondary clip"/);
-  assert.match(scheduleEditor, /Choose a secondary clip/);
-  assert.match(scheduleEditor, /Change selected hook clip, currently/);
-  assert.match(scheduleEditor, /Choose a hook clip/);
-  assert.match(
-    scheduleEditor,
-    /Creative Assets clips appear here\. Select one to use at the start of this Reel\./,
-  );
-  assert.match(
-    scheduleEditor,
-    /function ScheduleOpeningMediaPicker[\s\S]*?<SchedulePrimaryMediaCard[\s\S]*?setOpen\(false\)/,
-  );
-  assert.match(
-    scheduleEditor,
-    /Content videos appear here\. Selecting a clip closes this list\./,
-  );
-  assert.match(
-    scheduleEditor,
-    /flex snap-x snap-mandatory gap-3 overflow-x-auto/,
-  );
+test("the main scheduler uses one video picker with direct uploads and existing media", () => {
+  assert.match(schedulingWorkspace, /const scheduledVideoAssets = videoAssets\.filter\(isScheduledVideoMediaAsset\)/);
+  assert.match(schedulingWorkspace, /demoMediaOptions: scheduledVideoAssets[\s\S]*map\(mapMediaAssetToScheduleMediaOption\)/);
+  assert.match(scheduleEditor, /function ScheduleVideoPicker/);
+  assert.doesNotMatch(scheduleEditor, /ScheduleOpeningClipControl|ScheduleRoleMediaPicker|title="Secondary clip"/);
+  assert.match(scheduleEditor, /Video clip/);
+  assert.match(scheduleEditor, /Choose a video/);
+  assert.match(scheduleEditor, /Upload video/);
+  assert.match(schedulingWorkspace, /onUploadVideo=\{async/);
+  assert.match(scheduleEditor, /Demo and Creative Assets videos appear here/);
+  assert.match(scheduleEditor, /flex snap-x snap-mandatory gap-3 overflow-x-auto/);
   assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
   assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
   assert.match(scheduleEditor, /setFailedThumbnailUrl/);

@@ -7,12 +7,12 @@ import {
   FileVideo,
   Images,
   Info,
-  Layers2,
   Loader2,
   Play,
   Plus,
   RefreshCw,
   Settings2,
+  Upload,
   Video,
   X,
 } from "lucide-react";
@@ -76,11 +76,6 @@ import {
 import type { SocialConnection } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
-const openingVideoSourceTabs = [
-  { id: "all", label: "All" },
-  { id: "creators", label: "Creator clips" },
-  { id: "videos", label: "Videos" },
-] as const;
 const scheduleSetupSteps = [
   { description: "Choose what to publish", label: "Media", mobileLabel: "Media", step: "1" },
   { description: "Select the destination", label: "Publishing account", mobileLabel: "Account", step: "2" },
@@ -263,6 +258,7 @@ export function ScheduleEditor({
   onClose,
   onRefreshMedia,
   onRefreshConnections,
+  onUploadVideo,
   onSave,
   requireScheduleTarget,
   saving,
@@ -298,6 +294,7 @@ export function ScheduleEditor({
   onClose: () => void;
   onRefreshMedia: () => Promise<boolean>;
   onRefreshConnections: () => Promise<boolean>;
+  onUploadVideo?: (file: File) => Promise<ScheduleMediaOption>;
   onSave: (submission: ScheduleFormSubmission) => void;
   requireScheduleTarget: boolean;
   saving: boolean;
@@ -394,15 +391,16 @@ export function ScheduleEditor({
         requestedSelection: finalVideo || pendingVideo ? "secondary_only" : initialClipSelection,
       }).useSecondary,
   );
-  const openingClipSelectionChanged = useRef(false);
-  const secondaryClipSelectionChanged = useRef(false);
-  const useAvailableClipDefaults = !initialClipSelection && !finalVideo && !pendingVideo;
-  const [selectedHookMediaId, setSelectedHookMediaId] = useState<string>(
-    initialHookMediaId,
-  );
+  const selectedHookMediaId = initialHookMediaId;
   const [selectedDemoMediaId, setSelectedDemoMediaId] = useState<string>(
-    finalVideo?.id ?? pendingVideo?.id ?? initialDemoMediaId,
+    finalVideo?.id ?? pendingVideo?.id ?? (initialDemoMediaId || initialHookMediaId),
   );
+  const [uploadedVideos, setUploadedVideos] = useState<ScheduleMediaOption[]>([]);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const uploadingVideoRef = useRef(false);
+  const videoOptions = useMemo(() => Array.from(new Map(
+    [...uploadedVideos, ...demoMediaOptions, ...hookMediaOptions].map(option => [option.id, option]),
+  ).values()), [demoMediaOptions, hookMediaOptions, uploadedVideos]);
   const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [hookPickerError, setHookPickerError] = useState<string | null>(null);
   const [caption, setCaption] = useState(editingSchedule?.caption ?? initialCaption);
@@ -459,7 +457,7 @@ export function ScheduleEditor({
   )
     ? selectedHookMediaId
     : "";
-  const activeDemoMediaId = demoMediaOptions.some(
+  const activeDemoMediaId = videoOptions.some(
     (option) => option.id === selectedDemoMediaId,
   )
     ? selectedDemoMediaId
@@ -470,7 +468,7 @@ export function ScheduleEditor({
   const selectedDemoMedia =
     isCarouselSchedule || !useSecondaryClip
       ? null
-      : demoMediaOptions.find((option) => option.id === activeDemoMediaId) ?? null;
+      : videoOptions.find((option) => option.id === activeDemoMediaId) ?? null;
   const selectedPublishMedia = selectedDemoMedia ?? selectedHookMedia;
   const shouldCombineClips = useOpeningClip && useSecondaryClip;
 
@@ -478,43 +476,15 @@ export function ScheduleEditor({
     if (
       isCarouselSchedule ||
       editingSchedule ||
-      demoMediaOptions.length === 0
+      videoOptions.length === 0
     ) {
       return;
     }
 
     if (!selectedDemoMediaId) {
-      setSelectedDemoMediaId(demoMediaOptions[0]!.id);
+      setSelectedDemoMediaId(videoOptions[0]!.id);
     }
-    // Media can arrive after upload/refresh. Keep its inclusion in sync with
-    // default selection, without overriding an explicit Skip or saved choice.
-    if (useAvailableClipDefaults && !secondaryClipSelectionChanged.current) {
-      setUseSecondaryClip(true);
-    }
-  }, [demoMediaOptions, editingSchedule, isCarouselSchedule, selectedDemoMediaId, useAvailableClipDefaults]);
-
-  useEffect(() => {
-    if (
-      isCarouselSchedule ||
-      editingSchedule ||
-      localHookMediaOptions.length === 0
-    ) {
-      return;
-    }
-
-    if (!selectedHookMediaId) {
-      setSelectedHookMediaId(localHookMediaOptions[0]!.id);
-    }
-    if (useAvailableClipDefaults && !openingClipSelectionChanged.current) {
-      setUseOpeningClip(true);
-    }
-  }, [
-    editingSchedule,
-    isCarouselSchedule,
-    localHookMediaOptions,
-    selectedHookMediaId,
-    useAvailableClipDefaults,
-  ]);
+  }, [videoOptions, editingSchedule, isCarouselSchedule, selectedDemoMediaId]);
 
   const availableSocialConnections = useMemo(
     () =>
@@ -620,7 +590,7 @@ export function ScheduleEditor({
   const pendingExploreReview = inline && !finalVideo && !initialLibraryItemId && Boolean(pendingVideo && pendingVideo.sourceType === "combined_video" && pendingVideo.status === "missing_render" && selectedDemoMedia?.status === "missing_render" && selectedDemoMedia.id === pendingVideo.id) && !useOpeningClip && useSecondaryClip;
   const fixedVideoReadinessError = fixedInlineSource && !isCarouselSchedule && !pendingExploreReview && selectedDemoMedia?.status !== "ready"
     ? "Wait for your finished video, or return to the workflow to confirm background preparation." : null;
-  const mediaValidationError = pendingExploreReview ? null : fixedVideoReadinessError ?? getScheduleMediaValidationError({
+  const mediaValidationError = uploadingVideo ? "Wait for your video upload to finish." : pendingExploreReview ? null : fixedVideoReadinessError ?? getScheduleMediaValidationError({
     hookMedia: isCarouselSchedule ? null : selectedHookMedia,
     secondaryMedia: isCarouselSchedule
       ? initialLibraryItemId
@@ -865,28 +835,32 @@ export function ScheduleEditor({
     }
   }, [loadTikTokCapabilities, selectedConnections, tiktokCapabilities]);
 
-  function handleSelectHookMedia(mediaId: string) {
-    openingClipSelectionChanged.current = true;
-    setUseOpeningClip(true);
-    setHookPickerError(null);
-    setSelectedHookMediaId(mediaId);
-  }
-
-  function handleSelectSecondaryMedia(mediaId: string) {
-    secondaryClipSelectionChanged.current = true;
+  function handleSelectVideo(mediaId: string) {
+    if (uploadingVideoRef.current || saving) return;
+    setUseOpeningClip(false);
     setUseSecondaryClip(true);
+    setHookPickerError(null);
     setSelectedDemoMediaId(mediaId);
   }
 
-  function handleToggleOpeningClip(enabled: boolean) {
-    openingClipSelectionChanged.current = true;
-    setUseOpeningClip(enabled);
+  async function handleUploadVideo(file: File) {
+    if (!onUploadVideo || uploadingVideoRef.current || saving) return;
+    uploadingVideoRef.current = true;
+    setUploadingVideo(true);
     setHookPickerError(null);
-  }
-
-  function handleToggleSecondaryClip(enabled: boolean) {
-    secondaryClipSelectionChanged.current = true;
-    setUseSecondaryClip(enabled);
+    try {
+      const video = await onUploadVideo(file);
+      setUploadedVideos(previous => [...previous.filter(option => option.id !== video.id), video]);
+      uploadingVideoRef.current = false;
+      handleSelectVideo(video.id);
+      // The selected uploaded asset remains usable even if catalog refresh fails.
+      void onRefreshMedia().catch(() => false);
+    } catch (error) {
+      setHookPickerError(getErrorMessage(error, "Could not upload this video. Try again."));
+    } finally {
+      uploadingVideoRef.current = false;
+      setUploadingVideo(false);
+    }
   }
 
   async function handleRefreshMedia() {
@@ -905,6 +879,7 @@ export function ScheduleEditor({
   }
 
   function handleSaveDraft() {
+    if (uploadingVideoRef.current || saving) return;
     // A tab can sleep or cross the lead boundary between its last render and
     // this click. Validate the current instant before submitting any request.
     const now = Date.now();
@@ -1062,7 +1037,7 @@ export function ScheduleEditor({
               description={
                 finalVideo ? "Review your finished video and optional caption" : isCarouselSchedule
                   ? "Saved carousel and optional caption"
-                  : "Choose a hook, a secondary clip, or both in sequence"
+                  : "Upload one video or choose from Demo and Creative Assets"
               }
             >
               <div className={inline ? "grid min-w-0 gap-4" : "grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] xl:gap-6"}>
@@ -1072,36 +1047,18 @@ export function ScheduleEditor({
                   ) : isCarouselSchedule && editingSchedule ? (
                     <ScheduledCarouselSourceCard schedule={editingSchedule} />
                   ) : (
-                    <>
-                      <ScheduleOpeningClipControl
-                        enabled={useOpeningClip}
-                        onToggle={handleToggleOpeningClip}
-                      >
-                        <ScheduleOpeningMediaPicker
-                          errorMessage={hookPickerError}
-                          mediaOptions={localHookMediaOptions}
-                          refreshingMedia={refreshingMedia}
-                          selectedMediaId={activeHookMediaId}
-                          onRefreshMedia={handleRefreshMedia}
-                          onSelectMedia={handleSelectHookMedia}
-                        />
-                      </ScheduleOpeningClipControl>
-                      <ScheduleRoleMediaPicker
-                        description="Choose a Content video to play after the hook, or publish on its own."
-                        emptyDescription="Create or upload a Content video, then select it here."
-                        emptyTitle="No secondary clips found."
-                        enabled={useSecondaryClip}
-                        errorMessage={hookPickerError}
-                        icon={<FileVideo className="size-4" aria-hidden="true" />}
-                        mediaOptions={demoMediaOptions}
-                        selectedMediaId={activeDemoMediaId}
-                        title="Secondary clip"
-                        refreshingMedia={refreshingMedia}
-                        onRefreshMedia={handleRefreshMedia}
-                        onSelectMedia={handleSelectSecondaryMedia}
-                        onToggle={handleToggleSecondaryClip}
-                      />
-                    </>
+                    <ScheduleVideoPicker
+                      errorMessage={hookPickerError}
+                      mediaOptions={videoOptions}
+                      selectedMediaId={selectedPublishMedia?.id ?? activeDemoMediaId}
+                      refreshingMedia={refreshingMedia}
+                      uploadingVideo={uploadingVideo}
+                      disabled={saving}
+                      onRefreshMedia={handleRefreshMedia}
+                      onSelectMedia={handleSelectVideo}
+                      onUploadVideo={onUploadVideo ? handleUploadVideo : undefined}
+                      savedSequenceTitle={shouldCombineClips ? editingSchedule?.title : undefined}
+                    />
                   )}
                   <label className="block">
                     <span className="flex items-center justify-between gap-3">
@@ -1169,12 +1126,7 @@ export function ScheduleEditor({
                   ) : isCarouselSchedule && editingSchedule ? (
                     <CarouselSchedulePreview schedule={editingSchedule} />
                   ) : (
-                    <CompositionPreview
-                      openingMedia={selectedHookMedia}
-                      scheduledMedia={selectedDemoMedia}
-                      useHookClip={useOpeningClip}
-                      useSecondaryClip={useSecondaryClip}
-                    />
+                    <ScheduleVideoPreview video={shouldCombineClips ? null : selectedPublishMedia} savedSequenceTitle={shouldCombineClips ? editingSchedule?.title : undefined} />
                   )}
                   {hasInstagramDestination ? (
                     <InstagramCaptionPreview caption={caption} />
@@ -1392,9 +1344,7 @@ export function ScheduleEditor({
                     ? "We prepare one combined video first, then schedule it automatically when ready."
                     : isCarouselSchedule
                       ? "The saved carousel will be scheduled to the selected account."
-                      : useOpeningClip
-                        ? "The selected hook clip will be scheduled directly."
-                        : "The selected secondary clip will be scheduled directly."
+                      : "The selected video will be scheduled directly."
                   : requireScheduleTarget
                     ? "Choose a connected account before scheduling this post."
                     : `Choose a connected ${publishingAccountLabel} account before scheduling this post.`}
@@ -1634,57 +1584,12 @@ function ScheduleTimeRail({
   );
 }
 
-type OpeningVideoSourceTab = (typeof openingVideoSourceTabs)[number]["id"];
-
-function ScheduleOpeningClipControl({
-  children,
-  enabled,
-  onToggle,
-}: {
-  children: ReactNode;
-  enabled: boolean;
-  onToggle: (enabled: boolean) => void;
-}) {
-  return (
-    <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-card">
-      <label className="flex cursor-pointer items-start justify-between gap-4 bg-card-muted/45 px-4 py-3">
-        <span className="flex min-w-0 items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary">
-            <Video className="size-4" aria-hidden="true" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-bold text-foreground">
-              Hook clip
-            </span>
-            <span className="mt-0.5 block text-xs font-semibold leading-5 text-muted">
-              Plays first. Choose a Creative Assets video or leave it out.
-            </span>
-          </span>
-        </span>
-        <span className="mt-0.5 flex shrink-0 items-center gap-2 text-xs font-bold text-muted">
-          {enabled ? "Included" : "Skip"}
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => onToggle(event.target.checked)}
-            className="size-4 shrink-0 accent-primary"
-          />
-        </span>
-      </label>
-
-      {enabled ? (
-        <div className="px-4 pb-4">{children}</div>
-      ) : (
-        <p className="px-4 py-3 text-xs font-semibold leading-5 text-muted">
-          This Reel will begin with the secondary clip only.
-        </p>
-      )}
-    </section>
-  );
-}
-
-function ScheduleOpeningMediaPicker({
+function ScheduleVideoPicker({
   errorMessage,
+  uploadingVideo,
+  disabled,
+  onUploadVideo,
+  savedSequenceTitle,
   mediaOptions,
   onRefreshMedia,
   onSelectMedia,
@@ -1692,315 +1597,18 @@ function ScheduleOpeningMediaPicker({
   selectedMediaId,
 }: {
   errorMessage: string | null;
+  uploadingVideo: boolean;
+  disabled: boolean;
+  onUploadVideo?: (file: File) => Promise<void>;
+  savedSequenceTitle?: string;
   mediaOptions: ScheduleMediaOption[];
   onRefreshMedia: () => void;
   onSelectMedia: (mediaId: string) => void;
   refreshingMedia: boolean;
   selectedMediaId: string;
 }) {
-  const [activeSource, setActiveSource] =
-    useState<OpeningVideoSourceTab>("all");
   const [open, setOpen] = useState(false);
-  const creatorMediaOptions = mediaOptions.filter(
-    (option) => option.sourceType === "influencer_video",
-  );
-  const videoMediaOptions = mediaOptions.filter(
-    (option) =>
-      option.sourceType === "generated_video" ||
-      option.sourceType === "user_video",
-  );
-  const sourceCounts: Record<OpeningVideoSourceTab, number> = {
-    all: creatorMediaOptions.length + videoMediaOptions.length,
-    creators: creatorMediaOptions.length,
-    videos: videoMediaOptions.length,
-  };
-  const hasAnyOptions = sourceCounts.all > 0;
-  const selectedMedia = mediaOptions.find(
-    (option) => option.id === selectedMediaId,
-  );
-
-  function renderMediaOptions(options: ScheduleMediaOption[]) {
-    return options.map((option) => (
-      <SchedulePrimaryMediaCard
-        key={option.id}
-        className="min-w-0"
-        option={option}
-        selected={option.id === selectedMediaId}
-        onSelect={() => {
-          onSelectMedia(option.id);
-          setOpen(false);
-        }}
-      />
-    ));
-  }
-
-  function renderSourceSections() {
-    if (activeSource === "creators") {
-      return sourceCounts.creators > 0 ? (
-        <OpeningVideoSourceSection
-          count={creatorMediaOptions.length}
-          title="Creator clips"
-        >
-          {renderMediaOptions(creatorMediaOptions)}
-        </OpeningVideoSourceSection>
-      ) : (
-        <OpeningVideoEmptyState source={activeSource} />
-      );
-    }
-
-    if (activeSource === "videos") {
-      return sourceCounts.videos > 0 ? (
-        <OpeningVideoSourceSection count={videoMediaOptions.length} title="Videos">
-          {renderMediaOptions(videoMediaOptions)}
-        </OpeningVideoSourceSection>
-      ) : (
-        <OpeningVideoEmptyState source={activeSource} />
-      );
-    }
-
-    return hasAnyOptions ? (
-      <>
-        <OpeningVideoSourceSection
-          count={creatorMediaOptions.length}
-          title="Creator clips"
-        >
-          {renderMediaOptions(creatorMediaOptions)}
-        </OpeningVideoSourceSection>
-        <OpeningVideoSourceSection count={videoMediaOptions.length} title="Videos">
-          {renderMediaOptions(videoMediaOptions)}
-        </OpeningVideoSourceSection>
-      </>
-    ) : (
-      <OpeningVideoEmptyState source={activeSource} />
-    );
-  }
-
-  return (
-    <div className="border-t border-border pt-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold text-foreground">Creative Assets</p>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="text-xs font-semibold text-muted">
-            {sourceCounts.all} available
-          </span>
-          <button
-            type="button"
-            onClick={onRefreshMedia}
-            disabled={refreshingMedia}
-            aria-label="Refresh scheduling media"
-            title="Refresh scheduling media"
-            className="inline-flex size-8 items-center justify-center rounded-control border border-border bg-card-muted text-muted transition hover:border-border-strong hover:bg-card hover:text-foreground disabled:cursor-wait disabled:opacity-60"
-          >
-            <RefreshCw
-              className={cn("size-4", refreshingMedia ? "animate-spin" : null)}
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-      </div>
-
-      {errorMessage ? (
-        <div
-          role="alert"
-          className="mt-3 rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold leading-5 text-error"
-        >
-          {errorMessage}
-        </div>
-      ) : null}
-
-      {hasAnyOptions ? (
-        <div className="mt-3">
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label={
-                    selectedMedia
-                      ? ["Change selected hook clip, currently", selectedMedia.title].join(" ")
-                      : "Choose a hook clip"
-                  }
-                  className={cn(
-                    "group flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-card)] border bg-card-muted p-2.5 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                    selectedMedia
-                      ? "border-primary/45 ring-1 ring-primary/10"
-                      : "border-dashed border-border",
-                  )}
-                />
-              }
-            >
-              <span className="relative flex size-16 shrink-0 overflow-hidden rounded-control border border-border bg-background">
-                {selectedMedia ? (
-                  <ScheduleMediaVisual option={selectedMedia} compact />
-                ) : (
-                  <span className="flex size-full items-center justify-center bg-brand-soft/40 text-primary">
-                    <Video className="size-5" aria-hidden="true" />
-                  </span>
-                )}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-foreground">
-                  {selectedMedia?.title ?? "No hook clip selected"}
-                </span>
-                <span className="mt-1 block truncate text-xs font-semibold text-muted">
-                  {selectedMedia
-                    ? [
-                        getMediaSourceLabel(selectedMedia),
-                        selectedMedia.durationLabel || "Duration pending",
-                      ].join(" - ")
-                    : "Choose a video from Creative Assets."}
-                </span>
-              </span>
-              <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
-                {selectedMedia ? "Change" : "Choose"}
-                <ChevronDown
-                  className={cn(
-                    "size-4 transition-transform motion-reduce:transition-none",
-                    open && "rotate-180",
-                  )}
-                  aria-hidden="true"
-                />
-              </span>
-            </PopoverTrigger>
-
-            <PopoverContent
-              align="start"
-              sideOffset={8}
-              className="w-[min(92vw,860px)] max-h-[min(72vh,680px)] gap-0 overflow-hidden p-0"
-            >
-              <PopoverHeader className="border-b border-border px-4 py-3">
-                <PopoverTitle className="text-sm font-bold text-foreground">
-                  Choose a hook clip
-                </PopoverTitle>
-                <PopoverDescription className="text-xs font-semibold text-muted">
-                  Creative Assets clips appear here. Select one to use at the start of this Reel.
-                </PopoverDescription>
-              </PopoverHeader>
-
-              <div
-                aria-label="Choose hook clip source"
-                className="flex flex-wrap gap-2 border-b border-border px-4 py-3"
-              >
-                {openingVideoSourceTabs.map((source) => {
-                  const selected = activeSource === source.id;
-
-                  return (
-                    <button
-                      key={source.id}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => setActiveSource(source.id)}
-                      className={cn(
-                        "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                        selected
-                          ? "border-primary/60 bg-primary/10 text-primary"
-                          : "border-border bg-card-muted text-muted hover:bg-card hover:text-foreground",
-                      )}
-                    >
-                      {source.label}
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px]",
-                          selected
-                            ? "bg-primary/15 text-primary"
-                            : "bg-card text-muted",
-                        )}
-                      >
-                        {sourceCounts[source.id]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div
-                aria-label="Choose a hook clip"
-                className="max-h-[480px] overflow-y-auto p-3"
-              >
-                {renderSourceSections()}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      ) : (
-        <div className="mt-3">
-          <OpeningVideoEmptyState source="all" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function OpeningVideoSourceSection({
-  children,
-  count,
-  title,
-}: {
-  children: ReactNode;
-  count: number;
-  title: string;
-}) {
-  if (count === 0) {
-    return null;
-  }
-
-  return (
-    <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-3 px-1">
-        <p className="text-[11px] font-bold text-muted">{title}</p>
-        <span className="text-[11px] font-bold text-muted">{count}</span>
-      </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function OpeningVideoEmptyState({ source }: { source: OpeningVideoSourceTab }) {
-  const copy = getOpeningVideoEmptyCopy(source);
-
-  return (
-    <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-5 text-center">
-      <Video className="mx-auto size-7 text-muted" aria-hidden="true" />
-      <p className="mt-3 text-sm font-bold text-foreground">{copy.title}</p>
-      <p className="mt-1 text-sm font-medium leading-6 text-muted">
-        {copy.description}
-      </p>
-    </div>
-  );
-}
-
-function ScheduleRoleMediaPicker({
-  description,
-  emptyDescription,
-  emptyTitle,
-  enabled,
-  errorMessage,
-  icon,
-  mediaOptions,
-  onRefreshMedia,
-  onSelectMedia,
-  onToggle,
-  refreshingMedia,
-  selectedMediaId,
-  title,
-}: {
-  description: string;
-  emptyDescription: string;
-  emptyTitle: string;
-  enabled: boolean;
-  errorMessage: string | null;
-  icon: ReactNode;
-  mediaOptions: ScheduleMediaOption[];
-  onRefreshMedia: () => void;
-  onSelectMedia: (mediaId: string) => void;
-  onToggle: (enabled: boolean) => void;
-  refreshingMedia: boolean;
-  selectedMediaId: string;
-  title: string;
-}) {
-  const [open, setOpen] = useState(false);
+  const uploadInput = useRef<HTMLInputElement>(null);
   const selectedMedia = mediaOptions.find(
     (option) => option.id === selectedMediaId,
   );
@@ -2009,41 +1617,32 @@ function ScheduleRoleMediaPicker({
     <div
       className={cn(
         "overflow-hidden rounded-[var(--radius-card)] border border-border bg-card",
-        !enabled && "bg-card-muted/20",
       )}
     >
       <div className="flex items-center justify-between gap-3 border-b border-border bg-card-muted/45 px-4 py-3">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary ring-1 ring-inset ring-primary/10">
-            {icon}
+            <FileVideo className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-foreground">{title}</p>
+            <p className="text-sm font-bold text-foreground">Video clip</p>
             <p className="mt-0.5 text-xs font-semibold leading-5 text-muted">
-              {description}
+              Upload a video or choose an existing video from Demo or Creative Assets.
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            aria-label="Refresh secondary clips"
-            title="Refresh secondary clips"
-            disabled={refreshingMedia}
+            aria-label="Refresh videos"
+            title="Refresh videos"
+            disabled={refreshingMedia || uploadingVideo || disabled}
             onClick={onRefreshMedia}
             className="flex size-9 items-center justify-center rounded-control text-muted transition hover:bg-card hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
           >
             <RefreshCw className={cn("size-4", refreshingMedia && "animate-spin")} aria-hidden="true" />
           </button>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-bold text-muted">
-            <span className="hidden sm:inline">{enabled ? "Included" : "Skip"}</span>
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(event) => onToggle(event.target.checked)}
-              className="size-4 accent-primary"
-            />
-          </label>
+
         </div>
       </div>
 
@@ -2053,21 +1652,31 @@ function ScheduleRoleMediaPicker({
         </p>
       ) : null}
 
-      {!enabled ? (
-        <p className="px-4 py-3 text-xs font-semibold leading-5 text-muted">
-          This Reel will use the hook clip only.
-        </p>
-      ) : mediaOptions.length > 0 ? (
+      {onUploadVideo ? <div className="flex flex-wrap items-center gap-3 px-4 pt-4">
+        <input ref={uploadInput} type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" aria-label="Upload video clip" className="sr-only" disabled={uploadingVideo || disabled} onChange={event => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void onUploadVideo(file);
+        }} />
+        <Button type="button" variant="outline" disabled={uploadingVideo || disabled} onClick={() => uploadInput.current?.click()}>
+          {uploadingVideo ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
+          {uploadingVideo ? "Uploading video…" : "Upload video"}
+        </Button>
+        <p className="text-xs text-muted">MP4, MOV or WebM · Up to 250 MB</p>
+      </div> : null}
+      {savedSequenceTitle ? <p className="px-4 pt-4 text-xs leading-5 text-muted">Saved video: {savedSequenceTitle}. Choosing a replacement publishes only that video.</p> : null}
+      {mediaOptions.length > 0 ? (
         <div className="p-3">
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger
               render={
                 <button
                   type="button"
+                  disabled={uploadingVideo || disabled}
                   aria-label={
                     selectedMedia
-                      ? `Change selected secondary clip, currently ${selectedMedia.title}`
-                      : "Choose a secondary clip"
+                      ? `Change selected video, currently ${selectedMedia.title}`
+                      : "Choose a video"
                   }
                   className={cn(
                     "group flex min-h-20 w-full items-center gap-3 rounded-[var(--radius-card)] border bg-card-muted p-2.5 text-left transition hover:border-border-strong hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
@@ -2089,12 +1698,12 @@ function ScheduleRoleMediaPicker({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-foreground">
-                  {selectedMedia?.title ?? "No video selected"}
+                  {savedSequenceTitle ?? selectedMedia?.title ?? "No video selected"}
                 </span>
                 <span className="mt-1 block truncate text-xs font-semibold text-muted">
                   {selectedMedia
                     ? `${getMediaSourceLabel(selectedMedia)} - ${selectedMedia.durationLabel || "Duration pending"}`
-                    : "Open Content and choose a video."}
+                    : "Choose from Demo or Creative Assets."}
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-primary">
@@ -2116,15 +1725,15 @@ function ScheduleRoleMediaPicker({
             >
               <PopoverHeader className="border-b border-border px-4 py-3">
                 <PopoverTitle className="text-sm font-bold text-foreground">
-                  Choose a secondary clip
+                  Choose a video
                 </PopoverTitle>
                 <PopoverDescription className="text-xs font-semibold text-muted">
-                  Content videos appear here. Selecting a clip closes this list.
+                  Demo and Creative Assets videos appear here. Choose one video to publish.
                 </PopoverDescription>
               </PopoverHeader>
 
               <div
-                aria-label="Choose a secondary clip"
+                aria-label="Choose a video"
                 className="flex snap-x snap-mandatory gap-3 overflow-x-auto p-3 pb-4"
               >
                 {mediaOptions.map((option) => (
@@ -2147,10 +1756,10 @@ function ScheduleRoleMediaPicker({
         <div className="m-3 rounded-[var(--radius-card)] border border-dashed border-border bg-card-muted px-4 py-7 text-center">
           <Video className="mx-auto size-7 text-muted" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-foreground">
-            {emptyTitle}
+            No videos found.
           </p>
           <p className="mt-1 text-sm font-medium leading-6 text-muted">
-            {emptyDescription}
+            Upload a video here, or create a video in Creative Assets and refresh this list.
           </p>
         </div>
       )}
@@ -2282,74 +1891,13 @@ function FinalVideoPreview({ video }: { video: ScheduleMediaOption }) {
   </section>;
 }
 
-function CompositionPreview({
-  openingMedia,
-  scheduledMedia,
-  useHookClip,
-  useSecondaryClip,
-}: {
-  openingMedia: ScheduleMediaOption | null;
-  scheduledMedia: ScheduleMediaOption | null;
-  useHookClip: boolean;
-  useSecondaryClip: boolean;
-}) {
-  const hasHookClip = useHookClip && openingMedia;
-  const hasSecondaryClip = useSecondaryClip && scheduledMedia;
-  const hasBothClips = hasHookClip && hasSecondaryClip;
-
-  return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold text-foreground">Post preview</p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            {hasBothClips
-              ? "Hook plays first, then the secondary clip."
-              : hasHookClip
-                ? "Only the hook clip will be published."
-                : hasSecondaryClip
-                  ? "Only the secondary clip will be published."
-                  : "Select at least one clip to prepare this Reel."}
-          </p>
-        </div>
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-brand-soft text-primary">
-          <Layers2 className="size-4" aria-hidden="true" />
-        </span>
-      </div>
-
-      {hasBothClips ? (
-        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-          <CompositionSlot label="Hook clip" media={openingMedia} />
-          <span className="text-xs font-bold text-primary">→</span>
-          <CompositionSlot label="Secondary clip" media={scheduledMedia} />
-        </div>
-      ) : (
-        <div className="mt-4">
-          <CompositionSlot
-            label={hasHookClip ? "Hook clip" : "Secondary clip"}
-            media={hasHookClip ? openingMedia : scheduledMedia}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CompositionSlot({
-  label,
-  media,
-}: {
-  label: string;
-  media: ScheduleMediaOption | null;
-}) {
-  return (
-    <div className="min-w-0 rounded-xl border border-border bg-card-muted p-2">
-      <p className="text-[11px] font-bold text-muted">{label}</p>
-      <p className="mt-1 truncate text-xs font-bold text-foreground">
-        {media?.title ?? "Not selected"}
-      </p>
-    </div>
-  );
+function ScheduleVideoPreview({ video, savedSequenceTitle }: { video: ScheduleMediaOption | null; savedSequenceTitle?: string }) {
+  return <section aria-label="Post preview" className="min-w-0 rounded-[var(--radius-card)] border border-border bg-card p-4">
+    <p className="text-sm font-bold text-foreground">Post preview</p>
+    <p className="mt-1 text-xs leading-5 text-muted">{savedSequenceTitle ? "Your saved video sequence stays attached unless you choose a replacement." : "The selected video will be published to your chosen accounts."}</p>
+    {video?.mediaUrl ? <video key={video.id} src={video.mediaUrl} controls playsInline preload="metadata" className="mt-4 max-h-[340px] w-full rounded-control bg-black object-contain" /> : null}
+    <p className="mt-3 break-words text-sm font-semibold">{savedSequenceTitle ?? video?.title ?? "Choose or upload a video."}</p>
+  </section>;
 }
 
 function ConnectedAccountSelector({
@@ -3009,8 +2557,8 @@ function getInitialClipSelection(params: {
   }
 
   return {
-    useHook: params.hasHookOptions,
-    useSecondary: params.hasSecondaryOptions,
+    useHook: false,
+    useSecondary: true,
   };
 }
 
@@ -3043,30 +2591,6 @@ function getMediaSourceLabel(option: ScheduleMediaOption) {
   };
 
   return sourceLabels[option.sourceType];
-}
-
-function getOpeningVideoEmptyCopy(source: OpeningVideoSourceTab) {
-  if (source === "creators") {
-    return {
-      description:
-        "Upload a creator clip in Creative Assets before scheduling.",
-      title: "No creator clips found.",
-    };
-  }
-
-  if (source === "videos") {
-    return {
-      description:
-        "Upload or generate a Creative Assets video before scheduling.",
-      title: "No hook videos found.",
-    };
-  }
-
-  return {
-    description:
-      "Add a video to Creative Assets before scheduling.",
-    title: "No hook clips found.",
-  };
 }
 
 function getErrorMessage(error: unknown, fallback = "Something went wrong.") {
@@ -3102,15 +2626,15 @@ function getScheduleMediaValidationError(params: {
   useSecondaryClip: boolean;
 }) {
   if (!params.useHookClip && !params.useSecondaryClip) {
-    return "Include a hook clip, a secondary clip, or both.";
+    return "Choose or upload a video to schedule.";
   }
 
   if (params.useHookClip && !params.hookMedia) {
-    return "Select a hook clip or turn it off.";
+    return "The saved video is missing a source. Choose a replacement video.";
   }
 
   if (params.useSecondaryClip && !params.secondaryMedia) {
-    return "Select a secondary clip or turn it off.";
+    return "Choose or upload a video to schedule.";
   }
 
   return null;
@@ -3130,9 +2654,7 @@ function getStatusPreviewMessage(params: {
 
   return params.useHookClip && params.useSecondaryClip
     ? "We prepare one combined video first, then schedule it automatically."
-    : params.useHookClip
-      ? "The hook clip will be published as the scheduled Reel."
-      : "The secondary clip will be published as the scheduled Reel.";
+    : "The selected video will be published as the scheduled Reel.";
 }
 
 function getTimezoneOptions(currentTimezone: string) {

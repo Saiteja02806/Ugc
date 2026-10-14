@@ -21,7 +21,7 @@ const final={id:'00000000-0000-4000-8000-000000000010',sourceType:'combined_vide
 const hook={...final,id:'00000000-0000-4000-8000-000000000011',sourceType:'user_video',title:'Original hook',durationLabel:'8s'};
 const accounts=['instagram','tiktok','youtube'].map((platform,index)=>({id:'account-'+platform,platform,status:'connected',platformAccountName:'Local '+platform,platformAccountUsername:'fixture',scopes:platform==='instagram'?['instagram_business_content_publish']:platform==='tiktok'?['video.publish']:['https://www.googleapis.com/auth/youtube.upload'],supportsBackgroundRefresh:true}));
 const selected=(params.get('platforms')??'instagram').split(',');
-createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor presentation={params.get('presentation')==='workflow'?'workflow':'modal'} finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?'hook_and_secondary':'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate={params.get('date')??'2026-12-01'} initialScheduledTime={params.get('time')??'10:30'} minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
+createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor presentation={params.get('presentation')==='workflow'?'workflow':'modal'} finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?undefined:'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate={params.get('date')??'2026-12-01'} initialScheduledTime={params.get('time')??'10:30'} minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onUploadVideo={manual?async file=>({...final,id:'direct-upload',sourceType:'user_video',title:file.name}):undefined} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
 
 async function main() {
   await new Promise((resolve, reject) => {
@@ -141,11 +141,27 @@ async function main() {
     console.log("PASS account preference saves, restores and does not overwrite explicit per-post edits");
 
     await page.goto(base + "/?mode=manual");
-    await page.getByText("Hook clip", { exact: true }).first().waitFor();
-    assert.ok(await page.getByText("Secondary clip", { exact: true }).count() >= 1);
+    await page.getByText("Video clip", { exact: true }).waitFor();
+    assert.equal(await page.getByText("Hook clip", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Secondary clip", { exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: /^Change selected video/ }).count(), 1);
+    await page.getByRole("button", { name: /^Change selected video/ }).click();
+    await page.getByRole("button", { name: /Original hook.*Choose/ }).click();
     await page.getByRole("button", { name: "Schedule post", exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__submission.clipSelection), "hook_and_secondary");
-    console.log("PASS ordinary scheduler retains its two-clip composition flow");
+    assert.equal(await page.evaluate(() => window.__submission.clipSelection), "secondary_only");
+    assert.equal(await page.evaluate(() => window.__submission.scheduledSource.id), "00000000-0000-4000-8000-000000000011");
+    assert.equal(await page.evaluate(() => window.__submission.useOpeningClip), false);
+    await page.getByLabel("Upload video clip", { exact: true }).setInputFiles({ name: "Uploaded single clip.mp4", mimeType: "video/mp4", buffer: Buffer.from("fixture-upload") });
+    await page.getByRole("button", { name: "Change selected video, currently Uploaded single clip.mp4", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Schedule post", exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__submission.scheduledSource.id), "direct-upload");
+    assert.equal(await page.evaluate(() => window.__submission.openingMedia), null);
+    await page.screenshot({path:path.join(out,"single-video-scheduler-desktop.png"),fullPage:true});
+    console.log("PASS ordinary scheduler chooses or uploads exactly one video and submits no opening clip");
+    await page.setViewportSize({width:390,height:844}); await page.goto(base + "/?mode=manual");
+    await page.getByText("Video clip", { exact: true }).waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({path:path.join(out,"single-video-scheduler-mobile.png"),fullPage:true});
 
     await page.setViewportSize({width:390,height:844}); await page.goto(base);
     await page.getByRole("button", { name: "Schedule post", exact: true }).waitFor();

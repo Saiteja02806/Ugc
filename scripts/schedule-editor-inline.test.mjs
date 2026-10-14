@@ -59,7 +59,7 @@ function fixture(overrides = {}, instant = Date.now()) {
   const exported = {};
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText + "\nexports.__ScheduleTimePicker = ScheduleTimePicker;", {
     exports: exported, require(name) { assert.ok(name in imports, `Unexpected dependency: ${name}`); return imports[name]; },
-    document, HTMLElement: class {}, AbortController, Intl, Date: FixtureDate, console,
+    document, HTMLElement: class {}, AbortController, Intl, Date: FixtureDate, Error, console,
     window: { setInterval: callback => { tick = callback; return 1; }, clearInterval() {}, requestAnimationFrame: callback => { browser.frames++; frames.push(callback); return browser.frames; }, cancelAnimationFrame() {} },
     fetch: async (url, options) => {
       calls.push({ url, options });
@@ -91,102 +91,94 @@ const control = (h, name) => h.nodes().find(node => node.type?.name === name);
 const ordinaryFixture = (overrides = {}) => fixture({ presentation: "modal", finalVideo: undefined, pendingVideo: undefined, initialClipSelection: undefined, initialDemoMediaId: "", initialHookMediaId: "", demoMediaOptions: [secondaryVideo], hookMediaOptions: [], ...overrides });
 async function renderSettled(h) { h.render(); await settle(); h.render(); h.render(); }
 
-test("an uploaded secondary video schedules alone without requiring a hook", async () => {
-  const h = ordinaryFixture(); await renderSettled(h);
-  assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, false);
-  assert.equal(control(h, "ScheduleRoleMediaPicker").props.enabled, true);
+test("the scheduler deduplicates Demo and Creative Assets into one video selection and one-video API payload", async () => {
+  const h = ordinaryFixture({ hookMediaOptions: [secondaryVideo, hookVideo] }); await renderSettled(h);
+  const picker = control(h, "ScheduleVideoPicker");
+  assert.equal(picker.props.mediaOptions.length, 2);
+  assert.equal(h.nodes().filter(node => node.type?.name === "ScheduleVideoPicker").length, 1);
+  assert.equal(control(h, "ScheduleOpeningClipControl"), undefined);
+  assert.equal(control(h, "ScheduleRoleMediaPicker"), undefined);
+  picker.props.onSelectMedia(hookVideo.id); h.render();
   assert.equal(h.save().props.disabled, false); h.save().props.onClick();
   const saved = h.submitted[0];
   assert.equal(saved.clipSelection, "secondary_only"); assert.equal(saved.openingMedia, null);
-  assert.equal(saved.useOpeningClip, false); assert.equal(saved.scheduledSource.id, secondaryVideo.id);
-  // Validate the actual API payload as well as the editor's submitted selection.
+  assert.equal(saved.useOpeningClip, false); assert.equal(saved.scheduledSource.id, hookVideo.id);
   const workspace = readFileSync(new URL("../components/scheduling/scheduling-workspace.tsx", import.meta.url), "utf8");
   const ast = ts.createSourceFile("workspace.tsx", workspace, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const build = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "buildScheduleRequestBody");
-  assert.ok(build);
   const code = ts.transpileModule(build.getText(ast), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  const buildRequest = vm.runInNewContext(`${code}\nbuildScheduleRequestBody`);
-  const body = buildRequest(saved);
+  const body = vm.runInNewContext(`${code}\nbuildScheduleRequestBody`)(saved);
   assert.equal(body.metadata.mediaMode, "single_video"); assert.equal(body.metadata.hookMediaId, null);
-  assert.equal(body.source.id, secondaryVideo.id); h.unmount();
+  assert.equal(body.source.id, hookVideo.id); h.unmount();
 });
 
-test("refreshing an empty scheduler selects and includes the newly uploaded secondary video", async () => {
-  for (const initialDemoMediaId of ["", secondaryVideo.id]) {
-    const h = ordinaryFixture({ demoMediaOptions: [], initialDemoMediaId });
-    h.props.onRefreshMedia = async () => { h.props.demoMediaOptions = [secondaryVideo]; return true; };
-    await renderSettled(h);
-    assert.equal(h.save().props.disabled, true);
-    assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, false);
-    await control(h, "ScheduleRoleMediaPicker").props.onRefreshMedia(); await renderSettled(h);
-    assert.equal(control(h, "ScheduleRoleMediaPicker").props.enabled, true);
-    assert.equal(control(h, "ScheduleRoleMediaPicker").props.selectedMediaId, secondaryVideo.id);
-    assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, false);
-    assert.equal(h.save().props.disabled, false);
-    assert.equal(h.submitted.length, 0, "Refresh must not schedule automatically");
-    h.save().props.onClick(); assert.equal(h.submitted[0].clipSelection, "secondary_only"); h.unmount();
-  }
-});
-
-test("a hook arriving after an empty catalog is selected and included too", async () => {
+test("refresh selects newly available media but retains an explicit choice and never schedules by itself", async () => {
   const h = ordinaryFixture({ demoMediaOptions: [] }); await renderSettled(h);
-  h.props.hookMediaOptions = [hookVideo]; await renderSettled(h);
-  assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, true);
-  assert.equal(control(h, "ScheduleOpeningMediaPicker").props.selectedMediaId, hookVideo.id);
-  assert.equal(h.save().props.disabled, false); h.save().props.onClick();
-  assert.equal(h.submitted[0].clipSelection, "hook_only"); assert.equal(h.submitted[0].scheduledSource.id, hookVideo.id); h.unmount();
-});
-
-test("refresh keeps explicit Skip choices and the already selected video", async () => {
-  const h = ordinaryFixture({ hookMediaOptions: [hookVideo] }); await renderSettled(h);
-  control(h, "ScheduleOpeningClipControl").props.onToggle(false);
-  control(h, "ScheduleRoleMediaPicker").props.onToggle(false); h.render();
-  h.props.hookMediaOptions = [{ ...hookVideo, id: "new-hook" }, hookVideo];
-  h.props.demoMediaOptions = [{ ...secondaryVideo, id: "new-secondary" }, secondaryVideo];
-  await renderSettled(h);
-  assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, false);
-  assert.equal(control(h, "ScheduleRoleMediaPicker").props.enabled, false);
-  assert.equal(control(h, "ScheduleRoleMediaPicker").props.selectedMediaId, secondaryVideo.id);
-  assert.equal(h.save().props.disabled, true); h.save().props.onClick(); assert.equal(h.submitted.length, 0); h.unmount();
-});
-
-test("a saved or explicitly secondary-only schedule cannot gain a hook from refresh", async () => {
-  for (const overrides of [
-    { initialClipSelection: "secondary_only" },
-    { editingSchedule: { metadata: { clipSelection: "secondary_only" }, caption: "Saved caption" } },
-  ]) {
-    const h = ordinaryFixture({ initialDemoMediaId: secondaryVideo.id, ...overrides }); await renderSettled(h);
-    h.props.hookMediaOptions = [hookVideo]; await renderSettled(h);
-    assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, false);
-    assert.equal(control(h, "ScheduleRoleMediaPicker").props.enabled, true);
-    assert.equal(h.save().props.disabled, false); h.save().props.onClick();
-    assert.equal(h.submitted[0].clipSelection, "secondary_only"); h.unmount();
-  }
-});
-
-test("a missing included hook explains the clip problem instead of asking for date and time", async () => {
-  const h = ordinaryFixture(); await renderSettled(h);
-  control(h, "ScheduleOpeningClipControl").props.onToggle(true); h.render();
   assert.equal(h.save().props.disabled, true);
-  assert.match(text(h.save()), /Select a hook clip or turn it off\./);
-  assert.doesNotMatch(text(h.save()), /Choose date and time/);
-  h.save().props.onClick(); assert.equal(h.submitted.length, 0);
-  control(h, "ScheduleOpeningClipControl").props.onToggle(false); h.render();
-  assert.equal(h.save().props.disabled, false); h.save().props.onClick();
+  h.props.onRefreshMedia = async () => { h.props.hookMediaOptions = [hookVideo]; return true; }; h.render();
+  await control(h, "ScheduleVideoPicker").props.onRefreshMedia(); await renderSettled(h);
+  assert.equal(control(h, "ScheduleVideoPicker").props.selectedMediaId, hookVideo.id);
+  h.props.demoMediaOptions = [secondaryVideo]; await renderSettled(h);
+  assert.equal(control(h, "ScheduleVideoPicker").props.selectedMediaId, hookVideo.id);
+  assert.equal(h.submitted.length, 0); h.save().props.onClick();
   assert.equal(h.submitted[0].clipSelection, "secondary_only"); h.unmount();
 });
 
-test("refresh does not replace a removed selection with another clip and exposes failures without a hook", async () => {
+test("removed selected videos block publishing and failed refresh is explained", async () => {
   const h = ordinaryFixture(); await renderSettled(h);
   h.props.demoMediaOptions = [{ ...secondaryVideo, id: "different-video" }]; await renderSettled(h);
   assert.equal(h.save().props.disabled, true);
-  assert.match(text(h.save()), /Select a secondary clip or turn it off\./);
+  assert.match(text(h.save()), /Choose or upload a video/);
   h.save().props.onClick(); assert.equal(h.submitted.length, 0);
-  h.props.onRefreshMedia = async () => false;
-  h.render();
-  await control(h, "ScheduleRoleMediaPicker").props.onRefreshMedia(); await renderSettled(h);
-  assert.equal(control(h, "ScheduleRoleMediaPicker").props.errorMessage, "Could not refresh scheduling media.");
-  assert.equal(control(h, "ScheduleOpeningClipControl").props.enabled, false); h.unmount();
+  h.props.onRefreshMedia = async () => false; h.render();
+  await control(h, "ScheduleVideoPicker").props.onRefreshMedia(); await renderSettled(h);
+  assert.equal(control(h, "ScheduleVideoPicker").props.errorMessage, "Could not refresh scheduling media."); h.unmount();
+});
+
+test("direct upload blocks submission until completion, selects its exact asset, and survives catalog refresh failure", async () => {
+  let finish;
+  const h = ordinaryFixture({ onUploadVideo: () => new Promise(resolve => { finish = resolve; }), onRefreshMedia: async () => false });
+  await renderSettled(h);
+  const uploaded = { ...hookVideo, id: "uploaded-video", title: "Direct upload" };
+  const request = control(h, "ScheduleVideoPicker").props.onUploadVideo({ name: "clip.mp4" }); h.render();
+  assert.equal(h.save().props.disabled, true); h.save().props.onClick(); assert.equal(h.submitted.length, 0);
+  finish(uploaded); await request; await renderSettled(h);
+  assert.equal(control(h, "ScheduleVideoPicker").props.selectedMediaId, uploaded.id);
+  assert.equal(h.save().props.disabled, false); h.save().props.onClick();
+  assert.equal(h.submitted[0].scheduledSource.id, uploaded.id); assert.equal(h.submitted[0].useOpeningClip, false); h.unmount();
+});
+
+test("failed upload preserves the selected video and exposes the retryable error", async () => {
+  const h = ordinaryFixture({ onUploadVideo: async () => { throw new Error("Upload interrupted"); } }); await renderSettled(h);
+  await control(h, "ScheduleVideoPicker").props.onUploadVideo({ name: "clip.mp4" }); await renderSettled(h);
+  assert.equal(control(h, "ScheduleVideoPicker").props.selectedMediaId, secondaryVideo.id);
+  assert.equal(control(h, "ScheduleVideoPicker").props.errorMessage, "Upload interrupted");
+  assert.equal(h.save().props.disabled, false); h.unmount();
+});
+
+test("an upload cannot double-submit or accept stale picker/save callbacks in the same frame", async () => {
+  let finish, uploads = 0;
+  const h = ordinaryFixture({ hookMediaOptions: [hookVideo], onUploadVideo: () => { uploads++; return new Promise(resolve => { finish = resolve; }); } });
+  await renderSettled(h);
+  const picker = control(h, "ScheduleVideoPicker"), save = h.save();
+  const first = picker.props.onUploadVideo({ name: "first.mp4" });
+  await picker.props.onUploadVideo({ name: "second.mp4" });
+  picker.props.onSelectMedia(hookVideo.id); save.props.onClick(); h.render();
+  assert.equal(uploads, 1); assert.equal(h.submitted.length, 0);
+  assert.equal(control(h, "ScheduleVideoPicker").props.selectedMediaId, secondaryVideo.id);
+  finish({ ...hookVideo, id: "first-upload" }); await first; await renderSettled(h);
+  h.save().props.onClick(); assert.equal(h.submitted[0].scheduledSource.id, "first-upload"); h.unmount();
+});
+
+test("catalog refresh updates an uploaded video's details while its local snapshot remains a fallback", async () => {
+  const uploaded = { ...hookVideo, id: "fresh-upload", title: "Upload response", mediaUrl: "/upload-url.mp4" };
+  const refreshed = { ...uploaded, title: "Refreshed title", mediaUrl: "/refreshed-url.mp4" };
+  const h = ordinaryFixture({ onUploadVideo: async () => uploaded });
+  h.props.onRefreshMedia = async () => { h.props.demoMediaOptions = [refreshed]; return true; };
+  await renderSettled(h);
+  await control(h, "ScheduleVideoPicker").props.onUploadVideo({ name: "clip.mp4" }); await renderSettled(h);
+  assert.equal(control(h, "ScheduleVideoPicker").props.mediaOptions.find(video => video.id === uploaded.id).mediaUrl, refreshed.mediaUrl);
+  h.save().props.onClick(); assert.equal(h.submitted[0].scheduledSourceTitle, refreshed.title); h.unmount();
 });
 
 test("background preparation can be confirmed only for the fixed inline pending video", async () => {
@@ -217,7 +209,7 @@ test("inline confirmation stays in a region without body lock, overlay focus tra
   assert.match(text(h.nodes().find(node => node.props?.role === "region")), /Confirm your schedule/);
   assert.equal(h.nodes().some(node => node.props?.className?.includes("fixed inset-0")), false);
   assert.equal(h.nodes().some(node => node.props?.["aria-label"] === "Scheduling checklist"), false);
-  assert.equal(h.nodes().some(node => ["FinalVideoPreview", "CompositionPreview", "ScheduleOpeningClipControl", "ScheduleRoleMediaPicker"].includes(node.type?.name)), false);
+  assert.equal(h.nodes().some(node => ["FinalVideoPreview", "ScheduleVideoPreview", "ScheduleVideoPicker"].includes(node.type?.name)), false);
   assert.ok(h.publishing(), "Provider publishing controls remain in the inline region");
   assert.equal(h.submitted.length, 0, "Opening confirmation must never schedule automatically");
   h.props.onClose = () => {}; h.render();
@@ -257,7 +249,7 @@ test("saved Explore slideshow schedules its exact library item without video sel
   assert.equal(h.submitted.length, 1); assert.equal(h.submitted[0].scheduledSource.id, libraryId);
   assert.equal(h.submitted[0].scheduledSource.kind, "library_item"); assert.equal(h.submitted[0].scheduledVideo, null);
   assert.equal(h.submitted[0].scheduledSourceTitle, "Saved slideshow");
-  assert.equal(h.nodes().some(node => ["ScheduleOpeningClipControl", "ScheduleRoleMediaPicker"].includes(node.type?.name)), false);
+  assert.equal(h.nodes().some(node => ["ScheduleVideoPicker"].includes(node.type?.name)), false);
   h.unmount();
 });
 
@@ -272,16 +264,19 @@ test("reopened inline confirmation uses its preserved time zone rather than the 
   assert.equal(h.snapshots[0].timezone, "Europe/London"); h.unmount();
 });
 
-test("ordinary modal retains separate hook/demo selection and its existing composition submission", async () => {
-  const hook = { ...finalVideo, id: "00000000-0000-4000-8000-000000000030", sourceType: "user_video", title: "Opening clip" };
-  const h = fixture({ presentation: undefined, finalVideo: undefined, hookMediaOptions: [hook], initialHookMediaId: hook.id, initialClipSelection: undefined });
-  h.render(); await settle(); h.render();
-  assert.ok(h.nodes().some(node => node.type?.name === "ScheduleOpeningClipControl"));
-  assert.ok(h.nodes().some(node => node.type?.name === "ScheduleRoleMediaPicker"));
-  assert.equal(h.save().props.disabled, false); h.save().props.onClick();
-  assert.equal(h.submitted[0].clipSelection, "hook_and_secondary");
-  assert.equal(h.submitted[0].scheduledSource.id, finalVideo.id);
-  assert.equal(h.submitted[0].openingMedia.id, hook.id); h.unmount();
+test("legacy combined schedules remain intact until a single replacement video is explicitly chosen", async () => {
+  for (const replace of [false, true]) {
+    const h = ordinaryFixture({ hookMediaOptions: [hookVideo], initialHookMediaId: hookVideo.id, initialDemoMediaId: secondaryVideo.id,
+      editingIsCombinedVideo: true, editingSchedule: { title: "Saved sequence", metadata: { clipSelection: "hook_and_secondary" }, caption: "Saved caption" } });
+    await renderSettled(h);
+    assert.equal(control(h, "ScheduleVideoPicker").props.savedSequenceTitle, "Saved sequence");
+    if (replace) { control(h, "ScheduleVideoPicker").props.onSelectMedia(hookVideo.id); h.render(); }
+    assert.equal(h.save().props.disabled, false); h.save().props.onClick();
+    assert.equal(h.submitted[0].useOpeningClip, !replace);
+    assert.equal(h.submitted[0].clipSelection, replace ? "secondary_only" : "hook_and_secondary");
+    assert.equal(h.submitted[0].scheduledSource.id, replace ? hookVideo.id : secondaryVideo.id);
+    assert.equal(h.submitted[0].openingMedia?.id ?? null, replace ? null : hookVideo.id); h.unmount();
+  }
 });
 
 test("inline confirmation retains date, caption and TikTok capability/privacy validation", async () => {

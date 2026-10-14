@@ -96,6 +96,35 @@ const fields = load("components/explore/format-video-text-fields.tsx", {});
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const editing = { version: 1, format: "hook", trimStartMs: 2000, trimEndMs: 8000, originalVolume: 1, musicVolume: .2, text: null };
 
+test("clip draft readiness is independent of an earlier publishing render receipt", () => {
+  let cursor = 0, state; const slots = [], effects = [];
+  const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", mimeType: "video/mp4", url: "/raw.mp4", durationSeconds: 5, metadata: {} };
+  const draft = { loaded: true, dirty: false, saved: { revision: 1 }, busy: false, error: null };
+  const action = { disabled: true, busy: false, cancel() {}, error: null };
+  const audio = { loading: false, error: null };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
+    "@tanstack/react-query": { useQuery: options => ({ data: options.queryKey[0] === "explore-edit-source" ? source : undefined }) },
+    "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" } }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => audio },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: () => draft },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ output: null, action }) },
+  });
+  const render = () => { cursor = 0; mod.FormatVideoEditor({ format: "hook", video: { ...source, mediaAssetId: source.id, title: "Owned", ratio: "9:16" },
+    active: false, controlsTarget: null, resultsTarget: null, enabled: true, onDirty() {}, onSaved() {}, onContinue() {}, onClipStateChange: next => { state = next; } });
+    while (effects.length) effects.shift()(); };
+  render(); assert.equal(state.busy, true); assert.equal(state.draftBusy, false); assert.equal(state.draftError, null);
+  action.error = "Publishing render failed."; render(); assert.equal(state.error, action.error); assert.equal(state.draftError, null);
+  draft.busy = true; render(); assert.equal(state.draftBusy, true);
+  draft.busy = false; draft.error = "Could not save draft."; render(); assert.equal(state.draftError, draft.error);
+  draft.error = null; draft.loaded = false; render(); assert.match(state.draftError, /Loading your saved clip edits/);
+  draft.loaded = true;
+  draft.error = null; audio.error = "Could not load audio."; render(); assert.equal(state.draftError, audio.error);
+});
+
 test("pending and failed soundtrack replacements block draft saves, rendering and schedule clip state", () => {
   let cursor = 0, input, clipState, renderCalls = 0;
   const slots = [], effects = [];

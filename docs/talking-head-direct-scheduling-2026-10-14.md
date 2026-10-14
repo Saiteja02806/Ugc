@@ -1,6 +1,8 @@
 # Talking Head + Demo: direct scheduling and rejected-time recovery
 
-The Schedule tab now opens the complete account, caption, publishing options and time form directly. Its Schedule post button submits once. It has no intermediate Review schedule action or Confirm your schedule screen. Back to Edit returns to editing, preserving the unsent caption, time, timezone and account selection. The preview reflects these draft edits. Both an already prepared video and background preparation use this form; entering the tab and restoring a browser request only perform reads.
+The Schedule tab uses the original simple layout shown in the October 13 screenshot: Instagram, TikTok and YouTube platform tiles, connected account choices, post caption, date, time and the account timezone. The existing form and styles remain in place. Its Schedule post button submits directly, without replacing the form with ScheduleEditor or opening Confirm your schedule. Back to Edit preserves the unsent draft. Both finished videos and background preparation use this simple form; entering the tab and restoring a browser request never submit a schedule.
+
+On the explicit click, the client validates current account permissions and scheduling limits. TikTok and YouTube use the user's saved publishing defaults, including visibility and AI disclosure. TikTok checks those defaults against the connected account's available publishing capabilities; an invalid saved choice produces an inline error instead of silently changing visibility. The short music acknowledgement appears only when TikTok is selected. Hook, Wall of Text and Slideshow also submit from their existing simple forms.
 
 ## Blocking error
 

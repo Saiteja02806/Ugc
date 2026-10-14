@@ -1,0 +1,101 @@
+# Simple Schedule UI correction release
+
+This release restores the original workflow Schedule form and submits from that form. The full checkout was audited before staging. It is based on main 585f40422f1d859e052c0e154993a5066252eec3 and preserves the subtitle performance release. There are no database, worker, MCP or SEO implementation changes.
+
+The following paths in the primary checkout are not part of this correction:
+
+- `CAROUSEL_CONTEXT.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `app/cookies/page.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `app/guides/page.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `app/layout.tsx`: Already included on remote main; no additional release change.
+- `app/privacy/page.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `app/sitemap.ts`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `components/auth/google-auth-redirect-handler.tsx`: Already included on remote main; no additional release change.
+- `components/characters/character-history.tsx`: Existing work outside this scheduling correction, preserved for its own release.
+- `components/characters/character-session.test.mjs`: Existing work outside this scheduling correction, preserved for its own release.
+- `components/characters/character-workspace.module.css`: Existing work outside this scheduling correction, preserved for its own release.
+- `components/characters/use-character-builder.ts`: Existing work outside this scheduling correction, preserved for its own release.
+- `components/explore/format-demo-section.tsx`: Already included on remote main; no additional release change.
+- `components/explore/format-workspace.module.css`: Already included on remote main; no additional release change.
+- `components/explore/format-workspace.tsx`: Already included on remote main; no additional release change.
+- `components/explore/hook-workflow-media-controls.tsx`: Already included on remote main; no additional release change.
+- `components/explore/use-local-workflow-media.ts`: Already included on remote main; no additional release change.
+- `components/explore/use-workflow-finishing.ts`: Already included on remote main; no additional release change.
+- `components/explore/use-workflow-source-video.ts`: Already included on remote main; no additional release change.
+- `components/explore/workflow-creation.module.css`: Already included on remote main; no additional release change.
+- `components/explore/workflow-edit-workspace.tsx`: Already included on remote main; no additional release change.
+- `components/marketing/founder-guide-page.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `components/marketing/landing-header.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `components/marketing/seo-landing-page.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `components/scheduling/schedule-editor.tsx`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/ai-character-builder.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/mcp-goal-progress-2026-10-14.md`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `lib/auth/email-client.test.mjs`: Already included on remote main; no additional release change.
+- `lib/explore/pending-schedule-client.ts`: Already included on remote main; no additional release change.
+- `lib/explore/workflow-finishing-service.ts`: Already included on remote main; no additional release change.
+- `lib/explore/workflow-schedule-client.ts`: Already included on remote main; no additional release change.
+- `lib/firebase/auth.ts`: Already included on remote main; no additional release change.
+- `lib/mcp/finishing-tools.ts`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `lib/scheduling/schedule-time.test.ts`: Already included on remote main; no additional release change.
+- `lib/scheduling/service.ts`: Already included on remote main; no additional release change.
+- `scripts/carousel-role-library-retirements.json`: Existing work outside this scheduling correction, preserved for its own release.
+- `scripts/carousel-role-library-retirements.test.mjs`: Existing work outside this scheduling correction, preserved for its own release.
+- `scripts/character-reference.browser.cjs`: Existing work outside this scheduling correction, preserved for its own release.
+- `scripts/check-public-seo.mjs`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `scripts/explore-caption-review.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/explore-finishing-storage.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/explore-format-demo-state.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/explore-format-source-workspace.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/explore-schedule-review.browser.cjs`: Existing work outside this scheduling correction, preserved for its own release.
+- `scripts/mcp-video-finishing.test.mjs`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `scripts/schedule-editor-inline.test.mjs`: Existing work outside this scheduling correction, preserved for its own release.
+- `scripts/test-subtitle-finishing.mjs`: Already included on remote main; no additional release change.
+- `scripts/workflow-composition-panel.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/workflow-release-clients.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/workflow-source-video.test.mjs`: Already included on remote main; no additional release change.
+- `worker/src/lib/explore-finishing-storage.ts`: Already included on remote main; no additional release change.
+- `worker/src/lib/explore-video-composition.ts`: Already included on remote main; no additional release change.
+- `worker/src/lib/explore-video-finishing.ts`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/captions.ts`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/editorial-media.ts`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/editorial.ts`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/phrases.test.ts`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/phrases.ts`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/serif-box.ts`: Already included on remote main; no additional release change.
+- `app/guides/product-demo-to-short-video/`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `app/guides/readable-video-text/`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `components/explore/workflow-clip-source-actions.tsx`: Already included on remote main; no additional release change.
+- `components/explore/workflow-media-player.module.css`: Already included on remote main; no additional release change.
+- `components/marketing/site-analytics.tsx`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `docs/character-session-history-fix-2026-10-14.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/explore-schedule-am-pm-fix-2026-10-14.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/explore-schedule-time-recovery-2026-10-14.md`: Already included on remote main; no additional release change.
+- `docs/inline-workflow-video-actions-2026-10-14.md`: Already included on remote main; no additional release change.
+- `docs/seo-implementation-results-2026-10-14.md`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `docs/seo-organic-distribution-2026-10-14.md`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `docs/seo-production-release-2026-10-14.md`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `docs/site-analytics-release-2026-10-14.md`: Already included on remote main; no additional release change.
+- `docs/structure-1-production-delivery-audit-2026-10-14.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/subtitle-performance-implementation-2026-10-14.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/talking-head-caption-measurement-fix-2026-10-14.md`: Already included on remote main; no additional release change.
+- `docs/talking-head-portrait-preview-and-render-audit-2026-10-14.md`: Already included on remote main; no additional release change.
+- `docs/talking-head-prepare-latency-analysis-2026-10-14.md`: Already included on remote main; no additional release change.
+- `docs/trending-partial-content-plan-reuse-fix-2026-10-14.md`: Existing work outside this scheduling correction, preserved for its own release.
+- `docs/workflow-follow-up-exclusions-2026-10-14.md`: Already included on remote main; no additional release change.
+- `lib/analytics/site-analytics.test.mjs`: Already included on remote main; no additional release change.
+- `lib/analytics/site-analytics.ts`: Already included on remote main; no additional release change.
+- `lib/auth/signup-analytics.test.mjs`: Already included on remote main; no additional release change.
+- `lib/marketing/`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `outputs/`: Generated artifacts, not application source.
+- `scripts/carousel-partial-plan-reuse-db.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/explore-single-pass-subtitles.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/schedule-create-recovery.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/subtitle-batch-measurements.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/talking-head-prepare-latency.benchmark.mjs`: Already included on remote main; no additional release change.
+- `scripts/test-public-seo-render.mjs`: MCP/SEO work explicitly deferred; existing files remain untouched.
+- `scripts/workflow-clip-source-actions.test.mjs`: Already included on remote main; no additional release change.
+- `scripts/workflow-inline-clip-actions.browser.cjs`: Already included on remote main; no additional release change.
+- `supabase/migrations/20261014034706_reuse_released_partial_carousel_content_plan_items.sql`: Already included on remote main; no additional release change.
+- `worker/src/subtitles/batched-ink.ts`: Already included on remote main; no additional release change.
+
+Ignored .tmp/, .next/, dependencies, local environment files and private credentials are excluded as local artifacts or private configuration.

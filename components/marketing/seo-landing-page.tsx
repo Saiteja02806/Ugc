@@ -147,23 +147,23 @@ export const seoPageContent = {
     example: productExamples.video,
     canonicalPath: "/ai-ugc-video-generator",
     eyebrow: "AI UGC video generator",
-    title: "Create short-form videos with a direction your team can stand behind.",
+    title: "Create creator-style short videos with an AI UGC video generator your team can review.",
     description:
-      "Use AI Studio to make a video from a clear prompt and reference media, then keep the finished asset in your content workflow.",
-    proof: "Prompt and reference media → generated video → content workflow",
-    workflowLabel: "Use the reference and the brief to shape the video before it is generated.",
+      "Use AI Studio to make short-form, creator-style footage from a focused prompt and optional reference media, then keep the finished asset in your content workflow.",
+    proof: "Focused brief and reference → generated footage → reviewable content workflow",
+    workflowLabel: "Use a real brief and, when it helps, a compatible reference to guide the footage before you generate it.",
     workflow: [
       {
         eyebrow: "Set direction",
         title: "Describe the video you need",
         description:
-          "Start with a focused prompt that names the message, setting, and content direction you want to explore.",
+          "Start with a focused prompt that names the audience, message, setting, and footage direction you want to explore.",
       },
       {
         eyebrow: "Add a reference",
         title: "Bring the right visual context",
         description:
-          "Attach compatible image or video reference media when it helps give the generation a more specific starting point.",
+          "Attach compatible image or video reference media when it gives the generation a more specific creative starting point.",
       },
       {
         eyebrow: "Keep the output",
@@ -174,7 +174,7 @@ export const seoPageContent = {
     ],
     featuresTitle: "Video generation with a focused working surface.",
     featuresDescription:
-      "AI Studio gives the creative brief, reference choice, and finished assets one shared home.",
+      "AI Studio keeps the creative brief, reference choice, generated footage, and later review in one shared home.",
     features: [
       {
         title: "A prompt with purpose",
@@ -199,7 +199,12 @@ export const seoPageContent = {
       {
         question: "What is an AI UGC video generator?",
         answer:
-          "It is a tool for creating short-form, creator-style video from a written brief, with optional reference media to guide the result.",
+          "It is a tool for creating short-form, creator-style footage from a written brief. Optional compatible reference media can give the generation more specific visual context.",
+      },
+      {
+        question: "What should I include in an AI UGC video prompt?",
+        answer:
+          "Name the audience, the message they should understand, the setting, the action or mood to show, and any constraints that matter. A focused brief gives the generation a clearer direction than a broad request for a viral video.",
       },
       {
         question: "Can I use reference media when creating a video?",
@@ -207,9 +212,19 @@ export const seoPageContent = {
           "Yes. AI Studio supports compatible image and video references so you can provide more visual context for a generation.",
       },
       {
+        question: "Can generated footage replace a real product demonstration?",
+        answer:
+          "No. Use a real recording or genuine supplied product visual when viewers need proof of a feature. Generated footage can introduce an idea, but it can invent screens, wording, or behavior and should not be presented as evidence of a product capability.",
+      },
+      {
         question: "Where do finished videos go?",
         answer:
           "Finished generations are saved to your account for use in the rest of your UGCPilot workflow.",
+      },
+      {
+        question: "Can I try AI video generation before choosing a paid plan?",
+        answer:
+          "UGC Pilot's pricing page explains the current seven-day trial and the credits available during it. Review that page for the current plan details before you generate or export work for a campaign.",
       },
     ],
     relatedPages: [
@@ -232,6 +247,11 @@ export const seoPageContent = {
         title: "AI social media manager",
         description: "See how generation fits into a wider content workflow.",
         href: "/ai-social-media-manager",
+      },
+      {
+        title: "Pricing and trial details",
+        description: "Review the current trial, credits, and plan choices before you begin a campaign.",
+        href: "/pricing",
       },
       {
         title: "Mobile app marketing guide",

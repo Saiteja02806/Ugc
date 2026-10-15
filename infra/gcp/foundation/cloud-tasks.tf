@@ -39,15 +39,15 @@ locals {
       max_retry_duration    = "3600s"
     }
     carousel = {
-      # Do not dispatch parallel Carousel writers until the durable Carousel
-      # assignment reservation is made safe for more than one worker.
-      concurrent_dispatches = 1
+      # Production ownership, claim and image-reservation races passed.
+      # Match the bounded two-instance request-based Carousel service.
+      concurrent_dispatches = 2
       dispatches_per_second = 1
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
     carousel-edit = {
-      # Interactive rendering gets its own service; generation remains serial.
+      # Interactive rendering retains its own independent single-job service.
       concurrent_dispatches = 1
       dispatches_per_second = 5
       max_attempts          = 5

@@ -1,5 +1,30 @@
 # Carousel System Context
 
+## 2026-10-16 Controlled request-based Carousel autoscaling
+
+- Carousel generation retains request-based CPU/billing, HTTP task delivery,
+  and one request per instance. Generation now scales from zero to two
+  instances; both service/revision maximums and queue concurrency are two.
+  The queue remains running at one dispatch per second. Interactive Carousel
+  edits retain their separate warm service and single-job queue.
+- Before rollout, production synthetic races proved one job from ten duplicate
+  ownership calls, ten jobs for ten distinct batches with all 55 ideas correctly
+  owned, and one worker claim from ten contenders. Image reservation races
+  returned stable six-slide reservations for ten repeated calls and complete
+  reservations for ten independent carousels. All synthetic rows and their
+  usage-counter increments were removed; no provider requests or tasks ran.
+- Revision `ugc-carousel-worker-r-cdf8c936-as2` preserves the current production
+  image and serves 100% traffic. Unused old release tags were removed after
+  confirming queued tasks use the untagged service URL, allowing old warm
+  revisions to retire. Historical revisions remain available for rollback.
+  Production observed two simultaneously processing jobs after the change.
+- This supersedes historical single-worker and pending-scaling notes below.
+  Do not increase above two without observing ownership, provider errors,
+  queue age and cost. Roll back queue concurrency to one first if parallel
+  processing exposes a conflict. Scale-to-zero is configured; idle behavior
+  has not been observed while the current backlog remains active.
+
+
 ## 2026-10-15 Helpful-tip language acceptance
 
 - At the user's request, planner v57 makes subjective Structure 1 checks

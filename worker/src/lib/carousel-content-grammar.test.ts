@@ -54,6 +54,96 @@ test("a provider-produced synthetic counted plan passes all publishing checks wi
     + "\n\n" + countedSyntheticFixture.slides[4]!.body!.secondWords.join(" "));
 });
 
+test("Structure 1 accepts natural repetition and paraphrasing without rewriting useful advice", () => {
+  const fixture = decodeCountedPlanBodies(countedSyntheticFixture) as ReturnType<typeof createFixture>;
+  fixture.grounding.anchorId = "workflow:main_problem";
+  fixture.concept = "How to stop details disappearing between apps";
+  fixture.slides[4]!.body = "Move the launch note to one folder for review.\n\nLink the draft to its approval so edits stay visible.";
+  const accepted = parseCarouselContentPlanForAssignment(fixture, {
+    analysis, contentFormatId: "list", hookFamilyId: "surprise", recentHistory: [], slideCount: 6,
+  });
+  assert.deepEqual(accepted.blockingIssues, []);
+  for (const code of ["nearby_word_repetition", "grounding_disconnected"]) {
+    assert.ok(accepted.advisoryIssues.some((issue) => issue.code === code), code);
+  }
+  assert.equal(accepted.plan.slides[4]!.body, fixture.slides[4]!.body);
+});
+
+test("Structure 1 language relaxation keeps publishing integrity checks blocking", () => {
+  const codes = ["body_length", "body_word_limit", "grounding_missing", "grounding_unsupported",
+    "grammar", "headline_body_repetition", "headline_length", "hook_structure", "incomplete_ending",
+    "invalid_plan", "recent_repetition", "render_fit", "repeated_punctuation", "story_structure",
+    "story_repetition", "unresolved_placeholder", "unsupported_claim"] as const;
+  const issues = codes.map((code) => ({ code, message: `Integrity check: ${code}`, slideNumber: null }));
+  const partitioned = partitionCarouselContentPlanValidationIssues(issues);
+  assert.deepEqual(partitioned.blockingIssues, issues);
+  assert.deepEqual(partitioned.advisoryIssues, []);
+});
+
+test("Structure 1 accepts useful action wording and short sentences with advisory diagnostics", () => {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats.find((candidate) =>
+    candidate.slides.some((slide) => slide.slideType === "solution" && !slide.listItemCount),
+  )!;
+  assert.ok(format);
+  const hookFamilyId = format.compatibleHookFamilies[0]!;
+  const fixture = createFixture(format.id, hookFamilyId);
+  const slide = fixture.slides.find((slide) => slide.slideType === "solution" && !slide.listItems.length)!;
+  slide.body = "Record the missing approval beside the launch note today.\n\nAdd a short owner comment before the next review starts.";
+  const input = { analysis, contentFormatId: format.id, hookFamilyId, recentHistory: [], slideCount: 6 };
+  const accepted = parseCarouselContentPlanForAssignment(fixture, input);
+  assert.deepEqual(accepted.blockingIssues, []);
+  assert.ok(accepted.advisoryIssues.some((issue) => issue.code === "solution_tone"));
+
+  slide.body = "Check the launch note. Confirm its owner before review.\n\nStore feedback beside the draft so changes remain visible.";
+  const shortSentences = parseCarouselContentPlanForAssignment(fixture, input);
+  assert.deepEqual(shortSentences.blockingIssues, []);
+  assert.ok(shortSentences.advisoryIssues.some((issue) => issue.code === "multiple_ideas"));
+});
+
+test("Structure 1 retains all five style-advisory plans without spending repair calls", async () => {
+  const assignments = [
+    { contentFormatId: "how_to", hookFamilyId: "curiosity" },
+    { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
+    { contentFormatId: "before_after", hookFamilyId: "specific_outcome" },
+    { contentFormatId: "comparison", hookFamilyId: "question" },
+    { contentFormatId: "list", hookFamilyId: "surprise" },
+  ];
+  const fixtures = assignments.map((assignment, index) => {
+    const plan = createDistinctBatchFixture(assignment.contentFormatId, assignment.hookFamilyId, index);
+    plan.concept = `Work smarter: ${plan.concept}`;
+    return plan;
+  });
+  const previousFetch = globalThis.fetch;
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-advisory-batch";
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    assert.equal(calls, 1, "Style advisories must not request a repair");
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+      items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })),
+    }) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const result = await buildCarouselContentPlanBatch({
+      analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION },
+      items: assignments.map((assignment, slotIndex) => ({ ...assignment, slotIndex, candidateIndex: slotIndex,
+        creativeSeed: `Campaign ${slotIndex}`, emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })),
+    });
+    assert.equal(result.length, 5);
+    assert.equal(calls, 1);
+    for (const item of result) {
+      assert.equal(item.plan.validationResult.ok, true);
+      assert.ok(item.plan.validationResult.advisoryIssues.some((issue) => issue.code === "generic_copy"));
+      assert.equal(item.plan.concept, fixtures[item.slotIndex]!.concept);
+    }
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
 test("Structure 1 expands every educational format to the agreed six-slide flow", () => {
   assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
   assert.equal(CAROUSEL_CONTENT_GRAMMAR.hookFamilies.length, 10);
@@ -244,7 +334,7 @@ test("counted body repair preserves all valid fields with the existing one-call 
   }
 });
 
-test("mixed grounding failures use counted bodies during a full repair and preserve other batch items", async () => {
+test("mixed safety/body failures use counted repairs and preserve other batch items", async () => {
   const assignments = [
     { contentFormatId: "how_to", hookFamilyId: "curiosity" },
     { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
@@ -278,7 +368,7 @@ test("mixed grounding failures use counted bodies during a full repair and prese
           bodiesBySlide: { slide6: counted.slides[5]!.body } }
         : request.response_format.json_schema.name === "counted_carousel_body_repair"
         ? { bodiesBySlide: { slide6: counted.slides[5]!.body } }
-        : rejectRepair ? { ...counted, concept: "Work smarter" }
+        : rejectRepair ? { ...counted, grounding: { anchorId: "product_detail:invented" } }
           : needsBodyFollowup ? { ...counted, slides: counted.slides.map((slide, index) => index === 5 ? { ...slide, body: "Keep the next decision visible" } : slide) } : counted;
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
@@ -300,7 +390,7 @@ test("mixed grounding failures use counted bodies during a full repair and prese
     requests.length = 0;
     const scoped = await buildCarouselContentPlanBatch(input);
     assert.equal(scoped.length, 5);
-    assert.equal(requests[1]!.response_format.json_schema.name, "scoped_carousel_batch_repair");
+    assert.equal(requests[1]!.response_format.json_schema.name, "counted_carousel_body_repair");
     assert.equal(scoped[0]!.plan.slides[2]!.body, fixed.slides[2]!.body);
     fixtures[0]!.slides[3]!.imageDirection = "A person at a desk.";
     needsBodyFollowup = true;
@@ -417,7 +507,7 @@ test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
   );
 });
 
-test("Structure 1 requires a verified grounding anchor in the concept and middle slides", () => {
+test("Structure 1 requires a verified anchor but records missing exact keywords as advisory", () => {
   const input = {
     analysis,
     contentFormatId: "how_to",
@@ -444,10 +534,9 @@ test("Structure 1 requires a verified grounding anchor in the concept and middle
 
   const disconnectedAnchor = createFixture("how_to", "curiosity");
   disconnectedAnchor.concept = "A practical way to keep a launch review clear";
-  assert.throws(
-    () => parseCarouselContentPlanForAssignment(disconnectedAnchor, input),
-    /grounding/i,
-  );
+  const accepted = parseCarouselContentPlanForAssignment(disconnectedAnchor, input);
+  assert.deepEqual(accepted.blockingIssues, []);
+  assert.ok(accepted.advisoryIssues.some((issue) => issue.code === "grounding_disconnected"));
 });
 
 test("Structure 1 accepts a persisted Slide 1 hook template without changing its six-slide grammar", () => {
@@ -1193,7 +1282,7 @@ test("Structure 1's heading SVG gives every measured line a rounded shoulder", (
   }
 });
 
-test("Structure 1 treats generic copy as a repairable blocking issue", () => {
+test("Structure 1 records generic wording without relaxing body limits", () => {
   const parsed = parseCarouselContentPlanForAssignment(
     createFixture("comparison", "question"),
     {
@@ -1217,8 +1306,9 @@ test("Structure 1 treats generic copy as a repairable blocking issue", () => {
   );
 
   assert.ok(
-    partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"),
+    partitioned.advisoryIssues.some((issue) => issue.code === "generic_copy"),
   );
+  assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "body_length"));
 });
 
 function createDistinctBatchFixture(

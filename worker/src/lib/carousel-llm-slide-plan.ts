@@ -40,7 +40,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v56-single-word-body-tokens";
+  "llm-carousel-planner-v57-advisory-language-checks";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -151,6 +151,8 @@ export type CarouselPlanValidationIssue = {
     | "recent_repetition"
     | "render_fit"
     | "repeated_punctuation"
+    | "nearby_word_repetition"
+    | "solution_tone"
     | "story_structure"
     | "story_repetition"
     | "unresolved_placeholder"
@@ -1551,8 +1553,8 @@ export function validateCarouselContentPlan(
 
     if (slide.slideType === "solution" && isProblemFramedCopy(slide.body)) {
       issues.push({
-        code: "story_structure",
-        message: "A consequence or friction slide cannot be labeled as a solution.",
+        code: "solution_tone",
+        message: "Solution wording may emphasize friction; consider making the recommended action clearer.",
         slideNumber: slide.slideNumber,
       });
     }
@@ -1640,8 +1642,15 @@ export function validateCarouselContentPlan(
       }
 
       // Conversational lowercase is an authored style, not a grammar defect.
-      const repeatedBodyWord = slide.body.match(/\b([a-z][a-z'-]{2,})\s+\1\b/i)?.[1]
-        ?? getNearbyRepeatedCopy(slide.body);
+      const repeatedBodyWord = slide.body.match(/\b([a-z][a-z'-]{2,})\s+\1\b/i)?.[1];
+      const nearbyRepeatedWord = getNearbyRepeatedCopy(slide.body);
+      if (!repeatedBodyWord && nearbyRepeatedWord) {
+        issues.push({
+          code: "nearby_word_repetition",
+          message: `Body copy uses "${nearbyRepeatedWord}" nearby; consider varying the wording if it improves clarity.`,
+          slideNumber: slide.slideNumber,
+        });
+      }
       if (
         repeatedBodyWord ||
         /\bplanning and reporting\b(?:\s+[a-z'-]+){0,5}\s+creates\b/i.test(
@@ -1652,7 +1661,7 @@ export function validateCarouselContentPlan(
         issues.push({
           code: "grammar",
           message: repeatedBodyWord
-            ? `Body copy repeats "${repeatedBodyWord}" within nearby words. Rephrase the sentence without repeating that content word.`
+            ? `Body copy duplicates the adjacent word "${repeatedBodyWord}". Remove the accidental duplicate.`
             : "Body copy contains a grammar or spacing problem. Fix plural subject agreement and remove spaces before punctuation.",
           slideNumber: slide.slideNumber,
         });
@@ -1870,7 +1879,17 @@ export function partitionCarouselContentPlanValidationIssues(
   const advisoryIssues: CarouselPlanValidationIssue[] = [];
 
   for (const issue of dedupeValidationIssues([...issues])) {
-    if (issue.code === "hook_alignment" || issue.code === "hook_quality") {
+    // These lexical/style heuristics cannot establish semantic correctness.
+    // Preserve their diagnostics without spending repairs or failing a useful
+    // plan for natural paraphrasing, punctuation, or repeated function words.
+    // Verified anchor identity, factual claims, actual duplicate copy, format,
+    // non-promotional helpful tips, image safety and measured fit stay blocking.
+    if (
+      issue.code === "hook_alignment" || issue.code === "hook_quality" ||
+      issue.code === "nearby_word_repetition" || issue.code === "solution_tone" ||
+      issue.code === "multiple_ideas" || issue.code === "generic_copy" ||
+      issue.code === "grounding_disconnected"
+    ) {
       advisoryIssues.push(issue);
     } else {
       blockingIssues.push(issue);

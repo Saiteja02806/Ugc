@@ -1,5 +1,25 @@
 # Carousel System Context
 
+## 2026-10-15 Helpful-tip language acceptance
+
+- At the user's request, planner v57 makes subjective Structure 1 checks
+  advisory: nearby word reuse, dictionary-based solution tone, sentence-count
+  and punctuation heuristics, generic phrasing, and exact source-keyword overlap.
+  These signals remain in accepted plans' validation diagnostics. They cannot
+  spend repair calls or reject an otherwise valid plan. This supersedes the
+  earlier blanket blocking copy-quality/lexical-grounding policy below.
+- Missing or invented source anchors, unsupported claims, promotional CTAs in
+  Helpful tips, accidental adjacent duplicate words, actual duplicated slide
+  copy, invalid slide roles/counts, image safety and measured text fit remain
+  blocking. Verified anchor identity is enforced; lexical overlap is no longer
+  presented as proof of semantic alignment. No additional provider calls or
+  automatic retry budget are introduced.
+- Synthetic regressions cover valid repeated prepositions across sentences,
+  paraphrased concepts, useful imperatives mentioning a missing approval, short
+  sentences, and all five advisory-only plans surviving a single batch request.
+  Structure 2, mixer allocation, reviewed cards, and feed ownership are unchanged.
+  This requires only a Carousel worker release; no database or frontend change.
+
 ## 2026-10-15 Helpful-tip delivery and queue recovery repair
 
 - The active-source feed guard is applied in

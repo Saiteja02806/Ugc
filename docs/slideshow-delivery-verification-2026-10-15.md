@@ -1,6 +1,6 @@
 # Slideshow delivery verification — 2026-10-15
 
-Status: v57 language relaxation implemented and locally verified; production acceptance pending.
+Status: v57 deployed; all five missing Helpful tips recovered and the daily pack is ready.
 
 ## User-requested language relaxation
 
@@ -16,10 +16,60 @@ after reviewing the false-rejection evidence.
 Offline regressions accept the previously rejected repeated `to`, paraphrased
 concept and `Record the missing approval` examples. A five-item synthetic batch
 retains all five advisory-only plans in one request, without repair calls.
-Structure 2 and saved mix allocation are unchanged. This is worker-only and
-does not establish that the historical five missing slots have been delivered.
+Structure 2 and saved mix allocation are unchanged. The production acceptance
+below confirms delivery of all five missing slots.
 
-## Deployed and verified
+## v57 production rollout and acceptance
+
+- Release `9eaedc6682ca232413256a1d0049aa00e37a1c88` is on remote main.
+  The primary `ugc` Vercel deployment completed successfully. Only the Carousel
+  worker was updated; concurrent Explore/media changes remain excluded.
+- Cloud Build `223e7f2e-237d-41f0-bc6c-b6435aa2c6ff` succeeded. Revision
+  `ugc-carousel-worker-9eaedc66` serves 100% of Carousel traffic using image
+  `sha256:a44a5c5f4fc364c08f2e92eadd9fc2ae7d0f331ee9cec8246744b6153495643d`.
+  Startup confirms matching build/runtime commits and planner v57.
+- The existing owner/date-scoped explicit retry reopened only the five failed
+  unassigned positions. The real production reconciliation endpoint returned
+  HTTP 200. Job `c461c792-a219-414c-9cba-1c897052ffa2` retained four valid plans,
+  rendered six slides per plan and assigned them to positions 46-49 as Helpful
+  tips. Its remaining item failed; bounded recovery automatically queued one
+  missing-slot replacement, job `afd7772e-e38f-4a7b-84b2-b4b285e11775`. That
+  replacement completed four valid plans and filled position 50 with Helpful
+  tips generation `64f71e70-6c16-4859-9d25-21c2f6715bce`.
+- All 30 recovered image URLs returned HTTP 200 with image content types.
+  Stored slide order is 1-6 and no CTA field is present. Accepted production
+  diagnostics contain the formerly blocking repetition, lexical grounding,
+  generic-copy and sentence-count advisories.
+- The original 45 reviewed assignments retain snapshot digest
+  `2e936c3bb092543db58ce41511f9e5a1`. A later decision on position 46 is outside
+  that original snapshot. Existing structure identity and the saved mixer were
+  preserved; the historical pack is not retroactively a 25/25 split.
+- Local validation: the broad suite passed 78 library and 73 worker tests before
+  the final hard-gate regression was added; the exact release then passed 58
+  planner/repair/Structure 2 tests including that new regression. Partial job
+  settlement also passed. No live provider diagnostic was used.
+- Detailed asset verification is in
+  `.codex-audits/slideshow-v57-delivery-assets.json`. The exact excluded ongoing
+  worktree paths are in `.codex-audits/slideshow-v57-excluded-worktree.txt`;
+  generated cache, local audit and temporary release files are also excluded.
+
+At 23:20 IST production reported feed status `ready`, no feed error, 46 decided
+positions and four ready positions, with zero failed or planned positions.
+Position 46 was decided after its recovery. All 50 positions have assignments;
+the original 45 assignments retain the exact pre-release digest. The historical
+pack contains five Structure 1 and 45 Structure 2 cards. Restoring its missing
+five does not retroactively turn that reviewed pack into a 25/25 split.
+
+This proves recovery of all five missing slideshows, not perfect first-attempt
+batch completion: one item in each of the two recovery batches failed hard
+checks and both jobs therefore report partial failure. Valid siblings were
+retained and bounded refill completed the daily quota. Those mechanisms remain
+necessary. The queue is resumed and recovery remains enabled. Authenticated
+browser verification could not be completed because the browser connection
+became unavailable; production API, assignments and all rendered image assets
+were checked directly. Do not describe this as a completed visual UI audit.
+
+## Historical deployment before v57
 
 - Website release 39288aea distinguishes queued, generating, finalizing and failed slideshow preparation.
 - Queue recovery checks deterministic Cloud Task existence before spending attempts; missing-task recovery uses an owner-restricted service RPC and locked snapshot comparison.
@@ -29,7 +79,7 @@ does not establish that the historical five missing slots have been delivered.
 - Queue ugc-carousel is RUNNING and background recovery scheduler is ENABLED.
 - Remote main contains eb8d1b927d09d3c64d113a3338cbd353083625b0. The final website deployment was still pending at the last check; the prior production website release was verified directly through its signed production audit route.
 
-## Production acceptance failure
+## Historical production acceptance failure before v57
 
 The five missing slots were processed by the new worker in job 221101e4-bb10-480d-afdd-ccc455ae92c8, experiment batch 1dfafea6-6358-42bf-9b4d-da67fd455445. All five generations failed validation. Reported failures include repeated copy, multiple ideas and disconnected grounding. Counted-body transport and isolated/scoped repair improvements do not establish reliable helpful-tip generation.
 
@@ -40,7 +90,7 @@ regenerate the reviewed 45 cards, substitute Structure 2 into helpful-tip slots,
 or silently expand retry budgets. The v57 relaxation above targets demonstrated
 false rejections; reliable delivery still requires production verification.
 
-## Validation
+## Earlier validation before v57
 
 - Carousel contracts: 78 passed.
 - Carousel worker regression suite: 70 passed.

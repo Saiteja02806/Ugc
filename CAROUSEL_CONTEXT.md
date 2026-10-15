@@ -19,6 +19,12 @@
   sentences, and all five advisory-only plans surviving a single batch request.
   Structure 2, mixer allocation, reviewed cards, and feed ownership are unchanged.
   This requires only a Carousel worker release; no database or frontend change.
+- Production acceptance: worker `9eaedc66` recovered all five missing Helpful
+  tips positions with six accessible images each; the feed is ready with no
+  failed/planned slots. Four came from the initial retry and the last from
+  bounded replacement. The original 45 reviewed assignments are unchanged.
+  Some individual plans still fail hard checks, so partial preservation and
+  recovery remain necessary. The historical pack remains 5/45, not 25/25.
 
 ## 2026-10-15 Helpful-tip delivery and queue recovery repair
 

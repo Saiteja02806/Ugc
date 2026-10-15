@@ -1,5 +1,13 @@
 # Explore context and UI decision record
 
+### Finishing worker warm-instance preference — 16 October 2026
+
+- The user elected to keep Explore finishing warm for faster first-request
+  response. Its service-wide minimum is now 1, revision minimums remain 0 and
+  unused historical tags remain removed. Request-based CPU/billing and the
+  existing authenticated HTTP processing contract are unchanged. This replaces
+  the idle-zero preference below; it does not alter heavy Cloud Run Jobs.
+
 ### Finishing worker idle-cost policy — 16 October 2026
 
 - The authenticated interactive finishing HTTP service remains enabled with

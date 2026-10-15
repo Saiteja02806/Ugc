@@ -7,6 +7,11 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  # Keep one instance warm across the service, not one per tagged revision.
+  scaling {
+    min_instance_count = 1
+  }
+
   template {
     service_account                  = var.worker_service_account_email
     timeout                          = "${var.request_timeout_seconds}s"
@@ -25,8 +30,8 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
       }
 
       resources {
-        # Start on task delivery and scale to zero when idle. A cold first edit
-        # is an accepted latency tradeoff; request/queue ownership is unchanged.
+        # Request-based CPU with one warm service instance avoids routine
+        # first-edit cold starts without warming historical tagged revisions.
         cpu_idle          = true
         startup_cpu_boost = true
 

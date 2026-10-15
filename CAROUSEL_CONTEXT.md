@@ -1,5 +1,17 @@
 # Carousel System Context
 
+## 2026-10-16 Restore one warm editing/finishing instance
+
+- The user chose faster first-request latency after the idle-cost explanation.
+  Carousel editing and Explore video finishing now retain one warm instance
+  per service using service-level minimum 1. Their revision minimums stay 0,
+  and unused historical tags remain removed. This supersedes the idle-zero
+  choice recorded below; it restores two warm service instances, not eight.
+- Request-based CPU/billing, current images, task URLs, per-instance concurrency,
+  maxima, job handlers, timeouts, queue/retry settings and ownership safeguards
+  are retained. Warm minimums incur the reduced idle rate. Carousel generation
+  continues its separate 0-2 autoscaling policy.
+
 ## 2026-10-16 Edit and finishing idle-cost policy
 
 - At the user's request, Carousel editing and the Explore finishing HTTP video

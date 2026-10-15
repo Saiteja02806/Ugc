@@ -101,7 +101,7 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum HTTP receiver instances. Zero permits idle scale-down, including interactive Explore finishing."
+  description = "Service-wide minimum HTTP receiver instances. Use 1 for a warm production receiver or 0 for idle scale-down; revision minimums stay zero."
   type        = number
   default     = 0
 }

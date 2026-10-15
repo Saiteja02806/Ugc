@@ -7,6 +7,11 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  # A service-wide warm floor follows traffic, avoiding per-revision charges.
+  scaling {
+    min_instance_count = var.min_instance_count
+  }
+
   # Grant the conditional provider access before starting a revision that uses it.
   depends_on = [google_secret_manager_secret_iam_member.explore_scribe_accessor]
 
@@ -25,7 +30,7 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
     max_instance_request_concurrency = 1
 
     scaling {
-      min_instance_count = var.min_instance_count
+      min_instance_count = 0
       max_instance_count = var.max_instance_count
     }
 
@@ -37,8 +42,8 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       resources {
-        # CPU remains request based. Interactive Explore processing stays inside
-        # the HTTP request and does not require a permanently warm instance.
+        # CPU remains request based. The optional service-wide warm floor
+        # reduces first-request latency without enabling background polling.
         cpu_idle          = true
         startup_cpu_boost = true
 

@@ -25,7 +25,7 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
     max_instance_request_concurrency = 1
 
     scaling {
-      min_instance_count = var.enable_interactive_explore_finishing ? max(1, var.min_instance_count) : var.min_instance_count
+      min_instance_count = var.min_instance_count
       max_instance_count = var.max_instance_count
     }
 
@@ -37,8 +37,8 @@ resource "google_cloud_run_v2_service" "video_render_worker" {
       }
 
       resources {
-        # CPU remains request based. Interactive Explore can keep memory warm
-        # without running a polling loop or allocating idle CPU continuously.
+        # CPU remains request based. Interactive Explore processing stays inside
+        # the HTTP request and does not require a permanently warm instance.
         cpu_idle          = true
         startup_cpu_boost = true
 

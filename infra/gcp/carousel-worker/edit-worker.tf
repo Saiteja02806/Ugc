@@ -13,7 +13,7 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
     max_instance_request_concurrency = 1
 
     scaling {
-      min_instance_count = 1
+      min_instance_count = 0
       max_instance_count = 1
     }
 
@@ -25,9 +25,8 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
       }
 
       resources {
-        # Keep one request-based instance warm for interactive edit latency.
-        # Retain the one-instance maximum until database reservation is
-        # explicitly safe for parallel writers.
+        # Start on task delivery and scale to zero when idle. A cold first edit
+        # is an accepted latency tradeoff; request/queue ownership is unchanged.
         cpu_idle          = true
         startup_cpu_boost = true
 

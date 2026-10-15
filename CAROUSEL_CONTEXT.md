@@ -1,5 +1,29 @@
 # Carousel System Context
 
+## 2026-10-16 Edit and finishing idle-cost policy
+
+- At the user's request, Carousel editing and the Explore finishing HTTP video
+  service now use minimum zero at both service/revision levels, retaining
+  request-based CPU and their existing per-instance concurrency, maximums,
+  images, environment, timeouts, permissions, task URLs and job handlers.
+  The first task after idle can take longer while an instance starts. This
+  supersedes historical requirements to keep editing/finishing workers warm.
+- Removed unused old tags from those two services after production environment
+  URLs and queued-task targets were checked. A seven-day request-log sample
+  contained no tagged operational jobs; one tagged video request was a version
+  probe. Revisions are retained for rollback. Current idle-zero revisions are
+  `ugc-carousel-edit-worker-r-cdf8c936-idle0` and
+  `ugc-video-render-worker-r-cdf8c936-idle0`, each with 100% traffic.
+- Before/after runtime configuration hashes match. Both queues remain running.
+  Authenticated synthetic missing-job tasks reached the new revisions, were
+  safely dropped, and returned HTTP 200. These verify delivery/startup/auth and
+  DB access, not a complete customer render or an observed cold restart from
+  zero. All 51 edit/render/finishing/routing regression tests passed.
+- Zero minimum removes the paid warm-instance floor; actual instance removal
+  is asynchronous. Storage and recurring scheduled executions remain billable
+  separately. No schedules, customer data, saved edits, media, or heavy video
+  Cloud Run Jobs were changed. See the idle-cost rollout report.
+
 ## 2026-10-16 Controlled request-based Carousel autoscaling
 
 - Carousel generation retains request-based CPU/billing, HTTP task delivery,

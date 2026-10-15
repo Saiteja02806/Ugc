@@ -1,5 +1,19 @@
 # Explore context and UI decision record
 
+### Finishing worker idle-cost policy — 16 October 2026
+
+- The authenticated interactive finishing HTTP service remains enabled with
+  the same image, environment, ownership rules, task URL, request timeout and
+  one-request concurrency. It can now scale to zero when idle; enabling
+  interactive finishing no longer forces a warm instance. Accept the first
+  request's startup delay. Heavy rendering retains its existing Cloud Run Job
+  launcher, slots and execution lifecycle. No editor, save or schedule flow
+  changes accompany this infrastructure-only change.
+- Old unused tagged revisions were detached after endpoint checks. Startup and
+  authenticated no-work task delivery passed, and 51 related regressions passed.
+  This does not constitute a newly rendered customer video or measured cold
+  start from zero. Detailed evidence: `docs/worker-idle-cost-rollout-2026-10-16.md`.
+
 Last reconciled: **15 October 2026**.
 
 ### Influencer workspace references and downloads — 16 October 2026, local implementation

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.1.12",
-  "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
+  "version": "0.2.0",
+  "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -18,8 +18,8 @@
     "com.openai": {
       "interface": {
         "displayName": "UGC Pilot",
-        "shortDescription": "Images and videos in your AI",
-        "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
+        "shortDescription": "Create UGC content",
+        "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review and manage outputs through your connected UGC Pilot account. UGC Pilot checks availability and cost before paid generation. Social publishing is not available through this plugin.",
         "developerName": "UGC Pilot",
         "websiteURL": "https://getugcpilot.com",
         "supportURL": "https://getugcpilot.com/contact",
@@ -27,26 +27,18 @@
         "termsOfServiceURL": "https://getugcpilot.com/terms",
         "category": "Productivity",
         "capabilities": [
-          "Creative copy and prompts",
-          "Slideshow copy",
-          "Image generation",
-          "Video generation",
-          "Media library",
-          "Video finishing where enabled",
-          "Demo library and upload recovery where deployed",
-          "Saved Edit drafts and export where enabled",
-          "Speech, private audio transfer and editing attachments where enabled",
-          "Application reference catalogue and saved text remix where enabled",
-          "Creative Asset groups and membership where enabled",
-          "Saved Carousel/slideshow Library management where enabled",
-          "Account publishing defaults and timezone initialization with separate consent where enabled"
+          "Hook, wall-text, and slideshow planning",
+          "Business-context creative workflows",
+          "Image and short-video generation",
+          "Media library and video finishing",
+          "Saved Edit drafts and export"
         ],
         "logo": "./assets/logo.png",
         "composerIcon": "./assets/logo.png",
         "defaultPrompt": [
-          "Check my UGC Pilot connection, plan, credits, and generation options without generating anything.",
-          "Use UGC Pilot to create one vertical product image.",
-          "Use UGC Pilot to animate an image from my library into a five-second vertical video."
+          "Give me five hook texts based on my business.",
+          "Create a hook-video prompt for my product.",
+          "Generate one vertical product image using UGC Pilot."
         ]
       },
       "onboardingSkill": "./skills/connect-ugc-pilot/SKILL.md",
@@ -101,7 +93,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds account-default read/update/recovery workflow for the gated account-settings backend. Writes need fresh account:write consent, exact revisions and durable request UUIDs. Existing posts, selected social-account restrictions and initialized timezone choices are preserved. Package installation does not apply the migration or enable writes; hosted acceptance remains pending."
+        "release_notes": "Adds clear creative-workflow metadata and starter prompts for hooks, wall-of-text videos, and slideshows. UGC Pilot checks each connected account's live capabilities before paid generation."
       }
     }
   }

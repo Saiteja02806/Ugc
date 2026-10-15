@@ -53,7 +53,7 @@ Use Customize → Connectors → Add custom connector. Enter UGC Pilot and the e
 
 ## ChatGPT web
 
-If a private UGC Pilot plugin link has been supplied, install it and connect when prompted. This bundle does not include an install link. A public-directory listing is a separate reviewed release; do not claim one exists.
+After public-directory approval, install UGC Pilot from the ChatGPT/Codex directory and connect when prompted. This bundle does not include a public install link because directory review is still pending. Until approval, use only a permitted private or workspace installation path.
 
 Where custom connections are available, go to ChatGPT Plugins → plus → Add custom MCP server, enter the endpoint and finish the normal OAuth flow. Availability depends on account and workspace policy. Follow the current client UI; do not promise every account has the same setup options.
 
@@ -63,7 +63,7 @@ Uploading this Markdown guide or a ZIP to an ordinary web conversation does not 
 
 Extract a new version into a fresh folder so the older bundle remains available. In Claude Code, restart with `claude --plugin-dir /absolute/path/to/ugc-pilot` pointing to the new folder and use `/mcp` to check the connection. In Codex, update the same `ugc-pilot` plugin through its supported local source or Plugins Directory flow; a repository/personal marketplace can point at the extracted folder. Do not edit installed cache files or create duplicate server entries to force an update. Follow the host's supported refresh/restart flow, then verify discovered tools in a new session when necessary.
 
-Adding the MCP endpoint connects server tools; loading the package adds its skills and local helper. Neither step proves both are active. The released server contains 73 tools; older active conversations can retain a cached catalogue. Discovery and live capabilities decide availability. The existing Edit surface includes `open_edit_draft`, `update_edit_draft`, `get_edit_export_capabilities`, `export_edit_draft` and `get_edit_export`. If discovery is stale, refresh the connection through the client. Reauthenticate only for expired sign-in or missing scopes, not merely because new tools appeared. An existing `creative:write` grant covers the Edit tools. Account-default updates separately need `account:write`, only after the account-settings server/schema rollout; request that scope when the user intends those changes. An older media-only consent does not expand automatically. Do not generate media or change a draft just to check discovery.
+Adding the MCP endpoint connects server tools; loading the package adds its skills and local helper. Neither step proves both are active. The reviewed server catalog contains 79 tools; older active conversations can retain a cached catalogue. Discovery and live capabilities decide availability. The existing Edit surface includes `open_edit_draft`, `update_edit_draft`, `get_edit_export_capabilities`, `export_edit_draft` and `get_edit_export`. If discovery is stale, refresh the connection through the client. Reauthenticate only for expired sign-in or missing scopes, not merely because new tools appeared. An existing `creative:write` grant covers the Edit tools. Account-default updates separately need `account:write`, only after the account-settings server/schema rollout; request that scope when the user intends those changes. An older media-only consent does not expand automatically. Do not generate media or change a draft just to check discovery.
 
 The local transfer helper needs Node.js 22+, ffprobe and a host process API that can pass ephemeral JSON on stdin. A browser-only connector cannot read an IDE file path. Use the bundled local transfer reference after the package is loaded.
 
@@ -71,7 +71,7 @@ The local transfer helper needs Node.js 22+, ffprobe and a host process API that
 
 The same hosted MCP serves each user's own account through OAuth. OpenAI's plugin submission portal accepts the bundle and MCP endpoint for review; an approved, published directory listing provides the customer install link. Claude requires a separate developer submission for its connector or GitHub-hosted plugin bundle. The ZIP download is useful for supported local plugin installation and review preparation; it does not create either public listing.
 
-Public review is still pending. Publisher/domain verification, installed-client acceptance, a reviewer-accessible walkthrough, and secure reviewer access must be completed before announcing public availability. Never put reviewer passwords, OAuth tokens, or publisher credentials in the bundle.
+Public review is still pending. Publisher/domain verification, installed-client acceptance, a reviewer-accessible walkthrough, and secure reviewer access must be completed before announcing public availability. The ChatGPT/Codex public directory and the Claude connector or Marketplace each have separate platform approvals. Never put reviewer passwords, OAuth tokens, or publisher credentials in the bundle.
 
 ## First prompt
 

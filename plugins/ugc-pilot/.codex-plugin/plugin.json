@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.12",
-  "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
+  "version": "0.2.0",
+  "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -11,8 +11,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "UGC Pilot",
-    "shortDescription": "Images and videos in your AI",
-    "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
+    "shortDescription": "Create UGC content",
+    "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review and manage outputs through your connected UGC Pilot account. UGC Pilot checks availability and cost before paid generation. Social publishing is not available through this plugin.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -22,9 +22,9 @@
     "logo": "./assets/logo.png",
     "composerIcon": "./assets/logo.png",
     "defaultPrompt": [
-      "Check my UGC Pilot connection, plan, credits, and generation options without generating anything.",
-      "Use UGC Pilot to create one vertical product image.",
-      "Use UGC Pilot to animate an image from my library into a five-second vertical video."
+      "Give me five hook texts based on my business.",
+      "Create a hook-video prompt for my product.",
+      "Generate one vertical product image using UGC Pilot."
     ]
   },
   "extensions": {
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds account-default read/update/recovery workflow for the gated account-settings backend. Writes need fresh account:write consent, exact revisions and durable request UUIDs. Existing posts, selected social-account restrictions and initialized timezone choices are preserved. Package installation does not apply the migration or enable writes; hosted acceptance remains pending."
+        "release_notes": "Adds clear creative-workflow metadata and starter prompts for hooks, wall-of-text videos, and slideshows. UGC Pilot checks each connected account's live capabilities before paid generation."
       }
     }
   }

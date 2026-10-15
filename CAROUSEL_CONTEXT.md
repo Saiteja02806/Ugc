@@ -21,6 +21,32 @@
   background jobs rather than treating placeholder generation rows as proof
   that a worker started. The response addition is optional and backward
   compatible; remaining-slot accounting is unchanged.
+- Release `39288aea` applied the migration and queue-scoped read permission,
+  deployed the Carousel worker and website, and retained all 45 decided cards.
+  Production then exposed phrase-valued word arrays, despite correct array
+  lengths. That release is not acceptance evidence for helpful-tip delivery.
+- Planner v56 adds a simple no-whitespace constraint to each individual word,
+  with explicit transport examples and specific teaching instructions in the
+  system message. This is not the earlier whole-body word-count regex that
+  stalled the decoder. A synthetic five-plan provider probe completed and all
+  five bodies decoded; a focused repair passed the complete publishing checks.
+  The existing grammar, grounding, factual, image safety and fit validators
+  remain unchanged. This follow-up requires a worker deployment.
+- The counted planner selects the existing body-only/list modes for follow-up
+  slides instead of creating optional headings that duplicate the advice. It
+  does not remove a heading from saved or historical content. One initial batch
+  request and up to two isolated repairs per failed slot replace the previous
+  two whole-batch passes. A second body-only repair freezes the newly validated
+  fields; all-failed work retains the existing structure-aware terminal or
+  automatic-rotation fallback rules. Successful siblings are retained.
+- Mixed grounding/body failures can now request only concept, strategy angle,
+  broad situations, or specific body/list fields. Every unrequested field is
+  frozen; changed or extra fields are rejected and the merged plan passes the
+  complete existing publishing checks. Generic-copy and disconnected-grounding
+  errors include the exact rejected phrase or selected anchor terms, and
+  repetition errors name the repeated word. A synthetic full-batch test
+  retained one validated plan while four exhausted repairs; this proves
+  partial preservation, not reliable completion of every requested item.
 - Rollout order: additive migration
   `20261015135636_guard_missing_queued_job_recovery.sql`, queue-scoped
   `cloudtasks.tasks.get` permission for the application identity, worker, then

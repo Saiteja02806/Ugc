@@ -189,7 +189,10 @@ export async function generateCarouselBatch(params: {
       if (error instanceof CarouselPartialBatchPlanningError) {
         // Keep independently validated siblings. The missing candidates fail
         // through the existing job settlement and slot-preserving refill path.
-        plannedItems = error.completedItems;
+        // One initial request plus at most two repairs per slot replaces the
+        // old two complete batch passes (11 calls maximum instead of 12).
+        planningAttemptCount = 2;
+        plannedItems = error.completedItems.length > 0 ? error.completedItems : null;
         await params.store.updateCarouselExperimentBatch(params.experimentBatchId, {
           structure_planning_attempt_count: planningAttemptCount,
         });

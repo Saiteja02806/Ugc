@@ -23,6 +23,12 @@ test("counted generation and full repairs enforce body arrays without changing c
   assert.equal(decoded.slides[0]!.body, null);
   assert.equal(decoded.slides[1]!.body, `${words.join(" ")}\n\n${words.join(" ")}`);
   assert.throws(() => decodeCountedPlanBodies({ slides: [{ slideNumber: 2, body: { firstWords: ["short"], secondWords: words } }] }));
+  const followup = { properties: { slideNumber: { enum: [2] }, body: stringBody,
+    headline: stringBody, textMode: { type: "string", enum: ["headline_body", "body_only"] } } };
+  const safeFollowup = withCountedPlanBodies(followup);
+  assert.deepEqual(safeFollowup.properties.headline, { type: "null" });
+  assert.deepEqual(safeFollowup.properties.textMode.enum, ["body_only"]);
+  assert.deepEqual(followup.properties.textMode.enum, ["headline_body", "body_only"]);
 });
 
 test("counted repair rejects whitespace tokens, missing blocks, extra fields and word padding", () => {
@@ -35,7 +41,11 @@ test("counted repair rejects whitespace tokens, missing blocks, extra fields and
     { bodiesBySlide: { slide6: { firstWords: words } } },
     { bodiesBySlide: { slide6: { firstWords: words, secondWords: words }, slide2: {} } },
   ]) assert.throws(() => parseCountedBodyRepair(invalid, [6]));
-  assert.doesNotMatch(JSON.stringify(buildCountedBodyRepairSchema([6])), /"pattern"/);
+  const token = buildCountedBodyRepairSchema([6]).properties.bodiesBySlide.properties.slide6!.properties.firstWords.items;
+  assert.equal(new RegExp(token.pattern).test("decision."), true);
+  assert.equal(new RegExp(token.pattern).test("two words"), false);
+  assert.equal(new RegExp(token.pattern).test("."), false);
+  assert.equal(new RegExp(token.pattern).test("decision:"), false);
 });
 
 test("counted repair only selects scoped non-list body failures and rejects unknown policy", () => {

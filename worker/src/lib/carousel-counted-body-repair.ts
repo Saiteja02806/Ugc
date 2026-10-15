@@ -22,7 +22,9 @@ export function getCountedBodyRepairSlides(slides: readonly PlannedCarouselSlide
 
 export function buildCountedBodyRepairSchema(slideNumbers: readonly number[]) {
   const wordBlock = { type: "array", minItems: 9, maxItems: 12,
-    items: { type: "string", minLength: 1, maxLength: 40, description: "Exactly one written word, with punctuation attached if needed. No whitespace or standalone punctuation." } } as const;
+    // Constrain each token, rather than using the whole-body word-count regex
+    // that previously stalled the structured decoder on gpt-4o-mini.
+    items: { type: "string", minLength: 1, maxLength: 40, pattern: "^[A-Za-z0-9][A-Za-z0-9'’-]*[.!?,]?$", description: "Exactly one written word, with punctuation attached if needed. No whitespace, standalone punctuation, colons or semicolons." } } as const;
   return { type: "object", additionalProperties: false, properties: {
     bodiesBySlide: { type: "object", additionalProperties: false,
       properties: Object.fromEntries(slideNumbers.map((n) => [`slide${n}`, {
@@ -42,6 +44,17 @@ export function withCountedPlanBodies<T>(schema: T): T {
     const node = value as Record<string, unknown>;
     const properties = node.properties as Record<string, unknown> | undefined;
     if (properties?.slideNumber && properties.body) {
+      const slideNumber = properties.slideNumber as { enum?: number[] };
+      const textMode = properties.textMode as { enum?: string[] } | undefined;
+      // The existing grammar permits body-only teaching. Selecting that mode
+      // up front avoids generating a redundant heading and then rewriting it.
+      if (slideNumber.enum?.every((number) => number > 1) && properties.headline && textMode?.enum) {
+        const modes = textMode.enum.filter((mode) => mode !== "headline_body");
+        if (modes.length > 0) {
+          properties.headline = { type: "null" };
+          properties.textMode = { ...textMode, enum: modes };
+        }
+      }
       const body = properties.body as { type?: string };
       if (body.type !== "null") {
         const counted = buildCountedBodyRepairSchema([2]).properties.bodiesBySlide.properties.slide2;

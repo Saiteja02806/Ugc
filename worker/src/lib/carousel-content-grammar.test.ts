@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
+import countedSyntheticFixture from "./carousel-config/counted-body-synthetic-fixture.json" with { type: "json" };
+import { decodeCountedPlanBodies, CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
 import test from "node:test";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
@@ -41,6 +42,17 @@ const analysis: WebsiteBusinessAnalysis = {
   valueProps: ["Connect planning, follow-up, and reporting"],
   visualKeywords: ["paper calendar", "organized desk"],
 };
+
+test("a provider-produced synthetic counted plan passes all publishing checks without rewriting copy", () => {
+  const decoded = decodeCountedPlanBodies(countedSyntheticFixture);
+  const checked = parseCarouselContentPlanForAssignment(decoded, {
+    analysis, contentFormatId: "list", hookFamilyId: "surprise", recentHistory: [], slideCount: 6,
+  });
+  assert.deepEqual(checked.blockingIssues, []);
+  for (const slide of checked.plan.slides) assert.equal(slide.ctaText, null);
+  assert.equal(checked.plan.slides[4]!.body, countedSyntheticFixture.slides[4]!.body!.firstWords.join(" ")
+    + "\n\n" + countedSyntheticFixture.slides[4]!.body!.secondWords.join(" "));
+});
 
 test("Structure 1 expands every educational format to the agreed six-slide flow", () => {
   assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
@@ -243,6 +255,7 @@ test("mixed grounding failures use counted bodies during a full repair and prese
   const fixtures = assignments.map((a, i) => createDistinctBatchFixture(a.contentFormatId, a.hookFamilyId, i));
   const fixed = structuredClone(fixtures[0]!);
   fixtures[0]!.concept = "Work smarter";
+  fixtures[0]!.slides[3]!.imageDirection = "A person at a desk.";
   fixtures[0]!.slides[5]!.body = "Keep the next decision visible";
   const counted = { ...fixed, slides: fixed.slides.map((slide) => {
     if (!slide.body) return slide;
@@ -254,12 +267,19 @@ test("mixed grounding failures use counted bodies during a full repair and prese
   const previousKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-full-counted-repair";
   let rejectRepair = false;
+  let needsBodyFollowup = false;
   const requests: Array<{ response_format: { json_schema: { name: string; schema: unknown } } }> = [];
   globalThis.fetch = async (_input, init) => {
     const request = JSON.parse(String(init?.body)); requests.push(request);
     const content = request.response_format.json_schema.name === "carousel_content_batch"
       ? { items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })) }
-      : rejectRepair ? { ...counted, concept: "Work smarter" } : counted;
+      : request.response_format.json_schema.name === "scoped_carousel_batch_repair"
+        ? { concept: fixed.concept, angle: fixed.contentStrategy.angle, broadSituations: fixed.broadSituations,
+          bodiesBySlide: { slide6: counted.slides[5]!.body } }
+        : request.response_format.json_schema.name === "counted_carousel_body_repair"
+        ? { bodiesBySlide: { slide6: counted.slides[5]!.body } }
+        : rejectRepair ? { ...counted, concept: "Work smarter" }
+          : needsBodyFollowup ? { ...counted, slides: counted.slides.map((slide, index) => index === 5 ? { ...slide, body: "Keep the next decision visible" } : slide) } : counted;
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   try {
@@ -276,6 +296,22 @@ test("mixed grounding failures use counted bodies during a full repair and prese
     assert.equal(typeof result[0]!.plan.slides[5]!.body, "string");
     assert.equal(result[0]!.plan.validationResult.ok, true);
     assert.equal(result[1]!.plan.slides[2]!.body, fixtures[1]!.slides[2]!.body);
+    fixtures[0]!.slides[3]!.imageDirection = fixed.slides[3]!.imageDirection;
+    requests.length = 0;
+    const scoped = await buildCarouselContentPlanBatch(input);
+    assert.equal(scoped.length, 5);
+    assert.equal(requests[1]!.response_format.json_schema.name, "scoped_carousel_batch_repair");
+    assert.equal(scoped[0]!.plan.slides[2]!.body, fixed.slides[2]!.body);
+    fixtures[0]!.slides[3]!.imageDirection = "A person at a desk.";
+    needsBodyFollowup = true;
+    requests.length = 0;
+    const followedUp = await buildCarouselContentPlanBatch(input);
+    assert.equal(followedUp.length, 5);
+    assert.equal(requests.length, 3);
+    assert.equal(requests[2]!.response_format.json_schema.name, "counted_carousel_body_repair");
+    assert.equal(followedUp[0]!.plan.slides[2]!.body, fixed.slides[2]!.body);
+    assert.equal(followedUp[0]!.plan.slides[5]!.body, fixed.slides[5]!.body);
+    needsBodyFollowup = false;
     rejectRepair = true;
     await assert.rejects(buildCarouselContentPlanBatch(input), (error: unknown) => {
       assert.ok(error instanceof CarouselPartialBatchPlanningError);

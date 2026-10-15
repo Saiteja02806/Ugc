@@ -1,6 +1,6 @@
-# UGC Pilot private beta — 0.1.12 candidate
+# UGC Pilot — 0.2.0 public-submission candidate
 
-Draft UGC copy and video prompts in ordinary language, then use your connected UGC Pilot account when you ask to generate media. This package includes fourteen skills covering connection, generation, media transfer, five creative workflows, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, and saved Library outputs where enabled.
+Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes fourteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, and saved Library outputs where enabled.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
@@ -11,11 +11,11 @@ Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-
 - **Codex:** use Settings → MCP servers → Add server, choose Streamable HTTP, and paste the endpoint. Select Authenticate, sign into your UGC Pilot account, approve access, and restart the connection. To load the workflow skills and helper, follow the repository marketplace example in the client setup guide, or update the plugin through your trusted installed source.
 - **Claude web / Desktop:** use Customize → Connectors → Add custom connector, paste the endpoint, finish OAuth, and enable it in the conversation. Organization policies may require administrator setup.
 - **Claude Code:** extract this folder and evaluate with `claude --plugin-dir /absolute/path/to/ugc-pilot`. Complete OAuth through `/mcp`. Marketplace installation is a separate distribution step.
-- **ChatGPT:** install the actual private plugin link supplied with the beta and connect when prompted. Developer mode offers a manual MCP connection for eligible accounts. A public directory listing has not been released.
+- **ChatGPT:** after platform approval, install UGC Pilot from the public ChatGPT/Codex directory and connect when prompted. Until approval, use only a permitted private or workspace installation path. Where custom MCP connections are available, use the current client flow to enter the endpoint and finish OAuth.
 
 For exact CLI commands and troubleshooting, read [client setup](skills/connect-ugc-pilot/references/client-setup.md). Reading or uploading this ZIP in a web chat alone does not install an MCP connection.
 
-The host must load this skill package for the five creative workflows to be discoverable. Adding the MCP URL alone connects the tools; it does not install these local Markdown skills. A web-client connector and a plugin directory listing are separate distribution paths. This package has not been approved for a public directory, and existing installed/cached versions need an explicit update before they gain the new skills.
+The host must load this skill package for the five creative workflows to be discoverable. Adding the MCP URL alone connects the tools; it does not install these local Markdown skills. A web-client connector and a plugin directory listing are separate distribution paths. This package is ready for submission preparation but has not been approved for a public directory, and existing installed/cached versions need an explicit update before they gain the new skills.
 
 ## Creative requests
 
@@ -51,7 +51,7 @@ Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing de
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The released server contract contains **73 tools**; this account-settings candidate registers **79** after its server/schema release. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The reviewed server contract contains **79 tools**. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.
@@ -63,7 +63,7 @@ Full application parity remains unfinished. Explore/slideshow working drafts, sl
 
 ## Verification status
 
-The existing-media trim → demo composition → actual local download passed in Codex on 13 October 2026 using the released 0.1.9 helper. This is not new-hook generation, local upload, Claude Code, or complete application acceptance. Package/schema validation and offline behavior checks are independent from installed-host activation. Fresh-account OAuth, installed skill behavior, paid generation through each target host and media previews must pass before customer rollout. See the bundled evaluation-cases.json for pending acceptance scenarios; expected routes are criteria, not recorded passes. A demo recording and platform approval remain separate requirements.
+Package/schema validation and offline creative-output checks pass for this source. A production read-only MCP preflight on 15 October 2026 confirmed health, OAuth metadata, authenticated account reads, live capabilities, finishing capabilities, and edit-export capabilities. Fresh-account OAuth, installed skill behavior, paid generation through each target host, and media previews still need real customer-client acceptance. See the bundled evaluation-cases.json for the pending installed-host scenarios. A reviewer-accessible demo recording and platform approval remain separate requirements.
 
 ## Speech and audio where enabled
 

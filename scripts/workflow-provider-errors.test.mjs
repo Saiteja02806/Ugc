@@ -56,6 +56,7 @@ test("both Explore workflows render the actual public rejection as an alert inst
     "@/components/explore/hook-workflow-media-controls": { WorkflowMediaPlayer() { throw new Error("No video exists for this failed request"); } },
     "@/components/ui/button": {},
     "@/components/explore/workflow-creation.module.css": { default: {} },
+    "@/components/video/video-generation-placeholder": {},
   });
   const generation = { busy: false, results: [], error: getPublicBackgroundJob(failedJob).error.message };
   for (const kind of ["hook", "phone"]) {

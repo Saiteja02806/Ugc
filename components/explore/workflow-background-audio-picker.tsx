@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import secondary from "@/components/explore/workflow-secondary-action.module.css";
 import { useQuery } from "@tanstack/react-query";
 import { LoaderCircle, Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,7 @@ function BackgroundAudioLibrarySession({ ownerId, attachment, onChoose, disabled
   const busy = disabled || !!selecting || attachment.loading;
   const loadError = library.error instanceof Error ? library.error.message : null;
   return <Popover open={open} onOpenChange={next => { if (!next) stopPreview(); else setError(null); setOpen(next); }}>
-    <PopoverTrigger render={<Button type="button" variant="outline" disabled={busy} className="h-10 px-3 text-sm" />}>Audio Library</PopoverTrigger>
+    <PopoverTrigger render={<Button type="button" variant="outline" disabled={busy} className={secondary.action} />}>Audio Library</PopoverTrigger>
     <PopoverContent align="start" className="w-[25rem] max-w-[calc(100vw-32px)] space-y-3 p-4">
       <PopoverTitle>Background audio library</PopoverTitle>
       {localPreview ? <p className="text-xs leading-5 text-muted">Sign in to the app to browse background music. This local preview doesn&apos;t load the library.</p>

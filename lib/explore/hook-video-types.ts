@@ -3,6 +3,10 @@ export type ExploreVideoReference = {
   posterUrl: string;
   videoUrl: string;
   durationSeconds?: number;
+  instagramUrl?: string;
+  sourceUrl?: string;
+  sourcePlatform?: "instagram" | "tiktok";
+  previewVideoUrl?: string;
   pairedAudio?: { title: string; url: string; durationSeconds: number };
 };
 

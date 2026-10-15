@@ -1,11 +1,11 @@
 import "server-only";
 import catalog from "./reference-text-catalog.json" with { type: "json" };
 import { ReferenceTextSchema, type ReferenceText } from "./reference-text";
-import { getRecreateReferences } from "./recreate-catalog";
+import { getRecreateReference } from "./recreate-catalog";
 
 /** Only immutable catalogue identities resolve text; URLs from the client never do. */
 export function getReferenceText(referenceId: string, slideId: string | null, format?: ReferenceText["format"]): ReferenceText | null {
-  const reference = getRecreateReferences().find(r => r.id === referenceId);
+  const reference = getRecreateReference(referenceId);
   if (!reference) throw new Error("Choose an available catalogue reference.");
   if (format && reference.format !== format) throw new Error("Choose a reference from this workflow.");
   const sourceUrl = reference.format === "slideshow"

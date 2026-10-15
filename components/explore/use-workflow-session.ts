@@ -8,10 +8,12 @@ import { createWorkflowSession, parseWorkflowSession, readWorkflowSession, resto
 import type { WorkflowGenerationSettings } from "@/lib/explore/workflow-generation-settings";
 import type { MediaAsset } from "@/lib/media/types";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { workflowVisitStorage } from "@/lib/explore/workflow-visit-storage";
+import { workflowDraftStorage, markWorkflowDraftScheduled, type WorkflowDraftEntry } from "@/lib/explore/workflow-draft-lifecycle";
 
 const emptyAssets = (): WorkflowSessionAssets => ({ source: null, demo: null, demoAudio: null });
 /** Only owned IDs and serializable drafts are stored. Recovery cannot upload or submit work. */
-export function useWorkflowSession({ ownerId, enabled, defaults }: { ownerId: string | null; enabled: boolean; defaults: WorkflowGenerationSettings }) {
+export function useWorkflowSession({ ownerId, enabled, defaults, draftEntry }: { ownerId: string | null; enabled: boolean; defaults: WorkflowGenerationSettings; draftEntry?: WorkflowDraftEntry }) {
   const [session, setSession] = useState(() => createWorkflowSession(ownerId ?? "preview", defaults));
   const current = useRef(session);
   const [assets, setAssets] = useState<WorkflowSessionAssets>(emptyAssets);
@@ -21,17 +23,22 @@ export function useWorkflowSession({ ownerId, enabled, defaults }: { ownerId: st
   const active = useRef(true), revision = useRef(0), loadedRef = useRef(!enabled);
   const key = ownerId ? workflowSessionStorageKey(ownerId) : null;
   const defaultsRef = useRef(defaults);
+  const draftId = draftEntry?.id, createNew = draftEntry?.createNew;
+  const storage = useCallback(() => draftId ? workflowDraftStorage(localStorage, draftId) : workflowVisitStorage(sessionStorage), [draftId]);
   useEffect(() => { active.current = true; const requests = revision; return () => { active.current = false; requests.current++; }; }, []);
   useEffect(() => {
     if (!enabled || !ownerId || !key) return;
     const request = ++revision.current, controller = new AbortController();
     loadedRef.current = false;
     const isCurrent = () => active.current && request === revision.current && !controller.signal.aborted;
-    void Promise.resolve().then(async () => {
+    const restore = async () => {
       try {
         if (!isCurrent()) return;
         setLoaded(false); setError(null);
-        const draft = readWorkflowSession(localStorage.getItem(key), ownerId) ?? createWorkflowSession(ownerId, defaultsRef.current);
+        const stored = storage().getItem(key);
+        if (draftId && !createNew && stored === null) throw new Error("This draft is not available on this browser. Open Saved drafts or start a new video; your generated media is kept in Creative Assets.");
+        const draft = readWorkflowSession(stored, ownerId) ?? createWorkflowSession(ownerId, defaultsRef.current);
+        if (draftId && stored === null) storage().setItem(key, serializeWorkflowSession(draft));
         const assertActive = () => { if (!isCurrent()) throw new Error("This account's saved workflow changed during recovery."); };
         let tokenRequest: ReturnType<typeof getCurrentUserIdToken> | null = null;
         const restored = await withReadDeadline(async bounded => restoreWorkflowSessionAssets(draft, async id => {
@@ -44,19 +51,30 @@ export function useWorkflowSession({ ownerId, enabled, defaults }: { ownerId: st
         current.current = draft; setSession(draft); setAssets(restored.assets); setProblems(restored.problems); setSessionRevision(value => value + 1);
       } catch (cause) { if (isCurrent()) { setAssets(emptyAssets()); setError(cause instanceof Error ? cause.message : "Could not recover the saved workflow."); } }
       finally { if (isCurrent()) { loadedRef.current = true; setLoaded(true); } }
-    });
+    };
+    // A draft has one editing owner per browser. A second tab cannot overwrite
+    // its snapshot or clip settings while the first is still editing it.
+    if (draftId) {
+      if (!navigator.locks) void Promise.resolve().then(() => { if (isCurrent()) { setError("This browser cannot safely coordinate saved drafts across tabs. Use a browser with Web Locks support."); setLoaded(true); } });
+      else void navigator.locks.request(`${key}:${draftId}`, { ifAvailable: true }, async lock => {
+        if (!isCurrent()) return;
+        if (!lock) { setError("This draft is already open in another tab. Close that copy, then retry recovery, or start a new video."); setLoaded(true); return; }
+        await restore();
+        if (!controller.signal.aborted) await new Promise<void>(resolve => controller.signal.addEventListener("abort", () => resolve(), { once: true }));
+      }).catch(cause => { if (isCurrent()) { setError(cause instanceof Error ? cause.message : "Could not lock this draft safely."); setLoaded(true); } });
+    } else void Promise.resolve().then(restore);
     return () => controller.abort();
-  }, [enabled, ownerId, key, attempt]);
+  }, [enabled, ownerId, key, attempt, draftId, createNew, storage]);
   const update = useCallback((change: (previous: WorkflowSession) => WorkflowSession) => {
     if (!active.current || !loadedRef.current) return false;
     try {
       const next = parseWorkflowSession(change(current.current), ownerId ?? "preview");
       if (JSON.stringify(next) === JSON.stringify(current.current)) return true;
-      if (enabled && key) localStorage.setItem(key, serializeWorkflowSession(next));
+      if (enabled && key) storage().setItem(key, serializeWorkflowSession(next));
       current.current = next; setSession(next); setError(null);
       return true;
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Your workflow could not be saved in this browser."); return false; }
-  }, [enabled, key, ownerId]);
+  }, [enabled, key, ownerId, storage]);
   const acceptAsset = useCallback((role: WorkflowSessionMediaRole, asset: MediaAsset, sourceMode?: WorkflowSession["sourceMode"]) => {
     const problem = workflowSessionAssetError(asset, asset.id, role);
     if (problem) { setProblems(previous => ({ ...previous, [role]: problem })); return false; }
@@ -86,13 +104,21 @@ export function useWorkflowSession({ ownerId, enabled, defaults }: { ownerId: st
     update(previous => ({ ...previous, [role === "source" ? "pendingSource" : role === "demo" ? "pendingDemo" : "pendingDemoAudio"]: true }));
   }, [update]);
   const reset = useCallback(() => {
+    // A hard transition releases this draft's lock and all of its pending UI callbacks.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    if (draftId) { window.location.href = "/explore/create-hook"; return; }
     revision.current++;
     try {
-      if (enabled && key) localStorage.removeItem(key);
       const next = createWorkflowSession(ownerId ?? "preview", defaultsRef.current);
+      if (enabled && key) storage().setItem(key, serializeWorkflowSession(next));
       current.current = next; setSession(next); setAssets(emptyAssets()); setProblems({}); setError(null); loadedRef.current = true; setLoaded(true); setSessionRevision(value => value + 1);
     } catch { setError("Browser storage could not reset the saved workflow. Its accepted generation and schedule requests are kept."); }
-  }, [enabled, key, ownerId]);
-  return { session, assets, problems, loaded, error, update, acceptAsset, clearMedia, clearProblem, markPending, reset,
+  }, [enabled, key, ownerId, draftId, storage]);
+  const complete = useCallback(() => {
+    if (!enabled || !ownerId || !draftId || !active.current || !loadedRef.current) return;
+    try { markWorkflowDraftScheduled(localStorage, ownerId, draftId); }
+    catch { setError("Your schedule is saved, but this browser could not update the draft's status. Review Scheduling."); }
+  }, [enabled, ownerId, draftId]);
+  return { session, assets, problems, loaded, error, update, acceptAsset, clearMedia, clearProblem, markPending, reset, complete,
     recoveryRevision: sessionRevision, retry: () => { loadedRef.current = false; setLoaded(false); setAttempt(value => value + 1); } };
 }

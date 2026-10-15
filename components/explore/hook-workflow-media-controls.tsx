@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import studio from "@/components/explore/workflow-studio.module.css";
 import playerStyles from "@/components/explore/workflow-media-player.module.css";
+import secondary from "@/components/explore/workflow-secondary-action.module.css";
 import { cn } from "@/lib/utils";
 
-export type WorkflowAttachment = ReturnType<typeof useLocalWorkflowMedia>;
+export type WorkflowAttachment = Omit<ReturnType<typeof useLocalWorkflowMedia>, "cancelPending">;
 
 export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel, className, disabled = false }: {
   attachment: WorkflowAttachment;
@@ -29,7 +30,7 @@ export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel,
       if (file) void attachment.choose(file);
       event.target.value = "";
     }} />
-    <Button type="button" variant="outline" aria-label={label} className={cn("h-10 px-3 text-sm", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
+    <Button type="button" variant="outline" aria-label={label} className={cn(kind === "audio" ? secondary.action : "h-10 px-3 text-sm", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
       {icon}{attachment.loading ? "Reading file…" : buttonLabel ?? label}
     </Button>
   </>;

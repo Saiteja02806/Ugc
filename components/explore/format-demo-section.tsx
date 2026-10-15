@@ -10,7 +10,12 @@ import { WorkflowClipSourceActions } from "@/components/explore/workflow-clip-so
 import { WorkflowDemoControls } from "@/components/explore/workflow-demo-controls";
 import { WorkflowSavedAudioPicker } from "@/components/explore/workflow-saved-audio-picker";
 import { WorkflowBackgroundAudioPicker } from "@/components/explore/workflow-background-audio-picker";
+import { ClipPreviewControls } from "./clip-preview-controls";
+import { ClipTrimTimeline } from "./clip-trim-timeline";
+import editorStyles from "./format-video-editor.module.css";
 import { FormatVideoTextFields, trimFormatVideoEdit } from "@/components/explore/format-video-text-fields";
+import { RemixTextSection } from "@/components/explore/remix-text-section";
+import { applyVideoTextRemix } from "@/lib/explore/remix-text-edit";
 import { FormatVideoTextOverlay } from "@/components/explore/format-video-text-overlay";
 import { WorkflowSequencePreview } from "@/components/explore/workflow-sequence-preview";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
@@ -117,6 +122,8 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
     const [finalMediaInfo, setFinalMediaInfo] = useState<{ id: string; duration: number; width: number; height: number; error?: boolean } | null>(null);
     const [previewTime, setPreviewTime] = useState(0);
+    const [remixError, setRemixError] = useState<string | null>(null);
+    const [textStyleTarget, setTextStyleTarget] = useState<HTMLDivElement | null>(null);
     const [scheduleProgressTarget, setScheduleProgressTarget] = useState<HTMLDivElement | null>(null);
     const [watchedSequence, setWatchedSequence] = useState<string | null>(null);
     const [finishedSequence, setFinishedSequence] = useState<string | null>(null);
@@ -322,10 +329,20 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         localStorage.setItem(key, JSON.stringify(next));
     }
     catch { /* Saving verifies its durable receipt independently. */ } }
+    function seekDemoText(timeMs: number) {
+        editPlayer.current?.pause(); editAudio.current?.pause();
+        if (editPlayer.current) editPlayer.current.currentTime = (draft.editing.trimStartMs + timeMs) / 1000;
+        setPreviewTime(timeMs);
+    }
     function trimDemo(startMs: number, endMs: number) {
-        change({ ...draft, editing: trimFormatVideoEdit(draft.editing, startMs, endMs) });
-        setPreviewTime(0); editAudio.current?.pause();
-        if (editPlayer.current) editPlayer.current.currentTime = startMs / 1000;
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return;
+        const end = Math.min(Math.round(duration * 1000), Math.max(1000, endMs));
+        const start = Math.max(0, Math.min(startMs, end - 1000));
+        const position = start !== draft.editing.trimStartMs ? start : Math.max(start, end - 50);
+        editPlayer.current?.pause(); editAudio.current?.pause();
+        change({ ...draft, editing: trimFormatVideoEdit(draft.editing, start, end) });
+        setPreviewTime(position - start);
+        if (editPlayer.current) editPlayer.current.currentTime = position / 1000;
     }
     const prepareSelection = () => { setSelectionChanged(true); setSave(null); setSaveBusy(false); setFinal(null); onDirty(); };
     async function chooseVideo(file: File) {
@@ -410,8 +427,9 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     const problems = <>{selection.error || videoError || audioError || audio.error || preview && validation ? <p role="alert" className="text-xs text-destructive">{selection.error ?? videoError ?? audioError ?? audio.error ?? validation}</p> : null}
     {demoQuery.isError || audioQuery.isError || openingQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not restore a saved clip or audio. <button type="button" className="underline" onClick={() => { void openingQuery.refetch(); void demoQuery.refetch(); void audioQuery.refetch(); }}>Retry</button></p> : null}</>;
     const controls = <div className={`${styles.demoControls} space-y-4`}>
-      <h2 className="text-sm font-semibold">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h2>
+      <h2 className="text-sm font-semibold">{editPreviewActive ? "Video settings" : <>Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></>}</h2>
       <fieldset disabled={busy} className="min-w-0 space-y-4">
+        <div hidden={editPreviewActive}>
         <div className={styles.demoSourceActions}>
           <Button type="button" variant="outline" data-demo-source="upload" onClick={() => fileInput.current?.click()}><span className={styles.demoSourceIcon} aria-hidden="true"><Upload className="size-5" /></span><span>{preview ? "Replace demo" : "Upload demo"}</span></Button>
           <Button type="button" variant="outline" onClick={() => setAssetsOpen(true)}><span className={styles.demoSourceIcon} aria-hidden="true"><FolderOpen className="size-5" /></span><span>Creative Assets</span></Button>
@@ -419,6 +437,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         </div>
         {preview ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs text-muted" title={preview.name}>{preview.name}</p><Button type="button" size="sm" variant="ghost" onClick={removeDemo}>Remove</Button></div>
           : <p className="text-xs leading-5 text-muted">MP4, MOV or WebM · 1–60 seconds · Up to 100 MB. Uploads appear on the Demo screen.</p>}
+        </div>
         <section className={creation.editGroup} aria-label="Background audio settings">
           {referenceAudio ? <p className="text-xs leading-5 text-muted">Reference audio: {referenceAudio.title}. This track continues across your video. Demo speech stays audible.</p> : <div className={creation.finishRow}><span className="text-sm font-medium">Background audio</span><button type="button" role="switch" aria-label="Background audio" aria-checked={draft.backgroundMusic === true} disabled={busy} className={styles.backgroundAudioSwitch} onClick={() => { if (!busy) change({ ...draft, backgroundMusic: !draft.backgroundMusic }); }}><span className={styles.backgroundAudioTrack} aria-hidden="true"><span className={styles.backgroundAudioThumb}/></span></button></div>}
           {!referenceAudio ? <div className={styles.backgroundChoices}>
@@ -432,12 +451,24 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       </fieldset>
       {problems}
     </div>;
-    const editingControls = <div className="space-y-4">
-      {preview ? <fieldset disabled={busy} className={styles.clipControlsGrid}>
-        <section aria-label="Demo trim" data-editor-section="trim"><details className={styles.demoOptions} open><summary>Trim demo <span>{Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s selected</span></summary><div className="mt-3 space-y-3"><div className="grid grid-cols-2 gap-3">{(["trimStartMs", "trimEndMs"] as const).map((name, index) => <label key={name} className="space-y-2 text-xs text-muted">{index === 0 ? "Start" : "End"} (seconds)<input type="number" aria-label={index === 0 ? "Demo trim start" : "Demo trim end"} min={0} max={duration} step={.1} value={draft.editing[name] / 1000} className={field} onChange={event => trimDemo(name === "trimStartMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimStartMs, name === "trimEndMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimEndMs)}/></label>)}</div><p className="text-xs text-muted">Selected: {Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s</p></div></details></section>
-        <div className={styles.clipTextControls}><FormatVideoTextFields editing={draft.editing} onChange={editing => change({ ...draft, editing })} timeMs={previewTime} onSeek={timeMs => { if (editPlayer.current) editPlayer.current.currentTime = (draft.editing.trimStartMs + timeMs) / 1000; setPreviewTime(timeMs); }} />
-        {textMayBeCropped ? <p role="status" className="text-xs leading-5 text-muted">Your crop may cut off this heading. Move the text inside the visible area or adjust Crop & zoom before saving.</p> : null}</div>
-        <div className={styles.clipUtilityControls}>
+    const editingControls = <div className={editorStyles.editorRoot}>
+      <div className={editorStyles.editorHeader}><h2 className="text-sm font-semibold">Edit demo video</h2><span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span></div>
+      {preview ? <fieldset disabled={busy} className={`${styles.clipControlsGrid} ${editorStyles.controlGrid}`}>
+        <details className={`${styles.demoOptions} ${editorStyles.trimSection}`} aria-label="Demo trim" data-editor-section="trim" open><summary>Trim <span>{Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s selected</span></summary><section className={editorStyles.trimBody} aria-label="Trim">
+          <div className={editorStyles.trimTimingFields}>{(["trimStartMs", "trimEndMs"] as const).map((name, index) => <label key={name}>{index === 0 ? "Start" : "End"}<span>Seconds</span><input type="number" aria-label={index === 0 ? "Demo trim start" : "Demo trim end"} min={index === 0 ? 0 : draft.editing.trimStartMs / 1000 + 1} max={index === 0 ? Math.max(0, draft.editing.trimEndMs / 1000 - 1) : duration} step={.1} value={draft.editing[name] / 1000} className={field} onChange={event => trimDemo(name === "trimStartMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimStartMs, name === "trimEndMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimEndMs)}/></label>)}</div>
+          <ClipTrimTimeline disabled={busy} durationMs={Math.round(duration * 1000)} startMs={draft.editing.trimStartMs} endMs={draft.editing.trimEndMs} timeMs={draft.editing.trimStartMs + previewTime} onChange={trimDemo} />
+        </section></details>
+        <div className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>
+          <RemixTextSection editorNavigation owner={owner} targetKey={`demo:${demo?.id ?? preview.url}`} format="hook" disabled={busy} localPreview={localPreview} scopeLabel="Only this demo clip. The hook stays unchanged." onUse={(output, source) => {
+            try { const editing = applyVideoTextRemix(draft.editing, output, source); setRemixError(null); change({ ...draft, editing }); seekDemoText(formatTextOverlays(editing)[0]?.startMs ?? 0); return true; }
+            catch (error) { setRemixError(error instanceof Error ? error.message : "Review the remixed text."); return false; }
+          }}>
+            <FormatVideoTextFields styleTarget={textStyleTarget} editing={draft.editing} onChange={editing => change({ ...draft, editing })} timeMs={previewTime} onSeek={seekDemoText} />
+          </RemixTextSection>
+          {remixError ? <p role="alert" className="text-xs leading-5 text-destructive">{remixError}</p> : null}
+          {textMayBeCropped ? <p role="status" className="text-xs leading-5 text-muted">Your crop may cut off this heading. Move the text inside the visible area or adjust Crop & zoom before saving.</p> : null}
+        </div>
+        <div className={`${styles.clipUtilityControls} ${editorStyles.utilityControlSection}`}><div ref={setTextStyleTarget} className={editorStyles.styleDock} />
         <details className={styles.demoOptions}><summary>Crop & zoom <span>{draft.framing ? "Custom framing" : "Full clip"}</span></summary><div className="mt-3 space-y-3">
           <p className="text-xs leading-5 text-muted">The full demo fits by default. Choose Adjust crop &amp; pan to change the frame.</p><WorkflowDemoControls asset={preview} value={draft.framing} onChange={framing => change({ ...draft, framing })} outputAspect={openingQuery.data?.width && openingQuery.data.height ? openingQuery.data.width / openingQuery.data.height : hasOpening ? 9 / 16 : width / height} disabled={busy}/>
         </div></details>
@@ -452,12 +483,12 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       </fieldset> : <p className="text-sm leading-6 text-muted">Add a demo in the Demo section to edit it here.</p>}
       {problems}
     </div>;
-    const editingActions = <div className={styles.clipActionContent}><div className={styles.clipActionButtons}><Button type="button" className="h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all" disabled={busy || !preview || !!validation || !!audio.error || !!backgroundAudio.error || !!audioError || !!backgroundError || !localPreview && (!demo || !demoDraftSave.loaded || Boolean(draft.audioId && !audioQuery.data) || Boolean(draft.backgroundAudioId && !backgroundQuery.data))} onClick={async () => {
+    const editingActions = <div className={styles.clipActionContent}><div className={editorStyles.actionBar}>{onEditDone ? <Button type="button" variant="ghost" className="h-11 rounded-xl px-4" disabled={busy} onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to videos</Button> : null}<Button type="button" className={`${editorStyles.saveAction} h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`} disabled={busy || localPreview || !preview || !!validation || !!audio.error || !!backgroundAudio.error || !!audioError || !!backgroundError || !localPreview && (!demo || !demoDraftSave.loaded || Boolean(draft.audioId && !audioQuery.data) || Boolean(draft.backgroundAudioId && !backgroundQuery.data))} onClick={async () => {
       if (busy || !preview || validation || audio.error || backgroundAudio.error || audioError || backgroundError) return;
-      if (localPreview) { onEditDone?.(); return; }
-      const accepted = await demoDraftSave.save(); if (accepted && alive.current) onEditDone?.();
-    }}>{demoDraftSave.busy ? "Saving…" : "Apply demo edits"}</Button>{onEditDone ? <Button type="button" variant="outline" className="h-11 rounded-xl px-4" disabled={busy} onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div>
-      <p role="status" className="text-xs leading-5 text-muted">{localPreview ? "Preview · demo edits stay in this browser." : demoDraftSave.saved && !demoDraftSave.dirty ? (demo?.sourceType === "demo_upload" ? "Demo edits saved. Open Edit on the Demo screen to continue." : `Demo edits saved · revision ${demoDraftSave.saved.revision}.`) : (demo?.sourceType === "demo_upload" ? "Save these demo edits for reuse from the Demo screen." : "Save demo edits without waiting for video rendering.")}</p>
+      if (localPreview) return;
+      await demoDraftSave.save();
+    }}>{demoDraftSave.busy ? "Saving…" : demoDraftSave.saved && !demoDraftSave.dirty ? "Edits saved" : "Save edits"}</Button></div>
+      <p role="status" className="text-xs leading-5 text-muted">{localPreview ? "Demo edits stay in this browser preview." : demoDraftSave.busy ? "Saving your edits…" : demoDraftSave.saved && !demoDraftSave.dirty ? "Edits saved. Your preview is up to date." : "Changes appear in the preview immediately. Save edits to keep them."}</p>
       {demoDraftSave.error ? <><p role="alert" className="text-xs leading-5 text-destructive">{demoDraftSave.error}</p><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={demoDraftSave.reload}>Reload saved demo draft</Button></> : null}
     </div>;
     const previewAudioUrl = audioQuery.data?.url ?? audio.asset?.url;
@@ -465,15 +496,20 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         const sound = editAudio.current, video = editPlayer.current;
         if (!sound || !video) return;
         sound.volume = draft.editing.musicVolume;
+        sound.muted = video.muted;
         const elapsed = Math.max(0, video.currentTime - draft.editing.trimStartMs / 1000);
         const position = draft.playback === "repeat" && Number.isFinite(sound.duration) && sound.duration > 0 ? elapsed % sound.duration : elapsed;
         if (draft.playback === "once" && Number.isFinite(sound.duration) && elapsed >= sound.duration) { sound.pause(); return; }
         if (Math.abs(sound.currentTime - position) > .15) sound.currentTime = position;
         if (!video.paused) void sound.play().catch(() => {});
     }
+    useEffect(() => {
+        if (editPlayer.current) editPlayer.current.volume = draft.editing.originalVolume;
+        if (editAudio.current) editAudio.current.volume = draft.editing.musicVolume;
+    }, [draft.editing.originalVolume, draft.editing.musicVolume]);
     const editingPreview = <section className="flex flex-col items-center gap-4" aria-label="Demo edit preview" style={{ "--clip-aspect": width / height } as CSSProperties}>{preview ? <div className={styles.clipPreviewHeading}><h3>{editActive ? draft.framing ? "Full clip preview" : "Live preview" : "Demo video"}</h3><span>{width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : width === height ? "1:1" : width < height ? "Portrait" : "Landscape"}</span></div> : null}
       {preview ? <div data-clip-media data-clip-orientation={width < height ? "portrait" : width > height ? "landscape" : "square"} className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}`, "--clip-aspect": width / height } as CSSProperties}>
-        <video ref={editPlayer} src={preview.url} aria-label="Demo video being edited" controls playsInline preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {
+        <video ref={editPlayer} src={preview.url} aria-label="Demo video being edited" playsInline preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {
           const video = event.currentTarget;
           if (video.videoWidth > 0 && video.videoHeight > 0) setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
           if (Number.isFinite(video.duration)) setNaturalDuration(video.duration);
@@ -481,7 +517,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         }} onPlay={event => { const video = event.currentTarget; video.volume = draft.editing.originalVolume; if (video.currentTime < draft.editing.trimStartMs / 1000 || video.currentTime >= draft.editing.trimEndMs / 1000) video.currentTime = draft.editing.trimStartMs / 1000; synchronizeEditSound(); }} onPause={() => editAudio.current?.pause()} onSeeked={synchronizeEditSound} onTimeUpdate={event => {
           const video = event.currentTarget; video.volume = draft.editing.originalVolume;
           setPreviewTime(video.currentTime * 1000 - draft.editing.trimStartMs);
-          if (video.currentTime * 1000 >= draft.editing.trimEndMs) { video.pause(); video.currentTime = draft.editing.trimStartMs / 1000; }
+          if (!video.paused && video.currentTime * 1000 >= draft.editing.trimEndMs) { video.pause(); video.currentTime = Math.max(draft.editing.trimStartMs, draft.editing.trimEndMs - 50) / 1000; }
           synchronizeEditSound();
         }} />
         {overlays.map((text, overlayIndex) => previewTime >= text.startMs && previewTime < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Demo text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height} /> : null)}
@@ -494,10 +530,11 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         <div className={styles.emptyClipActions}><WorkflowClipSourceActions label="demo video" disabled={busy} onUpload={chooseVideo} onChooseAssets={() => setAssetsOpen(true)} /></div>
         {selection.error || videoError ? <p role="alert" className="col-span-full text-xs text-destructive">{videoError ?? selection.error}</p> : null}
       </div>}
+      {preview ? <ClipPreviewControls player={editPlayer} onMute={muted => { if (editPlayer.current) editPlayer.current.muted = muted; if (editAudio.current) editAudio.current.muted = muted; }} timeMs={previewTime} startMs={draft.editing.trimStartMs} endMs={draft.editing.trimEndMs} onSeek={timeMs => { editPlayer.current?.pause(); editAudio.current?.pause(); if (editPlayer.current) editPlayer.current.currentTime = (draft.editing.trimStartMs + timeMs) / 1000; setPreviewTime(timeMs); }} /> : null}
       {previewAudioUrl ? <audio ref={editAudio} src={previewAudioUrl} loop={draft.playback === "repeat"} preload="metadata" aria-label="Demo added audio preview" /> : null}
       {!editActive && preview ? <><p className="max-w-full truncate text-xs text-muted" title={preview.name}>{preview.name}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="demo" disabled={busy || !onEdit} onClick={onEdit}>Edit demo video</Button><Button type="button" variant="outline" aria-label="Change demo video" disabled={busy || !onAdd} onClick={onAdd}>Change</Button></div>{draft.framing ? <p className="text-xs leading-5 text-muted">Full clip preview. Your crop applies when you save.</p> : null}</> : editActive && draft.framing ? <p className="max-w-md text-center text-xs leading-5 text-muted">Full clip preview. Review your crop in Crop & zoom; it applies when you save.</p> : null}
     </section>;
-    const actions = <div className="space-y-2"><Button type="button" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-all" disabled={pendingSource || selection.busy || !sourcePreview && !opening && !demo || Boolean(validation && preview)} onClick={onContinue}>Schedule video</Button>
+    const actions = <div className="space-y-2"><Button type="button" className="h-11 w-full rounded-xl font-semibold shadow-sm hover:shadow transition-shadow" disabled={pendingSource || selection.busy || !sourcePreview && !opening && !demo || Boolean(validation && preview)} onClick={onContinue}>Schedule video</Button>
     {opening && !draft.backgroundMusic ? <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={skip}>Continue without demo</Button> : null}
   </div>;
     const results = <section className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6" aria-label="Opening and demo preview"><h2 className="text-base font-semibold">{currentFinal ? "Your final video" : "Your video sequence"}</h2>{currentFinal ? <video src={currentFinal.url} controls playsInline aria-label="Merged final video" className="mx-auto max-h-[65dvh] max-w-full rounded-xl"/> : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2"><figure><figcaption className="mb-3 text-sm font-medium">1 · {format === "wall_text" ? "Wall of text" : "Hook"}</figcaption>{opening ? <video src={opening.url} controls playsInline preload="metadata" aria-label="Saved opening video" className="max-h-80 w-full rounded-xl bg-black object-contain"/> : <div className="flex min-h-48 items-center justify-center rounded-xl border border-border p-5 text-center text-sm text-muted">Save your opening from its preview.</div>}</figure><figure><figcaption className="mb-3 text-sm font-medium">2 · Demo</figcaption>{preview ? <video ref={previewPlayer} src={preview.url} controls playsInline preload="metadata" aria-label="Selected demo video" className="max-h-80 w-full rounded-xl bg-black object-contain" onLoadedMetadata={event => { const length = event.currentTarget.duration; if (Number.isFinite(length) && length >= 1 && length <= 120) {
@@ -620,7 +657,7 @@ export function DemoSaveRun({ save, ownerId, format, enabled, onBusy, onSaved, o
     useEffect(() => { onBusy(!join.output && !error && !["failed", "cancelled"].includes(current.status?.outcome ?? "")); }, [join.output, error, current.status, onBusy]);
     useEffect(() => { if (join.output)
         onSaved({ id: join.output.id, kind: "media_asset", url: join.output.url, title: join.output.title }); }, [join.output, onSaved]);
-    const actions = join.output ? <><Button type="button" disabled={pendingSource} className="h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all" onClick={onContinue}>Schedule video</Button><p role="status" className="text-xs text-muted">{save.opening && requiresDemo ? "Your opening and demo are saved as one video." : "Your final video is ready."}</p></> : <><Button type="button" className="h-11 rounded-xl px-5 font-medium" disabled={pendingSource || !error && action.disabled} onClick={() => { if (!pendingSource) action.onAction(); }}>{error || ["failed", "cancelled"].includes(current.status?.outcome ?? "") ? "Retry final video" : !requiresDemo || prepared ? "Saving your video…" : "Preparing your demo…"}</Button><p role="status" className="text-xs leading-5 text-muted">{action.message}</p>{error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}<Button type="button" variant="ghost" size="sm" onClick={action.refresh} disabled={action.busy}>Refresh save status</Button>{action.cancel ? <Button type="button" variant="ghost" size="sm" onClick={action.cancel}>Cancel save</Button> : null}</>;
+    const actions = join.output ? <><Button type="button" disabled={pendingSource} className="h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow" onClick={onContinue}>Schedule video</Button><p role="status" className="text-xs text-muted">{save.opening && requiresDemo ? "Your opening and demo are saved as one video." : "Your final video is ready."}</p></> : <><Button type="button" className="h-11 rounded-xl px-5 font-medium" disabled={pendingSource || !error && action.disabled} onClick={() => { if (!pendingSource) action.onAction(); }}>{error || ["failed", "cancelled"].includes(current.status?.outcome ?? "") ? "Retry final video" : !requiresDemo || prepared ? "Saving your video…" : "Preparing your demo…"}</Button><p role="status" className="text-xs leading-5 text-muted">{action.message}</p>{error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}<Button type="button" variant="ghost" size="sm" onClick={action.refresh} disabled={action.busy}>Refresh save status</Button>{action.cancel ? <Button type="button" variant="ghost" size="sm" onClick={action.cancel}>Cancel save</Button> : null}</>;
     const scheduleActions = join.output ? <p role="status" className="text-xs text-muted">Publishing file ready.</p> : <div className="space-y-1">
       <p role="status" className="text-xs leading-5 text-muted">{error ? "Your publishing file couldn't be prepared." : action.message}</p>
       {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}

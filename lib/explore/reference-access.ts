@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { getRecreateReferences } from "./recreate-catalog";
+import { getRecreateReference, getRecreateReferences } from "./recreate-catalog";
 import { getReferenceText } from "./reference-text-store";
 
 export class ReferenceAccessError extends Error {
@@ -29,7 +29,7 @@ export function listExploreReferences(input: { format?: Format; query?: string; 
     ? Buffer.from(JSON.stringify({ version:1, fingerprint, offset:next })).toString("base64url") : null };
 }
 export function getExploreReference(referenceId: string, slideId: string | null) {
-  const reference = getRecreateReferences().find(item => item.id === referenceId);
+  const reference = getRecreateReference(referenceId);
   if (!reference) throw new ReferenceAccessError("NOT_FOUND", "Choose an available application reference.");
   if (reference.format === "slideshow" && slideId === null) return { reference, source:null, text_status:"slide_required" as const };
   if (reference.format !== "slideshow" && slideId !== null || reference.format === "slideshow" && !reference.slides.some(item => item.id === slideId))

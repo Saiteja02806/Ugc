@@ -23,7 +23,7 @@ import { WorkflowCaptionEditor, type WorkflowCaptions } from "./workflow-caption
 const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
-export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions }: {
+export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false }: {
   videoLabel: "Hook" | "Phone video" | "Talking head";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
@@ -41,6 +41,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
   demoFramingError?: string | null;
   onDemoControlsOpen?: () => void;
   captions?: WorkflowCaptions;
+  demoInPreview?: boolean;
 }) {
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("clean");
   const [subtitlePlacement, setSubtitlePlacement] = useState<"bottom" | "middle" | "top">("bottom");
@@ -57,7 +58,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
     <h2 className="sr-only">Edit &amp; add demo</h2>
     <p className="sr-only">Keep your video on its own, or add a demo after it.</p>
     <div className={creation.editMediaGrid}>
-      <section aria-label="Optional demo" className={creation.uploadCard} data-selected={!!demo.asset} aria-busy={demo.loading} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
+      <section hidden={demoInPreview} aria-label="Optional demo" className={creation.uploadCard} data-selected={!!demo.asset} aria-busy={demo.loading} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
         event.preventDefault();
         const file = event.dataTransfer.files[0];
         if (file) void demo.choose(file);
@@ -85,6 +86,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
         {demoFramingEnabled && demo.asset && onDemoFramingChange && demoFramingError ? <p role="alert" className="text-xs text-destructive">{demoFramingError} <button type="button" className="underline" disabled={editingBusy} onClick={() => onDemoFramingChange(null)}>Reset framing</button></p> : null}
         {demo.error ? <p role="alert" className="text-sm text-destructive">{demo.error}</p> : null}
       </section>
+      {demoInPreview ? <><div><h2 className={creation.sectionTitle}>Final video settings</h2><p className={creation.sectionHelp}>Edit your clips in the preview. Choose audio and subtitles here.</p></div>{demoFramingEnabled && demo.asset && onDemoFramingChange ? <WorkflowDemoControls key={`${demo.asset.url}:${outputAspect}`} asset={demo.asset} value={demoFraming} onChange={onDemoFramingChange} outputAspect={outputAspect} disabled={editingBusy} onOpen={onDemoControlsOpen} /> : null}{demoFramingError ? <p role="alert" className="text-xs text-destructive">{demoFramingError}</p> : null}</> : null}
       <section aria-label="Demo audio attachment" className={creation.uploadCard} data-selected={!!demoAudio.asset} aria-busy={demoAudio.loading} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (demo.asset && event.dataTransfer.files[0]) void demoAudio.choose(event.dataTransfer.files[0]); }}>
         <div className={creation.finishRow}>
           <h3 className="text-sm font-medium">Demo audio <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>

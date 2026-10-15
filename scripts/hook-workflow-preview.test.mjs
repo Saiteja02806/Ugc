@@ -24,6 +24,7 @@ test("Talking Head + Demo connects in production while explicit layout previews 
   new Function("require", "exports", ts.transpileModule(read("components/explore/hook-workflow-entry.tsx"), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText)(name => {
     if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }) };
     if (name === "next/navigation") return { useSearchParams: () => query };
+    if (name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: "draft-entry" };
     return { HookWorkflowPreview: "HookWorkflowPreview" };
   }, entry);
   const exports = {};
@@ -44,7 +45,8 @@ test("Talking Head + Demo connects in production while explicit layout previews 
         query = new URLSearchParams(preview ? { preview } : {});
         const shell = exports.default();
         assert.equal(shell instanceof Promise, false);
-        const rendered = shell.props.children.type(shell.props.children.props);
+        const result = shell.props.children.type(shell.props.children.props);
+        const rendered = result.type === "draft-entry" ? result.props.children({ id: "test-draft", createNew: true }) : result;
         assert.equal(rendered.type, "HookWorkflowPreview");
         assert.equal(rendered.props.generationEnabled, enabled === "true" && preview !== "1");
         assert.equal(rendered.props.demoFramingEnabled, true);
@@ -57,7 +59,7 @@ test("Talking Head + Demo connects in production while explicit layout previews 
 
 test("layout review cannot generate, render, upload or spend credits", () => {
   assert.doesNotMatch(frontend, /\bfetch\(|localStorage|sessionStorage|getCurrentUserIdToken|\.trigger\(/);
-  assert.match(panel, /<Button type="button" disabled aria-label=\{kind === "hook" \? "Generate hook" : "Generate phone video"\}/);
+  assert.match(panel, /<Button type="button" disabled aria-label=\{kind === "hook" \? "Generate talking-head video" : "Generate phone video"\}/);
   assert.match(media, /URL\.createObjectURL/);
   assert.match(media, /URL\.revokeObjectURL/);
 });
@@ -66,7 +68,7 @@ test("user-owned references and audio intent are separate from demo background a
   assert.match(composer, /Upload creator/);
   assert.match(composer, /Attach video reference/);
   assert.match(audioReference, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
-  assert.match(audioReference, /Requires Seedance 2\.5 · Up to 30 seconds/);
+  assert.match(audioReference, /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
   assert.match(workspace, /audioReference: hookAudio\.asset/);
   assert.match(workspace, /demoAudio=\{demoAudio\.asset\}/);
   assert.doesNotMatch(audioReference, />Exact recording<\/Button>/);
@@ -80,7 +82,7 @@ test("the workflow keeps user instructions authoritative and removes test-hook c
   assert.match(composer, /Nothing is prefilled or rewritten/);
   assert.match(composer, /onInstructionsChange\(event\.target\.value\)/);
   assert.match(workspace, /onInstructionsChange=\{setInstructions\}/);
-  assert.match(workspace, /useState\(""\)/);
+  assert.match(workspace, /useState\(recovery\.session\.instructions\)/);
   assert.doesNotMatch(workspace, /Reference library/);
   assert.match(workspace, /WorkflowCompositionPanel/);
   assert.doesNotMatch(workspace, /Try with a hook video|Use this hook|Hook selected|Build your video/);
@@ -108,8 +110,8 @@ test("video/audio controls are permanent and demo changes clear background audio
   assert.ok(workspace.indexOf("<HookWorkflowComposer") < workspace.indexOf('aria-label="Hook creation workspace"'));
   assert.doesNotMatch(workspace, /demoOpen|audioOpen|Dialog|Attached demo|Attach audio/);
   assert.doesNotMatch(workspace, /<WorkflowCompositionPanel[^>]*key=/);
-  assert.match(workspace, /function removeDemo\(\) \{\s*setDemoFraming\(null\);\s*demoAudio\.remove\(\);\s*demo\.remove\(\)/);
-  assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
+  assert.match(workspace, /function removeDemo\(\) \{\s*demoRevision\.current\+\+; audioRevision\.current\+\+;\s*setDemoFraming\(null\);\s*localDemoAudio\.remove\(\); localDemo\.remove\(\)/);
+  assert.match(workspace, /localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); return true/);
 });
 
 test("local media is detached before cleanup and Creator selection adds no prompts", () => {
@@ -118,12 +120,13 @@ test("local media is detached before cleanup and Creator selection adds no promp
   assert.match(controls, /player\.setAttribute\("src", asset\.url\)/);
   assert.match(media, /asset\?\.url\.startsWith\("blob:"\)/);
   assert.match(media, /function chooseLibraryImage/);
-  assert.doesNotMatch(frontend, /setInstructions\((?!\))/);
+  assert.doesNotMatch(media, /setInstructions/);
 });
 
-test("reference state is local to the layout preview", () => {
-  assert.match(workspace, /const demo = useLocalWorkflowMedia\("video"\)/);
-  assert.match(workspace, /const demoAudio = useLocalWorkflowMedia\("audio"\)/);
+test("browser reference state stays local while durable recovery is behind its session hook", () => {
+  assert.match(workspace, /const localDemo = useLocalWorkflowMedia\("video"\)/);
+  assert.match(workspace, /const localDemoAudio = useLocalWorkflowMedia\("audio"\)/);
   assert.match(workspace, /const videoReference = useLocalWorkflowMedia\("video"\)/);
+  assert.match(workspace, /const recovery = useWorkflowSession\(/);
   assert.doesNotMatch(workspace, /\bfetch\(|localStorage|sessionStorage/);
 });

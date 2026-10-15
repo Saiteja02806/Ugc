@@ -20,6 +20,7 @@ function harness(format, reducedMotion = false) {
       return [state[index], value => { state[index] = value; }];
     } },
     "@/lib/utils": { cn: (...parts) => parts.filter(Boolean).join(" ") },
+    "@/worker/src/lib/explore-instagram-source": { canonicalHookSource: () => null },
   };
   const exports = {};
   const source = readFileSync(new URL("../components/explore/recreate-workspace.tsx", import.meta.url), "utf8");

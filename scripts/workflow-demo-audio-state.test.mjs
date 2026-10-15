@@ -17,6 +17,7 @@ function nodes(value) {
 function layout(kind) {
   let cursor = 0, mediaCursor = 0;
   const generationInputs = [];
+  const recoveryInputs = [];
   const generationSettings = {aspectRatio:"9:16"};
   let generated = null;
   let generationDraft;
@@ -30,16 +31,54 @@ function layout(kind) {
     accepted: true, removed: 0,
     async choose() { return this.accepted; },
     remove() { this.removed++; },
+    cancelPending() {},
   }));
   attachments[0].assets = [attachments[0].asset];
   const appScreen = { asset: null, loading: false, error: null };
   const css = { default: new Proxy({}, { get: (_, key) => key }) };
+  const recovery = {
+    session: {
+      section: "create", scheduleDraft: {}, sourceMode: "generate", instructions: "",
+      generationSettings: { model: "seedance_2_5", duration: 5, quantity: 1, resolution: "720p", aspectRatio: "9:16" },
+      localReferences: false, demoAudioPlayback: "once", demoFraming: null,
+      sourceAssetId: null, generatedAssetId: null, generatedSelectionCleared: false, pendingSource: false,
+      demoAssetId: null, demoAudioAssetId: null, pendingDemo: false, pendingDemoAudio: false, options: {},
+    },
+    assets: { source: null, demo: null, demoAudio: null }, problems: {}, loaded: true, error: null, recoveryRevision: 0,
+  };
+  recovery.update = (change) => { recovery.session = change(recovery.session); return true; };
+  recovery.acceptAsset = (role, asset, sourceMode) => {
+    recovery.assets[role] = asset;
+    if (role === "source") recovery.update(previous => ({ ...previous, sourceMode: sourceMode ?? previous.sourceMode, sourceAssetId: sourceMode === "generate" ? previous.sourceAssetId : asset.id ?? null, generatedAssetId: sourceMode === "generate" ? asset.id ?? null : previous.generatedAssetId, generatedSelectionCleared: false, pendingSource: false }));
+    if (role === "demo") {
+      recovery.assets.demoAudio = null;
+      recovery.update(previous => ({ ...previous, demoAssetId: asset.id ?? null, demoAudioAssetId: null, pendingDemo: false, pendingDemoAudio: false, demoAudioPlayback: "once", demoFraming: null }));
+    }
+    if (role === "demoAudio") recovery.update(previous => ({ ...previous, demoAudioAssetId: asset.id ?? null, pendingDemoAudio: false }));
+    return true;
+  };
+  recovery.clearProblem = (role) => { delete recovery.problems[role]; };
+  recovery.clearMedia = (role) => {
+    recovery.assets[role] = null;
+    if (role === "source") recovery.update(previous => ({ ...previous, sourceAssetId: null, generatedAssetId: null, generatedSelectionCleared: true, pendingSource: false }));
+    if (role === "demo") { recovery.assets.demoAudio = null; recovery.update(previous => ({ ...previous, demoAssetId: null, demoAudioAssetId: null, pendingDemo: false, pendingDemoAudio: false, demoAudioPlayback: "once", demoFraming: null })); }
+    if (role === "demoAudio") recovery.update(previous => ({ ...previous, demoAudioAssetId: null, pendingDemoAudio: false, demoAudioPlayback: "once" }));
+  };
+  recovery.markPending = (role) => recovery.update(previous => ({ ...previous, [role === "source" ? "pendingSource" : role === "demo" ? "pendingDemo" : "pendingDemoAudio"]: true }));
+  recovery.retry = () => {};
+  recovery.reset = () => {};
+  const sourceSelection = {
+    mode: "generate", source: null, preview: null, dirty: false, ready: false, busy: false, error: null,
+    restoreOwned() {}, ownedForMode() { return null; }, setMode() {}, chooseUpload: async () => true,
+    removeUpload() {}, clearUploadError() {}, clearSelection() {},
+  };
   const imports = {
     "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
     react: {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, (value) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
       useRef(initial) { const index = cursor++; slots[index] ??= { current: initial }; return slots[index]; },
       useEffect() {},
+      useLayoutEffect() {},
       useCallback: callback => callback,
     },
     "@base-ui/react/tabs": { Tabs: { Root: "tabs", Panel: "tabpanel" } },
@@ -50,6 +89,13 @@ function layout(kind) {
     "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" },
     "next/link": { default: "link" },
     "next/navigation": { useSearchParams: () => new URLSearchParams() },
+    "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },
+    "@/components/explore/use-workflow-session": { useWorkflowSession: (inputs) => { recoveryInputs.push(inputs); return recovery; } },
+    "@/lib/explore/workflow-generation-settings": {
+      createWorkflowGenerationSettings: (duration, model) => ({ model: model ?? "seedance_2_5", duration, quantity: 1, resolution: "720p", aspectRatio: "9:16" }),
+      normalizeWorkflowGenerationSettings: value => value,
+    },
+    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => { throw new Error("Unexpected reference upload in a local workflow fixture"); } },
     "@/components/explore/hook-workflow-composer": { HookWorkflowComposer: "composer" },
     "@/components/explore/phone-workflow-composer": { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition" },
@@ -64,7 +110,7 @@ function layout(kind) {
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "canvas" },
     "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => appScreen },
-    "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => ({mode: "generate", source: null, preview: null, dirty: false}) },
+    "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => sourceSelection },
     "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
     "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => attachments[0] },
@@ -97,7 +143,7 @@ function layout(kind) {
         generationDraft,
       };
     },
-    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, scheduleAction, prepareAction,
+    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, recoveryInputs, scheduleAction, prepareAction,
     selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
     setFinishedOutput(output) { finishedOutput = output; },
   };
@@ -166,10 +212,10 @@ test("Talking Head preview always remains visible and its removed toggle cannot 
   assert.equal(rendered.finishing.source.id, "selected-preview-clip");
 });
 
-test("Hook quick-start model and duration reach the settings owner through the actual layout", () => {
+test("Hook quick-start model and duration seed the recovered settings owner through the actual layout", () => {
   const actual = layout("hook");
   actual.render({ initialModel: "kling_3_0", initialDuration: 10 });
-  assert.deepEqual(actual.generationInputs, [{ initialModel: "kling_3_0", initialDuration: 10 }]);
+  assert.deepEqual(actual.recoveryInputs.map(({ defaults }) => ({ model: defaults.model, duration: defaults.duration })), [{ model: "kling_3_0", duration: 10 }]);
   assert.equal(actual.demo.removed, 0);
   assert.equal(actual.audio.removed, 0);
 });
@@ -189,7 +235,8 @@ test("Talking Head Schedule keeps its guarded actions inside the settings panel 
   assert.equal(actions.props.enabled, false, "The local preview cannot schedule");
   assert.equal(actions.type, "schedule-actions");
   assert.equal(all.filter(node => node.type === "footer" && node.props?.["aria-label"] === "Schedule actions").length, 0);
-  assert.equal(view.finishing.inlineSchedule, true);
+  assert.equal(view.finishing.scheduleDraft, settings.props.draft, "The finishing boundary and the visible schedule controls share one posting draft");
+  assert.equal(view.finishing.scheduleTimezone, settings.props.timezone, "The finishing boundary uses the account-aware timezone shown by schedule controls");
   assert.ok(all.find(node => node.type === "controls").props.actionContent, "The in-card default action is replaced");
   assert.equal(all.find(node => node.type === "scheduling").props.demoAudio, actual.audio.asset);
   actions.props.onBackToEdit();

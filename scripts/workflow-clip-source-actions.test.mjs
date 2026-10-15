@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
-function harness(disabled = false) {
+function harness(disabled = false, presentation = "menu") {
   let cursor = 0;
   const uploads = [], clicks = [], slots = [], ref = { current: { click: () => clicks.push("upload") } }, exports = {};
   const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
@@ -14,7 +14,7 @@ function harness(disabled = false) {
   }).outputText, { exports, require: name => name === "react" ? { useRef: () => ref, useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => slots[i] = value]; } } : name === "react/jsx-runtime" ? jsx
     : name === "lucide-react" ? { Upload: "upload-icon", FolderOpen: "folder-icon", Check: "check-icon", ChevronDown: "chevron", Sparkles: "generate-icon" }
     : name === "@/components/ui/popover" ? { Popover: "popover", PopoverContent: "content", PopoverTitle: "title", PopoverTrigger: "trigger" } : { Button: "button" } });
-  const render = () => { cursor = 0; return exports.WorkflowClipSourceActions({ label: "hook video", disabled,
+  const render = () => { cursor = 0; return exports.WorkflowClipSourceActions({ label: "hook video", disabled, presentation,
     onUpload: async file => uploads.push(file), onChooseAssets: () => clicks.push("assets"), onGenerate: () => clicks.push("generate") }); };
   return { uploads, clicks, render, input: () => nodes(render()).find(n => n.type === "input"),
     option: label => nodes(render()).find(n => n.type === "button" && n.props["aria-label"] === label) };
@@ -36,4 +36,17 @@ test("pending inputs disable both choices and reject late file events", () => {
   const h = harness(true); assert.equal(h.input().props.disabled, true); assert.equal(nodes(h.render()).find(n => n.type === "trigger").props.render.props.disabled, true);
   h.option("Upload hook video").props.onClick(); h.option("Choose hook video from Creative Assets").props.onClick(); assert.deepEqual(h.clicks, []);
   h.input().props.onChange({ currentTarget: { files: [{ name: "opening.mp4" }], value: "opening.mp4" } }); assert.deepEqual(h.uploads, []);
+});
+
+test("empty edit setup exposes source actions directly, with the same upload and disabled guards", () => {
+  const h = harness(false, "inline");
+  assert.equal(nodes(h.render()).some(node => node.type === "trigger"), false);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button").length, 3);
+  h.option("Upload hook video").props.onClick();
+  h.option("Choose hook video from Creative Assets").props.onClick();
+  h.option("Generate hook video").props.onClick();
+  assert.deepEqual(h.clicks, ["upload", "assets", "generate"]);
+  const locked = harness(true, "inline");
+  for (const button of nodes(locked.render()).filter(node => node.type === "button")) { assert.equal(button.props.disabled, true); button.props.onClick(); }
+  assert.deepEqual(locked.clicks, []);
 });

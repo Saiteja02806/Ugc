@@ -63,7 +63,7 @@ let catalogue;
 const hook={ id:"hook-a",format:"hook",title:"Hook for planning",category:null,categoryLabel:null,posterUrl:"https://cdn.example.test/poster.jpg",videoUrl:"https://cdn.example.test/"+"a".repeat(64)+".mp4",slides:[],durationSeconds:4,
   pairedAudio:{title:"Supplied track",url:"https://cdn.example.test/track.mp3",durationSeconds:12} };
 const slideshow={ ...hook,id:"slide-a",format:"slideshow",title:"Planning slides",category:"productivity",categoryLabel:"Productivity",videoUrl:undefined,pairedAudio:undefined,slides:[{id:"slide-1",url:"https://cdn.example.test/slide.jpg",width:1080,height:1920}] };
-mock.module("@/lib/explore/recreate-catalog",{namedExports:{getRecreateReferences:()=>catalogue}});
+mock.module("@/lib/explore/recreate-catalog",{namedExports:{getRecreateReferences:()=>catalogue,getRecreateReference:id=>catalogue.find(item=>item.id===id)}});
 const { createMcpHandler, McpServer }=await import("@modelcontextprotocol/server");
 const { registerReferenceMcpTools, registeredReferenceMcpTools }=await import("../lib/mcp/reference-tools.ts");
 const handler=createMcpHandler(()=>{const server=new McpServer({name:"reference-fixture",version:"1.0.0"});registerReferenceMcpTools(server);return server;},{legacy:"stateless"});

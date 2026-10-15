@@ -162,7 +162,7 @@ function SequencePreviewSession({ timeline, backgroundAudio, active, width, heig
           const style: CSSProperties = { position: "absolute", left: `${projection.left}%`, top: `${projection.top}%`, width: `${projection.width}%`, height: `${projection.height}%` };
           return <div key={entry.id} ref={node => { layers.current[index] = node; }} hidden={visible !== index} style={style}>
             <video ref={node => { videos.current[index] = node; }} src={entry.url} preload="auto" playsInline aria-hidden="true" tabIndex={-1}
-              className="size-full object-fill" onLoadedMetadata={event => {
+              className="size-full object-fill" style={{ width: "100%", height: "100%", maxWidth: "none", maxHeight: "none", objectFit: "fill" }} onLoadedMetadata={event => {
                 const player = event.currentTarget;
                 if (!Number.isFinite(player.duration) || player.duration * 1000 + 50 < entry.sourceEndMs) { fail(`The ${entry.label.toLowerCase()} has changed. Choose it again to preview.`); return; }
                 player.volume = entry.editing?.originalVolume ?? 1; player.muted = mute.current;

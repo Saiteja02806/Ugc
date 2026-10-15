@@ -2,20 +2,24 @@
 .heading { display: flex; align-items: center; gap: 8px; }
 .heading h2 { font-size: 14px; font-weight: 600; }
 .heading > span { color: var(--muted); font-size: 11px; }
-.heading > button { margin-left: auto; }
-.tiles { display: flex; min-width: 0; align-items: center; gap: 12px; }
-.preview { position: relative; width: 58px; height: 68px; flex: none; overflow: hidden; border: 1px solid var(--border); border-radius: 7px; background: var(--card-muted); cursor: pointer; }
+.tiles { display: flex; min-width: 0; flex-wrap: wrap; align-items: start; gap: 12px; }
+.referenceCard { display: grid; flex: 0 1 132px; min-width: 0; gap: 8px; }
+.referenceMedia { position: relative; min-width: 0; }
+.preview { position: relative; display: block; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--background); cursor: pointer; }
 .preview img { width: 100%; height: 100%; object-fit: contain; }
-.preview span { position: absolute; inset: auto 0 0; padding: 3px 0; background: #000b; color: white; font-size: 9px; text-align: center; }
+.preview span { position: absolute; inset: auto 0 0; padding: 5px 0; background: #000b; color: white; font-size: 11px; text-align: center; }
 .preview:hover { border-color: var(--primary); }
 .preview:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.referenceCopy { display: grid; flex: 1; min-width: 0; gap: 4px; }
-.referenceCopy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+.referenceMedia .remove { position: absolute; top: 6px; right: 6px; width: 28px; min-height: 28px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--card); color: var(--foreground); }
+.referenceMedia .remove:hover { background: var(--card-muted); }
+.referenceCopy { display: grid; min-width: 0; gap: 4px; }
+.referenceCopy strong { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 13px; line-height: 18px; font-weight: 500; }
 .referenceCopy span { color: var(--muted); font-size: 11px; }
-.tiles .upload { width: auto; min-height: 36px; height: auto; aspect-ratio: auto; flex: none; flex-direction: row; gap: 6px; padding: 8px 10px; font-size: 12px; }
+.tiles .upload { width: auto; max-width: 100%; min-height: 36px; height: auto; aspect-ratio: auto; flex: none; align-self: start; flex-direction: row; gap: 6px; padding: 8px 10px; font-size: 12px; }
 .tiles .upload:only-child { width: 160px; height: 160px; min-height: 160px; flex-direction: column; gap: 10px; }
 .tiles .upload:only-child > svg { width: 24px; height: 24px; }
-.selection > summary { display: flex; min-height: 36px; align-items: center; gap: 10px; color: var(--foreground); font-size: 12px; font-weight: 500; cursor: pointer; list-style: none; }
+.selection { min-width: 0; }
+.selection > summary { display: flex; min-height: 36px; align-items: center; gap: 10px; padding-right: 3px; color: var(--foreground); font-size: 12px; font-weight: 500; cursor: pointer; list-style: none; }
 .selection > summary::-webkit-details-marker { display: none; }
 .selection > summary span { margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 400; }
 .selection > summary::after { content: ""; width: 6px; height: 6px; border-right: 1px solid var(--muted); border-bottom: 1px solid var(--muted); transform: rotate(45deg); }
@@ -23,3 +27,4 @@
 .selection[open] > div { padding-top: 10px; }
 .selection > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 @media (max-width: 599px) { .tiles { flex-wrap: wrap; } .tiles .upload { min-height: 44px; } .selection > summary { min-height: 44px; } }
+@media (pointer: coarse) { .referenceMedia .remove { width: 44px; min-height: 44px; height: 44px; } }

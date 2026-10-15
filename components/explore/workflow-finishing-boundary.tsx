@@ -21,7 +21,7 @@ const UNCONFIRMED_SCHEDULE_MESSAGE = "This scheduling request is unconfirmed. Re
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
-export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource = null, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false, scheduleTimezone, composition, backgroundScheduling = false, demoAudioAssetId = null, initialOptions, onOptionsChange }: {
+export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource = null, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false, scheduleTimezone, composition, backgroundScheduling = false, demoAudioAssetId = null, initialOptions, onOptionsChange, draftId, onScheduled }: {
   enabled: boolean; ownerId: string | null; kind: "hook" | "phone"; source: MediaAsset | null; demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; scheduleDraft: WorkflowScheduleDraft;
   children: (value: WorkflowFinishingView) => ReactNode;
   demoFraming?: DemoFraming | null;
@@ -29,6 +29,8 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   demoAudioSource?: MediaAsset | null;
   initialOptions?: FinishingOptions;
   onOptionsChange?: (options: FinishingOptions) => void;
+  draftId?: string;
+  onScheduled?: () => void;
   demoFramingError?: string | null;
   fastStatus?: boolean;
   scheduleTimezone?: string;
@@ -37,12 +39,13 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const [options, setOptions] = useState(initialOptions ?? DEFAULT_FINISHING_OPTIONS);
   useEffect(() => { onOptionsChange?.(options); }, [options, onOptionsChange]);
   const effectiveDemoFraming = demoFraming && composition?.demoEditing ? trimmedDemoFraming(demoFraming, composition.demoEditing) : demoFraming;
+  const workflowScope = draftId ? `workflow:${draftId}` : undefined;
   // Independent durable identity for speech review. Style and word edits never
   // regenerate it; both requests share the owner's exact audio cache.
   const captionFinishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback,
     options: { subtitles: true, style: "clean", placement: "bottom", backgroundMusic: options.backgroundMusic }, demoFraming: effectiveDemoFraming, demoFramingError,
-    composition, demoAudioAssetId, captionPreview: true, scope: "caption-preview", fastStatus: true });
-  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback, options, onRestoreOptions: initialOptions ? undefined : setOptions, demoFraming: effectiveDemoFraming, demoFramingError, fastStatus, reuseUnchangedSource: true, captionDraft: captionFinishing.captionDraft, composition, demoAudioAssetId });
+    composition, demoAudioAssetId, captionPreview: true, scope: workflowScope ? `${workflowScope}:caption-preview` : "caption-preview", fastStatus: true });
+  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback, options, onRestoreOptions: initialOptions ? undefined : setOptions, demoFraming: effectiveDemoFraming, demoFramingError, fastStatus, reuseUnchangedSource: true, captionDraft: captionFinishing.captionDraft, composition, demoAudioAssetId, scope: workflowScope });
   const audioSelection = JSON.stringify([ownerId, source?.id, demo?.url, demoSource?.id, demoAudio?.url, demoAudioSource?.id, playback, composition, demoAudioAssetId]);
   const priorAudioSelection = useRef(audioSelection);
   const audioSelectionReady = useRef(false);
@@ -69,7 +72,9 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);
   const active = useRef(true), working = useRef(false), requestGeneration = useRef(0);
-  const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}`;
+  const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}${draftId ? `:${draftId}` : ""}`;
+  const scheduledCallback = useRef(onScheduled);
+  useEffect(() => { scheduledCallback.current = onScheduled; }, [onScheduled]);
   const selectedTargets = workflowScheduleTargets(scheduleDraft);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const authorized = useCallback(async (url: string, init?: RequestInit) => {
@@ -83,6 +88,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     // A cache failure cannot undo a confirmed server schedule.
     try { localStorage.setItem(storageKey, JSON.stringify(next)); }
     catch { setError("Your post is saved on the server, but this browser could not store its recovery record. Review Scheduling."); }
+    scheduledCallback.current?.();
   }, [storageKey]);
   const check = useCallback(async (saved: ScheduleReceipt, isCurrent: () => boolean) => {
     if (saved.scheduleId) {

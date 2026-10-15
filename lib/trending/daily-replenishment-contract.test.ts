@@ -312,3 +312,14 @@ test("automatic daily recovery remains bounded while retaining completed sibling
     /hasTerminalFailure && plan\.generationDeficit > 0[\s\S]+replacePartialDailyCarouselRefillBatch[\s\S]+getDailyCarouselReplacementBatchRequestedCount/,
   );
 });
+
+test("mixed slideshow recovery inventories and generates only the structures still owed", () => {
+  assert.match(
+    dailyFeed,
+    /const requiredStructureIds = params\.feed\.slideshow_style_mix_enabled[\s\S]+getRequestedStructureIdsForFeed/,
+  );
+  assert.match(
+    dailyFeed,
+    /getViableUnassignedCarouselInventory\(\{[\s\S]+requiredStructureIds[\s\S]+prepareDailyBusinessProfileCarousels\(\{[\s\S]+requiredStructureIds/,
+  );
+});

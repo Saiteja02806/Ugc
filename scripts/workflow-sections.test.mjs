@@ -55,7 +55,7 @@ test("both workflows have three accessible, permanently mounted section panels",
   for (const kind of ["hook", "phone"]) {
     const source = read(`${kind}-workflow-preview.tsx`);
     if (kind === "hook") {
-      assert.match(source, /requestedSection === "edit" \|\| requestedSection === "schedule" \? requestedSection : "create"/);
+      assert.match(source, /requestedSection === "create" \|\| requestedSection === "edit" \|\| requestedSection === "schedule" \? requestedSection : recovery\.session\.section/);
       assert.match(source, /useState<WorkflowSection>\(initialSection\)/);
     } else assert.match(source, /useState<WorkflowSection>\("create"\)/);
     assert.match(source, /<Tabs.Root[^>]*value=\{section\}/);
@@ -70,8 +70,8 @@ test("both workflows have three accessible, permanently mounted section panels",
     assert.match(scheduling, /<WorkflowSchedulingPanel/);
     assert.match(source, /Object.values\(scheduleDraft\)\.some\(Boolean\)/);
     assert.match(source, /Your local changes are not saved/);
-    assert.match(source, /section === "edit" \? [\s\S]*?<WorkflowEditWorkspace/);
-    assert.match(source, /<WorkflowScheduleWorkspace draft=\{scheduleDraft\}/);
+    assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
+    assert.match(source, /<WorkflowScheduleWorkspace[^>]*draft=\{scheduleDraft\}/);
   }
 });
 
@@ -90,7 +90,7 @@ test("each section shows only its own primary action and supports keyboard tab a
     assert.equal(actions.length, 1);
     assert.equal(actions[0].props.disabled, true);
     assert.equal(tree.props["data-section"], section);
-    assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Prepare final video" : "Review schedule"));
+    assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Prepare final video" : "Schedule post"));
   }
 });
 
@@ -112,14 +112,14 @@ test("panel navigation remains outside scrolling settings and leaves retained co
   assert.equal(continued, 1);
 });
 
-test("connected Prepare final video and Review schedule forward real actions and render guarded progress/errors", () => {
+test("connected Prepare final video and Schedule post forward real actions and render guarded progress/errors", () => {
   const { WorkflowCreationPanel } = load(panel);
   for (const kind of ["hook", "phone"]) for (const section of ["edit", "schedule"]) {
     let calls = 0, refreshes = 0;
     const action = { disabled: false, busy: false, message: "Ready to confirm.", error: "A response was lost.", onAction() { calls++; }, refresh() { refreshes++; } };
     const tree = WorkflowCreationPanel({ kind, section, [section]: action, children: "settings" });
     const buttons = nodes(tree).filter(n => n.type === "button");
-    const primary = buttons.find(n => text(n) === (section === "edit" ? "Prepare final video" : "Review schedule"));
+    const primary = buttons.find(n => text(n) === (section === "edit" ? "Prepare final video" : "Schedule post"));
     assert.equal(primary.props.disabled, false); primary.props.onClick(); assert.equal(calls, 1);
     assert.match(visibleText(tree), /Ready to confirm/); assert.match(text(nodes(tree).find(n => n.props.role === "alert")), /response was lost/);
     buttons.find(n => text(n) === "Refresh status").props.onClick(); assert.equal(refreshes, 1);
@@ -161,7 +161,7 @@ test("Schedule footer stays clean without implying publishing is connected", () 
   for (const kind of ["hook", "phone"]) {
     const tree = WorkflowCreationPanel({ kind, section: "schedule", children: "settings" });
     const footer = nodes(tree).find((node) => node.type === "footer");
-    assert.equal(visibleText(footer), "Review schedule");
+    assert.equal(visibleText(footer), "Schedule post");
     const action = nodes(footer).find((node) => node.type === "button");
     assert.equal(action.props.disabled, true);
     assert.equal(action.props["aria-describedby"], `${kind}-preview-limits`);

@@ -47,6 +47,9 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),
+    "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", {
+      "./generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled) } } }),
+    }),
     "@/lib/ai-studio/media-client": completedJob ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
       id, collection: "video", sourceType: "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
     }) } : {},
@@ -128,12 +131,12 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.render().composer.props.referenceControls.props.imageSelection.asset.id, 'identity');
     assert.equal(h.render().composer.props.referenceControls.props.videoSelection, null);
   });
-  test(format + ': incompatible model cannot discard the source', () => {
+  test(format + ': switching to WAN retains the source clip', () => {
     const h = harness(format, { wanEnabled: true });
     const model = h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === 'Video model');
-    assert.equal(model.props.options.find(option => option.value === 'wan_3_0').disabled, true);
+    assert.equal(model.props.options.find(option => option.value === 'wan_3_0').disabled, false);
     model.props.onChange('wan_3_0');
-    assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === 'Video model').props.value, 'google_omni');
+    assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === 'Video model').props.value, 'wan_3_0');
     assert.ok(h.render().composer.props.referenceControls.props.styleVideo);
   });
 }

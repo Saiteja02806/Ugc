@@ -160,11 +160,13 @@
 .composition, .scheduling { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
 .editMediaGrid { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
 .uploadCard { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.uploadCard[hidden] { display: none; }
 .uploadCard > .finishRow { min-height: 24px; gap: 4px; }
 .uploadCard h3 { min-width: 0; }
 .uploadCard p { margin: 0; }
 .editUploadButton { position: relative; width: 100%; height: 160px; min-height: 144px; min-width: 0; flex-direction: column; gap: 10px; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 14px; background: var(--card-muted); padding: 12px 6px; font-size: 13px; font-weight: 500; white-space: normal; transition: border-color 160ms ease, background-color 160ms ease; }
-.editUploadButton.editAudioButton { height: 44px; min-height: 44px; flex: none; flex-direction: row; gap: 10px; padding: 10px 12px; border-radius: 12px; }
+.editUploadButton.editAudioButton { width: fit-content; height: auto; min-height: 34px; flex: none; flex-direction: row; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 20px; }
+.editAudioButton > svg { width: 16px; height: 16px; }
 .demoSourceCards { display: flex; flex-wrap: wrap; gap: 12px; }
 .demoSourceCards > .editUploadButton { width: 128px; height: 128px; min-height: 128px; aspect-ratio: 1; border-radius: 14px; }
 .iconWell { display: flex; width: 36px; height: 36px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 50%; background: var(--card); color: var(--foreground); }
@@ -205,17 +207,22 @@
 .editWorkspace { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 24px; padding: 24px; }
 .editWorkspace > div:first-child .sectionHelp { margin-top: 6px; }
 .sequenceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: stretch; gap: 12px; }
-.sequenceGrid[data-demo-selected="false"] { grid-template-columns: minmax(0, 1fr); }
+.sequenceGrid[data-demo-selected="false"]:not([data-kind="hook"]) { grid-template-columns: minmax(0, 1fr); }
 .editSequence { min-height: 280px; height: min(60dvh, 620px); flex: none; }
 .segment { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; }
+/* Result choices sit below their own preview. Keep this specific control compact
+   even though a column flex container stretches unclassified direct children. */
+.segment > :global(button[aria-pressed]) { width: fit-content; max-width: 100%; min-height: 40px; height: auto; align-self: center; padding-inline: 18px; white-space: normal; }
 .segmentActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
 .segmentHeader { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
 .segmentActions > button { width: auto; max-width: 100%; min-height: 34px; height: auto; white-space: normal; padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+.segment > .segmentActions { margin-top: auto; padding-top: 4px; }
+.segment:has([data-workflow-empty-segment]) { border-style: dashed; }
 .captionPosition { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-top: 12px; }
 .captionPositionChoices { display: inline-flex; flex: none; max-width: 100%; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); }
 .captionPositionChoices > button { min-width: 52px; min-height: 32px; height: auto; padding: 5px 9px; border-radius: 5px; font-size: 12px; }
 .captionPositionChoices > button[aria-pressed="true"] { background: color-mix(in srgb, var(--primary) 14%, var(--card)); color: var(--primary); font-weight: 600; }
-@media (pointer: coarse) { .segmentActions > button, .captionPositionChoices > button { min-height: 44px; } }
+@media (pointer: coarse) { .segmentActions > button, .captionPositionChoices > button, .editUploadButton.editAudioButton { min-height: 44px; } }
 .previewAction { width: fit-content; max-width: 100%; min-height: 40px; align-self: center; padding-inline: 24px; }
 .segmentEmpty { display: flex; min-height: 220px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; text-align: center; }
 .segmentEmpty p { max-width: 240px; margin: 0; font-size: 13px; line-height: 22px; color: var(--muted); }

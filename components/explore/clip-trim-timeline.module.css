@@ -1,0 +1,11 @@
+.timeline { min-width: 0; padding: 6px 10px 0; }
+.track { position: relative; height: 44px; border-radius: 8px; background: repeating-linear-gradient(90deg, var(--card-muted) 0 20px, var(--border) 20px 21px); touch-action: none; cursor: ew-resize; }
+.selection { position: absolute; inset-block: 0; border-block: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 18%, transparent); pointer-events: none; }
+.handle { position: absolute; top: -4px; display: grid; width: 20px; height: 52px; place-items: center; transform: translateX(-50%); border: 2px solid var(--primary); border-radius: 6px; background: var(--primary); color: var(--primary-foreground); cursor: ew-resize; }
+.handle span { width: 3px; height: 18px; border-radius: 3px; background: currentColor; pointer-events: none; }
+.handle:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.track:has([aria-disabled="true"]) { opacity: .55; cursor: default; }
+.handle[aria-disabled="true"] { cursor: default; }
+.playhead { position: absolute; inset-block: 4px; width: 2px; background: var(--foreground); pointer-events: none; }
+.labels { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; color: var(--muted); font-size: 11px; }
+@media (pointer: coarse) { .handle::before { position: absolute; inset: -4px -12px; content: ""; } }

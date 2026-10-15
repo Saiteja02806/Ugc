@@ -10,6 +10,7 @@ import type { WorkflowAttachment } from "@/components/explore/hook-workflow-medi
 import type { AudioAsset, AudioHistory } from "@/lib/audio/types";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import quietScrollbar from "@/components/ui/quiet-scrollbar.module.css";
+import secondary from "@/components/explore/workflow-secondary-action.module.css";
 
 /** Only explicitly selected, owned, ready commercial audio becomes an attachment. */
 export function WorkflowSavedAudioPicker(props: { ownerId: string | null; attachment: WorkflowAttachment; disabled?: boolean; buttonLabel?: string; localPreview?: boolean }) {
@@ -64,7 +65,7 @@ function SavedAudioLibrary({ ownerId, attachment, disabled = false, buttonLabel 
     } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not select saved audio."); }
     finally { selecting.current = false; if (active.current) setBusy(false); }
   }
-  return <Popover open={open} onOpenChange={changeOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled || busy || attachment.loading} className="h-10 px-3 text-sm" />}>{buttonLabel}</PopoverTrigger>
+  return <Popover open={open} onOpenChange={changeOpen}><PopoverTrigger render={<Button type="button" variant="outline" disabled={disabled || busy || attachment.loading} className={secondary.action} />}>{buttonLabel}</PopoverTrigger>
     <PopoverContent align="start" className="w-72 max-w-[calc(100vw-32px)] p-3"><PopoverTitle>Audio library</PopoverTitle>
       {localPreview ? <p className="text-xs leading-5 text-muted">Saved tracks appear here when you sign in to the app. This local preview doesn&apos;t load your account library.</p> : !ownerId ? <p className="text-xs leading-5 text-muted">Sign in to choose audio from your library.</p> : <>
         {loading ? <p role="status" className="text-xs text-muted">Loading your audio…</p> : assets.length ? <div className={`${quietScrollbar.surface} max-h-64 space-y-1 overflow-auto`}>{assets.map(a => <Button key={a.id} type="button" variant="ghost" disabled={disabled || busy || attachment.loading} className="h-auto min-h-9 w-full justify-start whitespace-normal break-words px-2 py-2 text-left text-xs" onClick={() => { void select(a); }}>{a.name}</Button>)}</div> : !loadError ? <>

@@ -23,6 +23,12 @@ export type RecreateReference = {
   posterUrl: string;
   videoUrl?: string;
   durationSeconds?: number;
+  instagramUrl?: string;
+  sourceUrl?: string;
+  sourcePlatform?: "instagram" | "tiktok";
+  previewVideoUrl?: string;
+  /** Addressable for saved work, excluded from new-reference browsing. */
+  archived?: true;
   pairedAudio?: { title: string; url: string; durationSeconds: number };
   slides: ReferenceSlide[];
 };
@@ -42,7 +48,7 @@ export function filterReferences(
   format: RecreateFormat,
   categories: readonly string[],
 ) {
-  return items.filter((item) => item.format === format &&
+  return items.filter((item) => !item.archived && item.format === format &&
     (categories.length === 0 || (item.category !== null && categories.includes(item.category))));
 }
 
@@ -67,7 +73,7 @@ export function interleaveReferenceCategories(items: readonly RecreateReference[
 export function referenceCategories(items: readonly RecreateReference[], format: RecreateFormat) {
   const categories = new Map<string, { id: string; label: string; count: number }>();
   for (const item of items) {
-    if (item.format !== format || !item.category || !item.categoryLabel) continue;
+    if (item.archived || item.format !== format || !item.category || !item.categoryLabel) continue;
     const previous = categories.get(item.category);
     categories.set(item.category, {
       id: item.category, label: item.categoryLabel, count: (previous?.count ?? 0) + 1,

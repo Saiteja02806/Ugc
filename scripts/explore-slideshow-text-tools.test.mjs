@@ -41,10 +41,10 @@ function tools(initial = { ...EMPTY_SLIDE_TEXT, heading: "Original heading", bod
   return { render, field, patches, design: () => design, disable: value => { disabled = value; }, replace: value => { design = parseSlideText(value); } };
 }
 
-test("heading and body stay directly editable while appearance settings are disclosed separately", () => {
+test("heading, body and appearance are immediately available in the focused editor", () => {
   const h = tools(), tree = nodes(h.render());
   const disclosure = tree.find(node => node.type === "details");
-  assert.ok(disclosure); assert.notEqual(disclosure.props.open, true);
+  assert.ok(disclosure); assert.equal(disclosure.props.open, true);
   assert.ok(nodes(disclosure).some(node => node.type === "summary" && text(node).startsWith("Text appearance")));
   assert.equal(nodes(disclosure).some(node => node.type === "textarea"), false);
   assert.equal(h.field("Heading").props.maxLength, 180); assert.equal(h.field("Body text").props.maxLength, 600);

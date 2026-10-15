@@ -1,5 +1,51 @@
 # Carousel System Context
 
+## 2026-10-15 Explore Remix single-input controls (local)
+
+- Shared Explore video/slideshow Remix uses one editable source text box for
+  both copy and wording preferences. Separate Additional instructions and
+  overview Options controls are removed. Unsent legacy guidance becomes visible
+  in the combined field; accepted requests retain their exact payload and key.
+- User-edited text is also forwarded through the existing instructions field;
+  unchanged catalogue copy remains source data only. The instructions limit is
+  now 6,000 characters, matching the existing source-box limit. Server-owned
+  business context, output validation, reference identity, receipts and explicit
+  review/apply are retained. No automatic generation or publishing is added.
+- Reference-first video editors use a neutral Remix surface with fewer helper
+  lines and a narrower text column. Trim and compact appearance controls move
+  beside it. This change is local and not deployed; automatic Carousel sourcing,
+  image generation, matching and rendering are unaffected.
+
+## 2026-10-15 Explore focused slideshow editor (local)
+
+- Edit slides uses a focused editing workspace without Create/Edit/Schedule
+  tabs. Back to Create and Add slide return to Create, preserving the current
+  sequence. The existing explicit save continues to gate scheduling.
+- Desktop places the live slide preview and sequence beside a bounded text
+  inspector. Smaller screens keep a compact preview and filmstrip visible above
+  the tools. Remix and text appearance start expanded; color controls and the
+  Save slideshow action are compact. Text and appearance update the existing
+  SVG overlay immediately, without generation or an implicit Library save.
+- The slideshow generation, ownership, ordering, save recovery, rendering and
+  publishing contracts are unchanged. This frontend change is not deployed.
+- Explore reference cards keep labelled Recreate/Selected actions below the
+  media so they do not obscure source text. Shared Schedule actions remain
+  visible in scrolling desktop forms; short/mobile windows use normal flow.
+  Slideshow's return action reveals Create controls on mobile, matching its
+  label instead of sending users to an empty image-results pane.
+
+## 2026-10-14 Explore slideshow reference selection layout (local)
+
+- A selected Explore slideshow uses a bounded square preview card with its title
+  and slide count below. The card's remove control clears the complete reference;
+  the expanded reference-image controls below select individual guiding slides.
+- Upload slides remains a compact adjacent action after selection. Only the
+  empty upload tile receives the shared reference-tile size rules, preventing
+  compact laptop styles from expanding the selected action outside its panel.
+- This changes Explore reference presentation only. Image generation, Library
+  saves, automatic Carousel sourcing/rendering and publishing contracts are intact.
+  It requires a website release; no production data was changed.
+
 ## 2026-10-14 Explore scheduling integrity and Talking Head session recovery (local)
 
 - Direct scheduling of saved videos and Library slideshows commits the parent,

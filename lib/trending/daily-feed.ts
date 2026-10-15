@@ -34,6 +34,7 @@ import {
   isCompleteReadyCarouselForCurrentStorage,
 } from "@/lib/trending/carousel-storage-readiness";
 import {
+  bindDailyFeedAssignmentsToStructures,
   getDailyFeedTopUpPlan,
   getOrCreatePersistedDailyFeed,
   getTrendingDailyFeedState,
@@ -610,7 +611,10 @@ async function populateDailyFeed(params: {
     : validAssignments;
   const recoveredByStructure = new Map<
     CarouselStructureId,
-    typeof eligibleRecoveredAssignments
+    Array<{
+      assignment: UserCarouselAssignment;
+      structureId: CarouselStructureId;
+    }>
   >();
 
   for (const assignment of eligibleRecoveredAssignments) {
@@ -618,19 +622,25 @@ async function populateDailyFeed(params: {
       .structureId;
     if (!structureId) continue;
     const matches = recoveredByStructure.get(structureId) ?? [];
-    matches.push(assignment);
+    matches.push({ assignment, structureId });
     recoveredByStructure.set(structureId, matches);
   }
 
-  const recoveredPlan: Array<UserCarouselAssignment | null> =
+  type RecoveredDailyFeedAssignment = {
+    assignment: UserCarouselAssignment;
+    structureId: CarouselStructureId;
+  };
+  const recoveredPlan: Array<RecoveredDailyFeedAssignment | null> =
     requestedStructureIds.length === 0
-      ? eligibleRecoveredAssignments.slice(0, topUpPlan.remainingSlotCount)
+      ? eligibleRecoveredAssignments.slice(0, topUpPlan.remainingSlotCount).map(
+          (assignment) => ({ assignment, structureId: "structure_1" }),
+        )
       : requestedStructureIds.map((structureId) => {
           const matches = recoveredByStructure.get(structureId) ?? [];
           return matches.shift() ?? null;
         });
   const recovered = recoveredPlan.filter(
-    (assignment): assignment is UserCarouselAssignment => Boolean(assignment),
+    (assignment): assignment is RecoveredDailyFeedAssignment => assignment !== null,
   );
   const missingStructureIds = requestedStructureIds.flatMap(
     (structureId, index) => (recoveredPlan[index] ? [] : [structureId]),
@@ -654,35 +664,39 @@ async function populateDailyFeed(params: {
   });
   const selected = requestedStructureIds.length === 0
     ? [
-        ...recovered.map((assignment) => ({
+        ...recovered.map(({ assignment }, index) => ({
           assignment,
+          position: topUpPlan.availablePositions[index]!,
           source: "new" as const,
         })),
-        ...fresh.map(({ assignment }) => ({
+        ...fresh.map(({ assignment }, index) => ({
           assignment,
+          position: topUpPlan.availablePositions[recovered.length + index]!,
           source: "new" as const,
         })),
       ].slice(0, topUpPlan.remainingSlotCount)
-    : (() => {
-        const freshAssignments = fresh.map(({ assignment }) => assignment);
-        return recoveredPlan.flatMap((assignment) => {
-          const resolved = assignment ?? freshAssignments.shift();
-          return resolved ? [{ assignment: resolved, source: "new" as const }] : [];
-        });
-      })();
+    : bindDailyFeedAssignmentsToStructures({
+        availablePositions: topUpPlan.availablePositions,
+        fresh: fresh.map(({ assignment, structureId }) => ({
+          structureId,
+          value: assignment,
+        })),
+        recovered: recoveredPlan.map((entry) => entry
+          ? { structureId: entry.structureId, value: entry.assignment }
+          : null),
+        requestedStructureIds,
+      }).map(({ position, value: assignment }) => ({
+        assignment,
+        position,
+        source: "new" as const,
+      }));
 
   if (selected.length === 0) {
     return;
   }
 
   const feedItemRows: DailyCarouselFeedItemInsert[] = selected.map(
-    ({ assignment, source }, index) => {
-      const position = topUpPlan.availablePositions[index];
-
-      if (!position) {
-        throw new Error("Could not reserve a Trending feed position.");
-      }
-
+    ({ assignment, position, source }) => {
       return {
         assignment_id: assignment.id,
         // Kept for historical rows and schema compatibility. New daily feed
@@ -736,6 +750,15 @@ async function reconcileDailyCarouselRefill(params: {
   profile: BusinessProfileRecord;
   userId: string;
 }) {
+  const requiredStructureIds = params.feed.slideshow_style_mix_enabled
+    ? getRequestedStructureIdsForFeed({
+        feed: params.feed,
+        positions: getDailyFeedTopUpPlan({
+          dailyLimit: params.feed.daily_limit,
+          existingPositions: params.feedItems.map((item) => item.position),
+        }).availablePositions,
+      })
+    : undefined;
   let refillBatch = await findDailyCarouselRefillBatch({
     feedId: params.feed.id,
     profile: params.profile,
@@ -753,6 +776,7 @@ async function reconcileDailyCarouselRefill(params: {
       ? params.feed.id
       : undefined,
     profile: params.profile,
+    requiredStructureIds,
     userId: params.userId,
   });
 
@@ -903,6 +927,7 @@ async function reconcileDailyCarouselRefill(params: {
     localDate: params.localDate,
     originDailyFeedId: params.feed.id,
     profile: params.profile,
+    requiredStructureIds,
     slideshowStyleMix: params.feed.slideshow_style_mix_enabled
       ? {
           helpfulTips: params.feed.helpful_tips_percent,
@@ -973,6 +998,7 @@ async function getViableUnassignedCarouselInventory(params: {
   minimumTotalCount: number;
   originDailyFeedId?: string;
   profile: BusinessProfileRecord;
+  requiredStructureIds?: readonly CarouselStructureId[];
   requireProcessingCandidate?: boolean;
   userId: string;
 }) {
@@ -1002,8 +1028,13 @@ async function getViableUnassignedCarouselInventory(params: {
           : ["completed", "processing"],
       userId: params.userId,
     });
+    const candidateStatuses = params.requiredStructureIds?.length
+      ? page.statuses.filter((status) =>
+          params.requiredStructureIds!.includes(status.generation.structureId),
+        )
+      : page.statuses;
     const jobs = await getBackgroundJobsByIds(
-      page.statuses
+      candidateStatuses
         .map((status) => status.generation.triggerRunId)
         .filter((jobId): jobId is string => Boolean(jobId)),
     );
@@ -1012,7 +1043,7 @@ async function getViableUnassignedCarouselInventory(params: {
       assignedCarouselIds,
       existingConceptFingerprints: reservedConceptFingerprints,
       localDate: params.localDate,
-      statuses: page.statuses,
+      statuses: candidateStatuses,
     });
 
     completedCount += completedStatuses.length;
@@ -1022,7 +1053,7 @@ async function getViableUnassignedCarouselInventory(params: {
       );
     }
 
-    const processingStatuses = page.statuses.filter((status) => {
+    const processingStatuses = candidateStatuses.filter((status) => {
       if (
         status.generation.status !== "processing" ||
         !status.generation.triggerRunId ||
@@ -1719,6 +1750,7 @@ async function createFreshAssignments(params: {
   const assignments: Array<{
     assignment: UserCarouselAssignment;
     created: boolean;
+    structureId: CarouselStructureId;
   }> = [];
 
   for (const status of freshStatuses) {
@@ -1733,7 +1765,7 @@ async function createFreshAssignments(params: {
       result?.assignment &&
       isActiveAssignmentState(result.assignment.state)
     ) {
-      assignments.push(result);
+      assignments.push({ ...result, structureId: status.generation.structureId });
     }
   }
 

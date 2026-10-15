@@ -148,6 +148,21 @@ test("removing audio while a saved choice downloads prevents a late replacement"
   assert.equal(actual.audio.loading, false);
 });
 
+test("cancelling a pending audio choice preserves the accepted track and ignores its late response", async () => {
+  const actual = harness();
+  let finish;
+  const pending = actual.audio.chooseRemote(() => new Promise(resolve => { finish = resolve; }));
+  assert.equal(actual.audio.loading, true);
+  actual.audio.cancelPending();
+  assert.equal(actual.audio.loading, false);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  finish(new File(["late"], "late.mp3", { type: "audio/mpeg" }));
+  assert.equal(await pending, false);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  assert.equal(actual.audio.error, null);
+  assert.equal(actual.choices.length, 0);
+});
+
 test("failed local replacements retain the prior preview and clear only after removal or a successful choice", async () => {
   const actual = harness();
   assert.equal(await actual.audio.choose(new File(["invalid"], "wrong.png", { type: "image/png" })), false);

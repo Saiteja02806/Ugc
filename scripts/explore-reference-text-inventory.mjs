@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Local catalogue identity inventory; no credentials, provider imports or calls. */
-export function sourceInventory() {
+export function sourceInventory({ includeStagedHookRelease = false } = {}) {
   const catalog = JSON.parse(readFileSync(path.join(root, "lib/explore/imported-catalog.json"), "utf8"));
   const refs = catalog.mediaStatus === "published" ? catalog.items.map(item => ({ referenceId: item.id, format: item.format,
     units: item.format === "slideshow" ? item.slides.map(s => ({ slideId: s.id, key: `explore/recreate/v1/${s.file}`, hash: s.file.split(".")[0] }))
@@ -22,6 +22,15 @@ export function sourceInventory() {
     if (paired.mediaStatus === "published") for (const item of paired.items) {
       refs.push({ referenceId: item.id, format: item.format,
         units: [{ slideId: null, hash: item.videoSha256, key: item.videoStorageKey }] });
+    }
+  }
+  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json"]) {
+    const release = JSON.parse(readFileSync(path.join(root, "worker/src/lib", file), "utf8"));
+    if (includeStagedHookRelease || release.mediaStatus === "published") for (const item of release.items) {
+      const existing = refs.find(ref => ref.referenceId === item.id);
+      if (existing) {
+        if (existing.format !== "hook" || existing.units[0].hash !== item.videoSha256) throw new Error("Conflicting hook source identity.");
+      } else refs.push({ referenceId: item.id, format: "hook", units: [{ slideId: null, hash: item.videoSha256, key: item.videoStorageKey }] });
     }
   }
   if (new Set(refs.map(r => r.referenceId)).size !== refs.length) throw new Error("Duplicate source identities.");

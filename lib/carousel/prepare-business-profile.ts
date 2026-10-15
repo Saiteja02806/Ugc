@@ -43,6 +43,7 @@ import {
   getCarouselGenerationsByBatchId,
   getWebsiteAnalysisForCarousel,
   linkCarouselExperimentAssignment,
+  listCarouselExperimentBatchesByGenerationBatchId,
   listAutoCarouselGenerationsForBusinessProfile,
   listRecentCarouselContentHistory,
   listRecentCarouselStructure2History,
@@ -70,6 +71,7 @@ import {
 } from "@/lib/carousel/structure-2-selector";
 import {
   buildTrendingSlideshowStyleBatchPlan,
+  buildTrendingSlideshowStructureBatchPlan,
   getCarouselStructureForTrendingSlideshowStyle,
   type TrendingSlideshowStyleMix,
 } from "@/lib/trending/slideshow-style-mix";
@@ -158,6 +160,7 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   localDate: string;
   originDailyFeedId: string;
   profile: BusinessProfileRecord;
+  requiredStructureIds?: readonly CarouselStructureId[];
   slideshowStyleMix?: TrendingSlideshowStyleMix;
   targetCandidateCount: number;
   timezone: string;
@@ -192,6 +195,10 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   const existingBatch = await getCarouselGenerationsByBatchId(
     params.generationBatchId,
   );
+  const existingExperimentBatches =
+    await listCarouselExperimentBatchesByGenerationBatchId(
+      params.generationBatchId,
+    );
 
   assertDailyBatchOwnership({
     existingBatch,
@@ -208,15 +215,23 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     generationBatchId: params.generationBatchId,
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
-    requestedStructureIds: params.slideshowStyleMix
-      ? buildTrendingSlideshowStyleBatchPlan({
-          carouselCount: Math.ceil(
-            requestedCandidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
-          ) * CAROUSEL_EXPERIMENT_BATCH_SIZE,
-          localDate: params.localDate,
-          mix: params.slideshowStyleMix,
-        }).map(getCarouselStructureForTrendingSlideshowStyle)
-      : undefined,
+    requestedStructureIds: params.requiredStructureIds
+      ? buildTrendingSlideshowStructureBatchPlan({
+          existingBatchStructureIds: existingExperimentBatches.map(
+            (batch) => batch.requestedStructureId,
+          ),
+          requestedCandidateCount,
+          requestedStructureIds: params.requiredStructureIds,
+        })
+      : params.slideshowStyleMix
+        ? buildTrendingSlideshowStyleBatchPlan({
+            carouselCount: Math.ceil(
+              requestedCandidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
+            ) * CAROUSEL_EXPERIMENT_BATCH_SIZE,
+            localDate: params.localDate,
+            mix: params.slideshowStyleMix,
+          }).map(getCarouselStructureForTrendingSlideshowStyle)
+        : undefined,
   });
 
   assertDailyBatchOwnership({

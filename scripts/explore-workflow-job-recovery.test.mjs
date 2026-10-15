@@ -89,6 +89,9 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     "@/contexts/auth-context": auth,
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts"),
+    "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", {
+      "./generation-settings": load("lib/ai-studio/generation-settings.ts"),
+    }),
     "@/lib/ai-studio/media-client": {
       fetchAIStudioMediaAssets: async () => {
         if (history === "failure") throw new Error("History unavailable");

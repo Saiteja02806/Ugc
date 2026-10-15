@@ -27,6 +27,7 @@ import { resolveCarouselImageLibraryCategory } from "./carousel-image-library-ca
 import { buildCarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
 import { assertCarouselStructureRuntimeReady } from "./carousel-structure.js";
 import { generateCarouselStructure2Batch } from "./carousel-structure-2-generate.js";
+import { CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
 
 type GenerateCarouselInput = {
   candidateIndex?: number;
@@ -157,6 +158,7 @@ export async function generateCarouselBatch(params: {
   const plannerInput = {
     analysis: businessAnalysis,
     businessDescription,
+    bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION } as const,
     items: rows.map((generation, slotIndex) => ({
       candidateIndex: generation.candidate_index,
       contentFormatId: generation.content_format_id ?? "",

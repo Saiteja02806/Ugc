@@ -73,6 +73,12 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
   const choose = (file: File, options: FileSelectionOptions = {}) => select(file, options);
   const chooseRemote = (loadFile: () => Promise<File>, options: FileSelectionOptions = {}, acceptFile?: (file: File) => Promise<boolean>) => select(loadFile, options, acceptFile);
 
+  function cancelPending() {
+    revision.current += 1;
+    setLoading(false);
+    setError(null);
+  }
+
   function remove() {
     revision.current += 1;
     setAsset(null);
@@ -87,7 +93,7 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
     setLoading(false);
     setError(null);
   }
-  return { asset, choose, chooseRemote, chooseLibraryImage, error, loading, remove, clearError: () => setError(null) };
+  return { asset, choose, chooseRemote, chooseLibraryImage, error, loading, remove, cancelPending, clearError: () => setError(null) };
 }
 
 function readDuration(url: string, kind: LocalMediaKind): Promise<number | null> {

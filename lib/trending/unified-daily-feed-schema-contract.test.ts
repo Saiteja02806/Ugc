@@ -544,7 +544,7 @@ test("retires a daily slot after a swipe and never schedules a replacement", () 
   );
 });
 
-test("keeps an existing daily pack immutable after an authenticated mix update", () => {
+test("keeps an existing daily pack immutable while allowing the slideshow-style mixer", () => {
   assert.match(contentMixRoute, /requireFirebaseUser\(request\)/);
   assert.match(contentMixRoute, /wall_text: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
   assert.match(contentMixRoute, /hook_video: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
@@ -552,7 +552,10 @@ test("keeps an existing daily pack immutable after an authenticated mix update",
   assert.doesNotMatch(contentMixRoute, /replanDailyTrendingUnboundSlots/);
   assert.match(contentMixRoute, /applied: currentFeed \? "next_day" : "today"/);
   assert.match(contentMixRoute, /Today's complete pack stays unchanged/);
-  assert.match(contentMixRoute, /editable: !TRENDING_SLIDESHOW_ONLY_ENABLED/);
+  assert.match(
+    contentMixRoute,
+    /slideshow-style mixer is still safe to adjust for future packs[\s\S]+editable: true/,
+  );
   assert.doesNotMatch(contentMixRoute, /entitlement\.planKey === "free"/);
   assert.doesNotMatch(contentMixRoute, /fixed daily mix/);
 });

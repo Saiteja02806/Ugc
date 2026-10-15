@@ -237,8 +237,11 @@ test("Talking Head is a synchronous route and keeps its preview guard in the cli
       const entry = load("components/explore/hook-workflow-entry.tsx", {
         "next/navigation": { useSearchParams: () => new URLSearchParams(query) },
         "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "workflow" },
+        "@/components/explore/workflow-draft-entry": { WorkflowDraftEntryBoundary: "draft-entry" },
       });
-      assert.equal(entry.HookWorkflowEntry(shell.props.children.props).props.generationEnabled, enabled === "true" && query !== "preview=1");
+      const result = entry.HookWorkflowEntry(shell.props.children.props);
+      const rendered = result.type === "draft-entry" ? result.props.children({ id: "test-draft", createNew: true }) : result;
+      assert.equal(rendered.props.generationEnabled, enabled === "true" && query !== "preview=1");
     }
   }
 });

@@ -9,6 +9,7 @@ import {
 } from "./wall-text-video-library";
 import type { RecreateReference, ReferenceSlide } from "./recreate-types";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import { getHookReferenceReleaseItems, isHookReferenceReleaseActive } from "@/worker/src/lib/explore-hook-reference-release";
 
 const IMPORTED_CATALOG_STORAGE_PREFIX = "explore/recreate/v1";
 
@@ -33,8 +34,8 @@ const importedItems = importedCatalog.mediaStatus === "published"
   ? importedCatalog.items as ImportedCatalogItem[]
   : [];
 
-export function getRecreateReferences(): RecreateReference[] {
-  const hooks = getExploreHookVideos().map((item, index): RecreateReference => ({
+export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
+  const hooks = getExploreHookVideos(includeArchivedHooks).map((item, index): RecreateReference => ({
     category: null,
     categoryLabel: null,
     format: "hook",
@@ -43,6 +44,10 @@ export function getRecreateReferences(): RecreateReference[] {
     slides: [],
     title: `Hook ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
+    ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
+    ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+    ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),
+    ...(item.previewVideoUrl ? { previewVideoUrl: item.previewVideoUrl } : {}),
     ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
     ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
@@ -64,7 +69,20 @@ export function getRecreateReferences(): RecreateReference[] {
 }
 
 export function isKnownRecreateReferenceId(value: unknown) {
-  return typeof value === "string" && getRecreateReferences().some((item) => item.id === value);
+  return typeof value === "string" && Boolean(getRecreateReference(value));
+}
+
+/** Retired gallery cards remain addressable by saved jobs, text and edit drafts. */
+export function getRecreateReference(id: unknown) {
+  if (typeof id !== "string") return undefined;
+  return getRecreateReferences().find(item => item.id === id) ?? getArchivedHookReferences().find(item => item.id === id);
+}
+
+export function getArchivedHookReferences(): RecreateReference[] {
+  // A gallery rollback must retain references used by already-saved creations.
+  if (!getHookReferenceReleaseItems().length) return [];
+  const active = new Set(getRecreateReferences().map(item => item.id));
+  return getRecreateReferences(true).filter(item => item.format === "hook" && !active.has(item.id)).map(item => ({ ...item, archived: true }));
 }
 
 /** Real source media for local visual review; never used by the authenticated API. */
@@ -74,7 +92,7 @@ export function getLocalRecreateReferences(): RecreateReference[] {
   const existingIds = new Set(existing.map((item) => item.id));
   let hookNumber = existing.filter((item) => item.format === "hook").length;
   const staged = (importedCatalog.items as ImportedCatalogItem[])
-    .filter((item) => !existingIds.has(item.id))
+    .filter((item) => !existingIds.has(item.id) && !(item.format === "hook" && isHookReferenceReleaseActive()))
     .map((item) => {
       const reference = toImportedReference(item, (file) => `/api/explore/local-media/${file}`);
       // Keep accessible Hook labels unique and consistent with later publication.

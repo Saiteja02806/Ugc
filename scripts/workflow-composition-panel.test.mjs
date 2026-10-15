@@ -21,6 +21,7 @@ function harness(code, exportName) {
     react: { useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; }, useRef(initial) { return slots[cursor++] ??= {current:initial}; } },
     "lucide-react": Object.fromEntries(["AudioLines", "Check", "ChevronDown", "Info", "Play", "Plus", "Video", "Volume2"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { RemoveMediaButton: "remove", WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player", formatMediaSeconds: (seconds) => `${seconds}s` },
+    "@/components/video/video-generation-placeholder": { VideoGenerationPlaceholder: "generation-placeholder" },
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
@@ -31,6 +32,7 @@ function harness(code, exportName) {
     "@/components/explore/workflow-saved-audio-choices": { WorkflowSavedAudioChoices: "saved-audio-choices" },
     "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "reference-preview" },
     "@/components/explore/workflow-reference-preview.module.css": { default: {} },
+    "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: (model) => ({ maxAudioDuration: model === "wan_3_0" ? 15 : 30 }) },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/worker/src/subtitles/explore-policy": { EXPLORE_SUBTITLE_SCOPE_LABEL: "English · up to 60 seconds total" },
@@ -186,13 +188,13 @@ test("both workflows expose the English/60-second combined limit without adding 
 
 test("approved workspace gives clear guidance without an empty player or dummy video", () => {
   const canvas = read("components/explore/workflow-preview-canvas.tsx");
-  assert.match(canvas, /Create your first hook/);
+  assert.match(canvas, /Create your talking-head video/);
   assert.match(canvas, /Create your first phone video/);
   const actual = harness(canvas, "WorkflowPreviewCanvas");
   for (const kind of ["hook", "phone"]) {
     for (const generation of [undefined, { results: [], busy: false, error: null }]) {
       const tree = actual.render({ kind, generation });
-      assert.match(text(tree), new RegExp(`Create your first ${kind === "hook" ? "hook" : "phone video"}`));
+      assert.match(text(tree), new RegExp(kind === "hook" ? "Create your talking-head video" : "Create your first phone video"));
       assert.equal(nodes(tree).filter((node) => ["player", "button", "video", "img", "Image"].includes(node.type)).length, 0);
     }
   }
@@ -214,6 +216,34 @@ test("connected workspaces preview only supplied saved outputs and preserve resu
     buttons[1].props.onClick();
     assert.deepEqual(selections, ["asset-2"]);
     assert.ok(players.every((node) => !node.props.autoPlay));
+  }
+});
+
+test("generated result and next-stage actions stay compact and visible", () => {
+  assert.match(styles, /\.segment > :global\(button\[aria-pressed\]\)\s*\{[^}]*width: fit-content[^}]*max-width: 100%[^}]*align-self: center/);
+  const sectionStyles = read("components/explore/workflow-section-layout.module.css");
+  assert.match(sectionStyles, /\.nextStage\s*\{[^}]*justify-content: center/);
+  assert.match(sectionStyles, /\.nextStage button\s*\{[^}]*width: auto[^}]*max-width: 100%/);
+});
+
+test("busy video previews show the shared animated placeholders and retain completed results", () => {
+  const actual = harness(read("components/explore/workflow-preview-canvas.tsx"), "WorkflowPreviewCanvas");
+  for (const kind of ["hook", "phone"]) {
+    const generation = { busy: true, pendingCount: 2, message: "Your video is generating.", pendingPreview: { aspectRatio: "16:9", referenceImageUrl: "blob:chosen-reference", label: "Creating your video" }, results: [], error: null };
+    let tree = actual.render({ kind, generation });
+    const placeholders = nodes(tree).filter(node => node.type === "generation-placeholder");
+    assert.equal(placeholders.length, 2);
+    assert.ok(placeholders.every(node => node.props.aspectRatio === "16:9" && node.props.referenceImageUrl === "blob:chosen-reference"));
+    assert.equal(nodes(tree).filter(node => node.type === "player").length, 0, "Pending generation has no fake video player");
+    generation.results = [{ id: "ready", title: "Ready video", url: "https://storage.example.test/ready.mp4", durationSeconds: 5 }];
+    tree = actual.render({ kind, generation });
+    assert.equal(nodes(tree).filter(node => node.type === "generation-placeholder").length, 2);
+    assert.equal(nodes(tree).filter(node => node.type === "player").length, 1);
+    generation.busy = false;
+    generation.error = "One video could not be generated.";
+    tree = actual.render({ kind, generation });
+    assert.equal(nodes(tree).filter(node => node.type === "generation-placeholder").length, 0);
+    assert.match(text(nodes(tree).find(node => node.props.role === "alert")), /could not be generated/);
   }
 });
 
@@ -255,7 +285,7 @@ test("Create audio keeps the recording as AI guidance without an unimplemented e
   const buttons = nodes(tree).filter((node) => node.type === "button");
   assert.ok(buttons.every(node => !["Exact recording", "Voice reference"].includes(text(node))));
   assert.deepEqual(changes, []);
-  assert.match(text(tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
+  assert.match(text(tree), /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
   assert.doesNotMatch(text(tree), /exact copy|Files upload only|through OpenRouter/);
   assert.equal(audio.asset.name, "voice.wav");
   assert.doesNotMatch(audioSource, /setInstructions|onInstructionsChange|\bfetch\(|localStorage|sessionStorage/);
@@ -325,7 +355,8 @@ test("stacked demo and audio controls keep their attachment ownership across sta
   assert.equal(nodes(tree).find((node) => node.type === "picker" && node.props.label === "Select demo audio").props.attachment, props.demoAudio);
   assert.match(styles, /\.editMediaGrid[^}]*display: flex[^}]*flex-direction: column/);
   assert.match(styles, /\.editUploadButton\s*\{[^}]*height: 160px[^}]*min-height: 144px/);
-  assert.match(styles, /\.editUploadButton\.editAudioButton[^}]*height: 44px[^}]*flex-direction: row/);
+  assert.match(styles, /\.editUploadButton\.editAudioButton[^}]*min-height: 34px[^}]*flex-direction: row/);
+  assert.match(styles, /@media \(pointer: coarse\)[^\n]*\.editUploadButton\.editAudioButton[^\n]*min-height: 44px/);
   assert.match(styles, /\.controls\[data-section="edit"\] \.uploadCard:first-child \.editUploadButton[^}]*flex: 1; height: auto/);
 });
 
@@ -362,11 +393,17 @@ test("both workflows expose explicit play-once/repeat choices and honest local t
     assert.equal(demoAudio.asset.name, "short.wav");
     assert.equal(nodes(next).find((node) => node.props.role === "switch" && node.props["aria-label"] === "Auto subtitles").props.disabled, true);
     const workspace = read(`components/explore/${videoLabel === "Hook" ? "hook" : "phone"}-workflow-preview.tsx`);
-    assert.match(workspace, /useState<ExploreBackgroundPlayback>\("once"\)/);
+    assert.match(workspace, videoLabel === "Hook" ? /useState<ExploreBackgroundPlayback>\(recovery\.session\.demoAudioPlayback\)/ : /useState<ExploreBackgroundPlayback>\("once"\)/);
     assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\} onDemoAudioPlaybackChange=\{setDemoAudioPlayback\}/);
-    assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
-    assert.match(workspace, /function removeDemoAudio\(\) \{\s*demoAudio\.remove\(\);\s*setDemoAudioPlayback\("once"\)/);
-    assert.match(workspace, /if \(accepted\) setDemoAudioPlayback\("once"\)/);
+    if (videoLabel === "Hook") {
+      assert.match(workspace, /if \(!await localDemo\.choose\(file, \{ minDuration: 1, maxDuration: 120 \}\)\) return false;[\s\S]*?localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); return true;/);
+      assert.match(workspace, /function removeDemoAudio\(\) \{\s*audioRevision\.current\+\+; localDemoAudio\.remove\(\); recovery\.clearMedia\("demoAudio"\);[\s\S]*?setDemoAudioPlayback\("once"\);/);
+      assert.match(workspace, /if \(!await localDemoAudio\.choose\(file, \{ maxDuration: 600 \}\)\) return false;[\s\S]*?setDemoAudioPlayback\("once"\); return true;/);
+    } else {
+      assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
+      assert.match(workspace, /function removeDemoAudio\(\) \{\s*demoAudio\.remove\(\);\s*setDemoAudioPlayback\("once"\)/);
+      assert.match(workspace, /if \(accepted\) setDemoAudioPlayback\("once"\)/);
+    }
     assert.doesNotMatch(workspace, /invalidDemoAudio|isDemoAudioTooLong/);
   }
 });
@@ -398,7 +435,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
     const { tree } = audioRender({ audioLabel, audio });
     const popup = nodes(tree).find(node => node.type === "PopoverContent");
     const paragraphs = nodes(popup).filter(node => node.type === "p");
-    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery with an audio clip. Requires Seedance 2.5 · Up to 30 seconds.", "voice.mp3"]);
+    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds.", "voice.mp3"]);
     const picker = nodes(tree).find(node => node.type === "picker");
     assert.equal(await picker.props.attachment.choose(file), true);
     assert.equal(chosen[0][0], file);
@@ -425,7 +462,7 @@ test("both workflows keep concise voice-reference guidance separate from demo-on
   for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
     assert.match(text(reference.tree), /Audio reference/);
-    assert.match(text(reference.tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
+    assert.match(text(reference.tree), /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
     assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });
     const details = nodes(demo.tree).find((node) => node.props["aria-label"] === "Demo audio details");

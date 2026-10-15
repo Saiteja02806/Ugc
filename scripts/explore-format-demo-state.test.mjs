@@ -89,6 +89,9 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   };
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = {
+    "./clip-preview-controls": { ClipPreviewControls: "ClipPreviewControls" },
+    "./clip-trim-timeline": { ClipTrimTimeline: "ClipTrimTimeline" },
+    "./format-video-editor.module.css": { default: new Proxy({}, { get: (_, name) => name }) },
     react, "react/jsx-runtime": jsx, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
     "@tanstack/react-query": { useQuery(input) { queryInputs.push(input); return { data: input.enabled ? ownedAssets.get(input.queryKey.at(-1)) : undefined, isError: queryFailures.has(input.queryKey[0]), refetch() {} }; } },
     "@/contexts/auth-context": { useAuth: () => ({ user: owner ? { uid: owner } : null }) },
@@ -101,12 +104,12 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => audio },
     "@/components/explore/format-video-text-fields": textFields,
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing() { throw new Error("A selection or prop transition cannot dispatch finishing."); } },
+    "@/lib/explore/remix-text-edit": { applyVideoTextRemix },
     "@/lib/explore/format-demo": { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming },
     "@/lib/explore/unchanged-hook-source": { canReuseUnchangedHookSource },
     "@/lib/explore/reference-audio-preview": { getReferenceAudioPreview },
     "@/lib/explore/workflow-default-music-client": { loadWorkflowDefaultMusic: async () => { throw new Error("Test attempted default music download."); } },
     "@/lib/explore/sequence-preview": { mapSequencePreviewDemoReference },
-    "@/lib/explore/remix-text-edit": { applyVideoTextRemix },
     "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
     "@/worker/src/lib/explore-finishing-contract": finishingContract,
     "@/lib/explore/format-edit-draft": editDraft,
@@ -187,8 +190,8 @@ test("Content demo edits reopen and save independently of rendering availability
   h.draftInputs.at(-1).onRestore({ version: 1, sourceAssetId: id(2), editing: defaultDemoEdit(8), backgroundAssetId: id(4), backgroundPlayback: "once", framing: null }, false);
   h.render();
   assert.equal(h.queryInputs.filter(query => query.queryKey[0] === "format-demo-audio").at(-1).enabled, true);
-  assert.equal(h.button("Apply demo edits").props.disabled, false);
-  await h.button("Apply demo edits").props.onClick(); h.render();
+  assert.equal(h.button("Save edits").props.disabled, false);
+  await h.button("Save edits").props.onClick(); h.render();
   assert.equal(h.draftSaves.length, 1); assert.equal(h.draftSaves[0].sourceAssetId, id(2));
   assert.equal(h.saveRun(), undefined); assert.equal(h.savedReports.length, 0);
 });
@@ -314,10 +317,12 @@ for (const format of ["hook", "wall_text"]) {
     const stored = normalize(readFormatDemoDraft(h.storage.get(draftKey("owner", format))));
     assert.deepEqual(stored.editing.text, overlay);
     h.props.onEditDone = () => h.render({ active: true, editActive: false }); h.render();
-    await h.button("Apply demo edits").props.onClick();
+    await h.button("Save edits").props.onClick();
     assert.equal(h.draftSaves.length, 1, "Apply persists one draft snapshot");
     assert.deepEqual(h.draftSaves[0].editing.text, overlay);
-    assert.equal(h.saveRun(), undefined, "Apply edits does not render the publishing file");
+    assert.equal(h.saveRun(), undefined, "Save edits does not render the publishing file");
+    assert.ok(h.input("Demo trim start"), "Saving keeps the focused editor open");
+    h.button("Back to videos").props.onClick();
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
     assert.ok(h.button("Replace demo"), "Sidebar keeps the original replacement control");
     assert.ok(h.button("Creative Assets"), "Sidebar keeps its separate asset-library control");
@@ -333,7 +338,11 @@ for (const format of ["hook", "wall_text"]) {
     stored.editing.text = { value: "Demo caption", width: .94, y: .075, fontSize: 56, color: "#ffffff", startMs: 100, endMs: 1500, preset: "snapchat-classic", backgroundOpacity: .4 };
     const storage = new Map([[draftKey("owner", format), JSON.stringify(stored)]]);
     const h = harness({ format, storage }); h.render({ opening: output(1), remixReference: { id: "reference-a", format } });
-    assert.equal(h.find(n => n.type === "RemixTextSection"), undefined, "Opening reference remix is never offered for the demo");
+    const remix = h.find(n => n.type === "RemixTextSection");
+    assert.ok(!remix.props.expanded && remix.props.editorNavigation, "Demo keeps Remix as one compact optional entry beside its manual text controls");
+    assert.equal(remix.props.reference, undefined, "Demo remix never inherits the opening reference");
+    assert.equal(remix.props.format, "hook");
+    assert.match(remix.props.targetKey, /^demo:/);
     const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
     fields.props.onChange({ ...fields.props.editing, text: { ...fields.props.editing.text, value: "New demo copy" } });
     h.render();
@@ -668,18 +677,18 @@ test("a pending or failed soundtrack selection cannot save or schedule the previ
   h.audio.loading = true;
   h.render({ backgroundScheduling: true, onPendingCompositionChange: value => { composition = value; }, prepareRequest: 1 });
   assert.match(composition.error, /selected media to finish uploading/);
-  assert.equal(h.button("Apply demo edits").props.disabled, true);
+  assert.equal(h.button("Save edits").props.disabled, true);
   assert.equal(h.saveRun(), undefined);
   await assert.rejects(composition.resolve(), /selected media to finish uploading/);
   h.audio.loading = false; h.audio.error = "Selected audio unavailable.";
   h.render();
   assert.equal(composition.error, h.audio.error);
-  assert.equal(h.button("Apply demo edits").props.disabled, true);
+  assert.equal(h.button("Save edits").props.disabled, true);
   assert.equal(h.saveRun(), undefined);
   await assert.rejects(composition.resolve(), /Selected audio unavailable/);
   h.audio.error = null; h.render({ prepareRequest: 0 });
   assert.equal(composition.error, null);
-  assert.equal(h.button("Apply demo edits").props.disabled, false);
+  assert.equal(h.button("Save edits").props.disabled, false);
   assert.equal((await composition.resolve()).sourceAssetId, id(2));
 });
 
@@ -727,3 +736,31 @@ for (const kind of ["demo", "background"]) {
     assert.equal(h.savedReports.length, 0);
   });
 }
+
+
+test("Demo remix applies only to its own draft, retains trim, framing and sound, and saves without rendering", async () => {
+  const stored = draft();
+  stored.framing.height = .5;
+  const openingKey = "ugc-explore:format-draft:v1:owner:hook:opening";
+  const openingDraft = JSON.stringify({ editing: { text: "Keep this hook" } });
+  const storage = new Map([[draftKey(), JSON.stringify(stored)], [openingKey, openingDraft]]);
+  const h = harness({ storage }); h.render({ opening: output(1) });
+  const source = { referenceId: null, slideId: null, sourceSha256: "b".repeat(64), format: "hook", status: "ready", blocks: [{ text: "Demo idea", startMs: 0, endMs: 6000 }], extractedAt: "2026-10-15T12:00:00Z", model: "manual", notes: "" };
+  const remix = h.find(n => n.type === "RemixTextSection");
+  assert.equal(remix.props.reference, undefined);
+  assert.equal(remix.props.onUse({ blocks: ["Try the demo"], heading: "", body: "" }, source), true);
+  h.render();
+  const saved = normalize(readFormatDemoDraft(storage.get(draftKey())));
+  assert.equal(formatTextOverlays(saved.editing)[0].value, "Try the demo");
+  assert.equal(saved.editing.trimStartMs, stored.editing.trimStartMs);
+  assert.equal(saved.editing.trimEndMs, stored.editing.trimEndMs);
+  assert.deepEqual(saved.framing, stored.framing);
+  assert.equal(saved.audioId, stored.audioId);
+  assert.equal(saved.editing.originalVolume, stored.editing.originalVolume);
+  assert.equal(storage.get(openingKey), openingDraft);
+  assert.equal(h.saveRun(), undefined);
+  await h.button("Save edits").props.onClick(); h.render();
+  assert.equal(h.draftSaves.length, 1);
+  assert.equal(formatTextOverlays(h.draftSaves[0].editing)[0].value, "Try the demo");
+  assert.ok(h.input("Demo trim start"));
+});

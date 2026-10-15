@@ -19,6 +19,7 @@ function runtime() {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
     useEffect(fn, deps) { const i = cursor++, prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
+    useLayoutEffect(fn, deps) { const i = cursor++, prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
   }, render(fn) { cursor = 0; const tree = fn(); while (effects.length) effects.shift()(); return tree; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
 function load(path, imports, globals = {}) {
@@ -68,14 +69,14 @@ test("reuse footer continues only when ready and edit/schedule keep their existi
   let continued = 0;
   for (const disabled of [true, false]) {
     const tree = mod.WorkflowCreationPanel({ kind: "hook", section: "create", create: { disabled, busy: false, message: "Choose a video", onAction: () => continued++ } });
-    const buttons = nodes(tree).filter(n => n.type === "button"); assert.equal(buttons.length, 1); assert.equal(text(buttons[0]), "Continue to edit"); assert.equal(buttons[0].props.disabled, disabled);
+    const buttons = nodes(tree).filter(n => n.type === "button"); assert.equal(buttons.length, 1); assert.equal(text(buttons[0]), "Continue"); assert.equal(buttons[0].props.disabled, disabled);
     if (!disabled) buttons[0].props.onClick();
   }
   assert.equal(continued, 1);
   const action = { disabled: false, busy: false, message: "Ready", onAction() {}, refresh() {} };
   for (const section of ["edit", "schedule"]) {
     const tree = mod.WorkflowCreationPanel({ kind: "phone", section, create: { message: "Wrong message" }, edit: action, schedule: action });
-    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Prepare final video" : "Review schedule"]);
+    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Prepare final video" : "Schedule post"]);
     assert.ok(!text(tree).includes("Wrong message"));
   }
 });
@@ -90,8 +91,10 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       querySelector() { return { focus(options) { focusCalls.push(options); } }; },
       scrollIntoView(options) { scrollCalls.push(options); pageScroll = 0; },
     };
-    const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true };
-    const finishing = { options: {}, setOptions() {}, output: null, captions: { transcript: null }, edit: { busy: false } };
+    const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true, busy: false, error: null, restoreOwned() {}, ownedForMode() { return null; }, setMode() {}, chooseUpload() {}, removeUpload() {}, clearUploadError() {}, clearSelection() {} };
+    const recovery = { loaded: true, error: null, recoveryRevision: 0, session: { section: "create", scheduleDraft: {}, sourceMode: "generate", generationSettings: { model: "seedance_2_5", aspectRatio: "9:16" }, instructions: "", localReferences: false, demoAudioPlayback: "once", demoFraming: null, demoAssetId: null, sourceAssetId: null, pendingSource: false, generatedAssetId: null, generatedSelectionCleared: false, options: {} }, assets: { source: null, demo: null, demoAudio: null }, problems: {}, acceptAsset() { return true; }, update() {}, clearMedia() {}, clearProblem() {}, markPending() {}, retry() {}, reset() {} };
+    const localMedia = { asset: null, loading: false, error: null, choose: async () => false, chooseRemote: async () => false, remove() {}, clearError() {} };
+    const finishing = { options: {}, setOptions() {}, output: null, pendingComposition: null, captions: { transcript: null }, edit: { busy: false }, schedule: { busy: false } };
     const imports = {
       "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
       react: rt.react, "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", Panel: "tabs-panel" } }, "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" }, "next/link": { default: "link" },
@@ -100,12 +103,16 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/ui/quiet-scrollbar.module.css": css,
       "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
       "next/navigation": { useSearchParams: () => new URLSearchParams() },
+      "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "UTC" },
       "@/components/explore/workflow-section-layout.module.css": css,
       "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => selection },
+      "@/components/explore/use-workflow-session": { useWorkflowSession: () => recovery },
       "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ dirty: false, settings: { aspectRatio: "9:16" }, changeSettings() {} }) },
-      "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children(null) },
+      "@/lib/explore/workflow-generation-settings": { createWorkflowGenerationSettings: () => recovery.session.generationSettings, normalizeWorkflowGenerationSettings: value => value },
+      "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => ({ asset }) },
+      "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children({ selected: asset, results: [], busy: false, error: null }) },
       "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children(finishing) },
-      "@/components/explore/talking-head-clip-editing": { TalkingHeadClipEditing: ({ children, source, sourcePreview, demo, demoFraming }) => children({ source, sourcePreview, demoSource: null, demo: demo.asset, demoFraming, editing: false, busy: false, controls: null, preview: null, actions: null }) },
+      "@/components/explore/talking-head-clip-editing": { TalkingHeadClipEditing: ({ children, source, sourcePreview, demo, demoFraming }) => children({ source, sourcePreview, demoSource: null, demo: demo.asset, demoFraming, openingState: null, demoState: null, openingPreview: null, demoPreview: null, editing: false, busy: false, error: null, controls: null, preview: null, actions: null, openOpening() {}, openDemo() {} }) },
       "@/components/explore/talking-head-schedule-review": { TalkingHeadScheduleSummary: "schedule-summary", TalkingHeadScheduleActions: "schedule-actions" },
       "@/components/explore/workflow-schedule-review.module.css": css,
       "@/components/explore/talking-head-schedule-preview.module.css": css,
@@ -115,9 +122,9 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/explore/workflow-edit-workspace": { WorkflowEditWorkspace: "edit-workspace", WorkflowScheduleWorkspace: "schedule-workspace" },
       "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: {}, WorkflowSchedulingPanel: "scheduling-panel" },
       "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "preview-canvas" },
-      "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({ asset: null }) },
-      "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null }) },
-      "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null }) },
+      "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => localMedia },
+      "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null, remove() {}, clearError() {} }) },
+      "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => localMedia },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
       "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
@@ -142,7 +149,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     nodes(tree).find(n => n.type === "creation-panel").props.create.onAction(); tree = render();
     assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
     assert.equal(preview(tree).props.hidden, false);
-    assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo.id, asset.id);
+    assert.equal(nodes(tree).find(n => n.type === (kind === "hook" ? "edit-workspace" : "schedule-workspace")).props[kind === "hook" ? "generatedVideo" : "source"].id, asset.id);
     if (kind === "hook") {
       assert.equal(pageScroll, 0, "A real stage change reveals the workflow heading even when the document scrolled");
       assert.deepEqual(scrollCalls.map(value => [value.block, value.behavior]), [["start", "instant"]]);
@@ -164,7 +171,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       nodes(tree).find(n => n.type === "scheduling-panel").props.footer.props.onBackToEdit(); tree = render();
       assert.equal(nodes(tree).find(n => n.type === "scheduling-panel").props.draft.caption, "Keep this schedule caption");
     }
-    nodes(tree).find(n => n.type === "edit-workspace").props.onChangeSource(); tree = render();
+    nodes(tree).find(n => n.type === (kind === "hook" ? "edit-workspace" : "schedule-workspace")).props.onChangeSource(); tree = render();
     selection.mode = "generate"; tree = render(); assert.equal(nodes(tree).find(n => n.props.className === "generationFields").props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt"); rt.unmount();
   }

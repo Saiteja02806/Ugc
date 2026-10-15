@@ -1622,6 +1622,22 @@ export async function reserveCarouselExperimentBatches(params: {
   }));
 }
 
+export async function listCarouselExperimentBatchesByGenerationBatchId(
+  generationBatchId: string,
+) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_EXPERIMENT_BATCHES_TABLE)
+    .select("*")
+    .eq("generation_batch_id", generationBatchId)
+    .order("batch_sequence", { ascending: true });
+
+  if (error) {
+    throw new Error(`Could not load Carousel experiment batches: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapExperimentBatch);
+}
+
 export async function upsertCarouselExperimentAssignments(params: {
   assignments: readonly CarouselStructureContentAssignment[];
   experimentBatchId: string;

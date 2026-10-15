@@ -8,13 +8,14 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/compone
 type SourceOption = "upload" | "assets" | "generate";
 
 /** Inline entry points use the same selection flow as the workflow controls. */
-export function WorkflowClipSourceActions({ label, onUpload, onChooseAssets, onGenerate, selectedMode, disabled = false }: {
+export function WorkflowClipSourceActions({ label, onUpload, onChooseAssets, onGenerate, selectedMode, disabled = false, presentation = "menu" }: {
   label: string;
   onUpload: (file: File) => Promise<unknown>;
   onChooseAssets: () => void;
   onGenerate?: () => void;
   selectedMode?: SourceOption;
   disabled?: boolean;
+  presentation?: "menu" | "inline";
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -29,13 +30,17 @@ export function WorkflowClipSourceActions({ label, onUpload, onChooseAssets, onG
     else if (option === "assets") onChooseAssets();
     else onGenerate?.();
   }
-  return <div role="group" aria-label={`Add ${label}`} className="w-full">
+  return <div role="group" aria-label={`Add ${label}`} className={presentation === "inline" ? "flex min-w-0 flex-wrap justify-center gap-2" : "w-full"}>
     <input ref={input} type="file" accept="video/mp4,video/quicktime,video/webm" hidden disabled={disabled} aria-label={`Upload ${label} file`} onChange={event => {
       const file = event.currentTarget.files?.[0];
       event.currentTarget.value = "";
       if (file && !disabled) void onUpload(file);
     }} />
-    <Popover open={open && !disabled} onOpenChange={setOpen}>
+    {presentation === "inline" ? <>
+      <Button type="button" className="min-h-11" disabled={disabled} aria-label={`Upload ${label}`} onClick={() => choose("upload")}><Upload className="size-4" aria-hidden="true" />Upload video</Button>
+      <Button type="button" variant="outline" className="min-h-11" disabled={disabled} aria-label={`Choose ${label} from Creative Assets`} onClick={() => choose("assets")}><FolderOpen className="size-4" aria-hidden="true" />Creative Assets</Button>
+      {onGenerate ? <Button type="button" variant="outline" className="min-h-11" disabled={disabled} aria-label={`Generate ${label}`} onClick={() => choose("generate")}><Sparkles className="size-4" aria-hidden="true" />Generate video</Button> : null}
+    </> : <Popover open={open && !disabled} onOpenChange={setOpen}>
       <PopoverTrigger openOnHover delay={150} closeDelay={150} render={<Button type="button" variant="outline" disabled={disabled} className="min-h-10 w-full gap-2" aria-label={`Choose ${label} source`} />}>
         <Icon className="size-4 shrink-0" aria-hidden="true" /><span>{title}</span><ChevronDown className="ml-auto size-3.5 shrink-0 text-muted" aria-hidden="true" />
       </PopoverTrigger>
@@ -51,6 +56,6 @@ export function WorkflowClipSourceActions({ label, onUpload, onChooseAssets, onG
           </Button>;
         })}
       </PopoverContent>
-    </Popover>
+    </Popover>}
   </div>;
 }

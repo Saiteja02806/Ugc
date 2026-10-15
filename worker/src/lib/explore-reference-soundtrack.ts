@@ -1,4 +1,5 @@
 import catalog from "./explore-paired-reference-catalog.json" with { type: "json" };
+import { getHookReferenceReleaseItems } from "./explore-hook-reference-release.ts";
 
 export type ExploreReferenceSoundtrack = {
   version: 1;
@@ -10,7 +11,9 @@ export type ExploreReferenceSoundtrack = {
 };
 
 export function getExplorePairedReferences(format?: "hook" | "wall_text") {
-  return catalog.mediaStatus === "published" ? catalog.items.filter(item => !format || item.format === format) : [];
+  const items = [...(catalog.mediaStatus === "published" ? catalog.items : []), ...getHookReferenceReleaseItems()];
+  // A new release may reuse a previously published video/audio identity.
+  return [...new Map(items.map(item => [item.id, item])).values()].filter(item => !format || item.format === format);
 }
 
 export function getExplorePairedReference(id: unknown) {

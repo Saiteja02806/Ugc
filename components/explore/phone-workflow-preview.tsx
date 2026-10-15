@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { PhoneWorkflowComposer, AppScreenPicker } from "@/components/explore/phone-workflow-composer";
 import { WorkflowCompositionPanel } from "@/components/explore/workflow-composition-panel";
 import { WorkflowCreationPanel, type WorkflowSection } from "@/components/explore/workflow-creation-panel";
-import { WorkflowEditWorkspace, WorkflowScheduleWorkspace } from "@/components/explore/workflow-edit-workspace";
+import { WorkflowScheduleWorkspace } from "@/components/explore/workflow-edit-workspace";
 import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { selectWorkflowAccount, workflowSelectedAccounts, workflowSelectedPlatforms } from "@/lib/explore/workflow-scheduling-draft";
@@ -115,7 +115,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
       <div className={sections.layout}>
         <div className={sections.stage} data-preview-visible={previewVisible} data-focused-workflow data-stage={section} data-editing={false}>
         <WorkflowCreationPanel kind="phone" section={section} generation={selection.mode === "generate" ? run ?? undefined : undefined} create={selection.mode === "generate" ? undefined : { disabled: !selection.ready, busy: selection.busy, message: selection.ready ? "Your selected video is ready. Continue to add optional edits." : "Upload or choose a video to continue. Up to 120 seconds.", onAction: () => changeSection("edit") }} edit={generationEnabled ? finish.edit : undefined} schedule={generationEnabled ? finish.schedule : undefined}
-          navigation={<WorkflowSectionNavigation presentation="panel" editLabel="Edit demo" />}
+          navigation={<WorkflowSectionNavigation presentation="panel" editLabel="Edit" />}
           heading={<WorkflowSectionHeading kind="phone" section={section} previewVisible={previewVisible} previewId="phone-workflow-preview" onTogglePreview={section === "create" && !createPreviewAvailable ? () => setPreviewOpen(current => !current) : undefined} />}>
           <Tabs.Panel value="create" keepMounted className={creation.sectionPanel}>
             <WorkflowVideoSourceSection kind="phone" selection={selection} />
@@ -135,8 +135,8 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
         </WorkflowCreationPanel>
         <section id="phone-workflow-preview" aria-label="Phone video creation workspace" className={cn(creation.main, sections.preview)} hidden={!previewVisible}>
           {section === "create" ? <WorkflowPreviewCanvas kind="phone" generation={selection.mode === "generate" ? run ?? undefined : undefined} source={selection.preview} mode={selection.mode} onContinue={selection.ready ? () => changeSection("edit") : undefined} />
-            : section === "edit" ? <WorkflowEditWorkspace kind="phone" demo={demo} demoAudio={demoAudio} generatedVideo={source} sourcePreview={sourcePreview} onChangeSource={() => changeSection("create")} finishedVideo={finish.output} demoFraming={currentFraming} />
-            : <WorkflowScheduleWorkspace draft={scheduleDraft} finishedVideo={finish.output} />}
+            : section === "edit" ? <WorkflowScheduleWorkspace kind="phone" onChangeSource={() => changeSection("create")} editingPreview draft={scheduleDraft} source={source} sourcePreview={sourcePreview} demo={demo.asset} demoAudio={demoAudio.asset} demoAudioPlayback={demoAudioPlayback} demoFraming={currentFraming} rawDemoFraming={currentFraming} options={finish.options} captions={finish.captions.transcript} ownerId={ownerId} enabled={generationEnabled} previewDisabledReason={framingError ?? demoSelectionError} />
+            : <WorkflowScheduleWorkspace kind="phone" draft={scheduleDraft} finishedVideo={finish.output} source={source} sourcePreview={sourcePreview} demo={demo.asset} demoAudio={demoAudio.asset} demoAudioPlayback={demoAudioPlayback} demoFraming={currentFraming} rawDemoFraming={currentFraming} options={finish.options} captions={finish.captions.transcript} ownerId={ownerId} enabled={generationEnabled} />}
           {section === "create" && selection.mode === "generate" && source ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" onClick={() => changeSection("edit")}>Continue to edit</Button></div> : section === "edit" && finish.output ? <div className={cn(sections.nextStage, "mx-5 mb-5")}><Button type="button" onClick={() => changeSection("schedule")}>Continue to schedule</Button></div> : null}
           <div className={creation.canvasFooter}>
             <a href="#phone-reference-library" aria-label="Scroll to Library" className={creation.libraryShortcut} onClick={(event) => {

@@ -4,11 +4,11 @@ import { FormatTextOverlaysEditor } from "@/components/explore/format-text-overl
 import { formatTextOverlays, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 
 /** Shared clip controls always show a first blank box; only authored text exports. */
-export function FormatVideoTextFields({ editing, onChange, timeMs = 0, onSeek }: {
-  editing: ExploreFormatEdit; onChange: (next: ExploreFormatEdit) => void; timeMs?: number; onSeek?: (timeMs: number) => void;
+export function FormatVideoTextFields({ editing, onChange, timeMs = 0, onSeek, styleTarget }: {
+  editing: ExploreFormatEdit; onChange: (next: ExploreFormatEdit) => void; timeMs?: number; onSeek?: (timeMs: number) => void; styleTarget?: HTMLElement | null;
 }) {
   return <FormatTextOverlaysEditor overlays={formatTextOverlays(editing)} durationMs={editing.trimEndMs - editing.trimStartMs}
-    wallText={editing.format === "wall_text"} timeMs={timeMs} onSeek={onSeek ?? (() => {})}
+    styleTarget={styleTarget} wallText={editing.format === "wall_text"} timeMs={timeMs} onSeek={onSeek ?? (() => {})}
     onChange={textOverlays => onChange({ ...editing, text: null, textOverlays })} />;
 }
 

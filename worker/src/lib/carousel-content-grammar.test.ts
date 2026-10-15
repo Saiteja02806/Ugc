@@ -231,23 +231,14 @@ test("counted body repair preserves all valid fields with the existing one-call 
   }
 });
 
-test("Structure 1 keeps an optional CTA on its final value slide only", () => {
+test("Structure 1 rejects calls to action on every helpful-tip slide", () => {
   const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
   const fixture = createFixture(format.id, format.compatibleHookFamilies[0]!);
   Reflect.set(fixture.slides[5]!, "ctaText", "Save this for later.");
 
-  const result = parseCarouselContentPlanForAssignment(fixture, {
-      analysis,
-      contentFormatId: format.id,
-      hookFamilyId: format.compatibleHookFamilies[0]!,
-      recentHistory: [],
-      slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-    });
-  assert.equal(result.plan.slides[5]!.ctaText, "Save this for later.");
-  Reflect.set(fixture.slides[2]!, "ctaText", "Save this for later.");
   assert.throws(() => parseCarouselContentPlanForAssignment(fixture, {
     analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6,
-  }), /final slide only/i);
+  }), /Helpful tips cannot include a call to action/i);
 });
 
 test("Structure 1 requires one 5-14 word hook and rejects Slide 1 support copy", () => {
@@ -740,9 +731,14 @@ test("the production-shaped five-item batch uses combined formats and a native f
     function assertListBodies(value: unknown) {
       if (!value || typeof value !== "object") return;
       const record = value as Record<string, unknown>;
-      const properties = record.properties as { listItems?: { minItems: number }; body?: { type?: string; anyOf?: Array<{ type?: string; description?: string }> } } | undefined;
+      const properties = record.properties as {
+        body?: { type?: string; anyOf?: Array<{ type?: string; description?: string }> };
+        ctaText?: { type?: string };
+        listItems?: { minItems: number };
+      } | undefined;
       if (properties?.listItems && properties.listItems.minItems > 0) assert.deepEqual(properties.body, { type: "null" });
-      else if (properties?.body?.anyOf) assert.match(properties.body.anyOf.find((field) => field.type === "string")?.description ?? "", /18-30 words total excluding headline and ctaText/);
+      else if (properties?.body?.anyOf) assert.match(properties.body.anyOf.find((field) => field.type === "string")?.description ?? "", /18-30 words total excluding the headline/);
+      if (properties?.ctaText) assert.deepEqual(properties.ctaText, { type: "null" });
       for (const child of Object.values(record)) assertListBodies(child);
     }
     assertListBodies(schemaText);

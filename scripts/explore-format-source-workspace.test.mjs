@@ -81,8 +81,10 @@ test("Wall empty Edit offers upload/assets/generation and keeps source actions i
   const h = harness("wall_text", "", {selected:null});
   nodes(h.render()).find(n=>n.type === "tabs-root").props.onValueChange("edit");
   const setup = nodes(h.render()).find(n=>n.props?.["aria-label"] === "Wall of text edit setup");
+  assert.equal(nodes(h.render()).filter(n=>n.props?.["aria-label"] === "Wall of text edit setup").length, 1);
   assert.match(text(setup), /Choose a video to start editing/);
   const actions = nodes(setup).find(n=>n.type === "WorkflowClipSourceActions");
+  assert.equal(actions.props.presentation, "inline");
   actions.props.onChooseAssets();
   assert.equal(nodes(h.render()).find(n=>n.type === "WorkflowVideoAssetPicker").props.open, true);
   assert.equal(nodes(h.render()).find(n=>n.type === "tabs-root").props.value, "edit");
@@ -248,7 +250,7 @@ for (const format of ["hook"]) {
     assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
     assert.equal(nodes(h.render()).find(n => n.type === "FormatVideoEditor").props.video.url, "/new.mp4");
   });
-  test(`${format}: Demo shows editable previews, then the saved join, and can reopen its editor`, () => {
+  test(`${format}: saving the combined video retains editable clip cards and exact final output`, () => {
     const h = harness(format); h.render(); h.accept(video, "assets");
     let tree = h.render();
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
@@ -258,7 +260,10 @@ for (const format of ["hook"]) {
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSaved({ id: "joined", kind: "media_asset", url: "/joined.mp4", title: "Joined" });
     tree = h.render();
-    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, true);
+    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false, "Saving a combined video cannot remove the clip edit entry points");
+    assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.active, true);
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editPreviewActive, true);
+    assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output.id, "joined");
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onEdit();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
@@ -287,12 +292,41 @@ for (const format of ["hook"]) {
     const final = { id: "with-music", kind: "media_asset", url: "/with-music.mp4", title: "Final with music" };
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSaved(final);
     tree = h.render();
-    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, true);
+    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false, "A saved audio mix must not replace the opening's edit entry point");
     assert.deepEqual(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, final);
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onDirty();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
+  });
+  test(`${format}: Back to Edit after preparation retains both clip editors and the final schedule result`, () => {
+    const h = harness(format); h.render(); h.accept(video, "assets");
+    let tree = h.render();
+    nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
+    const openingKey = nodes(tree).find(n => n.type === "FormatVideoEditor").key;
+    const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onSaved({ id: "opening", kind: "media_asset", url: "/opening.mp4", title: "Opening" });
+    const final = { id: "combined", kind: "media_asset", url: "/combined.mp4", title: "Combined video" };
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onSaved(final);
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("schedule");
+    tree = h.render();
+    nodes(tree).find(n => n.type === "FormatSchedulePanel").props.onBackToEdit();
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
+    const opening = nodes(tree).find(n => n.type === "FormatVideoEditor");
+    const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.equal(opening.key, openingKey); assert.equal(demo.key, demoKey);
+    assert.equal(opening.props.active, true); assert.equal(opening.props.editingActive, false); assert.equal(demo.props.editPreviewActive, true);
+    assert.deepEqual(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, final);
+    opening.props.onEdit(); tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.editingActive, true);
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onBackToPreview();
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onEdit();
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editActive, true);
+    nodes(tree).find(n => n.type === "FormatDemoSection").props.onDirty();
+    assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null, "New demo edits invalidate the previous combined output");
   });
   for (const mode of ["upload", "assets"]) {
     test(`${format}: accepting ${mode} automatically shows its editable preview in Create`, () => {
@@ -456,8 +490,8 @@ for (const format of ["hook"]) {
     const demoKey = demo.key;
     assert.equal(demo.props.opening, null); assert.equal(demo.props.videoId, null);
     const demoCopy = text(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo"));
-    if (format === "hook") assert.match(demoCopy, /Add a hook in Create to remix its text/);
-    else assert.equal(demoCopy.trim(), "");
+    assert.equal(demoCopy.trim(), "", "The overview must not duplicate the clip editor's Remix form");
+    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Remix text"), false);
     assert.equal(nodes(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo")).some(n => n.type === "Button" && text(n) === "Go to Create"), false, "Demo uploads must remain available without an opening");
     demo.props.onSelectionChange(true);
     nodes(h.render()).find(n => n.type === "WorkflowVideoSourceSection").props.selection.selectAsset(video);
@@ -663,8 +697,22 @@ test("wall_text: empty Edit recovers to Create without permitting a pending uplo
   assert.equal(nodes(tree).some(n => n.type === "FormatVideoEditor"), false);
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
   h.source.busy = false; tree = h.render();
-  nodes(tree).find(n => n.type === "Button" && text(n) === "Go to Create").props.onClick();
+  nodes(tree).find(n => n.type === "Button" && text(n).trim() === "Back to Create").props.onClick();
   assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
+});
+
+test("Wall Schedule recovery sends a missing source to Upload and an existing clip back to its edits", () => {
+  for (const selected of [null, video]) {
+    const h = harness("wall_text", "", { selected });
+    h.render(); if (selected) h.accept(selected, "assets");
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("schedule");
+    const button = nodes(h.render()).find(n => n.type === "Button" && text(n) === (selected ? "Back to Edit" : "Add video"));
+    assert.ok(button); button.props.onClick();
+    const tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, selected ? "edit" : "create");
+    if (!selected) assert.equal(h.source.mode, "upload");
+    else assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.id, video.id);
+  }
 });
 test("wall_text: restoration checks owned media and retains the workflow boundary for generated results", async () => {
   const imported = harness("wall_text", `editVideoId=${video.id}&videoSource=assets`, { local: false, selected: null }); imported.render();

@@ -7774,6 +7774,1369 @@
       "extractedAt": "2026-10-10T17:35:21.538Z",
       "model": "windows-ocr-en-US-v2",
       "notes": "Visually reviewed 2026-10-10T18:37:50.587Z. Creator captions visually transcribed; all 32 sampled source frames inspected in order, including final frame. Static caption consolidated into one complete block. Timing ends at video stream duration. App interface and incidental scene text excluded. Original wording and values preserved; source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "slideId": null,
+      "sourceSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Computer Science students!!\nThis website is EVERYTHING",
+          "startMs": 0,
+          "endMs": 3067
+        },
+        {
+          "text": "I used to think learning coding\nwould be so difficult",
+          "startMs": 3067,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:08.393Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.477Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "slideId": null,
+      "sourceSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "editors, get ready to\nwash dishes for $100/mo 💀🤡",
+          "startMs": 0,
+          "endMs": 3067
+        },
+        {
+          "text": "1. drop your videos",
+          "startMs": 3067,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:09.090Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.478Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
+      "slideId": null,
+      "sourceSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Broke people will\nLOVE me after seeing\nTHIS 😭💰",
+          "startMs": 0,
+          "endMs": 3200
+        },
+        {
+          "text": "Go to Pinterest",
+          "startMs": 3200,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:12.425Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "slideId": null,
+      "sourceSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "3 years of video editing\nand NOW i find this??? 😳",
+          "startMs": 0,
+          "endMs": 3733
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:12.689Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+      "slideId": null,
+      "sourceSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "HOW is this even LEGAL?!?\n😭",
+          "startMs": 0,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:16.035Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "slideId": null,
+      "sourceSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How tf is this legal 💀",
+          "startMs": 0,
+          "endMs": 3733
+        },
+        {
+          "text": "Go to “Google”",
+          "startMs": 3733,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:19.212Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "slideId": null,
+      "sourceSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Wasted 2 hours editing my\npodcast when THIS exists\n🤯🤯",
+          "startMs": 0,
+          "endMs": 2700
+        },
+        {
+          "text": "Go to agent.vizard.ai",
+          "startMs": 2667,
+          "endMs": 2700
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:20.173Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
+      "slideId": null,
+      "sourceSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Claude + Shorts\n= $940/day 🤯",
+          "startMs": 0,
+          "endMs": 2700
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:24.140Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "slideId": null,
+      "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV you married the IT guy",
+          "startMs": 0,
+          "endMs": 2834
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:24.562Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "slideId": null,
+      "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My Gen Z intern just showed\nme how she's been making\n100+ creatives for our clients\nin 5 minutes 😭💀",
+          "startMs": 0,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:27.506Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "slideId": null,
+      "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "no way this can HELP\nyou get through your\nRESEARCH! 😭",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:27.991Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "slideId": null,
+      "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Gaming website that\nmakes you money while\nyou sleep 😴💸",
+          "startMs": 0,
+          "endMs": 2434
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:30.212Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "slideId": null,
+      "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: I let ChatGPT plan and\ncreate an entire video 🤯",
+          "startMs": 0,
+          "endMs": 3367
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:33.504Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "slideId": null,
+      "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Normal people:\n“I don’t have experience/\nI can’t do game dev”",
+          "startMs": 0,
+          "endMs": 5333
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:41.122Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-114ce0aeebb28251ce298e14",
+      "slideId": null,
+      "sourceSha256": "9bf4fbe8b87b477b624f37f6249ec76118a5fe47a945131379f453f24483f9a7",
+      "format": "hook",
+      "status": "needs_review",
+      "blocks": [],
+      "extractedAt": "2026-10-15T07:11:44.055Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Local OCR v2; review policy: creator captions only. Complete 64-block full-frame OCR retained in reference-text-transcripts.json. Similarity proposals are unapproved; verify captions, exclude UI and check emojis. Source frame timestamps used; sampling up to 4fps, boundaries still approximate. Editor capacity exceeded; no partial transcript published. Review/consolidate the complete extraction."
+    },
+    {
+      "referenceId": "explore-paired-hook-be7df3868a7b06024c0a90d1",
+      "slideId": null,
+      "sourceSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: put your dream\nshoes on a public\nwishlist for fun...\nturns out rich people\nenjoy spending\nmoney 😭😭",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:45.798Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-b0aead788c4930565401371b",
+      "slideId": null,
+      "sourceSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I owe my entire career\nto the random guy\nwho showed me this\nside hustle 😭",
+          "startMs": 0,
+          "endMs": 2434
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:47.706Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
+      "slideId": null,
+      "sourceSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "BRUH 💀 I just found out\nhow my 6 year old brother\nstudies for exams 😭😳",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:49.494Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "slideId": null,
+      "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could LITERALLY KISS the\nflight attendant that\nshowed me this 🤭🤭😩",
+          "startMs": 0,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:51.936Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "slideId": null,
+      "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+          "startMs": 0,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:53.122Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "slideId": null,
+      "sourceSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+          "startMs": 0,
+          "endMs": 2933
+        },
+        {
+          "text": "Open Cantina",
+          "startMs": 2933,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:55.921Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
+      "slideId": null,
+      "sourceSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So this is why everyone’s\ndeleting Claude 🤯💰",
+          "startMs": 0,
+          "endMs": 3200
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:57.547Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-59dee735a7c5d1643bc57127",
+      "slideId": null,
+      "sourceSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you’re unemployed but\nrent is due tomorrow 💰",
+          "startMs": 0,
+          "endMs": 2300
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:59.045Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-43f2c2d266d23e3af05875d8",
+      "slideId": null,
+      "sourceSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "AI + coloring books\n= 💰💰💰",
+          "startMs": 0,
+          "endMs": 2567
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:01.401Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-62f80506cbbedab0d340f863",
+      "slideId": null,
+      "sourceSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "= 💰💰💰/mo",
+          "startMs": 0,
+          "endMs": 1634
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:02.330Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling). Graphic logos retained in the video; no brand names inferred from graphics."
+    },
+    {
+      "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "slideId": null,
+      "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Broke people are gonna\nKISS me after seeing\nTHIS 😭💸",
+          "startMs": 0,
+          "endMs": 3367
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:06.144Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
+      "slideId": null,
+      "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I owe my side income\nto this AI coloring book\n💰💰💰",
+          "startMs": 0,
+          "endMs": 2567
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:06.799Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
+      "slideId": null,
+      "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I use Chatgpt to help me code”\n🤮🤮🤮",
+          "startMs": 0,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:09.956Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
+      "slideId": null,
+      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "editors,\nare we cooked?",
+          "startMs": 0,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:10.210Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-9309a041061ae5abc6970d52",
+      "slideId": null,
+      "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "new obsession unlocked:\nplaying a game where I\nhave access to a missing\nk-pop idol’s phone and I\nhave to figure out what\nhappened to her",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:12.699Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "slideId": null,
+      "sourceSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you gave the IT guy\na chance 😭",
+          "startMs": 0,
+          "endMs": 2400
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:13.642Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-df58806df2ea040df347f267",
+      "slideId": null,
+      "sourceSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "pov: you’re in love with\na nerd 😭",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:16.324Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
+      "slideId": null,
+      "sourceSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: U finally understood\nhow to use Claude\nfor marketing 😭",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:17.056Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
+      "slideId": null,
+      "sourceSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“i edit all my videos manually\nin capcut”\n🤮🤮🤮",
+          "startMs": 0,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:20.309Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "slideId": null,
+      "sourceSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "just thinking about all\nthe selfies I deleted before I\nknew about this",
+          "startMs": 0,
+          "endMs": 3500
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:20.785Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-f1b5421be14d24803539be89",
+      "slideId": null,
+      "sourceSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "so THIS is how creators talk\nfor 10 minutes without\nforgetting their words??",
+          "startMs": 0,
+          "endMs": 1634
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:23.093Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "slideId": null,
+      "sourceSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "so graphic designers have\nbeen using THIS instead of\nPinterest this WHOLE time??!",
+          "startMs": 0,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:24.164Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "slideId": null,
+      "sourceSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found a game where\nyou have to stalk a missing\ngirl's phone to find out\nwhat happened to her",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:25.771Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "slideId": null,
+      "sourceSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could literally kiss\nthe game dev that\nshowed me this 🤯😭",
+          "startMs": 0,
+          "endMs": 3900
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:27.958Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "slideId": null,
+      "sourceSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I use ChatGPT to make\nvideo games 🤮🤮🤮”",
+          "startMs": 0,
+          "endMs": 4533
+        },
+        {
+          "text": "Go to Tesana.ai",
+          "startMs": 4533,
+          "endMs": 4567
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:30.061Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "slideId": null,
+      "sourceSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "HOW is this even LEGAL?!?",
+          "startMs": 0,
+          "endMs": 3200
+        },
+        {
+          "text": "go to wand.com",
+          "startMs": 3200,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:32.020Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "slideId": null,
+      "sourceSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine being\nUNEMPLOYED when\nthis EXISTS 🤯💀🤯",
+          "startMs": 0,
+          "endMs": 4834
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:34.006Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "slideId": null,
+      "sourceSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: How it feels\nfinally making your\ndream game 🔥",
+          "startMs": 0,
+          "endMs": 3467
+        },
+        {
+          "text": "GOOD 😆",
+          "startMs": 3467,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:35.447Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+      "slideId": null,
+      "sourceSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Kids YouTube + AI\n= 💰💰💰",
+          "startMs": 0,
+          "endMs": 3200
+        },
+        {
+          "text": "Kids channel clips are\nBLOWING up rn 👀",
+          "startMs": 3200,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:37.884Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "slideId": null,
+      "sourceSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Gaming website that\nmake you rich in 2026\n🤯🤯💸💵💰",
+          "startMs": 0,
+          "endMs": 5700
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:39.829Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "slideId": null,
+      "sourceSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How is this\nLEGAL 😭💀",
+          "startMs": 0,
+          "endMs": 2434
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:41.148Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T07:17:33.480Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+    },
+    {
+      "referenceId": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "slideId": null,
+      "sourceSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“bro rate my startup idea 💀🥀”",
+          "startMs": 0,
+          "endMs": 2400
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:07.836Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.861Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "slideId": null,
+      "sourceSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Part time job ❌\nColoring Books ✅",
+          "startMs": 0,
+          "endMs": 2766
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:09.015Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "slideId": null,
+      "sourceSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Wait...CHATGPT 6 Astra can do what? 🤡💀",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:12.192Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "slideId": null,
+      "sourceSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I can’t get client” 😫",
+          "startMs": 0,
+          "endMs": 2400
+        },
+        {
+          "text": "“I can’t get client” 😫\n“Ok...let me show you how” 😎",
+          "startMs": 2400,
+          "endMs": 3766
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:12.860Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "slideId": null,
+      "sourceSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "SAY BYE BYE\nTO CLAUDE MAX 🥀🤪",
+          "startMs": 0,
+          "endMs": 2800
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:16.356Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "slideId": null,
+      "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "grand\ntheft\nauto VI + YouTube\n= $678/day 🤑",
+          "startMs": 0,
+          "endMs": 3200
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:18.674Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
+      "slideId": null,
+      "sourceSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "pov: you’re dating an IT guy",
+          "startMs": 0,
+          "endMs": 3466
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:19.754Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "slideId": null,
+      "sourceSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "4 YEARS of Amazon shopping and nobody told\nme about this!!! 👀",
+          "startMs": 0,
+          "endMs": 2833
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:21.303Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "slideId": null,
+      "sourceSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "No way I’ve been shopping on Amazon for 4 YEARS\nand NOW I find this 💀💀💀",
+          "startMs": 0,
+          "endMs": 1833
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:22.410Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "slideId": null,
+      "sourceSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How tf is this LEGAL? 💀",
+          "startMs": 0,
+          "endMs": 4700
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:26.446Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "slideId": null,
+      "sourceSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I deleted Capcut after this 🤫",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:26.778Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-743919c25a4f61942184a81b",
+      "slideId": null,
+      "sourceSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Why was I searching for\ntemplate on Tiktok when\nthis exists 😭😭😭",
+          "startMs": 0,
+          "endMs": 2566
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:31.575Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "slideId": null,
+      "sourceSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I think my sister has\nofficially lost her mind\nwhy is this her wedding\ninvitation??",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:32.156Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "slideId": null,
+      "sourceSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "someone tell me how this worksss 🥺",
+          "startMs": 0,
+          "endMs": 1900
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:34.614Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "slideId": null,
+      "sourceSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "how life sounds like after your\nfriend shows you an app to\nlive translate and save\nmanhwa on your phone",
+          "startMs": 0,
+          "endMs": 2733
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:36.619Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "slideId": null,
+      "sourceSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine a game where\nyou have to stalk a\nmissing girl’s phone to\nfind her",
+          "startMs": 0,
+          "endMs": 2666
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:39.762Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "slideId": null,
+      "sourceSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My sister is actually nuts\nwhy are these her\nwedding invites 😭",
+          "startMs": 0,
+          "endMs": 3000
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:41.233Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "slideId": null,
+      "sourceSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: ur alarm won’t turn\noff til u do 15 squats 😭😭😭",
+          "startMs": 0,
+          "endMs": 2433
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:43.959Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "slideId": null,
+      "sourceSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Travel Agents...\nare we cooked??",
+          "startMs": 0,
+          "endMs": 1867
+        },
+        {
+          "text": "Travel Agents...\nare we cooked??\nlook what I found... 😭😭",
+          "startMs": 1867,
+          "endMs": 3033
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:47.783Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "slideId": null,
+      "sourceSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You’re telling me I could’ve been\nwatching the Bible this whole\ntime???",
+          "startMs": 0,
+          "endMs": 4100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:52.125Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "slideId": null,
+      "sourceSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How to put a Bible verse\non your lockscreen\n(It changes everyday)",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:53.773Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-caceb6cb43d6e62137cf9892",
+      "slideId": null,
+      "sourceSha256": "923b786dd67b219c34d29e4011429fb56a3c1bdfdb9039480423beb595df4631",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "10 years of using a male\ndesigned period app and\nnow I find this...",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:55.482Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
+      "slideId": null,
+      "sourceSha256": "d864c622b2a8534724d126def5d50c02369e1dc4641b86bdcc3adcaa30ac26ad",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You realize you’ve been\nusing such basic period\napps & then find THIS!!!??",
+          "startMs": 0,
+          "endMs": 3833
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:58.455Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
+      "slideId": null,
+      "sourceSha256": "759fb407fb2cb8fb19a62fa7aeccd19b2065fe82f73c842fb087937450148f63",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "pov: you finally delete\nsnap",
+          "startMs": 0,
+          "endMs": 2135
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:59.098Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "slideId": null,
+      "sourceSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My boyfriend changed my alarm so now I have\nto fly to turn it off 😭😭💔",
+          "startMs": 0,
+          "endMs": 3233
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:01.830Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-c709e563045b8e9e473929a9",
+      "slideId": null,
+      "sourceSha256": "5f05f8e35fac3de5dd1b15687e8b296ddfaa5896cbfc78bb229eae570083d5a6",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Not my MOMMM asking me to\nget this with her before I leave for\ncollege 😭🥰",
+          "startMs": 0,
+          "endMs": 4066
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:02.917Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-e7147ac8b75176755e120150",
+      "slideId": null,
+      "sourceSha256": "2435b7e644d5677dac8392a674090c26368b1870b4a796fad11cc8719f7e016a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "4 years at the gym and I just\nNOW find this?!?!",
+          "startMs": 0,
+          "endMs": 3633
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:07.492Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "slideId": null,
+      "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "20 years of cooking and I just\nfound this? 🙄😡😭",
+          "startMs": 0,
+          "endMs": 6366
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:08.041Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
+      "slideId": null,
+      "sourceSha256": "17c7306fd6dc9d0def83620bb1757cdd906e9e9e0845559bce9a6930089b2628",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "imagine being scared\nof solo traveling\nwhen THIS exists 🤣💀",
+          "startMs": 0,
+          "endMs": 2966
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:10.941Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
+      "slideId": null,
+      "sourceSha256": "a2348d4501bba0c87969569e7f5aae8b3e3b63933ed80834a60f5c90b0d3bacf",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How TF is this legal\nIn CANVA 😡😤😭",
+          "startMs": 0,
+          "endMs": 3800
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:13.352Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+    },
+    {
+      "referenceId": "explore-paired-hook-def19968a4a8c55c52679591",
+      "slideId": null,
+      "sourceSha256": "6c627bb27ec546ec86da3021a9769d75b6b6a720003f48a8f907a8990dd4f908",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Girls in Seoul 🇰🇷 are WILD\n😂😭💔",
+          "startMs": 0,
+          "endMs": 3233
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:15.413Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
     }
   ]
 }

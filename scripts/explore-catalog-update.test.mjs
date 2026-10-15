@@ -119,6 +119,7 @@ function loadHookLibrary(status) {
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./paired-reference-library") return { getPairedExploreVideos: () => [] };
+    if (specifier === "@/worker/src/lib/explore-hook-reference-release") return { isHookReferenceReleaseActive: () => false, getHookReferenceGalleryItems: () => [], getHookReferenceReleaseItems: () => [] };
     if (specifier === "@/lib/explore/hook-video-types") return { getExploreVideoPosterStorageKey: (key) => key.replace(/\.mp4$/, ".webp") };
     if (specifier === "@/lib/storage/storage") return { buildPublicStorageUrl: (key) => `https://example.test/${key}` };
     throw new Error(`Unexpected dependency: ${specifier}`);
@@ -155,6 +156,7 @@ function loadRecreateCatalog(status, environment = "development") {
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./hook-video-library") return library;
     if (specifier === "./wall-text-video-library") return { getExploreWallTextVideos: () => [] };
+    if (specifier === "@/worker/src/lib/explore-hook-reference-release") return { isHookReferenceReleaseActive: () => false, getHookReferenceReleaseItems: () => [] };
     if (specifier === "@/lib/storage/storage") return { buildPublicStorageUrl: (key) => `https://example.test/${key}` };
     throw new Error(`Unexpected dependency: ${specifier}`);
   };

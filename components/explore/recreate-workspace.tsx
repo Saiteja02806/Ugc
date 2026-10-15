@@ -17,14 +17,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useAuth } from "@/contexts/auth-context";
 import { filterReferences, interleaveReferenceCategories, RECREATE_FORMAT_LABELS, RECREATE_FORMATS, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { cn } from "@/lib/utils";
+import { canonicalHookSource } from "@/worker/src/lib/explore-instagram-source";
 
 type RecreateReferencesResponse =
-  | { items: RecreateReference[]; ok: true }
+  | { items: RecreateReference[]; archivedHookItems?: RecreateReference[]; ok: true }
   | { message?: string; ok?: false };
 
 const GALLERY_GRID = layout.galleryGrid;
@@ -181,6 +183,7 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
 }
 
 export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, showActionLabel = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean }) {
+  const source = reference.format === "hook" ? canonicalHookSource(reference.sourceUrl ?? reference.instagramUrl) : null;
   return <article className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
@@ -188,7 +191,7 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
         {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
       </button> : null}
     </div>
-    {compact && !hideCaption ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
+    {compact && !hideCaption ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{source ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}`} aria-label={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}: ${reference.title}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><SocialPlatformIcon platform={source.platform} className={cn("size-3.5 text-current", source.platform === "tiktok" && "fill-current")} /></a> : null}</div>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
     {showActionLabel ? <Button type="button" variant="outline" data-reference-recreate aria-label={`Recreate ${reference.title}`} aria-pressed={isSelected} onClick={onRecreate} className="mt-2 h-9 w-full gap-2 px-2 text-xs">{isSelected ? <Check className="size-4" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}<span>{isSelected ? "Selected" : "Recreate"}</span></Button> : null}
   </article>;
 }
@@ -214,7 +217,7 @@ function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference
   // A native video poster avoids a separate image that browser visual-search
   // overlays can turn into an external action. The button owns all card clicks.
   return <button type="button" aria-label={`Preview ${reference.title}`} title={`Preview ${reference.title}`} onClick={onPreview} onPointerEnter={play} onPointerLeave={stop} onFocus={play} onBlur={stop} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
-    {playable ? <video ref={videoRef} aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} src={reference.videoUrl} onError={() => setFailed(true)} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
+    {playable ? <video ref={videoRef} aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} src={reference.previewVideoUrl ?? reference.videoUrl} onError={() => setFailed(true)} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
     <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
     {failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : null}
     {reference.format === "slideshow" ? <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm"><Layers3 className="size-3" aria-hidden="true" />{reference.slides.length}</span> : null}
@@ -234,7 +237,7 @@ export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, r
           {slideshowReference && activeSlideData ? <div className="mx-auto max-w-[520px]"><img src={activeSlideData.url} width={activeSlideData.width} height={activeSlideData.height} alt={`${slideshowReference.title}, slide ${activeSlide + 1}`} className="mx-auto h-auto max-h-[62dvh] w-auto max-w-full rounded-2xl object-contain shadow-card" />
             <div className="mt-3 flex items-center justify-between gap-2"><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === 0} onClick={() => setActiveSlide((current) => current - 1)}><ArrowLeft data-icon="inline-start" aria-hidden="true" /> Previous</Button><span aria-live="polite" className="text-[11px] font-medium tabular-nums text-muted">{activeSlide + 1} / {slideshowReference.slides.length}</span><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === slideshowReference.slides.length - 1} onClick={() => setActiveSlide((current) => current + 1)}>Next <ArrowRight data-icon="inline-end" aria-hidden="true" /></Button></div>
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{slideshowReference.slides.map((slide, index) => <button key={slide.id} type="button" onClick={() => setActiveSlide(index)} aria-label={`View slide ${index + 1}`} aria-current={activeSlide === index ? "step" : undefined} className={cn("w-11 shrink-0 overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", activeSlide === index ? "border-primary ring-1 ring-primary/30" : "border-border")}><img alt="" src={slide.url} width={slide.width} height={slide.height} className="aspect-[4/5] w-full object-contain" /></button>)}</div>
-          </div> : <video aria-label={`Preview ${reference.title}`} className="mx-auto h-auto max-h-[65dvh] w-auto max-w-full rounded-[20px] object-contain shadow-card" controls playsInline poster={reference.posterUrl} src={reference.videoUrl} />}
+          </div> : <video aria-label={`Preview ${reference.title}`} className="mx-auto h-auto max-h-[65dvh] w-auto max-w-full rounded-[20px] object-contain shadow-card" controls playsInline poster={reference.posterUrl} src={reference.previewVideoUrl ?? reference.videoUrl} />}
         </div>
       </> : null}
     </DialogContent>
@@ -268,6 +271,6 @@ export async function fetchRecreateReferences(signal?: AbortSignal): Promise<Rec
   });
   const data = await response.json().catch(() => null) as RecreateReferencesResponse | null;
   if (!response.ok || data?.ok !== true || !("items" in data) || !Array.isArray(data.items)) throw new Error(data && "message" in data && typeof data.message === "string" ? data.message : "Could not load references.");
-  return data.items;
+  return [...data.items, ...(data.archivedHookItems ?? [])];
   }, signal);
 }

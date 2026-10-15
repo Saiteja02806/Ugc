@@ -13,7 +13,7 @@ export function FormatSlideshowTextTools({ design, disabled, onChange }: {
   return <section aria-label="Slide text tools" className={styles.textTools}>
     <div className={styles.field}><label htmlFor={`${id}-heading`}>Heading</label><textarea id={`${id}-heading`} rows={2} value={design.heading} maxLength={180} disabled={disabled} placeholder="Add a heading…" onChange={event => onChange({ heading: event.target.value })} /></div>
     <div className={styles.field}><label htmlFor={`${id}-body`}>Body text</label><textarea id={`${id}-body`} rows={3} value={design.body} maxLength={600} disabled={disabled} placeholder="Add your message…" onChange={event => onChange({ body: event.target.value })} /></div>
-    <details className={styles.disclosure}>
+    <details className={styles.disclosure} open>
       <summary>Text appearance<span>{design.font === "sans" ? "Sans serif" : design.font === "serif" ? "Serif" : "Monospace"} · {design.position}</span></summary>
     <div className={styles.settings}>
       <div className={styles.field}><label htmlFor={`${id}-font`}>Font</label><select id={`${id}-font`} value={design.font} disabled={disabled} onChange={event => onChange({ font: event.target.value as SlideTextDesign["font"] })}><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></div>

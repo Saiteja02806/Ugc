@@ -2,11 +2,29 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  bindDailyFeedAssignmentsToStructures,
   getDailyFeedTopUpPlan,
   getOrCreatePersistedDailyFeed,
   getTrendingDailyFeedState,
   partitionRuntimeSafeAssignments,
 } from "./daily-feed-logic.ts";
+
+test("does not compact a successful product story into a missing helpful-tip position", () => {
+  const bound = bindDailyFeedAssignmentsToStructures({
+    availablePositions: [1, 2, 3, 4],
+    fresh: [
+      { structureId: "structure_2", value: "product-1" },
+      { structureId: "structure_2", value: "product-2" },
+    ],
+    recovered: [null, null, null, null],
+    requestedStructureIds: ["structure_2", "structure_1", "structure_2", "structure_1"],
+  });
+
+  assert.deepEqual(bound, [
+    { position: 1, value: "product-1" },
+    { position: 3, value: "product-2" },
+  ]);
+});
 
 test("returns an existing daily feed without rewriting it", async () => {
   const existing = { id: "feed-existing" };

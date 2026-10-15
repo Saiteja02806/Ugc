@@ -102,6 +102,12 @@ test("mount, receipt restoration and preparation polling never create a schedule
   assert.match(h.text(), /Your schedule is saved/); h.unmount();
 });
 
+test("a pending preparation does not complete the editing draft; a verified scheduled result does",async()=>{
+  let completed=0;const h=fixture({saved:savedEntry(true),serverReply:reply(),props:{onScheduled:()=>completed++}});
+  h.render();await settle();h.render();assert.equal(completed,0);
+  h.setServerReply(reply(input(),"scheduled"));await h.tick();assert.equal(completed,1);h.unmount();
+});
+
 test("the original simple form submits directly with one Schedule post click", async () => {
   const h = fixture(), form = await h.form(); assert.ok(form); assert.equal(form.props.presentation, "review");
   assert.equal(h.calls.length, 0, "Entering Schedule must not replace the form or create a schedule");

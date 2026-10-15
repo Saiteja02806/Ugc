@@ -47,6 +47,10 @@
 .field > textarea { padding: 10px 12px; line-height: 21px; resize: vertical; }
 .field > select, .field > input { height: 40px; padding: 6px 10px; }
 .field > input[type="range"] { accent-color: var(--primary); }
+.field > input[type="color"] { width: 44px; padding: 4px; cursor: pointer; }
+.saveActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
+.saveActions > p { flex: 1 1 180px; order: -1; }
+.saveActions > [role="alert"] { flex-basis: 100%; }
 .field > textarea:focus-visible, .field > select:focus-visible, .field > input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .field > :disabled { opacity: .6; }
 :global(.dark) .field > select { color-scheme: dark; }
@@ -64,3 +68,22 @@
   .previewHeading button { min-height: 40px; }
 }
 @media (max-height: 520px) { .preview > img:first-child { max-height: 65dvh; } }
+@container workflow-video (max-width: 1023px) {
+  .editorPreview { display: grid; grid-template-columns: minmax(96px, .8fr) minmax(0, 1fr); gap: 8px 12px; min-height: 0; }
+  .previewHeading { grid-column: 1 / -1; gap: 8px; }
+  .previewHeading h2 { font-size: 15px; line-height: 22px; }
+  .previewHeading p, .previewNavigation { display: none; }
+  .previewHeading button { min-height: 36px; padding-inline: 8px; }
+  .previewCanvas { grid-column: 1; grid-row: 2; }
+  .preview > img:first-child { max-height: 24dvh; }
+  .sequence { grid-column: 2; grid-row: 2; align-content: center; padding: 0; border: 0; gap: 6px; }
+  .sequenceHeading { gap: 4px; }
+  .sequenceHeading > div { flex-wrap: wrap; gap: 4px; }
+  .sequenceHeading button, .arrangement button { min-height: 36px; padding-inline: 6px; font-size: 11px; }
+  .sequenceHeading h3 { font-size: 12px; }
+  .filmstrip { gap: 6px; padding-bottom: 2px; }
+  .thumbnail { width: 38px; }
+  .thumbnail img, .thumbnail .unavailable { height: 38px; }
+  .arrangement { gap: 2px; }
+  .arrangement p { display: none; }
+}

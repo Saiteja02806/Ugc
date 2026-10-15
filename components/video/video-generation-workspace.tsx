@@ -9,7 +9,6 @@ import {
   ChevronUp,
   Clock3,
   History,
-  Loader2,
   Monitor,
   Pause,
   Play,
@@ -47,6 +46,7 @@ import { WorkflowDurationControl } from "@/components/explore/workflow-duration-
 import creation from "@/components/explore/workflow-creation.module.css";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
+import { VideoGenerationPlaceholder } from "@/components/video/video-generation-placeholder";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -1598,33 +1598,7 @@ function OptimisticVideoCard({
             getVideoResultWidthClassName(aspectRatio),
           )}
         >
-          <div
-            className="relative overflow-hidden rounded-[16px] bg-card-muted ring-1 ring-primary/20"
-            style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
-          >
-            {avatarThumbnail ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarThumbnail}
-                alt={avatarLabel ?? "Video reference"}
-                className="absolute inset-0 size-full object-cover opacity-35"
-              />
-            ) : null}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/30 to-black/65" />
-            <div
-              className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-3 text-center"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="inline-flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white">
-                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              </span>
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-white">Creating your video</p>
-                <p className="text-[11px] leading-4 text-white/70">Your result will appear here.</p>
-              </div>
-            </div>
-          </div>
+          <VideoGenerationPlaceholder aspectRatio={aspectRatio} referenceImageUrl={avatarThumbnail} referenceImageLabel={avatarLabel} />
           <div className="mt-3">
             <VideoResultMetadata
               modelLabel={modelLabel}

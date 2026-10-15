@@ -16,6 +16,8 @@ export type TrendingSlideshowStyleAllocation = Record<
   number
 >;
 
+export type TrendingSlideshowStructureId = "structure_1" | "structure_2";
+
 export const DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX = {
   helpfulTips: 50,
   productStoriesCta: 50,
@@ -194,9 +196,64 @@ export function buildTrendingSlideshowStyleBatchPlan(params: {
   return plan;
 }
 
+/**
+ * Recovery must replace the structures still owed by the open feed positions,
+ * not restart the user's percentage mix against a smaller replacement batch.
+ * Writer jobs are five-card batches, so a partial final group may deliberately
+ * produce compatible surplus candidates; those candidates never change the
+ * structure required by a visible position.
+ */
+export function buildTrendingSlideshowStructureBatchPlan(params: {
+  existingBatchStructureIds?: readonly TrendingSlideshowStructureId[];
+  requestedCandidateCount: number;
+  requestedStructureIds: readonly TrendingSlideshowStructureId[];
+}): TrendingSlideshowStructureId[] {
+  const requestedCandidateCount = Math.trunc(params.requestedCandidateCount);
+  if (requestedCandidateCount < 1 || params.requestedStructureIds.length === 0) {
+    return [];
+  }
+
+  const batchCount = Math.ceil(requestedCandidateCount / 5);
+  const existingBatchStructureIds = [
+    ...(params.existingBatchStructureIds ?? []),
+  ];
+
+  if (existingBatchStructureIds.length > batchCount) {
+    throw new Error("Existing slideshow batches exceed the requested candidate count.");
+  }
+
+  const plan: TrendingSlideshowStructureId[] = [...existingBatchStructureIds];
+
+  for (
+    let batchIndex = existingBatchStructureIds.length;
+    batchIndex < batchCount;
+    batchIndex += 1
+  ) {
+    const group = params.requestedStructureIds.slice(
+      (batchIndex - existingBatchStructureIds.length) * 5,
+      (batchIndex - existingBatchStructureIds.length + 1) * 5,
+    );
+    const candidates = group.length > 0
+      ? group
+      : params.requestedStructureIds;
+    const structure1Count = candidates.filter(
+      (structureId) => structureId === "structure_1",
+    ).length;
+    const structure2Count = candidates.length - structure1Count;
+
+    if (structure1Count === structure2Count) {
+      plan.push(candidates[0] ?? "structure_1");
+    } else {
+      plan.push(structure1Count > structure2Count ? "structure_1" : "structure_2");
+    }
+  }
+
+  return plan;
+}
+
 export function getCarouselStructureForTrendingSlideshowStyle(
   style: TrendingSlideshowStyle,
-) {
+): TrendingSlideshowStructureId {
   return style === "helpful_tips" ? "structure_1" : "structure_2";
 }
 

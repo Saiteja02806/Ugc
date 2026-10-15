@@ -381,7 +381,7 @@ test("loaded landscape images keep the preview and export overlay proportions, w
   const overlay = nodes(h.render()).find(node => node.type === "img" && "data-slide-text-overlay" in node.props);
   assert.equal(overlay.props.width, 2048); assert.equal(overlay.props.height, 1152);
   assert.ok(decodeURIComponent(overlay.props.src).includes('viewBox="0 0 2048 1152"'));
-  const backActions = nodes(h.render()).filter(node => node.type === "Button" && text(node) === "Back to preview");
+  const backActions = nodes(h.render()).filter(node => node.type === "Button" && text(node) === "Back to Create");
   assert.equal(backActions.length, 1); backActions[0].props.onClick(); assert.equal(back, 1);
 });
 test("repeated add-text-remove cycles retain only active text and reload both remaining slide edits", async () => {

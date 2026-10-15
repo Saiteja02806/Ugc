@@ -7,6 +7,8 @@ import * as sessions from "../lib/explore/workflow-session.ts";
 import * as generationClient from "../lib/explore/workflow-generation-client.ts";
 import { createWorkflowGenerationSettings } from "../lib/explore/workflow-generation-settings.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import { workflowVisitStorage } from "../lib/explore/workflow-visit-storage.ts";
+import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const media = n => ({ id: id(n), title: `Video ${n}`, url: `https://media.test/${n}.mp4`, status: "ready", collection: "video", mimeType: "video/mp4", sourceType: "generated_video", durationSeconds: 5, fileSizeBytes: 1000 });
@@ -25,20 +27,43 @@ function hooks() {
 function load(file, imports, globals = {}) {
   const exported = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText,
-    { exports: exported, require(name) { assert.ok(name in imports, name); return imports[name]; }, Error, AbortController, AbortSignal, ...globals });
+    { exports: exported, require(name) { if (name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if (name === "@/lib/explore/workflow-visit-storage") return { workflowVisitStorage }; assert.ok(name in imports, name); return imports[name]; }, Error, AbortController, AbortSignal, ...globals });
   return exported;
 }
-function sessionHarness({ owner = "owner-a", saved = null, lookup = async assetId => media(Number(assetId.slice(-1))), store = new Map(), token = async () => "temporary-owner-token", deadlineMs } = {}) {
+function sessionHarness({ owner = "owner-a", saved = null, lookup = async assetId => media(Number(assetId.slice(-1))), store = new Map(), token = async () => "temporary-owner-token", deadlineMs, draftEntry, locks } = {}) {
   const h = hooks(), reads = [], writes = [], tokenReads = [];
   const key = sessions.workflowSessionStorageKey(owner);
-  if (saved) store.set(key, sessions.serializeWorkflowSession(saved));
+  const backing={ getItem: value => store.get(value) ?? null, setItem: (value, raw) => store.set(value, raw), removeItem: value => store.delete(value) };
+  if (saved) (draftEntry ? draftLifecycle.workflowDraftStorage(backing,draftEntry.id) : workflowVisitStorage(backing)).setItem(key, sessions.serializeWorkflowSession(saved));
   const testModule = load("components/explore/use-workflow-session.ts", { react: h.react, "@/lib/explore/workflow-session": sessions,
     "@/lib/http/read-deadline": { withReadDeadline: (read, signal) => withReadDeadline(read, signal, deadlineMs) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async expected => { assert.equal(expected, owner); tokenReads.push(expected); return token(); } },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (assetId, token) => { assert.equal(token, "temporary-owner-token"); reads.push(assetId); return lookup(assetId); } },
-  }, { localStorage: { getItem: value => store.get(value) ?? null, setItem: (value, raw) => { writes.push({ key: value, raw }); store.set(value, raw); }, removeItem: value => store.delete(value) } });
-  return { store, key, reads, writes, tokenReads, render() { h.reset(); const value = testModule.useWorkflowSession({ ownerId: owner, enabled: true, defaults: createWorkflowGenerationSettings() }); h.flush(); return value; }, unmount: h.unmount };
+  }, { navigator:{locks:locks??{request:async(_name,_options,run)=>run({})}},localStorage:{...backing,setItem:(key,raw)=>{writes.push({key,raw});store.set(key,raw);}},sessionStorage: { getItem: value => store.get(value) ?? null, setItem: (value, raw) => { writes.push({ key: value, raw }); store.set(value, raw); }, removeItem: value => store.delete(value) } });
+  return { store, backing, key: `ugc-explore:visit:v1:${key}`, reads, writes, tokenReads, render() { h.reset(); const value = testModule.useWorkflowSession({ ownerId: owner, enabled: true, defaults: createWorkflowGenerationSettings(),draftEntry }); h.flush(); return value; }, unmount: h.unmount };
 }
+
+test("draft-ID recovery preserves exact work; fresh work and unavailable copies cannot expose it", async()=>{
+  const saved={...sessions.createWorkflowSession("owner-a"),generatedAssetId:id(2),demoAssetId:id(3),section:"edit"};
+  const h=sessionHarness({saved,draftEntry:{id:id(90),createNew:false}});h.render();await tick();await tick();
+  assert.equal(h.render().assets.source.id,id(2));h.render().complete();assert.equal(draftLifecycle.workflowDraftState(h.backing,"owner-a",id(90)),"scheduled");h.unmount();
+  const fresh=sessionHarness({store:h.store,draftEntry:{id:id(91),createNew:true}});fresh.render();await tick();await tick();
+  assert.equal(fresh.render().assets.source,null);assert.equal(fresh.reads.length,0);fresh.unmount();
+  const missing=sessionHarness({draftEntry:{id:id(92),createNew:false}});missing.render();await tick();await tick();assert.match(missing.render().error,/not available/);assert.equal(missing.reads.length,0);missing.unmount();
+  const duplicate=sessionHarness({store:h.store,draftEntry:{id:id(90),createNew:false},locks:{request:async(_name,_options,run)=>run(null)}});duplicate.render();await tick();assert.match(duplicate.render().error,/another tab/);assert.equal(duplicate.reads.length,0);duplicate.unmount();
+});
+
+test("legacy permanent history cannot populate a fresh compatibility visit", async () => {
+  const saved = { ...sessions.createWorkflowSession("owner-a"), generatedAssetId: id(2), demoAssetId: id(3), section: "edit" };
+  const legacy = new Map([[sessions.workflowSessionStorageKey("owner-a"), sessions.serializeWorkflowSession(saved)], ["ugc-explore:schedule:receipt", "keep-me"]]);
+  const first = sessionHarness({ store: legacy }); first.render(); await tick(); await tick();
+  assert.equal(first.render().session.generatedAssetId, null); assert.equal(first.reads.length, 0); assert.equal(first.tokenReads.length, 0); first.unmount();
+  const expired = sessionHarness({ saved });
+  const envelope = JSON.parse(expired.store.get(expired.key)); envelope.savedAt -= 48 * 60 * 60 * 1000;
+  expired.store.set(expired.key, JSON.stringify(envelope)); expired.render(); await tick(); await tick();
+  const value = expired.render(); assert.equal(value.loaded, true); assert.equal(value.session.section, "edit"); assert.equal(value.assets.source.id, id(2));
+  assert.equal(expired.reads.length, 2); assert.equal(legacy.get("ugc-explore:schedule:receipt"), "keep-me"); expired.unmount();
+});
 
 test("session hydration verifies exact chosen owned media without writes or uploads, then edits survive remount", async () => {
   const saved = { ...sessions.createWorkflowSession("owner-a"), sourceMode: "assets", sourceAssetId: id(2), demoAssetId: id(3), section: "edit" };
@@ -101,7 +126,7 @@ function generationHarness(selection, available = [media(1), media(2)]) {
     "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" }, "@/contexts/auth-context": {}, "@/lib/ai-studio/access-policy": {}, "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [] },
     "@/lib/ai-studio/media-client": {}, "@/lib/ai-studio/reference-media-upload": {}, "@/lib/firebase/auth": {}, "@/lib/explore/workflow-generation-client": { ...generationClient, createWorkflowGenerationClient: () => ({}) },
     "@/lib/jobs/background-job-client": { usePersistedJobIdFromUrl: () => "job", useBackgroundJobs: () => [1, 2].map(n => ({ data: { id: `job${n}`, status: "completed", jobType: "video_generation", projectId: "ai-studio", output: { mediaAssetId: id(n) } } })) },
-  }, { window: { localStorage: { getItem: () => null } } });
+  }, { window: { localStorage: { getItem: () => null }, sessionStorage: { getItem: () => null } } });
   return { callbacks, render() { h.reset(); const element = testModule.WorkflowGenerationBoundary({ enabled: true, ownerId: "owner-a", draft: { kind: "hook", settings: createWorkflowGenerationSettings(), instructions: "Create a talking head" }, restoredSelection: selection, onSelectionChange: asset => callbacks.push(asset), children: view => view }); const value = element.type(element.props); h.flush(); return value; } };
 }
 
@@ -139,7 +164,7 @@ function demoSelectionHarness() {
     } };
   vm.runInNewContext(ts.transpileModule(handlers.map(node => `export ${node.getText(syntax)}`).join("\n"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
     { exports: exported, Error, demo, demoIdentity: id(1), currentDemoIdentity, demoRevision: { current: 0 }, audioRevision: { current: 0 }, active: { current: true }, generationEnabled: true, ownerId: "owner-a", recovery,
-      localDemo: { choose: () => demoMetadata.promise, remove() {} }, localDemoAudio: { choose: () => audioMetadata.promise, remove() {} },
+      localDemo: { choose: () => demoMetadata.promise, remove() {} }, localDemoAudio: { choose: () => audioMetadata.promise, remove() {}, cancelPending() {} },
       updateSession(change) { Object.assign(session, change(session)); }, clearProblem() {}, setDemoAudioPlayback() {}, setDemoFraming() {},
       setDemoUpload(next) { state.demoUpload = typeof next === "function" ? next(state.demoUpload) : next; }, setAudioUpload(next) { state.audioUpload = typeof next === "function" ? next(state.audioUpload) : next; },
       uploadAIStudioReferenceMedia(file, kind) { const pending = deferred(); uploads.push({ file, kind, ...pending }); return pending.promise; },

@@ -99,7 +99,7 @@ test("workflow 1 and 3 share a text-only Generate button without enabling previe
     assert.doesNotMatch(markup, /<svg/);
     assert.match(markup, /disabled=""/);
     assert.match(markup, /Generate video<\/button>/);
-    assert.ok(markup.includes(`aria-label="${kind === "hook" ? "Generate hook" : "Generate phone video"}"`));
+    assert.ok(markup.includes(`aria-label="${kind === "hook" ? "Generate talking-head video" : "Generate phone video"}"`));
   }
 });
 

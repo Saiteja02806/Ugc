@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const load = (file, imports = {}, globals = {}) => {
@@ -10,7 +11,7 @@ const load = (file, imports = {}, globals = {}) => {
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     exports: exported,
     Error,
-    require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
+    require(name) { if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
     ...globals,
   });
   return exported;
@@ -403,7 +404,8 @@ test("Talking Head + Demo stays visible, the phone workflow stays hidden, and pr
             if (kind === "phone") assert.throws(invoke, /NOT_FOUND/);
             else {
               const shell = await invoke();
-              const rendered = shell.props.children.type(shell.props.children.props);
+                  const result = shell.props.children.type(shell.props.children.props);
+                  const rendered = typeof result.props.children === "function" ? result.props.children({id:"test-draft",createNew:true}) : result;
               assert.equal(rendered.type, "hook");
               assert.equal(rendered.props.generationEnabled, generationEnabled === "true" && preview !== "1");
             }
@@ -440,10 +442,11 @@ function connectedHarness(overrides = {}) {
     billing: { data: { userId: "owner-a", creditsRemaining: 100, videoGenerationCreditsPerSecond: 1 }, isError: false, isPending: false },
     jobQueries: [], mediaQueries: [], ...overrides,
   };
-  const slots = [], effects = [], calls = [], invalidations = [], queryOptions = [], queriedJobIds = [], store = new Map();
+  const slots = [], effects = [], calls = [], invalidations = [], queryOptions = [], queriedJobIds = [], store = new Map(), visitStore = new Map();
   let cursor = 0;
   const fakeWindow = {
-    localStorage: { getItem: (key) => store.get(key), setItem: (key, value) => store.set(key, value), removeItem: (key) => store.delete(key) },
+    localStorage: { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value), removeItem: (key) => store.delete(key) },
+    sessionStorage: { getItem: key => visitStore.get(key) ?? null, setItem: (key, value) => visitStore.set(key, value), removeItem: key => visitStore.delete(key) },
     addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
   };
   const react = {
@@ -502,9 +505,11 @@ function connectedHarness(overrides = {}) {
   });
   return {
     state, calls, invalidations, queryOptions, queriedJobIds, store,
+    rememberVisit(batch) { clientModule.persistWorkflowGenerationJobs(load("lib/explore/workflow-visit-storage.ts").workflowVisitStorage(fakeWindow.sessionStorage), "owner-a", "hook", batch); },
+    rememberDraft(id, batch) { clientModule.persistWorkflowGenerationJobs(draftLifecycle.workflowDraftStorage(fakeWindow.localStorage,id),"owner-a","hook",batch); },
     render(input = draft({ settings: { ...settings.createWorkflowGenerationSettings(), quantity: 4 } })) {
       cursor = 0;
-      const view = boundary.WorkflowGenerationBoundary({ enabled: true, ownerId: "owner-a", draft: input, children: (value) => value });
+      const view = boundary.WorkflowGenerationBoundary({ enabled: true, ownerId: "owner-a", draft: input, draftId: state.draftId, children: (value) => value });
       while (effects.length) effects.shift()();
       return view;
     },
@@ -513,6 +518,67 @@ function connectedHarness(overrides = {}) {
 }
 const readyAsset = (id = "asset-1") => ({ id, title: "Saved video", collection: "video", status: "ready", sourceType: "generated_video", url: `https://storage.googleapis.com/test/${id}.mp4`, durationSeconds: 5 });
 const jobQuery = (id, status, output = null, error = null) => ({ data: { id, status, output, error, jobType: "video_generation", projectId: "ai-studio" }, isError: false, isPending: false, refetch: async () => {} });
+
+test("a current draft reads only its jobs; read-only recovery routes an older request to its original draft",async()=>{
+  const oldId="00000000-0000-4000-8000-000000000090",newId="00000000-0000-4000-8000-000000000091",requestKey="11111111-1111-4111-8111-111111111111";
+  const actual=connectedHarness({draftId:newId,fetchResponse:async(_url,init)=>{assert.equal(init.method,"GET");return response({...queued(),requestKey,resolved:true});}});
+  actual.rememberDraft(oldId,queued(2));actual.render();assert.deepEqual(actual.queriedJobIds.at(-1),[]);
+  const key=clientModule.workflowGenerationRequestStorageKey("owner-a","hook");
+  actual.store.set(key,JSON.stringify({version:1,ownerId:"owner-a",kind:"hook",requestKey,quantity:1}));
+  actual.store.set(`${key}:draft:${requestKey}`,oldId);
+  actual.render();await new Promise(setImmediate);const recovered=actual.render();
+  assert.deepEqual(actual.queriedJobIds.at(-1),[]);assert.equal(recovered.selected,null);assert.match(recovered.notice,/earlier generation/);
+  const backing={getItem:key=>actual.store.get(key)??null,setItem:(key,value)=>actual.store.set(key,value),removeItem:key=>actual.store.delete(key)};
+  assert.deepEqual(Array.from(clientModule.readWorkflowGenerationJobs(draftLifecycle.workflowDraftStorage(backing,oldId),"owner-a","hook")),["job-1"],JSON.stringify([...actual.store]));
+  assert.equal(actual.calls.filter(c=>c.method==="POST").length,0);
+  const current=connectedHarness({draftId:newId});current.rememberDraft(newId,queued(2));current.render();assert.deepEqual(current.queriedJobIds.at(-1),["job-1","job-2"]);
+});
+
+test("a fresh Talking Head visit ignores permanent result history and yesterday's automatic job URL", () => {
+  const actual = connectedHarness({ urlJob: "yesterdays-job" });
+  clientModule.persistWorkflowGenerationJobs({ setItem: (key, value) => actual.store.set(key, value) }, "owner-a", "hook", queued());
+  const before = new Map(actual.store);
+  const view = actual.render();
+  assert.deepEqual(actual.queriedJobIds.at(-1), []);
+  assert.equal(view.selected, null); assert.equal(view.results.length, 0); assert.equal(view.busy, false);
+  assert.deepEqual(actual.store, before, "Accepted receipts remain available separately");
+  const phone = connectedHarness({ urlJob: "phone-job" }); phone.render(draft({ kind: "phone" }));
+  assert.deepEqual(phone.queriedJobIds.at(-1), ["phone-job"], "Other workflow recovery is outside this change");
+});
+
+test("generation previews count unfinished outputs through restored jobs, partial completion and failure", () => {
+  const actual = connectedHarness({ jobQueries: [jobQuery("job-1", "completed", { mediaAssetId: "asset-1" }), jobQuery("job-2", "processing"), jobQuery("job-3", "failed"), jobQuery("job-4", "queued")], mediaQueries: [{ data: readyAsset("asset-1") }] });
+  actual.rememberVisit(queued(4));
+  let view = actual.render();
+  assert.equal(view.busy, true);
+  assert.equal(view.pendingCount, 2);
+  assert.equal(view.pendingPreview.label, "Creating your video");
+  actual.state.jobQueries = [jobQuery("job-1", "completed", { mediaAssetId: "asset-1" }), jobQuery("job-2", "completed", { mediaAssetId: "asset-2" }), jobQuery("job-3", "failed"), jobQuery("job-4", "cancelled")];
+  actual.state.mediaQueries = [{ data: readyAsset("asset-1") }, { isPending: true }];
+  view = actual.render();
+  assert.equal(view.pendingCount, 1);
+  assert.equal(view.pendingPreview.label, "Loading your video");
+  actual.state.mediaQueries = [{ data: readyAsset("asset-1") }, { data: readyAsset("asset-2") }];
+  view = actual.render();
+  assert.equal(view.busy, false);
+  assert.equal(view.pendingCount, 0);
+});
+
+test("preparing previews capture the clicked quantity, aspect ratio and reference without following later edits", async () => {
+  let finish;
+  const actual = connectedHarness({ fetchResponse: () => new Promise(resolve => { finish = resolve; }) });
+  const input = draft({ referenceImages: [{ name: "chosen.png", url: "blob:chosen", file: { type: "image/png", size: 100 } }], settings: { ...settings.createWorkflowGenerationSettings(), quantity: 2, aspectRatio: "16:9" } });
+  actual.render(input).onGenerate();
+  await new Promise(setImmediate);
+  const view = actual.render(draft({ settings: { ...input.settings, quantity: 4, aspectRatio: "9:16" } }));
+  assert.equal(view.pendingCount, 2);
+  assert.equal(view.pendingPreview.aspectRatio, "16:9");
+  assert.equal(view.pendingPreview.referenceImageUrl, "blob:chosen");
+  assert.equal(view.pendingPreview.label, "Preparing your video");
+  finish(response({ ok: false, error: "Video could not start." }, 400));
+  await new Promise(setImmediate);
+  assert.equal(actual.render().pendingCount, 0);
+});
 
 test("the connected Generate action stays blocked while a failed replacement retains its prior preview", async () => {
   for (const kind of ["hook", "phone"]) {
@@ -626,6 +692,7 @@ test("saved jobs recover read-only, and status errors or uncertain provider subm
   ]) {
     let reads = 0;
     const actual = connectedHarness({ urlJob: "job-1", jobQueries: [{ ...job, refetch: async () => { reads++; } }] });
+    actual.rememberVisit(queued());
     const view = actual.render();
     assert.equal(view.disabled, true);
     assert.deepEqual(actual.queriedJobIds.at(-1), ["job-1"]);

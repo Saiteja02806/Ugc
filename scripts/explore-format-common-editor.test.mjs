@@ -1,3 +1,4 @@
+import { readRemixTextDraft } from "../lib/explore/remix-text-draft.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -147,7 +148,7 @@ test("pending and failed soundtrack replacements block draft saves, rendering an
   assert.match(input.demoFramingError, /selected audio to finish loading/);
   assert.equal(clipState.busy, true);
   assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Save edits").props.disabled, true);
-  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Prepare publishing video").props.disabled, true);
+  assert.equal(nodes(tree).find(n => n.type === "Button" && n.props.children === "Prepare final video").props.disabled, true);
   assert.equal(renderCalls, 0, "The saved preparation request waits instead of preparing with old audio");
   audio.loading = false; audio.error = "The selected soundtrack could not load.";
   tree = render();
@@ -179,8 +180,18 @@ for (const format of ["hook", "wall_text"]) test(`${format}: Save edits saves th
   save.props.onClick(); assert.equal(saveCalls, 1); assert.equal(renderCalls, 0);
   assert.equal(draftInput.content.editing.format, format); assert.equal(draftInput.content.sourceAssetId, source.id);
   assert.equal(draftInput.owner, "owner"); assert.equal(draftInput.content.backgroundAssetId, null);
-  const prepare = nodes(tree).find(node => node.type === "Button" && node.props.children === "Prepare publishing video");
+  const prepare = nodes(tree).find(node => node.type === "Button" && node.props.children === "Prepare final video");
   assert.ok(prepare, "Publishing/export remains a separate explicit operation"); prepare.props.onClick(); assert.equal(renderCalls, 1);
+  cursor = 0; let backCalls = 0;
+  const back = () => { backCalls++; };
+  const focused = mod.FormatVideoEditor({ format, video: { id: source.id, mediaAssetId: source.id, url: source.url, title: "Owned clip", durationSeconds: 5, ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: true, prepareInSequence: true, continueLabel: "Back to videos", onBackToPreview: back,
+    onDirty() {}, onSaved() {}, onContinue() { throw new Error("The clip editor cannot advance a workflow stage"); } });
+  const focusedButtons = nodes(focused).filter(node => node.type === "Button");
+  assert.equal(focusedButtons.some(node => ["Prepare final video", "Refresh preparation status", "Continue to Demo"].includes(node.props.children)), false);
+  assert.equal(focusedButtons.find(node => node.props.onClick === back).props.children.at(-1), format === "wall_text" ? "Back to Create" : "Back to videos");
+  focusedButtons.find(node => node.props.onClick === back).props.onClick();
+  assert.equal(backCalls, 1); assert.equal(renderCalls, 1, "Returning to videos does not render or advance a stage");
 });
 
 test("overview shows editable reference text immediately and keeps manual entry outside the remix box", () => {
@@ -204,14 +215,7 @@ test("overview shows editable reference text immediately and keeps manual entry 
   assert.equal(nodes(tree).find(node => node.props?.["data-remix-control"]).props.children[1].props.hidden, undefined);
   assert.equal(nodes(tree).find(node => node.props?.role === "status").props.children, "Preview");
   assert.ok(nodes(tree).indexOf(manual) < nodes(tree).findIndex(node => node.props?.["data-remix-control"]), "Manual editing sits above the remix box");
-  const options = nodes(tree).find(node => node.props?.["aria-label"] === "Remix options");
-  assert.equal(options.props["aria-expanded"], false, "Optional guidance starts out of the main view");
-  options.props.onClick(); tree = render();
-  assert.equal(nodes(tree).find(node => node.props?.id === options.props["aria-controls"]).props.hidden, false);
-  nodes(tree).find(node => node.props?.["aria-label"] === "Remix instructions").props.onChange({ target: { value: "Keep it conversational" } });
-  tree = render(); nodes(tree).find(node => node.props?.["aria-label"] === "Remix options").props.onClick(); tree = render();
-  assert.equal(nodes(tree).find(node => node.props?.id === options.props["aria-controls"]).props.hidden, true);
-  assert.equal(nodes(tree).find(node => node.props?.["aria-label"] === "Remix instructions").props.value, "Keep it conversational", "Closing Options preserves guidance");
+  assert.equal(nodes(tree).some(node => node.props?.["aria-label"] === "Remix options" || node.props?.["aria-label"] === "Remix instructions"), false, "Remix has one text input and no additional guidance controls");
   const field = nodes(tree).find(node => node.props?.["aria-label"] === "Reference text");
   assert.equal(field.props.value, "An example hook");
   field.props.onChange({ target: { value: "" } }); tree = render();
@@ -251,20 +255,19 @@ test("overview Generate remix submits the edited hook seed only on click, then a
   assert.equal(calls.length, 1); assert.equal(calls[0].options.method, undefined, "Mounting only loads reference and business details");
   assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.value, "An example hook");
   assert.equal(nodes(tree).some(n => n.type === "a" && n.props.children === "Review"), false, "Ready business context stays connected without the overview row");
-  nodes(tree).find(n => n.props?.["aria-label"] === "Remix options").props.onClick(); tree = render();
-  nodes(tree).find(n => n.props?.["aria-label"] === "Remix instructions").props.onChange({ target: { value: "Use a friendly tone and avoid emojis" } }); tree = render();
-  nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.onChange({ target: { value: "Introduce our planning app" } }); tree = render();
+  const combined = "Introduce our planning app. Use a friendly tone and avoid emojis";
+  nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.onChange({ target: { value: combined } }); tree = render();
   const generate = nodes(tree).find(n => n.type === "Button" && n.props.children === "Generate remix");
   assert.equal(Boolean(generate.props.disabled), false); generate.props.onClick(); await new Promise(setImmediate); tree = render();
   assert.equal(calls.length, 2); assert.equal(calls[1].url, "/api/explore/remix-text");
   const payload = JSON.parse(calls[1].options.body);
-  assert.deepEqual(payload.referenceBlocks, ["Introduce our planning app"]); assert.equal(payload.referenceId, "hook-a");
-  assert.equal(payload.instructions, "Use a friendly tone and avoid emojis", "Optional guidance still reaches generation");
+  assert.deepEqual(payload.referenceBlocks, [combined]); assert.equal(payload.referenceId, "hook-a");
+  assert.equal(payload.instructions, combined, "Edits in the single text box carry user copy and guidance to generation");
   assert.equal(calls[1].options.headers["Idempotency-Key"], payload.requestKey);
   assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Remixed text").props.value, "Plan your day in one place");
   nodes(tree).find(n => n.type === "Button" && n.props.children === "Apply to hook").props.onClick(); tree = render();
   assert.equal(applied.output.blocks[0], "Plan your day in one place"); assert.equal(applied.original.referenceId, "hook-a");
-  assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.value, "Introduce our planning app");
+  assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Reference text").props.value, combined);
 });
 
 for (const scenario of [
@@ -342,24 +345,19 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(nodes(render(false)).some(n => n.type === "portal" && n.props.target === controlsTarget), false);
     assert.equal(nodes(render(true)).find(n => n.props?.["aria-label"] === "Trim start").props.value, 2);
     assert.equal(requests, 0);
-    if (format === "hook") {
-      const remixOverviewTarget = {};
-      const overview = nodes(render(false, { remixOverviewTarget }));
-      assert.equal(overview.filter(n => n.type === "RemixTextSection").length, 1);
-      const manual = overview.find(n => n.type === "RemixTextSection").props.children;
-      assert.ok(manual.props.children.includes("Add text manually"));
-      manual.props.onClick();
-      assert.equal(opened, 2, "Manual text opens the same clip editor as Edit hook video");
-      assert.ok(overview.some(n => n.type === "portal" && n.props.target === remixOverviewTarget));
-      const seed = { referenceId: "hook-a", slideId: null, sourceSha256: "a".repeat(64), format: "hook", status: "ready", blocks: [{ text: "An example hook", startMs: 0, endMs: 5000 }], extractedAt: "2026-10-10T12:00:00Z", model: "reviewed-local-ocr", notes: "" };
-      assert.equal(overview.find(n => n.type === "RemixTextSection").props.onUse({ blocks: ["Our product hook"], heading: "", body: "" }, seed), true);
-      const editing = nodes(render(true, { remixOverviewTarget }));
-      assert.equal(editing.filter(n => n.type === "RemixTextSection").length, 1, "Clip tools do not duplicate the overview remix");
-      assert.equal(editing.find(n => n.type === "FormatVideoTextOverlay").props.text.value, "Our product hook");
-      assert.equal(editing.find(n => n.props?.["aria-label"] === "Trim start").props.value, 2);
-      assert.ok(nodes(render(false, { remixOverviewTarget, active: false })).some(n => n.type === "RemixTextSection"), "The scoped remix stays mounted when viewing the Demo");
-      assert.equal(requests, 0);
-    }
+    assert.equal(nodes(render(false)).some(n => n.type === "RemixTextSection"), false, "Overview cards have no duplicate Remix form");
+    const editing = nodes(render(true));
+    const remixes = editing.filter(n => n.type === "RemixTextSection");
+    assert.equal(remixes.length, 1, "Remix appears once, inside the focused editor");
+    assert.equal(remixes[0].props.expanded, false, "Manual clips keep Remix compact until opened");
+    const seed = { referenceId: "hook-a", slideId: null, sourceSha256: "a".repeat(64), format, status: "ready", blocks: [{ text: "An example hook", startMs: 0, endMs: 5000 }], extractedAt: "2026-10-10T12:00:00Z", model: "reviewed-local-ocr", notes: "" };
+    assert.equal(remixes[0].props.onUse({ blocks: ["Our product hook"], heading: "", body: "" }, seed), true);
+    render(false);
+    const reopened = nodes(render(true));
+    assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.text.value, "Our product hook");
+    assert.equal(reopened.find(n => n.props?.["aria-label"] === "Trim start").props.value, 2);
+    assert.equal(render(false, { active: false }), null, "Inactive editors must not portal Remix into other steps");
+    assert.equal(requests, 0);
   });
   test(`${format}: trimmed custom opening preview keeps the raw music clock and repeats from its original start`, () => {
     let cursor = 0; const slots = [];
@@ -432,4 +430,122 @@ test("paired clip preview updates edge fades every playback frame and stops audi
   video.props.ref.current = null; audio.props.ref.current = null;
   for (const cleanup of cleanups) cleanup();
   assert.equal(frames.size, 0); assert.equal(sound.paused, true);
+});
+
+
+test("expanded Remix uses one entry and keeps the manual editor distinct", () => {
+  const react = { useState: value => [typeof value === "function" ? value() : value, () => {}], useRef: value => ({ current: value }), useId: (() => { let id = 0; return () => `editor-${id++}`; })(), useEffect() {} };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText });
+  const manual = { type: "manual-fields", props: {} };
+  const wrapper = mod.RemixTextSection({ owner: null, targetKey: "demo:independent", format: "hook", expanded: true, editorNavigation: true, localPreview: true, children: manual, onUse() { throw Error("Navigation cannot apply a remix"); } });
+  const tree = wrapper.type(wrapper.props);
+  const all = nodes(tree);
+  assert.equal(all.filter(n => n.props?.["data-remix-control"]).length, 1);
+  assert.equal(all.filter(n => n.type === "Button" && n.props.children === "Remix text").length, 0, "The editor does not repeat Remix as a navigation shortcut");
+  assert.equal(all.filter(n => n.type === "Button" && n.props.children === "Back to text").length, 0);
+  assert.ok(all.includes(manual), "Manual edits remain mounted alongside the single Remix control");
+});
+
+test("opening optional editor Remix keeps manual text and styling accessible", () => {
+  let cursor = 0; const slots = [];
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; }, useRef: value => ({ current: value }), useId: () => `manual-${cursor++}`, useEffect() {} };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText });
+  const manual = { type: "manual-fields", props: {} };
+  const render = () => { cursor = 0; const wrapper = mod.RemixTextSection({ owner: null, targetKey: "scratch", format: "hook", editorNavigation: true, localPreview: true, children: manual, onUse() { throw Error("Opening Remix must not apply text"); } }); return wrapper.type(wrapper.props); };
+  const control = nodes(render()).find(node => node.props?.["data-remix-control"]);
+  control.props.onToggle({ currentTarget: { open: true } });
+  const tree = render();
+  assert.equal(nodes(tree).find(node => node.props?.["data-remix-control"]).props.open, true);
+  assert.equal(nodes(tree).find(node => node.props?.children === manual).props.hidden, false, "Opening Remix must not hide the user's existing text tools");
+});
+
+test("slideshow Remix identifies its source as a slide reference", () => {
+  const react = { useState: value => [typeof value === "function" ? value() : value, () => {}], useRef: value => ({ current: value }), useId: () => "slide-source", useEffect() {} };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText });
+  const wrapper = mod.RemixTextSection({ owner: null, targetKey: "slide:one", format: "slideshow", reference: { id: "slide-reference", format: "slideshow", slides: [{ id: "one" }] }, defaultSlideId: "one", expanded: true, editorNavigation: true, referenceFirst: true, localPreview: true, onUse() {} });
+  const all = nodes(wrapper.type(wrapper.props));
+  assert.ok(all.some(node => node.type === "span" && node.props.children === "Slide reference"));
+  assert.equal(all.some(node => node.type === "span" && node.props.children === "Video reference"), false);
+});
+
+test("Remix business context never reports missing or loading context as saved", async () => {
+  let cursor = 0; const slots = [], effects = [];
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; }, useRef: value => ({ current: value }), useId: () => `context-${cursor++}`, useEffect: fn => effects.push(fn) };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText, "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "token" } }, {
+    AbortController, URLSearchParams,
+    fetch: async () => ({ ok: true, json: async () => ({ ok: true, source: null, enabled: true, businessContext: { ready: false, name: null } }) }),
+  });
+  const render = () => { cursor = 0; const wrapper = mod.RemixTextSection({ owner: "owner", targetKey: "scratch", format: "hook", expanded: true, editorNavigation: true, onUse() {} }); return wrapper.type(wrapper.props); };
+  let tree = render();
+  assert.equal(nodes(tree).find(node => node.type === "strong").props.children, "Loading…");
+  effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); tree = render();
+  assert.equal(nodes(tree).find(node => node.type === "strong").props.children, "Not set");
+  assert.ok(nodes(tree).some(node => node.type === "a" && node.props.children === "Add context"));
+  assert.equal(nodes(tree).find(node => node.type === "Button" && node.props.children === "Generate remix").props.disabled, true);
+});
+
+
+for (const format of ["hook", "wall_text"]) test(`${format}: reference-first editor follows the generated clip's original reference and rejects stale gallery selection`, () => {
+  const original = { id: "original-reference", format, videoUrl: "/original.mp4" };
+  const current = { id: "new-gallery-selection", format, videoUrl: "/different.mp4" };
+  const source = { id: "00000000-0000-4000-8000-000000000001", status: "ready", collection: "video", url: "/generated.mp4", durationSeconds: 5, width: 720, height: 1280, metadata: { remixTextSource: { format, referenceId: original.id, sourceUrl: original.videoUrl } } };
+  const react = { useState: value => [typeof value === "function" ? value() : value, () => {}], useRef: value => ({ current: value }), useCallback: fn => fn, useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", { react,
+    "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
+    "@tanstack/react-query": { useQuery: options => options.queryKey[0] === "explore-edit-source" ? { data: source } : {} },
+    "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
+    "@/components/explore/format-video-text-fields": fields,
+    "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ action: { disabled: true, onAction() { throw Error("Changing layout cannot render a video"); } } }) },
+  });
+  const render = () => mod.FormatVideoEditor({ format, video: { ...source, mediaAssetId: source.id, ratio: "9:16", title: "Generated clip" }, remixReference: current, remixReferences: [original, current], active: true, controlsTarget: {}, resultsTarget: {}, enabled: false, onDirty() {}, onSaved() {}, onContinue() {} });
+  let tree = render();
+  let remix = nodes(tree).find(n => n.type === "RemixTextSection");
+  assert.equal(remix.props.reference, original);
+  assert.equal(remix.props.referenceFirst, true);
+  assert.ok(nodes(tree).indexOf(remix) < nodes(tree).findIndex(n => n.props?.["data-editor-section"] === "trim"), "Reference text is the first editing task");
+  source.metadata.remixTextSource = null;
+  tree = render(); remix = nodes(tree).find(n => n.type === "RemixTextSection");
+  assert.equal(remix.props.reference, null);
+  assert.equal(remix.props.referenceFirst, false, "An uploaded or unlinked clip must not borrow today's gallery selection");
+});
+
+for (const linked of [true, false]) test(`expanded Remix ${linked ? "leads with the linked reference" : "keeps manual editing first without a reference"}`, () => {
+  const react = { useState: value => [typeof value === "function" ? value() : value, () => {}], useRef: value => ({ current: value }), useId: (() => { let id = 0; return () => `priority-${id++}`; })(), useEffect() {} };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText });
+  const manual = { type: "manual-fields", props: { children: "Keep my current caption" } };
+  const seed = { referenceId: "wall-example", slideId: null, sourceSha256: "a".repeat(64), format: "wall_text", status: "ready", blocks: [{ text: "Original video caption", startMs: 0, endMs: 5000 }], extractedAt: "2026-10-15T12:00:00Z", model: "reviewed-local-ocr", notes: "" };
+  const wrapper = mod.RemixTextSection({ owner: null, targetKey: "video:generated", format: "wall_text", reference: linked ? { id: seed.referenceId, format: seed.format } : null, previewSource: seed, expanded: true, editorNavigation: true, referenceFirst: true, localPreview: true, children: manual, onUse() { throw Error("Opening the editor cannot apply text"); } });
+  const tree = wrapper.type(wrapper.props), all = nodes(tree);
+  const panel = all.find(n => n.props?.["data-remix-control"]);
+  assert.equal(Boolean(tree.props["data-remix-priority"]), linked);
+  assert.equal(all.indexOf(panel) < all.indexOf(manual), linked);
+  assert.ok(all.some(n => n.type === "Button" && n.props.children === "Generate remix"));
+  assert.equal(panel.type, "div", "The full Remix form is expanded");
+  if (linked) {
+    assert.equal(all.find(n => n.props?.["aria-label"] === "Text to remix").props.value, "Original video caption");
+    assert.equal(all.filter(n => n.type === "Button" && n.props.children === "Edit text manually").length, 0, "The direct text editor makes a second edit-text action unnecessary");
+  }
+});
+
+
+for (const accepted of [false, true]) test(`single remix input ${accepted ? "recovers the exact accepted request" : "reveals legacy guidance in the editable box"}`, async () => {
+  let cursor = 0, sent; const slots = [], effects = [];
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; }, useRef(value) { return slots[cursor++] ??= { current: value }; }, useId: () => `compact-${cursor++}`, useEffect: fn => effects.push(fn) };
+  const saved = { version: 1, requestKey: "00000000-0000-4000-8000-000000000001", referenceId: "hook-a", slideId: null, format: "hook", referenceBlocks: ["Saved source text"], instructions: "Keep it friendly", outcome: "uncertain" };
+  const source = { referenceId: "hook-a", slideId: null, sourceSha256: "a".repeat(64), format: "hook", status: "ready", blocks: [{ text: "Saved source text", startMs: 0, endMs: 5000 }], extractedAt: "2026-10-15T12:00:00Z", model: "reviewed-local-ocr", notes: "" };
+  const mod = load("components/explore/remix-text-section.tsx", { react, "@/lib/explore/reference-text": referenceText, "@/lib/explore/remix-text-draft": { readRemixTextDraft }, "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "token" } }, {
+    AbortController, AbortSignal, URLSearchParams, crypto: { randomUUID: () => saved.requestKey },
+    localStorage: { getItem: key => key.endsWith(":input") ? JSON.stringify({ seed: "Saved source text", instructions: "Keep it friendly" }) : accepted ? JSON.stringify(saved) : null, setItem() {}, removeItem() {} },
+    fetch: async (_url, options) => { if (options.method === "POST") sent = JSON.parse(options.body); return { ok: true, json: async () => options.method === "POST" ? { ok: true, source, output: { blocks: ["Our source text"], heading: "", body: "" } } : { ok: true, source, enabled: true, businessContext: { ready: true, name: "Acme" } } }; },
+  });
+  const render = () => { cursor = 0; const wrapper = mod.RemixTextSection({ owner: "owner", targetKey: "clip", reference: { id: "hook-a", format: "hook" }, format: "hook", expanded: true, editorNavigation: true, onUse() {} }); return wrapper.type(wrapper.props); };
+  let tree = render(); effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); tree = render();
+  assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Text to remix").props.value, "Saved source text\n\nKeep it friendly");
+  assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Remix instructions"), false);
+  const generate = nodes(tree).find(n => n.type === "Button" && n.props.children === (accepted ? "Check remix result" : "Generate remix"));
+  generate.props.onClick(); await new Promise(setImmediate);
+  assert.equal(sent.requestKey, saved.requestKey);
+  assert.equal(sent.instructions, accepted ? "Keep it friendly" : "Saved source text\n\nKeep it friendly");
+  assert.deepEqual(sent.referenceBlocks, accepted ? ["Saved source text"] : ["Saved source text\n\nKeep it friendly"]);
 });

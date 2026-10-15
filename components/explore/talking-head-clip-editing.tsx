@@ -29,11 +29,12 @@ function ClipEditingView({ value, children }: { value: ClipEditingView; children
 
 /** Save independent clip drafts; final preparation consumes their exact raw
  * composition. Saving does not require a separate per-clip render. */
-export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview, demo, demoSource = null, onDemoSourceReady, demoFraming, active, onDirty, children }: {
+export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview, demo, demoSource = null, onDemoSourceReady, demoFraming, active, onDirty, children, draftId }: {
   enabled: boolean; ownerId: string | null; source: MediaAsset | null; sourcePreview: LocalWorkflowMedia | null;
   demo: WorkflowAttachment; demoFraming: DemoFraming | null; active: boolean; onDirty: () => void;
   demoSource?: MediaAsset | null; onDemoSourceReady?: (asset: MediaAsset) => void;
   children: (view: ClipEditingView) => ReactNode; backgroundScheduling?: boolean;
+  draftId?: string;
 }) {
   const [requested, setRequested] = useState<{ target: "opening" | "demo"; key: string } | null>(null);
   const [openingState, setOpeningState] = useState<WorkflowClipEditState | null>(null);
@@ -116,8 +117,8 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
       demoPreview: demoPreview?.segment.id === (demoVideo?.mediaAssetId ?? demoVideo?.id) ? demoPreview : null,
     }}>{children}</ClipEditingView>
     {opening ? <FormatVideoEditor key={`opening:${openingKey}`} format="hook" video={opening} active={editing && target === "opening"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
-      draftScope="talking-head-opening" videoLabel="Talking-head video" continueLabel="Back to sequence" onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportOpening} onPreviewChange={reportOpeningPreview} /> : null}
+      prepareInSequence draftScope={draftId ? `talking-head-opening:${draftId}` : "talking-head-opening"} videoLabel="Hook video" continueLabel="Back to videos" onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportOpening} onPreviewChange={reportOpeningPreview} /> : null}
     {demoVideo && (ownedDemo || demoStarted === demoKey) ? <FormatVideoEditor key={`demo:${demoVideo.mediaAssetId ?? demoVideo.id}`} format="hook" video={demoVideo} active={editing && target === "demo"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
-      draftScope="talking-head-demo" videoLabel="Demo video" continueLabel="Back to sequence" allowRemix={false} onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
+      prepareInSequence draftScope={draftId ? `talking-head-demo:${draftId}` : "talking-head-demo"} videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
   </>;
 }

@@ -105,6 +105,19 @@ test("both Explore formats apply their selected MP3 to the completed provider re
   }
 });
 
+test("each new eligible Hook reaches the generation soundtrack postprocessor with its exact registered MP3", async () => {
+  const { getHookReferenceGalleryItems } = await import("../../dist/lib/explore-hook-reference-release.js");
+  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 76);
+  for (const reference of references) {
+    const before = referenceAudioCalls.length;
+    const f = fixture({ referenceId: reference.id, referenceType: "hook", exploreFormat: "hook" });
+    const output = await runGenerateHookVideoJob(f.job, f.context);
+    assert.equal(referenceAudioCalls.length, before + 1);
+    assert.equal(referenceAudioCalls.at(-1).reference.audioStorageKey, reference.audioStorageKey);
+    assert.deepEqual(output.referenceSoundtrack, { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 });
+  }
+});
+
 test("the actual worker preserves long Omni prompts and their final narration", async () => {
   const prompt = "Describe the complete cinematic scene. ".repeat(500) + 'The creator says: "Keep the final dialogue."';
   for (const avatarImageUrl of [undefined, "https://owned-media.example.test/image.png"]) {

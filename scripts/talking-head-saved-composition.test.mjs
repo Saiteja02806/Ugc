@@ -36,6 +36,15 @@ test("saved JSON clip drafts reach final composition independently of background
     view.openDemo(); assert.equal(h.view().editing, true);
   }
 });
+
+test("separate tasks editing the same media have independent opening/demo draft scopes",()=>{
+  const first=fixture(),second=fixture();first.props.draftId="00000000-0000-4000-8000-000000000090";second.props.draftId="00000000-0000-4000-8000-000000000091";
+  const a=first.editors(),b=second.editors();
+  assert.equal(a[0].props.video.mediaAssetId,b[0].props.video.mediaAssetId);
+  assert.notEqual(a[0].props.draftScope,b[0].props.draftScope);
+  assert.notEqual(a[1].props.draftScope,b[1].props.draftScope);
+  assert.notEqual(a[0].props.draftScope,a[1].props.draftScope);
+});
 test("unsaved changes and missing current clip states block final preparation", () => {
   const h = fixture(); const [opening, demo] = h.editors();
   demo.props.onClipStateChange({ sourceId: h.props.demoSource.id, needsSaving: false, needsDraftSaving: false, busy: false, error: null });

@@ -25,15 +25,18 @@ export function useBackgroundScheduleAvailability(owner: string | null, enabled:
 }
 
 /** Confirmation saves a durable render/schedule snapshot. Polling never POSTs. */
-export function PendingExploreSchedulePanel({ owner, scope, composition, draft, onChange, timezone, active, onBackToEdit }: {
+export function PendingExploreSchedulePanel({ owner, scope, composition, draft, onChange, timezone, active, onBackToEdit, onScheduled }: {
   owner: string; scope: string; composition: ExploreScheduleComposition; draft: WorkflowScheduleDraft; onChange: (value: WorkflowScheduleDraft) => void;
   timezone: string; active: boolean; onBackToEdit?: () => void;
+  onScheduled?: () => void;
 }) {
   const storageKey = `ugc-explore:background-schedule:v1:${encodeURIComponent(owner)}:${encodeURIComponent(scope)}`;
   const [saved, setSaved] = useState<SavedExploreSchedule | null>(null), [result, setResult] = useState<ExplorePendingScheduleResult | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
   const current = useRef(composition), working = useRef(false), alive = useRef(true);
+  const scheduledCallback = useRef(onScheduled);
+  useEffect(() => { scheduledCallback.current = onScheduled; }, [onScheduled]);
   const targets = workflowScheduleTargets(draft), platforms = workflowSelectedPlatforms(draft);
   const targetSignature = JSON.stringify([draft, timezone]);
   const currentIdentity = useRef({ storageKey, targetSignature });
@@ -45,6 +48,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     const next = { ...entry, confirmed: value.preparation.state !== "unconfirmed", timeRejected: value.preparation.state === "unconfirmed" ? entry.timeRejected : undefined };
     setSaved(next); setResult(value);
     if (next.confirmed) localStorage.setItem(storageKey, JSON.stringify(next));
+    if (value.preparation.state === "scheduled" && value.schedule) scheduledCallback.current?.();
   }, [storageKey]);
   useEffect(() => {
     let stopped = false;

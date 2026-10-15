@@ -96,17 +96,18 @@ async function extract(job, pipelineHash) {
 
 export async function main(args = process.argv.slice(2)) {
   if (process.platform !== "win32") throw new Error("Local OCR requires Windows with English OCR installed.");
-  const knownArgs = new Set(["--execute", "--reextract-unreviewed", "--force", "--limit", "--concurrency", "--review-set", "--reference-ids"]);
+  const knownArgs = new Set(["--execute", "--reextract-unreviewed", "--force", "--limit", "--concurrency", "--review-set", "--reference-ids", "--hook-release", "--hook-addition-release"]);
   for (const arg of args.filter(a => a.startsWith("--"))) if (!knownArgs.has(arg)) throw new Error(`Unknown option ${arg}.`);
   const options = { execute: args.includes("--execute"), reextractUnreviewed: args.includes("--reextract-unreviewed"), force: args.includes("--force") };
   const limit = Number(argument(args, "--limit", Infinity)), concurrency = Number(argument(args, "--concurrency", 2));
   if (!(limit > 0 && (limit === Infinity || Number.isInteger(limit))) || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 3) throw new Error("Choose a positive limit and concurrency 1–3.");
   const pipelineHash = hash(Buffer.concat([readFileSync(fileURLToPath(import.meta.url)), readFileSync(path.join(root, "scripts/explore-reference-text-processing.mjs")), readFileSync(path.join(root, "scripts/windows-reference-ocr.ps1")), readFileSync(path.join(root, "scripts/reference-text-atomic-write.mjs"))]));
-  const refs = sourceInventory(), catalogue = json(cataloguePath), current = new Map(catalogue.items.map(item => [textKey(item), ReferenceTextSchema.parse(item)]));
+  const includeStagedHookRelease = args.includes("--hook-release") || args.includes("--hook-addition-release");
+  const refs = sourceInventory({ includeStagedHookRelease }), catalogue = json(cataloguePath), current = new Map(catalogue.items.map(item => [textKey(item), ReferenceTextSchema.parse(item)]));
   const checkpoints = json(checkpointPath, { version: 2, items: {} });
   const reviewSet = argument(args, "--review-set", null), ids = argument(args, "--reference-ids", null);
   const selectedKeys = reviewSet ? new Set(json(path.resolve(root, reviewSet)).findings.map(textKey)) : null;
-  const selectedIds = ids ? new Set(ids.split(",")) : null;
+  const selectedIds = ids ? new Set(ids.split(",")) : args.includes("--hook-release") ? new Set(json(path.join(root, "worker/src/lib/explore-hook-reference-release.json")).items.map(item => item.id)) : args.includes("--hook-addition-release") ? new Set(json(path.join(root, "worker/src/lib/explore-hook-reference-addition-release.json")).items.map(item => item.id)) : null;
   const allUnits = refs.flatMap(ref => ref.units.map(unit => ({ ref, unit, key: textKey({ referenceId: ref.referenceId, slideId: unit.slideId }) })));
   if (selectedKeys && [...selectedKeys].some(key => !allUnits.some(job => job.key === key)) || selectedIds && [...selectedIds].some(id => !refs.some(ref => ref.referenceId === id))) throw new Error("Selection contains an unknown source identity.");
   const files = new Map();

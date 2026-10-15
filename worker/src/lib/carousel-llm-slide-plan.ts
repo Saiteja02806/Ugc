@@ -3024,14 +3024,16 @@ function buildCarouselContentSlideSchema(
     return {
       additionalProperties: false,
       properties: {
-        ctaText: index === slideCount - 1 ? { anyOf: [{ type: "string", minLength: 1, maxLength: MAX_CTA_LENGTH }, { type: "null" }] } : { type: "null" },
+        // Helpful tips are reader-first teaching. The final slide is a
+        // practical takeaway role, never a product call to action.
+        ctaText: { type: "null" },
         body:
           index === 0 || configuredListItemCount !== undefined
             ? { type: "null" }
             : {
                 anyOf: [
                   {
-                    description: "Non-list body only: 18-30 words total excluding headline and ctaText. Aim for 20-24 words across two short, complete thoughts of 9-12 words each, separated by a blank line. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
+                    description: "Non-list body only: 18-30 words total excluding the headline. Aim for 20-24 words across two short, complete thoughts of 9-12 words each, separated by a blank line. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
                     maxLength: maximumBodyLength,
                     minLength: 1,
                     type: "string",

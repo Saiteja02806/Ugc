@@ -1,9 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Type } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ClipPreviewControls } from "./clip-preview-controls";
+import { ClipTrimTimeline } from "./clip-trim-timeline";
 import { FormatVideoTextFields, trimFormatVideoEdit } from "@/components/explore/format-video-text-fields";
 import { RemixTextSection } from "@/components/explore/remix-text-section";
 import { FormatVideoTextOverlay } from "@/components/explore/format-video-text-overlay";
@@ -43,7 +45,7 @@ export type WorkflowClipEditState = { sourceId: string; editing: ExploreFormatEd
   draftBusy?: boolean; draftError?: string | null };
 
 export type FormatOpeningPreview = { segment: SequencePreviewSegment; referenceAudio: SequencePreviewAudio | null; disabledReason?: string | null };
-export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, remixOverviewTarget = null }: {
+export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, prepareInSequence = false, backLabel = format === "wall_text" ? "Back to Create" : "Back to videos", remixScopeLabel }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
   pendingSource?: boolean;
   onDirty: () => void; onSaved: (output: { id: string; kind: "media_asset"; url: string; title: string }) => void; onContinue: () => void;
@@ -54,7 +56,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   onPreviewChange?: (preview: FormatOpeningPreview) => void;
   draftScope?: string; videoLabel?: string; continueLabel?: string; onClipStateChange?: (state: WorkflowClipEditState) => void;
   remixReference?: RecreateReference | null; remixReferences?: readonly RecreateReference[]; previewText?: ReferenceText | null; localPreview?: boolean;
-  allowRemix?: boolean; remixOverviewTarget?: HTMLElement | null;
+  allowRemix?: boolean;
+  prepareInSequence?: boolean; backLabel?: string; remixScopeLabel?: string;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -75,6 +78,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const [duration, setDuration] = useState(video.durationSeconds ?? 5);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [time, setTime] = useState(0);
+  const [textStyleTarget, setTextStyleTarget] = useState<HTMLDivElement | null>(null);
   const [backgroundId, setBackgroundId] = useState<string | null>(initialDraft.backgroundId);
   const [playback, setPlayback] = useState<"once" | "repeat">(initialDraft.playback);
   const [uploading, setUploading] = useState(false);
@@ -185,9 +189,19 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     persistDraft(next);
   }
   function trim(startMs: number, endMs: number) {
-    change(trimFormatVideoEdit(editing, startMs, endMs));
-    setTime(0); stopSoundtrackPlayback();
-    if (player.current) player.current.currentTime = startMs / 1000;
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return;
+    const end = Math.min(Math.round(duration * 1000), Math.max(1000, endMs));
+    const start = Math.max(0, Math.min(startMs, end - 1000));
+    const position = start !== editing.trimStartMs ? start : Math.max(start, end - 50);
+    player.current?.pause(); stopSoundtrackPlayback();
+    change(trimFormatVideoEdit(editing, start, end));
+    setTime(position - start);
+    if (player.current) player.current.currentTime = position / 1000;
+  }
+  function seekText(timeMs: number) {
+    player.current?.pause(); stopSoundtrackPlayback();
+    if (player.current) player.current.currentTime = (editing.trimStartMs + timeMs) / 1000;
+    setTime(timeMs);
   }
   async function chooseAudio(file: File, mode: "once" | "repeat" = playback) {
     if (!owner || uploading || pendingSource || !enabled) return false;
@@ -207,6 +221,10 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const previewVideoUrl = referenceAudio?.cleanVideoUrl ?? sourceQuery.data?.url ?? video.url;
   const previewOriginalVolume = referenceAudio && !referenceAudio.cleanVideoUrl ? 0 : editing.originalVolume;
   const previewPlayback = referenceAudio ? "repeat" : playback;
+  useEffect(() => {
+    if (player.current) player.current.volume = previewOriginalVolume;
+    if (soundtrack.current) soundtrack.current.volume = editing.musicVolume;
+  }, [previewOriginalVolume, editing.musicVolume, previewPlayback, previewAudioUrl]);
   const sequencePreview = JSON.stringify({
     segment: { id: video.mediaAssetId ?? video.id, label: format === "wall_text" ? "Wall of text" : "Hook", url: previewVideoUrl,
       durationSeconds: duration, width, height, editing: { ...exportEditing, originalVolume: previewOriginalVolume },
@@ -221,6 +239,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     const audio = soundtrack.current, videoPlayer = player.current;
     if (!audio || !videoPlayer || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
     if (playingSoundtrack.current !== audio) { playingSoundtrack.current?.pause(); playingSoundtrack.current = audio; }
+    audio.muted = videoPlayer.muted;
     const length = audio.duration;
     const state = formatPreviewAudioPosition(length * 1000, duration * 1000, editing, videoPlayer.currentTime * 1000, previewPlayback, !!referenceAudio);
     audio.volume = editing.musicVolume * state.gain;
@@ -234,6 +253,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   useEffect(() => {
     synchronizeSoundRef.current = synchronizeSound;
     if (soundtrackFrame.current === null && soundtrack.current && player.current && !player.current.paused) startSoundtrackPlayback();
+    else if (soundtrack.current && player.current) synchronizeSoundRef.current();
   });
   function stopSoundtrackPlayback() {
     if (soundtrackFrame.current !== null) cancelAnimationFrame(soundtrackFrame.current);
@@ -253,33 +273,38 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   }
   const remixSource = sourceQuery.data && Object.hasOwn(sourceQuery.data.metadata ?? {}, "remixTextSource") ? readRemixSource(sourceQuery.data.metadata.remixTextSource) : video.remixTextSource;
   const boundReference = remixSource === undefined ? remixReference : resolveRemixSource(remixSource, remixReferences ?? (remixReference ? [remixReference] : []), format).reference;
-  const overviewRemix = allowRemix && remixOverviewTarget ? createPortal(<RemixTextSection key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} overview disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { change(applyVideoTextRemix(editing, output, source)); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }}><Button type="button" size="sm" variant="outline" disabled={uploading || pendingSource} onClick={onEdit}><Type size={14} aria-hidden="true" />Add text manually</Button></RemixTextSection>, remixOverviewTarget) : null;
-  if (!active || !controlsTarget || !resultsTarget) return <>{overviewRemix}</>;
+  const referenceFirst = allowRemix && boundReference?.format === format && !boundReference.id.startsWith("uploaded:");
+  if (!active || !controlsTarget || !resultsTarget) return null;
   const actions = <div className={styles.clipActionContent}>
     {validation || draftSave.error || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? draftSave.error ?? finishing.action.error}</p> : null}
-    <div className={styles.clipActionButtons}><Button type="button" disabled={!enabled || localPreview || pendingSource || uploading || !!audioSelectionError || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data)} onClick={() => void draftSave.save()} className="h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-all">{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
-      {(draftSave.saved && !draftSave.dirty) || localPreview ? <Button type="button" variant="outline" disabled={pendingSource || draftSave.busy} onClick={onContinue} className="h-11 rounded-xl px-5 font-semibold">{continueLabel}</Button> : null}
-      {onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview} disabled={draftSave.busy} className="h-11 rounded-xl px-4"><ArrowLeft className="size-4" aria-hidden="true" />Back to previews</Button> : null}</div>
-    <p role="status" className="text-xs leading-5 text-muted">{enabled ? draftSave.busy ? "Saving your edits…" : draftSave.saved && !draftSave.dirty ? `Edits saved · revision ${draftSave.saved.revision}. Your publishing video is prepared separately.` : draftSave.loaded ? "Save your edits without waiting for video rendering." : "Loading saved edits…" : "Saving edits is unavailable in this preview."}</p>
+    <div className={editorStyles.actionBar}>
+      {onBackToPreview ? <Button type="button" variant="ghost" onClick={onBackToPreview} disabled={draftSave.busy} className="h-11 rounded-xl px-4"><ArrowLeft className="size-4" aria-hidden="true" />{backLabel}</Button> : null}
+      <Button type="button" disabled={!enabled || localPreview || pendingSource || uploading || !!audioSelectionError || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data)} onClick={() => void draftSave.save()} className={`${editorStyles.saveAction} h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`}>{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
+      {!prepareInSequence && ((draftSave.saved && !draftSave.dirty) || localPreview) ? <div className={editorStyles.nextAction}><Button type="button" variant="outline" disabled={pendingSource || draftSave.busy} onClick={onContinue} className="h-11 rounded-xl px-5 font-semibold">{continueLabel}</Button></div> : null}
+    </div>
+    <p role="status" className="text-xs leading-5 text-muted">{enabled ? draftSave.busy ? "Saving your edits…" : draftSave.saved && !draftSave.dirty ? "Edits saved. Your preview is up to date." : draftSave.loaded ? "Changes appear in the preview immediately. Save edits to keep them." : "Loading saved edits…" : "Saving edits is unavailable in this preview."}</p>
     {draftSave.error ? <Button type="button" variant="ghost" size="sm" onClick={draftSave.reload} disabled={draftSave.busy}>Reload saved draft</Button> : null}
-    {enabled && !finishing.output ? <Button type="button" size="sm" variant="outline" disabled={pendingSource || !!audioSelectionError || uploading || draftSave.busy || finishing.action.disabled || !sourceQuery.data} onClick={() => finishing.action.onAction()}>{finishing.action.busy || finishing.action.cancel ? "Preparing video…" : "Prepare publishing video"}</Button> : null}
+    {!prepareInSequence && enabled && !finishing.output ? <Button type="button" size="sm" variant="outline" disabled={pendingSource || !!audioSelectionError || uploading || draftSave.busy || finishing.action.disabled || !sourceQuery.data} onClick={() => finishing.action.onAction()}>{finishing.action.busy || finishing.action.cancel ? "Preparing video…" : "Prepare final video"}</Button> : null}
     {finishing.action.busy || finishing.output ? <p role="status" className="text-xs leading-5 text-muted">{finishing.output ? "Publishing video ready in Library." : finishing.action.message}</p> : null}
     {sourceQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load this saved video. <button type="button" onClick={() => void sourceQuery.refetch()} className="rounded underline focus-visible:outline-2 focus-visible:outline-focus">Retry</button></p> : null}
     {finishing.action.cancel ? <Button type="button" variant="ghost" onClick={finishing.action.cancel}>Cancel preparation</Button> : null}
-    {enabled && !finishing.output ? <Button type="button" size="sm" variant="ghost" onClick={finishing.action.refresh} disabled={finishing.action.busy}>Refresh preparation status</Button> : null}
+    {!prepareInSequence && enabled && !finishing.output ? <Button type="button" size="sm" variant="ghost" onClick={finishing.action.refresh} disabled={finishing.action.busy}>Refresh preparation status</Button> : null}
   </div>;
-  const controls = <div className={`${styles.clipControlContent} ${editorStyles.editorRoot}`}>
-    <div className={editorStyles.editorHeader}>{videoLabel ? <h2 className="text-sm font-semibold">Edit {videoLabel.toLowerCase()}</h2> : <p className="truncate text-xs text-muted" title={video.title}>{video.title}</p>}<span className="shrink-0 text-xs text-muted">{duration}s</span></div>
-    <fieldset className={`${styles.clipControlsGrid} ${editorStyles.controlGrid}`} disabled={uploading || pendingSource || draftSave.busy}>
-    <details className={`${styles.demoOptions} ${editorStyles.trimSection}`} data-editor-section="trim" open><summary>Trim <span>{Math.max(0, editing.trimEndMs - editing.trimStartMs) / 1000}s selected</span></summary><section className={editorStyles.trimBody} aria-label="Trim">
+  const trimControls = <details key="trim" className={`${styles.demoOptions} ${editorStyles.trimSection}`} data-editor-section="trim" open><summary>Trim <span>{Math.max(0, editing.trimEndMs - editing.trimStartMs) / 1000}s selected</span></summary><section className={editorStyles.trimBody} aria-label="Trim">
       <div className={editorStyles.trimTimingFields}><label>Start <span>Seconds</span><input aria-label="Trim start" type="number" min={0} max={Math.max(0, editing.trimEndMs / 1000 - 1)} step={.1} value={editing.trimStartMs / 1000} onChange={event => trim(Math.round(Number(event.target.value) * 1000), editing.trimEndMs)} className={field} /></label><label>End <span>Seconds</span><input aria-label="Trim end" type="number" min={editing.trimStartMs / 1000 + 1} max={duration} step={.1} value={editing.trimEndMs / 1000} onChange={event => trim(editing.trimStartMs, Math.round(Number(event.target.value) * 1000))} className={field} /></label></div>
-      <div className={editorStyles.trimSliders}><label><span>Start</span><input aria-label="Trim start handle" type="range" min={0} max={Math.max(0, editing.trimEndMs - 1000)} step={100} value={editing.trimStartMs} onChange={event => trim(Number(event.target.value), editing.trimEndMs)} className="w-full accent-primary" /></label><label><span>End</span><input aria-label="Trim end handle" type="range" min={editing.trimStartMs + 1000} max={Math.round(duration * 1000)} step={100} value={editing.trimEndMs} onChange={event => trim(editing.trimStartMs, Number(event.target.value))} className="w-full accent-primary" /></label></div>
-      <p className={editorStyles.trimSelection}>Selected duration <strong>{Math.max(0, editing.trimEndMs - editing.trimStartMs) / 1000}s</strong></p>
-    </section></details>
-    <div className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>{allowRemix && !remixOverviewTarget ? <RemixTextSection key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { change(applyVideoTextRemix(editing, output, source)); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }}>
-      <FormatVideoTextFields editing={editing} onChange={change} timeMs={time} onSeek={timeMs => { if (player.current) player.current.currentTime = (editing.trimStartMs + timeMs) / 1000; setTime(timeMs); }} />
-    </RemixTextSection> : <FormatVideoTextFields editing={editing} onChange={change} timeMs={time} onSeek={timeMs => { if (player.current) player.current.currentTime = (editing.trimStartMs + timeMs) / 1000; setTime(timeMs); }} />}</div>
-    <div className={`${styles.clipUtilityControls} ${editorStyles.utilityControlSection}`}><details className={styles.demoOptions} open><summary>Sound <span>{previewAudioUrl ? "Audio added" : `${Math.round(editing.originalVolume * 100)}% original`}</span></summary><section className="mt-3 space-y-3" aria-label="Audio">
+      <ClipTrimTimeline disabled={uploading || pendingSource || draftSave.busy} durationMs={Math.round(duration * 1000)} startMs={editing.trimStartMs} endMs={editing.trimEndMs} timeMs={editing.trimStartMs + time} onChange={trim} />
+    </section></details>;
+  const remixEditor = allowRemix ? <RemixTextSection expanded editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }} /> : null;
+  const manualTextEditor = <FormatVideoTextFields styleTarget={textStyleTarget} editing={editing} onChange={change} timeMs={time} onSeek={seekText} />;
+  const textControls = <div key="text" className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>{allowRemix ? <RemixTextSection expanded={referenceFirst} editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }}>{manualTextEditor}</RemixTextSection> : manualTextEditor}</div>;
+  const manualTextControls = <div key="manual-text" className={`${styles.clipTextControls} ${editorStyles.textControlSection} ${editorStyles.manualTextSection}`}>{manualTextEditor}</div>;
+  const remixControls = <div key="remix" className={`${styles.clipTextControls} ${editorStyles.remixControlSection}`}>{remixEditor}</div>;
+  const controls = <div className={`${styles.clipControlContent} ${editorStyles.editorRoot}`} data-remix-priority={referenceFirst || undefined}>
+    <div className={editorStyles.editorHeader}>{videoLabel ? <h2 className="text-sm font-semibold">Edit {videoLabel.toLowerCase()}</h2> : <p className="truncate text-xs text-muted" title={video.title}>{video.title}</p>}<span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span></div>
+    <fieldset className={`${styles.clipControlsGrid} ${editorStyles.controlGrid}`} disabled={uploading || pendingSource || draftSave.busy}>
+    {referenceFirst ? <>{remixControls}{trimControls}{manualTextControls}</> : trimControls}
+    {referenceFirst ? null : textControls}
+    <div className={`${styles.clipUtilityControls} ${editorStyles.utilityControlSection}`}><div ref={setTextStyleTarget} className={editorStyles.styleDock} /><details className={styles.demoOptions} open><summary>Sound <span>{previewAudioUrl ? "Audio added" : `${Math.round(editing.originalVolume * 100)}% original`}</span></summary><section className="mt-3 space-y-3" aria-label="Audio">
       {referenceAudio ? <><p className="text-xs leading-5 text-muted">Reference audio: {referenceAudio.title}. It plays across the complete video, including your demo, and repeats to fit.</p><label className="block space-y-2 text-xs text-muted">Music volume · {Math.round(editing.musicVolume * 100)}%<input aria-label="Reference music volume" type="range" min={0} max={100} value={editing.musicVolume * 100} onChange={event => change({ ...editing, musicVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label></> : null}
       {!referenceAudio || referenceAudio.cleanVideoUrl ? <label className="block space-y-2 text-xs text-muted">Original volume · {Math.round(editing.originalVolume * 100)}%<input aria-label="Original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label> : null}
       {!referenceAudio ? <>
@@ -291,9 +316,9 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     {!actionsTarget ? actions : null}
   </div>;
   const clipLabel = videoLabel ?? (format === "wall_text" ? "Wall-of-text video" : "Hook video");
-  const preview = <section className="flex flex-col items-center gap-4" aria-label="Video edit preview" style={{ "--clip-aspect": width / height } as CSSProperties}><div className={styles.clipPreviewHeading}><h3>{editingActive ? "Live preview" : videoLabel ? `${videoLabel} preview` : onEdit ? clipLabel : "Live preview"}</h3><span>{width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : width === height ? "1:1" : width < height ? "Portrait" : "Landscape"}</span></div>
+  const preview = <section className="flex flex-col items-center gap-4" aria-label="Video edit preview" style={{ "--clip-aspect": width / height } as CSSProperties}><div className={styles.clipPreviewHeading}><h3>{editingActive ? `${clipLabel} · Live preview` : videoLabel ? `${videoLabel} preview` : onEdit ? clipLabel : "Live preview"}</h3><span>{width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : width === height ? "1:1" : width < height ? "Portrait" : "Landscape"}</span></div>
     <div data-clip-media data-clip-orientation={width < height ? "portrait" : width > height ? "landscape" : "square"} className="relative max-h-[65dvh] w-full max-w-[min(420px,55dvh)] overflow-hidden rounded-xl bg-black" style={{ aspectRatio: `${width}/${height}`, "--clip-aspect": width / height } as CSSProperties}>
-      <video ref={player} src={previewVideoUrl} playsInline controls preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {
+      <video ref={player} src={previewVideoUrl} playsInline preload="metadata" className="size-full object-contain" onLoadedMetadata={event => {
         const d = event.currentTarget.duration;
         const { videoWidth, videoHeight } = event.currentTarget;
         if (videoWidth > 0 && videoHeight > 0) setNaturalSize({ width: videoWidth, height: videoHeight });
@@ -301,17 +326,19 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
         event.currentTarget.volume = previewOriginalVolume;
         if (Number.isFinite(d) && d >= 1) event.currentTarget.currentTime = Math.min(editing.trimStartMs / 1000, d - .001);
         setTime(0);
-      }} onPlay={event => { event.currentTarget.volume = previewOriginalVolume; if (event.currentTarget.currentTime < editing.trimStartMs / 1000 || event.currentTarget.currentTime >= editing.trimEndMs / 1000) event.currentTarget.currentTime = editing.trimStartMs / 1000; startSoundtrackPlayback(); }} onPause={stopSoundtrackPlayback} onSeeked={synchronizeSound} onTimeUpdate={event => {
+      }} onPlay={event => { event.currentTarget.volume = previewOriginalVolume; if (event.currentTarget.currentTime < editing.trimStartMs / 1000 || event.currentTarget.currentTime >= (editing.trimEndMs - 50) / 1000) event.currentTarget.currentTime = editing.trimStartMs / 1000; startSoundtrackPlayback(); }} onPause={stopSoundtrackPlayback} onSeeked={synchronizeSound} onTimeUpdate={event => {
         event.currentTarget.volume = previewOriginalVolume;
-        setTime(event.currentTarget.currentTime * 1000 - editing.trimStartMs);
-        if (event.currentTarget.currentTime * 1000 >= editing.trimEndMs) { event.currentTarget.pause(); event.currentTarget.currentTime = editing.trimStartMs / 1000; }
+        setTime(Math.max(0, Math.min(editing.trimEndMs - editing.trimStartMs, event.currentTarget.currentTime * 1000 - editing.trimStartMs)));
+        if (!event.currentTarget.paused && event.currentTarget.currentTime * 1000 >= editing.trimEndMs) { event.currentTarget.pause(); event.currentTarget.currentTime = Math.max(editing.trimStartMs, editing.trimEndMs - 50) / 1000; }
         synchronizeSound();
       }} />
       {overlays.map((text, overlayIndex) => time >= text.startMs && time < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height} /> : null)}
     </div>
+    <ClipPreviewControls player={player} onMute={muted => { if (player.current) player.current.muted = muted; if (soundtrack.current) soundtrack.current.muted = muted; }} timeMs={time} startMs={editing.trimStartMs} endMs={editing.trimEndMs} onSeek={seekText} />
+    {editingActive ? <p className="text-xs text-muted" aria-label="Selected clip duration">{((editing.trimEndMs - editing.trimStartMs) / 1000).toFixed(1)}s selected · Changes appear here as you edit.</p> : null}
     {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={previewPlayback === "repeat"} preload="metadata" onLoadedMetadata={synchronizeSound} aria-label="Background audio preview" /> : null}
     {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="opening" disabled={pendingSource || uploading} onClick={onEdit}>Edit {clipLabel.toLowerCase()}</Button>{previewActions}</div></> : null}
     {editingActive && finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}
   </section>;
-  return <>{overviewRemix}{editingActive ? createPortal(controls, controlsTarget) : null}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
+  return <>{editingActive ? createPortal(controls, controlsTarget) : null}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
 }

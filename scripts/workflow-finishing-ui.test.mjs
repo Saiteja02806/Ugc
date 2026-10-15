@@ -542,13 +542,13 @@ test("a lost upload completion response is recovered through GET and never delet
   }
 });
 
-function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport } = {}) {
+function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport, draftId, onScheduled } = {}) {
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], store = new Map();
-  const storageKey = `ugc-explore:schedule:v1:owner:${kind}`;
+  const storageKey = `ugc-explore:schedule:v1:owner:${kind}${draftId ? `:${draftId}` : ""}`;
   if (saved) store.set(storageKey, JSON.stringify(saved));
   const connectionId = saved?.input.targets[0].connectionId ?? randomUUID();
-  const props = { enabled: true, ownerId: "owner", kind, source, demo: null, demoAudio: null, playback: "once", scheduleTimezone: "Asia/Calcutta", scheduleDraft: { connectionId, platform: "instagram", caption: "My caption", date: "2099-12-01", time: "15:30" }, children: value => value };
+  const props = { enabled: true, ownerId: "owner", kind, source, demo: null, demoAudio: null, playback: "once", scheduleTimezone: "Asia/Calcutta", scheduleDraft: { connectionId, platform: "instagram", caption: "My caption", date: "2099-12-01", time: "15:30" }, children: value => value, draftId, onScheduled };
   const youtubeId = randomUUID();
   if (multiple) props.scheduleDraft = { ...props.scheduleDraft, platforms: ["instagram", "youtube"], connectionIds: { instagram: connectionId, youtube: youtubeId } };
   const react = {
@@ -610,6 +610,12 @@ test("the original simple form submits directly once for Hook and Phone workflow
     assert.equal(actual.scheduledFor,h.submission.scheduledFor); assert.deepEqual(actual.targets,h.submission.targets);
     assert.match(h.render().view.schedule.message,/is scheduled/); h.unmount();
   }
+});
+
+test("draft-scoped scheduling marks completion only after a verified schedule acknowledgement",async()=>{
+  let completed=0;const h=schedulingHarness({draftId:randomUUID(),onScheduled:()=>completed++});
+  h.render();await tick();assert.equal(completed,0);h.render().view.schedule.onAction();await tick();
+  assert.equal(completed,1);assert.equal(h.calls.filter(call=>call.method==="POST").length,1);h.unmount();
 });
 
 test("a rejected old time is corrected in the same form with the same request identity", async () => {

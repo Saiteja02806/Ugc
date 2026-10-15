@@ -9,6 +9,7 @@ import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import { MAX_SLIDESHOW_SLIDES, MIN_SLIDESHOW_SLIDES } from "./slideshow-draft";
+import { readSlideshowEditableDraft } from "./slideshow-editable-draft";
 
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store", Vary: "Authorization" } });
@@ -26,7 +27,7 @@ export async function handleSlideshowSave(request: Request) {
     const user = await requireAIStudioProUser(request);
     if (process.env.EXPLORE_SLIDESHOW_SAVING_ENABLED !== "true") return reject("Slideshow saving is not enabled yet.", 503);
     const raw = await request.text();
-    if (raw.length > 16_384) return reject("The slideshow request is too large.", 413);
+    if (raw.length > 65_536) return reject("The slideshow request is too large.", 413);
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return reject("Choose a valid slideshow."); }
     if (!record(body) || request.headers.get("Idempotency-Key") !== body.requestKey) return reject("Choose a valid slideshow request.");
@@ -58,10 +59,13 @@ export async function prepareSlideshowSaveForOwner(userId: string, body: unknown
       positions.add(value.referenceSlideId);
       choices.push({ referenceSlideId: value.referenceSlideId, mediaAssetId: value.mediaAssetId as string | null });
     }
-    // Owned media checks are independent and bounded to at most ten unique IDs.
-    const ids = [...new Set(choices.flatMap(slide => slide.mediaAssetId ? [slide.mediaAssetId] : []))];
+    const editorDraft = body.editorDraft === undefined ? undefined : readSlideshowEditableDraft(body.editorDraft);
+    if (body.editorDraft !== undefined && (!ownedSequence || !editorDraft || editorDraft.slides.length !== choices.length || editorDraft.slides.some((slide, index) => slide.referenceSlideId !== choices[index].referenceSlideId))) return reject("Choose a valid editable slideshow draft.");
+    // Check both rendered output and editable source images for this owner.
+    const ids = [...new Set([...choices.flatMap(slide => slide.mediaAssetId ? [slide.mediaAssetId] : []), ...(editorDraft?.slides.map(slide => slide.mediaAssetId) ?? [])])];
     const assets = await Promise.all(ids.map(async assetId => [assetId, await getMediaAssetForOwner({ userId: userId, assetId })] as const));
     const byId = new Map(assets);
+    if (editorDraft?.slides.some(slide => { const asset = byId.get(slide.mediaAssetId); return !asset || asset.user_id !== userId || asset.deleted_at != null || asset.collection !== "image" || asset.status !== "ready" || !["image/jpeg", "image/png", "image/webp"].includes(asset.mime_type ?? "") || !isTrustedStorageUrl(asset.url); })) return reject("Choose ready source images from your account before saving the editable draft.");
     const slides = [];
     for (const [index, chosen] of choices.entries()) {
       const asset = chosen.mediaAssetId ? byId.get(chosen.mediaAssetId) : null;
@@ -72,12 +76,12 @@ export async function prepareSlideshowSaveForOwner(userId: string, body: unknown
     }
     // Keep v1 fingerprints intact so an interrupted legacy save is recoverable.
     const fingerprint = createHash("sha256").update(JSON.stringify(ownedSequence
-      ? { version: 2, referenceId: body.referenceId, slides }
+      ? { version: 2, referenceId: body.referenceId, slides, ...(editorDraft ? { editorDraft } : {}) }
       : { referenceId: body.referenceId, slides })).digest("hex");
     const title = reference?.title ?? (uploaded ? "Your uploaded slideshow" : "My slideshow");
     return { p_user_id: userId, p_request_key: body.requestKey as string, p_fingerprint: fingerprint,
       p_title: title, p_slides: slides, p_metadata: { referenceId: body.referenceId as string | null,
-        ...(ownedSequence ? { slideshowDraftVersion: 2 } : {}) } };
+        ...(ownedSequence ? { slideshowDraftVersion: 2 } : {}), ...(editorDraft ? { editorDraft } : {}) } };
 
   } catch (error) {
     return json({ ok: false, error: error instanceof FirebaseAuthRequestError ? error.message : "Could not confirm the saved slideshow. Resume the same save." }, error instanceof FirebaseAuthRequestError ? error.status : 503);

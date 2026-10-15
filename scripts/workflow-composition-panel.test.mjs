@@ -28,6 +28,7 @@ function harness(code, exportName) {
     "@/components/explore/workflow-section-layout.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/ui/button": { Button: "button" },
     "@/components/explore/workflow-saved-audio-picker": { WorkflowSavedAudioPicker: "saved-audio-picker" },
+    "./workflow-background-audio-picker": { WorkflowBackgroundAudioPicker: "background-audio-picker" },
     "@/components/explore/workflow-demo-controls": { WorkflowDemoControls: "demo-controls", WorkflowDemoPreview: "framed-demo" },
     "@/components/explore/workflow-saved-audio-choices": { WorkflowSavedAudioChoices: "saved-audio-choices" },
     "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "reference-preview" },
@@ -91,7 +92,7 @@ function audioRender(overrides = {}) {
 test("the actual Edit video section offers optional demo without dummy result tiles or media", () => {
   const { tree } = render();
   assert.equal(tree.props["aria-label"], "Video finishing settings");
-  assert.match(text(tree), /Edit & add demo.*Demo Optional/);
+  assert.match(text(tree), /Edit & add demo.*Demo upload Optional/);
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
   assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));
@@ -120,6 +121,20 @@ test("unfinished finishing tools remain off, disabled and explained", () => {
   assert.equal(nodes(tree).find((node) => node.props["aria-label"] === "Scheduling"), undefined);
   assert.match(text(tree), /Music and subtitle rendering are not connected in this local preview/);
   assert.match(text(tree), /English · up to 60 seconds total/);
+});
+
+test("whole-video music has its own compact picker, selection, playback and removal beside demo-only audio", () => {
+  const calls = [], demoAudio = makeAttachment("demo-only.mp3", true), attachment = makeAttachment("whole-video.mp3", true);
+  attachment.remove = () => calls.push("remove-music");
+  const music = { source: { title: "Whole video music", url: "https://audio.test/music.mp3" }, attachment, playback: "repeat", choose() {}, setPlayback: value => calls.push(value) };
+  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoAudio, connected: true, ownerId: "owner", options: { backgroundMusic: true }, onOptionsChange() {}, backgroundMusic: music });
+  const picker = nodes(tree).find(n => n.type === "background-audio-picker"); assert.equal(picker.props.attachment, attachment); assert.equal(picker.props.onChoose, music.choose);
+  assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.label === "Upload whole-video background music" && n.props.attachment === attachment));
+  assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.attachment === demoAudio));
+  nodes(tree).find(n => n.props?.["aria-label"] === "Whole-video music playback").props.onChange({ target: { value: "once" } });
+  nodes(tree).find(n => n.type === "button" && text(n) === "Remove music").props.onClick();
+  assert.deepEqual(calls, ["once", "remove-music"]); assert.match(text(tree), /Entire video/);
+  assert.ok(nodes(render({ connected: true, options: { backgroundMusic: true, backgroundAssetId: "missing" }, onOptionsChange() {}, backgroundMusic: { ...music, source: null } }).tree).some(n => text(n) === "Remove unavailable music"));
 });
 
 test("connected subtitle controls save real finishing options and Audio selection stays on the Demo attachment", () => {
@@ -199,7 +214,8 @@ test("approved workspace gives clear guidance without an empty player or dummy v
     }
   }
   assert.doesNotMatch(canvas, /\.mp4|previewFrame/);
-  assert.doesNotMatch(styles, /aspect-ratio: 9 \/ 16/);
+  // Empty upload slots may be portrait; an actual preview must retain its source ratio.
+  assert.doesNotMatch(styles.match(/\.demoPlayer\s*\{[^}]*\}/)?.[0] ?? "", /aspect-ratio: 9 \/ 16/);
   for (const kind of ["hook", "phone"]) assert.match(read(`components/explore/${kind}-workflow-preview.tsx`), new RegExp(`<WorkflowPreviewCanvas kind="${kind}"`));
 });
 
@@ -329,7 +345,7 @@ test("Demo audio is directly visible in editing, and section changes pause witho
   const folded = nodes(tree).filter(node => node.type === "details").flatMap(nodes);
   assert.equal(folded.includes(sound), false);
   assert.match(text(sound), /Demo audio/);
-  assert.doesNotMatch(text(tree), /Demo sound/);
+  assert.match(text(tree), /Demo sound/);
   assert.equal(demoAudio.asset.name, "background.wav");
   assert.ok(nodes(sound).some((node) => node.type === "player" && node.props.asset === demoAudio.asset));
   for (const kind of ["hook", "phone"]) {
@@ -351,7 +367,7 @@ test("stacked demo and audio controls keep their attachment ownership across sta
   const { props, tree } = render({ demo: makeAttachment("demo.mp4", true), demoAudio: { ...makeAttachment("demo.wav"), loading: true } });
   assert.equal(nodes(tree).find((node) => node.props["aria-label"] === "Demo audio attachment").props["aria-busy"], true);
   const preview = nodes(tree).find((node) => node.type === "PopoverTrigger" && node.props.render.props["aria-label"] === "Preview demo");
-  assert.equal(preview.props.render.props.className, "editUploadButton");
+  assert.equal(preview.props.render.props.className, "demoPreviewAction");
   assert.equal(nodes(tree).find((node) => node.type === "picker" && node.props.label === "Select demo audio").props.attachment, props.demoAudio);
   assert.match(styles, /\.editMediaGrid[^}]*display: flex[^}]*flex-direction: column/);
   assert.match(styles, /\.editUploadButton\s*\{[^}]*height: 160px[^}]*min-height: 144px/);

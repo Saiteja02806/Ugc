@@ -8,6 +8,7 @@ import {
   getExploreWallTextVideos,
 } from "./wall-text-video-library";
 import type { RecreateReference, ReferenceSlide } from "./recreate-types";
+import { getReferenceVideoPrompt } from "./reference-video-prompts";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 import { getHookReferenceReleaseItems, isHookReferenceReleaseActive } from "@/worker/src/lib/explore-hook-reference-release";
 
@@ -35,14 +36,14 @@ const importedItems = importedCatalog.mediaStatus === "published"
   : [];
 
 export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
-  const hooks = getExploreHookVideos(includeArchivedHooks).map((item, index): RecreateReference => ({
+  const hooks = getExploreHookVideos(includeArchivedHooks).map((item): RecreateReference => ({
     category: null,
     categoryLabel: null,
     format: "hook",
     id: item.id,
     posterUrl: item.posterUrl,
     slides: [],
-    title: `Hook ${String(index + 1).padStart(2, "0")}`,
+    title: "Hook",
     videoUrl: item.videoUrl,
     ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
     ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
@@ -65,7 +66,10 @@ export function getRecreateReferences(includeArchivedHooks = false): RecreateRef
   }));
 
   // Published imported Hooks already enter through the dedicated Hook library.
-  return [...hooks, ...existingWallText, ...importedItems.filter((item) => item.format !== "hook").map((item) => toImportedReference(item))];
+  return [...hooks, ...existingWallText, ...importedItems.filter((item) => item.format !== "hook").map((item) => toImportedReference(item))].map(item => {
+    const generationPrompt = getReferenceVideoPrompt(item.id, item.videoUrl);
+    return generationPrompt ? { ...item, generationPrompt } : item;
+  });
 }
 
 export function isKnownRecreateReferenceId(value: unknown) {
@@ -90,13 +94,11 @@ export function getLocalRecreateReferences(): RecreateReference[] {
   if (process.env.NODE_ENV !== "development") return [];
   const existing = getRecreateReferences();
   const existingIds = new Set(existing.map((item) => item.id));
-  let hookNumber = existing.filter((item) => item.format === "hook").length;
   const staged = (importedCatalog.items as ImportedCatalogItem[])
     .filter((item) => !existingIds.has(item.id) && !(item.format === "hook" && isHookReferenceReleaseActive()))
     .map((item) => {
       const reference = toImportedReference(item, (file) => `/api/explore/local-media/${file}`);
-      // Keep accessible Hook labels unique and consistent with later publication.
-      return item.format === "hook" ? { ...reference, title: `Hook ${String(++hookNumber).padStart(2, "0")}` } : reference;
+      return item.format === "hook" ? { ...reference, title: "Hook" } : reference;
     });
   return [...existing, ...staged];
 }
@@ -117,7 +119,8 @@ function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAs
     id: item.id,
     posterUrl: assetUrl(item.posterFile),
     slides,
-    title: item.title,
+    // Catalogue sequence numbers identify imports, not the user's topic.
+    title: item.format === "slideshow" ? item.categoryLabel?.trim() || item.title : item.title,
     videoUrl: item.videoFile ? assetUrl(item.videoFile) : undefined,
   };
 }

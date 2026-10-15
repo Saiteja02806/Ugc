@@ -72,6 +72,7 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
     model: request.model,
     prompt: request.prompt ?? null,
     referenceCharacterId: request.referenceCharacterId ?? null,
+    ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds } : {}),
     // Preserve fingerprints for requests admitted before uploaded references existed.
     ...(request.referenceImageAssetId ? { referenceImageAssetId: request.referenceImageAssetId } : {}),
     count: request.imageCount ?? CHARACTER_CANDIDATE_COUNT,
@@ -157,12 +158,16 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
     assertOwnedBatch(jobs, userId, batchId, fingerprint, request.imageCount);
   } else {
     const access = await dependencies.requireAccess(userId, request);
-    const reference = request.referenceCharacterId
-      ? await dependencies.getReference(request.referenceCharacterId, userId)
-      : null;
-    if (request.referenceCharacterId && (!reference || reference.userId !== userId ||
+    const referenceIds = request.referenceCharacterIds ?? (request.referenceCharacterId ? [request.referenceCharacterId] : []);
+    const references = await Promise.all(referenceIds.map((id) => dependencies.getReference(id, userId)));
+    if (references.some((reference, index) => !reference || reference.id !== referenceIds[index] || reference.userId !== userId ||
         !reference.referenceImageUrl.startsWith("https://") || !isTrustedStorageUrl(reference.referenceImageUrl))) {
       throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "The saved influencer could not be found.", 404);
+    }
+    const reference = references[0] ?? null;
+    const referenceImageUrls = references.map((reference) => reference!.referenceImageUrl);
+    if (new Set(referenceImageUrls).size !== referenceImageUrls.length) {
+      throw new CharacterGenerationError("INPUT_INVALID", "Choose each reference image only once.");
     }
     const referenceImageUrl = request.referenceImageAssetId
       ? uploadedReferenceUrl(await dependencies.getReferenceAsset(request.referenceImageAssetId, userId), request.referenceImageAssetId, userId)
@@ -184,6 +189,7 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       prompt: request.prompt,
       promptSource: "user",
       referenceCharacterId: reference?.id ?? null,
+      ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds, referenceImageUrls } : {}),
       ...(request.referenceImageAssetId ? { referenceImageAssetId: request.referenceImageAssetId } : {}),
       referenceImageUrl,
     }));

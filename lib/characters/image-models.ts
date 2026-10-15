@@ -15,6 +15,7 @@ export function getCharacterImageModelLabel(model: (typeof CHARACTER_IMAGE_MODEL
   return labels[model];
 }
 export const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
+export const MAX_CHARACTER_REFERENCES = 10;
 
 export function getCharacterPromptLimit(model: (typeof CHARACTER_IMAGE_MODELS)[number]) {
   return model === "seedream_5_pro" ? 4_000 : MAX_CHARACTER_PROMPT_LENGTH;

@@ -74,7 +74,8 @@ async function main() {
     }
     if (url.pathname === "/api/characters/generate") {
       const body = await readBody(req); requests.push(body);
-      assert.ok(assets.has(body.referenceImageAssetId));
+      if (body.referenceImageAssetId) assert.ok(assets.has(body.referenceImageAssetId));
+      else assert.ok(body.referenceCharacterIds?.length > 1 && body.referenceCharacterIds.every(id => [...generated.values()].some(job => job.output.mediaAssetId === id)));
       assert.equal(body.referenceImageUrl, undefined); assert.equal(body.referenceCharacterId, undefined);
       let receipt = receipts.get(body.idempotencyKey);
       if (!receipt) { receipt = { ok: true, requestedCount: 1, partial: false, jobs: [{ jobId: uuid(), generationId: uuid() }] }; receipts.set(body.idempotencyKey, receipt); }
@@ -139,22 +140,23 @@ async function main() {
     await firstCandidate.hover();
     await firstCandidate.click({ position: { x: 40, y: 40 } });
     await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
-    assert.equal(selections[0].jobId, [...generated.keys()][0]);
+    assert.equal(await firstCandidate.getAttribute("aria-pressed"), "true");
     assert.equal(page.url(), `${base}/`); assert.equal(page.context().pages().length, 1);
     await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();
     await firstCandidate.focus();
     await firstCandidate.press("Enter");
     await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
-    assert.equal(selections.length, 2, "keyboard activation keeps image selection accessible");
+    assert.equal(await firstCandidate.getAttribute("aria-pressed"), "true", "keyboard activation keeps image selection accessible");
     await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();
     console.log("Checking saved gallery and idle rollover…");
     assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 3);
     await page.getByRole("button", { name: "My influencers", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).first().waitFor();
-    assert.equal(await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).count(), 3);
+    await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).first().waitFor();
+    assert.equal(await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).count(), 3);
     assert.equal(await page.getByRole("dialog").locator("img").first().evaluate(img => getComputedStyle(img).pointerEvents), "none");
     await page.screenshot({ path: path.join(out, "library-desktop.png"), fullPage: true });
-    await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).first().click();
+    await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).first().click();
+    await page.getByRole("button", { name: "Use 1 image as references", exact: true }).click();
     await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
     assert.equal(await page.getByText("Keeping this identity", { exact: false }).count(), 0);
     const identityBounds = await page.getByRole("button", { name: "Preview Identity: influencer reference" }).boundingBox();
@@ -174,7 +176,7 @@ async function main() {
     assert.equal(await prompt.inputValue(), "");
     assert.equal(await page.getByRole("button", { name: "Preview Reference: reference image" }).count(), 0);
     await page.getByRole("button", { name: "My influencers", exact: true }).click();
-    assert.equal(await page.getByRole("dialog").getByRole("button", { name: "My AI influencer" }).count(), 3);
+    assert.equal(await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).count(), 3);
     await page.getByRole("button", { name: "Close", exact: true }).click();
     mode = "upload-error";
     await prompt.fill("Make an influencer in this style.");
@@ -228,8 +230,64 @@ async function main() {
     assert.equal(requests.length, 5, "re-entry, History and reload never regenerate an image");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(out, "history-after-reload-mobile.png"), fullPage: true });
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    console.log("Checking multiple saved references, generation context, image downloads and workspace dismissal…");
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.getByRole("button", { name: "My influencers", exact: true }).click();
+    const savedImages = page.getByRole("dialog").getByRole("button", { name: /Select saved image/ });
+    await savedImages.nth(0).click(); await savedImages.nth(1).click();
+    assert.equal(await savedImages.nth(0).getAttribute("aria-pressed"), "true");
+    assert.equal(await savedImages.nth(1).getAttribute("aria-pressed"), "true");
+    await page.screenshot({ path: path.join(out, "multi-select-library-desktop.png"), fullPage: true });
+    await page.getByRole("button", { name: "Use 2 images as references", exact: true }).click();
+    await page.getByRole("button", { name: "Preview Ref 1: influencer reference 1", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Preview Ref 2: influencer reference 2", exact: true }).waitFor();
+    await prompt.fill("Use image 1 for the person and image 2 for the setting.");
+    await page.getByRole("button", { name: "Generate", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
+    assert.deepEqual(requests.at(-1).referenceCharacterIds, [...generated.values()].slice(0, 2).map(job => job.output.mediaAssetId));
+    assert.equal(requests.at(-1).referenceImageAssetId, undefined);
+    await page.screenshot({ path: path.join(out, "multi-reference-desktop.png"), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "multi-reference-mobile.png"), fullPage: true });
+    await page.route("**/api/characters/*/download", route => {
+      const url = new URL("https://storage.googleapis.com/fixture/image.png");
+      url.searchParams.set("response-content-disposition", 'attachment; filename="my-influencer.png"');
+      return route.fulfill({ json: { ok: true, url: url.href, fileName: "my-influencer.png" } });
+    });
+    await page.route("https://storage.googleapis.com/fixture/**", route => route.fulfill({ headers: { "Content-Type": "image/png", "Content-Disposition": 'attachment; filename="my-influencer.png"' }, body: png }));
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download image 1", exact: true }).click();
+    assert.equal((await download).suggestedFilename(), "my-influencer.png");
+    const savedCount = generated.size;
+    await page.getByRole("button", { name: "Remove image 1 from workspace", exact: true }).click();
+    await page.getByText("Your creator starts here.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 0);
+    await page.getByRole("button", { name: "My influencers", exact: true }).click();
+    assert.equal(await savedImages.count(), savedCount);
+    await page.screenshot({ path: path.join(out, "multi-select-library-mobile.png"), fullPage: true });
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Influencer image history", exact: true }).click();
+    await historyImages.nth(savedCount - 1).waitFor();
+    assert.equal(await historyImages.count(), savedCount);
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("button", { name: "Clear references", exact: true }).click();
+    while (generated.size < 11) {
+      const id = uuid();
+      generated.set(id, { id, status: "completed", model: "gpt_image", isTerminal: true, output: { url: `${base}/generated.png`, mediaAssetId: uuid(), generationId: uuid(), ratio: "9:16" } });
+    }
+    await page.getByRole("button", { name: "My influencers", exact: true }).click();
+    await savedImages.nth(10).waitFor();
+    for (let index = 0; index < 10; index++) await savedImages.nth(index).click();
+    assert.equal(await savedImages.nth(10).isDisabled(), true, "the gallery enforces the ten-reference limit");
+    await page.getByRole("button", { name: "Use 10 images as references", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: /^Preview Ref \d+:/ }).count(), 10);
+    assert.ok((await prompt.boundingBox()).width > 100, "reference thumbnails leave room for the prompt on mobile");
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "ten-references-mobile.png"), fullPage: true });
     assert.deepEqual(errors, []);
-    console.log("PASS: image hover targets app controls and pointer/keyboard selection stays in the workspace; continuous generations accumulate; completed images stay in History after reload and cached re-entry; explicit History preview returns to a clean workspace; 10-minute idle reset preserves My influencers; uploads/errors and uncertain-request recovery work; mobile fits.");
+    console.log("PASS: multiple references reach generation in order; image downloads save a file; workspace dismissal preserves My influencers and History; pointer/keyboard selection, upload/paste/drop, continuous generation, idle reset and uncertain-request recovery work; desktop and mobile fit.");
   } finally {
     releaseUpload?.();
     if (browser) await browser.close();

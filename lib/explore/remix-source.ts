@@ -9,7 +9,10 @@ export function remixSourceFromJob(input: unknown): RemixTextSource | null {
   if (!record(input)) return null;
   const format = input.exploreFormat ?? input.referenceType;
   if (format === "slideshow") {
-    const sourceUrl = text(input.referenceImageUrl);
+    // New deck outputs retain the selected slide's source, not always slide 1.
+    const roles = record(input.slideshowReferenceContract) ? input.slideshowReferenceContract.styleReferenceIndices : null;
+    const primary = record(input.slideshowGeneration) && Array.isArray(roles) && Number.isInteger(roles[0]) && Array.isArray(input.referenceImageUrls) ? input.referenceImageUrls[Number(roles[0]) - 1] : input.referenceImageUrl;
+    const sourceUrl = text(primary);
     return sourceUrl ? { format, referenceId: null, sourceUrl } : null;
   }
   if ((format === "hook" || format === "wall_text") && input.referenceType === format) {

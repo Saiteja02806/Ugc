@@ -11,11 +11,12 @@ import { getReferenceAudioPreview } from "../lib/explore/reference-audio-preview
 import { applyVideoTextRemix } from "../lib/explore/remix-text-edit.ts";
 import { mapSequencePreviewDemoReference } from "../lib/explore/sequence-preview.ts";
 import * as finishingContract from "../worker/src/lib/explore-finishing-contract.ts";
+import * as wallTextEditor from "../lib/explore/wall-text-editor.ts";
 
 const textFields = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-text-fields.tsx", import.meta.url), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
-}).outputText, { exports: textFields, require: () => ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
+}).outputText, { exports: textFields, require: name => name === "@/lib/explore/wall-text-editor" ? wallTextEditor : ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const asset = (n, collection = "video") => ({ id: id(n), status: "ready", collection, durationSeconds: 8, width: 720, height: 1280,
@@ -41,7 +42,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
   const sourceState = { mode: "upload", selected: null, uploaded: null, preview: null, busy: false, error: null };
   const audio = { asset: null, loading: false, error: null, async choose(file) { this.asset = { name: file.name, url: "blob:audio", duration: 8, file }; return true; }, remove() { this.asset = null; } };
-  const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true,
+  const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true, allowDemoAudio: true,
     controlsTarget: { name: "controls" }, actionsTarget: { name: "actions" }, resultsTarget: { name: "results" },
     editActive: true, editControlsTarget: { name: "edit-controls" }, editActionsTarget: { name: "edit-actions" }, editResultsTarget: { name: "edit-results" },
     onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onEditDone() {}, onCreate() {}, onContinue() { props.prepareRequest = (props.prepareRequest ?? 0) + 1; props.scheduleActive = true; },
@@ -196,6 +197,42 @@ test("Content demo edits reopen and save independently of rendering availability
   assert.equal(h.saveRun(), undefined); assert.equal(h.savedReports.length, 0);
 });
 
+test("Hook overview exposes replacement controls but has no separate demo audio track", () => {
+  const saved = { ...draft(2), audioId: id(4) };
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(saved)]]) });
+  const tree = h.render({ allowDemoAudio: false, editActive: false, editPreviewActive: true });
+  const overview = nodes(tree).find(n => n.type === "portal" && n.props.target === h.props.controlsTarget);
+  const source = nodes(overview).find(n => n.props?.["aria-label"] === "Demo video source");
+  assert.ok(source); assert.notEqual(source.props.hidden, true);
+  assert.ok(nodes(source).some(n => n.props?.["data-demo-source"] === "upload"));
+  assert.equal(nodes(overview).some(n => n.props?.["aria-label"] === "Demo sound"), false);
+  assert.equal(nodes(tree).some(n => n.type === "WorkflowSavedAudioPicker"), false);
+  assert.equal(h.queryInputs.some(q => q.queryKey[0] === "format-demo-audio" && q.enabled), false, "Legacy demo-only audio must not enter the Hook mix");
+  assert.equal(h.draftInputs.at(-1).content.backgroundAssetId, null);
+  assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Background audio settings"), "One shared background track remains available");
+  const legacy = harness({ storage: new Map([[`ugc-explore:demo:v1:owner:hook:${id(1)}`, JSON.stringify(saved)]]) });
+  legacy.render({ allowDemoAudio: false, videoId: id(1) });
+  assert.equal(legacy.draftInputs.at(-1).content.backgroundAssetId, null, "Migrating an older opening-scoped draft must not add a demo-only track");
+});
+
+test("Hook demo editor has only trim/text tools while audio and legacy framing recovery stay in Demo", () => {
+  const stored = draft(2);
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]) });
+  const tree = h.render({ allowDemoAudio: false });
+  const editor = nodes(tree).find(n => n.type === "portal" && n.props.target === h.props.editControlsTarget);
+  const overview = nodes(tree).find(n => n.type === "portal" && n.props.target === h.props.controlsTarget);
+  assert.ok(nodes(editor).some(n => n.props?.["aria-label"] === "Demo trim"));
+  assert.ok(nodes(editor).some(n => n.type === "RemixTextSection"));
+  assert.ok(nodes(editor).some(n => n.type === textFields.FormatVideoTextFields));
+  assert.equal(nodes(editor).some(n => n.type === "WorkflowDemoControls" || n.type === "WorkflowFilePicker" || n.type === "WorkflowSavedAudioPicker"), false);
+  assert.doesNotMatch(text(editor), /Crop & zoom|Original sound|Demo sound/);
+  assert.equal(nodes(editor).some(n => n.props?.["aria-label"] === "Demo original volume"), false);
+  assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Demo original volume"));
+  assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Background audio settings"));
+  assert.ok(nodes(overview).some(n => n.type === "Button" && text(n) === "Reset demo framing"));
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), stored.framing, "Removing crop tools must not silently rewrite saved media edits");
+});
+
 for (const format of ["hook", "wall_text"]) {
   test(`${format}: empty Demo card uploads and chooses Creative Assets without opening the side panel`, async () => {
     const h = harness(); h.render({ active: false, editActive: false, editPreviewActive: true });
@@ -300,7 +337,7 @@ for (const format of ["hook", "wall_text"]) {
     h.edit("Demo trim start", 2); assert.equal(player.currentTime, 2);
     const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
     fields.props.onChange({ ...fields.props.editing, text: { value: "Demo title", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 } }); h.render();
-    h.find(n => n.type === "WorkflowDemoControls").props.onChange({ version: 1, width: .5, height: .5, points: [[0, .25, .4]] }); h.render();
+    h.draftInputs.at(-1).onRestore({ ...h.draftInputs.at(-1).content, workflowMusic: undefined, framing: { version: 1, width: .5, height: .5, points: [[0, .25, .4]] } }, true); h.render();
     assert.match(text(h.find(n => n.props?.role === "status")), /crop may cut off this heading/);
     assert.match(text(h.find(n => n.props?.["aria-label"] === "Demo edit preview")), /Full clip preview/);
   });
@@ -391,7 +428,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: creating, saving, editing and replacing an opening retain demo trim, framing and audio`, async () => {
     const h = harness({ format }); h.select();
     h.edit("Demo trim start", .5); h.edit("Demo trim end", 6.5); h.edit("Demo original volume", 35);
-    h.find(node => node.type === "WorkflowDemoControls").props.onChange(draft().framing); h.render();
+    h.draftInputs.at(-1).onRestore({ ...h.draftInputs.at(-1).content, workflowMusic: undefined, framing: draft().framing }, true); h.render();
     const audioPicker = h.find(node => node.type === "WorkflowFilePicker" && node.props.label === "Upload demo audio");
     assert.equal(await audioPicker.props.attachment.choose({ name: "music.mp3" }), true); h.render();
     h.edit("Demo added audio volume", 60); h.edit("Demo audio playback", "repeat");
@@ -410,7 +447,7 @@ for (const format of ["hook", "wall_text"]) {
         assert.equal(h.input("Demo trim end").props.value, 6.5);
         assert.equal(h.input("Demo original volume").props.value, 35);
         assert.equal(h.input("Demo audio playback").props.value, "repeat");
-        assert.deepEqual(normalize(h.find(node => node.type === "WorkflowDemoControls").props.value), normalize(draft().framing));
+        assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), normalize(draft().framing));
       }
     }
     assert.equal(h.uploads.length, 1);
@@ -462,10 +499,10 @@ test("an opening edit invalidates merge busy state and a finished result even wh
   assert.equal(h.input("Selected demo video").props.src, asset(2).url);
 });
 
-test("a changed opening aspect preserves the demo draft and requires reframing or an explicit reset before merging", () => {
+test("a changed opening aspect preserves the demo draft and requires an explicit legacy framing reset in Demo before merging", () => {
   const h = harness(); h.select(); h.edit("Demo trim start", 1); h.edit("Demo trim end", 7);
   const framing = { version: 1, width: .8, height: .8, points: [[0, .1, .1], [7000, .2, .2]] };
-  h.find(node => node.type === "WorkflowDemoControls").props.onChange(framing); h.render();
+  h.draftInputs.at(-1).onRestore({ ...h.draftInputs.at(-1).content, workflowMusic: undefined, framing }, true); h.render();
   h.render({ opening: output(1), videoId: id(1), openingRevision: 1 });
   assert.equal(h.button("Save final video").props.disabled, false);
   const selected = normalize(readFormatDemoDraft(h.storage.get(draftKey())));
@@ -473,7 +510,7 @@ test("a changed opening aspect preserves the demo draft and requires reframing o
   h.render({ opening: output(3), videoId: id(3), openingRevision: 2 });
   assert.equal(h.input("Selected demo video").props.src, asset(2).url);
   assert.deepEqual(normalize(readFormatDemoDraft(h.storage.get(draftKey()))), selected);
-  assert.deepEqual(normalize(h.find(node => node.type === "WorkflowDemoControls").props.value), framing);
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), framing);
   assert.equal(h.button("Save final video").props.disabled, true);
   assert.ok(h.find(node => node.props?.role === "alert" && /reframe|framing/i.test(text(node))), "The incompatible crop must be explained before rendering");
   assert.equal(h.saveRun(), undefined);

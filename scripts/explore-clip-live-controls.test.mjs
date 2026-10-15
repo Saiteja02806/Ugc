@@ -141,3 +141,22 @@ test("changing a timed text block outside its visible range seeks into that bloc
   tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, timeMs: 2000 })); const count = seeks.length;
   labelled(tree, "Text size").props.onChange({ target: { value: "56" } }); assert.equal(seeks.length, count, "Already visible text keeps the current frame");
 });
+
+test("Wall manual text hides timing and style until advanced mode while keeping full-duration blocks", () => {
+  const h = harness("format-text-overlays-editor"), updates = [];
+  const overlay = { value: "Wall message", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 5000 };
+  const props = { overlays: [overlay], wallText: true, showStyleControls: false, durationMs: 5000, timeMs: 3000, onChange: value => updates.push(value), onSeek() {} };
+  let tree = h.render(() => h.exports.FormatTextOverlaysEditor(props));
+  assert.ok(labelled(tree, "Wall of text"));
+  assert.equal(labelled(tree, "Text start time"), undefined); assert.equal(labelled(tree, "Text end time"), undefined);
+  assert.equal(labelled(tree, "Text preset"), undefined);
+  assert.equal(JSON.stringify(tree).includes("Each text block has its own timing"), false);
+  assert.equal(JSON.stringify(tree).includes("0–5s"), false);
+  labelled(tree, "Wall of text").props.onChange({ target: { value: "Updated wall" } });
+  assert.equal(updates.at(-1)[0].value, "Updated wall");
+  nodes(tree).find(n => n.type === "button" && n.props.children === "Add text").props.onClick();
+  assert.equal(updates.at(-1)[1].startMs, 0); assert.equal(updates.at(-1)[1].endMs, 5000);
+  tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, showStyleControls: true }));
+  assert.ok(labelled(tree, "Text preset"));
+  assert.equal(labelled(tree, "Text start time"), undefined, "Advanced Wall also keeps text for the whole clip");
+});

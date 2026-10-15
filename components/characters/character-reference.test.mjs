@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { getReferenceImageFileError } from "../../lib/generation/reference-image.ts";
 import { characterBatchProgress } from "../../lib/characters/batch-progress.ts";
-import { getCharacterImageModelLabel } from "../../lib/characters/image-models.ts";
+import { getCharacterImageModelLabel, MAX_CHARACTER_REFERENCES } from "../../lib/characters/image-models.ts";
 
 const assetId = "55555555-5555-4555-8555-555555555555";
 const image = { kind: "image", asset: { id: assetId, url: "https://owned.test/style.png" } };
@@ -51,6 +51,8 @@ function characterHarness() {
     visibleJobs: [], historyImages: [], jobs: {}, history: {},
     touchSession() {},
     chooseCharacter(id) { builder.selected = id ? { id, url: "https://owned.test/saved.png", name: "Saved" } : null; },
+    get selectedCharacters() { return builder.references ?? (builder.selected ? [builder.selected] : []); },
+    chooseCharacters(ids) { builder.references = ids.map(id => ({ id, url: `https://owned.test/${id}.png`, name: "Saved" })); builder.selected = builder.references[0] ?? null; },
   };
   const h = runtime("./character-workspace.tsx", {
     "next/image": { default: "Image" }, "next/link": { default: "Link" },
@@ -58,9 +60,10 @@ function characterHarness() {
     "@/components/generation/ai-studio-composer": { AiStudioComposer: "Composer", AiStudioSetting: "Setting", AiStudioSettingSelect: "SettingSelect" },
     "@/components/generation/reference-media-upload": { ReferenceMediaUpload: "Upload" },
     "@/components/generation/reference-upload-preview": { ReferenceUploadPreview: "ReferencePreview" },
-    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
+    "@/lib/characters/image-models": { CHARACTER_IMAGE_MODEL_OPTIONS: [], MAX_CHARACTER_REFERENCES, getCharacterPromptLimit: () => 32000, getCharacterImageModelLabel },
     "@/lib/characters/batch-progress": { characterBatchProgress },
     "./use-character-builder": { useCharacterBuilder: () => builder }, "./character-history": { CharacterHistory: "History" },
+    "./image-download-button": { ImageDownloadButton: "Download" },
     "./character-workspace.module.css": { default: {} },
     "@/components/ui/dialog": { Dialog: "Dialog", DialogContent: "DialogContent", DialogDescription: "DialogDescription", DialogHeader: "DialogHeader", DialogTitle: "DialogTitle" },
   });
@@ -151,6 +154,53 @@ test("the influencer composer keeps its identity thumbnail inline and credit sta
   assert.equal(h.composer().showPromptHint, false);
   const status = all(h.composer().secondaryActions, node => node.props?.role === "status")[0];
   assert.match(status.props.children, /1 image · 1 credit · 10 available/);
+});
+
+test("multiple saved references appear inline, submit ordered IDs and can be removed individually", () => {
+  const h = characterHarness();
+  const ids = [assetId, "44444444-4444-4444-8444-444444444444"];
+  h.builder.chooseCharacters(ids);
+  assert.equal(h.composer().hasAttachments, true);
+  const previews = all(h.upload().referencePreview, node => node.type === "ReferencePreview");
+  assert.equal(previews.length, 2);
+  h.composer().onSubmit();
+  assert.deepEqual(Array.from(h.submitted[0].referenceCharacterIds), ids);
+  assert.equal(h.submitted[0].referenceCharacterId, undefined);
+  assert.equal(h.submitted[0].referenceImageAssetId, undefined);
+  previews[0].props.onRemove();
+  h.composer().onSubmit();
+  assert.equal(h.submitted[1].referenceCharacterId, ids[1]);
+});
+
+test("a partially restored reference selection cannot silently submit a prompt with fewer images", () => {
+  const h = characterHarness();
+  const ids = [assetId, "44444444-4444-4444-8444-444444444444"];
+  h.builder.session.selectedCharacterIds = ids;
+  h.builder.chooseCharacters(ids.slice(0, 1));
+  assert.equal(h.composer().generateDisabled, true);
+  h.composer().onSubmit();
+  assert.equal(h.submitted.length, 0);
+  h.builder.chooseCharacters(ids);
+  assert.equal(h.composer().generateDisabled, false);
+});
+
+test("candidate selection toggles references independently and dismissal never deletes a saved image", () => {
+  const h = characterHarness();
+  const ids = [assetId, "44444444-4444-4444-8444-444444444444"];
+  h.builder.visibleJobs = ids.map((id) => ({ jobId: id }));
+  h.builder.visibleStatuses = ids.map(id => ({ id, isTerminal: true, output: { mediaAssetId: id, url: `https://owned.test/${id}.png` } }));
+  h.builder.characters.data.characters = ids.map(id => ({ id }));
+  const click = label => all(h.render(), node => node.type === "button" && node.props["aria-label"] === label)[0].props.onClick();
+  click("Select influencer image 1"); click("Select influencer image 2");
+  assert.deepEqual(Array.from(h.builder.selectedCharacters, image => image.id), ids);
+  click("Select influencer image 1");
+  assert.deepEqual(Array.from(h.builder.selectedCharacters, image => image.id), [ids[1]]);
+  let dismissed;
+  h.builder.dismissImage = id => { dismissed = id; };
+  click("Remove image 1 from workspace");
+  assert.equal(dismissed, ids[0]);
+  assert.equal(h.builder.characters.data.characters.length, 2);
+  assert.equal(all(h.render(), node => node.type === "Download").length, 4);
 });
 
 function uploadHarness(upload) {

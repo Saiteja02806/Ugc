@@ -9,8 +9,9 @@ export type RecreateGenerationView = {
   preview: boolean;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  slideshowSlideCount?: number;
   referenceTitle?: string;
-  styleVideo?: { id?: string; selectionRevision?: number; url: string; name: string; duration: number | null };
+  styleVideo?: { id?: string; selectionRevision?: number; url: string; name: string; duration: number | null; generationPrompt?: string };
   onClearReference?: () => void;
   workflow?: {
     format: "hook" | "wall_text" | "slideshow";
@@ -23,5 +24,7 @@ export type RecreateGenerationView = {
     onSelectVideo?: (result: AIStudioVideoResult) => void;
     onGeneratedVideo?: (result: AIStudioVideoResult) => void;
     onSelectImage?: (result: AIStudioImageResult) => void;
+    onSelectSlideshow?: (results: AIStudioImageResult[]) => boolean;
+    onGeneratedSlideshow?: (results: AIStudioImageResult[]) => boolean;
   };
 };

@@ -30,6 +30,7 @@
 .exampleGrid [data-reference-recreate]:hover, .exampleGrid [data-reference-recreate][aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
 .exampleGrid [data-reference-recreate] > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (pointer: coarse) { .exampleGrid [data-reference-recreate] { min-height: 44px; } }
+@media (pointer: coarse) { .exampleGrid [data-reference-source-overlay], .exampleGrid [data-reference-recreate-overlay] { width: 44px; height: 44px; } }
 .videoWorkspace.videoWorkspace .controls [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 .referenceGroup { display: grid; gap: 12px; padding-block: 16px; border-block: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .referenceHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }

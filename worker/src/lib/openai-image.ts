@@ -6,6 +6,7 @@ import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./re
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 export const SLIDESHOW_IMAGE_MODEL = "gpt-image-2.5-sunburst";
+export const SLIDESHOW_FLARE_IMAGE_MODEL = "gpt-image-2.5-flare";
 
 let openaiClient: OpenAI | null = null;
 
@@ -13,7 +14,7 @@ export async function generateOpenAiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio = "9:16",
   referenceImageUrl?: string | string[],
-  modelOverride?: typeof SLIDESHOW_IMAGE_MODEL,
+  modelOverride?: typeof SLIDESHOW_IMAGE_MODEL | typeof SLIDESHOW_FLARE_IMAGE_MODEL,
   nativeAspectRatio = false,
 ) {
   const client = getOpenAIClient();

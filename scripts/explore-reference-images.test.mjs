@@ -3,13 +3,14 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { readSlideshowGenerationSlot } from "../worker/src/lib/slideshow-generation-batch.ts";
 
 function load(file, imports, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
+  vm.runInNewContext(code, { exports, require: name => { if (name === "@/worker/src/lib/slideshow-generation-batch") return { readSlideshowGenerationSlot }; assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
 

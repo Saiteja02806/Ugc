@@ -2,9 +2,10 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 
-const release = JSON.parse(readFileSync("worker/src/lib/explore-hook-reference-addition-release.json", "utf8"));
+const manifestArg = process.argv.indexOf("--manifest"), outputArg = process.argv.indexOf("--output");
+const release = JSON.parse(readFileSync(manifestArg >= 0 ? process.argv[manifestArg + 1] : "worker/src/lib/explore-hook-reference-addition-release.json", "utf8"));
 const transcripts = JSON.parse(readFileSync("lib/explore/reference-text-transcripts.json", "utf8"));
-const output = path.resolve(".tmp/hook-reference-addition-review");
+const output = path.resolve(outputArg >= 0 ? process.argv[outputArg + 1] : ".tmp/hook-reference-addition-review");
 mkdirSync(output, { recursive: true });
 
 const sheets = [];

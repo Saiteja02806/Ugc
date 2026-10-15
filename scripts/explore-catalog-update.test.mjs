@@ -156,6 +156,7 @@ function loadRecreateCatalog(status, environment = "development") {
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./hook-video-library") return library;
     if (specifier === "./wall-text-video-library") return { getExploreWallTextVideos: () => [] };
+    if (specifier === "./reference-video-prompts") return { getReferenceVideoPrompt: () => undefined };
     if (specifier === "@/worker/src/lib/explore-hook-reference-release") return { isHookReferenceReleaseActive: () => false, getHookReferenceReleaseItems: () => [] };
     if (specifier === "@/lib/storage/storage") return { buildPublicStorageUrl: (key) => `https://example.test/${key}` };
     throw new Error(`Unexpected dependency: ${specifier}`);
@@ -165,15 +166,14 @@ function loadRecreateCatalog(status, environment = "development") {
   return { library: loadedModule.exports, catalog };
 }
 
-test("local Recreate includes all staged additions, with unique Hook labels and no production preview", () => {
+test("local Recreate includes all staged additions, with stable Hook identities and no production preview", () => {
   const { library, catalog } = loadRecreateCatalog("staged");
   const local = library.getLocalRecreateReferences();
   assert.equal(local.length, 14 + catalog.items.length);
   const hooks = local.filter((item) => item.format === "hook");
   assert.equal(hooks.length, 21);
-  assert.equal(new Set(hooks.map((item) => item.title)).size, 21);
-  assert.equal(hooks[14].title, "Hook 15");
-  assert.equal(hooks[20].title, "Hook 21");
+  assert.equal(new Set(hooks.map((item) => item.id)).size, 21);
+  assert.ok(hooks.every(item => item.title === "Hook"));
   assert.equal(hooks[20].videoUrl.startsWith("/api/explore/local-media/"), true);
   assert.equal(library.getRecreateReferences().length, 14);
   assert.equal(loadRecreateCatalog("staged", "production").library.getLocalRecreateReferences().length, 0);

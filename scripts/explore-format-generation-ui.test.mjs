@@ -7,6 +7,9 @@ import ts from "typescript";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import * as pendingGeneration from "../lib/ai-studio/pending-generation.ts";
 import * as readDeadline from "../lib/http/read-deadline.ts";
+import * as slideshowBatch from "../worker/src/lib/slideshow-generation-batch.ts";
+import * as slideshowGroups from "../lib/explore/slideshow-generation-groups.ts";
+import * as referencePrompts from "../lib/explore/reference-video-prompts.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -15,6 +18,9 @@ function load(file, imports = {}, globals = {}) {
   vm.runInNewContext(code, { exports, process: { env: {} }, require: name => {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name in imports) return imports[name];
+    if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
+    if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
+    if (name === "../../lib/explore/reference-video-prompts.ts") return referencePrompts;
     if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
     if (name === "@/worker/src/lib/image-reference-context") return load("worker/src/lib/image-reference-context.ts");
@@ -24,7 +30,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
+function harness(format, { reference = true, referenceUrls, slideshowSlideCount, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
@@ -44,7 +50,7 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
         if (!prior || !deps || deps.some((value, i) => !Object.is(value, prior[i]))) {
           effectDependencies[index] = deps ?? [];
           // Submission-only fixtures still execute the actual account lifecycle.
-          if (callback.toString().includes("activeUserIdRef.current =")) callback();
+          if (callback.toString().includes("activeUserIdRef.current =") || callback.toString().includes("activeGalleryVideoUrl.current =")) callback();
           else if (completedJob) effects.push(callback);
         }
       }, useMemo: fn => fn(), useCallback: fn => fn,
@@ -86,6 +92,7 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
   const Panel = format === "slideshow" ? panelModule.ImageGenerationStudioPanel : panelModule.VideoGenerationStudioPanel;
   const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
     referenceImageUrls: referenceUrls,
+    slideshowSlideCount,
     referenceImageAssetId: regenerationTarget,
     preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && format !== "studio" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
     workflow: format === "studio" ? undefined : { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
@@ -106,7 +113,16 @@ test("slideshow pending cards restore prompt and ratio from the same owner/scope
   const metadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${jobId}`;
   const h = harness("slideshow", { initialStorage: [[metadataKey, JSON.stringify({ prompt: "Original slide instructions", aspectRatio: "4:5" })]], completedJob: { id: jobId, jobType: "image_generation", exploreFormat: "slideshow", status: "queued", createdAt: "2026-10-13T00:00:00Z", updatedAt: "2026-10-13T00:00:00Z" } });
   await h.flushEffects();
-  const card = h.render().output.props.children.find(node => node.type?.name === "ImageGenerationCard");
+  const pending = [h.render().output]; let card;
+  while (pending.length) {
+    const node = pending.shift();
+    if (Array.isArray(node)) pending.push(...node);
+    else if (node && typeof node === "object") {
+      if (node.type?.name === "ImageGenerationCard") { card = node; break; }
+      pending.push(node.props?.children);
+    }
+  }
+  assert.ok(card, "Recovered output remains visible through result grouping");
   assert.equal(card.props.prompt, "Original slide instructions"); assert.equal(card.props.aspectRatio, "4:5");
 });
 
@@ -482,15 +498,16 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
 
 test("slideshow sends the exact selected context independently of output quantity", async () => {
   const urls = ["https://example.test/reference.png", "https://example.test/slide-4.png", "https://example.test/slide-6.png"];
-  const h = harness("slideshow", { captureRequests: true, referenceUrls: urls });
+  const h = harness("slideshow", { captureRequests: true, referenceUrls: urls, slideshowSlideCount: 3 });
   const count = h.composer.props.settings.props.children.find(node => node.props?.ariaLabel === "Number of images");
-  assert.equal(count.props.fieldLabel, "Versions for this slide");
+  assert.equal(count.props.fieldLabel, "Versions");
   count.props.onChange("2");
   await h.render().composer.props.onSubmit({ preventDefault() {} });
   await new Promise(setImmediate);
   assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
   assert.deepEqual(h.requests[0].body.referenceImageUrls, urls);
   assert.equal(h.requests[0].body.quantity, 2);
+  assert.equal(h.requests[0].body.slideshowSlideCount, 3);
   assert.equal(h.requests[0].body.prompt, "My requested changes");
 });
 
@@ -509,16 +526,16 @@ test("the rendered Hook, Wall of Text and slideshow selectors submit two or thre
   }
 });
 
-test("slideshow uses GPT Image 2.5 by default, offers Nano Banana and omits Seedream", async () => {
+test("slideshow defaults to Flare and offers Sunburst and Nano Banana", async () => {
   const h = harness("slideshow", { captureRequests: true });
   const settings = [h.composer.props.settings.props.children].flat(Infinity);
   const selector = settings.find(node => node.props?.ariaLabel === "Image model");
-  assert.equal(selector.props.value, "gpt_image_2_5");
-  assert.deepEqual(Array.from(selector.props.options, option => option.value), ["gpt_image_2_5", "nano_banana_2"]);
+  assert.equal(selector.props.value, "gpt_image_2_5_flare");
+  assert.deepEqual(Array.from(selector.props.options, option => option.value), ["gpt_image_2_5_flare", "gpt_image_2_5", "nano_banana_2"]);
   await h.composer.props.onSubmit({ preventDefault() {} });
   await new Promise(setImmediate);
   assert.equal(h.requests.length, 1, JSON.stringify(h.errors));
-  assert.equal(h.requests[0].body.model, "gpt_image_2_5");
+  assert.equal(h.requests[0].body.model, "gpt_image_2_5_flare");
   assert.equal(h.requests[0].body.referenceImageUrl, "https://example.test/reference.png");
   assert.equal(h.requests[0].body.exploreFormat, "slideshow");
   assert.equal(h.requests[0].body.aspectRatio, "4:5");

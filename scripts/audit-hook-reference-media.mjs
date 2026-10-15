@@ -8,8 +8,9 @@ import { atomicJsonSync } from "./reference-text-atomic-write.mjs";
 import { readMp4DurationSeconds } from "../worker/src/lib/video-reference-input.ts";
 import { scanHookRelease } from "./prepare-hook-reference-release.mjs";
 
-const addition = process.argv.includes("--addition");
-const release = JSON.parse(readFileSync(addition ? "worker/src/lib/explore-hook-reference-addition-release.json" : "worker/src/lib/explore-hook-reference-release.json", "utf8"));
+const manifestArg = process.argv.indexOf("--manifest");
+const addition = process.argv.includes("--addition") || manifestArg >= 0;
+const release = JSON.parse(readFileSync(manifestArg >= 0 ? process.argv[manifestArg + 1] : addition ? "worker/src/lib/explore-hook-reference-addition-release.json" : "worker/src/lib/explore-hook-reference-release.json", "utf8"));
 const sourceIndex = process.argv.indexOf("--source");
 const sourceLinkDifferences = [];
 if (sourceIndex >= 0) {
@@ -50,7 +51,8 @@ for (const item of release.items) {
   if (!Number.isFinite(correlation) || correlation < .90 || Math.abs(gain - .2) > .04) throw new Error(`Preview soundtrack differs from its registered MP3: ${item.id}, correlation=${correlation}, gain=${gain}`);
   rows.push({ id: item.id, picturesUnchanged: true, fullAudioDecode: true, generationDuration, durationSeconds: duration, audioCorrelation: correlation, gain });
 }
-const output = addition ? ".tmp/hook-reference-addition-review/media-audit.json" : ".tmp/hook-reference-review/media-audit.json";
+const outputArg = process.argv.indexOf("--output");
+const output = outputArg >= 0 ? process.argv[outputArg + 1] : manifestArg >= 0 ? ".tmp/hook-new-batch/media-audit.json" : addition ? ".tmp/hook-reference-addition-review/media-audit.json" : ".tmp/hook-reference-review/media-audit.json";
 mkdirSync(path.dirname(output), { recursive: true });
 atomicJsonSync(output, { checked: rows.length, sourceLinkDifferences, rows });
 console.log(JSON.stringify({ hooksChecked: rows.length, originalFoldersVerified: sourceIndex >= 0, sourceLinkDifferences, fullAudioDecode: true, picturesUnchanged: true, pairedAudioVerified: true, minimumAudioCorrelation: Math.min(...rows.map(row => row.audioCorrelation)), output }));

@@ -9,6 +9,7 @@ import ffprobe from "ffprobe-static";
 import catalog from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
 import release from "../worker/src/lib/explore-hook-reference-release.json" with { type: "json" };
 import additions from "../worker/src/lib/explore-hook-reference-addition-release.json" with { type: "json" };
+import newBatch from "../worker/src/lib/explore-hook-reference-new-batch-release.json" with { type: "json" };
 import { getGenerationReferenceSoundtrack, getAssetReferenceSoundtrack, getExplorePairedReferences, referenceAudioBaseStorageKey } from "../worker/dist/lib/explore-reference-soundtrack.js";
 import { renderExploreReferenceAudio, verifyReferenceAudioFile } from "../worker/dist/lib/explore-reference-audio-render.js";
 import { finishExploreVideo } from "../worker/dist/lib/explore-video-finishing.js";
@@ -42,7 +43,7 @@ function amplitude(data, seconds, frequency) {
 }
 
 test("every published pair has one immutable video/audio mapping and both formats enforce the selected reference", () => {
-  const published = [...new Map([...catalog.items, ...[release, additions].flatMap(batch => batch.mediaStatus === "published" ? batch.items : [])].map(item => [item.id, item])).values()];
+  const published = [...new Map([...catalog.items, ...[release, additions, newBatch].flatMap(batch => batch.mediaStatus === "published" ? batch.items : [])].map(item => [item.id, item])).values()];
   assert.equal(getExplorePairedReferences().length, published.length);
   assert.equal(getExplorePairedReferences("hook").length, published.filter(item => item.format === "hook").length);
   assert.equal(getExplorePairedReferences("wall_text").length, 7);

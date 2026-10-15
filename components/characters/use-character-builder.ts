@@ -42,6 +42,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
   const accessKey = ["character-access", userId] as const;
   const historyKey = ["character-history", userId] as const;
   const [historyImage, setHistoryImage] = useState<CharacterHistoryImage | null>(null);
+  const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(() => new Set());
   // Foreground results belong to this mounted visit, unlike durable recovery
   // receipts. A completed receipt alone must never reopen a historical image.
   const [visitJobIds, setVisitJobIds] = useState<Set<string>>(() => new Set());
@@ -197,7 +198,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
     }),
     onSuccess: async (result) => {
       await client.cancelQueries({ queryKey: charactersKey });
-      updateSession({ selectedCharacterId: result.character.id, lastActivityAt: Date.now() });
+      updateSession({ selectedCharacterId: result.character.id, selectedCharacterIds: [result.character.id], lastActivityAt: Date.now() });
       client.setQueryData<{ ok: true; characters: PublicCharacter[] }>(charactersKey, (previous) => ({
         ok: true, characters: [result.character, ...(previous?.characters ?? []).filter((character) => character.id !== result.character.id)],
       }));
@@ -206,10 +207,17 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
     },
   });
   const inProgress = session.jobs.some((receipt) => !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal);
-  const selected = characters.data?.characters.find((character) => character.id === session.selectedCharacterId) ?? null;
+  const selectedIds = session.selectedCharacterIds?.length ? session.selectedCharacterIds : session.selectedCharacterId ? [session.selectedCharacterId] : [];
+  const selectedCharacters = selectedIds.flatMap((id) => {
+    const character = characters.data?.characters.find((candidate) => candidate.id === id);
+    if (character) return [character];
+    const job = jobs.data?.find((candidate) => candidate.output?.mediaAssetId === id);
+    return job?.output ? [{ id, url: job.output.url, name: "My AI influencer", model: job.model ?? "gpt_image" as const, gender: null, createdAt: "" }] : [];
+  });
+  const selected = selectedCharacters[0] ?? null;
   const visibleJobs = historyImage ? [{ jobId: historyImage.jobId, generationId: historyImage.generationId }]
-    : session.jobs.filter((receipt) => visitJobIds.has(receipt.jobId)
-      || !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal);
+    : session.jobs.filter((receipt) => !dismissedJobIds.has(receipt.jobId) && (visitJobIds.has(receipt.jobId)
+      || !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal));
   const visibleStatuses = historyImage ? [{
     id: historyImage.jobId, model: historyImage.model, status: "completed" as const, isTerminal: true, error: null, checkError: null,
     output: { url: historyImage.url, mediaAssetId: historyImage.mediaAssetId, generationId: historyImage.generationId, width: null, height: null, ratio: "9:16" },
@@ -221,7 +229,8 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
     if (activityPending || select.isPending || generationFlight.current || current.pendingRequest || current.jobs.some((job) => !cachedJobStatus(job)?.isTerminal)) return;
     setHistoryImage(null);
     setVisitJobIds(new Set());
-    updateSession({ jobs: [], selectedCharacterId: null, lastActivityAt: null, sessionEpoch: current.sessionEpoch + 1 });
+    setDismissedJobIds(new Set());
+    updateSession({ jobs: [], selectedCharacterId: null, selectedCharacterIds: [], lastActivityAt: null, sessionEpoch: current.sessionEpoch + 1 });
     resetSelection(); resetGeneration();
   }, [client, userId, cachedJobStatus, updateSession, resetSelection, resetGeneration, activityPending, select.isPending]);
   useEffect(() => {
@@ -250,7 +259,12 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
     };
   }, [client, userId, sessionQuery.isPending, session.lastActivityAt, session.sessionEpoch, session.pendingRequest,
     session.jobs.length, session.selectedCharacterId, inProgress, touchSession, cachedJobStatus, resetSession, activityPending, select.isPending]);
-  return { session, sessionResetVersion: session.sessionEpoch, touchSession, access, characters, jobs, generate, select, selected, inProgress, visibleJobs, visibleStatuses,
+  return { session, sessionResetVersion: session.sessionEpoch, touchSession, access, characters, jobs, generate, select, selected, selectedCharacters, inProgress, visibleJobs, visibleStatuses,
+    dismissImage: (jobId: string) => {
+      touchSession();
+      setDismissedJobIds((current) => new Set([...current, jobId]));
+      if (historyImage?.jobId === jobId) setHistoryImage(null);
+    },
     history, historyImages: mergeCharacterHistoryPages(history.data?.pages ?? []), historyImage,
     openHistoryImage: (image: CharacterHistoryImage) => {
       if (!inProgress && !generationFlight.current && !session.pendingRequest) { touchSession(); setHistoryImage(image); }
@@ -258,7 +272,8 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
     returnToSession: () => { touchSession(); setHistoryImage(null); },
     startNewSession: resetSession,
     restoring: Boolean(userId) && sessionQuery.isPending,
-    chooseCharacter: (id: string | null) => updateSession({ selectedCharacterId: id, lastActivityAt: Date.now() }),
+    chooseCharacter: (id: string | null) => updateSession({ selectedCharacterId: id, selectedCharacterIds: id ? [id] : [], lastActivityAt: Date.now() }),
+    chooseCharacters: (ids: string[]) => updateSession({ selectedCharacterId: ids[0] ?? null, selectedCharacterIds: ids, lastActivityAt: Date.now() }),
     discardPendingRequest: () => { updateSession({ pendingRequest: null }); generate.reset(); },
   };
 }

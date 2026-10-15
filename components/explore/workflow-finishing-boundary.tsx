@@ -15,8 +15,9 @@ import { trimmedDemoFraming } from "@/lib/explore/format-demo";
 import { useTalkingHeadPendingComposition } from "./talking-head-pending-composition";
 import type { ExploreScheduleComposition } from "@/lib/explore/pending-schedule-client";
 import type { WorkflowCaptions } from "./workflow-caption-editor";
+import { useWorkflowBackgroundMusic, type WorkflowBackgroundMusic } from "./use-workflow-background-music";
 
-type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void; captions: WorkflowCaptions; pendingComposition?: ExploreScheduleComposition };
+type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void; captions: WorkflowCaptions; music: WorkflowBackgroundMusic; pendingComposition?: ExploreScheduleComposition };
 const UNCONFIRMED_SCHEDULE_MESSAGE = "This scheduling request is unconfirmed. Resume the saved request to check or retry the same request without creating a duplicate.";
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
@@ -37,16 +38,19 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   composition?: ExploreClipComposition; backgroundScheduling?: boolean; demoAudioAssetId?: string | null;
 }) {
   const [options, setOptions] = useState(initialOptions ?? DEFAULT_FINISHING_OPTIONS);
+  const music = useWorkflowBackgroundMusic({ ownerId, enabled, options, setOptions });
+  const backgroundSource = options.backgroundMusic ? music.source : null;
+  const selectionError = demoFramingError ?? music.selectionError;
   useEffect(() => { onOptionsChange?.(options); }, [options, onOptionsChange]);
   const effectiveDemoFraming = demoFraming && composition?.demoEditing ? trimmedDemoFraming(demoFraming, composition.demoEditing) : demoFraming;
   const workflowScope = draftId ? `workflow:${draftId}` : undefined;
   // Independent durable identity for speech review. Style and word edits never
   // regenerate it; both requests share the owner's exact audio cache.
   const captionFinishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback,
-    options: { subtitles: true, style: "clean", placement: "bottom", backgroundMusic: options.backgroundMusic }, demoFraming: effectiveDemoFraming, demoFramingError,
+    options: { subtitles: true, style: "clean", placement: "bottom", backgroundMusic: options.backgroundMusic, ...(options.backgroundAssetId !== undefined ? { backgroundAssetId: options.backgroundAssetId, backgroundPlayback: music.playback } : {}) }, backgroundSource, backgroundPlayback: music.playback, demoFraming: effectiveDemoFraming, demoFramingError: selectionError,
     composition, demoAudioAssetId, captionPreview: true, scope: workflowScope ? `${workflowScope}:caption-preview` : "caption-preview", fastStatus: true });
-  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback, options, onRestoreOptions: initialOptions ? undefined : setOptions, demoFraming: effectiveDemoFraming, demoFramingError, fastStatus, reuseUnchangedSource: true, captionDraft: captionFinishing.captionDraft, composition, demoAudioAssetId, scope: workflowScope });
-  const audioSelection = JSON.stringify([ownerId, source?.id, demo?.url, demoSource?.id, demoAudio?.url, demoAudioSource?.id, playback, composition, demoAudioAssetId]);
+  const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback, options, onRestoreOptions: initialOptions ? undefined : setOptions, backgroundSource, backgroundPlayback: music.playback, demoFraming: effectiveDemoFraming, demoFramingError: selectionError, fastStatus, reuseUnchangedSource: true, captionDraft: captionFinishing.captionDraft, composition, demoAudioAssetId, scope: workflowScope });
+  const audioSelection = JSON.stringify([ownerId, source?.id, demo?.url, demoSource?.id, demoAudio?.url, demoAudioSource?.id, playback, composition, demoAudioAssetId, options.backgroundMusic, backgroundSource?.id, music.playback]);
   const priorAudioSelection = useRef(audioSelection);
   const audioSelectionReady = useRef(false);
   useEffect(() => {
@@ -68,7 +72,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     transcript: captionFinishing.transcript, corrections: options.corrections ?? [],
     onCorrectionsChange: corrections => setOptions(previous => ({ ...previous, corrections })) };
   const pendingComposition = useTalkingHeadPendingComposition({ owner: ownerId, kind, source, demo, demoSource, demoAudio, playback,
-    composition, demoAudioAssetId: demoAudioSource?.id ?? demoAudioAssetId, framing: demoFraming, options, captionDraft: captionFinishing.captionDraft, captionsReady: Boolean(captions.transcript), selectionError: demoFramingError });
+    composition, demoAudioAssetId: demoAudioSource?.id ?? demoAudioAssetId, framing: demoFraming, options, backgroundSource, backgroundPlayback: music.playback, captionDraft: captionFinishing.captionDraft, captionsReady: Boolean(captions.transcript), selectionError });
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
   const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);
   const active = useRef(true), working = useRef(false), requestGeneration = useRef(0);
@@ -193,5 +197,5 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const alreadySaved = confirmedSource !== null && (!output || confirmedSource === output.id);
   const resumeSaved = receipt !== null && !receipt.scheduleId;
   const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
-  return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
+  return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

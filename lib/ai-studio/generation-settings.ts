@@ -12,7 +12,7 @@ export function isAIStudioGenerationQuantity(value: unknown): value is AIStudioG
   return AI_STUDIO_GENERATION_QUANTITIES.includes(value as AIStudioGenerationQuantity);
 }
 export const AI_STUDIO_IMAGE_MODELS = ["nano_banana_2", "seedream_5_pro"] as const;
-export const SLIDESHOW_IMAGE_MODELS = ["gpt_image_2_5", "nano_banana_2"] as const;
+export const SLIDESHOW_IMAGE_MODELS = ["gpt_image_2_5_flare", "gpt_image_2_5", "nano_banana_2"] as const;
 export const AI_STUDIO_VIDEO_MODELS = ["kling_3_0", "google_omni", "seedance_2_5", "wan_3_0"] as const;
 export const AI_STUDIO_VIDEO_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30] as const;
 // Kling 3.0's configured route accepts every whole second from 3 through 15.
@@ -34,7 +34,7 @@ export type AIStudioImageModel =
   | (typeof AI_STUDIO_IMAGE_MODELS)[number]
   | (typeof SLIDESHOW_IMAGE_MODELS)[number];
 export const DEFAULT_AI_STUDIO_IMAGE_MODEL: AIStudioImageModel = "nano_banana_2";
-export const DEFAULT_SLIDESHOW_IMAGE_MODEL: AIStudioImageModel = "gpt_image_2_5";
+export const DEFAULT_SLIDESHOW_IMAGE_MODEL: AIStudioImageModel = "gpt_image_2_5_flare";
 export type AIStudioVideoModel = (typeof AI_STUDIO_VIDEO_MODELS)[number];
 export type AIStudioVideoDuration =
   (typeof AI_STUDIO_VIDEO_DURATIONS)[number] | (typeof WAN_VIDEO_DURATIONS)[number];
@@ -91,7 +91,8 @@ export function getAIStudioImageModelLabel(model: AIStudioImageModel) {
   return {
     nano_banana_2: "Nano Banana 2.1",
     seedream_5_pro: "Seedream 5.0 Pro",
-    gpt_image_2_5: "GPT Image 2.5",
+    gpt_image_2_5: "GPT Image 2.5 Sunburst",
+    gpt_image_2_5_flare: "GPT Image 2.5 Flare",
   }[model];
 }
 

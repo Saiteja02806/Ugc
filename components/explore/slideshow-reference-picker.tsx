@@ -63,7 +63,7 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     <div className={pickerStyles.tiles}>
       {reference ? <div className={pickerStyles.referenceCard}>
         <div className={pickerStyles.referenceMedia}>
-          <button type="button" className={pickerStyles.preview} disabled={disabled || busy} onClick={onPreview} aria-label="Preview selected slideshow"><img src={reference.slides[slideIndex]?.url ?? reference.posterUrl} alt="" width={132} height={132} /><span>Preview</span></button>
+          <button type="button" className={pickerStyles.preview} disabled={disabled || busy} onClick={onPreview} aria-label="Preview selected slideshow"><img src={reference.slides[slideIndex]?.url ?? reference.posterUrl} alt="" width={64} height={64} /><span>Preview</span></button>
           <Button type="button" variant="ghost" size="icon-sm" className={pickerStyles.remove} disabled={disabled || busy} onClick={onRemove} aria-label="Remove slideshow reference" title="Remove slideshow reference"><X className="size-4" aria-hidden="true" /></Button>
         </div>
         <div className={pickerStyles.referenceCopy}><strong title={reference.title}>{reference.title}</strong><span>{reference.slides.length} slides</span></div>
@@ -72,23 +72,17 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     </div>
     <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload slideshow images" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {reference ? <details className={pickerStyles.selection} open><summary>Reference images<span>{selectedSlideIds.length} selected</span></summary><div className="space-y-2">
-      <div role="group" aria-label="Slides to send as reference" className={styles.slideshowContextMode}>
-        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length === reference.slides.length} disabled={disabled || busy} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>Use all</Button>
-        <Button type="button" size="sm" variant="ghost" aria-pressed={selectedSlideIds.length !== reference.slides.length} disabled={disabled || busy} onClick={() => { if (selectedSlideIds.length === reference.slides.length) onSelectionChange([reference.slides[slideIndex].id]); }}>Choose images</Button>
-      </div>
+    {reference ? <details className={pickerStyles.selection} open><summary>Reference images<span aria-live="polite">{selectedSlideIds.length} selected</span></summary><div>
       <div className={styles.slideshowContextStrip} role="group" aria-label="Select reference slides">
         {reference.slides.map((slide, index) => {
           const checked = selectedSlideIds.includes(slide.id);
           return <button key={slide.id} type="button" className={styles.slideshowContextSlide} aria-label={`Slide ${index + 1} as generation reference`} aria-pressed={checked} disabled={disabled || busy} onClick={() => onSelectionChange(checked ? selectedSlideIds.filter(id => id !== slide.id) : [...selectedSlideIds, slide.id], checked ? undefined : index)}>
-            <img src={slide.url} alt="" width={64} height={88} loading="lazy" />
+            <img src={slide.url} alt="" width={48} height={64} loading="lazy" />
             <span className={styles.slideshowContextCheck} aria-hidden="true">{checked ? <Check className="size-3" /> : null}</span>
             <span className={styles.slideshowContextNumber} aria-hidden="true">{index + 1}</span>
           </button>;
         })}
       </div>
-      <p aria-live="polite" className="text-[13px] leading-5 text-muted">{selectedSlideIds.length ? `${selectedSlideIds.length} reference image${selectedSlideIds.length === 1 ? "" : "s"} will guide the result.` : "Select at least one reference image."}</p>
-      {selectedSlideIds.length ? <div className="border-t border-border pt-3"><p className="text-sm font-semibold">Creating slide {slideIndex + 1} of {reference.slides.length}</p><p className="mt-1 text-[13px] leading-5 text-muted">Choose how many versions to generate below. Pick one result to add it to Edit slides.</p></div> : null}
     </div></details> : <p className="text-xs leading-5 text-muted">Choose an example or upload 2–10 reference images.</p>}
     {localPreview && busy ? <p role="status" className="text-xs text-muted">Reading your slide images on this device…</p> : null}
   </section>;

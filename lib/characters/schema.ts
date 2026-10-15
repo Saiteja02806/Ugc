@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CHARACTER_IMAGE_MODELS, getCharacterPromptLimit, MAX_CHARACTER_PROMPT_LENGTH } from "./image-models.ts";
+import { CHARACTER_IMAGE_MODELS, getCharacterPromptLimit, MAX_CHARACTER_PROMPT_LENGTH, MAX_CHARACTER_REFERENCES } from "./image-models.ts";
 
 export { MAX_CHARACTER_PROMPT_LENGTH } from "./image-models.ts";
 
@@ -17,10 +17,11 @@ export const CharacterGenerateRequestSchema = z.strictObject({
   imageCount: CharacterImageCountSchema.optional(),
   prompt: z.string().trim().min(1, "Describe your influencer before generating.").max(MAX_CHARACTER_PROMPT_LENGTH, "Your description is too long to send. Please shorten it."),
   referenceCharacterId: z.uuid().optional(),
+  referenceCharacterIds: z.array(z.uuid()).min(1).max(MAX_CHARACTER_REFERENCES).refine((ids) => new Set(ids).size === ids.length, "Choose each reference image only once.").optional(),
   referenceImageAssetId: z.uuid().optional(),
   idempotencyKey: z.string().trim().min(1).max(200),
 }).superRefine((request, context) => {
-  if (request.referenceCharacterId && request.referenceImageAssetId) {
+  if ([request.referenceCharacterId, request.referenceCharacterIds, request.referenceImageAssetId].filter(Boolean).length > 1) {
     context.addIssue({ code: "custom", path: ["referenceImageAssetId"], message: "Choose an uploaded image or a saved influencer as your reference." });
   }
   if (request.model === "seedream_5_pro" && request.prompt.length > getCharacterPromptLimit(request.model)) {

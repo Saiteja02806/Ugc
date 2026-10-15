@@ -6,9 +6,10 @@ import { getReferenceText } from "@/lib/explore/reference-text-store";
 import type { MediaAsset } from "@/lib/media/types";
 import { HookWorkflowPreview } from "@/components/explore/hook-workflow-preview";
 import { PhoneWorkflowPreview } from "@/components/explore/phone-workflow-preview";
+import { MusicChoicePreview } from "./music-choice-preview";
 
 /** A read-only fixture: actual editor UI, local media, no generation or saving. */
-export default async function ExploreFormatPreview({ searchParams }: { searchParams: Promise<{ format?: string; sources?: string; legacy?: string; generated?: string; refId?: string; ratio?: string; finished?: string }> }) {
+export default async function ExploreFormatPreview({ searchParams }: { searchParams: Promise<{ format?: string; sources?: string; legacy?: string; generated?: string; refId?: string; ratio?: string; finished?: string; music?: string }> }) {
   if (process.env.NODE_ENV !== "development") notFound();
   const query = await searchParams;
   if (query.legacy === "hook" || query.legacy === "phone") return <AppShell activeKey="explore" focusNavigation={query.legacy === "hook"}>{query.legacy === "hook" ? <HookWorkflowPreview /> : <PhoneWorkflowPreview />}</AppShell>;
@@ -41,7 +42,7 @@ export default async function ExploreFormatPreview({ searchParams }: { searchPar
     title: format === "hook" ? "Prepared hook and demo sample" : "Wall of text sample footage" } : undefined;
   const previewFinalSlideshow = query.finished === "1" && sample ? { id: "local-slideshow-sample", title: "Slideshow sample images", slides: sample.slides.slice(0, 2).map(slide => slide.url) } : undefined;
   const openingClip = previewFinalVideo && format === "hook" ? { ...clip, url: "/marketing/showcase-part2/hook2-preview.mp4", duration: 2.837 } : clip;
-  return <AppShell activeKey="explore" focusNavigation><FormatWorkspace format={format} previewFinalVideo={previewFinalVideo} previewFinalSlideshow={previewFinalSlideshow} previewText={previewText} previewReferences={references} previewSlideshow={previewSlideshow} previewAssets={previewAssets} previewVideo={format === "slideshow" || query.sources === "1" ? undefined : {
+  return <AppShell activeKey="explore" focusNavigation><FormatWorkspace format={format} previewContextBanner={query.music === "1" && format === "hook" ? <MusicChoicePreview referenceTitle={sampleReference?.title ?? "Hook 61"} /> : undefined} previewFinalVideo={previewFinalVideo} previewFinalSlideshow={previewFinalSlideshow} previewText={previewText} previewReferences={references} previewSlideshow={previewSlideshow} previewAssets={previewAssets} previewVideo={format === "slideshow" || query.sources === "1" ? undefined : {
     id: previewFinalVideo ? "00000000-0000-4000-8000-000000000016" : portrait ? "00000000-0000-4000-8000-000000000009" : "00000000-0000-4000-8000-000000000008", mediaAssetId: null, createdAt: "2026-10-08T00:00:00Z", durationSeconds: openingClip.duration,
     modelLabel: null, resolution: null, thumbnailUrl: null, ratio: openingClip.ratio, status: "Ready", title: "Editor preview", prompt: "Local cover footage for reviewing edits", url: openingClip.url,
   }} /></AppShell>;

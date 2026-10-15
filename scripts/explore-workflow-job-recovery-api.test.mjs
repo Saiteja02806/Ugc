@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { createClient } from "@supabase/supabase-js";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import * as slideshowBatch from "../worker/src/lib/slideshow-generation-batch.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -13,6 +14,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, URL, console, require(name) {
     if (name in imports) return imports[name];
+    if (name === "../../worker/src/lib/slideshow-generation-batch.ts") return slideshowBatch;
     if (name === "../explore/remix-source.ts") return remixSource;
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });

@@ -55,6 +55,7 @@ export function AiStudioComposer({
   portalTarget,
   promptHelper,
   promptLabel,
+  promptSupplement,
   settingsSummary,
   actionsTarget,
   referenceControls,
@@ -93,6 +94,7 @@ export function AiStudioComposer({
   portalTarget?: HTMLElement | null;
   promptHelper?: string;
   promptLabel?: string;
+  promptSupplement?: ReactNode;
   settingsSummary?: string;
   actionsTarget?: HTMLElement | null;
   referenceControls?: ReactNode;
@@ -146,6 +148,7 @@ export function AiStudioComposer({
       {contextBanner}
       {referenceControls}
       <div className={focused.brief}>
+        {promptSupplement}
         <label htmlFor={promptId}>{promptLabel ?? "What should the creator say and do?"}</label>
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-destructive" : undefined}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
         <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)} aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(focused.prompt, promptAttachmentControl && creation.promptWithAttachments)} />{promptAttachmentControl}</div>
@@ -160,11 +163,13 @@ export function AiStudioComposer({
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
       <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
-      <Button type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <div className={ariaLabel === "Image prompt" ? "flex justify-end" : undefined}><Button type="submit" form={formId} data-compact={ariaLabel === "Image prompt" || undefined} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
       {referenceControls}
+      {process.env.NODE_ENV === "development" && isValidElement<{ "data-music-layout-review"?: boolean }>(contextBanner) && contextBanner.props["data-music-layout-review"] ? contextBanner : null}
       <div className={creation.instructionsField}>
+        {promptSupplement}
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && creation.promptWithAttachments)} />
@@ -199,6 +204,7 @@ export function AiStudioComposer({
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {contextBanner}
       <div className="space-y-2">
+        {promptSupplement}
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId}

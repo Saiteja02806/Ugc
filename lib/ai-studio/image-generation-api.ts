@@ -25,6 +25,8 @@ import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorage
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { MAX_IMAGE_REFERENCE_CONTEXT, parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "@/worker/src/lib/slideshow-generation-contract";
+import { readSlideshowGenerationSlot, slideshowGenerationSlot, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { loadSlideshowBusinessContext, slideshowBusinessContextPrompt, SlideshowBusinessContextUnavailableError, type SlideshowBusinessContext } from "@/lib/explore/slideshow-business-context";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -40,6 +42,7 @@ type GenerateRequest = {
   model?: unknown;
   prompt?: unknown;
   quantity?: unknown;
+  slideshowSlideCount?: unknown;
   referenceImageUrl?: unknown;
   referenceImageUrls?: unknown;
   referenceImageAssetId?: unknown;
@@ -48,6 +51,7 @@ type GenerateRequest = {
 };
 
 type ImageJobOutput = {
+  slideshowGeneration?: unknown;
   generationId?: unknown;
   height?: unknown;
   key?: unknown;
@@ -95,6 +99,7 @@ function getSafeOutput(output: unknown) {
   const imageOutput = output as ImageJobOutput;
 
   return {
+    ...(readSlideshowGenerationSlot(imageOutput.slideshowGeneration) ? { slideshowGeneration: readSlideshowGenerationSlot(imageOutput.slideshowGeneration) } : {}),
     generationId:
       typeof imageOutput.generationId === "string"
         ? imageOutput.generationId
@@ -143,6 +148,11 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio ?? (body?.exploreFormat === "slideshow" ? "4:5" : undefined));
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+  const slideCount = body?.slideshowSlideCount === undefined ? 1 : body.slideshowSlideCount;
+  if (body?.slideshowSlideCount !== undefined && (body.exploreFormat !== "slideshow" || typeof slideCount !== "number" || !Number.isInteger(slideCount) || slideCount < 1 || slideCount > 10 || body.regenerationImageAssetId !== undefined)) {
+    return NextResponse.json({ ok: false, message: "Choose 1–10 slides for each slideshow version." }, { status: 400 });
+  }
+  const totalOutputs = quantity * Number(slideCount);
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {
     return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
   }
@@ -188,6 +198,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
 
   const styleReferences = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
+  if (body?.slideshowSlideCount !== undefined && styleReferences.length !== slideCount) {
+    return NextResponse.json({ ok: false, message: "The selected slides changed. Select the reference slides again." }, { status: 400 });
+  }
   if (body?.referenceImageAssetId !== undefined) {
     if (body.exploreFormat !== "slideshow" || typeof body.referenceImageAssetId !== "string" || !UUID_PATTERN.test(body.referenceImageAssetId)) {
       return NextResponse.json({ ok: false, message: "Choose a valid uploaded reference image." }, { status: 400 });
@@ -262,6 +275,8 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
 
   let slideshowReferenceContract: SlideshowReferenceContract | undefined;
+  let businessProfile: { businessProfileId: string; businessProfileVersion: number } | undefined;
+  let slideshowBusinessContext: SlideshowBusinessContext | undefined;
   if (body?.exploreFormat === "slideshow") {
     const references = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
     if (!references.length) return NextResponse.json({ ok: false, message: "Choose a slideshow style reference, attach an image or select a slide to recreate." }, { status: 400 });
@@ -272,8 +287,16 @@ export async function handleAIStudioImageGeneration(request: Request) {
       attachmentReferenceIndices: attachmentReferences.map(indexOf),
       ...(regenerationReferenceUrl ? { regenerationReferenceIndex: indexOf(regenerationReferenceUrl) } : {}),
     }, references.length);
+    try {
+      const context = await loadSlideshowBusinessContext(user.uid);
+      slideshowBusinessContext = context;
+      businessProfile = { businessProfileId: context.businessProfileId, businessProfileVersion: context.businessProfileVersion };
+    } catch (error) {
+      return NextResponse.json({ ok: false, message: error instanceof SlideshowBusinessContextUnavailableError ? error.message : "Could not load your business context." }, { status: error instanceof SlideshowBusinessContextUnavailableError ? error.status : 503 });
+    }
     // Validate the complete provider prompt before reserving credits; never truncate instructions.
-    if (slideshowGenerationPrompt(prompt, aspectRatio, slideshowReferenceContract).length > 32_000) {
+    const contextualPrompt = slideshowBusinessContextPrompt(prompt, slideshowBusinessContext!);
+    if (slideshowGenerationPrompt(`${contextualPrompt}${body?.slideshowSlideCount === undefined ? "" : " ".repeat(450)}`, aspectRatio, slideshowReferenceContract).length > 32_000) {
       return NextResponse.json({ ok: false, message: "Shorten your instructions so the slideshow prompt, including reference guidance, fits within 32,000 characters." }, { status: 400 });
     }
   }
@@ -295,15 +318,17 @@ export async function handleAIStudioImageGeneration(request: Request) {
   const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );
-  const queuedJobs: { generationId: string; jobId: string }[] = [];
+  const queuedJobs: { generationId: string; jobId: string; slideshowGeneration?: SlideshowGenerationSlot }[] = [];
   let queueError: unknown = null;
 
-  for (let index = 0; index < quantity; index += 1) {
+  for (let index = 0; index < totalOutputs; index += 1) {
+    const slot = body?.slideshowSlideCount === undefined ? undefined : slideshowGenerationSlot(baseIdempotencyKey, Number(slideCount), quantity, index);
+    const slotContract = slot && slideshowReferenceContract ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[slot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== slot.slideIndex - 1)] } : slideshowReferenceContract;
     const generationId = crypto.randomUUID();
     const idempotencyKey = getChildIdempotencyKey(
       baseIdempotencyKey,
       index,
-      quantity,
+      totalOutputs,
     );
     let creditsReserved = false;
 
@@ -321,7 +346,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           aspectRatio,
           ...(body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           batchIndex: index + 1,
-          batchSize: quantity,
+          batchSize: totalOutputs,
           generationId,
           model,
           prompt,
@@ -330,7 +355,10 @@ export async function handleAIStudioImageGeneration(request: Request) {
           ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
           ...(additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
           ...(regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
-          ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
+          ...(slotContract ? { slideshowReferenceContract: slotContract } : {}),
+          ...(slot ? { slideshowGeneration: slot } : {}),
+          ...(businessProfile ?? {}),
+          ...(slideshowBusinessContext ? { slideshowBusinessContext } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",
@@ -342,6 +370,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           getJobInputString(backgroundJob.input, "generationId") ||
           generationId,
         jobId: backgroundJob.id,
+        ...(slot ? { slideshowGeneration: slot } : {}),
       });
     } catch (error) {
       queueError = error;
@@ -362,7 +391,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
 
   if (queuedJobs.length > 0) {
     const firstJob = queuedJobs[0];
-    const partial = queuedJobs.length < quantity;
+    const partial = queuedJobs.length < totalOutputs;
 
     return NextResponse.json(
       {
@@ -370,8 +399,8 @@ export async function handleAIStudioImageGeneration(request: Request) {
         jobId: firstJob.jobId,
         jobs: queuedJobs,
         message: partial
-          ? `${queuedJobs.length} of ${quantity} image generations started.`
-          : `${quantity} image generation${quantity === 1 ? "" : "s"} started.`,
+          ? `${queuedJobs.length} of ${totalOutputs} slide images started.`
+          : `${totalOutputs} image generation${totalOutputs === 1 ? "" : "s"} started.`,
         ok: true,
         partial,
       },

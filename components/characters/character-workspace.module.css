@@ -36,7 +36,24 @@
 .resultsPanel { width: 100%; max-width: 944px; margin-inline: auto; }
 .resultsHeading { margin-bottom: 16px; font-size: 14px; line-height: 20px; color: var(--muted); }
 .results { --candidate-width: clamp(180px, calc((100dvh - 330px) * .5625), 240px); display: grid; grid-template-columns: repeat(auto-fit, minmax(0, var(--candidate-width))); justify-content: start; gap: 16px; width: 100%; }
-.candidate { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.candidate { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.selectionHint { margin: -6px 0 16px; font-size: 12px; line-height: 20px; color: var(--muted); }
+.selectionMark, .removeImage { position: absolute; top: 10px; display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgb(255 255 255 / .55); border-radius: 50%; background: rgb(20 20 20 / .8); color: white; }
+.selectionMark { left: 10px; pointer-events: none; }
+.candidate[data-selected="true"] .selectionMark { background: var(--primary); border-color: var(--primary); }
+.removeImage { right: 10px; z-index: 1; cursor: pointer; }
+.removeImage:hover { background: rgb(55 55 55 / .95); }
+.removeImage:focus-visible, .downloadImage:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.candidateActions { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 10px 8px 12px; }
+.downloadImage { display: grid; min-width: 34px; min-height: 34px; place-items: center; border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); cursor: pointer; }
+.downloadImage:hover { background: var(--card-muted); }
+.downloadImage:disabled { opacity: .5; cursor: wait; }
+.referenceSummary { display: flex; justify-content: space-between; align-items: center; max-width: 944px; margin: 0 auto 6px; font-size: 12px; color: var(--muted); }
+.referenceThumbnails { display: flex; flex-shrink: 0; gap: 8px; max-width: min(30vw, 280px); overflow-x: auto; overscroll-behavior-x: contain; padding: 4px; }
+.savedCharacterCard { min-width: 0; }
+.savedCharacterCard > div { display: flex; justify-content: flex-end; margin-top: 6px; }
+.librarySelectionMark { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--border); border-radius: 5px; flex-shrink: 0; }
+.libraryActions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .candidate[data-selected="true"] { border-color: var(--primary); }
 .portrait { aspect-ratio: 9 / 16; position: relative; display: grid; place-items: center; width: 100%; padding: 0; border: 0; background: var(--card-muted); overflow: hidden; text-align: inherit; }
 .portrait:not(:disabled) { cursor: pointer; }

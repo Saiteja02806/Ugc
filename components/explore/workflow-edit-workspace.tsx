@@ -92,12 +92,13 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   </section>;
 }
 
-export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, sourcePreview, demoSource, demo, demoAudio, demoAudioPlayback = "once", openingPreview, demoPreview, demoFraming, rawDemoFraming, options, ownerId = null, enabled = false, previewDisabledReason, active = true, captions, captionReview = false, rawComposition = false, editingPreview = false, kind = "hook", onChangeSource }: {
+export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, sourcePreview, demoSource, demo, demoAudio, demoAudioPlayback = "once", openingPreview, demoPreview, demoFraming, rawDemoFraming, options, backgroundSource = null, backgroundPlayback = "repeat", ownerId = null, enabled = false, previewDisabledReason, active = true, captions, captionReview = false, rawComposition = false, editingPreview = false, kind = "hook", onChangeSource }: {
   draft: WorkflowScheduleDraft; finishedVideo?: MediaAsset | null;
   source?: MediaAsset | null; sourcePreview?: LocalWorkflowMedia | null;
   demoSource?: MediaAsset | null; demo?: LocalWorkflowMedia | null; demoAudio?: LocalWorkflowMedia | null;
   demoAudioPlayback?: "once" | "repeat"; openingPreview?: FormatOpeningPreview | null; demoPreview?: FormatOpeningPreview | null;
   demoFraming?: DemoFraming | null; rawDemoFraming?: DemoFraming | null; options?: FinishingOptions;
+  backgroundSource?: MediaAsset | null; backgroundPlayback?: "once" | "repeat";
   ownerId?: string | null; enabled?: boolean; previewDisabledReason?: string | null; active?: boolean;
   captions?: SubtitleTranscript | null;
   captionReview?: boolean;
@@ -115,7 +116,8 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
   const openingReference = preparedOpening ? getReferenceAudioPreview(source) : null;
   const referenceAudio: SequencePreviewAudio | null = openingReference ? { url: openingReference.audioUrl, volume: openingReference.volume, playback: "repeat" }
     : openingPreview?.referenceAudio ?? null;
-  const needsMusic = !!options?.backgroundMusic && !referenceAudio;
+  const customMusic = !!options?.backgroundMusic && !!options.backgroundAssetId;
+  const needsMusic = !!options?.backgroundMusic && !referenceAudio && !customMusic;
   const musicKey = needsMusic ? JSON.stringify([ownerId, enabled]) : null;
   useEffect(() => {
     if (!musicKey || !enabled || !ownerId) return;
@@ -129,7 +131,7 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
     return () => { stopped = true; if (url) URL.revokeObjectURL(url); };
   }, [musicKey, enabled, ownerId]);
   const musicState = music?.key === musicKey ? music : null;
-  const backgroundAudio = referenceAudio ?? musicState?.audio ?? null;
+  const backgroundAudio: SequencePreviewAudio | null = customMusic ? backgroundSource ? { url: backgroundSource.url, volume: .2, playback: backgroundPlayback } : null : referenceAudio ?? musicState?.audio ?? null;
   const sourceUrl = source?.url ?? sourcePreview?.url;
   const demoUrl = demoSource?.url ?? demo?.url;
   const sourceSize = sourceUrl ? sizes[sourceUrl] : null, demoSize = demoUrl ? sizes[demoUrl] : null;
@@ -158,7 +160,7 @@ export function WorkflowScheduleWorkspace({ draft, finishedVideo, source, source
   const sequenceKey = JSON.stringify([segments, backgroundAudio]);
   const showFinished = !editingPreview && !!finishedVideo && (watched !== sequenceKey || finishedSelected === finishedVideo.id);
   const sizePending = !openingPreview && sourceUrl && (!source?.width || !source?.height) && !sourceSize || !demoPreview && demoUrl && (!demoSource?.width || !demoSource?.height) && !demoSize;
-  const disabledReason = previewDisabledReason ?? (!preparedOpening ? openingPreview?.disabledReason : null) ?? (!preparedDemo ? demoPreview?.disabledReason : null)
+  const disabledReason = previewDisabledReason ?? (customMusic && !backgroundSource ? "Loading your selected background music…" : null) ?? (!preparedOpening ? openingPreview?.disabledReason : null) ?? (!preparedDemo ? demoPreview?.disabledReason : null)
     ?? (sourceUrl && sizeErrors[sourceUrl] || demoUrl && sizeErrors[demoUrl] ? "A preview clip could not load. Go back to Edit and replace it or try again." : null)
     ?? (extraAudioNeedsSavedMix ? "Save the demo's clip audio edits before previewing all its audio layers together." : null)
     ?? (sizePending ? "Loading video dimensions for your preview…" : needsMusic && !backgroundAudio ? !enabled || !ownerId ? "Sign in to preview selected background music, or turn it off." : musicState?.error ?? "Loading your background music…" : null);

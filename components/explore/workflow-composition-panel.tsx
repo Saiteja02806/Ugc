@@ -2,6 +2,8 @@
 
 import { AudioLines, Check, Info, Play, Video } from "lucide-react";
 import { useRef, useState } from "react";
+import { WorkflowBackgroundAudioPicker } from "./workflow-background-audio-picker";
+import type { WorkflowBackgroundMusic } from "./use-workflow-background-music";
 
 import { RemoveMediaButton, WorkflowFilePicker, WorkflowMediaPlayer, formatMediaSeconds, type WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import creation from "@/components/explore/workflow-creation.module.css";
@@ -23,7 +25,7 @@ import { WorkflowCaptionEditor, type WorkflowCaptions } from "./workflow-caption
 const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
-export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false }: {
+export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false, backgroundMusic }: {
   videoLabel: "Hook" | "Phone video" | "Talking head";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
@@ -42,6 +44,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
   onDemoControlsOpen?: () => void;
   captions?: WorkflowCaptions;
   demoInPreview?: boolean;
+  backgroundMusic?: WorkflowBackgroundMusic;
 }) {
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>("clean");
   const [subtitlePlacement, setSubtitlePlacement] = useState<"bottom" | "middle" | "top">("bottom");
@@ -64,13 +67,13 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
         if (file) void demo.choose(file);
       }}>
         <div className={creation.finishRow}>
-          <h3 className="text-sm font-medium">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>
+          <h3 className="text-sm font-medium">Demo upload <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>
           {demo.asset ? <RemoveMediaButton label="demo" onClick={demo.remove} /> : null}
         </div>
         {demo.asset ? <Popover>
-          <PopoverTrigger render={<Button type="button" variant="outline" className={creation.editUploadButton} aria-label="Preview demo" title={demo.asset.name} />}>
-            <span className={creation.iconWell}><Play className="size-5" aria-hidden="true" /></span>
-            <span>Preview demo</span><Check className={creation.referenceCheck} aria-hidden="true" />
+          <PopoverTrigger render={<Button type="button" variant="outline" className={creation.demoPreviewAction} aria-label="Preview demo" title={demo.asset.name} />}>
+            <Play className="size-3.5" aria-hidden="true" />
+            <span>Preview demo</span>
           </PopoverTrigger>
           <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
             <PopoverTitle>Demo preview</PopoverTitle>
@@ -81,6 +84,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
         </Popover> : <WorkflowFilePicker attachment={demo} kind="video" label="Add demo" className={creation.editUploadButton} icon={<span className={creation.iconWell}><Video className="size-5" aria-hidden="true" /></span>} />}
         {demo.asset ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <p className="min-w-0 flex-[1_1_12rem] truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p>
+          <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo video" buttonLabel="Replace demo" disabled={editingBusy} className="h-9 text-xs" />
           {demoFramingEnabled && onDemoFramingChange ? <WorkflowDemoControls key={`${demo.asset.url}:${outputAspect}`} asset={demo.asset} value={demoFraming} onChange={onDemoFramingChange} outputAspect={outputAspect} disabled={editingBusy} onOpen={onDemoControlsOpen} /> : null}
         </div> : <p className="sr-only">Add or drop a walkthrough to play after your {videoLabel.toLowerCase()}.</p>}
         {demoFramingEnabled && demo.asset && onDemoFramingChange && demoFramingError ? <p role="alert" className="text-xs text-destructive">{demoFramingError} <button type="button" className="underline" disabled={editingBusy} onClick={() => onDemoFramingChange(null)}>Reset framing</button></p> : null}
@@ -89,7 +93,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
       {demoInPreview ? <><div><h2 className={creation.sectionTitle}>Final video settings</h2><p className={creation.sectionHelp}>Edit your clips in the preview. Choose audio and subtitles here.</p></div>{demoFramingEnabled && demo.asset && onDemoFramingChange ? <WorkflowDemoControls key={`${demo.asset.url}:${outputAspect}`} asset={demo.asset} value={demoFraming} onChange={onDemoFramingChange} outputAspect={outputAspect} disabled={editingBusy} onOpen={onDemoControlsOpen} /> : null}{demoFramingError ? <p role="alert" className="text-xs text-destructive">{demoFramingError}</p> : null}</> : null}
       <section aria-label="Demo audio attachment" className={creation.uploadCard} data-selected={!!demoAudio.asset} aria-busy={demoAudio.loading} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (demo.asset && event.dataTransfer.files[0]) void demoAudio.choose(event.dataTransfer.files[0]); }}>
         <div className={creation.finishRow}>
-          <h3 className="text-sm font-medium">Demo audio <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>
+          <h3 className="text-sm font-medium">Demo sound <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>
           {demoAudio.asset ? <RemoveMediaButton label="demo audio" onClick={demoAudio.remove} /> : null}
         </div>
         {demo.asset ? <WorkflowFilePicker attachment={demoAudio} kind="audio" label={demoAudio.asset ? "Replace demo audio" : "Select demo audio"} buttonLabel={demoAudio.asset ? "Replace audio" : "Select audio"} className={cn(creation.editUploadButton, creation.editAudioButton)} icon={<><AudioLines className="size-5" aria-hidden="true" />{demoAudio.asset ? <Check className={creation.referenceCheck} aria-hidden="true" /> : null}</>} />
@@ -128,8 +132,22 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
     <section aria-label="Background music" className={creation.editGroup}>
       {connected && options && onOptionsChange ? <div className={creation.finishRow}>
         <span className="text-sm font-medium">Background music</span>
-        <Button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic })}>{options.backgroundMusic ? "On" : "Off"}</Button>
+        <Button type="button" role="switch" aria-label="Background music" aria-checked={options.backgroundMusic} aria-describedby={unavailableId} disabled={editingBusy || backgroundMusic?.attachment.loading} variant="muted" className="h-7 rounded-full px-3 text-xs" onClick={() => onOptionsChange({ ...options, backgroundMusic: !options.backgroundMusic })}>{options.backgroundMusic ? "On" : "Off"}</Button>
       </div> : <UnavailableToggle label="Background music" descriptionId={unavailableId} />}
+      {backgroundMusic ? <div className="mt-2 space-y-2">
+        <p className="text-xs text-muted">Entire video · plays underneath the talking head and demo.</p>
+        <div className="flex flex-wrap gap-2">
+          <WorkflowFilePicker attachment={backgroundMusic.attachment} kind="audio" label="Upload whole-video background music" buttonLabel={backgroundMusic.source ? "Replace music" : "Upload music"} disabled={!connected || editingBusy} className="h-8 px-3 text-xs" />
+          <WorkflowBackgroundAudioPicker ownerId={ownerId ?? null} attachment={backgroundMusic.attachment} onChoose={backgroundMusic.choose} disabled={editingBusy} localPreview={!connected} />
+        </div>
+        {backgroundMusic.source ? <>
+          <p className="truncate text-xs text-muted" title={backgroundMusic.source.title}>{backgroundMusic.source.title}</p>
+          <audio src={backgroundMusic.source.url} controls preload="metadata" className="h-8 w-full" aria-label="Whole-video music preview" />
+          <div className="flex flex-wrap items-center justify-between gap-2"><label className="text-xs text-muted">Playback <select aria-label="Whole-video music playback" disabled={editingBusy || backgroundMusic.attachment.loading} value={backgroundMusic.playback} onChange={event => backgroundMusic.setPlayback(event.target.value as "once" | "repeat")} className="h-8 rounded-lg border border-border bg-card px-2 text-xs"><option value="repeat">Repeat to fit</option><option value="once">Play once</option></select></label><Button type="button" variant="ghost" size="sm" disabled={editingBusy} onClick={backgroundMusic.attachment.remove}>Remove music</Button></div>
+        </> : options?.backgroundAssetId ? <Button type="button" variant="ghost" size="sm" disabled={editingBusy} onClick={backgroundMusic.attachment.remove}>Remove unavailable music</Button> : options?.backgroundMusic ? <p className="text-xs text-muted">Default music selected</p> : null}
+        {backgroundMusic.attachment.error ? <p role="alert" className="text-xs text-destructive">{backgroundMusic.attachment.error}</p> : null}
+        {backgroundMusic.attachment.loading ? <p role="status" className="text-xs text-muted">Loading background music…</p> : null}
+      </div> : null}
     </section>
 
     <section aria-label="Subtitles" className={creation.editGroup}>
@@ -179,7 +197,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
       </div> : null}
       <p id={subtitleHelpId} className="sr-only">Selecting a style changes your draft only. These rendered examples use the same clip and transcript at Bottom position. Apply edits saves subtitles from your final audio. {EXPLORE_SUBTITLE_SCOPE_LABEL}, including both segments; nothing is trimmed automatically.</p>
     </section>
-    <p id={unavailableId} className="sr-only">{connected ? "Off keeps original sound without adding default music. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo audio plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>
+    <p id={unavailableId} className="sr-only">{connected ? backgroundMusic ? "Background music plays underneath the entire video and keeps the original speech. Choose a library track or upload music. With no custom selection, On uses approved default music. Off retains your selection; Remove music clears it. Separately selected demo audio plays during the demo only." : "Off keeps original sound without adding default music. On adds the approved default track underneath the original hook and demo sound when you Apply edits. Separately selected demo audio plays during the demo only. If no approved default is configured, Apply edits will explain this; it never chooses unreviewed music." : "Music and subtitle rendering are not connected in this local preview."}</p>
   </section>;
 }
 

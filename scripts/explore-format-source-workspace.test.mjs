@@ -77,20 +77,20 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
-test("Wall empty Edit offers upload/assets/generation and keeps source actions in the editor", async () => {
-  const h = harness("wall_text", "", {selected:null});
-  nodes(h.render()).find(n=>n.type === "tabs-root").props.onValueChange("edit");
-  const setup = nodes(h.render()).find(n=>n.props?.["aria-label"] === "Wall of text edit setup");
-  assert.equal(nodes(h.render()).filter(n=>n.props?.["aria-label"] === "Wall of text edit setup").length, 1);
-  assert.match(text(setup), /Choose a video to start editing/);
-  const actions = nodes(setup).find(n=>n.type === "WorkflowClipSourceActions");
-  assert.equal(actions.props.presentation, "inline");
-  actions.props.onChooseAssets();
-  assert.equal(nodes(h.render()).find(n=>n.type === "WorkflowVideoAssetPicker").props.open, true);
-  assert.equal(nodes(h.render()).find(n=>n.type === "tabs-root").props.value, "edit");
-  actions.props.onGenerate();
-  assert.equal(h.source.mode, "generate"); assert.equal(nodes(h.render()).find(n=>n.type === "tabs-root").props.value,"create");
+test("Wall without a clip keeps its source controls and reference gallery available", () => {
+  for (const query of ["", "step=edit", "section=edit", "step=demo"]) {
+    const h = harness("wall_text", query, { selected: null, catalogue });
+    let tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit");
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    assert.ok(nodes(tree).some(n => n.type === "WorkflowVideoSourceSection"));
+    assert.ok(nodes(tree).some(n => n.type === "ReferenceCard"));
+    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Wall of text edit setup"), false);
+  }
 });
+
 test("a saved Demo entry opens its own editor and returns to the Demo screen", () => {
   const h = harness("hook", `demoId=${video.id}&step=demo`, { local: false });
   const tree = h.render(), editor = nodes(tree).find(n => n.type === "FormatDemoSection");
@@ -98,6 +98,26 @@ test("a saved Demo entry opens its own editor and returns to the Demo screen", (
   const back = nodes(tree).find(n => n.type === "link" && n.props["aria-label"] === "Back to Demo");
   assert.equal(back.props.href, "/library?tab=posts");
   assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+});
+
+test("Hook's Demo step keeps replacement choices reachable from the preview card", () => {
+  const h = harness("hook", "step=demo");
+  let tree = h.render(), focused = 0, scrolled = 0;
+  const navigation = nodes(tree).find(n => n.type === "WorkflowSectionNavigation");
+  assert.equal(navigation.props.editLabel, "Demo");
+  h.accept(video, "assets"); tree = h.render();
+  assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.showSoundControls, false, "Hook audio setup belongs in Demo, not its focused clip editor");
+  const panel = nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo");
+  nodes(panel).find(n => n.type === "div" && typeof n.props.ref === "function").props.ref({
+    querySelector(selector) {
+      assert.equal(selector, '[data-demo-source="upload"]');
+      return { scrollIntoView() { scrolled++; }, focus() { focused++; } };
+    },
+  });
+  tree = h.render();
+  nodes(tree).find(n => n.type === "FormatDemoSection").props.onAdd();
+  assert.equal(focused, 1); assert.equal(scrolled, 1);
+  assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "demo");
 });
 
 for (const format of ["hook", "wall_text"]) {
@@ -130,11 +150,13 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   const view = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView;
   assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[0].url]);
   view().contextBanner.props.onSelectionChange(["first-1", "first-4"], 4);
-  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
-  assert.equal(view().referenceImageUrl, refs[0].slides[4].url);
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[1].url, refs[0].slides[4].url]);
+  assert.equal(view().referenceImageUrl, refs[0].slides[1].url);
+  assert.equal(view().slideshowSlideCount, 2);
   nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onRegenerate(2, { id: video.id, url: "https://owned.test/generated.png" });
   assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
   assert.equal(view().referenceImageAssetId, video.id);
+  assert.equal(view().slideshowSlideCount, undefined);
   view().contextBanner.props.onSelectionChange(refs[0].slides.map(slide => slide.id));
   assert.equal(view().referenceImageUrls.length, 6);
   view().contextBanner.props.onSelectionChange([]);
@@ -167,6 +189,13 @@ test("reference batches fill complete rows at different column counts until the 
   }
 });
 
+test("a saved slideshow link opens Edit slides with its exact Library identity", () => {
+  const itemId = "11111111-1111-4111-8111-111111111111";
+  const h = harness("slideshow", `step=edit&slideshowId=${itemId}`);
+  const editor = nodes(h.render()).find(node => node.type === "FormatSlideshowEditor");
+  assert.equal(editor.props.libraryItemId, itemId); assert.equal(editor.props.active, true);
+});
+
 test("reference resizing preserves revealed items and filter changes restart with complete rows", () => {
   const h = harness("wall_text", "", { selected: null, catalogue });
   let tree = h.render(); nodes(tree).find(n => n.type === "div" && typeof n.props?.ref === "function" && nodes(n.props.children).some(child => child.type === "ReferenceCard")).props.ref({ clientWidth: 1000 });
@@ -180,10 +209,12 @@ test("reference resizing preserves revealed items and filter changes restart wit
   assert.equal(cards.length, 15); assert.ok(cards.every(n => n.props.reference.category === "other"));
 });
 
-test("only Wall of text hides captions; hook and slideshow names stay visible", () => {
+test("Hook references use overlay actions while slideshow keeps its caption", () => {
   for (const format of ["hook", "slideshow"]) {
     const tree = harness(format, "", { selected: null, catalogue: [{ ...catalogue[0], format }] }).render();
-    assert.equal(nodes(tree).find(n => n.type === "ReferenceCard").props.hideCaption, false);
+    const card = nodes(tree).find(n => n.type === "ReferenceCard");
+    assert.equal(card.props.hideCaption, false);
+    assert.equal(card.props.overlayActions, format === "hook");
   }
 });
 
@@ -697,7 +728,6 @@ test("wall_text: empty Edit recovers to Create without permitting a pending uplo
   assert.equal(nodes(tree).some(n => n.type === "FormatVideoEditor"), false);
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
   h.source.busy = false; tree = h.render();
-  nodes(tree).find(n => n.type === "Button" && text(n).trim() === "Back to Create").props.onClick();
   assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
 });
 

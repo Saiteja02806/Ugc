@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const read = name => readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
 const baseline = read("20260829093001_production_baseline_v1.sql");
-const migration = read("20261014100508_atomic_direct_schedule_creation.sql");
+const migration = read("20261014141245_atomic_direct_schedule_creation.sql");
 const jobs = read("20260905123000_harden_wall_text_regeneration_recovery.sql");
 const billing = read("20260910113000_finalize_complimentary_plan_trial_guards.sql");
 const earlyPublishing = read("20261003121102_prevent_early_social_publishing.sql");

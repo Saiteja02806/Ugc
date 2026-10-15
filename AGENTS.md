@@ -14,6 +14,15 @@ Before changing any Carousel API, worker, matcher, image sourcing, review,
 readiness, rendering, schema, or frontend behavior, read `CAROUSEL_CONTEXT.md`.
 Update that file when a Carousel product or architecture decision changes.
 
+## Explore source of truth
+
+Before changing Explore workflows, navigation, editors, previews, Remix,
+reference provenance, audio, draft recovery or scheduling entry points, read
+`EXPLORE_CONTEXT.md`. It records workflow differences, current UI/audio rules,
+recurring mistakes and known gaps. Update it when an Explore product decision
+changes or a recorded issue recurs. Keep local checks and production acceptance
+distinct; historical review documents may describe superseded behavior.
+
 ## Push and deployment scope
 
 When the user asks to push or deploy all current changes, treat every

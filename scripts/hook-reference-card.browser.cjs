@@ -13,14 +13,21 @@ fs.mkdirSync(out, { recursive: true });
 const file = (name, content) => fs.writeFileSync(path.join(out, name), content);
 const release = JSON.parse(fs.readFileSync(path.join(root, "worker/src/lib/explore-hook-reference-release.json")));
 const additions = JSON.parse(fs.readFileSync(path.join(root, "worker/src/lib/explore-hook-reference-addition-release.json")));
-const sources = process.argv.includes("--all") ? [
+const newBatch = JSON.parse(fs.readFileSync(path.join(root, "worker/src/lib/explore-hook-reference-new-batch-release.json")));
+const sources = process.argv.includes("--new-batch") ? [
+  ...release.items.filter(item => !release.excludedReferenceIds.includes(item.id)).slice(0, 2),
+  ...newBatch.items.filter(item => !newBatch.excludedReferenceIds.includes(item.id)),
+  additions.items.find(item => !item.sourceUrl),
+] : process.argv.includes("--all") ? [
   ...release.items.filter(item => !release.excludedReferenceIds.includes(item.id)),
   ...additions.items.filter(item => !additions.excludedReferenceIds.includes(item.id)),
+  ...newBatch.items.filter(item => !newBatch.excludedReferenceIds.includes(item.id)),
 ] : [
   ...release.items.filter(item => !release.excludedReferenceIds.includes(item.id)).slice(0, 2),
   additions.items.find(item => item.sourcePlatform === "tiktok"),
+  additions.items.find(item => !item.sourceUrl),
 ];
-const refs = sources.map((item, i) => ({ id: item.id, format: "hook", title: `Hook ${String(i + 1).padStart(2, "0")}`, durationSeconds: item.durationSeconds, instagramUrl: item.instagramUrl, sourceUrl: item.sourceUrl, sourcePlatform: item.sourcePlatform,
+const refs = sources.map(item => ({ id: item.id, format: "hook", title: "Hook", durationSeconds: item.durationSeconds, instagramUrl: item.instagramUrl, sourceUrl: item.sourceUrl, sourcePlatform: item.sourcePlatform,
   videoUrl: "/media/" + path.basename(item.videoStorageKey), previewVideoUrl: "/media/" + path.basename(item.previewStorageKey), posterUrl: "/media/" + path.basename(item.posterStorageKey), slides: [] }));
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
 file("css-loader.cjs", `module.exports=source=>'export default '+JSON.stringify(Object.fromEntries([...source.matchAll(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g)].map(m=>[m[1],m[1]])))+';';`);
@@ -34,7 +41,7 @@ ${workspace.slice(workspace.indexOf("export function ReferenceCard("), workspace
 file("entry.tsx", `import {createRoot} from 'react-dom/client';import {useState} from 'react';import {ReferenceCard,ReferencePreviewDialog} from './card';
 const refs=${JSON.stringify(refs)};
 window.cardSelections=0;window.cardPreviews=0;
-function App(){const [selected,select]=useState(null),[preview,show]=useState(null);return <main style={{maxWidth:1000,margin:'24px auto',padding:16}}><h1>References</h1><p>Watch an example, then choose Recreate.</p><div className='fixture-grid'>{refs.map(reference=><ReferenceCard key={reference.id} reference={reference} compact showActionLabel isSelected={selected===reference.id} onRecreate={()=>{window.cardSelections++;select(reference.id)}} onPreview={()=>{window.cardPreviews++;show(reference)}}/>)}</div><ReferencePreviewDialog key={preview?.id??'empty'} reference={preview} open={!!preview} onOpenChange={open=>{if(!open)show(null)}}/></main>};createRoot(document.getElementById('root')).render(<App/>);`);
+function App(){const [selected,select]=useState(null),[preview,show]=useState(null);return <main style={{maxWidth:1000,margin:'24px auto',padding:16}}><h1>References</h1><p>Watch an example, then choose Recreate.</p><div className='fixture-grid'>{refs.map(reference=><ReferenceCard key={reference.id} reference={reference} compact showActionLabel overlayActions isSelected={selected===reference.id} onRecreate={()=>{window.cardSelections++;select(reference.id)}} onPreview={()=>{window.cardPreviews++;show(reference)}}/>)}</div><ReferencePreviewDialog key={preview?.id??'empty'} reference={preview} open={!!preview} onOpenChange={open=>{if(!open)show(null)}}/></main>};createRoot(document.getElementById('root')).render(<App/>);`);
 async function main() {
   console.log("Compiling the production reference card fixture.");
   const globals = fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);')
@@ -62,30 +69,72 @@ async function main() {
   try {
     browser = await playwright.chromium.launch({ headless: true, ...(process.platform === "win32" ? { channel: "msedge" } : {}) });
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } }), errors = [];
+    const cardFor = reference => page.locator(`article[data-reference-id=${JSON.stringify(reference.id)}]`);
     console.log("Browser started; checking card interactions.");
     page.on("pageerror", error => errors.push(error.message));
-    await page.route("https://www.instagram.com/**", route => route.fulfill({ status: 200, contentType: "text/html", body: "<title>Original post fixture</title>" }));
-    await page.route("https://www.tiktok.com/**", route => route.fulfill({ status: 200, contentType: "text/html", body: "<title>Original post fixture</title>" }));
+    await page.context().route("https://www.instagram.com/**", route => route.fulfill({ status: 200, contentType: "text/html", body: "<title>Original post fixture</title>" }));
+    await page.context().route("https://www.tiktok.com/**", route => route.fulfill({ status: 200, contentType: "text/html", body: "<title>Original post fixture</title>" }));
     await page.goto(`http://127.0.0.1:${server.address().port}`);
-    const link = page.getByRole("link", { name: "View original on Instagram: Hook 01", exact: true });
+    const link = cardFor(refs[0]).getByRole("link", { name: "View original on Instagram: Hook", exact: true });
     await link.waitFor(); assert.equal(await link.getAttribute("href"), refs[0].instagramUrl); assert.equal(await link.getAttribute("target"), "_blank");
     assert.equal(await link.getAttribute("title"), "View original on Instagram"); assert.match(await link.getAttribute("rel"), /noopener/);
     const popup = page.waitForEvent("popup"); await link.click(); const opened = await popup; await opened.waitForLoadState(); assert.equal(opened.url(), refs[0].instagramUrl); await opened.close();
     const tiktokRef = refs.find(item => item.sourcePlatform === "tiktok");
-    const tiktokLink = page.getByRole("link", { name: `View original on TikTok: ${tiktokRef.title}`, exact: true });
+    const tiktokLink = cardFor(tiktokRef).getByRole("link", { name: `View original on TikTok: ${tiktokRef.title}`, exact: true });
     await tiktokLink.waitFor(); assert.equal(await tiktokLink.getAttribute("href"), tiktokRef.sourceUrl); assert.equal(await tiktokLink.getAttribute("title"), "View original on TikTok"); assert.equal(await tiktokLink.getAttribute("target"), "_blank");
     assert.equal(await tiktokLink.locator("svg").evaluate(svg => getComputedStyle(svg).fill), await tiktokLink.locator("svg").evaluate(svg => getComputedStyle(svg).color), "TikTok icon inherits its link color on dark cards");
+    async function verifyOverlayLayout() {
+      const layout = await page.locator("article").evaluateAll(cards => cards.map(card => {
+        const media = card.querySelector("button[aria-label^='Preview']").getBoundingClientRect();
+        const action = card.querySelector("[data-reference-recreate-overlay]");
+        const recreate = action.getBoundingClientRect(), actionStyle = getComputedStyle(action);
+        const source = card.querySelector("[data-reference-source-overlay]");
+        const link = card.querySelector("[data-reference-source-overlay]")?.getBoundingClientRect();
+        return { inside: recreate.left >= media.left && recreate.right <= media.right && recreate.bottom <= media.bottom,
+          atBottomRight: Math.abs(media.right - recreate.right - 12) < 2 && Math.abs(media.bottom - recreate.bottom - 12) < 2,
+          sourceAtBottomLeft: !link || Math.abs(link.left - media.left - 12) < 2 && Math.abs(media.bottom - link.bottom - 12) < 2,
+          overlap: !!link && link.right > recreate.left, nestedControls: !!card.querySelector("button button, button a"),
+          visibleHookTitle: [...card.querySelectorAll("p")].some(node => /^Hook \d+$/.test(node.textContent.trim())),
+          iconOnly: !action.textContent.trim(), compactAction: recreate.width === 32 && recreate.height === 32,
+          transparentControls: actionStyle.backgroundColor === "rgba(0, 0, 0, 0)" && (!source || getComputedStyle(source).backgroundColor === "rgba(0, 0, 0, 0)"),
+          roundedFocusTarget: parseFloat(actionStyle.borderRadius) === 8 };
+      }));
+      for (const card of layout) {
+        assert.equal(card.inside, true); assert.equal(card.atBottomRight, true); assert.equal(card.sourceAtBottomLeft, true);
+        assert.equal(card.overlap, false); assert.equal(card.nestedControls, false); assert.equal(card.visibleHookTitle, false);
+        assert.equal(card.iconOnly, true); assert.equal(card.compactAction, true); assert.equal(card.transparentControls, true); assert.equal(card.roundedFocusTarget, true);
+      }
+    }
+    await verifyOverlayLayout();
+    const unlinked = refs.find(item => !item.sourceUrl && !item.instagramUrl);
+    assert.ok(unlinked);
+    assert.equal(await cardFor(unlinked).getByRole("link").count(), 0);
     assert.deepEqual(await page.evaluate(() => [window.cardSelections, window.cardPreviews]), [0, 0]);
-    await page.getByRole("button", { name: "Recreate Hook 01", exact: true }).click(); assert.equal(await page.evaluate(() => window.cardSelections), 1);
+    if (process.argv.includes("--verify-all-source-clicks")) {
+      const clicks = [];
+      for (const reference of refs) {
+        const url = reference.sourceUrl ?? reference.instagramUrl;
+        if (!url) continue;
+        const platform = reference.sourcePlatform === "tiktok" ? "TikTok" : "Instagram";
+        const icon = cardFor(reference).getByRole("link", { name: `View original on ${platform}: ${reference.title}`, exact: true });
+        const popupEvent = page.waitForEvent("popup"); await icon.click(); const popup = await popupEvent;
+        await popup.waitForLoadState(); assert.equal(popup.url(), url, reference.id); await popup.close();
+        assert.deepEqual(await page.evaluate(() => [window.cardSelections, window.cardPreviews]), [0, 0], "Source links cannot select or preview a reference");
+        clicks.push({ referenceId: reference.id, platform, destination: url });
+      }
+      file("source-clicks.json", JSON.stringify({ checked: clicks.length, clicks }, null, 2));
+      console.log(JSON.stringify({ sourceIconClicksVerified: clicks.length }));
+    }
+    await cardFor(refs[0]).getByRole("button", { name: "Recreate Hook", exact: true }).click(); assert.equal(await page.evaluate(() => window.cardSelections), 1);
     await page.screenshot({ path: path.join(out, "desktop.png"), fullPage: !process.argv.includes("--all") });
-    await page.getByRole("button", { name: "Preview Hook 01", exact: true }).click();
+    await cardFor(refs[0]).getByRole("button", { name: "Preview Hook", exact: true }).click();
     const preview = page.locator('[role="dialog"] video'); await preview.waitFor(); assert.equal(await preview.getAttribute("src"), refs[0].previewVideoUrl);
     await preview.evaluate(async video => { await video.play(); }); await page.waitForFunction(() => document.querySelector('[role="dialog"] video')?.currentTime > .2);
     assert.equal(await preview.evaluate(video => video.muted), false); await page.keyboard.press("Escape");
     const playback = [];
     if (process.argv.includes("--all")) {
       for (const reference of refs) {
-        const card = page.locator("article").filter({ has: page.getByRole("button", { name: `Recreate ${reference.title}`, exact: true }) });
+        const card = cardFor(reference);
         const sourceUrl = reference.sourceUrl ?? reference.instagramUrl;
         assert.equal(await card.getByRole("link").count(), sourceUrl ? 1 : 0, `${reference.title} source visibility`);
         if (sourceUrl) assert.equal(await card.getByRole("link").getAttribute("href"), sourceUrl);
@@ -115,6 +164,7 @@ async function main() {
       await page.evaluate(() => scrollTo(0, 0));
     }
     await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await verifyOverlayLayout();
     await page.screenshot({ path: path.join(out, "mobile.png"), fullPage: !process.argv.includes("--all") });
     await link.focus(); assert.equal(await link.evaluate(node => node === document.activeElement), true);
     assert.deepEqual(errors, []); console.log(JSON.stringify({ sourceLink: "passed", recreateUnaffected: true, soundtrackPreview: "passed", fullyPlayed: playback.length, failedVideo: playback.filter(item => !item.videoDecoded).map(item => item.title), desktopAndMobile: "passed", output: out }));

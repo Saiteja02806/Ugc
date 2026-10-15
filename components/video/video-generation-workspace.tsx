@@ -3,6 +3,7 @@
 import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
 import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { combineReferenceVideoPrompt } from "../../lib/explore/reference-video-prompts.ts";
 
 import {
   ChevronDown,
@@ -350,6 +351,13 @@ export function VideoGenerationStudioPanel({
   const gallerySelectionKey = workflow && recreateView?.styleVideo
     ? `${recreateView.styleVideo.id ?? recreateView.styleVideo.url}:${recreateView.styleVideo.selectionRevision ?? 0}` : null;
   const [previousGallerySelectionKey, setPreviousGallerySelectionKey] = useState(gallerySelectionKey);
+  const referencePromptKey = `${user?.uid ?? "preview"}:${gallerySelectionKey ?? "none"}`;
+  const [referencePromptDraft, setReferencePromptDraft] = useState<{ key: string; text: string } | null>(null);
+  const [referenceRecoveryOwner, setReferenceRecoveryOwner] = useState<string | null>(null);
+  const suggestedReferencePrompt = workflow ? recreateView?.styleVideo?.generationPrompt ?? "" : "";
+  const referencePrompt = gallerySelectionKey && suggestedReferencePrompt && referenceRecoveryOwner !== user?.uid
+    ? referencePromptDraft?.key === referencePromptKey ? referencePromptDraft.text : suggestedReferencePrompt : "";
+  const combinedPrompt = combineReferenceVideoPrompt(referencePrompt, prompt);
   const [audioReferences, setAudioReferences] = useState<AIStudioReferenceMedia[]>([]);
   const [referenceFilesPending, setReferenceFilesPending] = useState(false);
   const [selectedCreatorReferenceId, setSelectedCreatorReferenceId] =
@@ -363,6 +371,7 @@ export function VideoGenerationStudioPanel({
   }
   if (previousGallerySelectionKey !== gallerySelectionKey) {
     setPreviousGallerySelectionKey(gallerySelectionKey);
+    setReferenceRecoveryOwner(null);
     if (gallerySelectionKey) {
       // Recreate is an explicit replacement of the source video, including
       // clicking the same card again after an earlier upload.
@@ -416,7 +425,11 @@ export function VideoGenerationStudioPanel({
       try {
         const saved = pendingOwnerId && !recreateView?.preview ? readPendingGeneration(localStorage.getItem(pendingGenerationKey(pendingOwnerId, "video", workflowFormat ?? "studio")), pendingOwnerId, "video", workflowFormat ?? "studio") : null;
         setPendingSubmission(saved);
-        if (saved) { setPrompt(String(saved.input.prompt)); setActionNotice("A previous video submission needs confirmation. Recover saved request checks its original instructions and settings."); }
+        if (saved) {
+          // Saved requests already contain their exact combined instructions.
+          setReferenceRecoveryOwner(pendingOwnerId ?? null);
+          setPrompt(String(saved.input.prompt)); setActionNotice("A previous video submission needs confirmation. Recover saved request checks its original instructions and settings.");
+        }
       } catch { setActionError("The saved video request could not be verified. Keep its recovery record."); }
     });
     return () => { stopped = true; };
@@ -449,7 +462,7 @@ export function VideoGenerationStudioPanel({
   const retryJob = useRetryBackgroundJob();
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const galleryVideoReference = workflow ? recreateView?.styleVideo : undefined;
-  activeGalleryVideoUrl.current = galleryVideoReference?.url;
+  useEffect(() => { activeGalleryVideoUrl.current = galleryVideoReference?.url; }, [galleryVideoReference?.url]);
   const uploadedReferenceVideo = galleryVideoReference ? null : uploadedVideoReference;
   const hasWorkflowVideoReference = Boolean(workflow && model === "google_omni" && (uploadedReferenceVideo || galleryVideoReference));
   const sourceDuration = uploadedReferenceVideo?.asset.durationSeconds
@@ -874,7 +887,7 @@ export function VideoGenerationStudioPanel({
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
 
-    const trimmedPrompt = normalizeAIStudioPrompt(prompt);
+    const trimmedPrompt = normalizeAIStudioPrompt(combinedPrompt);
     const promptLengthError = getAIStudioPromptLengthError(
       trimmedPrompt,
       promptMaxLength,
@@ -1206,7 +1219,6 @@ export function VideoGenerationStudioPanel({
               }}
             />);
 
-  const hasSessionActions = Boolean(selectedHistoryVideo) || (visibleVideos.length > 0 && !isGenerating);
 
   return (
     <div
@@ -1262,7 +1274,7 @@ export function VideoGenerationStudioPanel({
             )}
           </div>
         ) : undefined}
-        toolbar={recreateView?.preview ? undefined : recreateView && !hasSessionActions ? undefined :
+        toolbar={recreateView?.preview ? undefined :
           <div className="flex items-center gap-2">
             {selectedHistoryVideo ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryVideoId(null)}>Back to session</Button>
@@ -1273,7 +1285,7 @@ export function VideoGenerationStudioPanel({
                 New session
               </Button>
             ) : null}
-            {!recreateView ? <Button
+            <Button
             type="button"
             variant="outline"
             size="sm"
@@ -1287,7 +1299,7 @@ export function VideoGenerationStudioPanel({
                 {generatedVideos.length}
               </span>
             ) : null}
-            </Button> : null}
+            </Button>
           </div>
         }
       >
@@ -1324,7 +1336,7 @@ export function VideoGenerationStudioPanel({
         onClose={() => setHistoryOpen(false)}
         onQueryChange={setHistoryQuery}
         onSelectVideo={focusHistoryVideo}
-        open={!recreateView && historyOpen}
+        open={!recreateView?.preview && active && historyOpen}
         query={historyQuery}
         selectedVideoId={selectedHistoryVideoId ?? latestCompletedVideoId}
       />
@@ -1334,6 +1346,24 @@ export function VideoGenerationStudioPanel({
         actionsTarget={workflow?.actionsTarget}
         promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; the image supplies appearance." : workflow.format === "wall_text" ? "Describe the background; add your text in Edit." : "Scene, action and spoken words in quotes." : undefined}
         promptLabel={workflow ? "Your instructions" : undefined}
+        promptSupplement={suggestedReferencePrompt && gallerySelectionKey ? <section aria-label="Reference prompt" className="mb-3 space-y-2 rounded-lg border border-border p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">Reference prompt</span>
+            <button type="button" disabled={isGenerating || Boolean(pendingSubmission)} className="rounded px-2 py-1 text-xs underline focus-visible:outline-2 focus-visible:outline-focus" onClick={() => {
+              submissionKeyRef.current = null;
+              setActionError(null);
+              setReferenceRecoveryOwner(null);
+              setReferencePromptDraft({ key: referencePromptKey, text: referencePrompt ? "" : suggestedReferencePrompt });
+            }}>{referencePrompt ? "Remove prompt" : "Restore prompt"}</button>
+          </div>
+          <details className="text-xs leading-5 text-muted"><summary className="cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-focus">ⓘ About this prompt</summary><p>Describes this reference’s actions and expressions to guide generation. You can edit or remove it while keeping the video attached. Your additional instructions are sent after it.</p></details>
+          {referencePrompt ? <label className="block text-xs text-muted">Reference instructions<textarea aria-label="Reference instructions" name="referenceVideoPrompt" rows={6} value={referencePrompt} disabled={isGenerating || Boolean(pendingSubmission)} onChange={event => {
+            submissionKeyRef.current = null;
+            setActionError(null);
+            setReferencePromptDraft({ key: referencePromptKey, text: event.target.value });
+          }} className="mt-1 block max-h-64 min-h-32 w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-sm leading-6 text-foreground focus-visible:outline-2 focus-visible:outline-focus" /></label> : <p className="text-xs text-muted">Reference prompt removed. The video remains attached.</p>}
+          {getAIStudioPromptLengthError(combinedPrompt, promptMaxLength) ? <p role="alert" className="text-xs text-destructive">{getAIStudioPromptLengthError(combinedPrompt, promptMaxLength)}</p> : null}
+        </section> : undefined}
         estimatedCredits={workflow && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
@@ -1387,7 +1417,8 @@ export function VideoGenerationStudioPanel({
           recreateView?.preview || (!pendingSubmission && (!isAIStudioVideoModelAvailable(model) ||
           generationLocked ||
           hasInsufficientCredits ||
-          !prompt.trim() ||
+          !combinedPrompt.trim() ||
+          Boolean(getAIStudioPromptLengthError(combinedPrompt, promptMaxLength)) ||
           creatorReferenceUploadPending ||
           Boolean(generationReferenceError) ||
           referenceFilesPending)) ||
@@ -1420,7 +1451,7 @@ export function VideoGenerationStudioPanel({
               onErrorChange={reportReferenceError}
             />
         }
-        maxLength={promptMaxLength}
+        maxLength={promptMaxLength === undefined ? undefined : Math.max(0, promptMaxLength - (referencePrompt.trim() ? referencePrompt.trim().length + 2 : 0))}
         name="videoPrompt"
         placeholder={workflow ? workflow.format === "wall_text" ? "A quiet café at sunset, with a slow camera pan…" : "A creator speaks to camera: “Here’s one thing I wish I knew…”" : recreateView ? "What would you like to change?" : "Describe the video you want to create…"}
         prompt={prompt}

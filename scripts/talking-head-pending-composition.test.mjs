@@ -57,6 +57,20 @@ test("missing caption review and conflicting soundtracks cannot reach confirmati
   assert.match(h.render().error, /one demo audio/); assert.equal(h.uploads.length, 0);
 });
 
+test("custom whole-video music reaches scheduling without default lookup and stays separate from demo audio", async () => {
+  const h = harness(); const musicId = randomUUID(), demoId = randomUUID(), demoAudioId = randomUUID();
+  h.props.demo = null; h.props.demoAudio = null; h.props.demoSource = { id: demoId }; h.props.demoAudioAssetId = demoAudioId;
+  h.props.options = { ...h.props.options, backgroundMusic: true, backgroundAssetId: musicId };
+  h.props.backgroundSource = { id: musicId }; h.props.backgroundPlayback = "once";
+  const initial = h.render(); const draft = await initial.resolve();
+  assert.equal(draft.backgroundAssetId, musicId); assert.equal(draft.backgroundPlayback, "once");
+  assert.equal(draft.demoAudioAssetId, demoAudioId); assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  h.props.backgroundSource = { id: randomUUID() }; assert.notEqual(h.render().signature, initial.signature);
+  await assert.rejects(initial.resolve(), /clips changed/);
+  h.props.options.backgroundMusic = false; const muted = await h.render().resolve();
+  assert.equal(muted.backgroundAssetId, null); assert.equal(muted.demoAudioAssetId, demoAudioId);
+});
+
 test("a changed selection while upload is running cannot schedule the stale composition", async () => {
   const h = harness(); let release; h.wait(new Promise(resolve => { release = resolve; }));
   const saving = h.render().resolve(); h.props.source = { ...h.props.source, id: randomUUID() }; h.render(); release();

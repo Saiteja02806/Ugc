@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DEFAULT_SLIDESHOW_IMAGE_MODEL,
+  SLIDESHOW_IMAGE_MODELS,
+  getAIStudioImageModelLabel,
   getAIStudioVideoResolutions,
   getAIStudioVideoDurations,
   getAIStudioVideoModelLabel,
@@ -17,6 +20,15 @@ import {
   parseAIStudioVideoModel,
   parseAIStudioVideoResolution,
 } from "./generation-settings.ts";
+
+test("slideshows default to Flare and preserve the existing Sunburst model identity", () => {
+  assert.equal(DEFAULT_SLIDESHOW_IMAGE_MODEL, "gpt_image_2_5_flare");
+  assert.deepEqual(SLIDESHOW_IMAGE_MODELS, ["gpt_image_2_5_flare", "gpt_image_2_5", "nano_banana_2"]);
+  assert.equal(parseAIStudioImageModel("gpt_image_2_5_flare"), "gpt_image_2_5_flare");
+  assert.equal(parseAIStudioImageModel("gpt_image_2_5"), "gpt_image_2_5");
+  assert.equal(getAIStudioImageModelLabel("gpt_image_2_5_flare"), "GPT Image 2.5 Flare");
+  assert.equal(getAIStudioImageModelLabel("gpt_image_2_5"), "GPT Image 2.5 Sunburst");
+});
 
 test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioImageAspectRatio("1:1"), "1:1");

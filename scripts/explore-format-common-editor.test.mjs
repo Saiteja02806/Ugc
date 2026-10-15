@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
+import * as wallTextEditor from "../lib/explore/wall-text-editor.ts";
 import * as unchangedHook from "../lib/explore/unchanged-hook-source.ts";
 import * as referenceAudio from "../lib/explore/reference-audio-preview.ts";
 import * as remixSource from "../lib/explore/remix-source.ts";
@@ -21,6 +22,7 @@ function load(path, imports, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, ...globals, require(name) {
     if (name === "@/lib/explore/format-edit-draft") return editDraft;
+    if (name === "@/lib/explore/wall-text-editor") return wallTextEditor;
     if (name === "@/components/explore/use-clip-draft-save") return imports[name] ?? { useClipDraftSave: () => ({ saved: null, loaded: true, busy: false, dirty: true, error: null, save() {}, reload() {} }) };
     if (name === "@/lib/explore/unchanged-hook-source") return unchangedHook;
     if (name === "@/lib/explore/reference-audio-preview") return referenceAudio;
@@ -317,6 +319,73 @@ test("shared opening and demo text controls retain timing within the edited clip
   assert.deepEqual(next.textOverlays, []);
 });
 
+test("Wall text covers the whole selection after recovery, manual editing and shorter or longer trims", () => {
+  const text = { value: "A full-video message", width: .7, y: .3, fontSize: 42, color: "#ff0000", startMs: 1000, endMs: 4000 };
+  const recovered = wallTextEditor.fullDurationWallText({ ...editing, format: "wall_text", textOverlays: [text, { ...text, value: "Second message", y: .6 }] });
+  assert.equal(recovered.textOverlays.length, 2);
+  assert.deepEqual(recovered.textOverlays.map(text => [text.startMs, text.endMs]), [[0, 6000], [0, 6000]]);
+  let changed;
+  fields.FormatVideoTextFields({ editing: recovered, onChange: next => { changed = next; } }).props.onChange([{ ...text, value: "Changed" }]);
+  assert.equal(changed.textOverlays[0].startMs, 0); assert.equal(changed.textOverlays[0].endMs, 6000);
+  const shorter = fields.trimFormatVideoEdit(recovered, 3000, 5000);
+  assert.deepEqual(shorter.textOverlays.map(text => [text.startMs, text.endMs]), [[0, 2000], [0, 2000]]);
+  const longer = fields.trimFormatVideoEdit(shorter, 0, 8000);
+  assert.deepEqual(longer.textOverlays.map(text => [text.startMs, text.endMs]), [[0, 8000], [0, 8000]]);
+  assert.equal(longer.textOverlays[0].y, .3); assert.equal(longer.textOverlays[1].y, .6);
+  assert.equal(longer.textOverlays[0].color, "#ff0000");
+  const legacy = wallTextEditor.fullDurationWallText({ ...editing, format: "wall_text", text });
+  assert.equal(legacy.text.startMs, 0); assert.equal(legacy.text.endMs, 6000);
+  assert.equal(wallTextEditor.fullDurationWallText(editing), editing, "Hook draft identity and timing remain unchanged");
+});
+
+for (const recovery of ["local", "server", "metadata"]) test(`Wall ${recovery} recovery feeds full-duration text into preview and draft saving`, () => {
+  let cursor = 0, saveInput;
+  const slots = [], sourceId = "00000000-0000-4000-8000-000000000001";
+  const storedEditing = { ...editing, format: "wall_text", textOverlays: [{ value: "Saved wall", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 1000, endMs: 4000 }] };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
+    "@tanstack/react-query": { useQuery: () => ({}) }, "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
+    "@/components/explore/format-video-text-fields": fields, "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { saveInput = input; return { saved: null, loaded: true, dirty: true, busy: false, error: null }; } },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ action: { disabled: true } }) },
+  }, { window: {}, localStorage: { getItem: () => recovery === "local" ? JSON.stringify({ editing: storedEditing }) : null, setItem() {} } });
+  const render = () => { cursor = 0; return mod.FormatVideoEditor({ format: "wall_text", video: { id: sourceId, mediaAssetId: sourceId, url: "blob:video", title: "Wall", ...(recovery === "metadata" ? {} : { durationSeconds: 8 }), ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: false, onDirty() {}, onSaved() {}, onContinue() {} }); };
+  let tree = render();
+  if (recovery === "server") { saveInput.onRestore({ sourceAssetId: sourceId, editing: storedEditing, backgroundAssetId: null, backgroundPlayback: "once" }, false); tree = render(); }
+  if (recovery === "metadata") {
+    nodes(tree).find(n => n.type === "video").props.onLoadedMetadata({ currentTarget: { duration: 7.5, videoWidth: 720, videoHeight: 1280 } }); tree = render();
+    nodes(tree).find(n => n.type === fields.FormatVideoTextFields).props.onChange({ ...saveInput.content.editing, textOverlays: storedEditing.textOverlays }); tree = render();
+  }
+  const text = nodes(tree).find(n => n.type === "FormatVideoTextOverlay").props.text;
+  assert.equal(text.startMs, 0); assert.equal(text.endMs, recovery === "metadata" ? 7500 : 6000);
+  assert.equal(saveInput.content.editing.textOverlays[0].endMs, text.endMs, "Preview and saved draft use the same full-duration contract");
+});
+
+test("returning to Wall Edit starts with text tasks while retaining authored edits", () => {
+  let cursor = 0; const slots = [], effects = [];
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect: fn => effects.push(fn) };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
+    "@tanstack/react-query": { useQuery: () => ({}) }, "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
+    "@/components/explore/format-video-text-fields": fields, "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: () => ({ action: { disabled: true } }) } });
+  const render = (active = true) => { cursor = 0; const tree = mod.FormatVideoEditor({ format: "wall_text", video: { id: "local:wall", url: "blob:wall", title: "Wall", durationSeconds: 8, ratio: "9:16" },
+    active, controlsTarget: {}, resultsTarget: {}, enabled: false, onDirty() {}, onSaved() {}, onContinue() {} }); effects.splice(0).forEach(fn => fn()); return tree; };
+  let tree = render();
+  const manual = nodes(tree).find(n => n.type === fields.FormatVideoTextFields);
+  manual.props.onChange({ ...manual.props.editing, text: { value: "Kept when returning", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 1000, endMs: 3000 } });
+  nodes(tree).find(n => n.props?.["aria-label"] === "Edit video with advanced controls").props.onClick();
+  tree = render(); assert.ok(nodes(tree).some(n => n.props?.["aria-label"] === "Trim start"));
+  render(false); tree = render();
+  assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Trim start"), false);
+  assert.ok(nodes(tree).find(n => n.props?.["aria-label"] === "Edit video with advanced controls"));
+  assert.equal(nodes(tree).find(n => n.type === "FormatVideoTextOverlay").props.text.value, "Kept when returning");
+});
+
 for (const format of ["hook", "wall_text"]) {
   test(`${format}: clip preview reveals tools only through its Edit action and retains its draft`, () => {
     let cursor = 0; const slots = []; let requests = 0, opened = 0;
@@ -341,11 +410,22 @@ for (const format of ["hook", "wall_text"]) {
     nodes(tree).find(n => n.props?.["data-edit-clip"] === "opening").props.onClick();
     assert.equal(opened, 1); assert.equal(requests, 0);
     tree = render(true);
+    if (format === "wall_text") {
+      assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Trim start"), false);
+      assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Audio"), false);
+      assert.equal(nodes(tree).find(n => n.type === fields.FormatVideoTextFields).props.showStyleControls, false);
+      nodes(tree).find(n => n.props?.["aria-label"] === "Edit video with advanced controls").props.onClick();
+      tree = render(true);
+    }
     nodes(tree).find(n => n.props?.["aria-label"] === "Trim start").props.onChange({ target: { value: "2" } });
     assert.equal(nodes(render(false)).some(n => n.type === "portal" && n.props.target === controlsTarget), false);
     assert.equal(nodes(render(true)).find(n => n.props?.["aria-label"] === "Trim start").props.value, 2);
     assert.equal(requests, 0);
     assert.equal(nodes(render(false)).some(n => n.type === "RemixTextSection"), false, "Overview cards have no duplicate Remix form");
+    const focusedWithoutSound = nodes(render(true, { showSoundControls: false }));
+    assert.equal(focusedWithoutSound.some(n => n.props?.["aria-label"] === "Audio" || n.type === "WorkflowFilePicker" || n.type === "WorkflowBackgroundAudioPicker"), false);
+    assert.ok(focusedWithoutSound.some(n => n.type === fields.FormatVideoTextFields));
+    assert.equal(focusedWithoutSound.find(n => n.props?.["aria-label"] === "Trim start").props.value, 2);
     const editing = nodes(render(true));
     const remixes = editing.filter(n => n.type === "RemixTextSection");
     assert.equal(remixes.length, 1, "Remix appears once, inside the focused editor");
@@ -356,6 +436,15 @@ for (const format of ["hook", "wall_text"]) {
     const reopened = nodes(render(true));
     assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.text.value, "Our product hook");
     assert.equal(reopened.find(n => n.props?.["aria-label"] === "Trim start").props.value, 2);
+    if (format === "wall_text") {
+      const backToText = reopened.find(n => n.type === "Button" && n.props.children?.at?.(-1) === "Back to text");
+      backToText.props.onClick();
+      const simple = nodes(render(true));
+      assert.equal(simple.some(n => n.props?.["aria-label"] === "Trim start"), false);
+      assert.equal(simple.find(n => n.type === "FormatVideoTextOverlay").props.text.value, "Our product hook");
+      assert.equal(simple.find(n => n.type === "FormatVideoTextOverlay").props.text.endMs, 6000);
+      assert.equal(simple.find(n => n.type === "FormatVideoTextOverlay").props.text.startMs, 0);
+    }
     assert.equal(render(false, { active: false }), null, "Inactive editors must not portal Remix into other steps");
     assert.equal(requests, 0);
   });
@@ -377,6 +466,7 @@ for (const format of ["hook", "wall_text"]) {
     });
     const render = () => { cursor = 0; return mod.FormatVideoEditor({ format, video: { id: "local:clip", url: "blob:video", title: "My clip", durationSeconds: 8, ratio: "9:16", mediaAssetId: null }, active: true, controlsTarget: {}, resultsTarget: {}, enabled: false, onDirty() {}, onSaved() {}, onContinue() {} }); };
     let tree = render();
+    if (format === "wall_text") { nodes(tree).find(n => n.props?.["aria-label"] === "Edit video with advanced controls").props.onClick(); tree = render(); }
     const player = { currentTime: 0, paused: false, pause() { this.paused = true; } };
     const sound = { currentTime: 0, duration: 3, pause() {}, play: async () => {} };
     nodes(tree).find(n => n.type === "video").props.ref.current = player;
@@ -503,7 +593,8 @@ for (const format of ["hook", "wall_text"]) test(`${format}: reference-first edi
   let remix = nodes(tree).find(n => n.type === "RemixTextSection");
   assert.equal(remix.props.reference, original);
   assert.equal(remix.props.referenceFirst, true);
-  assert.ok(nodes(tree).indexOf(remix) < nodes(tree).findIndex(n => n.props?.["data-editor-section"] === "trim"), "Reference text is the first editing task");
+  if (format === "hook") assert.ok(nodes(tree).indexOf(remix) < nodes(tree).findIndex(n => n.props?.["data-editor-section"] === "trim"), "Reference text is the first editing task");
+  else assert.equal(nodes(tree).some(n => n.props?.["data-editor-section"] === "trim"), false, "Wall text starts with text tasks; trim is behind Edit");
   source.metadata.remixTextSource = null;
   tree = render(); remix = nodes(tree).find(n => n.type === "RemixTextSection");
   assert.equal(remix.props.reference, null);

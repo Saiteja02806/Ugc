@@ -97,6 +97,26 @@ beforeEach(() => {
 });
 afterEach(() => { mock.restoreAll(); delete globalThis.window; delete globalThis.document; });
 
+test("removing a completed image hides it across status refreshes without losing recovery, history or selected references", async () => {
+  const screen = completedVisit(true);
+  cache.set(key(["character-history", owner]), { pages: [{ images: [image] }] });
+  cache.set(key(["characters", owner]), { ok: true, characters: [{ id: image.mediaAssetId, url: image.url }] });
+  screen.render().chooseCharacters([image.mediaAssetId]);
+  assert.equal(screen.render().visibleJobs.length, 1);
+  screen.render().dismissImage(jobId);
+  await screen.render().jobs.refetch();
+  const after = screen.render();
+  assert.equal(after.visibleJobs.length, 0);
+  assert.equal(after.session.jobs.length, 1);
+  assert.equal(after.historyImages.length, 1);
+  assert.equal(after.selectedCharacters[0].id, image.mediaAssetId);
+  assert.equal(calls.some(call => call.options.method === "DELETE"), false);
+  after.openHistoryImage(image);
+  assert.equal(screen.render().visibleJobs[0].jobId, jobId);
+  screen.render().dismissImage(jobId);
+  assert.equal(screen.render().visibleJobs.length, 0);
+});
+
 test("completed results stay in History on reload and cached route re-entry even before idle expiry", async () => {
   restore();
   cache.set(key(["character-history", owner]), { pages: [{ images: [image] }] });

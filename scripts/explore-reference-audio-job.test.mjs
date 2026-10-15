@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import catalog from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
+import newBatch from "../worker/src/lib/explore-hook-reference-new-batch-release.json" with { type: "json" };
+mock.module(new URL("../worker/dist/lib/explore-hook-reference-new-batch-release.json", import.meta.url), { defaultExport: { ...newBatch, mediaStatus: "published", activation: "active" } });
 const verified = [];
 mock.module(new URL("../worker/dist/lib/explore-reference-audio-render.js", import.meta.url), { namedExports: {
   verifyReferenceAudioFile: async (file, hash) => { verified.push({ file, hash }); }, renderExploreReferenceAudio: async () => { throw new Error("Only the injected finisher should run."); },
@@ -46,9 +48,9 @@ test("the owned final hook/demo and wall-text jobs use the registered MP3 even w
   }
 });
 
-test("all 76 new Hook + Demo jobs and re-edits retain their exact track and saved music volume", async () => {
+test("all 98 reviewed Hook + Demo jobs and re-edits retain their exact track and saved music volume", async () => {
   const { getHookReferenceGalleryItems } = await import("../worker/dist/lib/explore-hook-reference-release.js");
-  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 76);
+  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 98);
   for (const reference of references) for (const clean of [false, true]) {
     const f = fixture({ reference, clean, custom: true }); await f.run();
     assert.equal(f.options().referenceAudioVolume, clean ? .35 : .2);

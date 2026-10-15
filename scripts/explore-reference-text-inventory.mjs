@@ -24,7 +24,7 @@ export function sourceInventory({ includeStagedHookRelease = false } = {}) {
         units: [{ slideId: null, hash: item.videoSha256, key: item.videoStorageKey }] });
     }
   }
-  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json"]) {
+  for (const file of ["explore-hook-reference-release.json", "explore-hook-reference-addition-release.json", "explore-hook-reference-new-batch-release.json"]) {
     const release = JSON.parse(readFileSync(path.join(root, "worker/src/lib", file), "utf8"));
     if (includeStagedHookRelease || release.mediaStatus === "published") for (const item of release.items) {
       const existing = refs.find(ref => ref.referenceId === item.id);

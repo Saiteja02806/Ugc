@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import newBatch from "../lib/explore-hook-reference-new-batch-release.json" with { type: "json" };
+mock.module(new URL("../../dist/lib/explore-hook-reference-new-batch-release.json", import.meta.url), { defaultExport: { ...newBatch, mediaStatus: "published", activation: "active" } });
 
 const received = [];
 const referenceAudioCalls = [];
@@ -107,7 +109,7 @@ test("both Explore formats apply their selected MP3 to the completed provider re
 
 test("each new eligible Hook reaches the generation soundtrack postprocessor with its exact registered MP3", async () => {
   const { getHookReferenceGalleryItems } = await import("../../dist/lib/explore-hook-reference-release.js");
-  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 76);
+  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 98);
   for (const reference of references) {
     const before = referenceAudioCalls.length;
     const f = fixture({ referenceId: reference.id, referenceType: "hook", exploreFormat: "hook" });

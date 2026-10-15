@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import release from "../worker/src/lib/explore-hook-reference-release.json" with { type: "json" };
 import additions from "../worker/src/lib/explore-hook-reference-addition-release.json" with { type: "json" };
+import newBatch from "../worker/src/lib/explore-hook-reference-new-batch-release.json" with { type: "json" };
 import legacy from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
 import textCatalog from "../lib/explore/reference-text-catalog.json" with { type: "json" };
 import { validateHookRelease } from "./hook-reference-release-readiness.mjs";
@@ -21,26 +22,29 @@ process.env.GCP_STORAGE_BUCKET = "hook-release-offline-fixture";
 process.env.GCP_STORAGE_PUBLIC_BASE_URL = "https://catalogue.example.test";
 mock.module(new URL("../worker/src/lib/explore-hook-reference-release.json", import.meta.url), { defaultExport: { ...release, mediaStatus: "published", activation: "active" } });
 mock.module(new URL("../worker/src/lib/explore-hook-reference-addition-release.json", import.meta.url), { defaultExport: { ...additions, mediaStatus: "published", activation: "active" } });
+mock.module(new URL("../worker/src/lib/explore-hook-reference-new-batch-release.json", import.meta.url), { defaultExport: { ...newBatch, mediaStatus: "published", activation: "active" } });
 const { getRecreateReferences, getRecreateReference, getArchivedHookReferences, getLocalRecreateReferences } = await import("../lib/explore/recreate-catalog.ts");
 const { getReferenceText } = await import("../lib/explore/reference-text-store.ts");
 const { getExplorePairedReference, getAssetReferenceSoundtrack } = await import("../worker/src/lib/explore-reference-soundtrack.ts");
 
-test("the active Hook gallery contains both reviewed releases with source links and separate audible previews", () => {
+test("the active Hook gallery contains all reviewed releases with source links and separate audible previews", () => {
   const ready = validateHookRelease(release, textCatalog), additionReady = validateHookAdditionRelease(additions, textCatalog), hooks = getRecreateReferences().filter(item => item.format === "hook");
-  const expected = [...ready.eligible, ...additionReady.eligible];
+  const batchReady = validateHookAdditionRelease(newBatch, textCatalog);
+  const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible];
   assert.equal(ready.eligible.length, 45); assert.equal(release.items.length, 46);
   assert.equal(additionReady.eligible.length, 31); assert.equal(additions.items.length, 31);
-  assert.equal(hooks.length, 76); assert.deepEqual(hooks.map(item => item.id), expected.map(item => item.id));
-  assert.deepEqual(hooks.map(item => item.title), Array.from({ length: 76 }, (_, i) => `Hook ${String(i + 1).padStart(2, "0")}`));
+  assert.equal(batchReady.eligible.length, 22);
+  assert.equal(hooks.length, 98); assert.deepEqual(hooks.map(item => item.id), expected.map(item => item.id));
+  assert.deepEqual(hooks.map(item => item.title), Array(98).fill("Hook"));
   for (const hook of hooks) {
-    const registered = [...release.items, ...additions.items].find(item => item.id === hook.id);
+    const registered = [...release.items, ...additions.items, ...newBatch.items].find(item => item.id === hook.id);
     assert.equal(hook.instagramUrl, registered.instagramUrl); assert.notEqual(hook.previewVideoUrl, hook.videoUrl);
     assert.equal(hook.sourceUrl, registered.sourceUrl ?? registered.instagramUrl);
     assert.equal(hook.sourcePlatform, registered.sourcePlatform ?? (registered.instagramUrl ? "instagram" : undefined));
     assert.ok(hook.previewVideoUrl.endsWith(`${registered.previewSha256}.mp4`));
     assert.ok(hook.videoUrl.endsWith(`${registered.videoSha256}.mp4`));
     assert.ok(hook.pairedAudio.url.endsWith(`${registered.audioSha256}.mp3`));
-    assert.equal(getReferenceText(hook.id, null, "hook").status, "ready");
+    assert.equal(getReferenceText(hook.id, null, "hook").status, textCatalog.items.find(item => item.referenceId === hook.id && item.slideId === null).status);
     assert.equal(getExplorePairedReference(hook.id).audioSha256, registered.audioSha256);
   }
   assert.equal(hooks.some(item => release.excludedReferenceIds.includes(item.id)), false);
@@ -60,13 +64,14 @@ test("retired references still resolve saved remix/video/audio identities withou
   assert.equal(getAssetReferenceSoundtrack({ render: { referenceSoundtrack: { version: 1, referenceId: old.id, audioSha256: old.audioSha256, volume: .35 } } }).volume, .35);
   assert.deepEqual(getRecreateReferences().filter(item => item.format !== "hook"), getRecreateReferences(true).filter(item => item.format !== "hook"));
   const previous = process.env.NODE_ENV; process.env.NODE_ENV = "development";
-  try { assert.equal(getLocalRecreateReferences().filter(item => item.format === "hook").length, 76); }
+  try { assert.equal(getLocalRecreateReferences().filter(item => item.format === "hook").length, 98); }
   finally { if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous; }
 });
 
-test("all 76 reviewed sources pass through the real remix input/apply path without losing blocks, timing order or audio settings", () => {
+test("all reviewed caption sources pass through remix without losing blocks, timing order or audio settings", () => {
   for (const hook of getRecreateReferences().filter(item => item.format === "hook")) {
     const source = getReferenceText(hook.id, null, "hook");
+    if (source.status === "no_text") { assert.deepEqual(source.blocks, []); continue; }
     const input = remixInputSource({ requestKey: "00000000-0000-4000-8000-000000000001", referenceId: hook.id, slideId: null,
       format: "hook", instructions: "", referenceBlocks: source.blocks.map(block => block.text) }, source);
     assert.deepEqual(input.blocks, source.blocks, hook.id);

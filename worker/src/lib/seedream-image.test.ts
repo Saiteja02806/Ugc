@@ -55,6 +55,13 @@ test("uses documented Seedream Pro 1K ratios and one output per job without trun
   assert.equal("referenceImages" in buildSeedreamImageRequest({ ...params, referenceImageUrl: undefined }), false);
 });
 
+test("Seedream sends every selected reference in order and rejects duplicates or excess images before submission", () => {
+  const urls = ["https://media.example.test/person.png", "https://media.example.test/room.png", "https://media.example.test/lighting.png"];
+  assert.deepEqual(buildSeedreamImageRequest({ ...params, referenceImageUrls: urls }).referenceImages, urls.map(uri => ({ uri })));
+  assert.throws(() => buildSeedreamImageRequest({ ...params, referenceImageUrls: [urls[0], urls[0]] }), /distinct/);
+  assert.throws(() => buildSeedreamImageRequest({ ...params, referenceImageUrls: Array.from({ length: 11 }, (_, i) => `https://media.example.test/${i}.png`) }), /up to 10/);
+});
+
 test("actual SDK submits Seedream's contract and saves the task before polling or downloading", async (t) => {
   const f = fixture();
   t.mock.method(globalThis, "fetch", f.fetcher);

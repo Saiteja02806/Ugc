@@ -1,7 +1,9 @@
 import type { MediaAsset } from "../media/types.ts";
 import { readRemixSource, type RemixTextSource } from "../explore/remix-source.ts";
+import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "../../worker/src/lib/slideshow-generation-batch.ts";
 
 export type AIStudioImageResult = {
+  slideshowGeneration?: SlideshowGenerationSlot;
   remixTextSource?: RemixTextSource | null;
   aspectRatio: "1:1" | "4:5" | "9:16" | "16:9";
   createdAt: string;
@@ -47,6 +49,7 @@ export function getAIStudioImageResults(
     .slice(0, limit)
     .map((asset) => ({
       aspectRatio: toSupportedRatio(asset.ratio, "4:5"),
+      ...(readSlideshowGenerationSlot(asset.metadata?.slideshowGeneration) ? { slideshowGeneration: readSlideshowGenerationSlot(asset.metadata.slideshowGeneration)! } : {}),
       ...(Object.hasOwn(asset.metadata ?? {}, "remixTextSource") ? { remixTextSource: readRemixSource(asset.metadata.remixTextSource) } : {}),
       createdAt: asset.createdAt,
       id: asset.id,

@@ -101,6 +101,31 @@ test("recovered captions require the exact current opening, demo and audio befor
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
 });
 
+test("custom whole-video export snapshots the exact owned track and playback without default lookup", async () => {
+  const musicId = randomUUID(), demoAudioId = randomUUID();
+  const h = harness({ backgroundMusic: true, demoAudioAssetId: demoAudioId });
+  h.props.options = { ...h.props.options, backgroundAssetId: musicId, backgroundPlayback: "repeat" };
+  h.props.backgroundSource = { id: musicId }; h.props.backgroundPlayback = "repeat";
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const request = h.calls.find(call => call.method === "POST"); const payload = JSON.parse(request.body);
+  assert.equal(payload.draft.backgroundAssetId, musicId); assert.equal(payload.draft.backgroundPlayback, "repeat");
+  assert.equal(payload.draft.demoAudioAssetId, demoAudioId); assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).musicSelection, musicId); h.unmount();
+});
+
+test("returning to default music cannot recover an earlier custom-track render or reuse its audio", async () => {
+  const oldId = randomUUID();
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), musicSelection: oldId,
+    draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: oldId, backgroundPlayback: "repeat", subtitles: null } };
+  const h = harness({ saved, completed: true, backgroundMusic: true }); h.props.onRestoreOptions = undefined;
+  h.props.options = { ...h.props.options, backgroundAssetId: null };
+  h.render(); await tick(); assert.equal(h.render().output, null);
+  h.render().action.onAction(); await tick();
+  const payload = JSON.parse(h.calls.find(call => call.method === "POST").body);
+  assert.equal(payload.draft.backgroundAssetId, h.musicAssetId); assert.notEqual(payload.draft.backgroundAssetId, oldId);
+  assert.equal(h.musicReads.length, 1); h.unmount();
+});
+
 test("terminal transcription uncertainty permits independent edits and preserves the original recovery identity", async () => {
   const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean", placement: "bottom" } } };
   for (const mode of ["different-source", "subtitles-off", "unchanged-source-reuse"]) {
@@ -565,6 +590,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: () => ({ action: {}, output: finished }) },
     "@/lib/explore/workflow-schedule-client": scheduleClient,
     "./talking-head-pending-composition": { useTalkingHeadPendingComposition: () => ({}) },
+    "./use-workflow-background-music": { useWorkflowBackgroundMusic: () => ({ source: null, playback: "repeat", selectionError: null }) },
     "@/lib/explore/format-demo": { trimmedDemoFraming: (framing) => framing },
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-schedule-transport": scheduleTransport, "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },

@@ -142,7 +142,7 @@
   transaction. Exact accepted replays reuse those IDs and recover incomplete
   scheduler handoff. Earlier targetless split-write records require explicit
   review/cancellation because their original targets cannot be invented safely.
-- Apply `20261014100508_atomic_direct_schedule_creation.sql` before releasing
+- Apply `20261014141245_atomic_direct_schedule_creation.sql` before releasing
   the website. Missing atomic storage fails closed; the site does not fall back
   to split writes. The existing scheduled-time recovery/claim guards remain
   mandatory, and a queued publishing job cannot run before its target is due.
@@ -240,7 +240,7 @@ Last updated: 2026-10-14
   takeover cannot silently replace them. Publishing validation rejects CTAs,
   the exact business name and common acquisition language. Existing packs keep
   their prior routing and assigned content.
-- Apply `20261014113000_add_trending_slideshow_style_mixer.sql` before releasing
+- Apply `20261014141251_add_trending_slideshow_style_mixer.sql` before releasing
   the website. Local allocation, worker build, focused unit tests and PGlite
   migration/replay checks pass. No production migration or deployment occurred.
   See `docs/trending-slideshow-style-mixer-implementation-2026-10-14.md`.

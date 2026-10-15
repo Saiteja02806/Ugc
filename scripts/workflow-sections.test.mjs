@@ -197,7 +197,8 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(creationCanvas, /Selected source video preview/);
   assert.match(creationCanvas, /Continue to edit/);
   assert.match(creationCanvas, /Add your app screen and instructions in Create/);
-  assert.doesNotMatch(edit, /Demo sound|aria-label="Scheduling"|Schedule<\/Button>/);
+  assert.doesNotMatch(edit, /aria-label="Scheduling"|Schedule<\/Button>/);
+  assert.match(edit, /Demo sound/);
   assert.match(edit, /Demo audio/);
   assert.match(edit, /EXPLORE_SUBTITLE_SCOPE_LABEL/);
   assert.match(edit, /including both segments; nothing is trimmed automatically/);

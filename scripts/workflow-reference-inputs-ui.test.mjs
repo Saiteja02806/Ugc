@@ -23,7 +23,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
+function harness(format, { reference = true, referenceUrls, referencePrompt, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
@@ -77,7 +77,7 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
   const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
     referenceImageUrls: referenceUrls,
     referenceImageAssetId: regenerationTarget,
-    preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
+    preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null,generationPrompt:referencePrompt} : undefined, emptyContent: "Empty",
     workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
   } };
   function find(node, type) {
@@ -87,8 +87,48 @@ function harness(format, { reference = true, referenceUrls, regenerationTarget, 
     return null;
   }
   const render = () => { cursor = 0; const tree = Panel(props); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, readyVideos, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  return { events, controls, results, requests, errors, readyVideos, find, selectGallery(video) { props.recreateView.styleVideo = video; render(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
+
+test('a visible reference prompt and unchanged user instructions are submitted together', async () => {
+  const h = harness('hook', { captureRequests: true, referencePrompt: 'Lift the glasses. Remove the text.' });
+  await h.flushEffects();
+  const composer = h.render().composer;
+  assert.equal(h.find(composer.props.promptSupplement, 'textarea').props.value, 'Lift the glasses. Remove the text.');
+  assert.equal(composer.props.prompt, 'My requested changes');
+  await composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests[0].body.prompt, 'Lift the glasses. Remove the text.\n\nMy requested changes');
+});
+
+test('editing reference instructions changes the actual submitted prompt', async () => {
+  const h = harness('hook', { captureRequests: true, referencePrompt: 'Original performance' });
+  await h.flushEffects();
+  h.find(h.render().composer.props.promptSupplement, 'textarea').props.onChange({ target: { value: 'My edited performance' } });
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests[0].body.prompt, 'My edited performance\n\nMy requested changes');
+});
+
+test('removing the reference prompt keeps the video attached and submits only personal instructions', async () => {
+  const h = harness('hook', { captureRequests: true, referencePrompt: 'Original performance' });
+  await h.flushEffects();
+  h.find(h.render().composer.props.promptSupplement, 'button').props.onClick();
+  const composer = h.render().composer;
+  assert.equal(h.find(composer.props.promptSupplement, 'textarea'), null);
+  await composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests[0].body.prompt, 'My requested changes');
+  assert.equal(h.requests[0].body.useGalleryVideoReference, true);
+});
+
+test('switching references replaces its suggestion, preserves user text, and removal clears it', () => {
+  const h = harness('hook', { referencePrompt: 'First performance' });
+  h.find(h.render().composer.props.promptSupplement, 'textarea').props.onChange({ target: { value: 'Edited first performance' } });
+  const next = h.selectGallery({ id: 'next', url: 'https://example.test/next.mp4', name: 'Next', duration: 3, generationPrompt: 'Second performance' }).composer;
+  assert.equal(next.props.prompt, 'My requested changes');
+  assert.equal(h.find(next.props.promptSupplement, 'textarea').props.value, 'Second performance');
+  const removed = h.selectGallery(undefined).composer;
+  assert.equal(removed.props.promptSupplement, undefined);
+  assert.equal(removed.props.prompt, 'My requested changes');
+});
 
 
 for (const format of ["hook", "wall_text"]) {

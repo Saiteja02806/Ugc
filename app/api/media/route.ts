@@ -1,4 +1,5 @@
 import { getGeneratedVideoHistoryMetadata } from "@/lib/ai-studio/generated-video-history-metadata";
+import { readSlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
 import {
@@ -55,18 +56,18 @@ export async function GET(request: Request) {
       )
       .map(serializeMediaAsset);
     const generatedJobIds = visibleAssets
-      .filter((asset) => asset.sourceType === "generated_video")
+      .filter((asset) => asset.sourceType === "generated_video" || asset.sourceType === "generated_image")
       .map((asset) => asset.sourceRecordId ?? "");
     const generatedJobs = await getBackgroundJobsByIds(generatedJobIds);
     const generatedJobMetadata = new Map(
       generatedJobs
         .filter(
           (job) =>
-            job.jobType === "generate_hook_video" && job.userId === user.uid,
+            (job.jobType === "generate_hook_video" || job.jobType === "generate_image") && job.userId === user.uid,
         )
         .map((job) => [
           job.id,
-          getGeneratedVideoHistoryMetadata(job.input),
+          job.jobType === "generate_hook_video" ? getGeneratedVideoHistoryMetadata(job.input) : { slideshowGeneration: readSlideshowGenerationSlot(job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.slideshowGeneration : null) },
         ]),
     );
 

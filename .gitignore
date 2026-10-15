@@ -108,3 +108,6 @@ crash.*.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Node's local bytecode cache is not release source.
+/node-compile-cache/

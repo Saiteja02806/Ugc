@@ -22,6 +22,8 @@ export type RecreateReference = {
   categoryLabel: string | null;
   posterUrl: string;
   videoUrl?: string;
+  /** Visible, editable suggestion; never appended secretly by the server. */
+  generationPrompt?: string;
   durationSeconds?: number;
   instagramUrl?: string;
   sourceUrl?: string;

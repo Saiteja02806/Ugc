@@ -15,6 +15,7 @@ import type { RecreateReference } from "@/lib/explore/recreate-types";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import type { LibraryCarouselItemRecord } from "@/lib/library/db";
+import { readSlideshowEditableDraft } from "@/lib/explore/slideshow-editable-draft";
 import type { MediaAsset } from "@/lib/media/types";
 import { EMPTY_SLIDE_TEXT, parseSlideText, type SlideTextDesign } from "@/lib/explore/slideshow-text";
 import { createSlideTextSvg, renderSlideText } from "@/lib/explore/slideshow-text-client";
@@ -26,7 +27,7 @@ import { MAX_SLIDESHOW_SLIDES, MIN_SLIDESHOW_SLIDES, moveSlideshowSlide, readSli
   type SlideshowOutput, type SlideshowSaveRequest, type SlideshowSlideChoice } from "@/lib/explore/slideshow-draft";
 
 type EditorSlide = SlideshowSlideChoice & { image: AIStudioImageResult | null; previous?: AIStudioImageResult; error?: string };
-export type SlideshowEditorController = { useImage: (image: AIStudioImageResult, index?: number) => boolean; startNewSlide: () => void };
+export type SlideshowEditorController = { useImage: (image: AIStudioImageResult, index?: number) => boolean; useSlideshow: (images: AIStudioImageResult[], onlyIfEmpty?: boolean) => boolean; startNewSlide: () => void };
 
 function imageFromAsset(asset: MediaAsset): AIStudioImageResult {
   if (!isExploreUuid(asset.id) || asset.collection !== "image" || asset.status !== "ready" || !asset.url.startsWith("https://")) throw new Error("This slide is unavailable. Remove it or choose another image.");
@@ -40,12 +41,13 @@ function readTextDraft(raw: string | null, activeIds: ReadonlySet<string>): Reco
   try { const parsed = JSON.parse(raw); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}; return Object.fromEntries(Object.entries(parsed).filter(([id]) => activeIds.has(id)).slice(0, MAX_SLIDESHOW_SLIDES).flatMap(([id, value]) => { try { return [[id, parseSlideText(value)]]; } catch { return []; } })); } catch { return {}; }
 }
 
-export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, previewText, controllerRef, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange }: {
+export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, previewText, controllerRef, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange, libraryItemId }: {
   reference: RecreateReference | null; legacyReferences?: readonly RecreateReference[]; controllerRef: Ref<SlideshowEditorController>; slideIndex?: number; active: boolean; generationBusy: boolean;
   controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; actionsTarget?: HTMLElement | null; localPreview: boolean; savingEnabled: boolean;
   onDirty: () => void; onSaved: (output: SlideshowOutput) => void; onContinue: () => void; onRegenerate: (index: number, image: AIStudioImageResult) => void;
   onBackToPreview?: () => void; onGoToCreate?: () => void; onBusyChange?: (busy: boolean) => void;
   previewImages?: AIStudioImageResult[]; previewText?: ReferenceText | null;
+  libraryItemId?: string | null;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -72,6 +74,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<SlideshowOutput | null>(null);
   const [pending, setPending] = useState<SlideshowSaveRequest | null>(null);
+  const [draftHistory, setDraftHistory] = useState<Array<{ id: string; savedAt: string; slides: SlideshowSlideChoice[]; text: Record<string, SlideTextDesign> }>>([]);
   const [legacyPreview, setLegacyPreview] = useState<string[]>([]);
   const alive = useRef(true);
   const working = useRef(false);
@@ -80,6 +83,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const uploadInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
   const legacyRestoreAttempted = useRef(false);
+  const openedLibraryItem = useRef<string | null>(null);
   const locked = busy || Boolean(pending) || uploading || restoring;
   const legacyGuide = useCallback((saved: SlideshowSaveRequest) => {
     const guide = reference?.id === saved.referenceId ? reference : legacyReferences?.find(item => item.id === saved.referenceId);
@@ -109,7 +113,22 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   const startNewSlide = useCallback(() => { replacementTarget.current = null; }, []);
   function editFingerprint(sequence: SlideshowSaveRequest["slides"]) { return JSON.stringify({ slides: sequence, text: sequence.map(slide => text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT) }); }
   function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (saved.editFingerprint ? saved.editFingerprint === editFingerprint(sequence) : !sequence.some(slide => hasText(text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT))); }
-  useImperativeHandle(controllerRef, () => ({ startNewSlide, useImage(image, index) {
+  const archiveDraft = useCallback(() => {
+    if (!owner || localPreview || !slideRef.current.length) return;
+    const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), slides: choices(slideRef.current), text };
+    const next = [entry, ...draftHistory].slice(0, 20);
+    localStorage.setItem(`${draftKey}:history`, JSON.stringify(next)); setDraftHistory(next);
+  }, [owner, localPreview, draftHistory, draftKey, text]);
+  useImperativeHandle(controllerRef, () => ({ startNewSlide, useSlideshow(images, onlyIfEmpty = false) {
+    if (locked || working.current || onlyIfEmpty && slideRef.current.length) return false;
+    if (!images.length || images.length > MAX_SLIDESHOW_SLIDES || new Set(images.map(image => image.id)).size !== images.length || images.some(image => !isExploreUuid(image.id) || !image.url.startsWith("https://"))) { setError("Choose a complete saved slideshow version from your account."); return false; }
+    if (images.length === slideRef.current.length && images.every((image, index) => image.id === slideRef.current[index].mediaAssetId)) return true;
+    try { archiveDraft(); } catch { setError("Could not preserve your current draft. Keep it open before switching versions."); return false; }
+    const next = images.map(image => ({ referenceSlideId: crypto.randomUUID(), mediaAssetId: image.id, image }));
+    replacementTarget.current = null; setError(null); change(next); setText({});
+    if (owner && !localPreview) try { localStorage.removeItem(`${draftKey}:text`); } catch { /* The in-memory draft remains intact. */ }
+    return true;
+  }, useImage(image, index) {
     if (locked || working.current) { setError("Finish or resume the current slideshow save before changing slides."); return false; }
     if (!isExploreUuid(image.id) || !image.url.startsWith("https://")) { setError("Choose a saved image from your account."); return false; }
     const current = slideRef.current;
@@ -120,7 +139,21 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     if (target >= 0) next[target] = { ...next[target], mediaAssetId: image.id, image, previous: next[target].image ?? undefined, error: undefined };
     else next.push({ referenceSlideId: crypto.randomUUID(), mediaAssetId: image.id, image });
     replacementTarget.current = null; setError(null); change(next, target >= 0 ? target : next.length - 1); return true;
-  } }), [startNewSlide, locked, change]);
+  } }), [startNewSlide, locked, change, archiveDraft, owner, localPreview, draftKey]);
+
+  async function restoreEarlierDraft(id: string) {
+    const entry = draftHistory.find(entry => entry.id === id);
+    if (!entry || locked || generationBusy || !owner) return;
+    setUploading(true); working.current = true;
+    try {
+      const token = await getCurrentUserIdToken(owner); if (!token) throw new Error("Sign in to reopen this draft.");
+      const loaded = await loadChoices(entry.slides, token);
+      if (!alive.current) return;
+      archiveDraft(); change(loaded); setText(entry.text); setError(null);
+      localStorage.setItem(`${draftKey}:text`, JSON.stringify(entry.text));
+    } catch (error) { if (alive.current) setError(error instanceof Error ? error.message : "Could not reopen this draft."); }
+    finally { working.current = false; if (alive.current) setUploading(false); }
+  }
 
   async function loadChoices(sequence: SlideshowSaveRequest["slides"], token: string): Promise<EditorSlide[]> {
     const ids = [...new Set(sequence.flatMap(slide => slide.mediaAssetId ? [slide.mediaAssetId] : []))];
@@ -149,6 +182,47 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
         const saved = readSlideshowSaveRequest(rawSave, owner);
         if (rawSave && !saved) throw new Error("Could not verify the saved slideshow request. Review your Library before saving again.");
         const draft = readSlideshowDraft(localStorage.getItem(draftKey), owner);
+        const historyRaw = localStorage.getItem(`${draftKey}:history`);
+        let previousHistory: typeof draftHistory = [];
+        try { if (historyRaw && historyRaw.length <= 1_500_000) {
+          const history: unknown = JSON.parse(historyRaw);
+          if (Array.isArray(history)) previousHistory = history.slice(0, 20).flatMap(value => {
+            const parsed = readSlideshowDraft(JSON.stringify({ version: 2, owner, slides: value?.slides }), owner);
+            return parsed && typeof value.id === "string" && typeof value.savedAt === "string" ? [{ id: value.id, savedAt: value.savedAt, slides: parsed.slides, text: readTextDraft(JSON.stringify(value.text), new Set(parsed.slides.map(slide => slide.referenceSlideId))) }] : [];
+          });
+        } } catch { /* An unreadable archive must not hide the active draft. */ }
+        setDraftHistory(previousHistory);
+        if (libraryItemId && openedLibraryItem.current !== `${owner}:${libraryItemId}`) {
+          if (!isExploreUuid(libraryItemId)) throw new Error("Choose a valid saved slideshow.");
+          if (saved && !saved.output) throw new Error("Resume your interrupted save before opening another slideshow.");
+          const token = await getCurrentUserIdToken(owner); if (!token) throw new Error("Sign in to reopen this slideshow.");
+          const response = await fetch(`/api/library/carousels/${libraryItemId}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+          const data = await response.json() as { ok?: boolean; item?: LibraryCarouselItemRecord };
+          const item = data.item;
+          if (!response.ok || !data.ok || !item || item.id !== libraryItemId || item.projectId !== "explore" || !item.sourceId.startsWith("explore-slideshow:") || item.slideCount < 2 || item.slideCount > 10 || item.slides.length !== item.slideCount) throw new Error("This saved slideshow is unavailable.");
+          const editable = readSlideshowEditableDraft(item.editorDraft);
+          const sequence = editable?.slides.map(slide => ({ referenceSlideId: slide.referenceSlideId, mediaAssetId: slide.mediaAssetId })) ?? item.slides.map((slide, index) => ({ referenceSlideId: `library:${item.id}:${index + 1}`, mediaAssetId: slide.mediaAssetId ?? "" }));
+          if (sequence.some(slide => !isExploreUuid(slide.mediaAssetId))) throw new Error("This older slideshow has no reusable source images. Open its images in Creative Assets to recreate it.");
+          const loaded = await loadChoices(sequence, token);
+          if (stopped || !alive.current || restoredRevision !== revision.current) return;
+          if (draft?.slides.length) {
+            const entries = previousHistory.slice(0, 19);
+            const priorText = readTextDraft(localStorage.getItem(`${draftKey}:text`), new Set(draft.slides.map(slide => slide.referenceSlideId)));
+            const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), slides: draft.slides, text: priorText };
+            const next = [entry, ...entries]; localStorage.setItem(`${draftKey}:history`, JSON.stringify(next)); setDraftHistory(next);
+          }
+          const nextText = Object.fromEntries(editable?.slides.map(slide => [slide.referenceSlideId, slide.design]) ?? []);
+          persist(loaded); setText(nextText); setPreviewIndex(0); setOutput(null); onDirty();
+          localStorage.setItem(`${draftKey}:text`, JSON.stringify(nextText));
+          openedLibraryItem.current = `${owner}:${libraryItemId}`;
+          // The exact item link opens once; subsequent reload restores newer edits.
+          if (typeof window !== "undefined" && window.location?.href) {
+            const url = new URL(window.location.href); url.searchParams.delete("slideshowId");
+            window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+          }
+          if (!editable) setError("Reopened the saved images. Text already inside these older images cannot be edited separately.");
+          return;
+        }
         const sequence = saved && !saved.output ? saved.sourceSlides ?? saved.slides : draft?.slides ?? saved?.sourceSlides ?? saved?.slides ?? [];
         const restoreLegacy = saved?.version === 1 && saved.slides.some(slide => slide.mediaAssetId === null) && (!saved.output || !draft);
         if (!sequence.length) {
@@ -181,7 +255,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     return () => { stopped = true; clearTimeout(timer); };
     // Read the owner's complete sequence once. Choosing another guide never resets it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, saveKey, owner, localPreview, legacyReferences]);
+  }, [draftKey, saveKey, owner, localPreview, legacyReferences, libraryItemId]);
   useEffect(() => {
     if (localPreview || !owner || !reference || legacyRestoreAttempted.current) return;
     let stopped = false;
@@ -293,7 +367,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
             return { referenceSlideId: slide.referenceSlideId, mediaAssetId };
           }, (completed, total) => { if (alive.current) setSaveProgress(`Preparing slides · ${completed} of ${total}`); });
           if (!alive.current) return;
-          saved = { version: 2, owner, requestKey: crypto.randomUUID(), referenceId: reference?.id ?? null, slides: resolved, sourceSlides: current, editFingerprint: fingerprint };
+          saved = { version: 2, owner, requestKey: crypto.randomUUID(), referenceId: reference?.id ?? null, slides: resolved, sourceSlides: current, editFingerprint: fingerprint, editorDraft: { version: 1, slides: snapshot.map(slide => ({ referenceSlideId: slide.referenceSlideId, mediaAssetId: slide.mediaAssetId, design: text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT })) } };
         }
         // Another tab's unfinished request wins until its exact outcome is known.
         if (saved.version === 1) {
@@ -304,7 +378,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
         }
         localStorage.setItem(saveKey, JSON.stringify(saved)); setPending(saved);
         setSaveProgress(resumedRequest ? "Recovering saved slideshow…" : "Saving slideshow to Library…");
-        const response = await fetch("/api/explore/slideshows", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": saved.requestKey }, body: JSON.stringify({ version: saved.version, requestKey: saved.requestKey, referenceId: saved.referenceId, slides: saved.slides }) });
+        const response = await fetch("/api/explore/slideshows", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": saved.requestKey }, body: JSON.stringify({ version: saved.version, requestKey: saved.requestKey, referenceId: saved.referenceId, slides: saved.slides, ...(saved.editorDraft ? { editorDraft: saved.editorDraft } : {}) }) });
         const data: unknown = await response.json();
         const result = readSlideshowOutput(data, saved.slides.length);
         if (!response.ok || !data || typeof data !== "object" || !("ok" in data) || data.ok !== true || !result) {
@@ -352,6 +426,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   if (!active || !controlsTarget || !resultsTarget) return null;
   return <>{actionsTarget ? createPortal(actions, actionsTarget) : null}{createPortal(<div className={textStyles.inspector}>
     <header className={textStyles.inspectorHeading}><div><h2>{selected ? `Edit slide ${previewIndex + 1}` : "Edit your slides"}</h2><p>Text and appearance</p></div>{selected ? <span>{previewIndex + 1} / {slides.length}</span> : null}</header>
+    {draftHistory.length ? <label className="mb-3 block text-xs text-muted">Earlier drafts on this device<select aria-label="Reopen earlier slideshow draft" className="mt-1 block h-9 w-full rounded-md border border-border bg-card px-2 text-sm text-foreground" value="" disabled={locked || generationBusy} onChange={event => void restoreEarlierDraft(event.target.value)}><option value="">Choose a draft…</option>{draftHistory.map(entry => <option key={entry.id} value={entry.id}>{entry.slides.length} slides · {new Date(entry.savedAt).toLocaleString()}</option>)}</select></label> : null}
     <input ref={uploadInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label="Upload slideshow images" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, false); }} />
     <input ref={replaceInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Replace slideshow image" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, true); }} />
     {selected ? <div className={textStyles.inspectorContent}>

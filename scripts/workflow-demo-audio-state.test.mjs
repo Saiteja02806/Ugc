@@ -119,7 +119,7 @@ function layout(kind) {
       return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };
     } },
     "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({ children }) => children("owner"), WorkflowGenerationBoundary: ({ children, draft }) => { generationDraft = draft; return children(generated); } },
-    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: prepareAction, schedule: scheduleAction, output: finishedOutput, captions: { transcript: null }, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
+    "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children, ...inputs }) => { finishingInputs=inputs; return children({ edit: prepareAction, schedule: scheduleAction, output: finishedOutput, captions: { transcript: null }, music: { source: null, playback: "repeat", selectionError: null }, options: { subtitles: false, style: "clean" }, setOptions() {} }); } },
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
     "@/components/explore/workflow-section-layout.module.css": css,

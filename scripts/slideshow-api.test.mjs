@@ -4,6 +4,8 @@ import {readFileSync} from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { readSlideshowEditableDraft } from "../lib/explore/slideshow-editable-draft.ts";
+import { EMPTY_SLIDE_TEXT } from "../lib/explore/slideshow-text.ts";
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const key = id(50), owner = "owner-a";
 const reference = {id:"catalogue-twelve",format:"slideshow",title:"Long design guide",slides:Array.from({length:12},(_,n) => ({id:`guide-${n}`,url:`https://trusted.test/guide-${n}`}))};
@@ -20,6 +22,7 @@ function harness(options={}) {
     "@/lib/storage/storage":{isTrustedStorageUrl:url=>url.startsWith("https://trusted.test/")},
     "@/worker/src/lib/explore-finishing-contract":{isExploreUuid:value=>typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)},
     "./slideshow-draft":{MIN_SLIDESHOW_SLIDES:2,MAX_SLIDESHOW_SLIDES:10},
+    "./slideshow-editable-draft":{readSlideshowEditableDraft},
     "@/lib/media/media-storage":{getMediaAssetForOwner:async args=>{calls.push(args);assert.equal(args.userId,owner);active++;maxConcurrent=Math.max(active,maxConcurrent);await new Promise(resolve=>setTimeout(resolve,5));active--;return options.asset?options.asset(args.assetId):{id:args.assetId,user_id:owner,collection:"image",status:"ready",mime_type:"image/png",deleted_at:null,url:`https://trusted.test/${args.assetId}`,storage_key:`owned/${args.assetId}`};}},
     "@supabase/supabase-js":{createClient:()=>({rpc:async(name,args)=>{assert.equal(name,"explore_save_slideshow");writes.push(args);if(options.rpcError)return{error:{message:"provider-secret"}};const prior=seen.get(args.p_request_key);if(prior&&prior!==args.p_fingerprint)return{error:{message:"conflict"}};seen.set(args.p_request_key,args.p_fingerprint);return{data:id(60)};}})},
   };
@@ -34,6 +37,17 @@ test("an owned output sequence saves in chosen order without a catalogue referen
   assert.equal(response.status,200);assert.equal(body.ok,true);assert.equal(body.kind,"library_item");assert.equal(response.headers.get("Cache-Control"),"no-store");assert.equal(response.headers.get("Vary"),"Authorization");
   assert.equal(h.maxConcurrent,2);assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].p_slides.map(s=>s.mediaAssetId))),[id(1),id(2)]);assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].p_slides.map(s=>s.slideNumber))),[1,2]);assert.equal(h.writes[0].p_user_id,owner);
   const again=await h.post();assert.equal((await again.json()).id,body.id);assert.equal(h.seen.size,1);
+});
+
+test("editable source identities and validated text survive saving while foreign source images cannot be attached", async () => {
+  const h = harness();
+  const editorDraft = { version: 1, slides: h.base.slides.map((slide, index) => ({ referenceSlideId: slide.referenceSlideId, mediaAssetId: id(index + 10), design: { ...EMPTY_SLIDE_TEXT, heading: `Editable ${index + 1}` } })) };
+  assert.equal((await h.post({ ...h.base, editorDraft })).status, 200);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].p_metadata.editorDraft)), editorDraft);
+  const foreign = harness({ asset: assetId => ({ id: assetId, user_id: assetId === id(10) ? "other-owner" : owner, collection: "image", status: "ready", mime_type: "image/png", deleted_at: null, url: `https://trusted.test/${assetId}`, storage_key: assetId }) });
+  assert.equal((await foreign.post({ ...foreign.base, editorDraft })).status, 400); assert.equal(foreign.writes.length, 0);
+  const mismatched = { ...editorDraft, slides: [...editorDraft.slides].reverse() };
+  assert.equal((await h.post({ ...h.base, editorDraft: mismatched })).status, 400);
 });
 test("a 12-slide catalogue is only guidance and cannot silently populate or change a two-image output list",async()=>{
   const h=harness();const response=await h.post({...h.base,referenceId:reference.id});assert.equal(response.status,200);assert.equal(h.writes[0].p_slides.length,2);assert.ok(h.writes[0].p_slides.every(s=>s.mediaAssetId));

@@ -1,5 +1,13 @@
 export async function requestVideoDownload(assetId: string, token: string, signal: AbortSignal) {
-  const response = await fetch(`/api/media/${encodeURIComponent(assetId)}/download`, {
+  return requestDownload(`/api/media/${encodeURIComponent(assetId)}/download`, token, signal);
+}
+
+export async function requestImageDownload(assetId: string, token: string, signal: AbortSignal) {
+  return requestDownload(`/api/characters/${encodeURIComponent(assetId)}/download`, token, signal);
+}
+
+async function requestDownload(path: string, token: string, signal: AbortSignal) {
+  const response = await fetch(path, {
     method: "POST",
     cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
@@ -26,7 +34,7 @@ export async function requestVideoDownload(assetId: string, token: string, signa
   return { url: url.href, fileName: data.fileName };
 }
 
-export function startVideoDownload(download: { url: string; fileName: string }) {
+export function startMediaDownload(download: { url: string; fileName: string }) {
   const link = document.createElement("a");
   link.href = download.url;
   // The signed response supplies the filename and attachment disposition.
@@ -36,3 +44,5 @@ export function startVideoDownload(download: { url: string; fileName: string }) 
   link.click();
   link.remove();
 }
+
+export const startVideoDownload = startMediaDownload;

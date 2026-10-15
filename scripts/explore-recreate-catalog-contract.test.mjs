@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
+import ts from "typescript";
 
 const catalog = JSON.parse(
   readFileSync(new URL("../lib/explore/imported-catalog.json", import.meta.url), "utf8"),
@@ -18,6 +20,66 @@ const recreateCatalog = readFileSync(
   new URL("../lib/explore/recreate-catalog.ts", import.meta.url),
   "utf8",
 );
+
+test("slideshow references display topics while preserving identity, media and video titles", () => {
+  const exports = {};
+  const dependencies = {
+    "server-only": {},
+    "./imported-catalog.json": { default: catalog },
+    "./hook-video-library": { getExploreHookVideos: () => [] },
+    "./wall-text-video-library": { getExploreWallTextVideos: () => [] },
+    "./reference-video-prompts": { getReferenceVideoPrompt: () => undefined },
+    "@/lib/storage/storage": { buildPublicStorageUrl: file => `https://media.test/${file}` },
+    "@/worker/src/lib/explore-hook-reference-release": { getHookReferenceReleaseItems: () => [], isHookReferenceReleaseActive: () => false },
+  };
+  const code = ts.transpileModule(recreateCatalog, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  vm.runInNewContext(code, { exports, process: { env: { NODE_ENV: "development" } }, require: name => {
+    assert.ok(name in dependencies, `Unexpected dependency ${name}`);
+    return dependencies[name];
+  } });
+  for (const refs of [exports.getRecreateReferences(), exports.getLocalRecreateReferences()]) {
+    for (const item of catalog.items.filter(item => item.format !== "hook")) {
+      const reference = refs.find(reference => reference.id === item.id);
+      assert.ok(reference);
+      assert.equal(reference.title, item.format === "slideshow" ? item.categoryLabel : item.title);
+      assert.deepEqual(Array.from(reference.slides, slide => slide.id), item.slides.map(slide => slide.id));
+      assert.deepEqual(Array.from(reference.slides, slide => slide.url), item.slides.map(slide => `https://media.test/explore/recreate/v1/${slide.file}`));
+    }
+    for (const topic of ["Fitness", "Goal Tracker", "Interview App"]) assert.ok(refs.some(reference => reference.title === topic));
+  }
+});
+
+test("Hook labels omit catalogue numbers without changing active, archived or staged identities", () => {
+  const active = { id: "hook-stable-a", videoUrl: "https://media.test/a.mp4", posterUrl: "https://media.test/a.webp", sourceUrl: "https://www.instagram.com/reel/known/", sourcePlatform: "instagram", durationSeconds: 3 };
+  const archived = { ...active, id: "hook-stable-b", videoUrl: "https://media.test/b.mp4" };
+  const exports = {};
+  const dependencies = {
+    "server-only": {},
+    "./imported-catalog.json": { default: catalog },
+    "./hook-video-library": { getExploreHookVideos: all => all ? [active, archived] : [active] },
+    "./wall-text-video-library": { getExploreWallTextVideos: () => [] },
+    "./reference-video-prompts": { getReferenceVideoPrompt: id => id === active.id ? "Reviewed reference prompt" : undefined },
+    "@/lib/storage/storage": { buildPublicStorageUrl: file => `https://media.test/${file}` },
+    "@/worker/src/lib/explore-hook-reference-release": { getHookReferenceReleaseItems: () => [active], isHookReferenceReleaseActive: () => false },
+  };
+  const code = ts.transpileModule(recreateCatalog, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  vm.runInNewContext(code, { exports, process: { env: { NODE_ENV: "development" } }, require: name => {
+    assert.ok(name in dependencies, `Unexpected dependency ${name}`);
+    return dependencies[name];
+  } });
+  for (const refs of [exports.getRecreateReferences(), exports.getLocalRecreateReferences(), exports.getArchivedHookReferences()]) {
+    for (const reference of refs.filter(item => item.format === "hook")) assert.equal(reference.title, "Hook");
+  }
+  const restored = exports.getRecreateReference(active.id);
+  for (const [key, value] of Object.entries(active)) assert.equal(restored[key], value);
+  assert.equal(restored.generationPrompt, "Reviewed reference prompt");
+  assert.equal(exports.getRecreateReference(archived.id).archived, true);
+  for (const item of catalog.items.filter(item => item.format === "hook")) {
+    const staged = exports.getLocalRecreateReferences().find(reference => reference.id === item.id);
+    assert.ok(staged);
+    assert.equal(staged.videoUrl, `/api/explore/local-media/${item.videoFile}`);
+  }
+});
 
 test("the imported Explore catalogue preserves the supplied content structure", () => {
   const slideshows = catalog.items.filter((item) => item.format === "slideshow");

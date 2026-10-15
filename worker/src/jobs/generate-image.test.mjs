@@ -18,13 +18,14 @@ const provider = async (model, prompt, ratio, reference, nativeAspectRatio = fal
 };
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
   SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
+  SLIDESHOW_FLARE_IMAGE_MODEL: "gpt-image-2.5-flare",
   generateOpenAiImageBuffer: (prompt, ratio, reference, model, nativeAspectRatio) => provider(model ?? "gpt_image", prompt, ratio, reference, nativeAspectRatio),
 } });
 mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedExports: {
   GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image",
   generateGeminiImageBuffer: (prompt, ratio, reference) => provider("nano_banana_2", prompt, ratio, reference),
   generateGemini3ProImageBuffer: async params => {
-    await provider("gemini_3_pro", params.prompt, params.aspectRatio, params.referenceImageUrl);
+    await provider("gemini_3_pro", params.prompt, params.aspectRatio, params.referenceImageUrls ?? params.referenceImageUrl);
     await params.onOperationCreated("fixture-request");
     await params.onOperationSucceeded("fixture-request");
     return image;
@@ -69,6 +70,31 @@ const job = (model, prompt) => ({
   },
 });
 
+test("Flare slide jobs carry business instructions and their exact version position through worker output", async () => {
+  const imageJob = job("gpt_image_2_5_flare", "Make this slide for UGC Pilot. Business context: content creation for small businesses.");
+  const slot = { version: 1, batchKey: "fixture-batch", slideIndex: 3, slideCount: 5, versionIndex: 2, versionCount: 2 };
+  Object.assign(imageJob.input_json, { exploreFormat: "slideshow", slideshowReferenceContract: { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [] }, slideshowGeneration: slot,
+    slideshowBusinessContext: { businessProfileId: "profile", businessProfileVersion: 1, businessContext: { businessName: "UGC Pilot", productSummary: "Content for small businesses", category: null, mainProblem: null, mainPromise: null, brandTone: null, targetAudience: ["small businesses"], valueProps: [], painPoints: [], differentiators: [], visualKeywords: [], ctaIdeas: [], claimsToAvoid: [] } } });
+  const output = await runGenerateImageJob(imageJob, context);
+  assert.equal(received.at(-1).model, "gpt-image-2.5-flare"); assert.match(received.at(-1).prompt, /Business context \(saved in Settings\)/); assert.match(received.at(-1).prompt, /version 2 of 2, slide 3 of 5/);
+  assert.deepEqual(output.slideshowGeneration, slot); assert.equal(received.at(-1).nativeAspectRatio, true);
+});
+
+test("slideshow context and version position survive all legacy reference-role paths", async () => {
+  for (const role of [{}, { additionalReferenceStartIndex: 2 }, { subjectReferenceIndex: 2 }]) {
+    const imageJob = job("gpt_image_2_5_flare", "Keep the layout and explain our product");
+    Object.assign(imageJob.input_json, {
+      exploreFormat: "slideshow", referenceImageUrls: [imageJob.input_json.referenceImageUrl, "https://media.example.test/product.png"], ...role,
+      slideshowGeneration: { version: 1, batchKey: "context-fixture", slideIndex: 2, slideCount: 5, versionIndex: 1, versionCount: 2 },
+      slideshowBusinessContext: { businessProfileId: "profile", businessProfileVersion: 1, businessContext: { businessName: "UGC Pilot", productSummary: "Content for small businesses", category: null, mainProblem: null, mainPromise: null, brandTone: null, targetAudience: ["small businesses"], valueProps: [], painPoints: [], differentiators: [], visualKeywords: [], ctaIdeas: [], claimsToAvoid: [] } },
+    });
+    await runGenerateImageJob(imageJob, context);
+    assert.match(received.at(-1).prompt, /Business context \(saved in Settings\)/);
+    assert.match(received.at(-1).prompt, /Content for small businesses/);
+    assert.match(received.at(-1).prompt, /version 1 of 2, slide 2 of 5/);
+  }
+});
+
 test("slideshow workers resolve every chosen image for its owner and include the complete list in the paid-operation fingerprint", async () => {
   for (const model of ["gpt_image_2_5", "nano_banana_2"]) {
     const imageJob = job(model, "Use these slides as context");
@@ -83,6 +109,37 @@ test("slideshow workers resolve every chosen image for its owner and include the
     await runGenerateImageJob(imageJob, context);
     assert.notEqual(fingerprints.at(-1), completeFingerprint);
   }
+});
+
+test("influencer jobs send all ordered references to every supported model without changing the user prompt", async () => {
+  const prompt = "Use image 1 for the person and images 2 and 3 for the setting.";
+  for (const model of ["gpt_image", "gpt_image_2_5", "nano_banana_2", "gemini_3_pro", "seedream_5_pro"]) {
+    const imageJob = job(model, prompt);
+    const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/room.png", "https://media.example.test/lighting.png"];
+    imageJob.input_json.referenceImageUrls = urls;
+    const before = resolvedReferences.length;
+    await runGenerateImageJob(imageJob, context);
+    if (model === "seedream_5_pro") {
+      assert.deepEqual(seedreamCalls.at(-1).referenceImageUrls, urls);
+      assert.equal(seedreamCalls.at(-1).prompt, prompt);
+    } else {
+      assert.deepEqual(received.at(-1).reference, urls);
+      assert.equal(received.at(-1).prompt, prompt);
+    }
+    assert.deepEqual(resolvedReferences.slice(before), urls.map(url => ({ url, owner: "fixture-user" })));
+  }
+});
+
+test("influencer context rejects over-limit and non-character arrays before reserving a provider operation", async () => {
+  const before = fingerprints.length;
+  const tooMany = job("seedream_5_pro", "Use these");
+  tooMany.input_json.referenceImageUrls = [tooMany.input_json.referenceImageUrl, ...Array.from({ length: 10 }, (_, i) => `https://media.example.test/${i}.png`)];
+  await assert.rejects(runGenerateImageJob(tooMany, context), /up to 10/);
+  const ordinary = job("gpt_image", "Use these");
+  delete ordinary.input_json.characterSource;
+  ordinary.input_json.referenceImageUrls = [ordinary.input_json.referenceImageUrl];
+  await assert.rejects(runGenerateImageJob(ordinary, context));
+  assert.equal(fingerprints.length, before);
 });
 
 test("unsupported, empty or mismatched context fails without reaching a provider", async () => {

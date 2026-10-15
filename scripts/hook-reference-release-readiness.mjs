@@ -30,7 +30,8 @@ export function validateHookRelease(release, textCatalog, { sourcePolicy = "inst
     if (release.excludedReferenceIds.includes(item.id)) continue;
     if (item.durationSeconds > 15) throw new Error(`Hook exceeds the generation reference limit: ${item.id}`);
     const text = textItems.find(text => text.referenceId === item.id && text.slideId === null);
-    if (!text || text.status !== "ready") throw new Error(`Hook text has not been visually reviewed: ${item.id}`);
+    if (!text || !["ready", "no_text"].includes(text.status)) throw new Error(`Hook text has not been visually reviewed: ${item.id}`);
+    if (text.status === "no_text" && text.blocks.length) throw new Error(`No-text Hook review cannot contain caption blocks: ${item.id}`);
     ReferenceTextSchema.parse(text);
     if (text.format !== "hook" || text.sourceSha256 !== item.videoSha256 || text.blocks.some(block => block.endMs > Math.ceil(item.durationSeconds * 1000) + 100)) throw new Error(`Hook text does not match its video: ${item.id}`);
   }

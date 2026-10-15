@@ -26,6 +26,8 @@ test("saved JSON clip drafts reach final composition independently of background
     const h = fixture(capability);
     assert.match(h.view().error, /Loading your saved clip edits/);
     const [opening, demo] = h.editors(); assert.ok(demo, "Restored owned demo mounts its draft without a file upload");
+    assert.equal(opening.props.showSoundControls, false, "Talking-head speech is already in the footage; audio setup stays in Demo");
+    assert.equal(demo.props.showSoundControls, false, "The focused demo editor must not duplicate Demo audio setup");
     for (const [editor, source] of [[opening, h.props.source], [demo, h.props.demoSource]]) {
       editor.props.onClipStateChange({ sourceId: source.id, editing: { version: 1, format: "hook", trimStartMs: 1000, trimEndMs: 9000, originalVolume: .8, musicVolume: .2, text: null },
         needsSaving: true, needsDraftSaving: false, savedDraft: { revision: 1 }, output: asset(9), busy: false, error: null });

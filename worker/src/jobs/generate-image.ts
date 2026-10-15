@@ -1,5 +1,7 @@
 import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
-import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL } from "../lib/openai-image.js";
+import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL, SLIDESHOW_FLARE_IMAGE_MODEL } from "../lib/openai-image.js";
+import { readSlideshowGenerationSlot, slideshowSlotPrompt, type SlideshowGenerationSlot } from "../lib/slideshow-generation-batch.js";
+import { parseSlideshowBusinessContext, slideshowBusinessContextPrompt, type SlideshowBusinessContext } from "../lib/slideshow-business-context.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
 import {
   assertProviderOperationCanContinue,
@@ -35,7 +37,9 @@ const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "gpt_image_2_5" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  model: "gpt_image" | "gpt_image_2_5" | "gpt_image_2_5_flare" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  slideshowGeneration?: SlideshowGenerationSlot;
+  slideshowBusinessContext?: SlideshowBusinessContext;
   prompt: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
@@ -69,12 +73,18 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   }
 
   const model = getImageModel(job.input_json.model);
+  const characterReferenceContext = promptDrivenCharacter && job.input_json.exploreFormat === undefined;
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
   const slideshowReferenceContract = job.input_json.slideshowReferenceContract === undefined ? undefined
     : parseSlideshowReferenceContract(job.input_json.slideshowReferenceContract, referenceImageUrls?.length ?? (referenceImageUrl ? 1 : 0));
-  if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
-  if (referenceImageUrls && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) {
+  const slideshowGeneration = readSlideshowGenerationSlot(job.input_json.slideshowGeneration);
+  const slideshowBusinessContext = parseSlideshowBusinessContext(job.input_json.slideshowBusinessContext);
+  if (job.input_json.slideshowBusinessContext !== undefined && (!slideshowBusinessContext || job.input_json.exploreFormat !== "slideshow") || slideshowGeneration && !slideshowBusinessContext) throw new ProviderRequestNotSubmittedError("This slideshow job requires its saved business context.");
+  if (job.input_json.slideshowGeneration !== undefined && (!slideshowGeneration || job.input_json.exploreFormat !== "slideshow")) throw new ProviderRequestNotSubmittedError("Invalid slideshow output position.");
+  if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
+  if (referenceImageUrls && characterReferenceContext && referenceImageUrls.length > 10) throw new ProviderRequestNotSubmittedError("Choose up to 10 influencer references.");
+  if (referenceImageUrls && !characterReferenceContext && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
   }
   if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
@@ -103,6 +113,8 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     ...(additionalReferenceStartIndex === undefined ? {} : { additionalReferenceStartIndex }),
     ...(regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: regenerationReferenceIndex as number }),
     ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
+    ...(slideshowGeneration ? { slideshowGeneration } : {}),
+    ...(slideshowBusinessContext ? { slideshowBusinessContext } : {}),
   };
 }
 
@@ -111,14 +123,16 @@ export async function runGenerateImageJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
+  const contextualPrompt = input.slideshowBusinessContext ? slideshowBusinessContextPrompt(input.prompt, input.slideshowBusinessContext) : input.prompt;
+  const slidePrompt = input.slideshowGeneration ? slideshowSlotPrompt(contextualPrompt, input.slideshowGeneration) : contextualPrompt;
   const providerPrompt = input.slideshowReferenceContract
-    ? slideshowGenerationPrompt(input.prompt, input.aspectRatio, input.slideshowReferenceContract)
+    ? slideshowGenerationPrompt(slidePrompt, input.aspectRatio, input.slideshowReferenceContract)
     : input.additionalReferenceStartIndex
-    ? slideshowReferenceImagesPrompt(input.prompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
+    ? slideshowReferenceImagesPrompt(slidePrompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
     : input.subjectReferenceIndex
-    ? slideshowReferencePrompt(input.prompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
-    : input.prompt;
-  if (input.slideshowReferenceContract && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
+    ? slideshowReferencePrompt(slidePrompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
+    : slidePrompt;
+  if ((input.slideshowReferenceContract || input.slideshowBusinessContext || input.slideshowGeneration) && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
@@ -148,6 +162,8 @@ export async function runGenerateImageJob(
     ...(input.additionalReferenceStartIndex ? { additionalReferenceStartIndex: input.additionalReferenceStartIndex } : {}),
     ...(input.regenerationReferenceIndex ? { regenerationReferenceIndex: input.regenerationReferenceIndex } : {}),
     ...(input.slideshowReferenceContract ? { slideshowReferenceContract: input.slideshowReferenceContract } : {}),
+    ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
+    ...(input.slideshowBusinessContext ? { slideshowBusinessContext: input.slideshowBusinessContext } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -179,7 +195,7 @@ export async function runGenerateImageJob(
               providerPrompt,
               input.aspectRatio,
               referenceImages,
-              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,
+              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : input.model === "gpt_image_2_5_flare" ? SLIDESHOW_FLARE_IMAGE_MODEL : undefined,
               Boolean(input.slideshowReferenceContract),
             );
     } catch (error) {
@@ -291,11 +307,14 @@ async function generateDurableImageForJob(
       return await downloadStoredObjectBuffer(savedStagingKey);
     }
     let acceptedOperationId = operationId;
+    const referenceImageUrls = input.referenceImageUrls && action === "submit"
+      ? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls;
     const buffer = await generate({
       aspectRatio: input.aspectRatio,
       prompt: input.prompt,
-      referenceImageUrl: action === "submit" && input.referenceImageUrl
-        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl,
+      referenceImageUrl: referenceImageUrls?.[0] ?? (action === "submit" && input.referenceImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl),
+      ...(referenceImageUrls ? { referenceImageUrls } : {}),
       providerOperationId: operationId,
       onOperationCreated: async (providerOperationId) => {
         await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });
@@ -342,6 +361,7 @@ function buildOutput(
   return {
     fileSizeBytes: undefined,
     generationId: input.generationId,
+    ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
     height: dimensions.height,
     key: uploaded.key,
     ok: true,
@@ -354,7 +374,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "seedream_5_pro") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "gpt_image_2_5_flare" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }

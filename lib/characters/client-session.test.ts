@@ -9,6 +9,13 @@ test("uncertain uploaded-reference requests restore the exact attachment ID with
   assert.deepEqual(restored.pendingRequest, pendingRequest);
 });
 
+test("multiple references and uncertain generation retain their exact order across refresh", () => {
+  const ids = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
+  const session = { ...EMPTY_CHARACTER_SESSION, selectedCharacterId: ids[0], selectedCharacterIds: ids,
+    pendingRequest: { mode: "custom", model: "seedream_5_pro", prompt: "Use both images", referenceCharacterIds: ids, idempotencyKey: "same-ordered-images" } };
+  assert.deepEqual(parseCharacterClientSession(JSON.stringify(session)), session);
+});
+
 test("session restore rejects corrupted, obsolete and untrusted data", () => {
   for (const value of [null, "{", "null", JSON.stringify({ ...EMPTY_CHARACTER_SESSION, version: 2 }),
     JSON.stringify({ ...EMPTY_CHARACTER_SESSION, privateBrief: "not part of the client session" }),

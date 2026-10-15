@@ -87,6 +87,7 @@ export async function generateGemini3ProImageBuffer(params: {
   aspectRatio: AIStudioImageRatio;
   prompt: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
   providerOperationId?: string;
   onOperationCreated: (operationId: string) => Promise<void>;
   onOperationSucceeded: (operationId: string) => Promise<void>;
@@ -105,7 +106,9 @@ export async function generateGemini3ProImageBuffer(params: {
     if (!prompt) {
       throw new ProviderRequestNotSubmittedError("Gemini 3 Pro requires a non-empty prompt.");
     }
-    const referenceImage = params.referenceImageUrl
+    const referenceImages = params.referenceImageUrls
+      ? (await downloadReferenceImageContext(params.referenceImageUrls)).map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType })) : undefined;
+    const referenceImage = !referenceImages && params.referenceImageUrl
       ? await downloadReferenceImage(params.referenceImageUrl)
       : null;
     interaction = await ai.interactions.create(buildGeminiImageRequest({
@@ -114,6 +117,7 @@ export async function generateGemini3ProImageBuffer(params: {
       model: GEMINI_3_PRO_IMAGE_MODEL,
       prompt,
       referenceImage,
+      referenceImages,
     }));
     if (!interaction.id) throw new Error("Google returned no image interaction ID; acceptance could not be confirmed.");
     await params.onOperationCreated(interaction.id);

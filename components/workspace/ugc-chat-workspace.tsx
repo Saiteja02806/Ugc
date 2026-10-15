@@ -60,6 +60,8 @@ import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
 import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
+import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { slideshowGenerationGroups } from "@/lib/explore/slideshow-generation-groups";
 import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-session";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -119,6 +121,7 @@ function getImageJobOutput(output: Json | null) {
   return {
     generationId:
       typeof output.generationId === "string" ? output.generationId : null,
+    slideshowGeneration: readSlideshowGenerationSlot(output.slideshowGeneration) ?? undefined,
     mediaAssetId:
       typeof output.mediaAssetId === "string" ? output.mediaAssetId : null,
     prompt: typeof output.prompt === "string" && output.prompt.trim() ? output.prompt : null,
@@ -327,7 +330,10 @@ export function ImageGenerationStudioPanel({
     (job) => job.jobType === "image_generation" && (!workflowFormat || job.exploreFormat === workflowFormat),
   );
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
-  const requiredCredits = creditCost * quantity;
+  const slideshowSlideCount = workflowFormat === "slideshow" ? recreateView?.slideshowSlideCount : undefined;
+  const outputCount = pendingSubmission ? Number(pendingSubmission.input.quantity) * Number(pendingSubmission.input.slideshowSlideCount ?? 1) : quantity * (slideshowSlideCount ?? 1);
+  const requiredCredits = creditCost * outputCount;
+  const tooManySlides = Boolean(slideshowSlideCount && slideshowSlideCount > 10);
   const hasInsufficientCredits =
     accessState === "pro" &&
     creditsRemaining !== null &&
@@ -571,7 +577,7 @@ export function ImageGenerationStudioPanel({
         const storedPrompt = getImageJobPrompt(workflowFormat ? `${userId}.${workflowFormat}` : userId, completedJob.id);
         const savedPrompt = submittedPromptsRef.current.get(completedJob.id) ?? storedPrompt ?? output.prompt ?? persistedResult?.prompt;
         const nextResult: AIStudioImageResult = persistedResult
-          ? { ...persistedResult, prompt: savedPrompt, remixTextSource: completedJob.remixTextSource ?? null }
+          ? { ...persistedResult, prompt: savedPrompt, remixTextSource: completedJob.remixTextSource ?? null, slideshowGeneration: completedJob.slideshowGeneration ?? output.slideshowGeneration }
           : {
             aspectRatio:
               output.ratio ??
@@ -581,6 +587,7 @@ export function ImageGenerationStudioPanel({
             mediaAssetId: output.mediaAssetId ?? null,
             sourceJobId: completedJob.id,
             remixTextSource: completedJob.remixTextSource ?? null,
+            slideshowGeneration: completedJob.slideshowGeneration ?? output.slideshowGeneration,
             prompt: savedPrompt,
             title: storedPrompt ?? "Generated image",
             url: output.url,
@@ -623,7 +630,7 @@ export function ImageGenerationStudioPanel({
     const trimmedPrompt = normalizeAIStudioPrompt(rawPrompt);
 
     if (
-      recreateView?.preview || (!pendingSubmission && (generationLocked || hasInsufficientCredits || referenceUploadPending || referenceUploadError || tooManyReferences || !trimmedPrompt ||
+      recreateView?.preview || (!pendingSubmission && (generationLocked || hasInsufficientCredits || referenceUploadPending || referenceUploadError || tooManyReferences || tooManySlides || !trimmedPrompt ||
       Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) || selectingImageRef.current ||
       isGenerating || recoveringJobs || submittingRef.current
     ) {
@@ -657,6 +664,7 @@ export function ImageGenerationStudioPanel({
           model,
           prompt: trimmedPrompt,
           quantity,
+          ...(slideshowSlideCount ? { slideshowSlideCount } : {}),
           referenceImageUrl: workflowFormat === "slideshow" ? recreateView?.referenceImageUrl ?? null : referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls?.length ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
           ...(workflowFormat === "slideshow" && instructionReferences.length ? { referenceImageAssetIds: instructionReferences.map(selection => selection.asset.id) } : {}),
@@ -825,6 +833,7 @@ export function ImageGenerationStudioPanel({
     [generatedAssets, currentResultIds, selectedHistoryImageId],
   );
   type ImageDisplayRow = {
+    slideshowGeneration?: SlideshowGenerationSlot;
     key: string;
     aspectRatio: AIStudioImageAspectRatio;
     createdAt: string;
@@ -842,7 +851,7 @@ export function ImageGenerationStudioPanel({
       const job = query?.data;
       if (asset) {
         renderedImageIds.add(asset.id);
-        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset });
+        imageRows.push({ key: jobId, aspectRatio: asset.aspectRatio, createdAt: job?.createdAt ?? asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: asset.slideshowGeneration ?? job?.slideshowGeneration });
       } else if (
         query?.isPending ||
         job?.jobType === "image_generation" && (
@@ -856,6 +865,7 @@ export function ImageGenerationStudioPanel({
           createdAt: job?.createdAt ?? activeSubmittedAt,
           prompt: submittedPrompts[jobId] ?? (metadataOwnerId ? getImageJobPrompt(metadataOwnerId, jobId) ?? MISSING_IMAGE_PROMPT : activePrompt),
           asset: null,
+          slideshowGeneration: job?.slideshowGeneration,
         });
       }
     }
@@ -863,19 +873,22 @@ export function ImageGenerationStudioPanel({
 
   for (const asset of visibleImages) {
     if (!renderedImageIds.has(asset.id)) {
-      imageRows.push({ key: asset.id, aspectRatio: asset.aspectRatio, createdAt: asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset });
+      imageRows.push({ key: asset.id, aspectRatio: asset.aspectRatio, createdAt: asset.createdAt, prompt: asset.prompt || MISSING_IMAGE_PROMPT, asset, slideshowGeneration: asset.slideshowGeneration });
     }
   }
 
   if (!selectedHistoryImageId && isSubmitting) {
-    for (let index = 0; index < quantity; index += 1) {
+    for (let index = 0; index < outputCount; index += 1) {
       imageRows.push({ key: `submitting-${index}`, aspectRatio, createdAt: activeSubmittedAt, prompt: activePrompt, asset: null });
     }
   }
   imageRows.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 
   function focusHistoryImage(imageId: string) {
-    setSelectedHistoryImageId(imageId);
+    const image = generatedAssets.find(image => image.id === imageId);
+    const group = image?.slideshowGeneration ? slideshowGenerationGroups(generatedAssets).find(group => group.key === `${image.slideshowGeneration!.batchKey}:${image.slideshowGeneration!.versionIndex}`) : null;
+    if (workflowFormat === "slideshow" && group) { setCurrentResultIds(group.images.map(image => image.id)); setSelectedHistoryImageId(null); }
+    else setSelectedHistoryImageId(imageId);
     setHistoryOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById(`ai-studio-image-result-${imageId}`)?.scrollIntoView({ block: "nearest" });
@@ -903,7 +916,35 @@ export function ImageGenerationStudioPanel({
     document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
   }
 
-  const hasSessionActions = Boolean(selectedHistoryImageId) || (visibleImages.length > 0 && !isGenerating);
+  const slideshowGroups = useMemo(() => workflowFormat === "slideshow" ? slideshowGenerationGroups(visibleImages) : [], [workflowFormat, visibleImages]);
+  const offeredSlideshow = useRef(new Set<string>());
+  useEffect(() => {
+    if (!user || isGenerating || selectingImage || !workflow?.onGeneratedSlideshow) return;
+    const group = slideshowGroups.find(group => group.complete);
+    if (!group?.complete || offeredSlideshow.current.has(`${user.uid}:${group.key}`)) return;
+    let stopped = false;
+    void (async () => {
+      try {
+        const token = await getCurrentUserIdToken(user.uid); if (!token || stopped) return;
+        const images = await Promise.all(group.images.map(image => resolveSlideshowImage(image, token)));
+        if (!stopped && activeUserIdRef.current === user.uid && workflow.onGeneratedSlideshow?.(images)) offeredSlideshow.current.add(`${user.uid}:${group.key}`);
+      } catch { /* Explicit Edit version reports any media-read error. */ }
+    })();
+    return () => { stopped = true; };
+  }, [user, isGenerating, selectingImage, workflow, slideshowGroups]);
+
+  async function selectSlideshowVersion(images: AIStudioImageResult[]) {
+    if (!workflow?.onSelectSlideshow || selectingImageRef.current || !user) return;
+    const ownerId = user.uid;
+    selectingImageRef.current = true; setSelectingImage(true); setActionError(null);
+    try {
+      const token = await getCurrentUserIdToken(ownerId);
+      if (!token) throw new Error("Sign in before opening these slides.");
+      const owned = await Promise.all(images.map(image => resolveSlideshowImage(image, token)));
+      if (activeUserIdRef.current === ownerId && !workflow.onSelectSlideshow(owned)) throw new Error("Finish restoring or saving the current draft before opening another version.");
+    } catch (error) { if (activeUserIdRef.current === ownerId) setActionError(getErrorMessage(error, "Could not open this slideshow version.")); }
+    finally { selectingImageRef.current = false; setSelectingImage(false); }
+  }
 
   return (
     <div
@@ -929,7 +970,7 @@ export function ImageGenerationStudioPanel({
         status={resultsStatus}
         statusPlacement="inline"
         scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
-        toolbar={recreateView?.preview ? undefined : recreateView && !hasSessionActions ? undefined :
+        toolbar={recreateView?.preview ? undefined :
           <div className="flex items-center gap-2">
             {selectedHistoryImageId ? (
               <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedHistoryImageId(null)}>Back to session</Button>
@@ -940,18 +981,19 @@ export function ImageGenerationStudioPanel({
                 New session
               </Button>
             ) : null}
-            {!recreateView ? <Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => { setHistoryNow(new Date()); setHistoryOpen(true); }}>
+            {<Button type="button" variant="outline" size="sm" disabled={resultsLoading} onClick={() => { setHistoryNow(new Date()); setHistoryOpen(true); }}>
               <History className="size-3.5" aria-hidden="true" />
               History
               {generatedAssets.length > 0 ? (
                 <span className="rounded-full bg-card-muted px-1.5 py-0.5 text-[10px] tabular-nums">{generatedAssets.length}</span>
               ) : null}
-            </Button> : null}
+            </Button>}
           </div>
         }
       >
+        {slideshowGroups.length ? <div className="flex flex-wrap gap-2" aria-label="Generated slideshow versions">{slideshowGroups.map(group => <div key={group.key} className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"><span className="text-sm font-semibold">Version {group.slot.versionIndex} · {group.images.length}/{group.slot.slideCount} slides</span><Button type="button" variant="outline" size="sm" disabled={!group.complete || selectingImage || isGenerating} onClick={() => void selectSlideshowVersion(group.images)}>Edit version {group.slot.versionIndex}</Button></div>)}</div> : null}
         {imageRows.map((row) => (
-          <ImageGenerationCard
+          <div key={row.key}>{row.slideshowGeneration ? <p className="mb-2 text-xs font-semibold text-muted">Version {row.slideshowGeneration.versionIndex} · Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}</p> : null}<ImageGenerationCard
             key={row.key}
             asset={row.asset}
             aspectRatio={row.aspectRatio}
@@ -962,13 +1004,13 @@ export function ImageGenerationStudioPanel({
             onOpenPreview={setPreviewImage}
             onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
             selectionDisabled={selectingImage || isGenerating}
-          />
+          /></div>
         ))}
       </AiStudioResults>
 
       <ImageGenerationHistory
         groups={historyGroups}
-        open={!recreateView && historyOpen && active}
+        open={!recreateView?.preview && historyOpen && active}
         onOpenChange={setHistoryOpen}
         query={historyQuery}
         onQueryChange={setHistoryQuery}
@@ -985,10 +1027,10 @@ export function ImageGenerationStudioPanel({
         referenceControls={workflow ? recreateView?.contextBanner : undefined}
         settingsLabel="Image generation settings"
         settingsClassName={workflow ? creation.imageSettings : undefined}
-        settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} · ${aspectRatio} · ${quantity} image${quantity === 1 ? "" : "s"}` : undefined}
+        settingsSummary={workflow ? `${getAIStudioImageModelLabel(model)} · ${aspectRatio} · ${slideshowSlideCount ? `${slideshowSlideCount} slides × ${quantity} versions` : `${quantity} image${quantity === 1 ? "" : "s"}`}` : undefined}
         compact={Boolean(recreateView)}
         contextBanner={recreateView?.contextBanner}
-        accessMessage={tooManyReferences ? `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Remove an attached image or select fewer slideshow references.` : composerMessage}
+        accessMessage={tooManySlides ? "Select up to 10 slides per version." : tooManyReferences ? `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Remove an attached image or select fewer slideshow references.` : composerMessage}
         active={workflow?.controlsActive ?? active}
         ariaLabel="Image prompt"
         generateDisabled={
@@ -996,12 +1038,12 @@ export function ImageGenerationStudioPanel({
           hasInsufficientCredits ||
           referenceUploadPending ||
           Boolean(referenceUploadError) || selectingImage ||
-          tooManyReferences ||
+          tooManyReferences || tooManySlides ||
           !prompt.trim() ||
           Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) ||
           isGenerating || recoveringJobs
         }
-        generateLabel={pendingSubmission ? "Recover saved request" : "Generate image"}
+        generateLabel={pendingSubmission ? "Recover saved request" : slideshowSlideCount ? `Generate ${outputCount} slides` : "Generate image"}
         generationLocked={generationLocked && !pendingSubmission}
         promptAttachmentControl={workflowFormat === "slideshow" ?
           <FormatInstructionImageReference
@@ -1105,13 +1147,13 @@ export function ImageGenerationStudioPanel({
             />
             <AiStudioSettingSelect
               ariaLabel="Number of images"
-              fieldLabel={workflow ? "Versions for this slide" : undefined}
+              fieldLabel={workflow ? "Versions" : undefined}
               fieldLayout={workflow ? "classic" : undefined}
               size={recreateView ? "sm" : "default"}
               disabled={generationLocked && !recreateView?.preview || isGenerating}
               icon={<ImageIcon className="size-4" aria-hidden="true" />}
               options={AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({
-                label: `${count} image${count === 1 ? "" : "s"}`,
+                label: workflowFormat === "slideshow" ? `${count} version${count === 1 ? "" : "s"}` : `${count} image${count === 1 ? "" : "s"}`,
                 value: String(count),
               }))}
               value={String(quantity)}

@@ -70,6 +70,23 @@ test("Gemini 3 Pro keeps a reference image alongside the full prompt and selecte
   } finally { createMock.mock.restore(); fetchMock.mock.restore(); }
 });
 
+test("Gemini 3 Pro sends the full ordered reference list beside the unchanged prompt", async () => {
+  const events: string[] = [];
+  const client = fakeClient(events);
+  const urls = ["https://storage.example.com/person.jpg", "https://storage.example.com/room.jpg"];
+  const createMock = mock.method(client.interactions, "create", async (request: unknown) => {
+    assert.deepEqual(request, buildGeminiImageRequest({ ...base, model: "gemini-3-pro-image", imageSize: "2K", referenceImage: null,
+      referenceImages: urls.map(url => ({ data: Buffer.from(url).toString("base64"), mimeType: "image/jpeg" })) }));
+    return { id: "google-interaction", status: "completed", output_image: { data: image } };
+  });
+  const fetchMock = mock.method(globalThis, "fetch", async (url: string | URL | Request) => new Response(String(url), { headers: { "Content-Type": "image/jpeg" } }));
+  try {
+    await generateGemini3ProImageBuffer({ ...base, referenceImageUrls: urls, ...callbacks(events) }, client);
+    assert.equal(createMock.mock.callCount(), 1);
+    assert.equal(fetchMock.mock.callCount(), 2);
+  } finally { createMock.mock.restore(); fetchMock.mock.restore(); }
+});
+
 test("accepted Google interactions recover without creating again or downloading the original reference", async () => {
   const events: string[] = [];
   const fetchMock = mock.method(globalThis, "fetch", async () => { throw new Error("The saved interaction must be reused"); });

@@ -5,6 +5,7 @@ import type {
   Json,
 } from "./background-jobs.ts";
 import { remixSourceFromJob, type RemixTextSource } from "../explore/remix-source.ts";
+import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "../../worker/src/lib/slideshow-generation-batch.ts";
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "audio_generation",
@@ -87,6 +88,7 @@ export function getImplementationBackgroundJobTypes(type?: CanonicalBackgroundJo
 }
 
 export type PublicBackgroundJob = {
+  slideshowGeneration?: SlideshowGenerationSlot;
   remixTextSource?: RemixTextSource | null;
   exploreFormat?: "hook" | "wall_text" | "slideshow";
   cancelRequestedAt: string | null;
@@ -149,11 +151,13 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
 }
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
+  const slot = job.jobType === "generate_image" && job.input && typeof job.input === "object" && !Array.isArray(job.input) ? readSlideshowGenerationSlot(job.input.slideshowGeneration) : null;
   const format = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.exploreFormat : undefined;
   const hideWallTextFailureDetails = isWallTextJob(job.jobType);
   const errorCode = getPublicJobErrorCode(job);
   const retryable = isRetryableBackgroundJob(job);
   return {
+    ...(slot ? { slideshowGeneration: slot } : {}),
     ...((job.jobType === "generate_hook_video" || job.jobType === "generate_image") ? { remixTextSource: remixSourceFromJob(job.input) } : {}),
     ...((job.jobType === "generate_hook_video" && (format === "hook" || format === "wall_text") || job.jobType === "generate_image" && format === "slideshow") ? { exploreFormat: format as "hook" | "wall_text" | "slideshow" } : {}),
     cancelRequestedAt: job.cancelRequestedAt,

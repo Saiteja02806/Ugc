@@ -4,6 +4,9 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import * as slideshowBatch from "../worker/src/lib/slideshow-generation-batch.ts";
+import * as slideshowGroups from "../lib/explore/slideshow-generation-groups.ts";
+import * as referencePrompts from "../lib/explore/reference-video-prompts.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -12,6 +15,9 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name in imports) return imports[name];
+    if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
+    if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
+    if (name === "../../lib/explore/reference-video-prompts.ts") return referencePrompts;
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
     if (name === "@/lib/http/read-deadline") return load("lib/http/read-deadline.ts", imports, globals);
     if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);

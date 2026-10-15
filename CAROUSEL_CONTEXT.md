@@ -2,6 +2,16 @@
 
 ## 2026-10-15 Helpful-tip delivery and queue recovery repair
 
+- The active-source feed guard is applied in
+  `20261015145119_defer_feed_recovery_for_active_carousel.sql`. It defers the
+  stale-feed budget only when every remaining unbound position is a Carousel
+  and an owner/profile/day-matching active refill has a queued or running job.
+  It restores falsely failed unbound Carousel positions to planned without
+  touching decided cards. Other formats and genuinely terminal sources retain
+  the existing bounded failure handling. Production returned
+  `waiting_source_job` and restored the five positions while retaining all 45
+  decided cards. The database regression covers owner mismatch, superseded
+  refills, terminal sources, mixed formats and service-only execution.
 - Structure 1 initial batch plans and full-item repairs now use the counted
   two-block body transport already used by body-only repairs. Each block has
   9-12 words; validated plans still persist the existing body string. Grounding,

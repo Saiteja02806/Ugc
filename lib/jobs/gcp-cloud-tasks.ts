@@ -13,6 +13,8 @@ import {
   isVideoRenderLauncherDispatchUrl,
   resolveBackgroundJobDispatchUrlFromEnv,
   VIDEO_RENDER_LAUNCHER_PATH,
+  getBackgroundJobTaskName,
+  getCloudTasksCreateEndpoint,
 } from "./gcp-cloud-tasks-logic";
 import { getGcpProjectId, getQueueNameForJobType } from "@/lib/queues/config";
 import { exploreInteractiveDispatchUrl } from "./explore-interactive-dispatch";
@@ -114,6 +116,29 @@ export async function enqueueBackgroundJobCloudTask(job: BackgroundJobRecord) {
     provider: "gcp" as const,
     queueName,
   };
+}
+
+/** A queued task may legitimately wait longer than the recovery lease. */
+export async function backgroundJobCloudTaskExists(job: BackgroundJobRecord) {
+  const baseEndpoint = getCloudTasksCreateEndpoint({
+    projectId: getRequiredProjectId(),
+    location: process.env.GCP_CLOUD_TASKS_LOCATION?.trim() || process.env.GCP_REGION?.trim() || DEFAULT_GCP_JOB_TASKS_LOCATION,
+    queueName: getCloudTasksQueueName(job.jobType),
+  });
+  // Historical recovery may have created another delivery while the original
+  // was still queued. Either task can claim the durable job safely.
+  for (let attempt = job.attemptCount; attempt >= 0; attempt -= 1) {
+    const endpoint = `${baseEndpoint}/${getBackgroundJobTaskName({ jobId: job.id, attempt })}`;
+    const response = await fetch(endpoint, {
+      cache: "no-store",
+      headers: { Authorization: await getAuthorizationHeader(endpoint) },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (response.status === 404) continue;
+    if (!response.ok) throw new Error(`Could not verify queued Cloud Task: ${response.status}`);
+    return true;
+  }
+  return false;
 }
 
 function getCloudTasksQueueName(jobType: BackgroundJobType) {

@@ -32,6 +32,49 @@ export function buildCountedBodyRepairSchema(slideNumbers: readonly number[]) {
   }, required: ["bodiesBySlide"] } as const;
 }
 
+// Use the same counted representation for initial plans and full-item repairs.
+// Otherwise a non-body issue bypasses the body-only repair and reintroduces
+// short copy. Persisted plans still contain the original string body contract.
+export function withCountedPlanBodies<T>(schema: T): T {
+  const result = structuredClone(schema);
+  function visit(value: unknown) {
+    if (!value || typeof value !== "object") return;
+    const node = value as Record<string, unknown>;
+    const properties = node.properties as Record<string, unknown> | undefined;
+    if (properties?.slideNumber && properties.body) {
+      const body = properties.body as { type?: string };
+      if (body.type !== "null") {
+        const counted = buildCountedBodyRepairSchema([2]).properties.bodiesBySlide.properties.slide2;
+        properties.body = counted;
+      }
+    }
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) child.forEach(visit);
+      else visit(child);
+    }
+  }
+  visit(result);
+  return result;
+}
+
+export function decodeCountedPlanBodies(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const plan = value as Record<string, unknown>;
+  if (!Array.isArray(plan.slides)) return value;
+  return { ...plan, slides: plan.slides.map((value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const slide = value as Record<string, unknown>;
+    // Strings remain readable for historical responses and replay fixtures.
+    if (!slide.body || typeof slide.body !== "object") return slide;
+    const number = slide.slideNumber;
+    if (!Number.isInteger(number) || (number as number) < 2 || (number as number) > 6) {
+      throw new Error("Counted plan body requires a follow-up slide number.");
+    }
+    const replacements = parseCountedBodyRepair({ bodiesBySlide: { [`slide${number}`]: slide.body } }, [number as number]);
+    return { ...slide, body: replacements.get(number as number)! };
+  }) };
+}
+
 export function parseCountedBodyRepair(value: unknown, slideNumbers: readonly number[]) {
   function record(value: unknown, keys: string[]) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Counted repair must contain objects.");

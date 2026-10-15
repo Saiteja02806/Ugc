@@ -30,6 +30,8 @@ import type {
 } from "react";
 import {
   forwardRef,
+  createContext,
+  useContext,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -46,6 +48,7 @@ import { CarouselEditRenderStatus } from "@/components/trending/carousel-edit-re
 import { getLatestTrendingEdit, shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
 import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refresh";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
+import { getTrendingPreparationCopy, type TrendingPreparationState } from "@/lib/trending/preparation-status";
 import {
   type BillingSubscription,
   useBillingSubscription,
@@ -158,10 +161,13 @@ type TrendingDailyFeedState =
   | "ready";
 
 type TrendingFeedProgress = {
+  preparationState?: TrendingPreparationState | null;
   completedCount: number;
   pendingSlotCount: number;
   remainingCount: number;
 };
+
+const TrendingPreparationContext = createContext<TrendingPreparationState>("preparing");
 
 type TrendingFeedFailure = {
   code: "hook_generation_restart_required" | "hook_source_unavailable" | "content_generation_failed";
@@ -243,6 +249,7 @@ type CarouselHistoryResponse =
         id: string;
         localDate: string;
         pendingSlotCount: number;
+        preparationState?: TrendingPreparationState | null;
         remainingCount: number;
         state: TrendingDailyFeedState;
         timezone: string;
@@ -1003,6 +1010,7 @@ export function TrendingWorkspace() {
         setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
         const nextFeedProgress = data.feed
           ? {
+              preparationState: data.feed.preparationState,
               completedCount:
                 data.feed.completedCount + pendingLocalDecisionCount,
               pendingSlotCount: data.feed.pendingSlotCount,
@@ -1179,6 +1187,7 @@ export function TrendingWorkspace() {
   }
 
   return (
+    <TrendingPreparationContext value={trendingFeedProgress?.preparationState ?? "preparing"}>
     <section className={cn("min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10", reviewLayout.workspace)}>
       <div className={cn("mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]", reviewLayout.workspaceContent)}>
         <header className="flex items-start justify-between gap-4">
@@ -1267,6 +1276,7 @@ export function TrendingWorkspace() {
         ) : null}
       </div>
     </section>
+    </TrendingPreparationContext>
   );
 }
 
@@ -1458,6 +1468,9 @@ function TrendingPreparingEmptyState({
 }: {
   pendingSlotCount: number;
 }) {
+  const preparationState = useContext(TrendingPreparationContext);
+  const copy = getTrendingPreparationCopy(preparationState);
+  const StatusIcon = preparationState === "failed" ? CircleAlert : Loader2;
   const remainingLabel =
     pendingSlotCount > 0
       ? `${pendingSlotCount} ${pendingSlotCount === 1 ? "piece" : "pieces"} of content ${pendingSlotCount === 1 ? "is" : "are"}`
@@ -1466,14 +1479,13 @@ function TrendingPreparingEmptyState({
   return (
     <Empty role="status" className="min-h-[360px] text-foreground">
       <EmptyHeader>
-        <Loader2
+        <StatusIcon
           aria-hidden="true"
-          className="mx-auto size-5 animate-spin text-primary motion-reduce:animate-none"
+          className={cn("mx-auto size-5 text-primary", preparationState !== "failed" && "animate-spin motion-reduce:animate-none")}
         />
-        <EmptyTitle>Generating for you</EmptyTitle>
+        <EmptyTitle>{copy.title}</EmptyTitle>
         <EmptyDescription>
-          {remainingLabel} being prepared. New content will appear here
-          automatically.
+          {remainingLabel} still pending. {copy.description}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

@@ -126,6 +126,24 @@ resource "google_project_iam_member" "app_cloud_tasks_enqueuer" {
   member  = "serviceAccount:${google_service_account.app.email}"
 }
 
+# Recovery must distinguish a healthy queue backlog from a lost delivery.
+# Read only task metadata, scoped to the managed background-job queues.
+resource "google_project_iam_custom_role" "background_task_inspector" {
+  project     = var.project_id
+  role_id     = "ugcBackgroundTaskInspector"
+  title       = "UGC background task inspector"
+  permissions = ["cloudtasks.tasks.get"]
+}
+
+resource "google_cloud_tasks_queue_iam_member" "app_background_task_inspector" {
+  for_each = google_cloud_tasks_queue.background_jobs
+  project  = var.project_id
+  location = var.region
+  name     = each.value.name
+  role     = google_project_iam_custom_role.background_task_inspector.name
+  member   = "serviceAccount:${google_service_account.app.email}"
+}
+
 # The app cancels/reschedules future social posts by deleting their timer task.
 # Enqueuer does not include deletion; scope the additional role to this queue.
 resource "google_cloud_tasks_queue_iam_member" "app_scheduler_task_deleter" {

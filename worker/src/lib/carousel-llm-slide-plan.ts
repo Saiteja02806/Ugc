@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { buildCountedBodyRepairSchema, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
+import { buildCountedBodyRepairSchema, decodeCountedPlanBodies, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, withCountedPlanBodies, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
 import type {
@@ -39,7 +39,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v54-body-count-feedback";
+  "llm-carousel-planner-v55-counted-plan-bodies";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -230,6 +230,12 @@ export type CarouselBatchContentPlanItem = {
   replacementForFormatId: CarouselContentFormatId | null;
   slotIndex: number;
 };
+
+export class CarouselPartialBatchPlanningError extends Error {
+  constructor(public readonly completedItems: CarouselBatchContentPlanItem[], failures: Error[]) {
+    super(`Some Carousel plans failed validation: ${failures.map((error) => error.message).join("; ")}`);
+  }
+}
 
 export type ResolvedCarouselContentStrategy = {
   angle: string;
@@ -544,14 +550,16 @@ export async function buildCarouselContentPlanBatch(
 
   try {
     const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 8_500,
+      max_completion_tokens: input.bodyRepairPolicy ? 12_000 : 8_500,
       messages: buildBatchPlannerMessages(input, requested),
       model,
       response_format: {
         type: "json_schema",
         json_schema: {
           name: "carousel_content_batch",
-          schema: buildCarouselContentBatchSchema(requested),
+          schema: input.bodyRepairPolicy
+            ? withCountedPlanBodies(buildCarouselContentBatchSchema(requested))
+            : buildCarouselContentBatchSchema(requested),
           strict: true,
         },
       },
@@ -619,7 +627,7 @@ export async function buildCarouselContentPlanBatch(
 
       try {
         const parsed = parseCarouselContentPlanShape(
-          rawItem.plan,
+          input.bodyRepairPolicy ? decodeCountedPlanBodies(rawItem.plan) : rawItem.plan,
           CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
           requestedItem.context,
         );
@@ -685,70 +693,81 @@ export async function buildCarouselContentPlanBatch(
       }
     }
 
+    const repairFailures: Error[] = [];
     for (const pending of pendingRepairs) {
-      const replacement =
-        pending.status === "not_applicable"
-          ? selectCarouselBatchReplacement(
-              completed,
-              pending.requestedItem.item.slotIndex,
-            )
-          : null;
-      const actualFormatId =
-        replacement?.actualContentFormatId ?? pending.requestedItem.context.format.id;
-      const actualHookFamilyId =
-        replacement?.actualHookFamilyId ?? pending.requestedItem.context.hookFamily.id;
-      const repairInput = {
-        ...pending.requestedItem.planInput,
-        contentFormatId: actualFormatId,
-        hookFamilyId: actualHookFamilyId,
-        hookTemplateId: replacement ? null : pending.requestedItem.planInput.hookTemplateId,
-        hookTemplateVersion: replacement
-          ? null
-          : pending.requestedItem.planInput.hookTemplateVersion,
-        recentHistory: workingHistory,
-      } satisfies CarouselContentPlanInput;
-      const repairContext = getGrammarGenerationContext(
-        repairInput,
-        CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-      );
-      const repairedPlan = await buildSingleBatchItemRepair({
-        context: repairContext,
-        input: repairInput,
-        issues: pending.issues,
-        model,
-        rawItem: pending.rawItem,
-        replacement: Boolean(replacement),
-      });
+      try {
+        const replacement =
+          pending.status === "not_applicable"
+            ? selectCarouselBatchReplacement(
+                completed,
+                pending.requestedItem.item.slotIndex,
+              )
+            : null;
+        const actualFormatId =
+          replacement?.actualContentFormatId ?? pending.requestedItem.context.format.id;
+        const actualHookFamilyId =
+          replacement?.actualHookFamilyId ?? pending.requestedItem.context.hookFamily.id;
+        const repairInput = {
+          ...pending.requestedItem.planInput,
+          contentFormatId: actualFormatId,
+          hookFamilyId: actualHookFamilyId,
+          hookTemplateId: replacement ? null : pending.requestedItem.planInput.hookTemplateId,
+          hookTemplateVersion: replacement
+            ? null
+            : pending.requestedItem.planInput.hookTemplateVersion,
+          recentHistory: workingHistory,
+        } satisfies CarouselContentPlanInput;
+        const repairContext = getGrammarGenerationContext(
+          repairInput,
+          CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+        );
+        const repairedPlan = await buildSingleBatchItemRepair({
+          context: repairContext,
+          input: repairInput,
+          issues: pending.issues,
+          model,
+          rawItem: pending.rawItem,
+          replacement: Boolean(replacement),
+        });
 
-      completed.push({
-        actualContentFormatId: repairContext.format.id,
-        actualHookFamilyId: repairContext.hookFamily.id,
-        actualHookTemplateId: repairedPlan.validationResult
-          .hookTemplateFallbackUsed
-          ? null
-          : repairContext.hookTemplate?.id ?? null,
-        actualHookTemplateVersion: repairedPlan.validationResult
-          .hookTemplateFallbackUsed
-          ? null
-          : repairContext.hookTemplate?.version ?? null,
-        assignedContentFormatId: pending.requestedItem.context.format.id,
-        plan: repairedPlan,
-        replacementForFormatId: replacement
-          ? pending.requestedItem.context.format.id
-          : null,
-        slotIndex: pending.requestedItem.item.slotIndex,
-      });
-      workingHistory = mergeCarouselRecentContentHistory(
-        [summarizeContentPlan(repairedPlan)],
-        workingHistory,
-      );
+        completed.push({
+          actualContentFormatId: repairContext.format.id,
+          actualHookFamilyId: repairContext.hookFamily.id,
+          actualHookTemplateId: repairedPlan.validationResult
+            .hookTemplateFallbackUsed
+            ? null
+            : repairContext.hookTemplate?.id ?? null,
+          actualHookTemplateVersion: repairedPlan.validationResult
+            .hookTemplateFallbackUsed
+            ? null
+            : repairContext.hookTemplate?.version ?? null,
+          assignedContentFormatId: pending.requestedItem.context.format.id,
+          plan: repairedPlan,
+          replacementForFormatId: replacement
+            ? pending.requestedItem.context.format.id
+            : null,
+          slotIndex: pending.requestedItem.item.slotIndex,
+        });
+        workingHistory = mergeCarouselRecentContentHistory(
+          [summarizeContentPlan(repairedPlan)],
+          workingHistory,
+        );
+      } catch (error) {
+        repairFailures.push(error instanceof Error ? error : new Error(String(error)));
+      }
     }
 
-    return completed.sort((left, right) => left.slotIndex - right.slotIndex).map((item) => input.bodyRepairPolicy
+    const results = completed.sort((left, right) => left.slotIndex - right.slotIndex).map((item) => input.bodyRepairPolicy
       ? { ...item, plan: { ...item.plan, plannerVersion: `${item.plan.plannerVersion}-${input.bodyRepairPolicy.version}`,
           validationResult: { ...item.plan.validationResult, bodyRepairPolicyVersion: input.bodyRepairPolicy.version } } }
       : item);
+    if (repairFailures.length > 0) {
+      if (input.bodyRepairPolicy && results.length > 0) throw new CarouselPartialBatchPlanningError(results, repairFailures);
+      throw new AggregateError(repairFailures, repairFailures.map((error) => error.message).join("; "));
+    }
+    return results;
   } catch (error) {
+    if (error instanceof CarouselPartialBatchPlanningError) throw error;
     throw new Error(
       `Carousel Structure 1 batch planning failed after validation repair: ${getErrorMessage(error)}`,
       { cause: error },
@@ -2209,6 +2228,7 @@ function buildGrammarPlannerMessages(
         JSON.stringify(input.planningBrief),
         "",
         "Selection rules:",
+        input.bodyRepairPolicy ? COUNTED_PLAN_BODY_GUIDANCE : null,
         "- contentFormatId and hookFamilyId must exactly match the backend-selected values.",
         "- Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation; never invent a fact or force a product name into every slide.",
         "- Treat creativeSeed as an open starting point, not finished copy or a compulsory plot.",
@@ -2248,10 +2268,11 @@ function buildGrammarPlannerMessages(
         JSON.stringify({ businessDescription: input.businessDescription }),
         "Verified grounding anchors:",
         JSON.stringify(
-          grammarContext.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+          grammarContext.groundingCandidates.map(({ anchorId, kind, sourceFact, matchTerms }) => ({
             anchorId,
             kind,
             sourceFact,
+            matchTerms,
           })),
         ),
         "",
@@ -2279,10 +2300,11 @@ function buildBatchPlannerMessages(
   const assignments = requested.map(({ context, item }) => ({
     creativeSeed: item.creativeSeed,
     emotion: item.emotion,
-    groundingCandidates: context.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+    groundingCandidates: context.groundingCandidates.map(({ anchorId, kind, sourceFact, matchTerms }) => ({
       anchorId,
       kind,
       sourceFact,
+      matchTerms,
     })),
     privateCreativeBrief: item.planningBrief,
     combinedFormat: {
@@ -2328,6 +2350,7 @@ function buildBatchPlannerMessages(
       role: "user" as const,
       content: [
         "Generate all five assigned Carousels as one high-quality batch.",
+        ...(input.bodyRepairPolicy ? [COUNTED_PLAN_BODY_GUIDANCE] : []),
         "For each slot, return status ready with a complete plan, or status not_applicable with plan null and a specific reason.",
         "Do not mark a format not_applicable merely because another format is easier.",
         "Every ready item must use the exact format and hook-family IDs assigned to that slot.",
@@ -2357,6 +2380,8 @@ function buildBatchPlannerMessages(
     },
   ];
 }
+
+const COUNTED_PLAN_BODY_GUIDANCE = "For each non-list body on Slides 2-6, return the schema's object with firstWords and secondWords, each an array of 9-12 individual words with punctuation attached. These form two complete sentences separated by a blank line, 18-24 words total and at most 300 characters. Use short ordinary words so each sentence fits three lines at 48px. Covers and configured list slides keep body null. Use a concrete term from the selected grounding anchor's matchTerms naturally in the concept and middle slides; teach its supported workflow without product promotion. Optional follow-up headlines should be null when they merely repeat the body. Avoid repeated phrases or nearby repeated content words, including singular/plural variants. Describe visual objects directly; never include prohibited human words even in exclusions. Preserve the assigned format roles and all factual, quality, and no-CTA rules.";
 
 function buildCarouselContentBatchSchema(
   requested: Array<{
@@ -2423,7 +2448,7 @@ async function buildSingleBatchItemRepair(params: {
     if (params.rawItem.status === "ready") {
       try {
         originalPlan = parseCarouselContentPlanShape(
-          params.rawItem.plan,
+          params.input.bodyRepairPolicy ? decodeCountedPlanBodies(params.rawItem.plan) : params.rawItem.plan,
           CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
           params.context,
         );
@@ -2439,7 +2464,7 @@ async function buildSingleBatchItemRepair(params: {
     const countedSlides = validateCountedBodyRepairPolicy(params.input.bodyRepairPolicy) && originalPlan && !params.replacement
       ? getCountedBodyRepairSlides(originalPlan.slides, params.issues) : null;
     const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 1_800,
+      max_completion_tokens: params.input.bodyRepairPolicy ? 3_000 : 1_800,
       messages: countedSlides ? [
         { role: "system", content: "Repair only the requested carousel body fields. Return two arrays of 9-12 individual words for each body: firstWords and secondWords. Join words into two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with 18-24 words total and at most 300 characters. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
         { role: "user", content: JSON.stringify({ businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief, grounding: params.context.groundingCandidates,
@@ -2467,10 +2492,10 @@ async function buildSingleBatchItemRepair(params: {
         type: "json_schema",
         json_schema: {
           name: countedSlides ? "counted_carousel_body_repair" : "repaired_carousel_batch_item",
-          schema: countedSlides ? buildCountedBodyRepairSchema(countedSlides) : buildCarouselContentPlanSchema(
-            CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-            params.context,
-          ),
+          schema: countedSlides ? buildCountedBodyRepairSchema(countedSlides)
+            : params.input.bodyRepairPolicy
+              ? withCountedPlanBodies(buildCarouselContentPlanSchema(CAROUSEL_STRUCTURE_1_SLIDE_COUNT, params.context))
+              : buildCarouselContentPlanSchema(CAROUSEL_STRUCTURE_1_SLIDE_COUNT, params.context),
           strict: true,
         },
       },
@@ -2482,7 +2507,8 @@ async function buildSingleBatchItemRepair(params: {
     const replacements = countedSlides ? parseCountedBodyRepair(JSON.parse(repairRawResponse), countedSlides) : null;
     const parsedRepair = parseCarouselContentPlanShape(
       replacements ? { ...originalPlan, slides: originalPlan!.slides.map((slide) => replacements.has(slide.slideNumber)
-        ? { ...slide, body: replacements.get(slide.slideNumber)!, subtext: replacements.get(slide.slideNumber)! } : slide) } : JSON.parse(repairRawResponse),
+        ? { ...slide, body: replacements.get(slide.slideNumber)!, subtext: replacements.get(slide.slideNumber)! } : slide) }
+        : params.input.bodyRepairPolicy ? decodeCountedPlanBodies(JSON.parse(repairRawResponse)) : JSON.parse(repairRawResponse),
       CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
       params.context,
     );

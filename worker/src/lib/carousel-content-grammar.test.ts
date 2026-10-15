@@ -12,6 +12,7 @@ import { getCarouselHookTemplate } from "./carousel-hook-templates.js";
 import {
   buildCarouselContentPlan,
   buildCarouselContentPlanBatch,
+  CarouselPartialBatchPlanningError,
   parseCarouselContentPlanForAssignment,
   partitionCarouselContentPlanValidationIssues,
   validateCarouselContentPlan,
@@ -225,6 +226,63 @@ test("counted body repair preserves all valid fields with the existing one-call 
         if (!(item.slotIndex === 0 && slide.slideNumber === 6)) assert.equal(slide.body, original.body);
       }
     }
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
+test("mixed grounding failures use counted bodies during a full repair and preserve other batch items", async () => {
+  const assignments = [
+    { contentFormatId: "how_to", hookFamilyId: "curiosity" },
+    { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
+    { contentFormatId: "before_after", hookFamilyId: "specific_outcome" },
+    { contentFormatId: "comparison", hookFamilyId: "question" },
+    { contentFormatId: "list", hookFamilyId: "surprise" },
+  ];
+  const fixtures = assignments.map((a, i) => createDistinctBatchFixture(a.contentFormatId, a.hookFamilyId, i));
+  const fixed = structuredClone(fixtures[0]!);
+  fixtures[0]!.concept = "Work smarter";
+  fixtures[0]!.slides[5]!.body = "Keep the next decision visible";
+  const counted = { ...fixed, slides: fixed.slides.map((slide) => {
+    if (!slide.body) return slide;
+    const words = slide.body.split(/\s+/);
+    const midpoint = Math.ceil(words.length / 2);
+    return { ...slide, body: { firstWords: words.slice(0, midpoint), secondWords: words.slice(midpoint) } };
+  }) };
+  const previousFetch = globalThis.fetch;
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-full-counted-repair";
+  let rejectRepair = false;
+  const requests: Array<{ response_format: { json_schema: { name: string; schema: unknown } } }> = [];
+  globalThis.fetch = async (_input, init) => {
+    const request = JSON.parse(String(init?.body)); requests.push(request);
+    const content = request.response_format.json_schema.name === "carousel_content_batch"
+      ? { items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })) }
+      : rejectRepair ? { ...counted, concept: "Work smarter" } : counted;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const input = { analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION } as const,
+      items: assignments.map((assignment, slotIndex) => ({ ...assignment, slotIndex, candidateIndex: slotIndex, creativeSeed: `Campaign ${slotIndex}`, emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })),
+    };
+    const result = await buildCarouselContentPlanBatch(input);
+    assert.equal(result.length, 5);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1]!.response_format.json_schema.name, "repaired_carousel_batch_item");
+    for (const request of requests) assert.match(JSON.stringify(request.response_format.json_schema.schema), /firstWords/);
+    assert.equal(result[0]!.plan.concept, fixed.concept);
+    assert.equal(typeof result[0]!.plan.slides[5]!.body, "string");
+    assert.equal(result[0]!.plan.validationResult.ok, true);
+    assert.equal(result[1]!.plan.slides[2]!.body, fixtures[1]!.slides[2]!.body);
+    rejectRepair = true;
+    await assert.rejects(buildCarouselContentPlanBatch(input), (error: unknown) => {
+      assert.ok(error instanceof CarouselPartialBatchPlanningError);
+      assert.deepEqual(error.completedItems.map((item) => item.slotIndex), [1, 2, 3, 4]);
+      assert.ok(error.completedItems.every((item) => item.plan.validationResult.ok));
+      return true;
+    });
   } finally {
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;

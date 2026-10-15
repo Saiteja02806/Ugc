@@ -16,6 +16,7 @@ import {
 } from "./carousel-render-style.js";
 import {
   buildCarouselContentPlanBatch,
+  CarouselPartialBatchPlanningError,
   buildCarouselContentPlan,
   type CarouselBatchContentPlanItem,
   type CarouselContentPlan,
@@ -185,6 +186,15 @@ export async function generateCarouselBatch(params: {
       });
     } catch (error) {
       planningFailure = error instanceof Error ? error : new Error(String(error));
+      if (error instanceof CarouselPartialBatchPlanningError) {
+        // Keep independently validated siblings. The missing candidates fail
+        // through the existing job settlement and slot-preserving refill path.
+        plannedItems = error.completedItems;
+        await params.store.updateCarouselExperimentBatch(params.experimentBatchId, {
+          structure_planning_attempt_count: planningAttemptCount,
+        });
+        break;
+      }
       logger.warn("Carousel Structure 1 batch planning attempt failed", {
         experimentBatchId: params.experimentBatchId,
         planningAttemptCount,
@@ -262,7 +272,9 @@ export async function generateCarouselBatch(params: {
     });
   }
   const results: Array<Awaited<ReturnType<typeof generateCarousel>>> = [];
-  const failures: Error[] = [];
+  const failures: Error[] = plannedItems.length < rows.length
+    ? [planningFailure ?? new Error("Some Carousel plans failed validation.")]
+    : [];
 
   for (const plannedItem of plannedItems) {
     const generation = rows[plannedItem.slotIndex];

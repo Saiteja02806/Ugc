@@ -10,6 +10,7 @@ import {
 import {
   getAutoCarouselGenerationStatusPageForUser,
   getCarouselGenerationsByBatchId,
+  listCarouselExperimentBatchesByGenerationBatchId,
   getCarouselGenerationStatusesByIds,
   type AutoCarouselGenerationStatusPageCursor,
   type CarouselGenerationRecord,
@@ -17,6 +18,7 @@ import {
   type Json,
 } from "@/lib/carousel/db";
 import type { CarouselStructureId } from "@/lib/carousel/structure";
+import { getTrendingPreparationState } from "@/lib/trending/preparation-status";
 import {
   enqueueProcessingCarouselCandidates,
   prepareDailyBusinessProfileCarousels,
@@ -1114,6 +1116,20 @@ async function findDailyCarouselRefillBatch(params: {
   }
 
   return data ?? null;
+}
+
+export async function getDailyCarouselPreparationState(params: {
+  profile: BusinessProfileRecord;
+  userId: string;
+  localDate: string;
+}) {
+  const feed = await findDailyFeed({ userId: params.userId, localDate: params.localDate });
+  if (!feed) return "preparing" as const;
+  const batch = await findDailyCarouselRefillBatch({ feedId: feed.id, profile: params.profile });
+  if (!batch) return "preparing" as const;
+  const experiments = await listCarouselExperimentBatchesByGenerationBatchId(batch.generation_batch_id);
+  const jobs = await getBackgroundJobsByIds(experiments.flatMap((item) => item.plannerJobId ? [item.plannerJobId] : []));
+  return getTrendingPreparationState(jobs.filter((job) => job.userId === params.userId));
 }
 
 async function replacePartialDailyCarouselRefillBatch(params: {

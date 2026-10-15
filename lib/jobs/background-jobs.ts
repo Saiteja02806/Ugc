@@ -221,6 +221,10 @@ type BackgroundJobsDatabase = {
         Args: { p_job_id: string };
         Returns: BackgroundJobRow[];
       };
+      recover_missing_queued_background_job: {
+        Args: { p_job_id: string; p_expected_updated_at: string };
+        Returns: BackgroundJobRow[];
+      };
       retry_background_job: {
         Args: { p_job_id: string; p_user_id: string };
         Returns: BackgroundJobRow[];
@@ -771,6 +775,15 @@ export async function recoverBackgroundJob(jobId: string) {
     throw new Error(`Could not recover background job: ${error.message}`);
   }
 
+  return data?.[0] ? mapBackgroundJob(data[0]) : null;
+}
+
+export async function recoverMissingQueuedBackgroundJob(job: BackgroundJobRecord) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "recover_missing_queued_background_job",
+    { p_job_id: job.id, p_expected_updated_at: job.updatedAt },
+  );
+  if (error) throw new Error(`Could not recover missing queued job: ${error.message}`);
   return data?.[0] ? mapBackgroundJob(data[0]) : null;
 }
 

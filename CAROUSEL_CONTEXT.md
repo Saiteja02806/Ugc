@@ -1,5 +1,32 @@
 # Carousel System Context
 
+## 2026-10-15 Helpful-tip delivery and queue recovery repair
+
+- Structure 1 initial batch plans and full-item repairs now use the counted
+  two-block body transport already used by body-only repairs. Each block has
+  9-12 words; validated plans still persist the existing body string. Grounding,
+  copy quality, render fit, and the prohibition on promotional CTAs remain
+  blocking. Structure 2 and saved mix allocation are unchanged.
+- An independently valid Structure 1 plan survives a sibling's exhausted
+  repair. The worker renders valid siblings, consumes their plan items, and
+  marks only unfinished generations failed. Existing bounded, structure-aware
+  refill recovers missing slots without replacing delivered or decided cards.
+- Recovery checks whether a deterministic Cloud Task still exists before
+  recovering an old queued job. A healthy backlog does not consume attempts or
+  create duplicate deliveries. Lookup failures leave the job untouched. A
+  missing-task recovery uses a service-only locked snapshot comparison, so a
+  concurrent claim or recovery cannot be reset. Running-job leases retain their
+  existing recovery behavior.
+- Trending reports queued, generating, finalizing, or failed status from owned
+  background jobs rather than treating placeholder generation rows as proof
+  that a worker started. The response addition is optional and backward
+  compatible; remaining-slot accounting is unchanged.
+- Rollout order: additive migration
+  `20261015135636_guard_missing_queued_job_recovery.sql`, queue-scoped
+  `cloudtasks.tasks.get` permission for the application identity, worker, then
+  website. Local regression checks pass; production delivery acceptance is
+  pending until the new release processes the five missing slideshows.
+
 ## 2026-10-15 Explore Remix single-input controls (local)
 
 - Shared Explore video/slideshow Remix uses one editable source text box for

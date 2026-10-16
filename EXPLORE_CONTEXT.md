@@ -47,7 +47,7 @@ Last reconciled: **15 October 2026**.
   do not constitute authenticated acceptance on `https://www.getugcpilot.com`.
   See `docs/influencer-image-actions-2026-10-16.md` for verification details.
 
-### Reference performance prompts — 15 October 2026, local pilot
+### Reference performance prompts — 16 October 2026, local Hook catalog review complete
 
 - The user selected the original detailed approach: a short replacement
   instruction, one clip-specific action/expression paragraph and preservation
@@ -63,7 +63,7 @@ Last reconciled: **15 October 2026**.
   the test influencer's hair, clothing or image into library entries. Identity
   replacement is conditional on an attached influencer image. User instructions
   follow the suggestion and may request deliberate changes.
-- Thirty-six active Hook references have reviewed entries in
+- All 98 active Hook references have reviewed entries in
   `lib/explore/reference-video-prompts.ts`. The first three were initially sampled;
   all reviewed entries have been inspected through every decoded frame. Hooks 01–09 have
   92, 92, 110, 94, 96, 112, 78, 79 and 85 inspected frames respectively.
@@ -74,16 +74,23 @@ Last reconciled: **15 October 2026**.
   original scene. Keep source tails brief; do not extend them or
   silently trim the original. Version 2 paragraphs record the precise gestures.
   Scope clarified by the user: only Hook video workflow references for now.
-  Its active catalog contains 98 videos: 36 reviewed prompts and 62 remaining.
+  Its active catalog contains 98 videos: 98 reviewed prompts and none remaining.
   The earlier 195/192 totals incorrectly included 97 Wall videos. Wall of Text
   and slideshows are outside this prompt rollout. No Wall prompts were prepared.
 - Review Remix source captions during the same video inspection. Use the existing
   source-hash-bound `reference-text-catalog.json`, preserving original wording,
   emojis and caption timings; exclude app UI, packaging and incidental text.
-  Do not put Remix captions into the footage-generation prompt. Hooks 04–36
-  were rechecked in this combined pass; Hook 04's final instruction begins at
-  3033 ms, correcting its earlier 3200 ms sampled boundary. Other existing
-  caption entries retain their previously recorded review provenance.
+  Do not put Remix captions into the footage-generation prompt. Hooks 01–98
+  now have all-frame caption checks, including the first three pilot entries.
+  Hook 04's final instruction begins at 3033 ms, correcting its earlier 3200 ms
+  sampled boundary. Individual caption notes distinguish corrected boundaries
+  from retained approximate timing. Original source claims are not fact-checked.
+- Additional all-frame caption corrections: Hook 42 changes at 3400 ms; Hook 43
+  at 3167 ms; Hook 48's additional caption starts at 2333 ms and its first emoji
+  is 🤨; Hook 64's additional caption starts at 1733 ms; Hook 72's first emoji is
+  😳; Hook 74's sequence is 👹😨🤯😭 and ends at 3567 ms; Hook 85's caption ends at
+  6033 ms before its last two frames. Hooks 94–95 have graphic formulas only:
+  retain `no_text` with empty Remix blocks and remove those overlays in footage.
 - Hook 14 cuts to a calm second take at frame 170 / 5667 ms; the creator caption
   ends there, correcting its prior 5333 ms sampled timing. Hook 27 has a background
   colleague: replace only the foreground performer's identity. Full source takes,
@@ -96,8 +103,10 @@ Last reconciled: **15 October 2026**.
   lift glasses onto the head, unlike Hook 02 which removes and lowers them.
 - Suggestions bind to permanent reference ID and content-addressed source hash.
   Changed source bytes invalidate the suggestion. New references require review.
-  This local pilot does not deploy the website, alter soundtracks or generate
+  This local content review does not deploy the website, alter soundtracks or generate
   paid media. Authenticated production acceptance remains a release check.
+  Completion evidence and per-Hook notes:
+  `docs/hook-reference-individual-review-2026-10-15.md`.
 
 Read this before changing Explore workflows, navigation, editors, previews,
 Remix, reference provenance, audio, draft recovery or scheduling entry points.

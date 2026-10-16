@@ -13,7 +13,8 @@ process.env.GCP_STORAGE_BUCKET = "remix-test-bucket";
 process.env.GCP_STORAGE_PUBLIC_BASE_URL = "https://media.fixture.test";
 
 test("every saved original resolves the exact current reference, slide and content fingerprint", () => {
-  const refs = getRecreateReferences(), inventory = sourceInventory(), catalog = JSON.parse(readFileSync(new URL("../lib/explore/reference-text-catalog.json",import.meta.url),"utf8"));
+  // Saved caption records include archived sources used by historical drafts.
+  const refs = getRecreateReferences(true), inventory = sourceInventory(), catalog = JSON.parse(readFileSync(new URL("../lib/explore/reference-text-catalog.json",import.meta.url),"utf8"));
   const canonical = new Map(refs.flatMap(ref=>ref.format==='slideshow'?ref.slides.map(s=>[referenceTextKey(ref.id,s.id),new URL(s.url).pathname]):[[referenceTextKey(ref.id,null),new URL(ref.videoUrl).pathname]]));
   assert.equal(inventory.length,refs.length);
   for(const ref of inventory)for(const unit of ref.units)assert.equal(canonical.get(referenceTextKey(ref.referenceId,unit.slideId)),`/${unit.key}`);

@@ -1,14 +1,14 @@
-# UGC Pilot — 0.2.0 public-submission candidate
+# UGC Pilot — 0.2.2 public-submission candidate
 
 Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes fourteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, and saved Library outputs where enabled.
 
-The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. It includes no server executable, credentials, or automatic installation script. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
+The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. Its portable `mcp.json` explicitly declares OAuth with Client Identifier Metadata Document (CIMD) registration and starts with the minimal `account:read` scope; individual write tools request their own consent when needed. It includes no server executable or credentials. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
 Terminal-capable IDEs can use the bundled [local transfer helper](skills/manage-ugc-media/references/local-transfer.md) to measure and upload actual hook/demo files, recover reservation from a saved intent and confirmation from a saved transfer receipt, and download completed media without overwriting existing files. It requires Node.js 22+ and ffprobe. Hosts without process/file access need their own transfer mechanism. The helper never handles account OAuth or submits generation.
 
 ## Install and sign in
 
-- **Codex:** use Settings → MCP servers → Add server, choose Streamable HTTP, and paste the endpoint. Select Authenticate, sign into your UGC Pilot account, approve access, and restart the connection. To load the workflow skills and helper, follow the repository marketplace example in the client setup guide, or update the plugin through your trusted installed source.
+- **Codex:** this repository includes a local marketplace entry with `authentication: "ON_INSTALL"`. Add the checkout root as a marketplace with `codex plugin marketplace add /absolute/path/to/UGC`, then run `codex plugin add ugc-pilot@ugc-pilot-local` or select it in the Plugins UI. A noninteractive install verifies the package and records the policy; start a new interactive Codex chat to complete the normal OAuth sign-in and consent. To add only the MCP server, use Settings → MCP servers → Add server instead.
 - **Claude web / Desktop:** use Customize → Connectors → Add custom connector, paste the endpoint, finish OAuth, and enable it in the conversation. Organization policies may require administrator setup.
 - **Claude Code:** extract this folder and evaluate with `claude --plugin-dir /absolute/path/to/ugc-pilot`. Complete OAuth through `/mcp`. Marketplace installation is a separate distribution step.
 - **ChatGPT:** after platform approval, install UGC Pilot from the public ChatGPT/Codex directory and connect when prompted. Until approval, use only a permitted private or workspace installation path. Where custom MCP connections are available, use the current client flow to enter the endpoint and finish OAuth.
@@ -51,7 +51,7 @@ Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing de
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The reviewed server contract contains **79 tools**. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The reviewed source and production server each expose **79 tools** at this release. Existing conversations can retain an older cached catalogue, so discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.

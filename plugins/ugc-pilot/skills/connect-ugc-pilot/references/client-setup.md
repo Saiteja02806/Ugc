@@ -17,7 +17,14 @@ The add command may already offer OAuth; use login only if sign-in is still need
 
 ### Load the bundled skills locally
 
-For a supported repository marketplace, copy the extracted `ugc-pilot` folder into your workspace's `plugins/` directory. Add an entry to `.agents/plugins/marketplace.json` at that workspace root (merge with an existing catalogue rather than replacing it):
+This repository includes `.agents/plugins/marketplace.json` with `authentication: "ON_INSTALL"` for the local UGC Pilot package. Add the checkout root as a marketplace, then install it:
+
+```sh
+codex plugin marketplace add /absolute/path/to/UGC
+codex plugin add ugc-pilot@ugc-pilot-local
+```
+
+A noninteractive install reports the policy but cannot complete a browser sign-in. Start a new interactive Codex chat to complete normal OAuth before using protected tools. For a different supported repository marketplace, copy the extracted `ugc-pilot` folder into your workspace's `plugins/` directory and add an entry to `.agents/plugins/marketplace.json` at that workspace root (merge with an existing catalogue rather than replacing it):
 
 ```json
 {

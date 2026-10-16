@@ -30,6 +30,9 @@ __pycache__/
 *.pem
 *.log
 /.agents/
+!.agents/
+!.agents/plugins/
+!.agents/plugins/marketplace.json
 /.codex/
 /.chrome-carousel-upgrade-check/
 /.playwright-mcp/

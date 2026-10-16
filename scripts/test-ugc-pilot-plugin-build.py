@@ -30,6 +30,9 @@ class PluginBuildTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             return builder.build(self.destination)
 
+    def source_version(self):
+        return json.loads((builder.SOURCE / "plugin.json").read_text(encoding="utf-8"))["version"]
+
     def test_archive_is_complete_deterministic_and_preserves_old_release(self):
         old = self.destination / "ugc-pilot-0.1.1.zip"
         old.write_bytes(b"existing-release-sentinel")
@@ -46,11 +49,11 @@ class PluginBuildTests(unittest.TestCase):
                 if Path(name).suffix in {".md", ".json", ".mjs"}:
                     self.assertNotIn(b"\r\n", package.read("ugc-pilot/" + name))
             versions = [json.loads(package.read("ugc-pilot/" + name))["version"] for name in ["plugin.json", ".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]]
-            self.assertEqual(versions, ["0.2.0"] * 3)
+            self.assertEqual(versions, [self.source_version()] * 3)
         self.assertIn(hashlib.sha256(before).hexdigest(), archive.with_suffix(".zip.sha256").read_text())
-        self.assertTrue((self.destination / "ugc-pilot-0.2.0-setup.md").exists())
+        self.assertTrue((self.destination / f"ugc-pilot-{self.source_version()}-setup.md").exists())
         self.assertFalse((self.destination / "ugc-pilot-setup.md").exists())
-        guide = (self.destination / "ugc-pilot-0.2.0-setup.md").read_text(encoding="utf-8")
+        guide = (self.destination / f"ugc-pilot-{self.source_version()}-setup.md").read_text(encoding="utf-8")
         self.assertNotIn("](skills/", guide)
         self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
         for skill in ["manage-ugc-groups", "manage-ugc-library", "remix-ugc-reference", "manage-ugc-account"]:
@@ -58,13 +61,12 @@ class PluginBuildTests(unittest.TestCase):
         self.assertIn("[client setup](#client-setup)", guide)
         self.assertIn(".agents/plugins/marketplace.json", guide)
 
-    def test_reviewed_public_archive_matches_current_canonical_source(self):
+    def test_existing_published_archive_is_complete_and_has_a_matching_checksum(self):
         archive = ROOT / "public/downloads/ugc-pilot-0.2.0.zip"
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
-            for name in builder.FILES:
-                self.assertEqual(package.read("ugc-pilot/" + name), builder.package_bytes(name))
+            self.assertEqual(json.loads(package.read("ugc-pilot/plugin.json"))["version"], "0.2.0")
         self.assertEqual(archive.with_suffix(".zip.sha256").read_text().strip(), hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name)
 
     def test_packaged_audio_helper_executes_and_preserves_recovery_identity(self):

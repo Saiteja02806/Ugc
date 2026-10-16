@@ -17,6 +17,19 @@ for (const relative of packageFiles) {
 }
 const endpoint = "https://mcp.getugcpilot.com/mcp";
 
+function validateLocalMarketplace() {
+  const marketplacePath = path.join(root, ".agents/plugins/marketplace.json");
+  const marketplace = JSON.parse(fs.readFileSync(marketplacePath, "utf8"));
+  assert.equal(marketplace.name, "ugc-pilot-local");
+  assert.equal(marketplace.interface?.displayName, "UGC Pilot local development");
+  assert.deepEqual(marketplace.plugins, [{
+    name: "ugc-pilot",
+    source: { source: "local", path: "./plugins/ugc-pilot" },
+    policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+    category: "Productivity",
+  }], "The local Codex marketplace must expose the reviewed UGC Pilot package and request OAuth on install");
+}
+
 export function validateOpenAiMetadata(plugin, knownTools, { submission = false } = {}) {
   const extension = plugin.extensions?.["com.openai"];
   const ui = extension?.interface;
@@ -94,6 +107,7 @@ export function validateResourceLinks(text, relative) {
 }
 
 export function validatePackage({ submission = false } = {}) {
+  validateLocalMarketplace();
   assert.deepEqual(walk(pluginDir).sort(), [...packageFiles].sort(), "Unexpected or missing package file");
   const plugin = json("plugin.json");
   const mcp = json("mcp.json");
@@ -114,7 +128,20 @@ export function validatePackage({ submission = false } = {}) {
   for (const field of ["logo", "composerIcon"]) {
     assert.equal(ui[field], "./assets/logo.png");
   }
-  assert.deepEqual(mcp.mcpServers, { "ugc-pilot": { type: "streamable-http", url: endpoint } });
+  assert.deepEqual(mcp.mcpServers, { "ugc-pilot": {
+    type: "streamable-http",
+    url: endpoint,
+    extensions: {
+      "com.openai": {
+        auth: {
+          type: "oauth",
+          client: { mode: "cimd" },
+          resource: endpoint,
+          baseScopes: ["account:read"],
+        },
+      },
+    },
+  } });
   assert.deepEqual(json(".mcp.json"), { mcpServers: { "ugc-pilot": { type: "http", url: endpoint } } });
   for (const overlay of [".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]) {
     const metadata = json(overlay);

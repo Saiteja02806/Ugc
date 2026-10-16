@@ -57,7 +57,7 @@ export function LandingHeader({
         <Link
           href="/"
           className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="UGCPilot home"
+          aria-label="UGC Pilot home"
         >
           <Image
             src={landingLogo}
@@ -69,7 +69,7 @@ export function LandingHeader({
             }`}
           />
           <span className="truncate text-[17px] font-semibold text-foreground-strong">
-            UGCPilot
+            UGC Pilot
           </span>
         </Link>
 

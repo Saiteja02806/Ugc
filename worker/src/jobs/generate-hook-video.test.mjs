@@ -150,6 +150,25 @@ test("explicit source-video edits route both inputs to Gemini without changing l
   assert.equal(f.events.find(event => event.name === "reserve").operationKey, "primary-gemini");
 });
 
+test("decimal Hook and Wall edit outputs keep measured source length and reject rounded replacements", async () => {
+  try {
+    for (const [exploreFormat, seconds] of [["hook", 3.7], ["wall_text", 6.7]]) {
+      const input = { exploreFormat, referenceVideoMode: "edit", referenceVideoUrl: "https://owned-media.example.test/source.mp4",
+        referenceVideoDurationSeconds: seconds, durationSeconds: Math.ceil(seconds),
+        hookIdea: "Reference actions.\n\nUser instructions.", avatarImageUrl: "https://owned-media.example.test/identity.png" };
+      outputBuffer = clip(seconds);
+      const f = fixture(input), result = await runGenerateHookVideoJob(f.job, f.context);
+      assert.equal(result.durationSeconds, seconds);
+      assert.equal(f.events.find(event => event.name === "persisted").metadata.durationSeconds, seconds);
+      assert.equal(received.at(-1).prompt, input.hookIdea);
+      outputBuffer = clip(Math.ceil(seconds));
+      const before = uploads.length, failed = fixture(input);
+      await assert.rejects(runGenerateHookVideoJob(failed.job, failed.context), /could not preserve.*duration/);
+      assert.equal(uploads.length, before);
+    }
+  } finally { outputBuffer = buffer; }
+});
+
 test("a ten-second source produces a verified ten-second Omni edit and a short result is terminal before storage", async () => {
   const input = { referenceVideoMode: "edit", referenceVideoUrl: "https://owned-media.example.test/source.mp4",
     referenceVideoDurationSeconds: 10, durationSeconds: 10, avatarImageUrl: "https://owned-media.example.test/identity.png" };

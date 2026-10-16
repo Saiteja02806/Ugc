@@ -101,6 +101,18 @@ test("public video jobs explain a provider balance failure without exposing diag
   assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("request-private"), false);
 });
 
+test("image billing failures identify provider credits without exposing raw diagnostics or inviting retries", () => {
+  for (const errorCode of ["PROVIDER_INSUFFICIENT_CREDITS", "credit_balance_exhausted", "insufficient_quota", "billing_hard_limit_reached", "JOB_FAILED"]) {
+    const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_image", errorCode,
+      errorMessage: "429 You have no credits remaining. Add credits to continue. token=private-secret request-private" } as BackgroundJobRecord;
+    const error = getPublicBackgroundJob(job).error;
+    assert.match(error?.message ?? "", /image provider's credit balance is too low/);
+    assert.equal(error?.retryable, false);
+    assert.equal(isRetryableBackgroundJob(job), false);
+    assert.doesNotMatch(JSON.stringify(error), /private-secret|request-private|video provider|You can retry|cause could not be identified/);
+  }
+});
+
 const imagePrivacyRejection = `HTTP 400: ${JSON.stringify({
   error: {
     code: "InputImageSensitiveContentDetected.PrivacyInformation",

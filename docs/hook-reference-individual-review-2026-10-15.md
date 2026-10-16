@@ -1,48 +1,88 @@
 # Individual Hook reference prompt review
 
-Scope: only active references in the Hook video workflow, in gallery order.
-The first nine source files were decoded completely and hash verified. Every
+Completed locally on **16 October 2026**. Scope: the **98 active references in
+the Hook video workflow**, in gallery order. Wall of Text and slideshow
+references are outside this pass. Earlier totals of 195/192 mixed workflows.
+
+All 98 exact source files were hash verified and decoded completely. Every
 decoded frame was visually inspected in ordered contact sheets, including the
-last frame. This does not claim real-time playback or audio evaluation. The
-first nine local prompt entries are now version 2 with frame-review provenance.
+last frame: **9,773 frames total**. All prompt entries are version 2 with
+`all_decoded_frames` provenance and source-bound frame counts. No Hook references
+remain in this inventory.
 
-| Gallery item | Frames inspected | Actual performance | Ending |
-| --- | ---: | --- | --- |
-| Hook 01 | 92 | Looks screen-right at desk; turns gaze to camera; covers mouth with screen-right hand; reaches toward camera with other hand; camera moves closer | Last frame is a monitor shot |
-| Hook 02 | 92 | Opens silver laptop lid; reacts with raised brows/open mouth; grasps eyeglass temples with both hands; pulls glasses forward and lowers them, continuing to stare toward laptop | Last frame is a laptop shot |
-| Hook 03 | 110 | Reclines on pillow; looks upward, blinks, widens eyes toward lens; glances screen-right then screen-left, returns toward camera, holds disbelief and glances sideways | Last frame is a stylus/screen shot |
-| Hook 04 | 94 | Reacts at laptop, covers mouth, reaches other hand toward camera; camera lifts; glasses remain on | Final instruction caption then browser view |
-| Hook 05 | 96 | Holds can near mouth without sipping; side glance; raises index finger beside lips; squints and lowers finger/can | Remains in cafe |
-| Hook 06 | 112 | Wide-eyed reaction; raises and tilts can for sustained sip; lowers it, glances down, briefly closes eyes, resumes open-mouth reaction | Last frame is a desktop shot |
-| Hook 07 | 78 | Holds eyeglass corner; lifts glasses onto head; releases frame and covers mouth with same hand, looking toward lens | Last frame is laptop/blue pen; both creator captions visible |
-| Hook 08 | 79 | Interlaces fingers and extends arms; stretches neck to each side with alternating hands; lowers hands to laptop keyboard | Same seated shot; no screen cut |
-| Hook 09 | 85 | Close-up with mouth open; raises glasses onto head, blinks; lowers same hand with fingertips across lips | Same face close-up; no screen cut |
+## Saved content
 
-The performance paragraph follows each exact source, rather than inventing a
-generic surprise or hand gesture. The last-frame cuts are preserved at their
-brief source timing without elongation. The original footage is not trimmed.
-Creator-added overlay words and associated emoji are requested to be removed;
-physical object text remains. No influencer-specific green shirt or hairstyle is
-embedded. Replacement is conditional on an attached influencer image.
+- `lib/explore/reference-video-prompts.ts`: 98 individual prompts using the
+  user's chosen original detailed approach. Each combines the conditional
+  influencer identity instruction, a clip-specific performance paragraph and
+  preservation/text-removal directions. The later numbered five-part template
+  is not the default.
+- `lib/explore/reference-text-catalog.json`: all 98 Hook caption records
+  rechecked alongside the footage. There are 96 ready Remix source records and
+  two `no_text` records (Hooks 94–95 contain graphic formulas only).
+- Hooks 01–03 were revisited for the same all-frame caption check. Their final
+  screen-view boundaries were confirmed from actual frame presentation times.
+
+The performance paragraphs preserve the observed sequence: eye and brow
+changes, hand contact and occlusion, props, framing, camera movement, lighting
+and brief scene cuts. They do not turn every clip into a generic surprised
+reaction. Single-frame screen tails retain their source timing without
+elongation. Source videos were not trimmed or changed.
+
+Every prompt requests removal of creator-added words, captions and associated
+emoji, with no new text. Individual prompts also remove floating logo formulas
+where present. Physical labels, printed clothing, packaging and incidental
+interface text stay distinct from added overlays. No fixed test influencer
+image, green shirt or hairstyle is embedded. Facial identity replacement is
+conditional on the user's attached image.
+
+Remix source text remains separate from footage-generation instructions.
+Original wording and emojis are retained unless the visual inspection supports
+a correction. These are source transcriptions, not newly invented business
+remixes or fact-checked claims.
+
+## Caption corrections
+
+| Hook | Confirmed correction |
+| --- | --- |
+| 04 | Final instruction begins at frame 91 / 3033 ms, before the browser cut |
+| 14 | Caption ends at the second-take cut, frame 170 / 5667 ms |
+| 42 | Caption changes to GOOD at frame 102 / 3400 ms |
+| 43 | Caption changes at frame 95 / 3167 ms |
+| 48 | Additional caption starts at frame 70 / 2333 ms; first emoji is 🤨 |
+| 64 | Additional caption starts at frame 52 / 1733 ms |
+| 72 | First emoji corrected to 😳 after full-resolution inspection |
+| 74 | Four-emoji sequence corrected to 👹😨🤯😭; caption ends at frame 106 / 3567 ms |
+| 85 | Caption ends at frame 179 / 6033 ms, before its final two caption-free frames |
+| 94–95 | No remixable caption words; retain empty blocks rather than inventing copy from logos |
+
+Unchanged caption boundaries remain approximate where the individual record
+does not state an exact presentation-time check. Overlapping captions, including
+Hook 07's original caption plus final website instruction, remain intentional.
+
+## Review evidence and validation
 
 Evidence is under `.tmp/hook-reference-prompt-review/<permanent-reference-id>/`.
-`scripts/inspect-hook-reference-frames.mjs <ordinal>` prepares the next clip's
-full frame sequence, validates its exact source hash and count, and leaves review
-status pending. Only after inspecting every sheet should the agent add/update
-that clip's prompt entry and review notes. No script automatically marks unseen
-frames as reviewed. `scripts/export-hook-reference-prompt-review.mjs` exports
-only entries whose inspected frame counts and hashes match the recorded review.
+Each entry has the full frame sequence and source inspection metadata.
+`scripts/inspect-hook-reference-frames.mjs <ordinal>` prepares those frames and
+leaves review status pending; preparing frames never establishes visual review.
 
-Nine of 98 Hook references have this frame review; 89 remain. Hook 10 is next.
-At the user's request, captions are now checked during the same inspection as
-performance prompts. Hooks 04–09 already had saved Remix source text, which was
-rechecked rather than duplicated or rewritten. Hook 04's “Go to Pinterest” starts
-at frame 91 (3033 ms), before the browser cut; its former 3200 ms boundary was
-corrected using actual frame presentation timestamps. Hooks 05–06 retain their
-existing wording and timing. Creator captions and associated emoji are retained
-for Remix; application UI and physical labels are excluded. The review page
-exports both prompt.txt and source-bound remix-text.json for each reviewed Hook.
-Hooks 01–03 caption records retain their earlier sampled-review provenance.
-No new video generation, paid analysis, production write or deployment occurred.
-Prompt controls' browser/production acceptance remains separate from this
-content-review pass. This pass does not resolve the previous preview startup issue.
+The export at
+`C:/Users/chund/.codex/visualizations/2026/10/15/01a13e6b-1589-7610-b970-de6890bc8710/hook-reference-prompts/review.html`
+shows all 98 source videos, exact prompts, separate Remix captions, review notes
+and every frame sheet. Each entry includes downloadable `prompt.txt`,
+`remix-text.json` and a `review.json` receipt. `progress.json` records 98 reviewed,
+zero remaining. Export verifies source hashes and frame counts.
+
+- All 98 prompt/source bindings, review counts, text-removal instructions and
+  Hook-only scope passed integrity checks.
+- All 98 caption records passed `ReferenceTextSchema`, hash matching and
+  all-frame provenance checks.
+- All 21 focused prompt, Remix and workflow reference-input regression checks
+  passed. Focused ESLint passed.
+
+This is frame review, not real-time playback, an audio evaluation or a generated
+output quality test. No new generation, paid analysis, production database write
+or deployment occurred. The visible prompt controls and authenticated production
+flow still need release acceptance on the deployed site. This content pass does
+not resolve an unrelated preview startup issue.

@@ -12,7 +12,7 @@ function fixture(platforms = ["instagram"], options = {}) {
     calls.push(url);
     if (url === "/api/schedules?configOnly=1") return { ok: true, minimumScheduleLeadMinutes: options.lead ?? 5 };
     if (url === "/api/social/connections") return { ok: true, connections: options.accounts ?? accounts };
-    if (url === "/api/account/publishing-preferences?schema=2") return { ok: true, preferences: { ...defaults, ...options.preferences } };
+    if (url === "/api/account/publishing-preferences?schema=3") return { ok: true, preferences: { ...defaults, ...options.preferences } };
     return { ok: true, capabilities: { privacyLevels: ["SELF_ONLY"], directPostAudited: false, ...options.capabilities } };
   };
   return { calls, prepare: () => prepareSimpleWorkflowSchedule({ draft, timezone: "Asia/Calcutta", source: { kind: "media_asset", id: "owned-video" }, title: "Finished video", load }) };
@@ -38,6 +38,17 @@ test("the simple three-platform form applies saved publishing defaults without c
 test("TikTok rejects an unavailable saved visibility rather than silently changing it", async () => {
   await assert.rejects(fixture(["tiktok"], { preferences: { tiktokPrivacyLevel: "PUBLIC_TO_EVERYONE" } }).prepare(), /visibility available/);
   await assert.rejects(fixture(["tiktok"], { preferences: { tiktokPrivacyLevel: "PUBLIC_TO_EVERYONE" }, capabilities: { privacyLevels: ["PUBLIC_TO_EVERYONE"] } }).prepare(), /Settings/);
+});
+
+test("Explore uses the saved promotional disclosure independently from AI disclosure, defaulting older preferences off", async () => {
+  for (const value of [undefined, false, true]) {
+    const result = await fixture(["tiktok"], { preferences: value === undefined ? {} : { tiktokBrandOrganic: value } }).prepare();
+    const settings = result.targets[0].settings;
+    assert.equal(settings.brandOrganic, value === true);
+    assert.equal(settings.commercialContentDisclosureEnabled, value === true);
+    assert.equal(settings.brandedContent, false);
+    assert.equal(settings.containsSyntheticMedia, false);
+  }
 });
 
 test("missing, expired, unpublishable and mismatched accounts are rejected", async () => {

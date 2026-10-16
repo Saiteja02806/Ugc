@@ -23,7 +23,7 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, referencePrompt, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
+function harness(format, { reference = true, referenceUrls, referencePrompt, referenceDuration = null, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
   const effects = [], readyVideos = [];
@@ -77,7 +77,7 @@ function harness(format, { reference = true, referenceUrls, referencePrompt, reg
   const props = { active: true, accessState: access, creditsRemaining: 1000, creditCost: 1, recreateView: {
     referenceImageUrls: referenceUrls,
     referenceImageAssetId: regenerationTarget,
-    preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null,generationPrompt:referencePrompt} : undefined, emptyContent: "Empty",
+    preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:referenceDuration,generationPrompt:referencePrompt} : undefined, emptyContent: "Empty",
     workflow: { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
   } };
   function find(node, type) {
@@ -132,6 +132,43 @@ test('switching references replaces its suggestion, preserves user text, and rem
 
 
 for (const format of ["hook", "wall_text"]) {
+  test(format + ': decimal reference length is distinct from whole-second billing and both prompt fields reach the request', async () => {
+    const seconds = format === 'hook' ? 3.7 : 6.7;
+    const h = harness(format, { captureRequests: true, referenceDuration: seconds, referencePrompt: 'Keep the reference performance. Remove captions.' });
+    await h.flushEffects();
+    const composer = h.render().composer;
+    const duration = composer.props.settings.props.children.find(n => h.find(n, 'output'));
+    assert.equal(h.find(duration, 'span').props.children, 'Duration');
+    assert.equal(h.find(duration, 'output').props.children[1].props.children, `${Math.round(seconds)} sec`);
+    assert.equal(h.find(duration, 'small').props.children, `${seconds}s reference · source timing kept`);
+    assert.equal(composer.props.estimatedCredits, Math.round(seconds) * 4);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.durationSeconds, Math.round(seconds));
+    assert.equal(h.requests[0].body.referenceVideoMode, 'edit');
+    assert.equal(h.requests[0].body.prompt, 'Keep the reference performance. Remove captions.\n\nMy requested changes');
+  });
+  for (const [seconds, selected] of [[2.8, 3], [3.3, 3], [3.49, 3], [3.5, 4], [3.7, 4], [6.3, 6], [6.7, 7]]) test(`${format}: ${seconds}s reference auto-selects ${selected}s`, async () => {
+    const h = harness(format, { captureRequests: true, referenceDuration: seconds });
+    await h.flushEffects();
+    const composer = h.render().composer;
+    const duration = composer.props.settings.props.children.find(n => h.find(n, 'output'));
+    assert.equal(h.find(duration, 'output').props.children[1].props.children, `${selected} sec`);
+    assert.equal(composer.props.estimatedCredits, selected * 4);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.durationSeconds, selected);
+    assert.equal(h.requests[0].body.referenceVideoMode, 'edit');
+  });
+  test(format + ': WAN reference guidance keeps an independent supported output duration', async () => {
+    const h = harness(format, { captureRequests: true, referenceDuration: 6.7, wanEnabled: true });
+    await h.flushEffects();
+    h.render().composer.props.settings.props.children.find(n => n?.props?.ariaLabel === 'Video model').props.onChange('wan_3_0');
+    const composer = h.render().composer;
+    assert.equal(composer.props.settings.props.children.some(n => h.find(n, 'output')), false);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.referenceVideoMode, undefined);
+    assert.equal(Number.isInteger(h.requests[0].body.durationSeconds), true);
+    assert.equal(h.requests[0].body.useGalleryVideoReference, true);
+  });
   test(format + ': gallery source is requested as actual video input with the prompt and appearance image', async () => {
     const h = harness(format, { captureRequests: true });
     await h.flushEffects();

@@ -19,7 +19,7 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
   const needsPreferences = targets.some(target => target.platform !== "instagram");
   const [rawConfig, rawAccounts, rawPreferences] = await Promise.all([
     load("/api/schedules?configOnly=1"), load("/api/social/connections"),
-    needsPreferences ? load("/api/account/publishing-preferences?schema=2") : null,
+    needsPreferences ? load("/api/account/publishing-preferences?schema=3") : null,
   ]);
   const config = rawConfig as { minimumScheduleLeadMinutes?: number };
   if (typeof config?.minimumScheduleLeadMinutes !== "number" || !Number.isFinite(config.minimumScheduleLeadMinutes) || config.minimumScheduleLeadMinutes < 0) throw new Error("Could not load scheduling limits. Try again.");
@@ -39,7 +39,7 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
     const value = getDefaultScheduleTargetSettings(account.platform);
     if (preferences && account.platform === "youtube") Object.assign(value, { containsSyntheticMedia: preferences.containsSyntheticMedia, privacyStatus: preferences.youtubePrivacyStatus, madeForKids: preferences.youtubeMadeForKids, notifySubscribers: preferences.youtubeNotifySubscribers });
     if (preferences && account.platform === "tiktok") {
-      Object.assign(value, { containsSyntheticMedia: preferences.containsSyntheticMedia, privacyLevel: preferences.tiktokPrivacyLevel, allowComment: preferences.tiktokAllowComments });
+      Object.assign(value, { containsSyntheticMedia: preferences.containsSyntheticMedia, privacyLevel: preferences.tiktokPrivacyLevel, allowComment: preferences.tiktokAllowComments, brandOrganic: preferences.tiktokBrandOrganic, commercialContentDisclosureEnabled: preferences.tiktokBrandOrganic });
       const raw = await load(`/api/social/connections/${encodeURIComponent(account.id)}/publish-settings`) as { capabilities?: TikTokPublishCapabilities };
       if (!raw?.capabilities || !Array.isArray(raw.capabilities.privacyLevels) || typeof raw.capabilities.directPostAudited !== "boolean") throw new Error("Could not load TikTok publishing settings. Try again.");
       capabilities[account.id] = { status: "ready", capabilities: raw.capabilities };

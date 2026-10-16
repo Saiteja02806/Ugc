@@ -421,13 +421,17 @@ export function ScheduleEditor({
     Record<string, TikTokCapabilitiesState>
   >({});
   const [aiDisclosureDefault, setAiDisclosureDefault] = useState(true);
+  const [brandOrganicDefault, setBrandOrganicDefault] = useState(false);
   const [preferencesError, setPreferencesError] = useState<string | null>(null);
   const [preferencesLoading, setPreferencesLoading] = useState(!editingSchedule);
   useEffect(() => {
     if (editingSchedule) return;
     const controller = new AbortController();
     void requestPublishingPreferences(undefined, controller.signal).then((preferences) => {
-      if (!controller.signal.aborted) setAiDisclosureDefault(preferences.containsSyntheticMedia);
+      if (!controller.signal.aborted) {
+        setAiDisclosureDefault(preferences.containsSyntheticMedia);
+        setBrandOrganicDefault(preferences.tiktokBrandOrganic);
+      }
     }).catch(() => {
       if (!controller.signal.aborted) setPreferencesError("Your account default could not load. Review the AI content setting for this post in publishing options.");
     }).finally(() => {
@@ -439,9 +443,10 @@ export function ScheduleEditor({
     publishingConnections.map((connection) => [connection.id, {
       ...getDefaultPublishingSettings(connection.platform),
       ...(connection.platform !== "instagram" ? { containsSyntheticMedia: aiDisclosureDefault } : {}),
+      ...(connection.platform === "tiktok" ? { brandOrganic: brandOrganicDefault, commercialContentDisclosureEnabled: brandOrganicDefault } : {}),
       ...publishingSettings[connection.id],
     }]),
-  ), [aiDisclosureDefault, publishingConnections, publishingSettings]);
+  ), [aiDisclosureDefault, brandOrganicDefault, publishingConnections, publishingSettings]);
   const [scheduledDateOverride, setScheduledDate] = useState<string | null>(editingScheduledDate ?? null);
   const [scheduledTimeOverride, setScheduledTime] = useState<string | null>(editingScheduledTime ?? null);
   const scheduledDate = scheduledDateOverride ?? initialScheduledDate;

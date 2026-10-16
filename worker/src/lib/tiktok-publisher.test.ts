@@ -128,6 +128,8 @@ test("honors the creator's disabled AI-content label for a TikTok photo post", a
           ],
           settings: {
             containsSyntheticMedia: false,
+            brandOrganic: false,
+            brandedContent: false,
             privacyLevel: "PUBLIC_TO_EVERYONE",
           },
         });
@@ -137,6 +139,8 @@ test("honors the creator's disabled AI-content label for a TikTok photo post", a
 
   assert.equal(photoRequest?.is_aigc, false);
   assert.equal(photoRequest?.media_type, "PHOTO");
+  assert.equal((photoRequest?.post_info as Record<string, unknown>)?.brand_organic_toggle, false);
+  assert.equal((photoRequest?.post_info as Record<string, unknown>)?.brand_content_toggle, false);
   assert.equal("is_aigc" in (photoRequest?.post_info as Record<string, unknown>), false);
 });
 

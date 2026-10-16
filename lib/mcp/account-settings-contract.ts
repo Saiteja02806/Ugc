@@ -6,6 +6,8 @@ export const settingsRevisionSchema=z.string().regex(/^[a-f0-9]{64}$/);
 export const publishingPreferencesSchema=z.strictObject({
   containsSyntheticMedia:z.boolean(),tiktokPrivacyLevel:z.enum(["PUBLIC_TO_EVERYONE","SELF_ONLY","FOLLOWER_OF_CREATOR","MUTUAL_FOLLOW_FRIENDS"]),
   tiktokAllowComments:z.boolean(),youtubePrivacyStatus:z.enum(["public","private","unlisted"]),
+  // Immutable receipts accepted before this preference existed omit the field.
+  tiktokBrandOrganic:z.boolean().optional(),
   youtubeMadeForKids:z.boolean(),youtubeNotifySubscribers:z.boolean(),
 });
 export const publishingPreferencesPatchSchema=publishingPreferencesSchema.partial().refine(value=>Object.keys(value).length>0,"Choose at least one publishing default.");

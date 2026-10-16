@@ -25,7 +25,7 @@ import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorage
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { MAX_IMAGE_REFERENCE_CONTEXT, parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "@/worker/src/lib/slideshow-generation-contract";
-import { readSlideshowGenerationSlot, slideshowGenerationSlot, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { readSlideshowGenerationSlot, slideshowGenerationSlot, slideshowSlotPrompt, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
 import { loadSlideshowBusinessContext, slideshowBusinessContextPrompt, SlideshowBusinessContextUnavailableError, type SlideshowBusinessContext } from "@/lib/explore/slideshow-business-context";
 import {
   BillingAccessError,
@@ -282,7 +282,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
     if (!references.length) return NextResponse.json({ ok: false, message: "Choose a slideshow style reference, attach an image or select a slide to recreate." }, { status: 400 });
     const indexOf = (url: string) => references.indexOf(url) + 1;
     slideshowReferenceContract = parseSlideshowReferenceContract({
-      version: 2,
+      version: 3,
       styleReferenceIndices: styleReferences.map(indexOf),
       attachmentReferenceIndices: attachmentReferences.map(indexOf),
       ...(regenerationReferenceUrl ? { regenerationReferenceIndex: indexOf(regenerationReferenceUrl) } : {}),
@@ -295,8 +295,13 @@ export async function handleAIStudioImageGeneration(request: Request) {
       return NextResponse.json({ ok: false, message: error instanceof SlideshowBusinessContextUnavailableError ? error.message : "Could not load your business context." }, { status: error instanceof SlideshowBusinessContextUnavailableError ? error.status : 503 });
     }
     // Validate the complete provider prompt before reserving credits; never truncate instructions.
-    const contextualPrompt = slideshowBusinessContextPrompt(prompt, slideshowBusinessContext!);
-    if (slideshowGenerationPrompt(`${contextualPrompt}${body?.slideshowSlideCount === undefined ? "" : " ".repeat(450)}`, aspectRatio, slideshowReferenceContract).length > 32_000) {
+    const contextualPrompt = slideshowBusinessContextPrompt(prompt, slideshowBusinessContext!, true);
+    const longestSlot = body?.slideshowSlideCount === undefined ? undefined
+      : slideshowGenerationSlot("prompt-length-check", Number(slideCount), quantity, totalOutputs - 1);
+    const longestSlotPrompt = longestSlot ? slideshowSlotPrompt(contextualPrompt, longestSlot, true) : contextualPrompt;
+    // Slide 10 also has a two-digit base-image index in its reference guidance.
+    const longestSlotContract = longestSlot ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[longestSlot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== longestSlot.slideIndex - 1)] } : slideshowReferenceContract;
+    if (slideshowGenerationPrompt(longestSlotPrompt, aspectRatio, longestSlotContract).length > 32_000) {
       return NextResponse.json({ ok: false, message: "Shorten your instructions so the slideshow prompt, including reference guidance, fits within 32,000 characters." }, { status: 400 });
     }
   }

@@ -141,12 +141,16 @@ async function readVideoMetadata(file: File) {
   try {
     const video = document.createElement("video");
     video.preload = "metadata";
-    video.src = objectUrl;
-
     await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () =>
-        reject(new Error("Could not read this product demo."));
+      const finish = (error?: Error) => {
+        clearTimeout(timer);
+        video.onloadedmetadata = null; video.onerror = null;
+        if (error) reject(error); else resolve();
+      };
+      const timer = setTimeout(() => finish(new Error("Reading this demo took too long. Choose the video again.")), 15_000);
+      video.onloadedmetadata = () => finish();
+      video.onerror = () => finish(new Error("Could not read this product demo."));
+      video.src = objectUrl;
     });
 
     if (

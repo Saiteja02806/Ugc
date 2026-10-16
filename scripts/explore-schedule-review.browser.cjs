@@ -30,7 +30,8 @@ async function main() {
   });
   let preferences = { containsSyntheticMedia: false }, preferenceDelay = 0, preferenceFailure = false;
   const writes = [], errors = [];
-  const css = require('./compiled-browser-css.cjs')(root);
+  const css = (await require("postcss")([require("@tailwindcss/postcss")({ base: root })])
+    .process(fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "../components";'), { from: path.join(root, "app/globals.css") })).css;
   const json = (res, body) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://fixture");
@@ -118,6 +119,7 @@ async function main() {
     const tiktok = await page.evaluate(() => window.__submission.targets[0].settings);
     assert.equal(tiktok.privacyLevel, "PUBLIC_TO_EVERYONE"); assert.equal(tiktok.allowComment, true);
     assert.equal(tiktok.allowDuet, false); assert.equal(tiktok.containsSyntheticMedia, true);
+    assert.equal(tiktok.brandOrganic, false);
     assert.equal(writes.length, 0, "Per-post changes must not overwrite account defaults");
     console.log("PASS TikTok requires an explicit visibility, opt-in interactions and preserves per-post disclosure override");
 
@@ -137,8 +139,18 @@ async function main() {
     await page.getByRole("button", { name: "Save publishing defaults", exact: true }).click();
     await page.getByText("Publishing defaults saved for your account.", { exact: true }).waitFor();
     await page.reload(); await page.waitForFunction(() => !document.querySelector('input[type="checkbox"]')?.disabled);
-    assert.equal(await setting.isChecked(), true); assert.deepEqual(writes, [{containsSyntheticMedia:true,tiktokPrivacyLevel:"PUBLIC_TO_EVERYONE",tiktokAllowComments:true,youtubePrivacyStatus:"public",youtubeMadeForKids:false,youtubeNotifySubscribers:false}]);
+    assert.equal(await setting.isChecked(), true); assert.deepEqual(writes, [{containsSyntheticMedia:true,tiktokPrivacyLevel:"PUBLIC_TO_EVERYONE",tiktokAllowComments:true,tiktokBrandOrganic:false,youtubePrivacyStatus:"public",youtubeMadeForKids:false,youtubeNotifySubscribers:false}]);
     console.log("PASS account preference saves, restores and does not overwrite explicit per-post edits");
+
+    preferences = { ...preferences, tiktokBrandOrganic: true };
+    await page.goto(base + "/?platforms=tiktok");
+    await visibility.selectOption("PUBLIC_TO_EVERYONE");
+    await page.getByRole("button", { name: "Schedule post", exact: true }).click();
+    await page.waitForFunction(() => window.__submission);
+    assert.equal(await page.evaluate(() => window.__submission.targets[0].settings.brandOrganic), true);
+    assert.equal(await page.evaluate(() => window.__submission.targets[0].settings.brandedContent), false);
+    preferences = { ...preferences, tiktokBrandOrganic: false };
+    console.log("PASS scheduler applies the saved promotional preference independently from AI disclosure");
 
     await page.goto(base + "/?mode=manual");
     await page.getByText("Video clip", { exact: true }).waitFor();

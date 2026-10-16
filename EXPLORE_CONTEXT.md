@@ -1,5 +1,98 @@
 # Explore context and UI decision record
 
+### Nearest-second reference selection — 16 October 2026, latest correction
+
+- The user's latest instruction replaces the earlier round-up policy for new
+  Hook/Wall Omni reference submissions. Auto-select the nearest whole second:
+  3.3 → 3, 3.49 → 3, 3.5 → 4, 3.7 → 4, 6.3 → 6 and 6.7 → 7. Retain the existing
+  three-second minimum. UI seconds, submitted admission duration and the server's
+  new credit reservation calculation must use the same rule.
+- The Duration field shows this rounded selection. A compact hint retains the
+  actual reference length and states that Omni keeps source timing. This request
+  changes the seconds selection; it does not authorize silently trimming,
+  stretching or padding an Omni source edit. Fractional source metadata and the
+  output-duration validation remain intact. Existing admitted jobs/receipts are
+  not rewritten. Scratch/WAN output selection remains independent.
+- This supersedes references below and in the earlier audit to ceil/round-up
+  billing and the previous Reference length field label. These changes are local;
+  deployment and authenticated production acceptance remain pending.
+
+### Close-edit slideshow default — 16 October 2026, local clarification
+
+- The user clarified that selected slides should be reproduced as closely as
+  possible with only requested changes. New v3 prompts explicitly call this a
+  close edit, rather than inspiration or mood-board reinterpretation. A changed
+  background does not authorize changing typography, camera or unrelated objects.
+- Screen replacements preserve device boundaries, perspective and surrounding
+  scene and apply only to the requested output. This is still generative edit
+  guidance; exact screenshot fidelity needs a separate compositor, not yet built.
+- Existing v2/legacy retry prompts remain frozen for compatibility. V3 is local
+  and must deploy worker first, then web. No actual generation-quality acceptance
+  is claimed by provider-stub regression tests.
+
+### Latest slideshow quality investigation — 16 October 2026
+
+- Completed batch `2324bf8d-02c7-4010-8b76-19a93fcb94b7` correctly contains
+  Marketing slides **1 and 4**, the unchanged user prompt, business snapshot
+  and uploaded dark Explore screenshot. Do not apply the earlier batch's 1/5
+  mismatch to this request. Both latest outputs were saved and billed.
+- The supplied outputs still redesign the reference scene/text treatment and
+  invent light dashboards. Saved jobs use v2; preservation v3 remains local.
+  Matching fingerprints in a stubbed real-worker replay verifies input delivery,
+  not model fidelity. No screenshot compositing or semantic acceptance gate
+  exists in this image-worker path. Completed is technical success only.
+- Correction needs preservation/scoped prompts plus fresh visual acceptance;
+  exact UI insertion requires compositing actual pixels. The audit does not
+  change model, quality, provider credits, job records or application behavior.
+  See `docs/slideshow-output-fidelity-audit-2026-10-16.md`.
+
+### Slideshow failure-banner dismissal — 16 October 2026, local repair
+
+- The slideshow generation error badge now has an accessible × and disappears
+  after three seconds. A stable attempt/job identity prevents unchanged status
+  polls from reviving it; a distinct failure gets a new notice and timer.
+- Dismissal changes only the banner presentation. Stored job status, generation
+  recovery, History, selected references, generated images and credit settlement
+  are untouched. Progress remains visible; other workflows retain their existing
+  error behavior. Returning in a fresh mounted visit can show the failure again.
+- Local API-free browser checks cover timing, mouse/keyboard dismissal, polling,
+  replacement/unmount cleanup and desktop/mobile layout. Deployment and signed-in
+  production acceptance remain pending. See
+  `docs/slideshow-error-notice-2026-10-16.md`.
+
+### Slideshow provider-credit errors — 16 October 2026, local repair
+
+- The two reported Flare slideshow batches reached OpenAI but failed with
+  `credit_balance_exhausted`. All four one-credit app reservations were released.
+  This is separate from worker capacity, reference delivery and prompt policy.
+- Known provider billing failures must be terminal and clearly identified;
+  HTTP 429 alone does not imply a temporary rate limit. Genuine rate limits
+  retain retries and uncertain submissions retain duplicate-charge protection.
+- The local worker/public-error repair requires deployment. It does not buy
+  provider credits, switch models or replay historical failed requests. Actual
+  recovery needs a funded provider account and a fresh authorized generation.
+  See `docs/slideshow-provider-credit-failure-2026-10-16.md`.
+
+### Slideshow reference preservation — 16 October 2026, local implementation
+
+- New Explore slideshow jobs use reference contract v3: each selected slide is
+  its output's base. Preserve its visual style, composition and tone by default;
+  adapt only relevant business details. Explicit user requests override these
+  defaults within their scope. Business brand tone, visual keywords and CTA ideas
+  must not silently turn a reference into a redesigned advertisement.
+- All selected image bytes and uploaded attachments still reach the provider.
+  Numbered attachment roles and output positions identify the intended inputs.
+  Prompts scope slide-specific changes to the corresponding selected output and
+  ask screenshot replacements to retain the actual uploaded interface. This is
+  model guidance, not deterministic instruction extraction or pixel compositing.
+- Reference headlines remain editable Remix Text by default. Explicit requests
+  for visible image text retain the reference typography/position/boxes and exact
+  supplied wording unless the user requests changes to those properties.
+- Already-admitted v2/legacy jobs keep their original prompts and fingerprints.
+  Deploy the compatible image worker before the web API begins admitting v3.
+  Local regressions pass; new model-output visual and authenticated production
+  acceptance remain pending. See `docs/slideshow-reference-preservation-2026-10-16.md`.
+
 ### Finishing worker warm-instance preference — 16 October 2026
 
 - The user elected to keep Explore finishing warm for faster first-request
@@ -24,6 +117,88 @@
 
 Last reconciled: **15 October 2026**.
 
+### Reference prompt submission and fractional timing — 16 October 2026, local follow-up
+
+- Generate video submits the current visible reference instructions followed by
+  the user's separate instructions, joined once. Remove prompt omits that block
+  while retaining the video. Editing/restoring it changes the submitted prompt;
+  recovery reuses the frozen combined request without appending it again.
+- Reviewed performance prompts remain a Hook catalogue capability. Wall shares
+  the composer but does not acquire invented Hook-style performance prompts.
+  Its own instructions still reach the worker, with the existing clean-background
+  instruction added by the server.
+- Omni source-video edits use the source timeline. A 3.7-second Hook or
+  6.7-second Wall reference is not submitted as a fresh fractional-duration
+  text-to-video request: the provider receives the source bytes and `task: edit`,
+  without an output-duration override. Current app admission allows source edits
+  up to ten seconds. Output duration is measured and must stay within 0.25 seconds
+  of the source; otherwise the worker rejects it before storage. This is a
+  validation contract, not a promise of frame-exact provider quality.
+- Display **Reference length** and **Uses source timing** in this mode. The
+  rounded duration in admission is the existing credit calculation (ceil, minimum
+  three seconds), not permission to stretch/trim the source. Ordinary scratch and
+  WAN reference generation retain the selected supported whole-second output
+  duration. Do not show fractional source length as their requested output.
+- Reference prompt actions use 12px text (32px desktop / 44px coarse-pointer
+  targets); the reference text is 13px. Keep user instructions separate and fully
+  editable. See `docs/explore-reference-prompt-and-duration-2026-10-16.md` for
+  tests, primary provider documentation and local/production limits.
+
+### Slideshow input fidelity audit — 16 October 2026
+
+- Production batch `618eb823-1cb6-4e0d-9456-c2993aedbfb8` contains applied
+  business context, selected Marketing slides 1 and 5, and the user's uploaded
+  Explore screenshot in both output jobs. Worker replay matches production
+  operation fingerprints and passes all three references to the provider.
+- Input delivery is not proof of output fidelity: the inspected result invents
+  a white dashboard instead of preserving the uploaded dark Explore screen.
+  The create prompt describes references as style inspiration, sends all
+  multi-slide instructions to every output, and does not promise exact screen
+  compositing or minimal-change preservation. The audit itself changes no
+  behavior; the local v3 follow-up above corrects the prompt policy, with output
+  fidelity still awaiting fresh generation and production acceptance.
+- Earlier production slideshow jobs really lack a business-context snapshot.
+  Keep historical missing-context behavior distinct from this latest batch.
+  Evidence: `docs/slideshow-input-audit-2026-10-16.md`.
+
+### Demo loading and focused-editor footer — 16 October 2026, local implementation
+
+- Hook Demo overview **Edit demo video** and **Change** are navigation actions;
+  they must not wait for full playback buffering, another clip's loading or an
+  upload acknowledgement. After local metadata validation, trim/manual text can
+  be edited while the demo uploads. Save and Schedule still require confirmed
+  owned media and their existing validation. Remix generation remains gated
+  during an unconfirmed upload; no paid request is triggered by opening Edit.
+- Keep pending edits separate from the last accepted recoverable draft. Upload
+  confirmation preserves the pending trim/text. Failed replacement restores the
+  prior clip, edits, framing and source mode. A newer upload, saved-media choice
+  or removal supersedes the pending request; late completion cannot replace it.
+  Source controls stay usable during the video upload. This Hook implementation
+  does not establish the same pre-upload editing capability in Talking Head.
+- Demo upload's additional browser metadata read has a 15-second timeout so a
+  missing event cannot leave the upload busy forever. It is not a network-upload
+  deadline and does not bypass server ownership/readiness checks.
+- Focused Hook/Talking Head/Wall editors omit the routine “Changes appear in the
+  preview immediately. Save edits to keep them.” footer row and horizontal rule.
+  Keep compact Save/return actions, button saving/saved labels and actionable
+  loading/error/retry feedback. Never reserve an empty instruction row after it
+  is removed. This does not remove scheduling review or necessary upload errors.
+- Evidence and acceptance limits: `docs/explore-demo-loading-and-editor-footer-2026-10-16.md`.
+  These follow-up changes are local and are not part of deployed `cdf8c936`.
+
+### TikTok promotional disclosure default — 16 October 2026, local implementation
+
+- Settings → Preferences → Publishing defaults → TikTok defaults now exposes
+  **Label posts as promotional content**, off by default for existing and new
+  accounts. Enabling it selects TikTok's own-brand disclosure and adds the
+  “Promotional content” label. AI disclosure and paid partnerships are separate.
+- New Explore schedules use the saved account preference. Trending and the
+  scheduler share the same off default. Saved target choices and already queued
+  posts retain their settings; changing preferences is not a bulk post update.
+- This supersedes the October 9 background own-brand-on default recorded in
+  `docs/tiktok-ui-visibility.md`. A new database migration and web release are
+  required. Local tests are separate from authenticated production acceptance.
+
 ### Influencer workspace references and downloads — 16 October 2026, local implementation
 
 - Build AI influencer results support independent multi-selection. Selected images
@@ -47,7 +222,7 @@ Last reconciled: **15 October 2026**.
   do not constitute authenticated acceptance on `https://www.getugcpilot.com`.
   See `docs/influencer-image-actions-2026-10-16.md` for verification details.
 
-### Reference performance prompts — 15 October 2026, local pilot
+### Reference performance prompts — 16 October 2026, Hook catalog released
 
 - The user selected the original detailed approach: a short replacement
   instruction, one clip-specific action/expression paragraph and preservation
@@ -63,7 +238,7 @@ Last reconciled: **15 October 2026**.
   the test influencer's hair, clothing or image into library entries. Identity
   replacement is conditional on an attached influencer image. User instructions
   follow the suggestion and may request deliberate changes.
-- Thirty-six active Hook references have reviewed entries in
+- All 98 active Hook references have reviewed entries in
   `lib/explore/reference-video-prompts.ts`. The first three were initially sampled;
   all reviewed entries have been inspected through every decoded frame. Hooks 01–09 have
   92, 92, 110, 94, 96, 112, 78, 79 and 85 inspected frames respectively.
@@ -74,16 +249,23 @@ Last reconciled: **15 October 2026**.
   original scene. Keep source tails brief; do not extend them or
   silently trim the original. Version 2 paragraphs record the precise gestures.
   Scope clarified by the user: only Hook video workflow references for now.
-  Its active catalog contains 98 videos: 36 reviewed prompts and 62 remaining.
+  Its active catalog contains 98 videos: 98 reviewed prompts and none remaining.
   The earlier 195/192 totals incorrectly included 97 Wall videos. Wall of Text
   and slideshows are outside this prompt rollout. No Wall prompts were prepared.
 - Review Remix source captions during the same video inspection. Use the existing
   source-hash-bound `reference-text-catalog.json`, preserving original wording,
   emojis and caption timings; exclude app UI, packaging and incidental text.
-  Do not put Remix captions into the footage-generation prompt. Hooks 04–36
-  were rechecked in this combined pass; Hook 04's final instruction begins at
-  3033 ms, correcting its earlier 3200 ms sampled boundary. Other existing
-  caption entries retain their previously recorded review provenance.
+  Do not put Remix captions into the footage-generation prompt. Hooks 01–98
+  now have all-frame caption checks, including the first three pilot entries.
+  Hook 04's final instruction begins at 3033 ms, correcting its earlier 3200 ms
+  sampled boundary. Individual caption notes distinguish corrected boundaries
+  from retained approximate timing. Original source claims are not fact-checked.
+- Additional all-frame caption corrections: Hook 42 changes at 3400 ms; Hook 43
+  at 3167 ms; Hook 48's additional caption starts at 2333 ms and its first emoji
+  is 🤨; Hook 64's additional caption starts at 1733 ms; Hook 72's first emoji is
+  😳; Hook 74's sequence is 👹😨🤯😭 and ends at 3567 ms; Hook 85's caption ends at
+  6033 ms before its last two frames. Hooks 94–95 have graphic formulas only:
+  retain `no_text` with empty Remix blocks and remove those overlays in footage.
 - Hook 14 cuts to a calm second take at frame 170 / 5667 ms; the creator caption
   ends there, correcting its prior 5333 ms sampled timing. Hook 27 has a background
   colleague: replace only the foreground performer's identity. Full source takes,
@@ -96,8 +278,22 @@ Last reconciled: **15 October 2026**.
   lift glasses onto the head, unlike Hook 02 which removes and lowers them.
 - Suggestions bind to permanent reference ID and content-addressed source hash.
   Changed source bytes invalidate the suggestion. New references require review.
-  This local pilot does not deploy the website, alter soundtracks or generate
+  This local content review does not deploy the website, alter soundtracks or generate
   paid media. Authenticated production acceptance remains a release check.
+  Completion evidence and per-Hook notes:
+  `docs/hook-reference-individual-review-2026-10-15.md`.
+- Hook-only commit `a1fdfd2924bc571217cd422ae0afe999455508e8` subsequently
+  deployed to website and shared MCP production. All 41 focused checks and the
+  isolated production build passed. First-five Recreate/edit/remove/restore and
+  exact Remix fields passed real-component desktop/mobile checks. Live reference
+  reads confirmed Hooks 01–05, 94 and 98; website Remix is enabled. Signed-in
+  production browser acceptance remains pending: the automation browser is at
+  sign-in while the user reports a separate logged-in session, and the in-app
+  browser controller cannot initialize. Do not equate source readback with
+  generation, editing, saving or scheduling acceptance. Dedicated MCP remix
+  creation retains its existing disabled configuration. Release details:
+  `docs/hook-prompts-production-release-2026-10-16.md` and local receipt
+  `.tmp/hook-prompts-release/production.json`.
 
 Read this before changing Explore workflows, navigation, editors, previews,
 Remix, reference provenance, audio, draft recovery or scheduling entry points.
@@ -638,6 +834,9 @@ mistake recurs; add the recurrence and its cause rather than deleting the row.
 | EX-41 | Hid History when the current Explore session was empty, and had no way to reopen saved slide sets | Keep History reachable, distinguish generated versions from edited drafts and saved Library items, preserve drafts when switching, and offer Edit slides for saved Explore sets. Do not infer legacy grouping or unbake pixel text. **Slideshow/Hook/Wall locally improved; Talking Head history differs.** |
 | EX-42 | On the reported 15.6-inch laptop, two shallow empty Hook/Demo cards stayed at the upper-left of a much larger preview area | Use centered portrait upload slots with centered source actions, bounded by usable height; check empty/one-clip/two-clip and narrow/short viewports. Keep actual media ratios and existing selection actions. **Local layout change; browser screenshot and production acceptance pending.** |
 | EX-43 | Exposed Hook 01/02/03 catalogue numbers as user-facing reference names | Show **Hook** consistently for active, archived and development references. Preserve reference IDs, provenance, reviewed prompts and saved-job lookup; automation must identify media by stable identity rather than depend on visible numbering. **Catalogue regression passed locally; production pending.** |
+| EX-44 | A playable local demo still had disabled Edit/Change and replacement controls while its upload awaited confirmation | Separate navigation, local editing and source replacement from owned-media Save/Schedule readiness. Preserve pending edits on success and the accepted draft on failure; reject late superseded completions. Bound metadata reads. **Local regressions and delayed-upload browser checks passed; production acceptance pending.** |
+| EX-45 | Routine editor footer instructions and a horizontal divider consumed laptop height above Save/return | Remove the repeated instruction row and divider; compact the footer while retaining real loading/error/retry feedback and visible Save/return buttons. Check the bottom of the scroll region and actual footer bounds. **Local implementation; production acceptance pending.** |
+| EX-46 | Labeled a fractional source-video length as generic Duration, making Omni source editing look like unsupported fractional fresh generation | Label source length explicitly, distinguish native edit timing from selected generation duration and rounded billing, and verify both prompt fields and decimal timing through admission/provider/output validation. Never round the footage itself or claim every model shares edit semantics. **Local checks passed; no paid production generation submitted.** |
 
 Process incident: an intermediate edit introduced an invalid UTF-8 byte and
 temporarily broke local compilation. It was corrected. Preserve UTF-8 and check

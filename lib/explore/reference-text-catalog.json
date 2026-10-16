@@ -7795,7 +7795,7 @@
       ],
       "extractedAt": "2026-10-15T07:11:08.393Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T07:17:33.477Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+      "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at the single final screen-view frame 91 / 3067 ms, confirmed using actual frame presentation timestamps. Existing wording, emojis and timing retained; interface text excluded. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
@@ -7817,7 +7817,7 @@
       ],
       "extractedAt": "2026-10-15T07:11:09.090Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T07:17:33.478Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+      "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at the single final screen-view frame 91 / 3067 ms, confirmed using actual frame presentation timestamps. Existing wording, emojis and timing retained; interface text excluded. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
@@ -7856,7 +7856,7 @@
       ],
       "extractedAt": "2026-10-15T07:11:12.689Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T07:17:33.479Z. Creator captions visually checked against source frames, including final scene changes. OCR duplicates, scenery, watermarks and application interface text excluded; visible emojis restored. Timing boundaries are approximate (250ms sampling)."
+      "notes": "Creator captions rechecked against all 110 decoded frames on 2026-10-16 alongside the performance prompt. Caption disappears at the single final screen-view frame 109 / 3733 ms, confirmed using actual frame presentation timestamps. Existing wording, flushed-face emoji and timing retained. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
@@ -8616,7 +8616,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:07.836Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.861Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 72 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-892b0f65083c8cf03270a7c9",
@@ -8633,7 +8633,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:09.015Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 83 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
@@ -8650,7 +8650,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:12.192Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
@@ -8660,19 +8660,19 @@
       "status": "ready",
       "blocks": [
         {
-          "text": "“I can’t get client” 😫",
+          "text": "“I can’t get client” 🤨",
           "startMs": 0,
-          "endMs": 2400
+          "endMs": 2333
         },
         {
-          "text": "“I can’t get client” 😫\n“Ok...let me show you how” 😎",
-          "startMs": 2400,
+          "text": "“I can’t get client” 🤨\n“Ok...let me show you how” 😎",
+          "startMs": 2333,
           "endMs": 3766
         }
       ],
       "extractedAt": "2026-10-15T09:07:12.860Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 113 decoded frames on 2026-10-16 alongside the performance prompt. Additional yellow caption starts at decoded frame 70 / 2333 ms, correcting prior 2400 ms sampled boundary. Corrected first caption emoji to the visible raised-eyebrow face; wording unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-c8b971f4cea086703e106c92",
@@ -8689,7 +8689,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:16.356Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 84 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
@@ -8706,7 +8706,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:18.674Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 96 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
@@ -8723,7 +8723,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:19.754Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.863Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 104 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
@@ -8740,7 +8740,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:21.303Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
@@ -8757,7 +8757,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:22.410Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 52 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
@@ -8774,7 +8774,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:26.446Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 140 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-725d926d66f44993f3556ee1",
@@ -8791,7 +8791,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:26.778Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-743919c25a4f61942184a81b",
@@ -8808,7 +8808,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:31.575Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 77 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
@@ -8825,7 +8825,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:32.156Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
@@ -8842,7 +8842,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:34.614Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 57 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-3c414e30a7405a8c57cb01de",
@@ -8859,7 +8859,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:36.619Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 82 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-cfa08753a0ca05384e797ad2",
@@ -8876,7 +8876,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:39.762Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 64 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-283fc73921d127b977edd5cd",
@@ -8893,7 +8893,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:41.233Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 90 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
@@ -8910,7 +8910,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:43.959Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 73 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-775bf4f0fc41f253d04663e2",
@@ -8922,17 +8922,17 @@
         {
           "text": "Travel Agents...\nare we cooked??",
           "startMs": 0,
-          "endMs": 1867
+          "endMs": 1733
         },
         {
           "text": "Travel Agents...\nare we cooked??\nlook what I found... 😭😭",
-          "startMs": 1867,
+          "startMs": 1733,
           "endMs": 3033
         }
       ],
       "extractedAt": "2026-10-15T09:07:47.783Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 91 decoded frames on 2026-10-16 alongside the performance prompt. Additional caption starts at decoded frame 52 / 1733 ms, correcting prior 1867 ms sampled boundary. Wording and emojis unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
@@ -8949,7 +8949,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:52.125Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 123 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-f0917e5ac7271343ebe3cded",
@@ -8966,7 +8966,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:53.773Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-caceb6cb43d6e62137cf9892",
@@ -8983,7 +8983,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:55.482Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
@@ -9000,7 +9000,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:58.455Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 115 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
@@ -9017,7 +9017,7 @@
       ],
       "extractedAt": "2026-10-15T09:07:59.098Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 63 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
@@ -9034,7 +9034,7 @@
       ],
       "extractedAt": "2026-10-15T09:08:01.830Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-c709e563045b8e9e473929a9",
@@ -9051,7 +9051,7 @@
       ],
       "extractedAt": "2026-10-15T09:08:02.917Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 122 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-e7147ac8b75176755e120150",
@@ -9068,7 +9068,7 @@
       ],
       "extractedAt": "2026-10-15T09:08:07.492Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 107 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
@@ -9078,14 +9078,14 @@
       "status": "ready",
       "blocks": [
         {
-          "text": "20 years of cooking and I just\nfound this? 🙄😡😭",
+          "text": "20 years of cooking and I just\nfound this? 😳😡😭",
           "startMs": 0,
           "endMs": 6366
         }
       ],
       "extractedAt": "2026-10-15T09:08:08.041Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 191 decoded frames on 2026-10-16 alongside the performance prompt. Corrected first emoji to the visible flushed face after full-resolution inspection. Wording and remaining emojis unchanged. Existing timing remains approximate. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
@@ -9102,7 +9102,7 @@
       ],
       "extractedAt": "2026-10-15T09:08:10.941Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 89 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
@@ -9112,14 +9112,14 @@
       "status": "ready",
       "blocks": [
         {
-          "text": "How TF is this legal\nIn CANVA 😡😤😭",
+          "text": "How TF is this legal\nIn CANVA 👹😨🤯😭",
           "startMs": 0,
-          "endMs": 3800
+          "endMs": 3567
         }
       ],
       "extractedAt": "2026-10-15T09:08:13.352Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-16 alongside the performance prompt. Corrected visible four-emoji sequence after full-resolution inspection. Caption disappears at decoded frame 106 / 3567 ms; corrected prior clip-end timing. Wording unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-def19968a4a8c55c52679591",
@@ -9136,7 +9136,7 @@
       ],
       "extractedAt": "2026-10-15T09:08:15.413Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T09:19:41.864Z. Creator-added captions visually reviewed against sampled source frames; platform UI excluded. Timestamp boundaries are approximate to the sampled source frames."
+      "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-7351dd660bc41910b9f25453",
@@ -9153,7 +9153,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:28.859Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 86 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-0c14ee9d885466ad13cf9e52",
@@ -9170,7 +9170,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:29.322Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.932Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-5be30f0749eec90b5a70bd18",
@@ -9187,7 +9187,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:36.289Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 126 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-2e28e18f894e3ba7de367ced",
@@ -9204,7 +9204,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:39.799Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 167 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-d3a67b533f083d26dd5d46f0",
@@ -9221,7 +9221,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:40.658Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 118 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-607bfccda5e91e0d8731fa94",
@@ -9238,7 +9238,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:45.897Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 132 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-e5870158a2ad1494edc92741",
@@ -9255,7 +9255,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:46.757Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 342 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-717396089efc644caf411c79",
@@ -9272,7 +9272,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:51.728Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 120 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-bee95bd7a34b5d2a72775282",
@@ -9284,12 +9284,12 @@
         {
           "text": "WTF did i just find in my\nLAST YEAR OF UNI 😭",
           "startMs": 0,
-          "endMs": 6100
+          "endMs": 6033
         }
       ],
       "extractedAt": "2026-10-15T12:52:53.570Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 181 decoded frames on 2026-10-16 alongside the performance prompt. Caption disappears at decoded frame 179 / 6033 ms, before the final two caption-free frames; corrected previous full-duration end of 6100 ms. Wording and emoji unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-164ad3e6923d5d0d576114a5",
@@ -9306,7 +9306,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:57.345Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 84 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
@@ -9323,7 +9323,7 @@
       ],
       "extractedAt": "2026-10-15T12:52:58.127Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 75 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
@@ -9340,7 +9340,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:01.012Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-349e499826f7491d91f6b712",
@@ -9357,7 +9357,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:02.859Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 136 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-88b4f433fe4fcb0504aca67f",
@@ -9374,7 +9374,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:04.862Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-c5e3806f418bbe37e864485a",
@@ -9391,7 +9391,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:10.347Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 105 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-61eb29067f56267684b7cfe6",
@@ -9408,7 +9408,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:10.507Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 82 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-095c5d08848977c4a1dda973",
@@ -9419,7 +9419,7 @@
       "blocks": [],
       "extractedAt": "2026-10-15T12:53:15.535Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Visually reviewed source frames: graphic logo formula only, with no remixable caption copy. Do not invent words from logos."
+      "notes": "Creator captions rechecked against all 103 decoded frames on 2026-10-16 alongside the performance prompt. Graphic logo-and-symbol formula only; no remixable caption copy in any decoded frame. Preserved no_text status and empty blocks; no words invented from logos. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-f12c90a72871c0cdaf3503db",
@@ -9430,7 +9430,7 @@
       "blocks": [],
       "extractedAt": "2026-10-15T12:53:15.712Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Visually reviewed source frames: graphic logo formula only, with no remixable caption copy. Do not invent words from logos."
+      "notes": "Creator captions rechecked against all 118 decoded frames on 2026-10-16 alongside the performance prompt. Graphic logo-and-symbol formula only; no remixable caption copy in any decoded frame. Preserved no_text status and empty blocks; no words invented from logos. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-2822e820228a01fb4c4273a1",
@@ -9447,7 +9447,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:19.528Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 118 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-50dd086ef9d1c758d5ae3bb5",
@@ -9464,7 +9464,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:19.735Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 86 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-a9289ca5bd17288593e63eee",
@@ -9481,7 +9481,7 @@
       ],
       "extractedAt": "2026-10-15T12:53:22.502Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 107 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     },
     {
       "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
@@ -9498,7 +9498,7 @@
       ],
       "extractedAt": "2026-10-15T12:59:25.270Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Visually reviewed 2026-10-15T13:00:28.952Z. Creator-added captions visually checked against sampled source frames, including the final frame. Incidental scenery and graphic logos excluded. Source timestamps sampled up to 4fps; boundaries approximate."
+      "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
     }
   ]
 }

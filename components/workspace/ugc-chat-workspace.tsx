@@ -968,6 +968,7 @@ export function ImageGenerationStudioPanel({
         hasResults={imageRows.length > 0}
         loading={(resultsLoading || recoveringJobs) && !isGenerating && generatedAssets.length === 0}
         status={resultsStatus}
+        dismissibleStatusKey={workflowFormat === "slideshow" ? JSON.stringify([user?.uid, activeSubmittedAt, activeJobIds, failedDurableJob?.id]) : undefined}
         statusPlacement="inline"
         scrollToLatestKey={!selectedHistoryImageId && isSubmitting ? activeSubmittedAt : null}
         toolbar={recreateView?.preview ? undefined :

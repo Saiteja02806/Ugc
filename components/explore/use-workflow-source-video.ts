@@ -7,7 +7,7 @@ import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import { workflowSourceVideoError, type WorkflowVideoMode } from "@/lib/explore/workflow-source-video";
 import type { MediaAsset } from "@/lib/media/types";
 
-export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, library = "creative_assets", assetLibrary = library, onSelected }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; library?: "creative_assets" | "content"; assetLibrary?: "creative_assets" | "content"; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void }) {
+export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "generate", minDuration = 0, library = "creative_assets", assetLibrary = library, onSelected, onUploadPreview }: { enabled: boolean; ownerId: string | null; initialMode?: WorkflowVideoMode; minDuration?: number; library?: "creative_assets" | "content"; assetLibrary?: "creative_assets" | "content"; onSelected?: (asset: MediaAsset | null, preview: LocalWorkflowMedia, mode: "upload" | "assets") => void; onUploadPreview?: (preview: LocalWorkflowMedia) => void }) {
   const [mode, setMode] = useState<WorkflowVideoMode>(initialMode);
   const local = useLocalWorkflowMedia("video");
   const [uploaded, setUploaded] = useState<MediaAsset | null>(null);
@@ -35,6 +35,7 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
       let preview: LocalWorkflowMedia | null = null;
       if (!await local.choose(file, { minDuration, maxDuration: library === "content" ? 60 : 120, signal: controller.signal, onRead: value => { preview = value; } })) return false;
       if (!active.current || request !== revision.current) return false;
+      if (preview) onUploadPreview?.(preview);
       // Layout review stays browser-only. Live uploads use the existing owned-media API.
       if (enabled && ownerId) {
         const result = library === "content" ? { asset: await uploadHookVideoDemo(file, ownerId) }
@@ -61,6 +62,7 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
     setSelected(asset); setAssetError(null); onSelected?.(asset, { name: asset.title, url: asset.url, duration: asset.durationSeconds }, "assets"); return true;
   }
   function removeUpload() { revision.current += 1; metadataRequest.current?.abort(); local.remove(); setUploaded(null); setAcceptedPreview(null); setBusy(false); setError(null); }
+  function cancelUpload() { revision.current += 1; metadataRequest.current?.abort(); local.cancelPending(); setBusy(false); setError(null); }
   function clearSelection() { removeUpload(); setSelected(null); setAssetError(null); }
   function clearUploadError() { setError(null); local.clearError(); }
   /** The caller has completed an owner-scoped asset read. Restoration never uploads. */
@@ -74,12 +76,12 @@ export function useWorkflowSourceVideo({ enabled, ownerId, initialMode = "genera
   }
   const uploadError = error ?? local.error;
   // The last accepted clip stays visible while a replacement is validated.
-  // Pending/error state blocks actions without discarding confirmed media.
+  // Pending/error state blocks submission without discarding confirmed media.
   const source = mode === "upload" ? uploaded : mode === "assets" ? selected : null;
   const preview = source ? { name: source.title, url: source.url, duration: source.durationSeconds } : mode === "upload" ? acceptedPreview ?? local.asset : null;
   const ready = mode !== "generate" && !!preview && (mode !== "upload" || (!busy && !uploadError)) && (!enabled || !!source);
   return { ownerId, enabled, mode, setMode, source, preview, ready, busy: mode === "upload" && busy,
-    error: mode === "upload" ? uploadError : mode === "assets" ? assetError : null, chooseUpload, selectAsset, removeUpload, clearSelection, clearUploadError,
+    error: mode === "upload" ? uploadError : mode === "assets" ? assetError : null, chooseUpload, selectAsset, removeUpload, cancelUpload, clearSelection, clearUploadError,
     restoreOwned, ownedForMode: (nextMode: WorkflowVideoMode) => nextMode === "upload" ? uploaded : nextMode === "assets" ? selected : null,
     canKeepUpload: Boolean(uploaded || acceptedPreview),
     dirty: !!local.asset || !!uploaded || !!selected };

@@ -10,7 +10,7 @@ function load(path, imports, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   vm.runInNewContext(code, { exports: exported, require(name) { assert.ok(name in imports, name); return imports[name]; },
-    Response, Request, Map, Date, Number, Error, encodeURIComponent, console, ...globals });
+    Response, Request, Map, Date, Number, Error, encodeURIComponent, console, setTimeout, clearTimeout, ...globals });
   return exported;
 }
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;

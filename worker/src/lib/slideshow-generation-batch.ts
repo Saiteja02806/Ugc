@@ -23,6 +23,9 @@ export function slideshowGenerationSlot(batchKey: string, slideCount: number, ve
   return slot;
 }
 
-export function slideshowSlotPrompt(prompt: string, slot: SlideshowGenerationSlot) {
+export function slideshowSlotPrompt(prompt: string, slot: SlideshowGenerationSlot, preserveReference = false) {
+  if (preserveReference) {
+    return `${prompt}\n\nSlideshow output: version ${slot.versionIndex} of ${slot.versionCount}, slide ${slot.slideIndex} of ${slot.slideCount}. Create only this slide from its designated base reference. Output slide numbers follow the selected reference order, not the full catalogue numbering. Apply shared instructions to every slide, but changes addressed to a particular output slide only to that slide. Do not apply another slide's background, screenshot replacement, heading or layout changes here. Preserve this slide's reference style and tone except for explicit requested changes and small business-specific adaptations. Do not combine multiple slides into one image or contact sheet.`;
+  }
   return `${prompt}\n\nSlideshow output: version ${slot.versionIndex} of ${slot.versionCount}, slide ${slot.slideIndex} of ${slot.slideCount}. Create only this slide, using its selected reference as the layout. Keep the same business, audience and visual direction across this version. Do not combine multiple slides into one image or contact sheet.`;
 }

@@ -126,6 +126,20 @@ test("slideshow pending cards restore prompt and ratio from the same owner/scope
   assert.equal(card.props.prompt, "Original slide instructions"); assert.equal(card.props.aspectRatio, "4:5");
 });
 
+test("slideshow failures have a stable dismissal identity across polling and a new identity for another failed job", () => {
+  const failed = { id: "failed-slide-one", jobType: "image_generation", exploreFormat: "slideshow", status: "failed", error: { message: "The image provider's credit balance is too low.", retryable: false } };
+  const h = harness("slideshow", { completedJob: failed });
+  const before = h.render().output.props;
+  assert.equal(before.status.tone, "error");
+  assert.ok(before.dismissibleStatusKey);
+  failed.updatedAt = "2026-10-16T08:00:00Z";
+  assert.equal(h.render().output.props.dismissibleStatusKey, before.dismissibleStatusKey, "a status poll must not restart the notice");
+  failed.id = "failed-slide-two";
+  assert.notEqual(h.render().output.props.dismissibleStatusKey, before.dismissibleStatusKey, "a distinct failed job must announce its error");
+  assert.equal(failed.status, "failed", "dismissal identity never changes durable job status");
+  assert.equal(harness("studio").output.props.dismissibleStatusKey, undefined);
+});
+
 test("read-only earlier image recovery merges scoped job hints and retains newer metadata", async () => {
   const oldJob = "00000000-0000-4000-8000-000000000002", newJob = "00000000-0000-4000-8000-000000000003";
   const storageKey = "ugc-ai-studio.latest-image-job.v2.test-owner.slideshow", newMetadataKey = `ugc-ai-studio.image-job.v2.test-owner.slideshow.${newJob}`;
@@ -210,7 +224,7 @@ for (const format of ["hook", "wall_text"]) {
       .find(node => node?.type === "div" && node.props.children[1]?.type === "output").props.children[1].props.children[1].props.children;
     assert.equal(durationText(), "Reading…");
     h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 7.54);
-    assert.equal(durationText(), "7.5 sec");
+    assert.equal(durationText(), "8 sec");
     assert.equal(h.render().composer.props.estimatedCredits, 32);
     await h.render().composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.durationSeconds, 8);
@@ -229,7 +243,7 @@ for (const format of ["hook", "wall_text"]) {
     first.onStyleVideoDurationChange(first.styleVideo.url, 4);
     for (const duration of [0, -1, Infinity, NaN]) controls.onStyleVideoDurationChange(next.url, duration);
     assert.match(h.render().composer.props.settingsSummary, /9.3s clip/);
-    assert.equal(h.render().composer.props.estimatedCredits, 40);
+    assert.equal(h.render().composer.props.estimatedCredits, 36);
     h.clearGallery();
     controls.onStyleVideoDurationChange(next.url, 8);
     assert.ok(h.render().composer.props.settings.props.children.some(node => node?.type === "WorkflowDurationControl"));
@@ -357,7 +371,7 @@ for (const format of ["hook", "wall_text"]) {
     const composer = h.render().composer;
     assert.equal(composer.props.referenceControls.props.imageSelection.asset.id, "identity");
     assert.equal(composer.props.referenceControls.props.videoSelection.asset.id, "source");
-    assert.equal(composer.props.estimatedCredits, 28);
+    assert.equal(composer.props.estimatedCredits, 24);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.referenceImageUrls[0], references.image.asset.url);
     assert.equal(h.requests[0].body.referenceVideoUrl, references.video.asset.url);

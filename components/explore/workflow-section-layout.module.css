@@ -59,6 +59,7 @@
 .clipPreview[hidden] { display: none; }
 .stage[data-focused-workflow] .sectionHeading { border-bottom: 0; padding-block: 16px 12px; }
 .stage[data-focused-workflow] .controls [data-workflow-section-content] { padding-top: 0; }
+.stage[data-editing="true"] .controls [data-workflow-action] { border-top: 0; padding-block: 10px; }
 .stage[data-focused-workflow] .references { border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); padding-top: 16px; margin-bottom: 0; }
 .stage[data-focused-workflow] .references { gap: 8px; padding-block: 10px; }
 .stage[data-focused-workflow] [aria-label="Hook composer"] { gap: 10px; }

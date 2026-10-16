@@ -45,7 +45,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true, allowDemoAudio: true,
     controlsTarget: { name: "controls" }, actionsTarget: { name: "actions" }, resultsTarget: { name: "results" },
     editActive: true, editControlsTarget: { name: "edit-controls" }, editActionsTarget: { name: "edit-actions" }, editResultsTarget: { name: "edit-results" },
-    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onEditDone() {}, onCreate() {}, onContinue() { props.prepareRequest = (props.prepareRequest ?? 0) + 1; props.scheduleActive = true; },
+    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onAdd() {}, onEditDone() {}, onCreate() {}, onContinue() { props.prepareRequest = (props.prepareRequest ?? 0) + 1; props.scheduleActive = true; },
     onSelectionChange: present => selectionReports.push(present) };
   function queueEffect(callback, deps, layout = false) {
     const i = cursor++, previous = slots[i];
@@ -83,8 +83,12 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     chooseUpload(file) {
       sourceState.busy = true; sourceState.error = null;
       const callback = sourceInput.onSelected;
+      sourceState.preview = { name: file.name, url: "blob:pending-demo", duration: 8 };
+      sourceInput.onUploadPreview?.(sourceState.preview);
       return new Promise(resolve => { pendingVideo = { file, callback, resolve }; });
     },
+    cancelUpload() { sourceState.busy = false; sourceState.error = null; },
+    removeUpload() { sourceState.busy = false; sourceState.uploaded = null; sourceState.preview = null; },
     clearSelection() { sourceState.selected = null; sourceState.uploaded = null; sourceState.preview = null; sourceState.error = null; sourceState.busy = false; },
     clearUploadError() { sourceState.error = null; },
   };
@@ -215,6 +219,51 @@ test("Hook overview exposes replacement controls but has no separate demo audio 
   assert.equal(legacy.draftInputs.at(-1).content.backgroundAssetId, null, "Migrating an older opening-scoped draft must not add a demo-only track");
 });
 
+test("demo Edit and Change stay available while uploading, and pending trim survives confirmation", async () => {
+  const h = harness(); h.render({ editActive: false, editPreviewActive: true });
+  const pending = h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "slow.mp4" }); h.render();
+  assert.equal(h.button("Edit demo video").props.disabled, false);
+  assert.equal(h.button("Change").props.disabled, false);
+  assert.equal(h.button("Schedule video").props.disabled, true);
+  h.render({ editActive: true });
+  assert.equal(h.button("Save edits").props.disabled, true);
+  assert.equal(h.button("Back to videos").props.disabled, false);
+  const editor = h.find(n => n.type === "portal" && n.props.target === h.props.editControlsTarget);
+  assert.equal(nodes(editor).find(n => n.type === "fieldset").props.disabled, false);
+  h.edit("Demo trim start", 1.5); h.edit("Demo trim end", 6);
+  const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
+  fields.props.onChange({ ...fields.props.editing, text: { value: "Edited during upload", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 4500 } }); h.render();
+  assert.equal(h.storage.get(draftKey()), undefined, "Unconfirmed footage must not overwrite a recoverable accepted draft");
+  h.completeVideoUpload(asset(2)); await pending; h.render();
+  const saved = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.equal(saved.demoId, id(2)); assert.equal(saved.editing.trimStartMs, 1500); assert.equal(saved.editing.trimEndMs, 6000);
+  assert.equal(saved.editing.text.value, "Edited during upload");
+  assert.equal(h.button("Save edits").props.disabled, false);
+  assert.doesNotMatch(text(h.render()), /Changes appear in the preview immediately\. Save edits to keep them\./);
+});
+
+test("a failed upload discards only its transient edits and restores the accepted demo", async () => {
+  const stored = draft(2), storage = new Map([[draftKey(), JSON.stringify(stored)]]);
+  const h = harness({ storage }); h.render();
+  h.input("Upload or replace demo video").props.onChange({ currentTarget: { files: [{ name: "replacement.mp4" }], value: "" } }); h.render();
+  h.edit("Demo trim start", 2); h.render();
+  assert.deepEqual(JSON.parse(storage.get(draftKey())), stored);
+  h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
+  assert.equal(h.input("Demo trim start").props.value, .5);
+  assert.deepEqual(JSON.parse(storage.get(draftKey())), stored);
+  assert.equal(h.find(n => n.type === "video" && n.props["aria-label"] === "Demo video being edited").props.src, asset(2).url);
+});
+
+test("a replacement superseding another pending upload still restores the original Creative Assets selection on failure", async () => {
+  const h = harness(); h.render(); h.select(asset(3));
+  const original = JSON.parse(h.storage.get(draftKey()));
+  const upload = name => h.input("Upload or replace demo video").props.onChange({ currentTarget: { files: [{ name }], value: "" } });
+  upload("first.mp4"); h.render(); upload("second.mp4"); h.render();
+  h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
+  assert.equal(h.draftInputs.at(-1).sourceAssetId, id(3));
+  assert.deepEqual(JSON.parse(h.storage.get(draftKey())), original);
+});
+
 test("Hook demo editor has only trim/text tools while audio and legacy framing recovery stay in Demo", () => {
   const stored = draft(2);
   const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]) });
@@ -244,7 +293,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "creative_assets");
     library.props.onOpenChange(false); h.render(); assert.equal(h.dirty, 0, "Cancelling the chooser does not change a draft");
     const pending = sourceActions().props.onUpload({ name: "demo.mp4" }); h.render();
-    assert.equal(sourceActions().props.disabled, true);
+    assert.equal(h.button("Edit demo video").props.disabled, false, "A pending upload must not trap editing");
     h.completeVideoUpload(asset(2)); await pending; h.render();
     assert.equal(h.find(n => n.type === "video" && n.props.src === asset(2).url).props.src, asset(2).url);
     assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).demoId, id(2));
@@ -401,9 +450,9 @@ for (const format of ["hook", "wall_text"]) {
     assert.match(text(h.find(n => n.props?.role === "alert")), /previous demo is kept/);
     assert.equal(h.uploads.length, 0); void pending;
   });
-  test(`${format}: opening replacement blocks Demo actions without turning live upload into preview`, () => {
+  test(`${format}: opening replacement blocks scheduling but leaves independent Demo source controls available`, () => {
     const h = harness({ format }); h.props.pendingSource = true; const tree = h.render();
-    assert.ok(h.find(n => n.type === "fieldset" && n.props.disabled === true));
+    assert.equal(h.find(n => n.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     assert.equal(nodes(tree).some(n => n.type === "DemoSaveRun"), false);
   });
@@ -457,7 +506,7 @@ for (const format of ["hook", "wall_text"]) {
     const h = harness({ format }); h.render();
     const event = { currentTarget: { files: [{ name: "demo.mp4" }], value: "demo.mp4" } };
     h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload(event.currentTarget.files[0]); h.render();
-    assert.equal(h.find(node => node.type === "fieldset").props.disabled, true);
+    assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     h.render({ videoId: id(1), opening: output(1), openingRevision: 1 });
     h.render({ videoId: id(3), opening: null, openingRevision: 2 });
     h.completeVideoUpload(); await Promise.resolve(); h.render();

@@ -47,6 +47,7 @@
 .emptyControls .emptyIcon { width: 44px; height: 44px; border-radius: 10px; }
 .classicWorkspace:not([data-format="slideshow"]) .workflowControls[data-section="edit"] { align-self: start; }
 .clipStage { container: clip-editor / inline-size; gap: 20px; }
+.clipStage[data-editing="true"] { gap: 12px; }
 .clipStageHeader { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--background); }
 .clipStageHeader button { min-height: 40px; }
 .clipStageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -96,7 +97,7 @@
 .clipTextStyleFields > label:first-child { grid-column: 1 / -1; }
 .clipTextStyleFields > div { grid-column: 1 / -1; }
 .clipTools:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.clipActions { flex: none; border-top: 1px solid var(--border); padding-top: 12px; }
+.clipActions { flex: none; }
 .clipActionContent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
 .clipActionContent > p { flex: 1; min-width: 220px; max-width: 560px; margin: 0; }
 .clipActionButtons { display: flex; flex: none; flex-wrap: wrap; flex-direction: row-reverse; gap: 8px; margin-left: auto; order: 2; }

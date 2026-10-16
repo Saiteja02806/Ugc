@@ -156,6 +156,24 @@ test("a ten-second MP4 is sent intact with its image, and false source-duration 
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("decimal 3.7-second Hook and 6.7-second Wall edits send source bytes and both instructions without a forced rounded output duration", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const seconds of [3.7, 6.7]) {
+      const bytes = clip(seconds);
+      globalThis.fetch = async url => new Response(url.endsWith('.mp4') ? bytes : Buffer.from('appearance'), { headers: { 'Content-Type': url.endsWith('.mp4') ? 'video/mp4' : 'image/png' } });
+      const prompt = 'Reference instruction: preserve gestures.\n\nUser instruction: warmer lighting.';
+      await generateGeminiOmniVideoBuffer({ ...params(prompt), durationSeconds: Math.ceil(seconds), referenceVideoDurationSeconds: seconds,
+        referenceVideoMode: 'edit', referenceVideoUrl: 'https://owned.test/source.mp4', referenceImageUrl: 'https://owned.test/identity.png' });
+      const request = requests.at(-1);
+      assert.deepEqual(Buffer.from(request.input[0].data, 'base64'), bytes);
+      assert.ok(request.input.at(-1).text.endsWith(prompt));
+      assert.equal(request.generation_config.video_config.task, 'edit');
+      assert.equal(request.response_format.duration, undefined);
+    }
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("the current API limit is accepted exactly and an excess token prevents a paid submission", async () => {
   tokenCount = modelLimit;
   await generateGeminiOmniVideoBuffer(params("Exactly at the limit."));

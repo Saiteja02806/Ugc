@@ -468,12 +468,12 @@ export function VideoGenerationStudioPanel({
   const sourceDuration = uploadedReferenceVideo?.asset.durationSeconds
     ?? (galleryVideoMetadata?.url === galleryVideoReference?.url ? galleryVideoMetadata?.duration : null)
     ?? galleryVideoReference?.duration;
-  const sourceDurationLabel = sourceDuration ? `${Number(sourceDuration.toFixed(1))} sec` : "Reading…";
+  const sourceDurationLabel = sourceDuration ? `${Math.max(3, Math.round(sourceDuration))} sec` : "Reading…";
   function reportGalleryVideoDuration(url: string, duration: number) {
     if (url !== activeGalleryVideoUrl.current || !Number.isFinite(duration) || duration <= 0) return;
     setGalleryVideoMetadata(previous => previous?.url === url && previous.duration === duration ? previous : { url, duration });
   }
-  const billedDuration = hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.ceil(sourceDuration)) : durationSeconds;
+  const billedDuration = hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.round(sourceDuration)) : durationSeconds;
   const creditsPerVideo = billedDuration * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
   const hasInsufficientCredits =
@@ -958,7 +958,7 @@ export function VideoGenerationStudioPanel({
           referenceImageUrls: referenceImages.length ? referenceImages.map((image) => image.asset.url) : activeReferenceImageUrl ? [activeReferenceImageUrl] : [],
           referenceAudioUrls: audioReferences.map((audio) => audio.asset.url),
           referenceAudioAssetIds: audioReferences.map((audio) => audio.asset.id),
-          durationSeconds: hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.ceil(sourceDuration)) : durationSeconds,
+          durationSeconds: hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.round(sourceDuration)) : durationSeconds,
           model,
           prompt: trimmedPrompt,
           quantity,
@@ -1183,7 +1183,7 @@ export function VideoGenerationStudioPanel({
                 setResolution(value as AIStudioVideoResolution);
               }}
             />);
-  const durationSetting = hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output></div> : workflow ? (
+  const durationSetting = hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" title="Auto-selected to the nearest second, with a three-second minimum. Omni editing preserves the original source timeline; this selection sets the credit estimate." className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output><small className={creation.referenceTimingHint}>{sourceDuration ? `${Number(sourceDuration.toFixed(1))}s reference · source timing kept` : "Reading reference length…"}</small></div> : workflow ? (
     <WorkflowDurationControl
       key={model}
       ariaLabel="Video duration"
@@ -1346,10 +1346,10 @@ export function VideoGenerationStudioPanel({
         actionsTarget={workflow?.actionsTarget}
         promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; the image supplies appearance." : workflow.format === "wall_text" ? "Describe the background; add your text in Edit." : "Scene, action and spoken words in quotes." : undefined}
         promptLabel={workflow ? "Your instructions" : undefined}
-        promptSupplement={suggestedReferencePrompt && gallerySelectionKey ? <section aria-label="Reference prompt" className="mb-3 space-y-2 rounded-lg border border-border p-3">
+        promptSupplement={suggestedReferencePrompt && gallerySelectionKey ? <section aria-label="Reference prompt" className={cn(creation.referencePromptSection, "mb-3 space-y-2 rounded-lg border border-border p-3")}>
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-medium">Reference prompt</span>
-            <button type="button" disabled={isGenerating || Boolean(pendingSubmission)} className="rounded px-2 py-1 text-xs underline focus-visible:outline-2 focus-visible:outline-focus" onClick={() => {
+            <button type="button" disabled={isGenerating || Boolean(pendingSubmission)} className={cn(creation.referencePromptAction, "rounded underline focus-visible:outline-2 focus-visible:outline-focus")} onClick={() => {
               submissionKeyRef.current = null;
               setActionError(null);
               setReferenceRecoveryOwner(null);

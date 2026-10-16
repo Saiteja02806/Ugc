@@ -3,7 +3,7 @@
 import { ArrowLeft, Check, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,12 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
   const [count, setCount] = useState<CharacterImageCount>(1);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [librarySelection, setLibrarySelection] = useState<string[]>([]);
-  const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null);
+  const [workspaceNotice, setWorkspaceNotice] = useState<{ message: string } | null>(null);
+  useEffect(() => {
+    if (!workspaceNotice) return;
+    const timer = window.setTimeout(() => setWorkspaceNotice(null), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [workspaceNotice]);
   const [imageReference, setImageReference] = useState<AIStudioReferenceMedia | null>(null);
   const [referenceError, setReferenceError] = useState<string | null>(null);
   const [referenceControlVersion, setReferenceControlVersion] = useState(0);
@@ -118,7 +123,7 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
     if (referencesLocked) return;
     const ids = references.map((reference) => reference.id);
     if (!ids.includes(id) && ids.length >= MAX_CHARACTER_REFERENCES) {
-      setWorkspaceNotice(`Use up to ${MAX_CHARACTER_REFERENCES} reference images at a time.`);
+      setWorkspaceNotice({ message: `Use up to ${MAX_CHARACTER_REFERENCES} reference images at a time.` });
       return;
     }
     resetImageReference();
@@ -173,7 +178,7 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
               return <article key={receipt.jobId} className={styles.candidate} data-selected={active} aria-label={`Influencer candidate ${index + 1}`}>
                 {job?.isTerminal ? <button type="button" className={styles.removeImage} aria-label={`Remove image ${index + 1} from workspace`} title="Remove from workspace. Kept in My influencers and History." onClick={() => {
                   builder.dismissImage(receipt.jobId);
-                  setWorkspaceNotice(output ? "Image removed from this workspace. It is still saved in My influencers and History." : "Result removed from this workspace. Your generation history is unchanged.");
+                  setWorkspaceNotice({ message: output ? "Image removed from this workspace. It is still saved in My influencers and History." : "Result removed from this workspace. Your generation history is unchanged." });
                 }}><X className="size-4" aria-hidden="true" /></button> : null}
                 <button type="button" className={styles.portrait} aria-label={`Select influencer image ${index + 1}`} aria-pressed={active}
                   disabled={!output || referencesLocked} onClick={() => output && toggleReference(output.mediaAssetId)}>
@@ -215,7 +220,12 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
       </div>
 
       <div className={styles.composerArea}>
-        {workspaceNotice ? <div className={styles.notice} role="status">{workspaceNotice}</div> : null}
+        {workspaceNotice ? <div className={`${styles.notice} ${styles.dismissibleNotice}`}>
+          <span role="status">{workspaceNotice.message}</span>
+          <button type="button" className={styles.noticeClose} aria-label="Dismiss notification" onClick={() => setWorkspaceNotice(null)}>
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div> : null}
         {unresolvedReferences ? <div className={styles.notice} role="status">{builder.characters.isPending ? "Loading your saved references…" : "Some saved references could not be loaded. Choose them again in My influencers, or clear references before generating."}</div> : null}
         {selectedReferenceIds.length ? <div className={styles.referenceSummary}><span>{selectedReferenceIds.length} reference{selectedReferenceIds.length === 1 ? "" : "s"} in your prompt</span><Button type="button" variant="ghost" size="sm" disabled={referencesLocked} onClick={() => builder.chooseCharacters([])}>Clear references</Button></div> : null}
         {builder.jobs.isError ? <div className={styles.notice} role="alert">{builder.jobs.error.message} <Button variant="ghost" size="sm" onClick={() => void builder.jobs.refetch()}>Check again</Button></div> : null}

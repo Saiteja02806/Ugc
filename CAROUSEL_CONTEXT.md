@@ -1,5 +1,22 @@
 # Carousel System Context
 
+## 2026-10-16 Explore slideshow reference preservation (local)
+
+- Follow-up user clarification: new Explore slideshow prompts explicitly require
+  close reproduction of the designated reference with only requested changes,
+  without inspiration/mood-board reinterpretation. Screen replacement retains
+  device geometry and surrounding scene. Exact UI compositing remains separate
+  unimplemented work; this prompt policy alone is not a pixel-fidelity guarantee.
+- Explore's image-generation reference contract v3 preserves the selected base
+  slide's style/tone, limits business adaptation to relevant details and lets
+  explicit user changes override those defaults. Attachments and per-output
+  positions remain explicit; existing v2/legacy queued prompts stay unchanged.
+- This is the manual Explore slideshow path, not automatic Carousel planning,
+  sourcing, matching or rendering. Deploy the compatible image worker before
+  web admission of v3. Prompt regressions are local evidence; actual generated
+  output and production acceptance are pending. Details are in
+  `docs/slideshow-reference-preservation-2026-10-16.md` and `EXPLORE_CONTEXT.md`.
+
 ## 2026-10-16 Restore one warm editing/finishing instance
 
 - The user chose faster first-request latency after the idle-cost explanation.
@@ -60,6 +77,18 @@
   processing exposes a conflict. Scale-to-zero is configured; idle behavior
   has not been observed while the current backlog remains active.
 
+## 2026-10-16 TikTok promotional publishing preference (local)
+
+- New slideshow/TikTok targets default own-brand promotional disclosure off.
+  Settings → Preferences → Publishing defaults → TikTok defaults exposes
+  **Label posts as promotional content**. New targets use the saved value;
+  enabling AI disclosure never enables promotional disclosure.
+- Existing target settings, published posts and queued schedules are preserved.
+  This supersedes the old background own-brand-on default, without changing
+  slideshow generation, rendering, content categories or paid-partnership flags.
+- Release requires the web changes and
+  `20261015190906_tiktok_promotional_content_preference.sql`. Local tests do not
+  constitute authenticated production acceptance.
 
 ## 2026-10-15 Helpful-tip language acceptance
 

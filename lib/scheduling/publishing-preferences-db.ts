@@ -2,13 +2,14 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { DEFAULT_PUBLISHING_PREFERENCES, parsePublishingPreferences, type PublishingPreferences, type PublishingPreferencesUpdate } from "./publishing-preferences";
 
-const preferenceColumns = "contains_synthetic_media,tiktok_privacy_level,tiktok_allow_comments,youtube_privacy_status,youtube_made_for_kids,youtube_notify_subscribers";
+const preferenceColumns = "contains_synthetic_media,tiktok_privacy_level,tiktok_allow_comments,tiktok_brand_organic,youtube_privacy_status,youtube_made_for_kids,youtube_notify_subscribers";
 
 function readPreferences(data: Record<string, unknown>): PublishingPreferences {
   return parsePublishingPreferences({
     containsSyntheticMedia: data.contains_synthetic_media,
     tiktokPrivacyLevel: data.tiktok_privacy_level,
     tiktokAllowComments: data.tiktok_allow_comments,
+    tiktokBrandOrganic: data.tiktok_brand_organic,
     youtubePrivacyStatus: data.youtube_privacy_status,
     youtubeMadeForKids: data.youtube_made_for_kids,
     youtubeNotifySubscribers: data.youtube_notify_subscribers,
@@ -37,6 +38,7 @@ export async function savePublishingPreferences(userId: string, preferences: Pub
     ...(preferences.containsSyntheticMedia !== undefined ? { contains_synthetic_media: preferences.containsSyntheticMedia } : {}),
     ...(preferences.tiktokPrivacyLevel !== undefined ? { tiktok_privacy_level: preferences.tiktokPrivacyLevel } : {}),
     ...(preferences.tiktokAllowComments !== undefined ? { tiktok_allow_comments: preferences.tiktokAllowComments } : {}),
+    ...(preferences.tiktokBrandOrganic !== undefined ? { tiktok_brand_organic: preferences.tiktokBrandOrganic } : {}),
     ...(preferences.youtubePrivacyStatus !== undefined ? { youtube_privacy_status: preferences.youtubePrivacyStatus } : {}),
     ...(preferences.youtubeMadeForKids !== undefined ? { youtube_made_for_kids: preferences.youtubeMadeForKids } : {}),
     ...(preferences.youtubeNotifySubscribers !== undefined ? { youtube_notify_subscribers: preferences.youtubeNotifySubscribers } : {}),

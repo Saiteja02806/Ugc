@@ -193,9 +193,63 @@ test("layout-only and attachment-free recreation requests have explicit roles wh
   assert.equal(outputOptions.at(-1).preserveComposition, false);
 });
 
+test("reference-preserving slideshow requests reach every slideshow provider with scoped instructions and unchanged image ordering", async () => {
+  const prompt = 'Keep the casual tone. On slide 1 change only the heading to "Start a SaaS". On slide 2 put my first attached screenshot inside the laptop.';
+  for (const model of ["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"]) {
+    for (const slideIndex of [1, 2]) {
+      const imageJob = job(model, prompt);
+      const urls = [imageJob.input_json.referenceImageUrl, "https://media.example.test/laptop.png", "https://media.example.test/actual-screen.png"];
+      Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: urls,
+        slideshowReferenceContract: { version: 3, styleReferenceIndices: slideIndex === 1 ? [1, 2] : [2, 1], attachmentReferenceIndices: [3] },
+        slideshowGeneration: { version: 1, batchKey: "preservation", slideIndex, slideCount: 2, versionIndex: 1, versionCount: 1 },
+        slideshowBusinessContext: { businessProfileId: "profile", businessProfileVersion: 1, businessContext: { businessName: "UGC Pilot", productSummary: "Content for founders", category: null, mainProblem: null, mainPromise: null, brandTone: "Formal and professional", targetAudience: ["founders"], valueProps: [], painPoints: [], differentiators: [], visualKeywords: ["Corporate studio"], ctaIdeas: ["Buy now"], claimsToAvoid: [] } },
+      });
+      await runGenerateImageJob(imageJob, context);
+      const result = received.at(-1);
+      assert.deepEqual(result.reference, urls);
+      assert.match(result.prompt, new RegExp(`Image ${slideIndex} is the selected slide and the base for this output`));
+      assert.ok(result.prompt.includes(prompt), "exact user instructions must survive");
+      assert.match(result.prompt, /explicit user-requested changes take priority/);
+      assert.match(result.prompt, /unless the user explicitly asks to change them/);
+      assert.match(result.prompt, /brandTone, visualKeywords and ctaIdeas are supporting context/);
+      assert.match(result.prompt, /Do not turn casual or educational content into a polished advertisement/);
+      assert.match(result.prompt, /attachment 1 = image 3/);
+      assert.match(result.prompt, /do not invent a different dashboard/);
+      assert.match(result.prompt, /Do not apply another slide's background, screenshot replacement, heading or layout changes here/);
+      assert.match(result.prompt, /typography, placement, scale, line breaks and text-box shapes/);
+      assert.match(result.prompt, /This is a close edit of the designated base slide/);
+      assert.match(result.prompt, /Reproduce that slide as closely as possible/);
+      assert.match(result.prompt, /Keep every unrequested visual detail unchanged/);
+      assert.match(result.prompt, /replace only that background/);
+      assert.match(result.prompt, /Retain the base device, screen boundaries, perspective and surrounding scene/);
+      assert.match(result.prompt, /Do not extend a screen replacement to another output slide/);
+      assert.doesNotMatch(result.prompt, /inspiration|Selected slideshow style references/i);
+      assert.doesNotMatch(result.prompt, /Take inspiration|preferably near the middle|Use its product, audience, tone and visual direction/);
+      assert.match(result.prompt, new RegExp(`slide ${slideIndex} of 2`));
+      const newFingerprint = fingerprints.at(-1);
+      imageJob.input_json.slideshowReferenceContract.version = 2;
+      await runGenerateImageJob(imageJob, context);
+      assert.notEqual(fingerprints.at(-1), newFingerprint, "new prompt policy must not share a paid-operation identity with legacy prompts");
+      assert.match(received.at(-1).prompt, /Take inspiration/);
+    }
+  }
+});
+
+test("an explicit redesign request remains intact and regeneration keeps the edited image as the base", async () => {
+  const prompt = "Change the style to an illustration, the tone to playful and the background to blue. Replace the headline with Hello.";
+  const imageJob = job("gpt_image_2_5_flare", prompt);
+  Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrls: [imageJob.input_json.referenceImageUrl, "https://media.example.test/edited-slide.png"],
+    slideshowReferenceContract: { version: 3, styleReferenceIndices: [1], attachmentReferenceIndices: [], regenerationReferenceIndex: 2 } });
+  await runGenerateImageJob(imageJob, context);
+  assert.ok(received.at(-1).prompt.endsWith(prompt));
+  assert.match(received.at(-1).prompt, /If the user explicitly requests a new style, tone, background or layout, make that change/);
+  assert.match(received.at(-1).prompt, /Image 2 is the existing slide being edited and is the main edit target/);
+  assert.match(received.at(-1).prompt, /existing slide identified below remains the base/);
+});
+
 test("invalid or oversized versioned contracts fail before reserving or contacting a provider", async () => {
   const before = received.length, reserved = fingerprints.length;
-  for (const roles of [{ version: 3, styleReferenceIndices: [1], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [2], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [], regenerationReferenceIndex: "1" }]) {
+  for (const roles of [{ version: 4, styleReferenceIndices: [1], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [2], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [], regenerationReferenceIndex: "1" }]) {
     const imageJob = job("gpt_image_2_5", "Use the reference");
     Object.assign(imageJob.input_json, { exploreFormat: "slideshow", slideshowReferenceContract: roles });
     await assert.rejects(runGenerateImageJob(imageJob, context), /references/);

@@ -248,7 +248,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     }
   }
   const isFormatVideoReference = Boolean(body?.exploreFormat && referenceVideoUrl && model === "google_omni");
-  const durationSeconds = referenceVideoMode ? Math.max(3, Math.ceil(referenceVideoDurationSeconds ?? 3))
+  const durationSeconds = referenceVideoMode ? Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
     : isFormatVideoReference ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
   if (!referenceVideoMode && !isFormatVideoReference && body?.durationSeconds !== undefined && (

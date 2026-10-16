@@ -1,5 +1,11 @@
 # AI character builder
 
+Latest local change, October 16, 2026: transient workspace notices now have an
+accessible × and dismiss after three seconds, restarting on repeated actions.
+The generation prompt path remains unchanged. See
+[the notice fix and prompt audit](influencer-notice-and-prompt-audit-2026-10-16.md)
+for current provider settings, cropping behavior, verification and release status.
+
 Latest local change, October 12, 2026: users can attach, paste or drop a JPG,
 PNG or WebP image into the character composer and describe the style, look or
 setting they want. The attachment is a direct image reference for generation;

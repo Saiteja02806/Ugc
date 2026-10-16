@@ -206,6 +206,8 @@ export function HookVideoScheduleDrawer({
       ...(connection.platform === "tiktok" ? {
         privacyLevel: publishingPreferences.tiktokPrivacyLevel,
         allowComment: publishingPreferences.tiktokAllowComments,
+        brandOrganic: publishingPreferences.tiktokBrandOrganic,
+        commercialContentDisclosureEnabled: publishingPreferences.tiktokBrandOrganic,
       } : {}),
       ...(connection.platform === "youtube" ? {
         privacyStatus: publishingPreferences.youtubePrivacyStatus,
@@ -220,7 +222,7 @@ export function HookVideoScheduleDrawer({
       } : {}),
       }];
     }),
-  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, settingsOverrides, tiktokCapabilities]);
+  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.tiktokBrandOrganic, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, settingsOverrides, tiktokCapabilities]);
   const usesPublishingPreferences = selectedConnections.some(
     (connection) => connection.platform !== "instagram",
   );

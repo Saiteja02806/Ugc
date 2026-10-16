@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,6 +33,7 @@ export function AiStudioResults({
   hasResults,
   loading = false,
   status,
+  dismissibleStatusKey,
   statusPlacement = "toolbar",
   scrollToLatestKey,
   toolbar,
@@ -49,12 +50,23 @@ export function AiStudioResults({
   hasResults: boolean;
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
+  /** Opt in for transient error badges; use a stable key for each generation attempt. */
+  dismissibleStatusKey?: string | null;
   statusPlacement?: "toolbar" | "inline";
   scrollToLatestKey?: string | null;
   toolbar?: ReactNode;
   portalTarget?: HTMLElement | null;
 }) {
   const resultsRef = useRef<HTMLElement>(null);
+  const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
+  const noticeKey = dismissibleStatusKey && status?.tone === "error"
+    ? JSON.stringify([dismissibleStatusKey, status.label]) : null;
+  const noticeDismissed = noticeKey !== null && dismissedNoticeKey === noticeKey;
+  useEffect(() => {
+    if (!noticeKey || noticeDismissed) return;
+    const timer = window.setTimeout(() => setDismissedNoticeKey(noticeKey), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [noticeKey, noticeDismissed]);
   useEffect(() => {
     if (!scrollToLatestKey) return;
     const frame = window.requestAnimationFrame(() => {
@@ -66,6 +78,7 @@ export function AiStudioResults({
   const showFailure = status?.tone === "error" && Boolean(failure) && !loading;
   const showStatusBadge =
     Boolean(status) &&
+    !noticeDismissed &&
     !showFailure &&
     !(status?.tone === "progress" && statusPlacement === "inline" && hasResults) &&
     !(status?.tone === "progress" && !loading && !hasResults);
@@ -90,7 +103,7 @@ export function AiStudioResults({
           )}
         >
           <Badge
-            className="max-w-full whitespace-normal text-left leading-relaxed"
+            className={cn("max-w-full whitespace-normal text-left leading-relaxed", noticeKey && "h-auto items-center gap-2 py-1 pl-2 pr-1")}
             variant={status.tone === "error" ? "destructive" : "secondary"}
             role={status.tone === "error" ? "alert" : "status"}
             aria-live="polite"
@@ -104,7 +117,12 @@ export function AiStudioResults({
             ) : status.tone === "error" ? (
               <AlertCircle data-icon="inline-start" aria-hidden="true" />
             ) : null}
-            {status.label}
+            {noticeKey ? <span className="min-w-0 break-words">{status.label}</span> : status.label}
+            {noticeKey ? <button type="button" aria-label="Dismiss generation error" title="Dismiss generation error"
+              className="grid size-7 shrink-0 place-items-center rounded-full hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+              onClick={() => setDismissedNoticeKey(noticeKey)}>
+              <X className="size-3.5" aria-hidden="true" />
+            </button> : null}
           </Badge>
         </div>
       ) : null}

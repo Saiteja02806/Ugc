@@ -6,6 +6,7 @@ import type {
 } from "./background-jobs.ts";
 import { remixSourceFromJob, type RemixTextSource } from "../explore/remix-source.ts";
 import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "../../worker/src/lib/slideshow-generation-batch.ts";
+import { isProviderBalanceFailure as isKnownProviderBalanceFailure } from "../../worker/src/lib/provider-balance.ts";
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "audio_generation",
@@ -171,7 +172,7 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
               : errorCode,
             message: hideWallTextFailureDetails
               ? "We’re handling content preparation automatically. No action is needed from you."
-              : getSafeJobErrorMessage(errorCode, job.errorMessage, retryable),
+              : getSafeJobErrorMessage(errorCode, job.errorMessage, retryable, job.jobType),
             retryable,
           }
         : null,
@@ -203,11 +204,15 @@ function getSafeJobErrorMessage(
   errorCode: string | null,
   errorMessage: string | null,
   retryable: boolean,
+  jobType: BackgroundJobType,
 ) {
   if (
     errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
     isProviderBalanceFailure(errorMessage)
   ) {
+    if (jobType === "generate_image" || jobType === "image_generation") {
+      return "The image provider's credit balance is too low to create these images. Contact support before starting a new generation.";
+    }
     return "The video provider's credit balance is too low to create this video. Contact support before starting a new generation.";
   }
 
@@ -248,6 +253,7 @@ function getPublicJobErrorCode(job: BackgroundJobRecord) {
   // OpenAI image submissions use this durable SDK error code. Keep historical
   // rejections understandable without exposing raw provider diagnostics.
   if (code === "moderation_blocked") return "PROVIDER_CONTENT_MODERATION";
+  if (isKnownProviderBalanceFailure(code, null)) return "PROVIDER_INSUFFICIENT_CREDITS";
   // Older video workers persisted terminal provider errors as JOB_FAILED.
   // Recognize only known signatures; never publish arbitrary stored diagnostics.
   if (
@@ -287,5 +293,5 @@ function isProviderImagePrivacyFailure(errorMessage: string | null) {
 }
 
 function isProviderBalanceFailure(errorMessage: string | null) {
-  return /credit balance is too low/i.test(errorMessage ?? "");
+  return isKnownProviderBalanceFailure(null, errorMessage);
 }

@@ -261,9 +261,30 @@ async function main() {
     await page.getByRole("button", { name: "Download image 1", exact: true }).click();
     assert.equal((await download).suggestedFilename(), "my-influencer.png");
     const savedCount = generated.size;
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 5_000));
     await page.getByRole("button", { name: "Remove image 1 from workspace", exact: true }).click();
     await page.getByText("Your creator starts here.", { exact: true }).waitFor();
     assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 0);
+    const removalNotice = page.getByRole("status").filter({ hasText: "Image removed from this workspace." });
+    await removalNotice.waitFor();
+    await page.screenshot({ path: path.join(out, "dismissible-notice-mobile.png"), fullPage: true });
+    await page.getByRole("button", { name: "Dismiss notification", exact: true }).click();
+    assert.equal(await removalNotice.count(), 0, "the close control immediately dismisses the notice");
+    const removeHistoryImage = async () => {
+      await page.getByRole("button", { name: "Influencer image history", exact: true }).click();
+      await historyImages.first().click();
+      await page.clock.runFor(300); // Let the History dialog finish its exit animation.
+      await page.getByRole("button", { name: "Remove image 1 from workspace", exact: true }).click();
+      await removalNotice.waitFor();
+    };
+    await removeHistoryImage();
+    await page.clock.runFor(2_000);
+    await removeHistoryImage();
+    await page.clock.runFor(2_999);
+    assert.equal(await removalNotice.count(), 1, "repeating the same notice restarts its full three-second lifetime");
+    await page.clock.runFor(1);
+    assert.equal(await removalNotice.count(), 0, "the notice dismisses automatically after three seconds");
+    await page.clock.resume();
     await page.getByRole("button", { name: "My influencers", exact: true }).click();
     assert.equal(await savedImages.count(), savedCount);
     await page.screenshot({ path: path.join(out, "multi-select-library-mobile.png"), fullPage: true });

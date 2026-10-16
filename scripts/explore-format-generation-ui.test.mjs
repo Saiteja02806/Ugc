@@ -74,6 +74,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     "@/lib/ai-studio/video-generation-state": load("lib/ai-studio/video-generation-state.ts"),
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
     "@/lib/ai-studio/pending-generation": pendingGeneration,
+    "@/components/explore/slideshow-prompt-improver": { useSlideshowPromptImprover: options => ({ busy: false, action: { type: "button", props: { onClick: () => options.onChange("One improved prompt for the entire slideshow") } }, feedback: null }) },
     "@/components/generation/use-generation-discovery": { useGenerationDiscovery: args => ({ available: Boolean(recoveredBatch), checking: false, error: null, check: async () => { if (recoveredBatch) args.onRecovered(recoveredBatch.result, recoveredBatch.input); } }) },
     "@/lib/http/read-deadline": readDeadline,
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
@@ -114,6 +115,24 @@ function resultNodes(tree) {
   return Array.isArray(tree) ? tree.flatMap(resultNodes) : tree && typeof tree === "object" ? [tree, ...resultNodes(tree.props?.children)] : [];
 }
 
+test("slideshow sends the text-box rewrite through the existing generation request without per-slide plans", async () => {
+  for (const editAfterRewrite of [false, true]) {
+    const h = harness("slideshow", { referenceUrls: ["https://example.test/reference.png", "https://example.test/slide4.png"], slideshowSlideCount: 2, captureRequests: true });
+    let composer = h.render().composer;
+    composer.props.promptAction.props.onClick();
+    composer = h.render().composer;
+    assert.equal(composer.props.prompt, "One improved prompt for the entire slideshow");
+    if (editAfterRewrite) { composer.props.onPromptChange("My edited rewrite"); composer = h.render().composer; }
+    await composer.props.onSubmit({ preventDefault() {} });
+    await new Promise(resolve => setImmediate(resolve));
+    const sent = h.requests.find(request => request.url === "/api/ai-studio/images/generate");
+    assert.ok(sent);
+    assert.equal(sent.body.prompt, editAfterRewrite ? "My edited rewrite" : "One improved prompt for the entire slideshow");
+    assert.equal("slideshowPromptPlan" in sent.body, false);
+    assert.equal(sent.body.slideshowSlideCount, 2);
+    assert.deepEqual(Array.from(sent.body.referenceImageUrls), ["https://example.test/reference.png", "https://example.test/slide4.png"]);
+  }
+});
 
 for (const state of ["completed", "queued", "failed"]) test(`slideshow groups a ${state} neighboring slide without duplicate cards or automatic draft edits`, async () => {
   const job = (index, status) => ({ id: `slide-${index}`, jobType: "image_generation", exploreFormat: "slideshow", status, createdAt: `2026-10-16T10:00:0${2 - index}Z`, updatedAt: "2026-10-16T10:01:00Z", slideshowGeneration: slideshowBatch.slideshowGenerationSlot("batch", 2, 1, index), output: status === "completed" ? { mediaAssetId: `asset-${index}`, url: `https://owned.test/${index}.png`, ratio: "4:5" } : null });

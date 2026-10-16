@@ -97,6 +97,23 @@
 .prompt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .composer .instructionsField .promptWithAttachments { min-height: 144px; height: 160px; padding-bottom: 72px; }
 
+/* One prompt field, with a reserved footer for attachments and the rewrite action. */
+.promptWithAction {
+  padding-bottom: 64px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 8px;
+  background: var(--card-muted);
+}
+.promptWithAction:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.composer .instructionsField .promptWithAction .prompt {
+  height: 160px;
+  min-height: 144px;
+  border: 0;
+  padding-bottom: 10px;
+  background: transparent;
+}
+.promptWithAction .prompt:focus-visible { outline: none; }
+
 /* First row: Model + Duration. Second row: Quality + Videos + Ratio. */
 .settingsGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px 10px; }
 .settingField { display: flex; min-width: 0; flex-direction: column; gap: 4px; grid-column: span 2; }

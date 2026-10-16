@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
+import { useSlideshowPromptImprover } from "@/components/explore/slideshow-prompt-improver";
 import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
@@ -347,8 +348,15 @@ export function ImageGenerationStudioPanel({
     isSubmitting ||
     activeJobQueries.some((query) => query.isPending) ||
     durableJobs.some((job) => activeJobStatuses.has(job.status));
+  const promptImprover = useSlideshowPromptImprover({
+    owner: user?.uid ?? null, prompt,
+    contextKey: JSON.stringify({ references: recreateView?.referenceImageUrls ?? [recreateView?.referenceImageUrl ?? null], regeneration: recreateView?.referenceImageAssetId, attachments: instructionReferences.map(selection => selection.asset.id) }),
+    disabled: workflowFormat !== "slideshow" || generationLocked || isGenerating || selectingImage || referenceUploadPending || Boolean(pendingSubmission) || tooManySlides || tooManyReferences,
+    onChange: next => { submissionKeyRef.current = null; setActionError(null); setPrompt(next); },
+  });
+  const improvingPrompt = promptImprover.busy;
   const onWorkflowBusyChange = workflow?.onBusyChange;
-  useEffect(() => { onWorkflowBusyChange?.(isGenerating || referenceUploadPending || selectingImage); }, [isGenerating, referenceUploadPending, selectingImage, onWorkflowBusyChange]);
+  useEffect(() => { onWorkflowBusyChange?.(isGenerating || referenceUploadPending || selectingImage || improvingPrompt); }, [isGenerating, referenceUploadPending, selectingImage, improvingPrompt, onWorkflowBusyChange]);
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
     resolvedJobIdsRef.current.clear();
@@ -632,7 +640,7 @@ export function ImageGenerationStudioPanel({
     if (
       recreateView?.preview || (!pendingSubmission && (generationLocked || hasInsufficientCredits || referenceUploadPending || referenceUploadError || tooManyReferences || tooManySlides || !trimmedPrompt ||
       Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) || selectingImageRef.current ||
-      isGenerating || recoveringJobs || submittingRef.current
+      isGenerating || improvingPrompt || recoveringJobs || submittingRef.current
     ) {
       return;
     }
@@ -1063,7 +1071,7 @@ export function ImageGenerationStudioPanel({
           tooManyReferences || tooManySlides ||
           !prompt.trim() ||
           Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) ||
-          isGenerating || recoveringJobs
+          isGenerating || improvingPrompt || recoveringJobs
         }
         generateLabel={pendingSubmission ? "Recover saved request" : slideshowSlideCount ? `Generate ${outputCount} slides` : "Generate image"}
         generationLocked={generationLocked && !pendingSubmission}
@@ -1073,7 +1081,7 @@ export function ImageGenerationStudioPanel({
             ownerId={user?.uid}
             active={workflow?.controlsActive ?? active}
             preview={recreateView?.preview}
-            disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage}
+            disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage || improvingPrompt}
             selections={instructionReferences}
             maxImages={instructionReferenceLimit}
             onPendingChange={setReferenceUploadPending}
@@ -1101,6 +1109,8 @@ export function ImageGenerationStudioPanel({
           />
         }
         name="imagePrompt"
+        promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
+        promptFeedback={workflowFormat === "slideshow" ? promptImprover.feedback : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {

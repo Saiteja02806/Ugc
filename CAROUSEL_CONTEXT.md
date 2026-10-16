@@ -1,5 +1,19 @@
 # Carousel System Context
 
+## 2026-10-16 Manual Explore one-box prompt rewrite (local)
+
+- Latest user correction removes separate per-slide prompt forms. One sparkle
+  button rewrites the text in the existing composer; the text remains editable,
+  Undo restores the original, and generation is a separate action. The rewriter
+  accepts only user text, with no image/reference/attachment metadata or profile.
+- The prior per-slide compiler and optional attachment-label worker modification
+  were removed. Existing image-generation APIs/workers, reference inputs,
+  business context and automatic Trending allocation/mixer/queues are retained.
+- Exact screenshot compositing remains unimplemented. A private prompt receipt
+  migration, web deployment and feature enablement are required before production
+  acceptance; no new worker version is needed for this feature. Local evidence:
+  docs/slideshow-prompt-improvement-2026-10-16.md.
+
 ## 2026-10-16 Manual Explore assembly UI (local)
 
 - Manual slideshow results now group one version's images and require explicit

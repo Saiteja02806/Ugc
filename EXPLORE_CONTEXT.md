@@ -1,5 +1,47 @@
 # Explore context and UI decision record
 
+### One-box slideshow prompt rewrite — 16 October 2026, local implementation
+
+- Latest user correction supersedes the per-slide improvement dialog proposal:
+  keep ONE prompt field. A sparkle button inside its lower-right corner rewrites
+  the existing conversational text in place. Do not add separate prompts,
+  per-image forms, attachment checkboxes or another review dialog. The rewritten
+  text stays editable; Undo restores the exact pre-rewrite text. Generation
+  remains a separate explicit action and uses the current text-box contents.
+- Icon clarification: show one four-point star only, without extra sparkles,
+  surrounding circles, visible border or button background. Keep an accessible
+  label and keyboard focus indication. Reserve a footer in the prompt box so
+  text cannot scroll underneath the star or attachment controls.
+- The text-rewriting endpoint accepts only {prompt}. No selected-slide numbers,
+  attachment metadata, business profile, image URLs, OCR or pixels are sent.
+  User-typed URLs remain ordinary text; the rewriter does not browse or claim to
+  inspect images. Preserve exact wording, URLs, exclusions, per-slide scope and
+  reference labels as authored. Do not invent scenes, props, claims or CTAs.
+- Return ONE prompt plus optional clarification notes displayed below the input.
+  Users resolve those by editing the same prompt; no extra per-slide workflow.
+  Duplicate clicks are fenced, and delayed results cannot overwrite text after
+  the user changes the request, reference inputs or account.
+- The prior per-slide generation compiler and attachmentLabels worker changes
+  were removed. Existing image-generation request/worker contracts, reference
+  delivery, business context, billing, version grouping and recovery are retained.
+  Actual reference/uploaded images are still sent during image generation.
+  Exact screenshot compositing remains separate and is not implemented here.
+- Private improvement receipts and a service-only invoker claim RPC prevent
+  automatic repeated provider calls and enforce 20 attempts per rolling 24h per
+  owner. No image-generation credits or image jobs are created by rewriting.
+  Browser recovery reuses request identities after uncertain responses. Provider
+  SDK retries are off; terminal failure retries require an explicit new click.
+- Local tests, browser fixtures and deployment acceptance are distinct. Apply the
+  slideshow_prompt_improvements migration, deploy the web API/composer and enable
+  EXPLORE_SLIDESHOW_PROMPT_IMPROVER_ENABLED=true. No worker change is required for
+  this simplified feature. OPENAI_SLIDESHOW_PROMPT_MODEL optionally overrides the
+  existing text-model default. Deployment and actual provider-output quality
+  evaluation remain pending. See docs/slideshow-prompt-improvement-2026-10-16.md.
+- Local verification passed: 161 focused/regression tests, TypeScript, scoped
+  ESLint, desktop/mobile one-box browser checks and full 166-route builds.
+  Payload checks confirm no saved business context reaches the text rewriter;
+  existing image-generation tests confirm its owner-frozen profile still does.
+
 ### Video text fonts and compact inspector — 16 October 2026, local implementation
 
 - The user approved Inter, DM Sans, Roboto Condensed and Montserrat, then
@@ -37,7 +79,11 @@
   under 65px high; the existing desktop inspector remains at most 300px wide.
   These changes are not deployed. Production acceptance requires the updated
   worker (dependency/assets) before the web release and a signed-in check.
-- Release snapshot validation passed: webpack production build, TypeScript and all 164 routes. Concurrent prompt-improvement code and its tests/migration are excluded from this snapshot; shared in-progress files remain untouched. The earlier combined-worktree type failure is historical, not the release result.
+- Final combined Next build compiled successfully, but its TypeScript phase
+  failed in concurrent slideshow work: `slideshow-prompt-improver.tsx:35–36`
+  passes a number where AbortSignal is expected and assigns unknown to its
+  result type. Earlier TypeScript checks passed before that new component
+  arrived. Do not report the combined build as passing or deploy on that basis.
 
 ### Choose image picker polish — 16 October 2026, local change
 

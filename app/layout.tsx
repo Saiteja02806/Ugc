@@ -97,7 +97,7 @@ export const metadata: Metadata = {
     template: "%s | UGC Pilot",
   },
   description:
-    `Create video-first content and approved publishing workflows for ${visibleSocialPlatformList} in one focused workspace.`,
+    `Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset for ${visibleSocialPlatformList}.`,
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [

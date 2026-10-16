@@ -93,15 +93,11 @@ export default function PrivacyPolicyPage() {
           </LegalList>
         </LegalSection>
 
-        <LegalSection title="Optional website analytics">
+        <LegalSection title="Website analytics">
           <p>
-            With your permission, Google Analytics receives public page visits
-            and new account creation events, along with browser and device
-            information. We exclude email addresses, account identifiers,
-            business context, private workspace URLs, and URL queries from our
-            events. Advertising storage and advertising personalization are
-            disabled. You can change your choice using Analytics preferences on
-            public pages; see our Cookie Policy for details.
+            Google Analytics is currently disabled on public pages. We do not
+            send public page visits or new account creation events to Google
+            Analytics. See our Cookie Policy for details.
           </p>
         </LegalSection>
 

@@ -92,7 +92,8 @@ function audioRender(overrides = {}) {
 test("the actual Edit video section offers optional demo without dummy result tiles or media", () => {
   const { tree } = render();
   assert.equal(tree.props["aria-label"], "Video finishing settings");
-  assert.match(text(tree), /Edit & add demo.*Demo upload Optional/);
+  assert.match(text(tree), /Edit & add demo.*Demo upload/);
+  assert.doesNotMatch(text(tree), /Demo upload Optional/);
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
   assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));
@@ -358,7 +359,7 @@ test("Demo audio is directly visible in editing, and section changes pause witho
 test("stacked demo and audio controls keep their attachment ownership across states", () => {
   const empty = render().tree;
   const grid = nodes(empty).find((node) => node.props.className === "editMediaGrid");
-  assert.deepEqual(nodes(grid).filter((node) => node.type === "section").map((node) => node.props["aria-label"]), ["Optional demo", "Demo audio attachment"]);
+  assert.deepEqual(nodes(grid).filter((node) => node.type === "section").map((node) => node.props["aria-label"]), ["Demo upload", "Demo audio attachment"]);
   assert.equal(nodes(grid).find((node) => node.type === "picker").props.className, "editUploadButton");
   const unavailable = nodes(grid).find((node) => node.type === "button");
   assert.equal(unavailable.props.disabled, true);

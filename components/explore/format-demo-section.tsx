@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FolderOpen, Upload, Video } from "lucide-react";
+import { ArrowLeft, FolderOpen, Upload, Video, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -458,7 +458,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
           <p className="text-xs leading-5 text-muted">Added audio plays during the demo only. The sound mix is applied when you save the final video.</p>
         </div></details>;
     const controls = <div className={`${styles.demoControls} space-y-4`}>
-      <h2 className="text-sm font-semibold">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h2>
+      <h2 className="text-sm font-semibold">Demo upload</h2>
       <fieldset disabled={setupBusy} className="min-w-0 space-y-4">
         <div aria-label="Demo video source">
         <div className={styles.demoSourceActions}>
@@ -466,7 +466,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
           <Button type="button" variant="outline" onClick={() => setAssetsOpen(true)}><span className={styles.demoSourceIcon} aria-hidden="true"><FolderOpen className="size-5" /></span><span>Creative Assets</span></Button>
           <input ref={fileInput} type="file" accept="video/mp4,video/quicktime,video/webm" className="sr-only" aria-label="Upload or replace demo video" onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void chooseVideo(file); }}/>
         </div>
-        {preview ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs text-muted" title={preview.name}>{preview.name}</p><Button type="button" size="sm" variant="ghost" onClick={removeDemo}>Remove</Button></div>
+        {preview ? <div className="flex items-center gap-2"><p className="min-w-0 flex-1 truncate text-xs text-muted" title={preview.name}>{preview.name}</p><Button type="button" size="icon-sm" variant="ghost" aria-label="Remove demo" title="Remove demo" onClick={removeDemo}><X className="size-4" aria-hidden="true" /></Button></div>
           : <p className="text-xs leading-5 text-muted">MP4, MOV or WebM · 1–60 seconds · Up to 100 MB. Uploads appear on the Demo screen.</p>}
         </div>
         {preview && allowDemoAudio ? demoSound : preview ? <label className="block space-y-2 text-xs text-muted">Demo original sound · {Math.round(draft.editing.originalVolume * 100)}%<input type="range" aria-label="Demo original volume" min={0} max={100} value={draft.editing.originalVolume * 100} onChange={event => change({ ...draft, editing: { ...draft.editing, originalVolume: Number(event.target.value) / 100 } })} className="w-full accent-primary" /></label> : null}
@@ -548,7 +548,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       </div> : <div className={styles.emptyClip}>
         <span className={styles.emptyClipIcon}><Video aria-hidden="true" /></span>
         <div className={styles.emptyClipCopy}>
-          <div className={styles.emptyClipTitle}><h3>Demo video</h3><span className={styles.clipOptional}>Optional</span></div>
+          <div className={styles.emptyClipTitle}><h3>Demo video</h3></div>
           <p aria-live="polite">{selection.busy ? "Preparing your demo…" : draft.demoId ? localPreview ? "This preview clip is unavailable. Upload or choose another demo." : "Restoring your demo…" : active ? "Upload or choose a demo to preview it here." : "Your demo plays after the opening."}</p>
         </div>
         <div className={styles.emptyClipActions}><WorkflowClipSourceActions label="demo video" disabled={setupBusy} onUpload={chooseVideo} onChooseAssets={() => setAssetsOpen(true)} /></div>

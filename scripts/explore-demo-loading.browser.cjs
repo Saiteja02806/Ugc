@@ -61,6 +61,10 @@ async function main() {
       await page.getByRole('button',{name:'Edit demo video',exact:true}).waitFor();
       assert.equal(await page.getByRole('button',{name:'Edit demo video',exact:true}).isEnabled(),true);
       assert.equal(await page.getByRole('button',{name:'Change demo video',exact:true}).isEnabled(),true);
+      await page.waitForFunction(()=>document.querySelector('[data-clip-media] video')?.readyState>=1);
+      const overview=await page.locator('[data-clip-media]').evaluate(frame=>{const r=frame.getBoundingClientRect();return{width:r.width,height:r.height,aspect:r.width/r.height};});
+      assert.ok(overview.width>300,'Demo overview makes use of the available laptop width');
+      await page.screenshot({path:path.join(out,`overview-${viewport.width}.png`)});
       await page.getByRole('button',{name:'Change demo video',exact:true}).click();
       await page.waitForFunction(()=>document.activeElement?.getAttribute('data-demo-source')==='upload');
       await page.getByRole('button',{name:'Edit demo video',exact:true}).click();

@@ -61,13 +61,13 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
     <h2 className="sr-only">Edit &amp; add demo</h2>
     <p className="sr-only">Keep your video on its own, or add a demo after it.</p>
     <div className={creation.editMediaGrid}>
-      <section hidden={demoInPreview} aria-label="Optional demo" className={creation.uploadCard} data-selected={!!demo.asset} aria-busy={demo.loading} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
+      <section hidden={demoInPreview} aria-label="Demo upload" className={creation.uploadCard} data-selected={!!demo.asset} aria-busy={demo.loading} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
         event.preventDefault();
         const file = event.dataTransfer.files[0];
         if (file) void demo.choose(file);
       }}>
         <div className={creation.finishRow}>
-          <h3 className="text-sm font-medium">Demo upload <span className="ml-1 text-xs font-normal text-muted">Optional</span></h3>
+          <h3 className="text-sm font-medium">Demo upload</h3>
           {demo.asset ? <RemoveMediaButton label="demo" onClick={demo.remove} /> : null}
         </div>
         {demo.asset ? <Popover>
@@ -81,7 +81,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <p className="text-sm text-muted">{formatMediaSeconds(demo.asset.duration)} · Original sound preserved</p>
             <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo" className="h-9 text-sm" />
           </PopoverContent>
-        </Popover> : <WorkflowFilePicker attachment={demo} kind="video" label="Add demo" className={creation.editUploadButton} icon={<span className={creation.iconWell}><Video className="size-5" aria-hidden="true" /></span>} />}
+        </Popover> : <WorkflowFilePicker attachment={demo} kind="video" label="Upload demo video" buttonLabel="Upload demo" className={creation.editUploadButton} icon={<span className={creation.iconWell}><Video className="size-5" aria-hidden="true" /></span>} />}
         {demo.asset ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <p className="min-w-0 flex-[1_1_12rem] truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p>
           <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo video" buttonLabel="Replace demo" disabled={editingBusy} className="h-9 text-xs" />

@@ -44,10 +44,15 @@ async function main() {
   try {
     browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
     const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
-    for (const viewport of [{width:1900,height:806},{width:1440,height:900},{width:1280,height:720},{width:390,height:844},{width:320,height:700}]) {
+    for (const viewport of [{width:1920,height:1080},{width:1536,height:864},{width:1366,height:768},{width:1900,height:806},{width:1440,height:900},{width:1280,height:720},{width:390,height:844},{width:320,height:700}]) {
       await page.setViewportSize(viewport);await page.goto('http://127.0.0.1:'+server.address().port);
       await page.getByRole('button',{name:'Edit hook video',exact:true}).waitFor();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Sequence overview fits screen with both selected clips and a long filename');
+      await page.waitForFunction(()=>[...document.querySelectorAll('[data-workflow-sequence] video')].every(video=>video.readyState>=1));
+      const overview=await page.locator('[data-workflow-sequence]').evaluate(element=>{const slots=[...element.querySelectorAll('[class*="segmentMedia"]')].map(node=>{const r=node.getBoundingClientRect();return{x:r.x,y:r.y,height:r.height,width:r.width};});const headings=[...element.querySelectorAll('h3')].map(node=>node.textContent);return{slots,headings};});
+      assert.ok(overview.headings.every(text=>!text.includes('Optional')),'Video headings do not label clips Optional');
+      if(viewport.width>=1024){assert.equal(overview.slots.length,2);assert.ok(Math.abs(overview.slots[0].y-overview.slots[1].y)<2,'Hook and demo preview tops align');assert.ok(Math.abs(overview.slots[0].height-overview.slots[1].height)<2,'Preview slots share a height');assert.ok(overview.slots[0].height>=Math.min(540,viewport.height-380)-2,'Laptop overview uses available height');}
+      await page.screenshot({path:path.join(out,`overview-${viewport.width}.png`),fullPage:true});
       for(const label of ['Hook video segment','Demo segment'])assert.equal(await page.getByRole('region',{name:label,exact:true}).evaluate(element=>element.scrollWidth>element.clientWidth),false,label+' has no internal horizontal overflow');
       await page.locator('[data-workflow-section-content]').evaluate(element=>{element.scrollTop=element.scrollHeight;});
       await page.getByRole('button',{name:'Edit hook video',exact:true}).click();

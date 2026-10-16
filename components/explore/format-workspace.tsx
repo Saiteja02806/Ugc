@@ -492,7 +492,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
                 {!selectedVideo ? <div className={styles.emptyClip}>
                   <span className={styles.emptyClipIcon}><Film aria-hidden="true" /></span>
                   <div className={styles.emptyClipCopy}>
-                    <div className={styles.emptyClipTitle}><h3>Hook video</h3><span className={styles.clipOptional}>Optional</span></div>
+                    <div className={styles.emptyClipTitle}><h3>Hook video</h3></div>
                     <p aria-live="polite">{restoredVideo.isFetching ? "Restoring your video…" : source.busy ? "Preparing your opening video…" : restoredVideo.isError ? "This saved clip is unavailable. Upload or choose another video here." : demoSelected ? "You can schedule your demo on its own, or add an opening here." : "Upload or choose an opening video, a demo, or both."}</p>
                   </div>
                   <div className={styles.emptyClipActions}><WorkflowClipSourceActions label="hook video" disabled={generating || source.busy || restoredVideo.isFetching} onUpload={uploadOpeningHere} onGenerate={chooseOpeningInCreate} onChooseAssets={() => { setInlineOpeningError(null); setOpeningAssetsOpen(true); }} /></div>

@@ -58,6 +58,33 @@ test("returning to the overview keeps local clip edits visible and never applies
   assert.equal(nodes(tree).some(node => node.type === "sequence-preview"), false, "Owned identity takes priority over a local URL");
 });
 
+test("overview source changes remain distinct from edits, including restored demo previews and empty openings", () => {
+  const imports = Object.fromEntries([
+    "@/components/explore/workflow-scheduling-panel", "@/lib/explore/workflow-scheduling-draft", "@/components/explore/workflow-demo-controls",
+    "@/lib/explore/sequence-preview", "@/lib/explore/reference-audio-preview", "@/lib/explore/workflow-default-music-client", "@/lib/firebase/auth",
+  ].map(name => [name, {}]));
+  const h = harness("workflow-edit-workspace", { ...imports,
+    "@/components/explore/hook-workflow-media-controls": { WorkflowMediaPlayer: "media-player", WorkflowFilePicker: "file-picker" },
+    "@/components/explore/workflow-sequence-preview": { WorkflowSequencePreview: "sequence-preview" } });
+  const calls = [], demo = { asset: null, choose: file => calls.push(file), remove() {} };
+  const props = { kind: "hook", demo, demoAudio: {}, demoPreview: { name: "Restored demo", url: "/saved-demo.mp4" },
+    sourcePreview: { name: "Uploaded hook", url: "blob:hook" }, onChangeSource: () => calls.push("change"), onEditSource: () => calls.push("edit") };
+  const tree = h.exports.WorkflowEditWorkspace(props);
+  labelled(tree, "Change hook video").props.onClick();
+  nodes(tree).find(node => node.type === "button" && JSON.stringify(node.props.children).includes("Edit hook video")).props.onClick();
+  const picker = nodes(tree).find(node => node.type === "file-picker");
+  assert.equal(picker.props.label, "Replace demo video"); assert.equal(picker.props.buttonLabel, "Change");
+  assert.equal(picker.props.attachment, demo, "Restored media still has the real replacement attachment");
+  assert.deepEqual(calls, ["change", "edit"]);
+  const empty = h.exports.WorkflowEditWorkspace({ ...props, sourcePreview: null });
+  const add = nodes(empty).find(node => node.type === "button" && [node.props.children].flat().join("") === "Add hook video");
+  assert.ok(add); add.props.onClick(); assert.equal(calls.at(-1), "change");
+  assert.equal(labelled(empty, "Change hook video"), undefined, "Empty opening offers Add, not Change");
+  for (const label of ["Hook video segment", "Demo segment"]) {
+    assert.ok(nodes(labelled(empty, label)).filter(node => node.type === "h3").every(node => !JSON.stringify(node.props.children).includes("Optional")));
+  }
+});
+
 test("dragging a trim handle uses the source timeline, clamps to a one-second clip, and stops on cancellation", () => {
   const h = harness("clip-trim-timeline"), changes = [];
   const props = { durationMs: 10000, startMs: 2000, endMs: 8000, onChange: (...value) => changes.push(value) };

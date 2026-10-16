@@ -1,5 +1,50 @@
 # Explore context and UI decision record
 
+### Recognizable clip selection and balanced Demo previews — 16 October 2026, local change
+
+- Keep Create → Demo → Schedule for Hook Video and Talking Head + Demo. Demo
+  is the setup stage; Hook video and Demo video identify the two preview cards.
+  Do not rename the stage to Edit, Play Demo or Attach during visual work.
+- Latest user decision: keep **Edit hook video**, **Edit demo video**, **Change**
+  and **Demo** unchanged. The suggested Text & trim / Text & edit names were
+  not approved. Deployment of the completed UI changes is now authorized again.
+- Remove the visible Optional badge from Hook/Demo video headings and Demo
+  upload. This is a presentation rule, not a new validation requirement: keep
+  existing one-clip paths, demo-only Hook scheduling, ownership and limits.
+  Demo sound remains a separate optional audio feature for Talking Head only.
+- The shared Creative Assets/Demo video picker must show a recognizable poster
+  or the video's first decoded frame beside its name and duration/ratio. Load
+  footage only for visible rows; use a neutral icon if media genuinely fails.
+  A missing saved thumbnail must not reduce every selectable video to an icon.
+  Preserve owner filtering, ready-only selection, demo inventory separation,
+  retry and refresh. Thumbnail loading must not block choosing a valid video.
+- Hook overview media uses available viewport height instead of the former
+  180–360px height/328px card caps. Wider/taller laptop workspaces get larger
+  previews; compact/short windows remain bounded. Physical laptop inches are
+  not detectable: test CSS viewports (1280×720, 1366×768, 1536×864, 1920×1080)
+  and mobile. Preserve natural video aspect ratio; never stretch footage.
+- Talking Head overview cards share header and preview-slot sizing, including
+  empty/one-clip/two-clip states. Keep Edit and Change together beneath the
+  selected clip. Empty hook has Add hook video; empty demo has Upload demo video.
+  Change hook returns to the existing Create source choices; Change demo opens
+  its replacement file chooser. In Hook Video, Change demo still returns focus
+  to Demo upload/Creative Assets. Do not couple these actions to playback load.
+- Recurring mistakes to prevent: generic media icons hiding identity; fixed
+  tiny portrait caps leaving wide gaps; inconsistent header buttons shifting
+  video tops; oversized Remove text competing with filenames; duplicate or
+  misleading Optional badges; casual stage renaming; replacing source-change
+  actions with edit actions. Preserve the established audio ownership rules.
+- Local checks and deployed acceptance are separate. These changes were made
+  after the user paused release 24a6faa4; they are not included in that frozen
+  release, and deployment must not resume without the user's request.
+- Local verification: TypeScript (after Next route type generation), scoped
+  ESLint and 117 workflow regressions passed. Actual-component browser checks
+  cover visible first frames/failed posters/lazy rows/keyboard selection and
+  separate inventories; aligned previews at 1280–1920px and 320/390px mobile;
+  empty/uploaded/cropped demos; Edit/Change before upload confirmation; retained
+  pending edits; and existing Hook/demo/Wall advanced editing controls. These
+  are isolated fixtures, not signed-in production acceptance.
+
 ### One-box slideshow prompt rewrite — 16 October 2026, local implementation
 
 - Latest user correction supersedes the per-slide improvement dialog proposal:

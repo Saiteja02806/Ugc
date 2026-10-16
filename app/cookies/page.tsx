@@ -49,18 +49,14 @@ export default function CookiePolicyPage() {
           </LegalList>
         </LegalSection>
 
-        <LegalSection title="Optional Google Analytics">
+        <LegalSection title="Website analytics">
           <p>
-            If you allow analytics, we use Google Analytics to measure public
-            page visits and new account creation. Analytics cookies help Google
-            distinguish visits. We do not send your email, account identifier,
-            business context, or private workspace URLs in these events.
+            Google Analytics is currently disabled on public pages. We do not
+            set Google Analytics cookies or send public page visits and new
+            account creation events to Google Analytics.
           </p>
           <p>
-            Analytics stays off until you select Allow analytics. Use Analytics
-            preferences on public pages to reject analytics later; this stops
-            collection and removes our Analytics cookies. Your sign-in continues
-            to work regardless of this choice.
+            Your sign-in continues to work regardless of this setting.
           </p>
         </LegalSection>
 

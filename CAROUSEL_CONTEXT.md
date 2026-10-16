@@ -1,5 +1,31 @@
 # Carousel System Context
 
+## 2026-10-16 Manual Explore assembly UI (local)
+
+- Manual slideshow results now group one version's images and require explicit
+  opening. Add slides offers generated images, chosen unchanged originals and
+  uploads; a safe server import turns approved catalogue originals into owned
+  ready media without generation. Existing text, drafts, v2 saving, legacy
+  receipts and the ten-slide limit are retained. No automatic Trending planning,
+  mixer, queue, worker, prompt/model or quality-policy change is included.
+- Local build, 150 tests and desktop/mobile editor/recovery fixtures passed;
+  deployment and authenticated production acceptance are pending. Details:
+  `docs/slideshow-assembly-ui-2026-10-16.md`.
+
+## 2026-10-16 Fresh Explore v3 acceptance and assembly gap
+
+- The preservation policy was deployed in release `d73ef153`. A fresh v3
+  Sunburst batch completed technically but still invented the requested laptop
+  interface. Exact screenshot placement requires a separate compositor; it is
+  not implemented by the deployed prompt policy.
+- The user's manual Explore requirement includes grouped version previews and
+  mixing selected regenerated slides with unchanged master-reference slides in
+  original order. Current owned-media editor/import gaps and the 10-slide limit
+  prevent that full flow; Marketing has 12 originals. This does not change
+  automatic Trending Carousel allocation, planning, queues or rendering.
+  Audit and unimplemented correction design:
+  `docs/slideshow-fidelity-and-master-assembly-2026-10-16.md`.
+
 ## 2026-10-16 Explore slideshow reference preservation (local)
 
 - Follow-up user clarification: new Explore slideshow prompts explicitly require

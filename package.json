@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:explore-text-fonts": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --test scripts/explore-text-fonts.test.mjs scripts/explore-format-edit.test.mjs scripts/explore-clip-live-controls.test.mjs scripts/format-edit-draft.test.mjs && node scripts/explore-text-fonts.browser.cjs",
     "test:workflow-video-references": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=2 lib/ai-studio/video-generation-api.test.mjs lib/ai-studio/reference-media-flow.test.ts lib/explore/generation-video-reference.test.mjs scripts/explore-format-generation-ui.test.mjs scripts/explore-format-reference-upload.test.mjs worker/src/lib/gemini-omni-video.test.mjs worker/src/jobs/generate-hook-video.test.mjs worker/src/jobs/generate-hook-video.openrouter.test.mjs worker/dist/lib/video-reference-input.test.js worker/dist/jobs/generate-hook-video.test.js",
     "test:explore-reference-audio": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=2 scripts/explore-reference-audio*.test.mjs scripts/explore-finishing-job.test.mjs scripts/explore-finishing-storage.test.mjs scripts/explore-unchanged-hook-source.test.mjs scripts/explore-format-common-editor.test.mjs scripts/explore-format-demo-state.test.mjs lib/ai-studio/video-generation-api.test.mjs worker/src/jobs/generate-hook-video.test.mjs",
     "test:trending-publishing-preferences": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/scheduling/publishing-preferences.test.mjs lib/scheduling/publishing-preferences-ui.test.mjs lib/scheduling/platform-settings.test.ts lib/trending/trending-platform-scheduling-ui.test.mjs lib/social/platform-visibility.test.mjs scripts/publishing-preferences-db.test.mjs && node scripts/trending-publishing-preferences.browser.cjs",
@@ -202,6 +203,7 @@
     "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/opentype.js": "^1.3.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

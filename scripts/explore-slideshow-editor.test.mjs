@@ -8,6 +8,8 @@ import sharp from "sharp";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import { prepareSlideshowSequence } from "../lib/explore/slideshow-preparation.ts";
 import { readSlideshowEditableDraft } from "../lib/explore/slideshow-editable-draft.ts";
+import { insertReferenceSlides } from "../lib/explore/slideshow-assembly.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -18,6 +20,9 @@ function load(file, imports = {}, globals = {}) {
     if (name === "@/lib/explore/slideshow-api") return load("lib/explore/slideshow-api.ts", imports, globals);
     if (name === "./slideshow-draft" || name === "@/lib/explore/slideshow-draft") return load("lib/explore/slideshow-draft.ts", { "../../worker/src/lib/explore-finishing-contract.ts": { isExploreUuid: uuid } });
     if (name === "./format-slideshow-text-tools") return { FormatSlideshowTextTools: "FormatSlideshowTextTools" };
+    if (name === "./slideshow-add-slides") return { SlideshowAddSlides: "SlideshowAddSlides" };
+    if (name === "@/lib/explore/slideshow-assembly") return { insertReferenceSlides };
+    if (name === "@/lib/http/read-deadline") return { withReadDeadline };
     if (name === "./remix-text-section") return { RemixTextSection: "RemixTextSection" };
     if (name === "@/lib/explore/remix-source") return remixSource;
     if (!(name in imports)) throw new Error(`Unexpected dependency ${name}`); return imports[name]; }, ...globals });

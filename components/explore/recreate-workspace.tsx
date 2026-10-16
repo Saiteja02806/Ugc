@@ -10,6 +10,8 @@ import { useMemo, useRef, useState } from "react";
 
 import { RecreateGenerationPanel } from "@/components/explore/recreate-generation-panel";
 import { RecreateSplitPane } from "@/components/explore/recreate-split-pane";
+import { ReferenceVideoPlayer } from "@/components/explore/reference-video-player";
+import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
 import studio from "@/components/explore/workflow-studio.module.css";
 import layout from "@/components/explore/recreate-layout.module.css";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ const EMPTY_REFERENCES: RecreateReference[] = [];
 export function RecreateWorkspace({ previewReferences, initialGenerationMode = "images" }: { previewReferences?: RecreateReference[]; initialGenerationMode?: "images" | "videos" }) {
   const { loading: authLoading, user } = useAuth();
   const localPreview = previewReferences !== undefined;
+  const sourceAccess = useAIStudioAccess();
   const referencesQuery = useQuery({
     enabled: !localPreview && !authLoading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
@@ -146,7 +149,7 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
                 <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedCategories([])}>Clear filters</Button>
               </div> : null}
               <div className={GALLERY_GRID}>
-                {filtered.map((reference) => <ReferenceCard key={reference.id} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
+                {filtered.map((reference) => <ReferenceCard key={reference.id} canOpenSource={!localPreview && sourceAccess === "pro"} isSelected={selectedReference?.id === reference.id} onPreview={() => openPreview(reference)} onRecreate={() => selectReference(reference)} reference={reference} />)}
               </div>
             </> : null}
           </div>
@@ -182,14 +185,14 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
   </Popover>;
 }
 
-export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, showActionLabel = false, overlayActions = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean }) {
+export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, compact = false, hideCaption = false, showActionLabel = false, overlayActions = false, canOpenSource = false }: { isSelected: boolean; onPreview: () => void; onRecreate: () => void; reference: RecreateReference; compact?: boolean; hideCaption?: boolean; showActionLabel?: boolean; overlayActions?: boolean; canOpenSource?: boolean }) {
   const source = reference.format === "hook" ? canonicalHookSource(reference.sourceUrl ?? reference.instagramUrl) : null;
   const overlay = overlayActions && reference.format === "hook";
   const sourceLabel = source ? `View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}` : "";
   return <article data-reference-id={reference.id} className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
-      {overlay && source ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={sourceLabel} aria-label={`${sourceLabel}: ${reference.title}`} data-reference-source-overlay className="absolute bottom-3 left-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><SocialPlatformIcon platform={source.platform} className={cn("size-[18px] text-current drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]", source.platform === "tiktok" && "fill-current")} /></a> : null}
+      {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} overlay /> : null}
       {overlay ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} aria-pressed={isSelected} title={isSelected ? "Selected reference" : "Recreate this reference"} data-reference-recreate-overlay className="absolute bottom-3 right-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
         {isSelected ? <Check className="size-[18px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" aria-hidden="true" /> : <RotateCcw className="size-[18px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" aria-hidden="true" />}
       </button> : null}
@@ -197,9 +200,19 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
         {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
       </button> : null}
     </div>
-    {compact && !hideCaption && !overlay ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{source ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}`} aria-label={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}: ${reference.title}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"><SocialPlatformIcon platform={source.platform} className={cn("size-3.5 text-current", source.platform === "tiktok" && "fill-current")} /></a> : null}</div>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
+    {compact && !hideCaption && !overlay ? <div className="mt-2 flex min-w-0 items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><p className="truncate text-xs font-medium" title={reference.title}>{reference.title}</p>{source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} /> : null}</div>{isSelected ? <span className="shrink-0 text-[10px] font-medium text-primary">Selected</span> : null}</div> : null}
     {showActionLabel && !overlay ? <Button type="button" variant="outline" data-reference-recreate aria-label={`Recreate ${reference.title}`} aria-pressed={isSelected} onClick={onRecreate} className="mt-2 h-9 w-full gap-2 px-2 text-xs">{isSelected ? <Check className="size-4" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}<span>{isSelected ? "Selected" : "Recreate"}</span></Button> : null}
   </article>;
+}
+
+function ReferenceSourceAction({ source, label, canOpen, overlay = false }: { source: { url: string; platform: "instagram" | "tiktok" }; label: string; canOpen: boolean; overlay?: boolean }) {
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const className = overlay ? "absolute bottom-3 left-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" : "inline-flex size-6 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  const icon = <SocialPlatformIcon platform={source.platform} className={cn(overlay ? "size-[18px] text-current drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" : "size-3.5 text-current", source.platform === "tiktok" && "fill-current")} />;
+  return <>{canOpen ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}`} aria-label={label} data-reference-source-overlay={overlay || undefined} className={className}>{icon}</a>
+    : <button type="button" title="Upgrade to Pro to view the original post" aria-label={`${label} — Upgrade to Pro`} data-reference-source-overlay={overlay || undefined} className={className} onClick={() => setUpgradeOpen(true)}>{icon}</button>}
+    <Dialog open={upgradeOpen && !canOpen} onOpenChange={setUpgradeOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Upgrade to Pro</DialogTitle><DialogDescription>View original reference posts on Instagram and TikTok with Pro.</DialogDescription></DialogHeader><Button nativeButton={false} render={<Link href="/pricing" />}>Upgrade to Pro</Button></DialogContent></Dialog>
+  </>;
 }
 
 function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference; onPreview: () => void }) {
@@ -243,7 +256,7 @@ export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, r
           {slideshowReference && activeSlideData ? <div className="mx-auto max-w-[520px]"><img src={activeSlideData.url} width={activeSlideData.width} height={activeSlideData.height} alt={`${slideshowReference.title}, slide ${activeSlide + 1}`} className="mx-auto h-auto max-h-[62dvh] w-auto max-w-full rounded-2xl object-contain shadow-card" />
             <div className="mt-3 flex items-center justify-between gap-2"><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === 0} onClick={() => setActiveSlide((current) => current - 1)}><ArrowLeft data-icon="inline-start" aria-hidden="true" /> Previous</Button><span aria-live="polite" className="text-[11px] font-medium tabular-nums text-muted">{activeSlide + 1} / {slideshowReference.slides.length}</span><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === slideshowReference.slides.length - 1} onClick={() => setActiveSlide((current) => current + 1)}>Next <ArrowRight data-icon="inline-end" aria-hidden="true" /></Button></div>
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{slideshowReference.slides.map((slide, index) => <button key={slide.id} type="button" onClick={() => setActiveSlide(index)} aria-label={`View slide ${index + 1}`} aria-current={activeSlide === index ? "step" : undefined} className={cn("w-11 shrink-0 overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", activeSlide === index ? "border-primary ring-1 ring-primary/30" : "border-border")}><img alt="" src={slide.url} width={slide.width} height={slide.height} className="aspect-[4/5] w-full object-contain" /></button>)}</div>
-          </div> : <video aria-label={`Preview ${reference.title}`} className="mx-auto h-auto max-h-[65dvh] w-auto max-w-full rounded-[20px] object-contain shadow-card" controls playsInline poster={reference.posterUrl} src={reference.previewVideoUrl ?? reference.videoUrl} />}
+          </div> : <ReferenceVideoPlayer key={reference.id} title={reference.title} poster={reference.posterUrl} url={reference.previewVideoUrl ?? reference.videoUrl} />}
         </div>
       </> : null}
     </DialogContent>

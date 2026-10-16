@@ -30,10 +30,12 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, slideshowSlideCount, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
+function harness(format, { reference = true, referenceUrls, slideshowSlideCount, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, completedJobs = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
-  const effects = [], readyVideos = [];
+  const effects = [], readyVideos = [], selectedVersions = [], autoVersions = [];
+  const jobs = completedJobs ?? (completedJob ? [completedJob] : []);
+  const fixtureUser = { uid: "test-owner" };
   let cursor = 0, refCursor = 0, effectCursor = 0;
   const refs = [], effectDependencies = [];
   let promptSet = false, rendering = false, stateChanged = false;
@@ -51,7 +53,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
           effectDependencies[index] = deps ?? [];
           // Submission-only fixtures still execute the actual account lifecycle.
           if (callback.toString().includes("activeUserIdRef.current =") || callback.toString().includes("activeGalleryVideoUrl.current =")) callback();
-          else if (completedJob) effects.push(callback);
+          else if (jobs.length) effects.push(callback);
         }
       }, useMemo: fn => fn(), useCallback: fn => fn,
     },
@@ -59,12 +61,12 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(captureRequests ? `refType=${format}&refId=${format}-fixture&exploreRecreate=1` : "") },
     "next/link": "Link",
-    "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
+    "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: fixtureUser }) },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled), NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } } }),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": load("lib/ai-studio/generation-settings.ts") }),
-    "@/lib/ai-studio/media-client": completedJob ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
-      id, collection: "video", sourceType: "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
+    "@/lib/ai-studio/media-client": jobs.length ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
+      id, collection: format === "slideshow" ? "image" : "video", sourceType: format === "slideshow" ? "generated_image" : "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
     }) } : {},
     "@/lib/ai-studio/media-results": load("lib/ai-studio/media-results.ts"),
     "@/lib/ai-studio/image-history": load("lib/ai-studio/image-history.ts"),
@@ -76,8 +78,8 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     "@/lib/http/read-deadline": readDeadline,
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
-    "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || completedJob ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
-    "@/lib/jobs/background-job-client": { useStoredBackgroundJobIds: () => [], useRecoverableWorkflowJobs: () => ({ queries: completedJob ? [{ data: completedJob }] : [], recovering: false, recoveryError: null }), useBackgroundJobs: () => completedJob ? [{ data: completedJob }] : [], usePersistedJobIdFromUrl: () => persistedJobId,
+    "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || jobs.length ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
+    "@/lib/jobs/background-job-client": { useStoredBackgroundJobIds: () => completedJobs ? jobs.map(job => job.id) : [], useRecoverableWorkflowJobs: () => ({ queries: jobs.map(data => ({ data })), recovering: false, recoveryError: null }), useBackgroundJobs: () => jobs.map(data => ({ data })), usePersistedJobIdFromUrl: () => persistedJobId,
       useCancelBackgroundJob: () => ({}), useRetryBackgroundJob: () => ({}) },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
@@ -95,7 +97,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     slideshowSlideCount,
     referenceImageAssetId: regenerationTarget,
     preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && format !== "studio" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
-    workflow: format === "studio" ? undefined : { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
+    workflow: format === "studio" ? undefined : { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video), onSelectSlideshow: images => { selectedVersions.push(images); return true; }, onGeneratedSlideshow: images => { autoVersions.push(images); return true; } },
   } };
   props.recreateView.onClearReference = () => { props.recreateView.styleVideo = undefined; };
   function find(node, type) {
@@ -105,8 +107,36 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     return null;
   }
   const render = () => { let tree; do { stateChanged = false; rendering = true; cursor = 0; refCursor = 0; effectCursor = 0; tree = Panel(props); rendering = false; } while (stateChanged); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, readyVideos, stored, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  return { events, controls, results, requests, errors, readyVideos, selectedVersions, autoVersions, stored, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
+
+function resultNodes(tree) {
+  return Array.isArray(tree) ? tree.flatMap(resultNodes) : tree && typeof tree === "object" ? [tree, ...resultNodes(tree.props?.children)] : [];
+}
+
+
+for (const state of ["completed", "queued", "failed"]) test(`slideshow groups a ${state} neighboring slide without duplicate cards or automatic draft edits`, async () => {
+  const job = (index, status) => ({ id: `slide-${index}`, jobType: "image_generation", exploreFormat: "slideshow", status, createdAt: `2026-10-16T10:00:0${2 - index}Z`, updatedAt: "2026-10-16T10:01:00Z", slideshowGeneration: slideshowBatch.slideshowGenerationSlot("batch", 2, 1, index), output: status === "completed" ? { mediaAssetId: `asset-${index}`, url: `https://owned.test/${index}.png`, ratio: "4:5" } : null });
+  const jobs = [job(1, "processing"), job(0, "processing")];
+  const h = harness("slideshow", { completedJobs: jobs });
+  await h.flushEffects(); h.render();
+  Object.assign(jobs[0], job(1, state)); Object.assign(jobs[1], job(0, "completed"));
+  for (let i = 0; i < 3; i++) { await h.flushEffects(); h.render(); }
+  const nodes = resultNodes(h.render().output);
+  const versions = nodes.filter(node => node.type === "section" && node.props["aria-label"] === "Generated slideshow version 1");
+  assert.equal(versions.length, 1);
+  const cards = nodes.filter(node => node.type?.name === "ImageGenerationCard");
+  assert.equal(cards.length, state === "failed" ? 1 : 2);
+  assert.equal(cards[0].props.asset.id, "asset-0", "reference order wins over request/completion order");
+  assert.equal(cards[0].props.compact, true);
+  const edit = nodes.find(node => node.type === "Button" && /^Edit (these|this)/.test([node.props.children].flat().join("")));
+  assert.equal(edit.props.disabled, state === "queued");
+  assert.equal(h.autoVersions.length, 0, "completion must not populate the draft behind the user's back");
+  if (state !== "queued") {
+    await edit.props.onClick(); await new Promise(setImmediate);
+    assert.deepEqual(Array.from(h.selectedVersions[0], image => image.id), state === "completed" ? ["asset-0", "asset-1"] : ["asset-0"]);
+  }
+});
 
 test("slideshow pending cards restore prompt and ratio from the same owner/scope key used by admission", async () => {
   const jobId = "00000000-0000-4000-8000-000000000002";

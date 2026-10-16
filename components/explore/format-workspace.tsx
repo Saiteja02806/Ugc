@@ -438,9 +438,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
       onSelectVideo: (video: AIStudioVideoResult) => {
         editVideo(video, "generate");
       },
+      imageSelectionLabel: slideshowRegenerationImage ? "Replace selected slide" as const : "Add to slideshow" as const,
       onSelectImage: (image: AIStudioImageResult) => { if (slideshowEditor.current?.useImage(image)) { setSlideshowRegenerationImage(null); setStep("edit"); revealOnMobile("preview"); } },
       onSelectSlideshow: (images: AIStudioImageResult[]) => { if (!slideshowEditor.current?.useSlideshow(images)) return false; setSlideshowRegenerationImage(null); setStep("edit"); revealOnMobile("preview"); return true; },
-      onGeneratedSlideshow: (images: AIStudioImageResult[]) => slideshowEditor.current?.useSlideshow(images, true) ?? false,
     },
   };
 
@@ -521,7 +521,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         <div hidden={step !== "create" || clipStageVisible} className="flex min-h-0 flex-1 flex-col">
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
             <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-muted">Watch an example, then choose Recreate.</p><FilterMenu activeCategories={categories} categories={options} count={filtered.length} disabled={loading} onClear={() => setCategories([])} onToggle={(category, checked) => setCategories(current => checked ? [...current, category] : current.filter(value => value !== category))} /></div>
-            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={cn(styles.referenceGrid, presentation.exampleGrid)}>{visible.map(item => <ReferenceCard key={item.id} reference={item} compact showActionLabel overlayActions={format === "hook"} hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => { setPreviewSlide(0); setPreviewReference(item); }} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
+            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={cn(styles.referenceGrid, presentation.exampleGrid)}>{visible.map(item => <ReferenceCard key={item.id} reference={item} canOpenSource={accessState === "pro"} compact showActionLabel overlayActions={format === "hook"} hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => { setPreviewSlide(0); setPreviewReference(item); }} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
             {!canBrowseAllReferences && filtered.length > 1 ? <ProReferenceGate /> : null}
             {canBrowseAllReferences && filtered.length > 0 ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4"><p className="text-xs text-muted">{visible.length} of {filtered.length} references</p>{visible.length < filtered.length ? <Button type="button" variant="outline" size="sm" onClick={() => setReferencePage({ key: filterKey, limit: visible.length + referenceBatchSize(referenceColumns) })}>Show more references</Button> : null}</div> : null}
           </section>

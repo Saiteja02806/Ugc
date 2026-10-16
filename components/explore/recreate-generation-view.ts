@@ -24,6 +24,7 @@ export type RecreateGenerationView = {
     onSelectVideo?: (result: AIStudioVideoResult) => void;
     onGeneratedVideo?: (result: AIStudioVideoResult) => void;
     onSelectImage?: (result: AIStudioImageResult) => void;
+    imageSelectionLabel?: "Add to slideshow" | "Replace selected slide";
     onSelectSlideshow?: (results: AIStudioImageResult[]) => boolean;
     onGeneratedSlideshow?: (results: AIStudioImageResult[]) => boolean;
   };

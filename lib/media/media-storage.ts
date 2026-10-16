@@ -290,6 +290,22 @@ export async function getMediaAssetForOwner(params: {
   return data;
 }
 
+/** Reuse an active catalogue import without reading any other owner's media. */
+export async function getMediaAssetForOwnerByStorageKey(params: {
+  storageKey: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("storage_key", params.storageKey)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load media asset: ${error.message}`);
+  return data;
+}
+
 /** Bounded lookup for multi-slide edits; never reads another owner's assets. */
 export async function getMediaAssetsForOwnerByIds(params: {
   assetIds: string[];

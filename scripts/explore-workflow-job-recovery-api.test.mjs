@@ -6,6 +6,7 @@ import ts from "typescript";
 import { createClient } from "@supabase/supabase-js";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import * as slideshowBatch from "../worker/src/lib/slideshow-generation-batch.ts";
+import * as providerBalance from "../worker/src/lib/provider-balance.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -16,6 +17,7 @@ function load(file, imports = {}, globals = {}) {
     if (name in imports) return imports[name];
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts") return slideshowBatch;
     if (name === "../explore/remix-source.ts") return remixSource;
+    if (name === "../../worker/src/lib/provider-balance.ts") return providerBalance;
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });
   return exports;

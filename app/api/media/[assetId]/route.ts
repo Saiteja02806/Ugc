@@ -57,7 +57,10 @@ async function handleRequest(
         // Read provenance from this owner's original job, never browser state.
         const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
           ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
-        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : null,
+        // Original reference imports already contain server-validated provenance.
+        // Unlike generated assets, they have no background generation job.
+        const importedOriginal = asset.source_type === "upload" && asset.project_id === "explore-catalog-reference";
+        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : importedOriginal ? serialized.metadata.remixTextSource ?? null : null,
           ...(asset.source_type === "generated_image" ? { slideshowGeneration: readSlideshowGenerationSlot(job?.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.slideshowGeneration : null) } : {}) };
       }
       return Response.json({ ok: true, asset: serialized });

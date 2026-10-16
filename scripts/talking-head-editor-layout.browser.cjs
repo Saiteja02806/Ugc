@@ -16,7 +16,7 @@ const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/talking-
 fs.mkdirSync(out, { recursive: true });
 const file = (name, content) => fs.writeFileSync(path.join(out, name), content);
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
-file("css.cjs", `module.exports=function(source){const prefix=this.resourcePath.replace(/[^a-zA-Z]/g,'')+'_';const names=Object.fromEntries([...source.matchAll(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g)].map(m=>[m[1],prefix+m[1]]));const css=source.replaceAll(/:global\\(([^)]+)\\)/g,'$1').replaceAll(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,name)=>'.'+names[name]);return 'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
+file("css.cjs", `module.exports=function(source){if(!this.resourcePath.endsWith('.module.css'))return 'const style=document.createElement('+JSON.stringify('style')+');style.textContent='+JSON.stringify(source)+';document.head.append(style);export default {};';const prefix=this.resourcePath.replace(/[^a-zA-Z]/g,'')+'_';const names=Object.fromEntries([...source.matchAll(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g)].map(m=>[m[1],prefix+m[1]]));const css=source.replaceAll(/:global\\(([^)]+)\\)/g,'$1').replaceAll(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,name)=>'.'+names[name]);return 'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
 file("ui.tsx", `export const WorkflowBackgroundAudioPicker=()=>null;export const RemixTextSection=({children})=><>{children}</>;export const SCHEDULE_PLATFORMS=[];export const WorkflowDemoPreview=()=>null;export const loadWorkflowDefaultMusic=async()=>{throw Error('Unexpected live music lookup');};
 export const useAuth=()=>({user:null});export const getCurrentUserIdToken=async()=>null;export const fetchAIStudioMediaAsset=async()=>{throw Error('Unexpected live media lookup');};export const uploadAIStudioReferenceMedia=async()=>{throw Error('Unexpected upload');};
 export const useLocalWorkflowMedia=()=>({asset:null,loading:false,error:null});export const DEFAULT_FINISHING_OPTIONS={};export const useWorkflowFinishing=()=>({output:null,action:{disabled:true,busy:false,message:'Fixture only'}});export const useClipDraftSave=()=>({loaded:true,saved:null,busy:false,dirty:false,error:null,save:async()=>{},reload:async()=>{}});`);
@@ -36,7 +36,7 @@ async function main() {
   await new Promise((resolve,reject)=>{const compiler=webpack({mode:"development",devtool:false,plugins:[new webpack.DefinePlugin({"process.env":JSON.stringify({NODE_ENV:"development"})})],entry:path.join(out,"entry.tsx"),output:{path:out,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],alias:aliases},module:{rules:[{test:/\.tsx?$/,use:path.join(out,"loader.cjs")},{test:/\.css$/,use:path.join(out,"css.cjs")}]}});compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve()));});
   const globalCss=(await postcss([tailwind()]).process(`@import "${path.join(root,'app','globals.css').replaceAll(path.sep,'/')}";`,{from:path.join(out,'fixture.css')})).css;
   const mediaRoutes={'/video.mp4':'portrait.mp4','/portrait-markers.mp4':'portrait-markers.mp4','/landscape.mp4':'landscape.mp4','/square.mp4':'square.mp4'};
-  const server=http.createServer((request,response)=>{const name=request.url==='/bundle.js'?'bundle.js':mediaRoutes[request.url]??null;response.setHeader('Content-Type',name==='bundle.js'?'text/javascript':name?'video/mp4':'text/html');if(name&&name!=='bundle.js'){const bytes=fs.readFileSync(path.join(out,name));response.setHeader('Accept-Ranges','bytes');const range=request.headers.range?.match(/bytes=(\d+)-(\d*)/);if(range){const start=Number(range[1]),end=range[2]?Math.min(Number(range[2]),bytes.length-1):bytes.length-1;response.statusCode=206;response.setHeader('Content-Range',`bytes ${start}-${end}/${bytes.length}`);response.setHeader('Content-Length',end-start+1);return response.end(bytes.subarray(start,end+1));}response.setHeader('Content-Length',bytes.length);return response.end(bytes);}response.end(name?fs.readFileSync(path.join(out,name)):globals(globalCss));});
+  const server=http.createServer((request,response)=>{if(/^\/explore-text-fonts\/[a-z]+-(400|500|700)\.woff2$/.test(request.url)){response.setHeader('Content-Type','font/woff2');return response.end(fs.readFileSync(path.join(root,'public',request.url)));}const name=request.url==='/bundle.js'?'bundle.js':mediaRoutes[request.url]??null;response.setHeader('Content-Type',name==='bundle.js'?'text/javascript':name?'video/mp4':'text/html');if(name&&name!=='bundle.js'){const bytes=fs.readFileSync(path.join(out,name));response.setHeader('Accept-Ranges','bytes');const range=request.headers.range?.match(/bytes=(\d+)-(\d*)/);if(range){const start=Number(range[1]),end=range[2]?Math.min(Number(range[2]),bytes.length-1):bytes.length-1;response.statusCode=206;response.setHeader('Content-Range',`bytes ${start}-${end}/${bytes.length}`);response.setHeader('Content-Length',end-start+1);return response.end(bytes.subarray(start,end+1));}response.setHeader('Content-Length',bytes.length);return response.end(bytes);}response.end(name?fs.readFileSync(path.join(out,name)):globals(globalCss));});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   if (process.argv.includes('--serve-only')) { console.log('Fixture URL: http://127.0.0.1:'+server.address().port); return; }
   let browser;
@@ -75,6 +75,11 @@ async function main() {
       await page.getByLabel('Trim start',{exact:true}).fill('1');
       await page.waitForFunction(()=>Math.abs(document.querySelector('[data-clip-media] video').currentTime-1)<.03);
       await page.getByLabel('Overlay text',{exact:true}).fill('Portrait layout check');
+      await page.getByLabel('Text font',{exact:true}).selectOption('inter');
+      await page.getByLabel('Text weight',{exact:true}).selectOption('500');
+      const fonts = await page.getByLabel('Text font',{exact:true}).evaluate(el=>{const row=el.closest('label').parentElement,weight=row.querySelector('[aria-label="Text weight"]');const a=el.getBoundingClientRect(),b=weight.getBoundingClientRect();return{sameRow:Math.abs(a.top-b.top)<1,height:row.getBoundingClientRect().height,width:row.getBoundingClientRect().width};});
+      assert.equal(fonts.sameRow,true,'Font and Weight stay together in one compact row');
+      assert.ok(fonts.height<65,'Font additions use only one small row');
       await page.getByLabel('Text start time',{exact:true}).fill('.5');
       await page.waitForFunction(()=>Math.abs(document.querySelector('[data-clip-media] video').currentTime-1.5)<.03);
       await page.getByLabel('Text overlay 1 preview',{exact:true}).waitFor();
@@ -93,6 +98,7 @@ async function main() {
 
       await page.getByRole('button',{name:'Back to videos',exact:true}).click();await page.getByRole('button',{name:'Edit hook video',exact:true}).click();
       assert.equal(await page.getByLabel('Trim start',{exact:true}).inputValue(),'1');assert.equal(await page.getByLabel('Overlay text',{exact:true}).inputValue(),'Portrait layout check');
+      assert.equal(await page.getByLabel('Text font',{exact:true}).inputValue(),'inter');assert.equal(await page.getByLabel('Text weight',{exact:true}).inputValue(),'500');
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Reopening edited controls fits the viewport');
       const player=page.locator('[data-clip-media] video');
       await player.evaluate(async video=>{video.muted=true;video.currentTime=1;await video.play();});
@@ -107,6 +113,8 @@ async function main() {
       await page.waitForFunction(()=>document.querySelector('[data-clip-media] video')?.readyState>=2);
       await page.getByRole('button',{name:'Play preview',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-clip-media] video')?.currentTime>1.55);await page.getByRole('button',{name:'Pause preview',exact:true}).click();
       await page.getByLabel('Text overlay 1 preview',{exact:true}).waitFor();
+      await page.getByLabel('Text font',{exact:true}).scrollIntoViewIfNeeded();
+      await page.locator('[data-clip-media] svg g').evaluate(async el=>{await document.fonts.load(el.getAttribute('font-weight')+' 32px "'+el.getAttribute('font-family')+'"');});
       await page.evaluate(()=>localStorage.clear());await page.evaluate(()=>window.scrollTo(0,0));measurements.push({viewport,layout});await page.screenshot({path:path.join(out,`editor-${viewport.width}.png`),fullPage:true});
     }
     for(const viewport of [{width:1440,height:900},{width:390,height:844}]){

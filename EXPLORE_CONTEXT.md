@@ -1,5 +1,149 @@
 # Explore context and UI decision record
 
+### Video text fonts and compact inspector — 16 October 2026, local implementation
+
+- The user approved Inter, DM Sans, Roboto Condensed and Montserrat, then
+  clarified that the existing compact Text style card must remain. Add only
+  one small bottom row with Font and Weight side by side. Do not turn the
+  inspector into a wide form or add another section/page. Keep the existing
+  preset, position/color and sliders in place. The wide isolated font fixture
+  is not the product layout; full-editor screenshots verify the compact card.
+- Fonts and weights (Regular 400 / Medium 500 / Bold 700) are independent
+  overrides. Both existing presets remain. Selecting a preset resets its weight
+  while retaining the chosen family; font/weight changes retain authored copy,
+  timing, color, size and position. Original (Arial) preserves legacy appearance
+  and offers its existing Regular/Bold weights. New Hook text starts in Inter
+  Medium; new Wall text uses Inter Regular. Existing edits gain no new defaults.
+- The shared clip editor supplies these choices to Hook and Talking Head/demo
+  clip editing. Wall keeps these controls behind its existing advanced Edit
+  action and retains full-duration text. Speech-caption styles and slideshow
+  typography are separate and are not changed by this feature.
+- Optional, whitelisted font/weight fields survive save/reopen, sequences and
+  Remix. Missing fields retain old normalized drafts, wrapping, fingerprints
+  and rendering paths. New faces use matching bundled WOFF2/TTF assets with OFL
+  licenses and pinned-source hashes, prepared by `prepare-explore-text-fonts.py`.
+  Their advance metrics drive shared line wrapping. Fonts load locally; no
+  Google Fonts request is required when a user edits or exports a video.
+- Export draws supported glyphs directly from the bundled face into the existing
+  SVG/PNG text layer. Do not rely on runtime system-family substitution: initial
+  native-lookup tests produced duplicate faces. Unsupported glyphs retain the
+  existing system fallback (including emoji/CJK). Legacy exports are unchanged.
+  The worker adds opentype.js; install its locked dependencies before rendering.
+- Local verification: worker build, TypeScript and scoped lint passed; 128
+  focused tests covered all 12 distinct faces, actual timed video export,
+  validation, legacy drafts, blank drafts, Remix and clip behavior. Browser
+  checks covered all 12 web faces, save/reopen, Wall advanced-only controls and
+  the real Hook/demo/Wall layout at 320–1900px. Font and Weight share one row
+  under 65px high; the existing desktop inspector remains at most 300px wide.
+  These changes are not deployed. Production acceptance requires the updated
+  worker (dependency/assets) before the web release and a signed-in check.
+- Release snapshot validation passed: webpack production build, TypeScript and all 164 routes. Concurrent prompt-improvement code and its tests/migration are excluded from this snapshot; shared in-progress files remain untouched. The earlier combined-worktree type failure is historical, not the release result.
+
+### Choose image picker polish — 16 October 2026, local change
+
+- The user's circled Add image and image-source tabs requested UI polish only.
+  Keep Choose image, Add image, Your images and UGC Pilot images labels and
+  existing selection/upload/generation behavior. Opening the picker or selecting
+  an image must not start video generation.
+- Add image is a compact rounded button with a plus icon; sources are separate
+  rounded tabs with a clear selected state. Use rounder clipping on saved,
+  catalogue and selected image thumbnails. Keep keyboard focus, owner scoping,
+  limits, pending state and saved-image reuse intact.
+- Local checks: 16 existing reference-picker tests, scoped lint and TypeScript
+  passed. Actual-component browser fixture checked source tabs, saved selection,
+  native upload chooser and laptop/narrow fit. No deployment or authenticated
+  production acceptance is claimed for this change.
+
+### Slideshow assembly and Add slides — 16 October 2026, local implementation
+
+- The user authorized only assembly/UI work; exact screenshot placement and AI
+  generation-quality corrections remain deferred. Group each generated version
+  as one ordered horizontal strip with explicit **Edit these N slides**. Do not
+  auto-populate drafts on completion. Whole-version switching archives the prior
+  draft; individual Add and Replace labels reflect the actual pending action.
+- Add slides opens an in-place picker: Generated images / Original reference /
+  Upload images. Create new slides alone navigates to Create. Original selection
+  is optional and explicit, includes source numbers and Select all remaining,
+  and marks already represented originals/recreations. Never include all source
+  slides automatically. Show the 10-slide capacity and block oversized choices
+  without truncating a 12-slide master.
+- Catalogue originals are registered as owned ready images through the new
+  authenticated reference-images endpoint using server-resolved IDs and immutable
+  storage objects. Uploaded references reuse owned IDs. No AI generation credits
+  are consumed. Keep v2 owned-source save/editable-draft contracts and legacy
+  fingerprints unchanged. New originals fill source-order gaps while existing
+  slide order, text and edits are preserved; generated/upload additions append.
+- Local verification: 150 tests, TypeScript, scoped lint and full 164-route build
+  passed. Real editor/picker desktop/mobile checks and existing recovery browser
+  regressions passed. These changes are not deployed and signed-in production
+  acceptance remains pending. See `docs/slideshow-assembly-ui-2026-10-16.md`.
+
+### Catalogue video previews and source-post access — 16 October 2026, local change
+
+- Hook and Wall reference popups use the shared custom play/pause, seek, mute
+  and fullscreen controls. Do not reintroduce native video controls, a Download
+  action, picture-in-picture or remote playback here. Suppress the reference
+  video's context menu. This concerns catalogue reference footage; owned output
+  downloads retain their existing rules. UI restrictions are not copy protection
+  for media delivered to a browser.
+- Keep the Hook Instagram/TikTok source icon visible for free accounts. Clicking
+  it opens **Upgrade to Pro** with a pricing link, without opening the source,
+  selecting Recreate or opening the preview. Only verified Pro access supplies
+  the external source link. Unverified access must not expose a clickable source
+  link. Apply this to both overlay and compact-caption icons and both Explore
+  workspace entry points. Wall continues to have no source-post icon.
+- Verify mouse and keyboard upgrade actions, Pro navigation, Hook/Wall custom
+  playback, close/unmount, and short/narrow viewports. Local checks are separate
+  from authenticated production acceptance; the production browser currently
+  redirects to sign-in. This change has not been deployed from this chat.
+- Local verification passed: 65 focused tests, TypeScript and scoped ESLint.
+  The real-component Edge fixture covers free mouse/keyboard gating, Pro source
+  links, independent Recreate, play/pause, keyboard seeking, mute, custom-control
+  fullscreen, suppressed context menu, close/unmount, 1280×720 and 390×844 fit.
+  Wall uses the same dialog/player with Wall format metadata in this fixture;
+  this does not establish authenticated production playback or entitlement state.
+
+### Add slides and exact-asset use — 16 October 2026, user clarification
+
+- Retaining unchanged originals is the user's choice: they may add some or all
+  remaining master slides. Do not automatically add every ungenerated original.
+  Proposed Add slides opens an in-place picker with Generated slides, Reference
+  slides and Upload images sources; only Create new slides navigates to Create.
+  Reference slides should offer numbered thumbnails, multi-select, select all
+  remaining, existing-slide indicators and an explicit Add selected action.
+- Generated results remain grouped by batch/version; users can use the version
+  or choose individual outputs. Reference identity/source position is distinct
+  from output position. Additions retain reference order and existing edits;
+  users can reorder/remove before saving. Imports consume no AI generation
+  credits and must retain owned-media/readiness validation and the current cap.
+- A sparkle/prompt-improvement button may offer an editable, optional per-slide
+  brief, but cannot guarantee exact screenshot insertion or silently rewrite
+  instructions. Recommend a separate Place image operation: choose the uploaded
+  asset, target slide and four screen corners; preview a perspective transform
+  of actual pixels. Use relevant business facts only, not an automatic request
+  to invent a brand interface. These design decisions are not implemented yet.
+
+### Fresh v3 fidelity and master-slide assembly audit — 16 October 2026
+
+- Release `d73ef153` deployed the earlier local v3, notice, provider-error and
+  Explore corrections. Historical local/pending notes below describe their
+  earlier state; they are not evidence that v3 is still undeployed.
+- Fresh batch `09e14462-478d-4a58-af80-d04a2cef4847` completed at 14:47 IST
+  with v3 and Sunburst, Marketing slides 1/4 and the uploaded Explore screenshot.
+  It still invents a white website instead of inserting the actual dark screen.
+  Exact screenshot compositing and visual-fidelity acceptance remain absent.
+- The user now requires a version's generated images to appear together and
+  a way to retain/add unchanged master-reference slides around replacements.
+  Grouping metadata exists, but cards remain individual; image selection appends
+  unless an explicit replacement is pending. The current owned-image editor has
+  no master-original picker/import. Do not claim these are supported already.
+- Marketing 01 has 12 originals; saved slideshows currently support at most 10.
+  Preserve original positions and batch provenance; never silently truncate or
+  weaken ownership checks. The safe design imports chosen catalogue originals
+  as owned media and retains the current editable save contract. These are
+  requirements/proposals, not completed implementation. See
+  `docs/slideshow-fidelity-and-master-assembly-2026-10-16.md`.
+
 ### Nearest-second reference selection — 16 October 2026, latest correction
 
 - The user's latest instruction replaces the earlier round-up policy for new
@@ -837,6 +981,10 @@ mistake recurs; add the recurrence and its cause rather than deleting the row.
 | EX-44 | A playable local demo still had disabled Edit/Change and replacement controls while its upload awaited confirmation | Separate navigation, local editing and source replacement from owned-media Save/Schedule readiness. Preserve pending edits on success and the accepted draft on failure; reject late superseded completions. Bound metadata reads. **Local regressions and delayed-upload browser checks passed; production acceptance pending.** |
 | EX-45 | Routine editor footer instructions and a horizontal divider consumed laptop height above Save/return | Remove the repeated instruction row and divider; compact the footer while retaining real loading/error/retry feedback and visible Save/return buttons. Check the bottom of the scroll region and actual footer bounds. **Local implementation; production acceptance pending.** |
 | EX-46 | Labeled a fractional source-video length as generic Duration, making Omni source editing look like unsupported fractional fresh generation | Label source length explicitly, distinguish native edit timing from selected generation duration and rounded billing, and verify both prompt fields and decimal timing through admission/provider/output validation. Never round the footage itself or claim every model shares edit semantics. **Local checks passed; no paid production generation submitted.** |
+| EX-47 | The opened reference popup kept native video controls and exposed Download even though the surrounding editor used custom controls | Audit the opened popup as well as gallery/editor players. Hook and Wall reference playback must use custom controls without download/native menus; preserve ordinary playback and fullscreen. Do not claim browser-delivered media is impossible to copy. **Local change; production acceptance pending.** |
+| EX-48 | Hook source icons navigated free users straight to the original social post | Check verified Pro access at every source-icon rendering path. Free clicks open Upgrade to Pro; Pro links retain safe external navigation. Keep Wall source-free and Preview/Recreate independent. **Local change; production acceptance pending.** |
+| EX-49 | Font controls were demonstrated as extra full-width rows that made Text style tall and pushed useful controls away | Preserve the compact inspector. Add Font and Weight together in one small bottom row; verify inside the real editor at laptop and narrow sizes. Do not use an isolated wide fixture as the product design. **Compact full-editor checks passed locally.** |
+| EX-50 | A font appeared selectable in the browser while native export lookup could silently substitute another face | Bundle matching faces and licenses, validate the saved choice, and render glyphs from that exact file. Verify all four families at all three weights with actual raster/video output and save/reopen. Preserve legacy appearance. **Local checks passed; production pending.** |
 
 Process incident: an intermediate edit introduced an invalid UTF-8 byte and
 temporarily broke local compilation. It was corrected. Preserve UTF-8 and check

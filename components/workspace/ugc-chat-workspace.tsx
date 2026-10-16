@@ -61,7 +61,7 @@ import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, m
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
 import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
-import { slideshowGenerationGroups } from "@/lib/explore/slideshow-generation-groups";
+import { groupSlideshowResultRows, slideshowGenerationGroups } from "@/lib/explore/slideshow-generation-groups";
 import { appendAIStudioSessionResultIds } from "@/lib/ai-studio/generation-session";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
@@ -916,22 +916,10 @@ export function ImageGenerationStudioPanel({
     document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
   }
 
-  const slideshowGroups = useMemo(() => workflowFormat === "slideshow" ? slideshowGenerationGroups(visibleImages) : [], [workflowFormat, visibleImages]);
-  const offeredSlideshow = useRef(new Set<string>());
-  useEffect(() => {
-    if (!user || isGenerating || selectingImage || !workflow?.onGeneratedSlideshow) return;
-    const group = slideshowGroups.find(group => group.complete);
-    if (!group?.complete || offeredSlideshow.current.has(`${user.uid}:${group.key}`)) return;
-    let stopped = false;
-    void (async () => {
-      try {
-        const token = await getCurrentUserIdToken(user.uid); if (!token || stopped) return;
-        const images = await Promise.all(group.images.map(image => resolveSlideshowImage(image, token)));
-        if (!stopped && activeUserIdRef.current === user.uid && workflow.onGeneratedSlideshow?.(images)) offeredSlideshow.current.add(`${user.uid}:${group.key}`);
-      } catch { /* Explicit Edit version reports any media-read error. */ }
-    })();
-    return () => { stopped = true; };
-  }, [user, isGenerating, selectingImage, workflow, slideshowGroups]);
+  // Opening a version is explicit: completion must not silently populate a draft.
+  const slideshowResults = workflowFormat === "slideshow"
+    ? groupSlideshowResultRows(imageRows)
+    : { versions: [], individual: imageRows };
 
   async function selectSlideshowVersion(images: AIStudioImageResult[]) {
     if (!workflow?.onSelectSlideshow || selectingImageRef.current || !user) return;
@@ -992,8 +980,40 @@ export function ImageGenerationStudioPanel({
           </div>
         }
       >
-        {slideshowGroups.length ? <div className="flex flex-wrap gap-2" aria-label="Generated slideshow versions">{slideshowGroups.map(group => <div key={group.key} className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"><span className="text-sm font-semibold">Version {group.slot.versionIndex} · {group.images.length}/{group.slot.slideCount} slides</span><Button type="button" variant="outline" size="sm" disabled={!group.complete || selectingImage || isGenerating} onClick={() => void selectSlideshowVersion(group.images)}>Edit version {group.slot.versionIndex}</Button></div>)}</div> : null}
-        {imageRows.map((row) => (
+        {slideshowResults.versions.map((group) => {
+          const images = group.rows.flatMap(row => row.asset ? [row.asset] : []);
+          const complete = images.length === group.slot.slideCount;
+          return (
+            <section key={group.key} aria-label={`Generated slideshow version ${group.slot.versionIndex}`} className="min-w-0 rounded-2xl border border-border bg-card/30 p-3 sm:p-4">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Version {group.slot.versionIndex}</h3>
+                  <p className="mt-1 text-xs text-muted">{images.length} of {group.slot.slideCount} slides ready</p>
+                </div>
+                <Button type="button" disabled={!images.length || selectingImage || isGenerating} onClick={() => void selectSlideshowVersion(images)}>
+                  Edit {images.length === 1 ? "this slide" : `these ${images.length} slides`}
+                </Button>
+              </div>
+              {!complete && !isGenerating ? <p className="mb-3 text-xs text-muted">Some slides are not ready. You can edit the ready slides and add others later.</p> : null}
+              <div className="flex gap-4 overflow-x-auto overscroll-x-contain pb-3" tabIndex={0} aria-label={`Slides in version ${group.slot.versionIndex}`}>
+                {group.rows.map(row => (
+                  <div key={row.key} className="w-[min(220px,65vw)] shrink-0">
+                    <p className="mb-2 text-xs font-medium text-muted">Slide {row.slideshowGeneration!.slideIndex}</p>
+                    <ImageGenerationCard
+                      asset={row.asset} aspectRatio={row.aspectRatio} prompt={row.prompt} createdAt={row.createdAt}
+                      referenceImageUrl={referenceImage?.asset.url ?? null} isNew={row.asset?.id === latestCompletedId}
+                      onOpenPreview={setPreviewImage}
+                      onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
+                      selectionDisabled={selectingImage || isGenerating} compact selectionLabel={workflow?.imageSelectionLabel ?? "Add to slideshow"}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3"><ImagePromptBubble createdAt={group.rows[0].createdAt} prompt={group.rows[0].prompt} /></div>
+            </section>
+          );
+        })}
+        {slideshowResults.individual.map((row) => (
           <div key={row.key}>{row.slideshowGeneration ? <p className="mb-2 text-xs font-semibold text-muted">Version {row.slideshowGeneration.versionIndex} · Slide {row.slideshowGeneration.slideIndex} of {row.slideshowGeneration.slideCount}</p> : null}<ImageGenerationCard
             key={row.key}
             asset={row.asset}
@@ -1005,6 +1025,7 @@ export function ImageGenerationStudioPanel({
             onOpenPreview={setPreviewImage}
             onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
             selectionDisabled={selectingImage || isGenerating}
+            selectionLabel={workflowFormat === "slideshow" ? workflow?.imageSelectionLabel ?? "Add to slideshow" : undefined}
           /></div>
         ))}
       </AiStudioResults>
@@ -1180,6 +1201,8 @@ function ImageGenerationCard({
   onOpenPreview,
   onSelect,
   selectionDisabled = false,
+  selectionLabel = "Use image in slide",
+  compact = false,
 }: {
   asset: AIStudioImageResult | null;
   aspectRatio: AIStudioImageAspectRatio;
@@ -1190,6 +1213,8 @@ function ImageGenerationCard({
   onOpenPreview: (image: AIStudioImageResult) => void;
   onSelect?: () => void;
   selectionDisabled?: boolean;
+  selectionLabel?: string;
+  compact?: boolean;
 }) {
   return (
     <article
@@ -1200,7 +1225,7 @@ function ImageGenerationCard({
       )}
     >
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:gap-6">
-        <div data-image-preview className={cn("w-full shrink-0 sm:mt-12", getImagePreviewWidthClassName(aspectRatio))}>
+        <div data-image-preview className={cn("w-full shrink-0", !compact && "sm:mt-12", !compact && getImagePreviewWidthClassName(aspectRatio))}>
           <div
             className={cn("relative overflow-hidden rounded-2xl border bg-card-muted/70", asset ? "border-border" : "border-primary/20")}
             style={{ aspectRatio: aspectRatio.replace(":", " / ") }}
@@ -1239,15 +1264,15 @@ function ImageGenerationCard({
               <span>{aspectRatio}</span>
               {asset ? <span className="text-foreground">Ready</span> : null}
             </div>
-            {onSelect ? <Button type="button" disabled={selectionDisabled} onClick={onSelect}>Use image in slide</Button> : null}
+            {onSelect ? <Button type="button" variant={compact ? "outline" : "default"} disabled={selectionDisabled} onClick={onSelect}>{selectionLabel}</Button> : null}
             {asset ? (
               <AiStudioResultActions kind="image" title={asset.title} url={asset.url} />
             ) : null}
           </div>
         </div>
-        <div data-image-details className="w-full min-w-0 self-start sm:ml-auto sm:max-w-[26rem] sm:flex-1">
+        {!compact ? <div data-image-details className="w-full min-w-0 self-start sm:ml-auto sm:max-w-[26rem] sm:flex-1">
           <ImagePromptBubble createdAt={createdAt} prompt={prompt} />
-        </div>
+        </div> : null}
       </div>
     </article>
   );

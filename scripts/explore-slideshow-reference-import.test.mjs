@@ -183,6 +183,7 @@ test("imported original provenance survives owner detail resolution while ordina
       "@/lib/firebase/server-auth": { requireFirebaseUser: async () => ({ uid: "owner" }), FirebaseAuthRequestError: Error },
       "@/lib/jobs/background-jobs": { getBackgroundJobForUser: () => { throw Error("No generation lookup for original imports"); } },
       "@/lib/explore/remix-source": {}, "@/worker/src/lib/slideshow-generation-batch": {},
+      "@/lib/ai-studio/generated-image-history-metadata": {},
       "@/lib/media/media-storage": { getMediaAssetForOwner: async () => ({ source_type: "upload", project_id: projectId }),
         serializeMediaAsset: () => ({ metadata: { remixTextSource: source } }) },
     });

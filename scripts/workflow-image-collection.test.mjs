@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 
-function fixture(limit = 6) {
+function fixture(limit = 6, ownedRead = async id => ({ id, title: "Saved image", url: "https://owned.test/saved.png" })) {
   let cursor = 0, result, nextUrl = 0;
   const slots = [], effects = [], revoked = [], imageReads = [];
   const depsChanged = (previous, next) => !previous || next.some((value, index) => !Object.is(previous[index], value));
@@ -19,7 +19,7 @@ function fixture(limit = 6) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/use-local-workflow-images.ts", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, require: name => { assert.equal(name, "react"); return react; },
+  }).outputText, { exports, Error, require: name => { if (name === "@/lib/explore/format-reference-images") return { fetchFormatReferenceImage: (...args) => ownedRead(...args) }; assert.equal(name, "react"); return react; },
     URL: { createObjectURL: file => `blob:${++nextUrl}:${file.name}`, revokeObjectURL: url => revoked.push(url) },
     Image: class { set src(value) { imageReads.push({ url: value, load: () => this.onload(), fail: () => this.onerror() }); } },
   });
@@ -39,6 +39,28 @@ test("image uploads append in order, keep the first creator compatibility field 
   input.removeImage(firstUrl); input = h.render();
   assert.equal(input.asset.name, "second.png"); assert.deepEqual(h.revoked, [firstUrl]);
   h.unmount(); assert.equal(h.revoked.length, 2);
+});
+
+test("saved images are verified under their owner, appended without uploads and fenced when removed", async () => {
+  const reads = []; let resolve;
+  const h = fixture(6, (id, owner) => { reads.push([id, owner]); return new Promise(done => { resolve = done; }); });
+  const saved = { id: "saved-image", title: "Product", url: "https://old.test/image.png" };
+  let pending = h.render().chooseSavedImage(saved, "owner-a");
+  assert.equal(h.render().loading, true);
+  assert.deepEqual(reads, [[saved.id, "owner-a"]]);
+  resolve({ ...saved, url: "https://owned.test/current.png" }); assert.equal(await pending, true);
+  let value = h.render(); assert.equal(value.asset.assetId, saved.id); assert.equal(value.asset.url, "https://owned.test/current.png");
+  assert.equal(value.asset.file, undefined); assert.equal(h.imageReads.length, 0);
+  assert.equal(await value.chooseSavedImage(saved, "owner-a"), true); assert.equal(h.render().assets.length, 1);
+  value.remove(); pending = h.render().chooseSavedImage(saved, "owner-a");
+  h.render().remove(); resolve(saved); assert.equal(await pending, false); assert.equal(h.render().assets.length, 0);
+});
+
+test("a rejected saved image retains the earlier reference and blocks generation with an error", async () => {
+  const h = fixture(6, async () => { throw Error("This image is no longer available."); });
+  h.render().chooseLibraryImage({ name: "Creator", url: "/ai-studio/creator-references/creator-01.png" });
+  assert.equal(await h.render().chooseSavedImage({id:"removed"}, "owner"), false);
+  assert.equal(h.render().assets.length, 1); assert.match(h.render().error, /no longer available/);
 });
 
 test("multiple selection is atomic; a corrupt second image retains the earlier collection and stops generation", async () => {

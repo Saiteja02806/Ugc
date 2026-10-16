@@ -1,5 +1,181 @@
 # Explore context and UI decision record
 
+### Hook Remix final-frame captions — 16 October 2026, local fix
+
+- The reported 3.167s Hook switched from “SaaS founders!! / This app is a game
+  changer” to a smaller “I used to think marketing my SaaS / would take so much
+  time” caption. Production Remix receipts confirm two blocks. The reference's
+  second block occupies only its final 3067–3100ms screen-cut frame; scaling
+  moved it to 3133–3167ms. The generated raw footage contains no captions.
+- Hook remix excludes the reviewed one-frame screen-cut captions for paired
+  references 4585ee949081c4e5cd835cd3 and 7c53cba88343579e7e15c8b0 only when
+  their exact two-block timing signature matches. Extend the main caption to
+  the full clip. Keep catalogue transcriptions unchanged; do not globally drop
+  short captions, rewrite Wall/slideshow copy, or flatten authored sequences.
+- Apply this to reference text shown for Remix, new server requests, legacy
+  completed Remix recovery and explicit Apply. Reuse immutable paid receipts;
+  cleanup must not trigger another model request. An older applied clip draft
+  with the exact inherited timing signature is repaired in its derived editor
+  state, preserving main copy, font, weight, size, position/color, trim/audio.
+  Explicit Save persists the corrected draft; existing exported media is not
+  rewritten. Manual timing changes and unrelated reference identities survive.
+- Keep full-duration text visible over the last paused clip frame, including
+  the exact endpoint; intentionally earlier text end times remain respected.
+  Preview, clip-save content and final sequence all use the corrected edit.
+- Local implementation and production acceptance are separate. No production
+  data was modified and no generation or deployment was performed for this fix.
+  The 53 focused checks, TypeScript, scoped ESLint and actual-component ending/
+  legacy-recovery browser test passed. Broader slideshow mock and older preset
+  browser failures are recorded in `docs/hook-remix-final-frame-2026-10-16.md`.
+
+### Scheduling preparation timing failure — 16 October 2026, local fix
+
+- Production Hook + demo posts selected for 20:18 and 20:37 failed before
+  platform scheduling with `COMPOSITION_TIMELINE_UNSUPPORTED`. The uploaded
+  opening `06 Hook07 Detailed` starts its pictures at 25 ms and audio at zero;
+  the demo starts both tracks at zero. Unchanged retries repeat this failure.
+- Local composition now accepts nonnegative input starts up to 100 ms and
+  preserves relative timing: first-frame padding for delayed pictures, sample
+  silence for delayed audio, and bounded end-frame padding for its audio tail.
+  Common origins normalize together. Zero-start filters, duration/file limits,
+  source ownership/hashes and strict zero-start output validation are retained.
+  Larger, negative, nonfinite or inconsistent timelines remain blocked.
+- Unsupported timing now has an allowlisted actionable message instead of
+  silently falling through to generic finishing failure. Never expose arbitrary
+  worker errors or suggest unchanged retries will repair a deterministic file.
+- The exact production hook/demo/music, saved trims and text rendered locally
+  with unchanged input hashes using bundled and installed media tools. Synthetic
+  checks verify event timing and leading silence, not just successful encoding.
+  This is not deployed production acceptance. Do not auto-retry past schedules
+  or publish during verification. See the investigation/fix report in
+  `docs/scheduling-video-preparation-failure-2026-10-16.md`.
+
+### Slideshow attachment/history correction — 17 October 2026, release preparation
+
+- Preserve the product flow: selected reference slides, ONE editable prompt and
+  optional attached images go to AI image editing. Generated images remain
+  ordered/grouped by version. The star receives text only; generation receives
+  the actual references and attachments. Do not add per-slide prompt forms,
+  corner selection, manual placement or automatic compositing to this release.
+- The rejected manual placement/area editor and unfinished automatic vision
+  placement experiment have been removed, including worker helpers and tests.
+  They were local experiments, not a production correction.
+- Composer drafts now retain prompt and ordered uploaded-asset IDs by owner and
+  reference selection. Restore revalidates owned ready assets; failed recovery
+  blocks submission and offers retry or clearing attachments while keeping text.
+  Explicit uploaded-screenshot requests without an attachment fail before billing.
+  This conservative English preflight does not interpret every possible request.
+- Image history recovers prompt/model from the owned saved job, including legacy
+  images lacking prompt metadata. Worker output records submitted/effective text.
+- Local flow tests establish input delivery/recovery, not visual fidelity. A prior
+  production request included the screenshot yet the model redesigned it; exact
+  screenshot reproduction remains unproven until inspecting a real provider result.
+  Track deployment and production acceptance separately in the release report.
+
+### Slideshow live recurrence — 16 October 2026, investigation only
+
+- Distinguish individual batches: the 14:46 IST Sunburst v3 jobs included the
+  uploaded Explore screenshot; the 20:45 IST Flare v3 jobs contained only two
+  catalogue originals and zero attachment references. The screenshot still
+  exists as ready owned media. Upload inventory is not current selection.
+- The production star receipt confirms a text-only Luna rewrite (979 to 620
+  characters), and both latest job inputs equal the rewritten text exactly.
+  Do not diagnose this as an unused rewrite or assume the star removed images.
+  Its hook changes text only. Current attachment selection is component state;
+  the specific browser action preceding the omission is not established.
+- Prompt history really lacks job-backed image prompt enrichment: completed
+  media metadata omits prompt/model, `/api/media` adds only slideshow position
+  for image jobs, and browser-local fallback can conceal the gap. Original and
+  rewritten text remain recoverable from server receipts/jobs.
+- Full-image generation still has no screenshot compositor. Prompt wording and
+  successful reference delivery are not exact-placement acceptance. These
+  findings justify attachment draft recovery/admission validation, history
+  recovery and separate exact placement; this audit implements/deploys none.
+  Evidence: `docs/slideshow-live-root-cause-2026-10-16.md`.
+
+### Shared video-workflow parity — 16 October 2026, local follow-up
+
+- Apply meaningful common improvements across Hook Video, Talking Head + Demo
+  and Wall of Text without waiting for separate requests for each caller.
+  Slideshow editing remains separate. Audit actual caller/state paths rather
+  than assuming a shared editor updates every surrounding screen.
+- Talking Head's older creator picker lacked Your images. Its shared creation
+  form (also used by creator/phone) now offers Your images / UGC Pilot images,
+  refresh/retry, rounded source tabs, Add images and thumbnail clipping. Use
+  the same owner-scoped uploaded-image inventory as Hook/Wall. Opening a picker
+  or selecting a reference must never generate a video.
+- Saved image selection resolves the current owned record, stays pending from
+  the click, preserves existing references on failure, and obeys model limits.
+  Talking Head/phone generation revalidates the saved image ID under the owner
+  and uses its current URL, without uploading another copy. Local uploads and
+  catalogue references retain their existing generation/upload behavior.
+- Talking Head overview uses the same in-place Hook/Demo source menus as
+  Hook Video, with Creative Assets and direct upload; Generate alone navigates
+  to Create. Preserve independent demo-only audio and whole-video music.
+  Do not clear accepted demo audio or leave a rejected demo pending indefinitely.
+- Wall exposes Change directly in its text editor: upload or Creative
+  Assets stays within Edit; Generate goes to Create. Its top-left Create return
+  matches its footer and retains the draft; Explore remains a separate exit.
+  Keep text-first editing, advanced-only trim/style/audio, full-duration text,
+  one complete background track, and no Demo stage or clip.
+- Shared font/weight presets, compact style controls, custom preview playback,
+  removed Hook/Talking Head Crop/Sound panels, and retained drafts already use
+  shared clip components. Do not add redundant controls while closing parity
+  gaps. Record local validation separately from deployed production acceptance.
+- Local verification: 293 regression tests passed, plus TypeScript and scoped
+  ESLint. The actual Talking Head form/library passed saved/catalogue selection,
+  unchanged instructions and popup bounds at 1536×864, 1366×768 and 390×844.
+  Shared Hook/Demo/Wall editor fixtures passed in-place menus, keyboard dismissal,
+  retained trim/text/fonts and layout checks across eight laptop/mobile sizes.
+  Auth/storage/API boundaries were isolated; no paid generation or scheduling
+  was performed. This follow-up is not deployed or accepted in production yet.
+
+### Contextual Remix emojis — 16 October 2026, local implementation
+
+- Hook and Wall of Text generated remixes choose emojis for the rewritten
+  line's meaning, emotion, business context and requested style. Do not retain
+  reference emojis automatically. Replace or remove mismatched emojis, keep
+  usage sparse and allow none. Positive discoveries/free resources should not
+  inherit crying/distress merely because the original caption used it.
+- Explicit requests to keep particular emojis or omit emojis take priority.
+  Original catalog transcriptions retain their exact emojis; this policy changes
+  generated copy only. Existing saved remix results recover without regeneration.
+- The shared provider prompt records version 2 for new requests. Both workflows
+  use the same prompt/service; timing, styling, review-before-Apply and saved
+  business-context behavior are unchanged. Local checks do not establish live
+  model quality or deployment; no paid generation was requested for this change.
+
+### Contextual editor return and in-place Hook replacement — 16 October 2026, follow-up
+
+- In Hook Video and Talking Head + Demo focused clip editors, the top-left
+  arrow is labelled **Videos** and returns to the current workflow's video
+  overview, using the same close action as the footer's Back to videos.
+  Keep the selected clips and mounted editing drafts. Returning is not saving
+  or preparing a video. The overview's normal exit remains unchanged.
+- Keep a separate Explore link in the editor header for leaving the workflow;
+  a Content Demo entry retains its separate Demo/library destination instead.
+  Talking Head retains its existing unsaved-work warning on the external exit.
+- Hook Video's overview **Change** buttons open a compact anchored menu in
+  place, rather than redirecting to Create or focusing the Demo sidebar.
+  Hook offers Upload video, Creative Assets and Generate video; only choosing
+  Generate moves to Create. Demo offers Upload video and Creative Assets only.
+  Reuse the existing owned-media selection/upload handlers, limits and filters.
+  Cancel leaves the current clip and edits intact; failed replacement restores
+  the accepted demo. Accepted replacements invalidate stale final output.
+- Talking Head and Wall now also use in-place replacement menus as documented
+  above. No tab, Edit button or workflow names are renamed.
+  Avoid repeating the mismatch between the editor header exit and its footer
+  return, or making Change navigate before the user chooses a source.
+- The preceding preview/picker UI release is live at commit 702fe9d3. These
+  navigation/menu changes are subsequent local work; production acceptance
+  and deployment of this follow-up remain pending.
+- Local verification: 134 selection, clip-draft, navigation and source-menu
+  regressions passed, along with TypeScript and scoped ESLint. Real-component
+  isolated browser checks cover Demo Change/keyboard dismissal at 1280×720 and
+  1536×864, plus retained trim/text/font drafts after the Videos action across
+  the eight laptop/mobile editor fixture sizes. These fixtures disconnect live
+  authentication/storage and are not production acceptance.
+
 ### Recognizable clip selection and balanced Demo previews — 16 October 2026, local change
 
 - Keep Create → Demo → Schedule for Hook Video and Talking Head + Demo. Demo
@@ -26,9 +202,8 @@
 - Talking Head overview cards share header and preview-slot sizing, including
   empty/one-clip/two-clip states. Keep Edit and Change together beneath the
   selected clip. Empty hook has Add hook video; empty demo has Upload demo video.
-  Change hook returns to the existing Create source choices; Change demo opens
-  its replacement file chooser. In Hook Video, Change demo still returns focus
-  to Demo upload/Creative Assets. Do not couple these actions to playback load.
+  The newer shared in-place Change menus are documented above. Do not couple
+  these actions to playback load.
 - Recurring mistakes to prevent: generic media icons hiding identity; fixed
   tiny portrait caps leaving wide gaps; inconsistent header buttons shifting
   video tops; oversized Remove text competing with filenames; duplicate or

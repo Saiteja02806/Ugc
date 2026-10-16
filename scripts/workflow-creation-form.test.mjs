@@ -41,6 +41,8 @@ function harness({ seedanceEnabled = false } = {}) {
       useCallback(callback) { cursor++; return callback; },
     },
     "next/image": { default: "image" },
+    "@/components/explore/workflow-image-library": { WorkflowImageLibrary: "image-library" },
+    "@/lib/explore/format-reference-images": { fetchFormatReferenceImage: async assetId => ({id: assetId}) },
     "lucide-react": Object.fromEntries(["Check", "Plus", "UserRound", "Video"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
@@ -82,6 +84,18 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   assert.deepEqual(nodes(tree).filter((node) => ["select", "duration-control"].includes(node.type)).map((node) => node.props.ariaLabel), [
     "Hook model", "Hook duration", "Hook quality", "Number of hook videos", "Hook aspect ratio",
   ]);
+});
+
+test("Talking Head exposes its saved image library with owner, limits and explicit selection", async () => {
+  const chosen = [], saved = {id:"saved",url:"https://owned.test/product.png"};
+  const h = harness();
+  const tree = h.render({ ownerId:"owner-a", imageReferences:{assets:[],maxImages:6,chooseSavedImage:async (...args)=>{chosen.push(args);return true;}} });
+  const library = nodes(tree).find(n=>n.type === "image-library");
+  assert.equal(library.props.ownerId,"owner-a"); assert.equal(library.props.disabled,false);
+  assert.deepEqual(chosen,[]); assert.equal(await library.props.onSelect(saved),true);
+  assert.deepEqual(chosen,[[saved,"owner-a"]]);
+  const full = nodes(h.render({imageReferences:{assets:Array.from({length:6},(_,n)=>({url:`/image-${n}`})),maxImages:6}})).find(n=>n.type === "image-library");
+  assert.equal(full.props.disabled,true);
 });
 
 test("all optional generation references remain visible above instructions and errors stay visible", () => {

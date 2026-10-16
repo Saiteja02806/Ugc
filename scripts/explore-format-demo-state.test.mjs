@@ -219,11 +219,29 @@ test("Hook overview exposes replacement controls but has no separate demo audio 
   assert.equal(legacy.draftInputs.at(-1).content.backgroundAssetId, null, "Migrating an older opening-scoped draft must not add a demo-only track");
 });
 
+test("Demo Change opens its own asset chooser and cancels without changing the accepted draft", () => {
+  const stored = draft(2), storage = new Map([[draftKey(), JSON.stringify(stored)]]);
+  const h = harness({ storage }); h.render({ editActive: false, editPreviewActive: true });
+  const before = normalize(h.draftInputs.at(-1).content);
+  const change = h.find(n => n.type === "WorkflowClipSourceActions" && n.props.triggerLabel === "Change");
+  assert.equal(change.props.onGenerate, undefined, "A demo cannot start hook generation");
+  change.props.onChooseAssets(); h.render();
+  const picker = h.find(n => n.type === "WorkflowVideoAssetPicker");
+  assert.equal(picker.props.open, true); picker.props.onOpenChange(false); h.render();
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content), before);
+  assert.equal(h.props.editActive, false); assert.equal(h.dirty, 0);
+  change.props.onChooseAssets(); h.render();
+  h.find(n => n.type === "WorkflowVideoAssetPicker").props.onSelect(asset(3)); h.render();
+  assert.equal(h.draftInputs.at(-1).content.sourceAssetId, id(3));
+  assert.equal(h.props.editActive, false);
+  assert.equal(h.saveRun(), undefined, "Replacement never starts a paid render");
+});
+
 test("demo Edit and Change stay available while uploading, and pending trim survives confirmation", async () => {
   const h = harness(); h.render({ editActive: false, editPreviewActive: true });
   const pending = h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "slow.mp4" }); h.render();
   assert.equal(h.button("Edit demo video").props.disabled, false);
-  assert.equal(h.button("Change").props.disabled, false);
+  assert.equal(h.find(n => n.type === "WorkflowClipSourceActions" && n.props.triggerLabel === "Change").props.disabled, false);
   assert.equal(h.button("Schedule video").props.disabled, true);
   h.render({ editActive: true });
   assert.equal(h.button("Save edits").props.disabled, true);
@@ -340,7 +358,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).backgroundMusic, true);
     assert.equal(h.saveRun(), undefined); assert.equal(h.uploads.length, 0);
     h.select(); assert.equal(toggle().props["aria-checked"], true, "Choosing a demo keeps the soundtrack preference");
-    h.button("Remove").props.onClick(); h.render();
+    h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render();
     assert.equal(toggle().props["aria-checked"], true, "Music can accompany an opening without a demo");
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.equal(restored.input("Background audio").props["aria-checked"], true);
@@ -600,7 +618,7 @@ test("signed-in preview selection and removal preserve the real workflow draft a
   assert.equal(h.input("Selected demo video").props.src, "blob:local-demo");
   assert.equal(readFormatDemoDraft(storage.get(previewKey)).demoId, null);
   assert.equal(storage.get(realKey), realDraft);
-  h.button("Remove").props.onClick(); h.render();
+  h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render();
   assert.equal(h.find(node => node.props?.["aria-label"] === "Selected demo video"), undefined);
   assert.equal(storage.get(realKey), realDraft);
   assert.equal(storage.get(legacyKey), legacyDraft);
@@ -632,7 +650,7 @@ test("legacy opening drafts cannot overwrite a selected or explicitly removed wo
   for (const remove of [false, true]) {
     const storage = new Map([[legacyKey, JSON.stringify(draft())]]);
     const h = harness({ storage }); h.select(asset(3));
-    if (remove) { h.button("Remove").props.onClick(); h.render(); }
+    if (remove) { h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render(); }
     h.render({ videoId: id(1) });
     assert.equal(readFormatDemoDraft(storage.get(draftKey())).demoId, remove ? null : id(3));
     if (remove) {

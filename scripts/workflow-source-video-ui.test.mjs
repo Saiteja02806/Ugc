@@ -93,7 +93,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     };
     const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true, busy: false, error: null, restoreOwned() {}, ownedForMode() { return null; }, setMode() {}, chooseUpload() {}, removeUpload() {}, clearUploadError() {}, clearSelection() {} };
     const recovery = { loaded: true, error: null, recoveryRevision: 0, session: { section: "create", scheduleDraft: {}, sourceMode: "generate", generationSettings: { model: "seedance_2_5", aspectRatio: "9:16" }, instructions: "", localReferences: false, demoAudioPlayback: "once", demoFraming: null, demoAssetId: null, sourceAssetId: null, pendingSource: false, generatedAssetId: null, generatedSelectionCleared: false, options: {} }, assets: { source: null, demo: null, demoAudio: null }, problems: {}, acceptAsset() { return true; }, update() {}, clearMedia() {}, clearProblem() {}, markPending() {}, retry() {}, reset() {} };
-    const localMedia = { asset: null, loading: false, error: null, choose: async () => false, chooseRemote: async () => false, remove() {}, clearError() {} };
+    const localMedia = { asset: null, loading: false, error: null, choose: async () => false, chooseRemote: async () => false, remove() {}, cancelPending() {}, clearError() {} };
     const finishing = { options: {}, setOptions() {}, output: null, pendingComposition: null, captions: { transcript: null }, music: { source: null, playback: "repeat", selectionError: null }, edit: { busy: false }, schedule: { busy: false } };
     const imports = {
       "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
@@ -116,6 +116,8 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/explore/talking-head-schedule-review": { TalkingHeadScheduleSummary: "schedule-summary", TalkingHeadScheduleActions: "schedule-actions" },
       "@/components/explore/workflow-schedule-review.module.css": css,
       "@/components/explore/talking-head-schedule-preview.module.css": css,
+      "@/components/explore/workflow-clip-source-actions": { WorkflowClipSourceActions: "source-actions" },
+      "@/components/explore/workflow-video-asset-picker": { WorkflowVideoAssetPicker: "video-picker" },
       "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
       "@/components/explore/workflow-creation-panel": { WorkflowCreationPanel: "creation-panel" },
       "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition-panel" },
@@ -151,6 +153,20 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     assert.equal(preview(tree).props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === (kind === "hook" ? "edit-workspace" : "schedule-workspace")).props[kind === "hook" ? "generatedVideo" : "source"].id, asset.id);
     if (kind === "hook") {
+      const workspace = nodes(tree).find(n => n.type === "edit-workspace");
+      const sourceMenu = nodes(workspace.props.sourceActions).find(n => n.type === "source-actions");
+      const demoMenu = nodes(workspace.props.demoSourceActions).find(n => n.type === "source-actions");
+      assert.equal(sourceMenu.props.triggerLabel, "Change");
+      sourceMenu.props.onChooseAssets(); tree = render();
+      let picker = nodes(tree).find(n => n.type === "video-picker");
+      assert.equal(picker.props.open, true); picker.props.onOpenChange(false); tree = render();
+      assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
+      assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo, asset);
+      const acceptedDemos = []; recovery.acceptAsset = (role, value) => { acceptedDemos.push([role,value.id]); return true; };
+      demoMenu.props.onChooseAssets(); tree = render(); picker = nodes(tree).find(n => n.type === "video-picker");
+      assert.match(picker.props.description, /demo/); assert.equal(picker.props.onSelect({...asset,id:"replacement-demo"}), true);
+      assert.deepEqual(acceptedDemos, [["demo","replacement-demo"]]); picker.props.onOpenChange(false); tree = render();
+      assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
       assert.equal(pageScroll, 0, "A real stage change reveals the workflow heading even when the document scrolled");
       assert.deepEqual(scrollCalls.map(value => [value.block, value.behavior]), [["start", "instant"]]);
       assert.deepEqual(panels.map(panel => panel.scrollTop), [0, 0]);

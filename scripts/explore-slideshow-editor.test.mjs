@@ -484,6 +484,15 @@ test("recreating a slide replaces only its image and retains Remix Text, styling
   assert.equal(h.renders[0].source, "https://storage.test/recreated.png");
 });
 
+
+test("restored generated images replace their exact original image instead of appending a duplicate", async () => {
+  const h = await editor(); h.heading("Retain this heading"); h.render();
+  assert.equal(h.controller.current.useImage({ id: id(803), url: "https://storage.test/area-edit.png" }, undefined, id(201)), true);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Retain this heading");
+  assert.equal(h.controller.current.useImage({ id: id(804), url: "https://storage.test/other.png" }, undefined, id(999)), false);
+});
+
 test("reference pixels cannot enter the editor or a save before generation", async () => {
   const h = await editor({ generated: false });
   assert.equal(nodes(h.render()).some(node => node.type === "img"), false);
@@ -534,6 +543,8 @@ function imageRoute({ production = true, allowed = true, owned = asset(1), conte
     "@/lib/explore/recreate-catalog": { getRecreateReferences: () => [{ id: "catalog", format: "slideshow", slides: [{ id: "first", url: "https://storage.test/reference.png" }] }] },
     "@/lib/media/media-storage": { getMediaAssetForOwner: async input => { reads.push(input); return owned; } },
     "@/lib/storage/storage": { isTrustedStorageUrl: url => url.startsWith("https://storage.test/") },
+    "@/lib/media/media-delivery": { isPrivateUserMedia: row => row.metadata?.storageLocation === "private_user_media" },
+    "@/lib/media/private-media-storage": { assertPrivateMediaIdentity: () => {}, privateMediaObject: async () => ({ body: new ReadableStream({ start(controller) { controller.enqueue(Uint8Array.from([137, 80, 78, 71])); controller.close(); } }), size: 4, contentType: "image/png" }) },
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: uuid },
   }, { URL, Response, ReadableStream, AbortSignal, process: { env: { NODE_ENV: production ? "production" : "development" } }, fetch: async (url, options) => {
     fetched.push({ url, options });
@@ -557,6 +568,13 @@ test("canvas delivery rechecks image ownership, deletion and readiness", async (
     const h = imageRoute({ owned: { ...asset(1), ...patch } }); assert.equal((await h.get(`mediaAssetId=${id(1)}`)).status, 404); assert.equal(h.fetched.length, 0);
     assert.equal(h.reads[0].userId, "owner");
   }
+});
+
+test("owned private screenshot bytes can be read without exposing or fetching a public URL", async () => {
+  const h = imageRoute({ owned: { ...asset(1), url: "https://private-bucket.test/source.png", metadata: { storageLocation: "private_user_media" } } });
+  const response = await h.get(`mediaAssetId=${id(1)}`);
+  assert.equal(response.status, 200); assert.equal((await response.arrayBuffer()).byteLength, 4);
+  assert.equal(h.fetched.length, 0); assert.equal(h.reads[0].userId, "owner");
 });
 test("production canvas exports require access even if preview=1 is supplied", async () => {
   const prod = imageRoute({ allowed: false }); assert.equal((await prod.get("referenceId=catalog&slideId=first&preview=1")).status, 401); assert.equal(prod.fetched.length, 0);

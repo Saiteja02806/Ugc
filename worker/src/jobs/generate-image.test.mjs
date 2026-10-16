@@ -77,8 +77,9 @@ test("Flare slide jobs carry business instructions and their exact version posit
     slideshowBusinessContext: { businessProfileId: "profile", businessProfileVersion: 1, businessContext: { businessName: "UGC Pilot", productSummary: "Content for small businesses", category: null, mainProblem: null, mainPromise: null, brandTone: null, targetAudience: ["small businesses"], valueProps: [], painPoints: [], differentiators: [], visualKeywords: [], ctaIdeas: [], claimsToAvoid: [] } } });
   const output = await runGenerateImageJob(imageJob, context);
   assert.equal(received.at(-1).model, "gpt-image-2.5-flare"); assert.match(received.at(-1).prompt, /Business context \(saved in Settings\)/); assert.match(received.at(-1).prompt, /version 2 of 2, slide 3 of 5/);
-  assert.deepEqual(output.slideshowGeneration, slot); assert.equal(received.at(-1).nativeAspectRatio, true);
+  assert.equal(output.prompt, imageJob.input_json.prompt); assert.equal(output.effectivePrompt, received.at(-1).prompt); assert.deepEqual(output.slideshowGeneration, slot); assert.equal(received.at(-1).nativeAspectRatio, true);
 });
+
 
 test("slideshow context and version position survive all legacy reference-role paths", async () => {
   for (const role of [{}, { additionalReferenceStartIndex: 2 }, { subjectReferenceIndex: 2 }]) {

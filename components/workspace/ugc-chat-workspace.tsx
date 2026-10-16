@@ -25,6 +25,8 @@ import { useAuth } from "@/contexts/auth-context";
 import type { RecreateGenerationView } from "@/components/explore/recreate-generation-view";
 import { FormatInstructionImageReference } from "@/components/explore/format-instruction-image-reference";
 import { useSlideshowPromptImprover } from "@/components/explore/slideshow-prompt-improver";
+import { useSlideshowComposerDraft } from "@/components/explore/use-slideshow-composer-draft";
+import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
 import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
 import creation from "@/components/explore/workflow-creation.module.css";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
@@ -230,7 +232,10 @@ export function ImageGenerationStudioPanel({
   }, [metadataOwnerId]);
   const earlierRequests = useGenerationDiscovery({ ownerId: user?.uid ?? null, kind: "image", scope: workflowFormat ?? "studio", enabled: active && !recreateView?.preview, onRecovered: restoreDiscoveredJobs });
   const queryClient = useQueryClient();
-  const [prompt, setPrompt] = useState("");
+  const [studioPrompt, setStudioPrompt] = useState("");
+  const composerDraft = useSlideshowComposerDraft(user?.uid ?? null, JSON.stringify({ references: recreateView?.referenceImageUrls ?? [recreateView?.referenceImageUrl ?? null], regeneration: recreateView?.referenceImageAssetId ?? null }), workflowFormat === "slideshow" && !recreateView?.preview);
+  const prompt = workflowFormat === "slideshow" && !recreateView?.preview ? composerDraft.prompt : studioPrompt;
+  const setPrompt = workflowFormat === "slideshow" && !recreateView?.preview ? composerDraft.setPrompt : setStudioPrompt;
   const [aspectRatio, setAspectRatio] =
     useState<AIStudioImageAspectRatio>(workflowFormat === "slideshow" ? "4:5" : "9:16");
   const [model, setModel] = useState<AIStudioImageModel>(
@@ -240,8 +245,8 @@ export function ImageGenerationStudioPanel({
     useState<AIStudioGenerationQuantity>(1);
   const [referenceImage, setReferenceImage] =
     useState<AIStudioReferenceMedia | null>(null);
-  const [instructionReferenceState, setInstructionReferenceState] = useState<{ ownerId: string | null; images: AIStudioReferenceMedia[] }>({ ownerId: null, images: [] });
-  const instructionReferences = instructionReferenceState.ownerId === (user?.uid ?? null) ? instructionReferenceState.images : [];
+  const instructionReferences = composerDraft.images;
+  const missingScreenshot = workflowFormat === "slideshow" && requiresScreenshotAttachment(prompt) && !instructionReferences.length;
   const layoutReferenceCount = recreateView?.referenceImageUrls?.length ?? (recreateView?.referenceImageUrl ? 1 : 0);
   const regenerationReferenceCount = recreateView?.referenceImageAssetId && !instructionReferences.some(selection => selection.asset.id === recreateView.referenceImageAssetId) ? 1 : 0;
   const instructionReferenceLimit = Math.max(0, MAX_IMAGE_REFERENCE_CONTEXT - layoutReferenceCount - regenerationReferenceCount);
@@ -300,7 +305,7 @@ export function ImageGenerationStudioPanel({
       } catch { setActionError("The saved image request could not be verified. Keep its recovery record."); }
     });
     return () => { stopped = true; };
-  }, [pendingOwnerId, workflowFormat, recreateView?.preview]);
+  }, [pendingOwnerId, workflowFormat, recreateView?.preview, setPrompt]);
   const persistedJobId = usePersistedJobIdFromUrl(workflowFormat ? `explore-${workflowFormat}Job` : IMAGE_JOB_URL_PARAMETER);
   const referenceContextKey = JSON.stringify(recreateView?.referenceImageUrls ?? null);
   useEffect(() => {
@@ -351,7 +356,7 @@ export function ImageGenerationStudioPanel({
   const promptImprover = useSlideshowPromptImprover({
     owner: user?.uid ?? null, prompt,
     contextKey: JSON.stringify({ references: recreateView?.referenceImageUrls ?? [recreateView?.referenceImageUrl ?? null], regeneration: recreateView?.referenceImageAssetId, attachments: instructionReferences.map(selection => selection.asset.id) }),
-    disabled: workflowFormat !== "slideshow" || generationLocked || isGenerating || selectingImage || referenceUploadPending || Boolean(pendingSubmission) || tooManySlides || tooManyReferences,
+    disabled: workflowFormat !== "slideshow" || generationLocked || isGenerating || selectingImage || referenceUploadPending || composerDraft.busy || Boolean(composerDraft.error) || Boolean(pendingSubmission) || tooManySlides || tooManyReferences,
     onChange: next => { submissionKeyRef.current = null; setActionError(null); setPrompt(next); },
   });
   const improvingPrompt = promptImprover.busy;
@@ -640,7 +645,7 @@ export function ImageGenerationStudioPanel({
     if (
       recreateView?.preview || (!pendingSubmission && (generationLocked || hasInsufficientCredits || referenceUploadPending || referenceUploadError || tooManyReferences || tooManySlides || !trimmedPrompt ||
       Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) || selectingImageRef.current ||
-      isGenerating || improvingPrompt || recoveringJobs || submittingRef.current
+      isGenerating || improvingPrompt || composerDraft.busy || Boolean(composerDraft.error) || missingScreenshot || recoveringJobs || submittingRef.current
     ) {
       return;
     }
@@ -1071,7 +1076,7 @@ export function ImageGenerationStudioPanel({
           tooManyReferences || tooManySlides ||
           !prompt.trim() ||
           Boolean(workflow && !recreateView?.referenceImageUrl && !recreateView?.referenceImageAssetId && !instructionReferences.length))) ||
-          isGenerating || improvingPrompt || recoveringJobs
+          isGenerating || improvingPrompt || composerDraft.busy || Boolean(composerDraft.error) || missingScreenshot || recoveringJobs
         }
         generateLabel={pendingSubmission ? "Recover saved request" : slideshowSlideCount ? `Generate ${outputCount} slides` : "Generate image"}
         generationLocked={generationLocked && !pendingSubmission}
@@ -1081,14 +1086,14 @@ export function ImageGenerationStudioPanel({
             ownerId={user?.uid}
             active={workflow?.controlsActive ?? active}
             preview={recreateView?.preview}
-            disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage || improvingPrompt}
+            disabled={(generationLocked && !recreateView?.preview) || isGenerating || selectingImage || improvingPrompt || composerDraft.busy || Boolean(composerDraft.error)}
             selections={instructionReferences}
             maxImages={instructionReferenceLimit}
             onPendingChange={setReferenceUploadPending}
             onErrorChange={setReferenceUploadError}
             onChange={(update) => {
               submissionKeyRef.current = null;
-              setInstructionReferenceState(previous => ({ ownerId: user?.uid ?? null, images: typeof update === "function" ? update(previous.ownerId === (user?.uid ?? null) ? previous.images : []) : update }));
+              composerDraft.setImages(update);
             }}
           /> : undefined}
         hasAttachments={Boolean(referenceImage) || instructionReferences.length > 0 || referenceUploadPending}
@@ -1110,7 +1115,7 @@ export function ImageGenerationStudioPanel({
         }
         name="imagePrompt"
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
-        promptFeedback={workflowFormat === "slideshow" ? promptImprover.feedback : undefined}
+        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {

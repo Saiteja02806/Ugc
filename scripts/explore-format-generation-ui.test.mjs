@@ -20,6 +20,7 @@ function load(file, imports = {}, globals = {}) {
     if (name in imports) return imports[name];
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
     if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
+    if (name === "@/lib/explore/slideshow-composer-draft") return load("lib/explore/slideshow-composer-draft.ts");
     if (name === "../../lib/explore/reference-video-prompts.ts") return referencePrompts;
     if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
@@ -75,6 +76,8 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
     "@/lib/ai-studio/pending-generation": pendingGeneration,
     "@/components/explore/slideshow-prompt-improver": { useSlideshowPromptImprover: options => ({ busy: false, action: { type: "button", props: { onClick: () => options.onChange("One improved prompt for the entire slideshow") } }, feedback: null }) },
+    // The real recovery hook is covered by slideshow-reliable-edits.browser.cjs.
+    "@/components/explore/use-slideshow-composer-draft": { useSlideshowComposerDraft: () => { const [prompt, setPrompt] = imports.react.useState("My requested changes"); const [images, setImages] = imports.react.useState([]); return { prompt, setPrompt, images, setImages, busy: false, error: null }; } },
     "@/components/generation/use-generation-discovery": { useGenerationDiscovery: args => ({ available: Boolean(recoveredBatch), checking: false, error: null, check: async () => { if (recoveredBatch) args.onRecovered(recoveredBatch.result, recoveredBatch.input); } }) },
     "@/lib/http/read-deadline": readDeadline,
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),

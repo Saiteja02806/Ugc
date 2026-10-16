@@ -11,7 +11,7 @@ const load = (file, imports = {}, globals = {}) => {
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     exports: exported,
     Error,
-    require(name) { if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
+    require(name) { if (name === "@/lib/explore/format-reference-images" && !(name in imports)) return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
     ...globals,
   });
   return exported;
@@ -75,6 +75,14 @@ test("text-only generation uses the existing authenticated API without requiring
     assert.equal(actual.calls[0].headers.Authorization, "Bearer fake-owner-token");
     assert.equal(body.referenceType, undefined); // No Recreate image-required context.
   }
+});
+
+test("saved image IDs are re-resolved for each explicit generation instead of reusing a stale URL cache", async () => {
+  const actual = harness();
+  const input = draft({creator:{assetId:"saved-image",url:"https://old.test/image.png",name:"Product"}});
+  await actual.client.generate(input); await actual.client.generate(input);
+  assert.equal(actual.uploads.length,2);
+  assert.equal(actual.uploads[1].assetId,"saved-image");
 });
 
 test("Talking Head native browser fetch is called without a transport object receiver", async () => {
@@ -469,6 +477,7 @@ function connectedHarness(overrides = {}) {
   };
   const boundary = load("components/explore/workflow-generation-boundary.tsx", {
     react,
+    "@/lib/explore/format-reference-images": { fetchFormatReferenceImage: async (id, owner) => { calls.push({savedImage:id,owner}); if(state.savedImageError) throw Error(state.savedImageError); return {id,url:"https://storage.googleapis.com/test/saved-owned.png"}; } },
     "@tanstack/react-query": {
       useQueryClient: () => ({ invalidateQueries: (value) => { invalidations.push(value); return Promise.resolve(); } }),
       useQueries: (options) => { queryOptions.push(options); return state.mediaQueries; },
@@ -518,6 +527,20 @@ function connectedHarness(overrides = {}) {
 }
 const readyAsset = (id = "asset-1") => ({ id, title: "Saved video", collection: "video", status: "ready", sourceType: "generated_video", url: `https://storage.googleapis.com/test/${id}.mp4`, durationSeconds: 5 });
 const jobQuery = (id, status, output = null, error = null) => ({ data: { id, status, output, error, jobType: "video_generation", projectId: "ai-studio" }, isError: false, isPending: false, refetch: async () => {} });
+
+test("Talking Head revalidates saved image ownership on Generate and sends its current URL without reupload", async () => {
+  const actual = connectedHarness();
+  const input = draft({ creator: { name:"Product", assetId:"owned-image", url:"https://old.test/product.png" } });
+  actual.render(input).onGenerate(); await new Promise(setImmediate); await new Promise(setImmediate);
+  assert.ok(actual.calls.some(call => call.savedImage === "owned-image" && call.owner === "owner-a"));
+  assert.equal(actual.calls.filter(call => call.upload).length, 0);
+  const request = actual.calls.find(call => call.method === "POST"); assert.ok(request);
+  assert.deepEqual(JSON.parse(request.body).referenceImageUrls, ["https://storage.googleapis.com/test/saved-owned.png"]);
+  const rejected = connectedHarness({savedImageError:"Image was removed"});
+  rejected.render(input).onGenerate(); await new Promise(setImmediate); await new Promise(setImmediate);
+  assert.equal(rejected.calls.filter(call => call.method === "POST").length, 0);
+  assert.match(rejected.render(input).error, /Image was removed/);
+});
 
 test("a current draft reads only its jobs; read-only recovery routes an older request to its original draft",async()=>{
   const oldId="00000000-0000-4000-8000-000000000090",newId="00000000-0000-4000-8000-000000000091",requestKey="11111111-1111-4111-8111-111111111111";

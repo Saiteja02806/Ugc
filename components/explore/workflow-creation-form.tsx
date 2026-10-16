@@ -9,6 +9,7 @@ import { WorkflowAudioReference, type WorkflowAudioReferenceProps } from "@/comp
 import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import { WorkflowReferencePreview } from "@/components/explore/workflow-reference-preview";
+import { WorkflowImageLibrary } from "@/components/explore/workflow-image-library";
 import type { WorkflowImageAttachment } from "@/components/explore/use-local-workflow-images";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
@@ -62,7 +63,7 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
       <div className={sections.referencesHeading}><h3>{kind === "hook" ? "Optional references" : "Generation references"}</h3>{kind !== "hook" ? <span>Optional</span> : null}{referenceCount ? <span>{referenceCount} attached</span> : null}</div>
       <div className={creation.referenceGrid}>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Image reference</h4>{kind !== "hook" ? <p>Appearance</p> : null}
-        <CreatorPicker creator={creator} imageReferences={imageReferences} tile={kind === "hook"} />
+        <CreatorPicker creator={creator} imageReferences={imageReferences} ownerId={ownerId} tile={kind === "hook"} />
         </div>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Video reference</h4>{kind !== "hook" ? <p>Scene & motion</p> : null}
         <div className={imagePreview.picker}>
@@ -116,7 +117,7 @@ function SettingField({ label, children }: { label: string; children: ReactNode 
   return <div className={creation.settingField}><span className="text-sm font-medium">{label}</span>{children}</div>;
 }
 
-function CreatorPicker({ creator, imageReferences, tile = false }: { creator: WorkflowAttachment; imageReferences?: WorkflowImageAttachment; tile?: boolean }) {
+function CreatorPicker({ creator, imageReferences, ownerId, tile = false }: { creator: WorkflowAttachment; imageReferences?: WorkflowImageAttachment; ownerId?: string | null; tile?: boolean }) {
   const [open, setOpen] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
   const images = imageReferences?.assets ?? (creator.asset ? [creator.asset] : []);
@@ -130,18 +131,24 @@ function CreatorPicker({ creator, imageReferences, tile = false }: { creator: Wo
     <PopoverTrigger render={<Button type="button" variant="outline" className={cn(creation.referenceButton, imagePreview.action)} aria-busy={creator.loading} data-state={creator.loading ? "loading" : creator.error ? "error" : creator.asset ? "selected" : "available"} title={creator.asset?.name ?? "Choose an optional creator image"} aria-label={`Choose image, currently ${creator.asset ? label : "none selected"}`} />}>
       {!creator.asset ? <>{tile ? <UserRound aria-hidden="true" /> : null}<span className={creation.referenceLabel}>Choose image</span></> : null}<Plus className={imagePreview.add} aria-hidden="true" />
     </PopoverTrigger>
-    <PopoverContent side="right" align="start" className={cn(studio.floating, creation.floating)}>
+    <PopoverContent side="bottom" align="center" className={cn(studio.floating, creation.floating)} style={{ maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" }}>
       <PopoverTitle>Choose image</PopoverTitle>
       <p className="text-sm leading-6 text-muted">{imageReferences ? `Add up to ${imageReferences.maxImages} appearance or product images. Describe how to use them in your instructions.` : "Optional creator image. Your instructions decide how the creator appears."}</p>
-      <div className="flex flex-wrap items-center gap-2">{imageReferences ? <Button type="button" variant="outline" disabled={creator.loading || full} onClick={() => uploadInput.current?.click()}>Add images</Button> : <WorkflowFilePicker attachment={creator} kind="image" label="Upload creator" className="h-9 text-sm" />}<Button type="button" variant="ghost" aria-label="Remove creator" className="h-9 rounded-lg text-sm" onClick={() => { creator.remove(); setOpen(false); }}>None</Button></div>
+      <div className="flex flex-wrap items-center gap-2">{imageReferences ? <Button type="button" variant="outline" className="h-9 gap-2 rounded-xl text-sm" disabled={creator.loading || full} onClick={() => uploadInput.current?.click()}><Plus className="size-4" aria-hidden="true" />Add images</Button> : <WorkflowFilePicker attachment={creator} kind="image" label="Upload creator" className="h-9 rounded-xl text-sm" />}<Button type="button" variant="ghost" aria-label="Remove creator" className="h-9 rounded-lg text-sm" onClick={() => { creator.remove(); setOpen(false); }}>None</Button></div>
       {imageReferences && images.length ? <div className="grid grid-cols-3 gap-2" aria-label="Selected reference images">{images.map(image => <div key={image.url} className="relative overflow-hidden rounded-lg"><Image src={image.url} alt={image.name} width={96} height={96} unoptimized className="aspect-square w-full object-cover" /><Button type="button" size="sm" variant="outline" disabled={creator.loading} aria-label={`Remove image ${image.name}`} className="w-full" onClick={() => imageReferences.removeImage(image.url)}>Remove</Button></div>)}</div> : null}
-      <div className="grid max-h-60 grid-cols-5 gap-2 overflow-y-auto py-1">
+      <WorkflowImageLibrary ownerId={ownerId} open={open} disabled={creator.loading || full} selectedIds={images.map(image => image.assetId)} onSelect={async asset => {
+        if (!ownerId) return false;
+        const accepted = await imageReferences?.chooseSavedImage?.(asset, ownerId) ?? false;
+        if (accepted) setOpen(false); return accepted;
+      }}>
+      <div className="grid max-h-60 grid-cols-4 gap-2 overflow-y-auto py-1 sm:grid-cols-5">
         {CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={images.some(image => image.url === reference.src)}
-          disabled={creator.loading || full && !images.some(image => image.url === reference.src)} className="relative h-auto overflow-hidden rounded-xl p-0" onClick={() => { creator.chooseLibraryImage({ name: reference.fileName, url: reference.src }); setOpen(false); }}>
+          disabled={creator.loading || full && !images.some(image => image.url === reference.src)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { creator.chooseLibraryImage({ name: reference.fileName, url: reference.src }); setOpen(false); }}>
           <Image src={reference.src} alt="" width={56} height={74} sizes="56px" className="aspect-[3/4] w-full object-cover" />
           {images.some(image => image.url === reference.src) ? <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground"><Check className="size-3" aria-hidden="true" /></span> : null}
         </Button>)}
       </div>
+      </WorkflowImageLibrary>
       {creator.error ? <p role="alert" className="text-sm text-destructive">{creator.error}</p> : null}
     </PopoverContent>
   </Popover></div>;

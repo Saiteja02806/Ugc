@@ -605,7 +605,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
       assert.equal(init.cache, "no-store"); assert.equal(init.headers.Authorization, "Bearer owner-token");
       if (transport) { const response = await transport(url, init); if (response) return response; }
       if (url === "/api/social/connections") return Response.json({ ok: true, connections: [{ id: connectionId, platform: "instagram" }, ...(multiple ? [{ id: youtubeId, platform: "youtube" }] : [])].map(account => ({...account, status: "connected", platformAccountName: null, platformAccountUsername: null, supportsBackgroundRefresh: true, scopes: account.platform === "instagram" ? ["instagram_business_content_publish"] : ["https://www.googleapis.com/auth/youtube.upload"]})) });
-      if (url === "/api/account/publishing-preferences?schema=2") return Response.json({ok:true,preferences:{containsSyntheticMedia:true,youtubePrivacyStatus:"private",youtubeMadeForKids:false,youtubeNotifySubscribers:false}});
+      if (url === "/api/account/publishing-preferences?schema=3") return Response.json({ok:true,preferences:{containsSyntheticMedia:true,youtubePrivacyStatus:"private",youtubeMadeForKids:false,youtubeNotifySubscribers:false}});
       if (url === "/api/schedules?configOnly=1") return Response.json({ ok: true, minimumScheduleLeadMinutes: 5 });
       if (init.method === "POST") {
         const input = JSON.parse(init.body);

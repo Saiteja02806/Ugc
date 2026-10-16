@@ -1,3 +1,4 @@
+import * as fonts from "../worker/src/lib/explore-text-fonts.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -11,7 +12,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
+const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"), "./explore-text-fonts.ts": fonts });
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.js": load("worker/src/subtitles/styles.ts"), "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.js": subtitleContracts, "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });

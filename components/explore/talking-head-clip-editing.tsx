@@ -16,6 +16,7 @@ type ClipEditingView = {
   demoFraming: DemoFraming | null; error: string | null; editing: boolean; busy: boolean;
   controls: ReactNode; preview: ReactNode; actions: ReactNode;
   openOpening: (() => void) | undefined; openDemo: (() => void) | undefined;
+  closeEditor: () => void;
   openingPreview: FormatOpeningPreview | null; demoPreview: FormatOpeningPreview | null;
 };
 const ignoreSaved = () => {};
@@ -108,6 +109,7 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
       demo: ownedDemo ? null : demo.asset,
       demoFraming,
       error, editing, busy: Boolean(uploadState?.busy || draftBusy),
+      closeEditor: close,
       controls: <div hidden={!editing} ref={setControlsTarget} className={sections.clipControls} />,
       preview: <div hidden={!editing} ref={setResultsTarget} className={sections.clipPreview} />,
       actions: <div ref={setActionsTarget} />,

@@ -30,7 +30,7 @@ import { MAX_SLIDESHOW_SLIDES, MIN_SLIDESHOW_SLIDES, moveSlideshowSlide, readSli
   type SlideshowOutput, type SlideshowSaveRequest, type SlideshowSlideChoice } from "@/lib/explore/slideshow-draft";
 
 type EditorSlide = SlideshowSlideChoice & { image: AIStudioImageResult | null; previous?: AIStudioImageResult; error?: string };
-export type SlideshowEditorController = { useImage: (image: AIStudioImageResult, index?: number) => boolean; useSlideshow: (images: AIStudioImageResult[], onlyIfEmpty?: boolean) => boolean; startNewSlide: () => void };
+export type SlideshowEditorController = { useImage: (image: AIStudioImageResult, index?: number, originalAssetId?: string) => boolean; useSlideshow: (images: AIStudioImageResult[], onlyIfEmpty?: boolean) => boolean; startNewSlide: () => void };
 
 function imageFromAsset(asset: MediaAsset): AIStudioImageResult {
   if (!isExploreUuid(asset.id) || asset.collection !== "image" || asset.status !== "ready" || !asset.url.startsWith("https://")) throw new Error("This slide is unavailable. Remove it or choose another image.");
@@ -132,11 +132,16 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     replacementTarget.current = null; setError(null); change(next); setText({});
     if (owner && !localPreview) try { localStorage.removeItem(`${draftKey}:text`); } catch { /* The in-memory draft remains intact. */ }
     return true;
-  }, useImage(image, index) {
+  }, useImage(image, index, originalAssetId) {
     if (locked || working.current) { setError("Finish or resume the current slideshow save before changing slides."); return false; }
     if (!isExploreUuid(image.id) || !image.url.startsWith("https://")) { setError("Choose a saved image from your account."); return false; }
     const current = slideRef.current;
-    const target = index !== undefined && current[index] ? index : current.findIndex(slide => slide.referenceSlideId === replacementTarget.current);
+    let target = index !== undefined && current[index] ? index : current.findIndex(slide => slide.referenceSlideId === replacementTarget.current);
+    if (target < 0 && originalAssetId) {
+      const matches = current.map((slide, position) => slide.mediaAssetId === originalAssetId ? position : -1).filter(position => position >= 0);
+      if (matches.length !== 1) { setError("The original slide changed. Select the slide to replace in Edit slides and try again."); return false; }
+      target = matches[0];
+    }
     if (target < 0 && current.some(slide => slide.mediaAssetId === image.id)) { setPreviewIndex(current.findIndex(slide => slide.mediaAssetId === image.id)); setError(null); return true; }
     if (target < 0 && current.length >= MAX_SLIDESHOW_SLIDES) { setError("Your slideshow has 10 slides. Remove a slide or replace an existing slide to use this image."); return false; }
     const next = [...current];

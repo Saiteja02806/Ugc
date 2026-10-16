@@ -1,4 +1,6 @@
+import * as clipTime from "../lib/explore/clip-preview-time.ts";
 import { readRemixTextDraft } from "../lib/explore/remix-text-draft.ts";
+import * as hookRemix from "../lib/explore/hook-remix-source.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -28,6 +30,8 @@ function load(path, imports, globals = {}) {
     if (name === "@/lib/explore/reference-audio-preview") return referenceAudio;
     if (name === "@/lib/explore/sequence-preview") return sequencePreview;
     if (name === "@/lib/explore/remix-source") return remixSource;
+    if (name === "@/lib/explore/hook-remix-source") return hookRemix;
+    if (name === "@/lib/explore/clip-preview-time") return clipTime;
     if (name === "@/lib/explore/remix-text-edit") return { applyVideoTextRemix };
     if (name === "@/worker/src/lib/explore-format-edit") return { formatTextLayout, formatTextOverlays, parseExploreFormatEdit };
     if (name === "@/worker/src/lib/explore-finishing-contract") return { isExploreUuid };

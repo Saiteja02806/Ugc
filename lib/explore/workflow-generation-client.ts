@@ -3,7 +3,7 @@ import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } 
 import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
 
 export type WorkflowKind = "hook" | "phone";
-export type WorkflowImageSource = { name: string; url: string; file?: File };
+export type WorkflowImageSource = { name: string; url: string; file?: File; assetId?: string };
 export type WorkflowTimedSource = { url: string; name?: string; duration?: number | null; file?: File };
 export type WorkflowGenerationDraft = {
   kind: WorkflowKind;
@@ -111,7 +111,8 @@ export function createWorkflowGenerationClient(dependencies: {
   let submitting = false;
 
   async function prepareImage(image: WorkflowImageSource) {
-    const cached = uploaded.get(image.url);
+    // A saved record can be removed or replaced between explicit generations.
+    const cached = image.assetId ? undefined : uploaded.get(image.url);
     if (cached) return cached;
     dependencies.assertActive();
     const result = await dependencies.uploadImage(image);

@@ -1,7 +1,7 @@
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { remixSourceFromJob } from "@/lib/explore/remix-source";
-import { readSlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
 import {
   getMediaAssetForOwner,
   serializeMediaAsset,
@@ -53,15 +53,17 @@ async function handleRequest(
 
     if (action === "get") {
       const serialized = serializeMediaAsset(asset);
+      const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
+        ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
+      if (asset.source_type === "generated_image" && job?.jobType === "generate_image") {
+        serialized.metadata = { ...serialized.metadata, ...getGeneratedImageHistoryMetadata(job.input) };
+      }
       if (new URL(request.url).searchParams.get("remixSource") === "1") {
         // Read provenance from this owner's original job, never browser state.
-        const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
-          ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
         // Original reference imports already contain server-validated provenance.
         // Unlike generated assets, they have no background generation job.
         const importedOriginal = asset.source_type === "upload" && asset.project_id === "explore-catalog-reference";
-        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : importedOriginal ? serialized.metadata.remixTextSource ?? null : null,
-          ...(asset.source_type === "generated_image" ? { slideshowGeneration: readSlideshowGenerationSlot(job?.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.slideshowGeneration : null) } : {}) };
+        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : importedOriginal ? serialized.metadata.remixTextSource ?? null : null };
       }
       return Response.json({ ok: true, asset: serialized });
     }

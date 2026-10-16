@@ -4,6 +4,8 @@ import { getRecreateReferences } from "@/lib/explore/recreate-catalog";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
+import { isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { assertPrivateMediaIdentity, privateMediaObject } from "@/lib/media/private-media-storage";
 
 const MAX_BYTES = 25 * 1024 ** 2;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -20,6 +22,12 @@ export async function GET(request: Request) {
       if (!user || !isExploreUuid(assetId)) return Response.json({ error: "Choose an image from your account." }, { status: 400 });
       const asset = await getMediaAssetForOwner({ userId: user.uid, assetId });
       if (!asset || asset.user_id !== user.uid || asset.deleted_at != null || asset.collection !== "image" || asset.status !== "ready" || !IMAGE_TYPES.includes(asset.mime_type ?? "")) return Response.json({ error: "This image is unavailable." }, { status: 404 });
+      if (isPrivateUserMedia(asset)) {
+        assertPrivateMediaIdentity(asset.storage_key, asset.url);
+        const object = await privateMediaObject({ key: asset.storage_key });
+        if (!IMAGE_TYPES.includes(object.contentType ?? "") || object.size > MAX_BYTES) { await object.body.cancel(); return Response.json({ error: "This image cannot be edited." }, { status: 400 }); }
+        return new Response(object.body, { headers: { "Content-Type": object.contentType!, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'" } });
+      }
       source = asset.url;
     } else {
       const reference = getRecreateReferences().find(item => item.id === params.get("referenceId") && item.format === "slideshow");

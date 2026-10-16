@@ -12,6 +12,7 @@ import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 const terminal = new Set(["completed", "failed", "cancelled"]);
 const safeErrors: Record<string, string> = {
+  COMPOSITION_TIMELINE_UNSUPPORTED: "A selected video's audio and picture timing needs review. Re-export that clip with aligned tracks, then replace it before trying preparation again.",
   SUBTITLE_LANGUAGE_UNSUPPORTED: "Auto subtitles support English speech only.",
   SUBTITLE_DURATION_UNSUPPORTED: "Auto subtitles support up to 60 seconds in total. Your video was not shortened.",
   NO_SPEECH: "No speech was detected. Your original video is unchanged.",

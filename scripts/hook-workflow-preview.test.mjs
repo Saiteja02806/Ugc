@@ -111,7 +111,7 @@ test("video/audio controls are permanent and demo changes clear background audio
   assert.doesNotMatch(workspace, /demoOpen|audioOpen|Dialog|Attached demo|Attach audio/);
   assert.doesNotMatch(workspace, /<WorkflowCompositionPanel[^>]*key=/);
   assert.match(workspace, /function removeDemo\(\) \{\s*demoRevision\.current\+\+; audioRevision\.current\+\+;\s*setDemoFraming\(null\);\s*localDemoAudio\.remove\(\); localDemo\.remove\(\)/);
-  assert.match(workspace, /localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); return true/);
+  assert.match(workspace, /localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true/);
 });
 
 test("local media is detached before cleanup and Creator selection adds no prompts", () => {

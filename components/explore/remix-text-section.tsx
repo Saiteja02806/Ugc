@@ -7,6 +7,7 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { RecreateReference, RecreateFormat } from "@/lib/explore/recreate-types";
 import { ReferenceTextSchema, RemixRequestSchema, remixSourceMatches, validateRemixDraft, validateRemixOutput, type ReferenceText, type RemixOutput, type RemixRequest } from "@/lib/explore/reference-text";
 import { readRemixTextDraft } from "@/lib/explore/remix-text-draft";
+import { hookRemixResult, hookRemixSource } from "@/lib/explore/hook-remix-source";
 import styles from "./remix-text-section.module.css";
 
 function mergeSavedText(seed: string | null, guidance: string) {
@@ -42,7 +43,12 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     try {
       if (!owner || localPreview) return null;
       const saved = readRemixTextDraft(localStorage.getItem(requestStorageKey)) ?? readRemixTextDraft(localStorage.getItem(`ugc-explore:remix-request:v1:${owner}:${format}:${targetKey}`));
-      return saved?.referenceId === selection.referenceId && saved.slideId === selection.slideId && (!saved.format || saved.format === format) ? saved : null;
+      if (saved?.referenceId !== selection.referenceId || saved.slideId !== selection.slideId || saved.format && saved.format !== format) return null;
+      if (saved.source && saved.reviewedDraft) {
+        const result = hookRemixResult(saved.reviewedDraft, saved.source);
+        return { ...saved, source: result.source, reviewedDraft: result.output };
+      }
+      return saved;
     } catch { return null; }
   });
   const [input, setInput] = useState<{ seed: string | null; instructions: string }>(() => {
@@ -55,7 +61,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     return { seed: null, instructions: "" };
   });
   const [mode, setMode] = useState<"manual" | "reference">(overview || recovery || expanded ? "reference" : "manual");
-  const [source, setSource] = useState<ReferenceText | null>(() => recovery?.source ?? (localPreview && previewSource && remixSourceMatches(previewSource, selection, format) ? previewSource : null));
+  const [source, setSource] = useState<ReferenceText | null>(() => recovery?.source ?? (localPreview && previewSource && remixSourceMatches(previewSource, selection, format) ? hookRemixSource(previewSource) : null));
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(Boolean((overview || recovery || expanded) && owner && !localPreview));
   const [busy, setBusy] = useState(false);
@@ -92,7 +98,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.message || "Could not load remix details.");
         if (!controller.signal.aborted) {
-          const next = data.source === null ? null : ReferenceTextSchema.parse(data.source);
+          const next = data.source === null ? null : hookRemixSource(ReferenceTextSchema.parse(data.source));
           if (next && !remixSourceMatches(next, { referenceId: selectedId ?? null, slideId: selection.slideId }, format)) throw new Error("This text does not match your selected reference.");
           setSource(next); setEnabled(data.enabled === true);
           setBusiness(data.businessContext && typeof data.businessContext.ready === "boolean" ? { name: typeof data.businessContext.name === "string" ? data.businessContext.name : null, ready: data.businessContext.ready } : null);
@@ -151,7 +157,8 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
       const original = ReferenceTextSchema.parse(data.source);
       if (!remixSourceMatches(original, payload, format)) throw new Error("This result does not match this clip's starting text.");
       const next = validateRemixOutput(data.output, original);
-      setOutputSource(original); saveReview(next, original);
+      const result = hookRemixResult(next, original);
+      setOutputSource(result.source); saveReview(result.output, result.source);
     } catch (e) {
       if (alive.current && generation.current === current) { setError(e instanceof Error ? e.message : "Could not confirm the remix. Check its result again."); setOutcome(value => value ?? "uncertain"); }
     } finally { if (alive.current && generation.current === current) setBusy(false); }

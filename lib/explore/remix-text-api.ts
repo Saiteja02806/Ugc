@@ -9,8 +9,9 @@ import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import { getReferenceText } from "./reference-text-store";
 import { ReferenceTextSchema, RemixRequestSchema, RemixOutputSchema, validateRemixOutput } from "./reference-text";
-import { REMIX_TEXT_SYSTEM_PROMPT, remixTextPrompt } from "./remix-text-prompt";
+import { REMIX_TEXT_PROMPT_VERSION, REMIX_TEXT_SYSTEM_PROMPT, remixTextPrompt } from "./remix-text-prompt";
 import { remixInputSource } from "./remix-text-input";
+import { hookRemixSource } from "./hook-remix-source";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", Vary: "Authorization" } });
 function client() {
@@ -35,7 +36,7 @@ export async function handleReferenceText(request: Request) {
     const enabled = process.env.EXPLORE_TEXT_REMIX_ENABLED === "true"
       && Boolean(process.env.OPENAI_API_KEY?.trim())
       && Boolean((process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
-    return json({ ok: true, source, enabled,
+    return json({ ok: true, source: source ? hookRemixSource(source) : null, enabled,
       businessContext: { name: profile?.context.businessName ?? null, ready: Boolean(profile?.context.businessName && profile.context.productSummary) } });
   } catch (error) { return errorResponse(error); }
 }
@@ -81,7 +82,7 @@ export async function remixTextForOwner(userId: string, value: unknown) {
     if (!profile?.context.businessName || !profile.context.productSummary) return json({ ok: false, message: "Add your business context in Settings before remixing." }, 409);
     if (!process.env.OPENAI_API_KEY?.trim()) return json({ ok: false, message: "Text generation is unavailable." }, 503);
     const model = process.env.OPENAI_TEXT_REMIX_MODEL?.trim() || "gpt-5.6-luna";
-    const input = { source, businessProfileId: profile.id, businessProfileVersion: profile.profileVersion, businessContext: profile.context, instructions: body.instructions, model, promptVersion: 1 };
+    const input = { source, businessProfileId: profile.id, businessProfileVersion: profile.profileVersion, businessContext: profile.context, instructions: body.instructions, model, promptVersion: REMIX_TEXT_PROMPT_VERSION };
     const { data: claim, error: claimError } = await db.rpc("explore_claim_text_remix", { p_user_id: userId, p_request_key: body.requestKey, p_payload_hash: payloadHash, p_input: input });
     if (claimError) return json({ ok: false, message: claimError.message.includes("remix_daily_limit") ? "You've reached today's 20 text remixes. Try again tomorrow." : "Could not reserve this remix. No AI request was made." }, claimError.message.includes("remix_daily_limit") ? 429 : 409);
     if (!claim?.claimed) return receiptResponse(claim?.status, claim?.output, claim?.source);

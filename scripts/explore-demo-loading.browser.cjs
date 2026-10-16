@@ -66,7 +66,12 @@ async function main() {
       assert.ok(overview.width>300,'Demo overview makes use of the available laptop width');
       await page.screenshot({path:path.join(out,`overview-${viewport.width}.png`)});
       await page.getByRole('button',{name:'Change demo video',exact:true}).click();
-      await page.waitForFunction(()=>document.activeElement?.getAttribute('data-demo-source')==='upload');
+      await page.getByRole('button',{name:'Upload demo video',exact:true}).waitFor();
+      assert.equal(await page.getByRole('button',{name:'Choose demo video from Creative Assets',exact:true}).isVisible(),true);
+      await page.locator('[data-slot="popover-content"]').evaluate(async element => { await Promise.all(element.getAnimations().map(animation => animation.finished)); });
+      await page.screenshot({path:path.join(out,`change-menu-${viewport.width}.png`)});
+      await page.keyboard.press('Escape');
+      await page.getByRole('button',{name:'Upload demo video',exact:true}).waitFor({state:'hidden'});
       await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
       assert.equal(await page.getByRole('button',{name:'Save edits',exact:true}).isDisabled(),true);
       await page.getByLabel('Demo trim start',{exact:true}).fill('1');

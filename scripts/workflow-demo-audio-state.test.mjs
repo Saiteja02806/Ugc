@@ -123,6 +123,8 @@ function layout(kind) {
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
     "@/components/explore/workflow-section-layout.module.css": css,
+    "@/components/explore/workflow-video-asset-picker": { WorkflowVideoAssetPicker: "WorkflowVideoAssetPicker" },
+    "@/components/explore/workflow-clip-source-actions": { WorkflowClipSourceActions: "WorkflowClipSourceActions" },
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };

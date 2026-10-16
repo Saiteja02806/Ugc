@@ -126,13 +126,14 @@ export async function runGenerateImageJob(
   const preserveReference = input.slideshowReferenceContract?.version === 3;
   const contextualPrompt = input.slideshowBusinessContext ? slideshowBusinessContextPrompt(input.prompt, input.slideshowBusinessContext, preserveReference) : input.prompt;
   const slidePrompt = input.slideshowGeneration ? slideshowSlotPrompt(contextualPrompt, input.slideshowGeneration, preserveReference) : contextualPrompt;
-  const providerPrompt = input.slideshowReferenceContract
+  const referencePrompt = input.slideshowReferenceContract
     ? slideshowGenerationPrompt(slidePrompt, input.aspectRatio, input.slideshowReferenceContract)
     : input.additionalReferenceStartIndex
     ? slideshowReferenceImagesPrompt(slidePrompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
     : input.subjectReferenceIndex
     ? slideshowReferencePrompt(slidePrompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
     : slidePrompt;
+  const providerPrompt = referencePrompt;
   if ((input.slideshowReferenceContract || input.slideshowBusinessContext || input.slideshowGeneration) && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
@@ -140,9 +141,10 @@ export async function runGenerateImageJob(
   const provider = input.model === "seedream_5_pro" ? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
+  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   if (existingOutput) {
-    return buildOutput(input, existingOutput, provider);
+    return buildOutput(input, existingOutput, provider, providerPrompt, dimensions);
   }
 
   await context.checkpoint({
@@ -258,7 +260,6 @@ export async function runGenerateImageJob(
     input.aspectRatio,
     { preserveComposition: Boolean(input.slideshowReferenceContract) },
   );
-  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   await context.checkpoint({
     progress: 90,
@@ -285,7 +286,7 @@ export async function runGenerateImageJob(
     outputUrl: uploaded.url,
   });
 
-  return buildOutput(input, uploaded, provider);
+  return buildOutput(input, uploaded, provider, providerPrompt, dimensions);
 }
 
 async function generateDurableImageForJob(
@@ -356,8 +357,9 @@ function buildOutput(
   input: GenerateImageInput,
   uploaded: { key: string; url: string },
   provider: "gemini" | "openai" | "runway",
+  effectivePrompt: string,
+  dimensions: { width: number; height: number },
 ) {
-  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   return {
     fileSizeBytes: undefined,
@@ -367,6 +369,8 @@ function buildOutput(
     key: uploaded.key,
     ok: true,
     model: input.model,
+    prompt: input.prompt,
+    effectivePrompt,
     provider,
     ratio: input.aspectRatio,
     url: uploaded.url,

@@ -47,6 +47,23 @@ test("separate tasks editing the same media have independent opening/demo draft 
   assert.notEqual(a[1].props.draftScope,b[1].props.draftScope);
   assert.notEqual(a[0].props.draftScope,a[1].props.draftScope);
 });
+
+test("Videos navigation closes either Talking Head clip editor and preserves its draft state", () => {
+  const h = fixture();
+  for (const target of ["opening", "demo"]) {
+    const view = h.view();
+    (target === "opening" ? view.openOpening : view.openDemo)();
+    const editors = h.editors();
+    const editor = editors[target === "opening" ? 0 : 1];
+    const state = { sourceId: target === "opening" ? h.props.source.id : h.props.demoSource.id, editing: { text: { value: "Keep my text" } }, needsDraftSaving: true, busy: false };
+    editor.props.onClipStateChange(state);
+    assert.equal(h.view().editing, true);
+    h.view().closeEditor();
+    assert.equal(h.view().editing, false);
+    assert.equal(h.view()[target === "opening" ? "openingState" : "demoState"], state);
+    assert.equal(h.editors()[target === "opening" ? 0 : 1].props.draftScope, editor.props.draftScope);
+  }
+});
 test("unsaved changes and missing current clip states block final preparation", () => {
   const h = fixture(); const [opening, demo] = h.editors();
   demo.props.onClipStateChange({ sourceId: h.props.demoSource.id, needsSaving: false, needsDraftSaving: false, busy: false, error: null });

@@ -1,10 +1,13 @@
 import { formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 import { validateRemixDraft, type ReferenceText, type RemixOutput } from "./reference-text.ts";
+import { hookRemixResult, repairHookRemixEdit } from "./hook-remix-source.ts";
 
 /** Applying copy retains existing style; reference timing scales to the trimmed clip. */
 export function applyVideoTextRemix(edit: ExploreFormatEdit, output: RemixOutput, source: ReferenceText): ExploreFormatEdit {
   validateRemixDraft(output, source);
   if (source.format !== edit.format) throw new Error("Choose a reference from this workflow.");
+  edit = repairHookRemixEdit(edit, source.referenceId);
+  ({ output, source } = hookRemixResult(output, source));
   const duration = edit.trimEndMs - edit.trimStartMs;
   const sourceDuration = Math.max(1, ...source.blocks.map(b => b.endMs ?? 1));
   const previous = formatTextOverlays(edit);

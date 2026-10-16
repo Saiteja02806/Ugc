@@ -17,6 +17,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import type { AIStudioVideoAspectRatio } from "@/lib/ai-studio/generation-settings";
 import { workflowVisitStorage } from "@/lib/explore/workflow-visit-storage";
 import { workflowDraftStorage, workflowDraftRequestStorage, workflowRequestDraft } from "@/lib/explore/workflow-draft-lifecycle";
+import { fetchFormatReferenceImage } from "@/lib/explore/format-reference-images";
 
 export type WorkflowGenerationView = {
   busy: boolean;
@@ -194,6 +195,11 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
       },
     },
     async uploadImage(image: WorkflowImageSource) {
+      if (image.assetId) {
+        const asset = await fetchFormatReferenceImage(image.assetId, ownerId);
+        if (!active.current) throw new Error("This workflow is no longer active.");
+        return { url: asset.url };
+      }
       let file = image.file;
       if (!file) {
         const reference = CREATOR_REFERENCES.find((item) => item.src === image.url);

@@ -22,14 +22,28 @@ import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
 import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 
 const authHref = "/sign-in";
+const homepageTitle = "UGC Pilot — AI UGC Video & Content Studio";
+const homepageDescription =
+  "Create UGC video ideas, visuals, and short videos with AI. Review, organize, and prepare every asset for publishing in UGC Pilot.";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://getugcpilot.com/" },
   title: {
-    absolute: `UGCPilot — ${visibleSocialPlatformList} Content Workspace`,
+    absolute: homepageTitle,
   },
-  description:
-    `Create video-first content and approved publishing workflows for ${visibleSocialPlatformList} in one workspace.`,
+  description: homepageDescription,
+  openGraph: {
+    type: "website",
+    url: "https://getugcpilot.com/",
+    siteName: "UGC Pilot",
+    title: homepageTitle,
+    description: homepageDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: homepageTitle,
+    description: homepageDescription,
+  },
 };
 
 const workflowSteps = [
@@ -250,9 +264,9 @@ export default async function Home() {
                 className="size-9 rounded-md object-contain"
               />
               <div>
-                <p className="font-semibold text-foreground-strong">UGCPilot</p>
+                <p className="font-semibold text-foreground-strong">UGC Pilot</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  {visibleSocialPlatformList} content workspace
+                  AI UGC video &amp; content studio
                 </p>
               </div>
             </div>

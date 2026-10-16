@@ -59,6 +59,11 @@ async function main() {
     }
     if(url.pathname==='/api/ai-studio/images/generate'){let raw='';for await(const chunk of request)raw+=chunk;generations.push(JSON.parse(raw));return json(response,{ok:true,jobId:id(60),jobs:[{jobId:id(60),generationId:id(61)}]},202);}
     if(url.pathname==='/api/media')return json(response,{ok:true,assets:[]});
+    if(url.pathname.startsWith('/api/library/carousels/')){
+      const entry=[...stored].find(([,value])=>value.id===url.pathname.split('/').at(-1));
+      if(!entry)return json(response,{ok:false,error:'Unavailable slideshow'},404);
+      const [key,value]=entry;return json(response,{ok:true,item:{id:value.id,title:value.title,sourceId:'explore-slideshow:'+key,projectId:'explore',slideCount:value.slides.length,slides:value.slides.map((renderedUrl,index)=>({slideNumber:index+1,renderedUrl}))}});
+    }
     if(url.pathname==='/api/library')return json(response,{ok:true,items:[...stored].map(([key,value])=>({id:value.id,title:value.title,sourceId:'explore-slideshow:'+key,projectId:'explore',slideCount:value.slides.length,slides:value.slides.map((renderedUrl,index)=>({slideNumber:index+1,renderedUrl}))}))});
     if(url.pathname==='/api/explore/slideshows'){
       let raw='';for await(const chunk of request)raw+=chunk;const body=JSON.parse(raw);saves.push(body);assert.equal(body.requestKey,request.headers['idempotency-key']);if(body.version===2)assert.ok(body.slides.every(slide=>slide.mediaAssetId));

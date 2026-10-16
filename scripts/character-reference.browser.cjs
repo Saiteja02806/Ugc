@@ -139,12 +139,14 @@ async function main() {
     assert.deepEqual(await controlAtImage(firstCandidate), { pointerEvents: "none", control: "Select influencer image 1" });
     await firstCandidate.hover();
     await firstCandidate.click({ position: { x: 40, y: 40 } });
+    await page.clock.runFor(100);
     await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
     assert.equal(await firstCandidate.getAttribute("aria-pressed"), "true");
     assert.equal(page.url(), `${base}/`); assert.equal(page.context().pages().length, 1);
     await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();
     await firstCandidate.focus();
     await firstCandidate.press("Enter");
+    await page.clock.runFor(100);
     await page.getByRole("button", { name: "Preview Identity: influencer reference" }).waitFor();
     assert.equal(await firstCandidate.getAttribute("aria-pressed"), "true", "keyboard activation keeps image selection accessible");
     await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();

@@ -57,9 +57,9 @@ export const seoPageContent = {
     example: productExamples.carousel,
     canonicalPath: "/instagram-carousel-maker",
     eyebrow: "Instagram carousel maker",
-    title: "Turn your business story into an Instagram carousel.",
+    title: "Create Instagram carousels from your business context.",
     description:
-      "Start with your website and offer, choose a creative direction, then review a complete carousel before you schedule it for Instagram.",
+      "Turn your product message into a complete Instagram carousel, review every slide, then schedule it to a connected account when it is ready.",
     proof: "Business context → creative direction → human approval",
     workflowLabel: "A carousel is a complete post, not a loose set of slide ideas.",
     workflow: [
@@ -114,7 +114,7 @@ export const seoPageContent = {
       {
         question: "Can I review a carousel before it is scheduled?",
         answer:
-          "Yes. UGCPilot keeps the carousel in review so you can approve the creative before selecting an Instagram account and publish time.",
+          "Yes. UGC Pilot keeps the carousel in review so you can approve the creative before selecting an Instagram account and publish time.",
       },
       {
         question: "Do I need to write a caption before scheduling?",
@@ -147,9 +147,9 @@ export const seoPageContent = {
     example: productExamples.video,
     canonicalPath: "/ai-ugc-video-generator",
     eyebrow: "AI UGC video generator",
-    title: "Create creator-style short videos with an AI UGC video generator your team can review.",
+    title: "Create creator-style AI UGC videos your team can review.",
     description:
-      "Use AI Studio to make short-form, creator-style footage from a focused prompt and optional reference media, then keep the finished asset in your content workflow.",
+      "Use AI Studio to make short-form UGC video from a focused prompt and optional reference media, then review and keep the finished asset in your content workflow.",
     proof: "Focused brief and reference → generated footage → reviewable content workflow",
     workflowLabel: "Use a real brief and, when it helps, a compatible reference to guide the footage before you generate it.",
     workflow: [
@@ -219,7 +219,7 @@ export const seoPageContent = {
       {
         question: "Where do finished videos go?",
         answer:
-          "Finished generations are saved to your account for use in the rest of your UGCPilot workflow.",
+          "Finished generations are saved to your account for use in the rest of your UGC Pilot workflow.",
       },
       {
         question: "Can I try AI video generation before choosing a paid plan?",
@@ -293,7 +293,7 @@ export const seoPageContent = {
     ],
     featuresTitle: "A content system for teams with limited time.",
     featuresDescription:
-      "UGCPilot keeps the strategy brief, creative work, and approval decision close enough to move quickly without losing judgment.",
+      "UGC Pilot keeps the strategy brief, creative work, and approval decision close enough to move quickly without losing judgment.",
     features: [
       {
         title: "Work from what you know",
@@ -358,7 +358,7 @@ export const seoPageContent = {
     eyebrow: "AI social media manager",
     title: "Keep social content moving without losing the human decision.",
     description:
-      "UGCPilot brings business context, creative formats, review, and available publishing workflows together so your team can manage the content process in one place.",
+      "UGC Pilot brings business context, creative formats, review, and available publishing workflows together so your team can manage the content process in one place.",
     proof: "Business context → content formats → review → publishing decision",
     workflowLabel: "The work stays connected from the first business brief to the final publish decision.",
     workflow: [
@@ -411,9 +411,9 @@ export const seoPageContent = {
           "It helps a team organize and accelerate parts of the social content process, such as creating formats, reviewing work, and preparing posts for publishing.",
       },
       {
-        question: "Does UGCPilot replace the person managing social media?",
+        question: "Does UGC Pilot replace the person managing social media?",
         answer:
-          "UGCPilot is designed to support the content workflow. The team still decides which ideas represent the business and what should be approved for publishing.",
+          "UGC Pilot is designed to support the content workflow. The team still decides which ideas represent the business and what should be approved for publishing.",
       },
       {
         question: "Can I use the same business context across formats?",
@@ -455,7 +455,7 @@ function toJsonLd(content: SeoLandingPageContent) {
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        name: "UGCPilot",
+        name: "UGC Pilot",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         url: `https://getugcpilot.com${content.canonicalPath}`,

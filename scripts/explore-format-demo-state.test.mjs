@@ -19,7 +19,7 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explor
 }).outputText, { exports: textFields, require: name => name === "@/lib/explore/wall-text-editor" ? wallTextEditor : ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const asset = (n, collection = "video") => ({ id: id(n), status: "ready", collection, durationSeconds: 8, width: 720, height: 1280,
+const asset = (n, collection = "video") => ({ id: id(n), status: "ready", sourceType: collection === "video" ? "demo_upload" : "upload", collection, durationSeconds: 8, width: 720, height: 1280,
   title: `Owned ${collection} ${n}`, url: `/owned-${n}.${collection === "audio" ? "mp3" : "mp4"}`, mimeType: collection === "audio" ? "audio/mpeg" : "video/mp4" });
 const output = n => ({ id: id(n), kind: "media_asset", url: asset(n).url, title: `Opening ${n}` });
 const draft = (demo = 2) => ({ version: 1, demoId: id(demo), audioId: id(4), editing: { ...defaultDemoEdit(8), trimStartMs: 500, trimEndMs: 6500, originalVolume: .35, musicVolume: .6 },
@@ -228,6 +228,8 @@ test("Demo Change opens its own asset chooser and cancels without changing the a
   change.props.onChooseAssets(); h.render();
   const picker = h.find(n => n.type === "WorkflowVideoAssetPicker");
   assert.equal(picker.props.open, true); picker.props.onOpenChange(false); h.render();
+  assert.equal(picker.props.library, "content");
+  assert.equal(picker.props.onSelect({ ...asset(3), sourceType: "generated_video" }), false, "Ordinary Creative Assets cannot replace a demo");
   assert.deepEqual(normalize(h.draftInputs.at(-1).content), before);
   assert.equal(h.props.editActive, false); assert.equal(h.dirty, 0);
   change.props.onChooseAssets(); h.render();
@@ -301,14 +303,15 @@ test("Hook demo editor has only trim/text tools while audio and legacy framing r
 });
 
 for (const format of ["hook", "wall_text"]) {
-  test(`${format}: empty Demo card uploads and chooses Creative Assets without opening the side panel`, async () => {
+  test(`${format}: empty Demo card uploads and chooses saved demos without opening the side panel`, async () => {
     const h = harness(); h.render({ active: false, editActive: false, editPreviewActive: true });
     const sourceActions = () => h.find(n => n.type === "WorkflowClipSourceActions");
     assert.ok(sourceActions()); assert.equal(sourceActions().props.label, "demo video");
     sourceActions().props.onChooseAssets(); h.render();
     const library = h.find(n => n.type === "WorkflowVideoAssetPicker"); assert.equal(library.props.open, true);
-    assert.notEqual(library.props.library, "content");
-    assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "creative_assets");
+    assert.equal(library.props.library, "content");
+    assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "content");
+    assert.equal(sourceActions().props.library, "content");
     library.props.onOpenChange(false); h.render(); assert.equal(h.dirty, 0, "Cancelling the chooser does not change a draft");
     const pending = sourceActions().props.onUpload({ name: "demo.mp4" }); h.render();
     assert.equal(h.button("Edit demo video").props.disabled, false, "A pending upload must not trap editing");
@@ -429,7 +432,7 @@ for (const format of ["hook", "wall_text"]) {
     h.button("Back to videos").props.onClick();
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
     assert.ok(h.button("Replace demo"), "Sidebar keeps the original replacement control");
-    assert.ok(h.button("Creative Assets"), "Sidebar keeps its separate asset-library control");
+    assert.ok(h.button("Saved demos"), "Sidebar keeps its separate asset-library control");
     assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined);
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.deepEqual(normalize(restored.find(n => n.type === textFields.FormatVideoTextFields).props.editing.text), overlay);
@@ -477,7 +480,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
     assert.ok(h.button("Upload demo"));
-    assert.ok(h.button("Creative Assets"));
+    assert.ok(h.button("Saved demos"));
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();

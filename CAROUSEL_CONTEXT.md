@@ -1,5 +1,29 @@
 # Carousel System Context
 
+## 2026-10-17 Trending planner positions and concise copy (local)
+
+- The user approved useful, nonempty follow-up body copy below the previous
+  18-word Helpful Tips / 14-word Product Story minimums. Both planners and their
+  initial/full/targeted repair prompts now accept shorter complete thoughts,
+  with a maximum of 30 body words. Cover hooks retain their 5-14 word contract.
+  Optional content headings may wrap onto two measured lines, up to 10 words;
+  measured overflow still requires repair rather than font shrinking.
+- Helpful Tips batch output now uses `items.first` through `items.fifth`.
+  Only the backend maps those keys to the five existing reserved briefs; model
+  output cannot select `slotIndex` or `candidateIndex`. Each key has its assigned
+  format schema. Missing/malformed items use isolated bounded repairs; valid
+  siblings retain their assigned positions. Historical persisted plans and
+  reservation/delivery contracts keep their existing shapes.
+- Counted body transport permits one complete block and an optional second
+  block, with at most 30 words combined. All paths retain actual font-fit,
+  maximum lengths, factual checks, slide roles and CTA restrictions.
+- Planner versions are Helpful Tips v58 and Product Story v26. Worker build and
+  145 local regression tests passed, including both canvas ratios and partial
+  batch settlement. Additional database tests and lint were unavailable because
+  local PGlite / ESLint dependencies are missing. No deployment, paid generation
+  or production retry was performed; hosted acceptance is pending. Details:
+  `docs/trending-slideshow-planning-fix-2026-10-17.md`.
+
 ## 2026-10-16 Manual Explore one-box prompt rewrite (local)
 
 - Latest user correction removes separate per-slide prompt forms. One sparkle

@@ -230,19 +230,19 @@ function expandSixSlideFormat(
       ...problem,
       ctaPolicy: "none",
       maximumWords: 30,
-      minimumWords: 14,
+      minimumWords: 1,
     },
     {
       ...realization,
       ctaPolicy: "none",
       maximumWords: 30,
-      minimumWords: 14,
+      minimumWords: 1,
     },
     {
       ...mechanism,
       ctaPolicy: "none",
       maximumWords: 30,
-      minimumWords: 14,
+      minimumWords: 1,
     },
     {
       ...proof,
@@ -250,7 +250,7 @@ function expandSixSlideFormat(
       instruction:
         "Give a modest, supportable proof or result that follows from the mechanism. Do not add a CTA or invent metrics, customers, guarantees, or outcomes.",
       maximumWords: 30,
-      minimumWords: 14,
+      minimumWords: 1,
       perspective: "first_person",
     },
     {
@@ -258,7 +258,7 @@ function expandSixSlideFormat(
       instruction:
         "Close with useful value. An optional soft CTA may accompany this final slide, but must not replace a promised tip or move to an earlier slide.",
       maximumWords: 30,
-      minimumWords: 14,
+      minimumWords: 1,
       perspective: "first_person_then_viewer",
       productMention: "optional",
       slideNumber: 6,

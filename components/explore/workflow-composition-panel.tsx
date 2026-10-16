@@ -1,7 +1,7 @@
 "use client";
 
 import { AudioLines, Check, Info, Play, Video } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { WorkflowBackgroundAudioPicker } from "./workflow-background-audio-picker";
 import type { WorkflowBackgroundMusic } from "./use-workflow-background-music";
 
@@ -25,10 +25,11 @@ import { WorkflowCaptionEditor, type WorkflowCaptions } from "./workflow-caption
 const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
-export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false, backgroundMusic }: {
+export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSourceActions, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false, backgroundMusic }: {
   videoLabel: "Hook" | "Phone video" | "Talking head";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
+  demoSourceActions?: ReactNode;
   demoAudioPlayback: ExploreBackgroundPlayback;
   onDemoAudioPlaybackChange: (playback: ExploreBackgroundPlayback) => void;
   connected?: boolean;
@@ -70,7 +71,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
           <h3 className="text-sm font-medium">Demo upload</h3>
           {demo.asset ? <RemoveMediaButton label="demo" onClick={demo.remove} /> : null}
         </div>
-        {demo.asset ? <Popover>
+        {demoSourceActions ?? (demo.asset ? <Popover>
           <PopoverTrigger render={<Button type="button" variant="outline" className={creation.demoPreviewAction} aria-label="Preview demo" title={demo.asset.name} />}>
             <Play className="size-3.5" aria-hidden="true" />
             <span>Preview demo</span>
@@ -81,10 +82,10 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoAudi
             <p className="text-sm text-muted">{formatMediaSeconds(demo.asset.duration)} · Original sound preserved</p>
             <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo" className="h-9 text-sm" />
           </PopoverContent>
-        </Popover> : <WorkflowFilePicker attachment={demo} kind="video" label="Upload demo video" buttonLabel="Upload demo" className={creation.editUploadButton} icon={<span className={creation.iconWell}><Video className="size-5" aria-hidden="true" /></span>} />}
+        </Popover> : <WorkflowFilePicker attachment={demo} kind="video" label="Upload demo video" buttonLabel="Upload demo" className={creation.editUploadButton} icon={<span className={creation.iconWell}><Video className="size-5" aria-hidden="true" /></span>} />)}
         {demo.asset ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <p className="min-w-0 flex-[1_1_12rem] truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p>
-          <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo video" buttonLabel="Replace demo" disabled={editingBusy} className="h-9 text-xs" />
+          {!demoSourceActions ? <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo video" buttonLabel="Replace demo" disabled={editingBusy} className="h-9 text-xs" /> : null}
           {demoFramingEnabled && onDemoFramingChange ? <WorkflowDemoControls key={`${demo.asset.url}:${outputAspect}`} asset={demo.asset} value={demoFraming} onChange={onDemoFramingChange} outputAspect={outputAspect} disabled={editingBusy} onOpen={onDemoControlsOpen} /> : null}
         </div> : <p className="sr-only">Add or drop a walkthrough to play after your {videoLabel.toLowerCase()}.</p>}
         {demoFramingEnabled && demo.asset && onDemoFramingChange && demoFramingError ? <p role="alert" className="text-xs text-destructive">{demoFramingError} <button type="button" className="underline" disabled={editingBusy} onClick={() => onDemoFramingChange(null)}>Reset framing</button></p> : null}

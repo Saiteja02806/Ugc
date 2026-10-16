@@ -109,6 +109,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/explore/use-workflow-session": { useWorkflowSession: () => recovery },
       "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ dirty: false, settings: { aspectRatio: "9:16" }, changeSettings() {} }) },
       "@/lib/explore/workflow-generation-settings": { createWorkflowGenerationSettings: () => recovery.session.generationSettings, normalizeWorkflowGenerationSettings: value => value },
+      "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo: async () => { throw Error("Unexpected demo upload"); } },
       "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => ({ asset }) },
       "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children({ selected: asset, results: [], busy: false, error: null }) },
       "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children(finishing) },
@@ -156,6 +157,9 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       const workspace = nodes(tree).find(n => n.type === "edit-workspace");
       const sourceMenu = nodes(workspace.props.sourceActions).find(n => n.type === "source-actions");
       const demoMenu = nodes(workspace.props.demoSourceActions).find(n => n.type === "source-actions");
+      assert.equal(demoMenu.props.library, "content");
+      const sidebarDemoMenu = nodes(nodes(tree).find(n => n.type === "composition-panel").props.demoSourceActions).find(n => n.type === "source-actions");
+      assert.equal(sidebarDemoMenu.props.library, "content", "Sidebar and preview use the same Demo inventory");
       assert.equal(sourceMenu.props.triggerLabel, "Change");
       sourceMenu.props.onChooseAssets(); tree = render();
       let picker = nodes(tree).find(n => n.type === "video-picker");
@@ -164,7 +168,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo, asset);
       const acceptedDemos = []; recovery.acceptAsset = (role, value) => { acceptedDemos.push([role,value.id]); return true; };
       demoMenu.props.onChooseAssets(); tree = render(); picker = nodes(tree).find(n => n.type === "video-picker");
-      assert.match(picker.props.description, /demo/); assert.equal(picker.props.onSelect({...asset,id:"replacement-demo"}), true);
+      assert.match(picker.props.description, /Demo screen/); assert.equal(picker.props.library,"content"); assert.equal(picker.props.onSelect({...asset,id:"ordinary-video"}),false); assert.equal(picker.props.onSelect({...asset,id:"replacement-demo",sourceType:"demo_upload"}), true);
       assert.deepEqual(acceptedDemos, [["demo","replacement-demo"]]); picker.props.onOpenChange(false); tree = render();
       assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
       assert.equal(pageScroll, 0, "A real stage change reveals the workflow heading even when the document scrolled");

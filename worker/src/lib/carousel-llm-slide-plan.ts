@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { CAROUSEL_BATCH_POSITION_KEYS, readCarouselBatchPositions } from "./carousel-batch-positions.js";
 import { applyScopedPlanRepair, buildScopedPlanRepairSchema, getScopedPlanRepair } from "./carousel-scoped-plan-repair.js";
 import { buildCountedBodyRepairSchema, decodeCountedPlanBodies, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, withCountedPlanBodies, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
 
@@ -40,7 +41,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v57-advisory-language-checks";
+  "llm-carousel-planner-v58-owned-positions-flexible-body";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -53,7 +54,7 @@ const MAX_HEADLINE_LENGTH = 100;
 const MAX_CTA_LENGTH = 68;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
 const MAX_LIST_ITEM_LENGTH = 88;
-const MIN_REQUIRED_BODY_WORDS = 18;
+const MIN_REQUIRED_BODY_WORDS = 1;
 const FIRST_SLIDE_MIN_BODY_WORDS = 4;
 const FIRST_SLIDE_MAX_BODY_WORDS = 12;
 const FIRST_SLIDE_MIN_HEADLINE_WORDS = CAROUSEL_HOOK_MIN_WORDS;
@@ -63,7 +64,7 @@ const FIRST_SLIDE_MIN_HEADLINE_WORDS = CAROUSEL_HOOK_MIN_WORDS;
 const FIRST_SLIDE_MAX_HEADLINE_LENGTH = 100;
 const FIRST_SLIDE_MAX_HEADLINE_WORDS = CAROUSEL_HOOK_MAX_WORDS;
 const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 30;
-const MIN_HEADLINE_WORDS = 3;
+const MIN_HEADLINE_WORDS = 1;
 const MAX_HEADLINE_WORDS = 10;
 const FIRST_SLIDE_HOOK_COPY_GUIDANCE =
   `${CAROUSEL_HOOK_COPY_GUIDANCE} ${CAROUSEL_HOOK_MAX_WORDS} words remains the absolute limit. Use short, natural wording so it stays within four centred display lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Put the hook in headline and set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Never use ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
@@ -514,7 +515,7 @@ export async function buildCarouselContentPlanBatch(
   if (
     input.items.length !== 5 ||
     new Set(input.items.map((item) => item.slotIndex)).size !== 5 ||
-    input.items.some((item) => item.slotIndex < 0 || item.slotIndex > 4)
+    input.items.some((item) => !Number.isInteger(item.slotIndex) || item.slotIndex < 0 || item.slotIndex > 4)
   ) {
     throw new Error("A Carousel content batch must contain slots 0 through 4 exactly once.");
   }
@@ -574,20 +575,7 @@ export async function buildCarouselContentPlanBatch(
       throw new Error("OpenAI returned no Carousel batch content.");
     }
 
-    const batchRecord = asRecord(JSON.parse(batchRawResponse), "carousel batch");
-    if (!Array.isArray(batchRecord.items) || batchRecord.items.length !== 5) {
-      throw new Error("Carousel batch response must contain exactly five items.");
-    }
-
-    const rawBySlot = new Map<number, Record<string, unknown>>();
-    for (const value of batchRecord.items) {
-      const record = asRecord(value, "carousel batch item");
-      const slotIndex = getInteger(record.slotIndex, "batch slotIndex");
-      if (slotIndex < 0 || slotIndex > 4 || rawBySlot.has(slotIndex)) {
-        throw new Error("Carousel batch response contains an invalid or duplicate slotIndex.");
-      }
-      rawBySlot.set(slotIndex, record);
-    }
+    const rawBySlot = readCarouselBatchPositions(JSON.parse(batchRawResponse));
 
     const completed: CarouselBatchContentPlanItem[] = [];
     const pendingRepairs: Array<{
@@ -2277,7 +2265,7 @@ function buildGrammarPlannerMessages(
           : null,
         `- On Slides 2-6, headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than two visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
         `- Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Medium at 500 weight (hard maximum 600), centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. A short first-person problem or changed belief can leave a strong open loop; explain the story on Slides 2-6.`,
-        `- On non-list Slides 2-6, body copy must be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use only their configured listItems and body: null; the prose word minimum does not apply to listItems.`,
+        `- On non-list Slides 2-6, body copy must be one or two short body blocks separated by \\n\\n. Prefer concise, complete wording; shorter useful bodies are valid and have no minimum word count. Never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use only their configured listItems and body: null; the prose word minimum does not apply to listItems.`,
         `- Slides 2-6 use centered Inter Regular or Medium at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is white Medium display text with a thin black outline over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "- List slides must use the exact configured number of short listItems and set body to null. Headlines are normally null. Never repeat listItems in body or add a second text layer for decoration.",
@@ -2364,7 +2352,7 @@ function buildBatchPlannerMessages(
       rules: context.hookFamily.rules,
       useWhen: context.hookFamily.useWhen,
     },
-    slotIndex: item.slotIndex,
+    outputKey: CAROUSEL_BATCH_POSITION_KEYS[item.slotIndex],
   }));
 
   return [
@@ -2379,6 +2367,7 @@ function buildBatchPlannerMessages(
         "Generate all five assigned Carousels as one high-quality batch.",
         ...(input.bodyRepairPolicy ? [COUNTED_PLAN_BODY_GUIDANCE] : []),
         "For each slot, return status ready with a complete plan, or status not_applicable with plan null and a specific reason.",
+        "Return items as an object with exactly the assigned first, second, third, fourth and fifth keys. Match each outputKey to its own brief, format and hook family. Do not return position identifiers such as slotIndex or candidateIndex; the backend owns those positions.",
         "Do not mark a format not_applicable merely because another format is easier.",
         "Every ready item must use the exact format and hook-family IDs assigned to that slot.",
         "Develop each creativeSeed differently and let its emotion guide the tone without forcing a fixed story arc.",
@@ -2390,7 +2379,7 @@ function buildBatchPlannerMessages(
         `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
         `Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
-        `Non-list Slides 2-6 body copy must be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use their exact configured short listItems and body: null; do not duplicate the list in a prose body or apply the prose word minimum to listItems.`,
+        `Non-list Slides 2-6 body copy must be one or two short body blocks separated by \\n\\n. Prefer concise, complete wording; shorter useful bodies are valid and have no minimum word count. Never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use their exact configured short listItems and body: null; do not duplicate the list in a prose body or apply the prose word minimum to listItems.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
@@ -2410,7 +2399,7 @@ function buildBatchPlannerMessages(
 }
 
 const COUNTED_PLAN_BODY_GUIDANCE = [
-  "COUNTED BODY TRANSPORT: firstWords and secondWords are arrays of SINGLE WORDS, never phrases. For example [\"Keep\",\"the\",\"campaign\",\"context\",\"beside\",\"the\",\"next\",\"clear\",\"decision.\"] is nine words; [\"Keep the campaign context\"] is invalid. Each array forms ONE complete sentence of 9-12 words. Both arrays together are 18-24 words, not 18-24 phrases. The server joins them with a blank line; do not return a string body or put whitespace inside a word.",
+  "COUNTED BODY TRANSPORT: firstWords and secondWords are arrays of SINGLE WORDS, never phrases. For example [\"Keep\",\"the\",\"campaign\",\"context\",\"beside\",\"the\",\"next\",\"clear\",\"decision.\"] is nine words; [\"Keep the campaign context\"] is invalid. Use firstWords for one complete thought. secondWords may be empty or contain a second complete thought. Both arrays together must contain 1-30 words; there is no prose minimum to pad toward. Each thought must fit three lines at the fixed font size. The server joins them with a blank line; do not return a string body or put whitespace inside a word.",
   "WRITE SPECIFIC TEACHING: choose one supplied grounding anchor, and use its concrete matchTerms naturally in the concept and middle slides. For each slide teach one usable step, check, example, distinction or decision. The second sentence explains the same step's reason or application. Avoid vague summaries such as better results, stay organized, improve efficiency, smoother workflows or team success. Slide 5 adds a fresh application; Slide 6 gives a concrete action the reader can do without the product. No product names, promotion, invented results or CTAs.",
   "FINAL COPY CHECK: the concept and middle slides visibly connect to the chosen anchor using its actual terms. Avoid repeating a content word within each body, including singular/plural variants. Every Slide 5 teaches a new concrete check or example with a named artifact and decision; it must not summarize benefits. Every Slide 6 describes an action involving an artifact and a decision, not a request to start implementing tips or a promise of better results. List entries are short, concrete checks rather than general encouragement.",
   "FOLLOW-UP PRESENTATION: prefer headline null and body_only when allowed; use cta_takeaway on Slide 6. If a heading is required, it must add a distinct idea rather than repeat the body. Use short ordinary words so each sentence fits three lines at 48px. Covers and configured list slides keep body null and list counts unchanged.",
@@ -2427,8 +2416,8 @@ function buildCarouselContentBatchSchema(
     additionalProperties: false,
     properties: {
       items: {
-        items: {
-          anyOf: requested.map(({ context, item }) => ({
+        additionalProperties: false,
+        properties: Object.fromEntries(requested.map(({ context, item }) => [CAROUSEL_BATCH_POSITION_KEYS[item.slotIndex]!, {
             additionalProperties: false,
             properties: {
               notApplicableReason: {
@@ -2446,19 +2435,16 @@ function buildCarouselContentBatchSchema(
                   { type: "null" },
                 ],
               },
-              slotIndex: { enum: [item.slotIndex], type: "integer" },
               status: {
                 enum: ["ready", "not_applicable"],
                 type: "string",
               },
             },
-            required: ["notApplicableReason", "plan", "slotIndex", "status"],
+            required: ["notApplicableReason", "plan", "status"],
             type: "object",
-          })),
-        },
-        maxItems: 5,
-        minItems: 5,
-        type: "array",
+          }])),
+        required: [...CAROUSEL_BATCH_POSITION_KEYS],
+        type: "object",
       },
     },
     required: ["items"],
@@ -2508,7 +2494,7 @@ async function buildSingleBatchItemRepair(params: {
           grounding: params.context.groundingCandidates, frozenPlan: originalPlan,
           businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief }) },
       ] : countedSlides ? [
-        { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the requested carousel body fields. Return two arrays of 9-12 individual words for each body: firstWords and secondWords. Join words into two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with 18-24 words total and at most 300 characters. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
+        { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the requested carousel body fields. Return firstWords and secondWords arrays of individual words for each body; secondWords may be empty. Join words into one or two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with at most 30 words total and at most 300 characters; do not pad shorter useful copy. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
         { role: "user", content: JSON.stringify({ businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief, grounding: params.context.groundingCandidates,
           issues: params.issues, frozenPlan: originalPlan,
           bodiesToReplace: countedSlides.map((n) => ({ slideNumber: n, currentBody: originalPlan!.slides[n - 1]!.body, role: originalPlan!.slides[n - 1]!.formatRole })),
@@ -2901,7 +2887,7 @@ function buildRepairMessages(params: {
         hasSlideOneCoverFitFailure
           ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px and ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Do not add a subtitle or support line to solve the overflow.`
           : null,
-        "Each non-list body on Slides 2-6 must be one or two complete, specific body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30), count words before returning, keep it at most 300 characters, and fit it within ten visual lines at the fixed 48px body size, with at most three lines per block. Normally use two blocks of 9-12 words each so their combined body reaches the minimum. The listed actual counts exclude the headline and CTA: neither can supply missing body words. A short closing slogan does not satisfy Slide 6; give a concrete useful action or decision. List slides must return body: null and their exact configured short listItems; never duplicate listItems in body or apply the prose word minimum to the list.",
+        "Each non-list body on Slides 2-6 must be one or two complete, specific body blocks separated by \\n\\n. Shorter useful bodies are valid; do not pad to a minimum word count, keep it at most 30 words and 300 characters, and fit it within ten visual lines at the fixed 48px body size, with at most three lines per block. Use one or two complete thoughts; a second block is optional. The listed actual counts exclude the headline and CTA. A short closing slogan does not satisfy Slide 6; give a concrete useful action or decision. List slides must return body: null and their exact configured short listItems; never duplicate listItems in body or apply a prose word minimum to the list.",
         "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
@@ -3111,7 +3097,7 @@ function buildCarouselContentSlideSchema(
             : {
                 anyOf: [
                   {
-                    description: "Non-list body only: 18-30 words total excluding the headline. Aim for 20-24 words across two short, complete thoughts of 9-12 words each, separated by a blank line. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
+                    description: "Non-list body only: nonempty useful copy with at most 30 words total excluding the headline. Use one or two short, complete thoughts separated by a blank line; do not pad to a minimum word count. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
                     maxLength: maximumBodyLength,
                     minLength: 1,
                     type: "string",

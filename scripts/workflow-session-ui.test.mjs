@@ -167,6 +167,7 @@ function demoSelectionHarness() {
       localDemo: { choose: () => demoMetadata.promise, remove() {} }, localDemoAudio: { choose: () => audioMetadata.promise, remove() {}, cancelPending() {} },
       updateSession(change) { Object.assign(session, change(session)); }, clearProblem() {}, setDemoAudioPlayback() {}, setDemoFraming() {},
       setDemoUpload(next) { state.demoUpload = typeof next === "function" ? next(state.demoUpload) : next; }, setAudioUpload(next) { state.audioUpload = typeof next === "function" ? next(state.audioUpload) : next; },
+      uploadHookVideoDemo(file) { const pending = deferred(); uploads.push({ file, kind:"video", ...pending }); return pending.promise.then(result => result.asset); },
       uploadAIStudioReferenceMedia(file, kind) { const pending = deferred(); uploads.push({ file, kind, ...pending }); return pending.promise; },
     });
   return { ...exported, uploads, acceptedAudio, demoMetadata, audioMetadata, session, assets, state };

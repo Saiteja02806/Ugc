@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { FormatVideoEditor, type FormatOpeningPreview, type WorkflowClipEditState } from "@/components/explore/format-video-editor";
 import type { WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
-import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
+import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import { formatVideoFromAsset, type FormatVideoSource } from "@/lib/explore/format-video-source";
 import type { MediaAsset } from "@/lib/media/types";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
@@ -91,8 +91,7 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
     if (!ownerId || !media.file) { setUpload({ url: media.url, busy: false, error: "Choose your demo file again before editing it." }); return; }
     uploading.current = true; setUpload({ url: media.url, busy: true, error: null });
     try {
-      const uploaded = await uploadAIStudioReferenceMedia(media.file, "video", 120, ownerId, { requireVideoReferenceRatio: false, purpose: "explore-demo" });
-      const asset = uploaded.asset;
+      const asset = await uploadHookVideoDemo(media.file, ownerId);
       formatVideoFromAsset(asset);
       if (!alive.current) return;
       setDemoInput({ url: media.url, asset }); setDemoStarted(asset.id); setRequested({ target: "demo", key: asset.id });

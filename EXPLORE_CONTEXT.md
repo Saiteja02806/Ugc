@@ -1,5 +1,33 @@
 # Explore context and UI decision record
 
+### Demo inventory correction — 17 October 2026, local follow-up
+
+- Repeated mistake: copying a Hook source menu into Demo exposed Creative
+  Assets, even though reusable demo footage belongs to the **Demo** screen
+  (`/library`), not Creative Assets. Never infer the demo inventory from the
+  fact that both are represented as playable media assets.
+- Hook Video and Talking Head + Demo now show **Saved demos** in both sidebar
+  setup and empty/selected preview-card menus. Keep direct Upload video and
+  in-place Change. Saved demos opens the content picker using
+  `/api/demo/sources`, owner-scoped Content demo records with ready `demo_upload`
+  playable projections. It must exclude ordinary creative/generated videos.
+  Hook/opening selectors continue to use Creative Assets.
+- New Talking Head demo uploads and its edit-preparation fallback use the same
+  Demo upload pipeline as Hook: MP4/MOV/WebM, 1–60 seconds, up to 100 MB.
+  Uploads appear on the Demo screen and can be selected later through Saved
+  demos. Do not keep a generic `explore-demo` upload hidden in Creative Assets.
+  Already accepted legacy workflow media/edits remain recoverable; no automatic
+  migration, deletion or re-upload of earlier files is performed.
+- Preserve independent Talking Head demo audio and whole-video music. Wall of
+  Text has no Demo stage; its single background/opening source still uses
+  Creative Assets. The storage boundary is a workflow difference that must
+  survive shared UI work. Local verification is separate from deployment.
+- Local verification: 143 targeted tests, TypeScript and scoped ESLint passed.
+  Actual-component browser fixtures verify Saved demos in the sidebar/Change
+  menu, separate picker inventories, poster/first-frame selection, draft
+  retention and laptop/mobile fit. These tests use isolated account/API data;
+  no production upload, migration, publishing or deployment was performed.
+
 ### Hook Remix final-frame captions — 16 October 2026, local fix
 
 - The reported 3.167s Hook switched from “SaaS founders!! / This app is a game
@@ -110,7 +138,8 @@
   and uses its current URL, without uploading another copy. Local uploads and
   catalogue references retain their existing generation/upload behavior.
 - Talking Head overview uses the same in-place Hook/Demo source menus as
-  Hook Video, with Creative Assets and direct upload; Generate alone navigates
+  Hook Video, with direct upload and the appropriate inventory: Creative Assets
+  for the opening and Saved demos for Demo; Generate alone navigates
   to Create. Preserve independent demo-only audio and whole-video music.
   Do not clear accepted demo audio or leave a rejected demo pending indefinitely.
 - Wall exposes Change directly in its text editor: upload or Creative
@@ -158,7 +187,7 @@
 - Hook Video's overview **Change** buttons open a compact anchored menu in
   place, rather than redirecting to Create or focusing the Demo sidebar.
   Hook offers Upload video, Creative Assets and Generate video; only choosing
-  Generate moves to Create. Demo offers Upload video and Creative Assets only.
+  Generate moves to Create. Demo offers Upload video and Saved demos only.
   Reuse the existing owned-media selection/upload handlers, limits and filters.
   Cancel leaves the current clip and edits intact; failed replacement restores
   the accepted demo. Accepted replacements invalidate stale final output.
@@ -846,13 +875,11 @@ Do not add a second overview Remix form to make text editing discoverable.
   named clip; replacement selects different footage.
 - Keep Demo upload/replacement controls accessible alongside the preview cards.
   Showing cards must never hide every way to replace their media.
-- Change/Replace must open the picker or visibly reveal and focus its source
-  choices. On mobile, reveal the correct panel before focusing the control.
-- Current Hook demo-card **Change** calls `chooseDemoInDemo`: reveal Demo
-  controls, scroll to and focus Replace demo. It does not itself open the native
-  file picker. Replace demo opens that picker; Creative Assets opens saved
-  choices. Failed replacement retains the accepted demo and edits. Describe
-  this two-step path accurately; do not claim a one-click picker from the card.
+- Change opens replacement choices in place, including on mobile. Opening
+  footage offers upload/Creative Assets/generation; demo footage offers upload
+  and Saved demos from the Demo inventory. Failed replacement retains accepted
+  footage and edits. The earlier `chooseDemoInDemo` sidebar-focus behavior is
+  superseded; never restore it or direct demo selection to Creative Assets.
 - Final composition settings belong here. Apply the workflow's audio rules below.
 - Returning from Schedule must retain both clip edit entry points, even when a
   final video has already been prepared.

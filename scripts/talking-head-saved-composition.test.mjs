@@ -11,7 +11,7 @@ function fixture(backgroundScheduling = false) {
     useState(value) { const index = cursor++; if (!(index in slots)) slots[index] = value; return [slots[index], next => { slots[index] = typeof next === "function" ? next(slots[index]) : next; }]; },
     useCallback(value) { cursor++; return value; }, useEffect(fn) { cursor++; effects.push(fn); } };
   const imports = { react, "react/jsx-runtime": jsx, "@/components/explore/format-video-editor": { FormatVideoEditor: "editor" },
-    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia() { throw new Error("Recovery must not upload"); } },
+    "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo() { throw new Error("Recovery must not upload"); } },
     "@/lib/explore/format-video-source": { formatVideoFromAsset: source => ({ ...source, mediaAssetId: source.id }) },
     "@/components/explore/workflow-section-layout.module.css": { default: {} } };
   const exports = {};

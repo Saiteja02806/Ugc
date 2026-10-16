@@ -3,6 +3,7 @@ import test from "node:test";
 import { getCarouselStructure2MeasuredCopyIssues } from "./carousel-structure-2-measured-copy-fit.js";
 import { parseCarouselStructure2StoryPlan, validateCarouselStructure2StoryPlan } from "./carousel-structure-2-story-plan.js";
 import { CAROUSEL_STRUCTURE_2_STORY_ROLES } from "./carousel-structure-2-formats.js";
+import { inspectCarouselStructure2SlideLayout } from "./carousel-structure-2-render-slide.js";
 
 function makePlan() {
   const positions = ["first", "second", "third", "fourth", "fifth", "sixth"];
@@ -24,6 +25,29 @@ test("real font metrics reject a valid word-count body that would overflow its r
   assert.ok(issues.some(issue => issue.slideNumber === 6 && issue.code === "render_fit"));
   plan.slides[5]!.storyText = "Keep your next task visible as priorities change.\n\nA clear owner and context help you continue without starting over.";
   assert.deepEqual(await getCarouselStructure2MeasuredCopyIssues(plan), []);
+});
+
+test("short body copy and two-line headings pass both story validation and real font measurements", async () => {
+  const plan = makePlan(), slide = plan.slides[1]!;
+  slide.headline = "Keep campaign reviews connected to each clear next decision";
+  slide.storyText = "I keep the next task visible.";
+  assert.deepEqual(validateCarouselStructure2StoryPlan(plan, { businessDescription: "Todaywise helps me plan my work." }).filter(issue => issue.slideNumber === 2), []);
+  assert.deepEqual(await getCarouselStructure2MeasuredCopyIssues(plan), []);
+  for (const format of ["1:1", "4:5"] as const) {
+    const layout = await inspectCarouselStructure2SlideLayout({ format, spec: {
+      assetId: "test", assetUrl: "https://example.invalid/no-download", ...slide, layoutVariant: "story_overlay_only",
+      storyFormatId: plan.strategy.storyFormatId, textPosition: "center", textTreatment: "overlay", visualRole: "human",
+    } });
+    assert.equal(layout.safeAreaContained, true);
+    // A two-line heading is taller than the one-line 50px heading treatment.
+    assert.ok(layout.headingBounds && layout.headingBounds.height > 100);
+  }
+  slide.headline = "Keep campaign\nreviews connected\nto each next decision";
+  assert.ok(validateCarouselStructure2StoryPlan(plan).some(issue => issue.code === "story_structure" && issue.slideNumber === 2));
+  assert.ok((await getCarouselStructure2MeasuredCopyIssues(plan)).some(issue => issue.slideNumber === 2));
+  slide.headline = null;
+  slide.storyText = Array.from({ length: 31 }, () => "word").join(" ");
+  assert.ok(validateCarouselStructure2StoryPlan(plan).some(issue => issue.code === "word_count" && issue.slideNumber === 2));
 });
 
 test("measured preflight includes heading and CTA groups without changing older saved paragraph contracts", async () => {

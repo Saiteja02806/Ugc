@@ -59,6 +59,8 @@ async function main() {
       await page.setViewportSize(viewport);await page.goto(`http://127.0.0.1:${server.address().port}/`);
       await page.getByLabel('Upload or replace demo video',{exact:true}).setInputFiles({name:'slow-demo.mp4',mimeType:'video/mp4',buffer:media});
       await page.getByRole('button',{name:'Edit demo video',exact:true}).waitFor();
+      assert.equal(await page.getByRole('button',{name:'Saved demos',exact:true}).isVisible(),true,'Sidebar selects Demo inventory');
+      assert.equal(await page.getByRole('button',{name:'Creative Assets',exact:true}).count(),0,'Demo controls never advertise Creative Assets');
       assert.equal(await page.getByRole('button',{name:'Edit demo video',exact:true}).isEnabled(),true);
       assert.equal(await page.getByRole('button',{name:'Change demo video',exact:true}).isEnabled(),true);
       await page.waitForFunction(()=>document.querySelector('[data-clip-media] video')?.readyState>=1);
@@ -67,7 +69,7 @@ async function main() {
       await page.screenshot({path:path.join(out,`overview-${viewport.width}.png`)});
       await page.getByRole('button',{name:'Change demo video',exact:true}).click();
       await page.getByRole('button',{name:'Upload demo video',exact:true}).waitFor();
-      assert.equal(await page.getByRole('button',{name:'Choose demo video from Creative Assets',exact:true}).isVisible(),true);
+      assert.equal(await page.getByRole('button',{name:'Choose demo video from Saved demos',exact:true}).isVisible(),true);
       await page.locator('[data-slot="popover-content"]').evaluate(async element => { await Promise.all(element.getAnimations().map(animation => animation.finished)); });
       await page.screenshot({path:path.join(out,`change-menu-${viewport.width}.png`)});
       await page.keyboard.press('Escape');

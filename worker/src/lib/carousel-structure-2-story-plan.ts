@@ -28,7 +28,7 @@ const STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE =
   `${CAROUSEL_HOOK_COPY_GUIDANCE} Use short, natural wording so it stays within four centred display lines at ${getCarouselStructure2StoryFontSize(1)}px. Never use ALL CAPS. The hook sits in the image centre, so visualContext must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
 
 const STRUCTURE_2_OUTPUT_COPY_CONTRACT =
-  `Apply these rules separately to each slide, not one common paragraph style. Slide 1/first/slide1: exactly ONE complete statement, ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} words, aim for 6-10 short words. No second sentence, explanation, subtitle, or blank line; body-block instructions NEVER apply to the cover. Example of the shape only: "i kept making content without a clear plan". Slides 2-6/second through sixth: count only storyText, excluding headline and ctaText, and return 14-30 whitespace-delimited words total; aim for 18-22. Normally use two short blocks of 7-12 words separated by a blank line; each block fits at most three lines at 48px. Count their combined words, not each block separately. Preserve first-person I/me/my on Slides 2-5. Slide 6 still needs at least 14 words of useful takeaway; a short slogan or product invitation does not satisfy that requirement. Check each field against its own rule before returning.`;
+  `Apply these rules separately to each slide, not one common paragraph style. Slide 1/first/slide1: exactly ONE complete statement, ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} words, aim for 6-10 short words. No second sentence, explanation, subtitle, or blank line; body-block instructions NEVER apply to the cover. Example of the shape only: "i kept making content without a clear plan". Slides 2-6/second through sixth: count only storyText, excluding headline and ctaText, and return nonempty useful copy of at most 30 whitespace-delimited words total. Shorter complete copy is valid; do not pad to a minimum. Use one or two short blocks separated by a blank line; each block fits at most three lines at 48px. Count their combined words, not each block separately. Preserve first-person I/me/my on Slides 2-5. Slide 6 still needs a useful takeaway; a short slogan or product invitation does not satisfy that requirement. Check each field against its own rule before returning.`;
 
 export const CAROUSEL_STRUCTURE_2_STORY_SCHEMA_VERSION =
   "carousel-structure-2-strict-six-slide-text-blocks-v10";
@@ -510,7 +510,7 @@ export function buildCarouselStructure2StoryPlanSchema(copyPolicy?: CarouselStru
           storyText: {
             description: isCover
               ? `One complete ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}-word hook. No second sentence or blank line. Aim for 6-10 short words; body paragraph rules do not apply here.`
-              : "14-30 body words total excluding headline and ctaText. Aim for 18-22 words across one or two short blocks. Slides 2-5 use I/me/my; Slide 6 is a useful takeaway, not a short slogan.",
+              : "Nonempty useful body copy, at most 30 words total excluding headline and ctaText. Use one or two short blocks; do not pad to a minimum. Slides 2-5 use I/me/my; Slide 6 is a useful takeaway, not a short slogan.",
             maxLength:
               isCover
                 ? CAROUSEL_STRUCTURE_2_COVER_HOOK_SCHEMA_MAX_CHARACTERS
@@ -586,7 +586,7 @@ export function buildCarouselStructure2StoryTextRepairSchema(
                   : MAX_STORY_TEXT_LENGTH,
               description: key === getTargetedStoryTextKey(1)
                 ? `Replace with ONE complete ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}-word hook, normally 6-10 short words. No second sentence, explanation or blank line.`
-                : "Replace with 14-30 storyText words total, aiming for 18-22. Count across both blocks, excluding the separate heading/CTA. Preserve first-person voice on Slides 2-5.",
+                : "Replace with nonempty useful storyText of at most 30 words total; shorter complete copy is valid. Count across both blocks, excluding the separate heading/CTA. Preserve first-person voice on Slides 2-5.",
               minLength: 1,
               type: "string",
             },
@@ -715,9 +715,9 @@ export function buildCarouselStructure2BatchMessages(params: {
       content: [
         "Use each creativeSeed as a broad starting point and its emotion as the emotional current. Do not treat either as finished copy or a complete plot.",
         "Use privateCreativeBrief only as flexible human and factual context; its preferredFormatFamily must never override the backend-selected format reference.",
-        `Follow each role's word range as a publishing contract. Slide 1 must be one ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain 14-30 words. Develop the story beat clearly and prioritize readable copy that fits the stated display area.`,
+        `Follow each role's word range as a publishing contract. Slide 1 must be one ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word hook only, with no subtitle or supporting copy. Every prose slide from Slide 2 through Slide 6 must contain nonempty useful copy of at most 30 words; there is no minimum word count to pad toward. Develop the story beat clearly and prioritize readable copy that fits the stated display area.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
-        "For Slides 2-6, aim for 16-22 body words total (accepted 14-30). Use headline for a real optional heading, otherwise null. Put one or two short body thoughts in storyText, separated by \\n\\n, each at most three lines at 48px; do not put the heading into storyText.",
+        "For Slides 2-6, use concise complete body copy of at most 30 words total; shorter useful copy is valid. Use headline for a real optional heading, otherwise null. Put one or two short body thoughts in storyText, separated by \\n\\n, each at most three lines at 48px; do not put the heading into storyText.",
         "Return each plan under its assigned outputKey. Do not return slideNumber, slotIndex, candidateIndex, or storyFormatId; the worker owns those structural values.",
         "Develop genuinely different stories inside the required six-slide sequence. Do not force every item through the same overwhelmed-to-easier arc.",
         `Slide 1 may use first-person or direct reader wording such as 'you' or 'your'. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Give a specific benefit, tension, mistake, contrast, or curiosity gap.`,
@@ -784,8 +784,8 @@ export function buildCarouselStructure2RepairMessages(params: {
         `Slide 1 is reader-first, so direct reader wording such as 'you' or 'your' is allowed. ${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and must create a specific reason to swipe within ${getCarouselStructure2StoryMaxLines(1)} visual lines at ${getCarouselStructure2StoryFontSize(1)}px type.`,
         "Only Slide 1 may lead with direct reader wording. Keep Slides 2-5 in the first-person story voice (I, me, or my); Slide 6 may turn the lesson toward the reader after its takeaway.",
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
-        "Keep Slides 2-6 readable: aim for 16-22 body words total (accepted 14-30). Preserve distinct optional headline and storyText body blocks separated by \\n\\n; each block fits three lines at 48px.",
-        `Slide 1's ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word single-hook limit and every Slide 2-6 14-30 word range are publishing requirements. Repair the listed blocking issues and preserve slides that already passed validation.`,
+        "Keep Slides 2-6 readable: use concise complete body copy of at most 30 words total; shorter useful copy is valid. Preserve distinct optional headline and storyText body blocks separated by \\n\\n; each block fits three lines at 48px.",
+        `Slide 1's ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} word single-hook limit and every Slide 2-6 maximum of 30 words are publishing requirements; do not lengthen valid short body copy. Repair the listed blocking issues and preserve slides that already passed validation.`,
         params.repairAttempt === params.repairAttemptLimit
           ? "This is the final bounded copy repair. Before returning, count whitespace-delimited body words in every changed Slide 2-6. Keep any optional CTA on Slide 6 only. Return only a plan that satisfies every listed publishing requirement."
           : null,
@@ -822,8 +822,6 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       throw new Error("A targeted Structure 2 copy repair requires valid slides.");
     }
     const isCover = slide.slideNumber === 1;
-    const wordRange = isCover ? `${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS}` : "14-30";
-    const targetRange = isCover ? "6-10" : "18-22";
     const lineLimit = getCarouselStructure2StoryMaxLines(slide.slideNumber);
     const fontSize = getCarouselStructure2StoryFontSize(slide.slideNumber);
     return {
@@ -831,8 +829,8 @@ export function buildCarouselStructure2StoryTextRepairMessages(params: {
       hookGuidance: isCover ? structure2HookGuidance(params.assignment) : undefined,
       replacementKey: getTargetedStoryTextKey(slide.slideNumber),
       requirement: getStructure2CopyInstruction(isCover
-        ? `${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Return one statement in one block, normally ${targetRange} words. It must stay within ${wordRange} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
-        : `Return one or two short ${slide.storyRole} body blocks separated by \\n\\n, totaling ${wordRange} words; aim for ${targetRange} words. Each block must fit three visual lines at ${fontSize}px. Preserve the separate heading and existing CTA.`, params.copyPolicy),
+        ? `${STRUCTURE_2_COVER_HOOK_COPY_GUIDANCE} Return one statement in one block, normally 6-10 words. It must stay within ${CAROUSEL_HOOK_MIN_WORDS}-${CAROUSEL_HOOK_MAX_WORDS} words and fit within ${lineLimit} visual lines at centered ${fontSize}px type. Never leave a hanging phrase.`
+        : `Return one or two short ${slide.storyRole} body blocks separated by \\n\\n, totaling at most 30 words; shorter useful copy is valid, without padding to a minimum. Each block must fit three visual lines at ${fontSize}px. Preserve the separate heading and existing CTA.`, params.copyPolicy),
       roleGuidance: getFormatReference(params.assignment.storyFormatId, params.copyPolicy).roleGuidance[
         slide.slideNumber - 1
       ],

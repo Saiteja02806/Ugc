@@ -30,7 +30,7 @@ test("Structure 2 exposes eight formats with one strict six-slide runtime backbo
     assert.deepEqual(format.exampleFlows, [CAROUSEL_STRUCTURE_2_STORY_ROLES]);
     assert.deepEqual(
       format.slides.map((slide) => slide.minimumWords),
-      [5, 14, 14, 14, 14, 14],
+      [5, 1, 1, 1, 1, 1],
     );
   }
 });

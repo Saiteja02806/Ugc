@@ -34,7 +34,7 @@ test("scenario voice preserves word, layout, claim, product timing and CTA check
   plan.slides[1]!.storyText = "You save 90% of your time.";
   plan.slides[2]!.ctaText = "Try it now";
   const codes = validateCarouselStructure2StoryPlan(plan, { businessDescription, copyPolicy }).map((issue) => issue.code);
-  for (const code of ["hook_length", "word_count", "unsupported_claim", "product_timing", "cta_mismatch"]) assert.ok(codes.includes(code as typeof codes[number]), code);
+  for (const code of ["hook_length", "unsupported_claim", "product_timing", "cta_mismatch"]) assert.ok(codes.includes(code as typeof codes[number]), code);
   plan.slides[1]!.storyText = Array(20).fill("extraordinarily complicated preparations").join(" ");
   assert.ok(validateCarouselStructure2StoryPlan(plan, { businessDescription, copyPolicy }).some((issue) => issue.code === "render_fit"));
 });

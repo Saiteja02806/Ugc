@@ -413,7 +413,7 @@ test("both workflows expose explicit play-once/repeat choices and honest local t
     assert.match(workspace, videoLabel === "Hook" ? /useState<ExploreBackgroundPlayback>\(recovery\.session\.demoAudioPlayback\)/ : /useState<ExploreBackgroundPlayback>\("once"\)/);
     assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\} onDemoAudioPlaybackChange=\{setDemoAudioPlayback\}/);
     if (videoLabel === "Hook") {
-      assert.match(workspace, /if \(!await localDemo\.choose\(file, \{ minDuration: 1, maxDuration: 120 \}\)\) return false;[\s\S]*?localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true;/);
+      assert.match(workspace, /if \(!await localDemo\.choose\(file, \{ minDuration: 1, maxDuration: 60, maxBytes: 100 \* 1024 \*\* 2 \}\)\) return false;[\s\S]*?localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true;/);
       assert.match(workspace, /function removeDemoAudio\(\) \{\s*audioRevision\.current\+\+; localDemoAudio\.remove\(\); recovery\.clearMedia\("demoAudio"\);[\s\S]*?setDemoAudioPlayback\("once"\);/);
       assert.match(workspace, /if \(!await localDemoAudio\.choose\(file, \{ maxDuration: 600 \}\)\) return false;[\s\S]*?setDemoAudioPlayback\("once"\); return true;/);
     } else {

@@ -21,6 +21,7 @@ function load(file, imports = {}, globals = {}) {
     if (name === "./slideshow-draft" || name === "@/lib/explore/slideshow-draft") return load("lib/explore/slideshow-draft.ts", { "../../worker/src/lib/explore-finishing-contract.ts": { isExploreUuid: uuid } });
     if (name === "./format-slideshow-text-tools") return { FormatSlideshowTextTools: "FormatSlideshowTextTools" };
     if (name === "./slideshow-add-slides") return { SlideshowAddSlides: "SlideshowAddSlides" };
+    if (name === "./use-slideshow-slide-drag") return load("components/explore/use-slideshow-slide-drag.ts", imports, globals);
     if (name === "@/lib/explore/slideshow-assembly") return { insertReferenceSlides };
     if (name === "@/lib/http/read-deadline") return { withReadDeadline };
     if (name === "./remix-text-section") return { RemixTextSection: "RemixTextSection" };
@@ -491,6 +492,52 @@ test("restored generated images replace their exact original image instead of ap
   assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
   assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Retain this heading");
   assert.equal(h.controller.current.useImage({ id: id(804), url: "https://storage.test/other.png" }, undefined, id(999)), false);
+});
+
+test("thumbnail removal preserves the selected image and its text, then saves the remaining sequence", async () => {
+  const h = await editor();
+  h.heading("Stay with the first image");
+  h.useImage({ id: id(203), url: "https://storage.test/third.png" });
+  h.control("button", "Preview slide 1").props.onClick();
+  const before = h.dirty.length;
+  h.control("button", "Remove slide 2").props.onClick();
+  assert.equal(nodes(h.render()).find(node => node.type === "img" && node.props.alt?.startsWith("Slide ")).props.src, "https://storage.test/generated-1.png");
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Stay with the first image");
+  assert.ok(h.dirty.length > before);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).editorDraft.slides.map(slide => slide.mediaAssetId), [id(201), id(203)]);
+  const storedText = JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner:text"));
+  assert.equal(Object.values(storedText).some(design => design.heading === "Stay with the first image"), true);
+});
+
+test("reorder handles keep image/text identity and thumbnail controls lock during a pending save", async () => {
+  const h = await editor({ failFirst: true }); h.heading("Original first slide");
+  const key = h.control("button", "Reorder slide 1");
+  key.props.onKeyDown({ key: "ArrowRight", preventDefault() {} });
+  assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], true);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Original first slide");
+  await h.clickSave("Save slideshow");
+  for (const label of ["Reorder slide 1", "Remove slide 1", "Reorder slide 2", "Remove slide 2"]) assert.equal(h.control("button", label).props.disabled, true);
+  const before = h.dirty.length;
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(h.dirty.length, before);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
+});
+
+test("removing a preceding or selected thumbnail keeps the correct neighbor, and the last removal returns to an empty draft", async () => {
+  const h = await editor();
+  h.useImage({ id: id(203), url: "https://storage.test/third.png" }); h.heading("Third slide text");
+  h.control("button", "Preview slide 2").props.onClick(); h.heading("Second slide text");
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(h.control("button", "Preview slide 1").props["aria-pressed"], true);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Second slide text");
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Third slide text");
+  assert.equal(h.control("button", "Reorder slide 1").props.disabled, true);
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(nodes(h.render()).some(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")), false);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  assert.equal(h.requests.length, 0);
 });
 
 test("reference pixels cannot enter the editor or a save before generation", async () => {

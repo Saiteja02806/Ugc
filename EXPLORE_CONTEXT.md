@@ -1,5 +1,25 @@
 # Explore context and UI decision record
 
+### Slideshow thumbnail arrangement — 17 October 2026, local implementation
+
+- Your slides exposes a small, always-visible bin on every thumbnail and a
+  separate drag handle. Removing a thumbnail removes it only from this draft;
+  it does not delete the owned image or submit generation. Keep the existing
+  Earlier/Later controls as an additional keyboard-friendly way to arrange slides.
+- Mouse and touch dragging commit one reorder on drop. Show the destination,
+  scroll a long filmstrip at its edges, and cancel without changing the draft
+  when Escape is pressed or the pointer is cancelled/released outside the rail.
+  Handles also support Left/Right and Home/End, with a screen-reader announcement.
+- Move stable slide identities, not image URLs or text positions. Keep the
+  selected image and all its text/appearance/provenance together when moving
+  another slide or removing a preceding slide. Deleting the selected slide
+  selects its nearest remaining neighbor. Preserve existing draft recovery,
+  save invalidation and the two-slide minimum for saving.
+- Lock ordering/removal during save, upload, recovery and active generation.
+  Verify actual pointer/touch gestures, cancellation, saved order and reload;
+  passing pure move-array tests alone does not establish usable dragging.
+  Local implementation and production deployment remain separate.
+
 ### Demo inventory correction — 17 October 2026, local follow-up
 
 - Repeated mistake: copying a Hook source menu into Demo exposed Creative

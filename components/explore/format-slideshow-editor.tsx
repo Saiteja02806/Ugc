@@ -1,9 +1,9 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, GripVertical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioImageResult } from "@/lib/ai-studio/media-results";
@@ -22,6 +22,7 @@ import { createSlideTextSvg, renderSlideText } from "@/lib/explore/slideshow-tex
 import { prepareSlideshowSequence } from "@/lib/explore/slideshow-preparation";
 import { FormatSlideshowTextTools } from "./format-slideshow-text-tools";
 import { SlideshowAddSlides, type SlideshowSlideSource } from "./slideshow-add-slides";
+import { useSlideshowSlideDrag } from "./use-slideshow-slide-drag";
 import { insertReferenceSlides } from "@/lib/explore/slideshow-assembly";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { RemixTextSection } from "./remix-text-section";
@@ -115,6 +116,26 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     }
   }, [persist, onDirty, text, owner, localPreview, draftKey]);
   const startNewSlide = useCallback(() => { replacementTarget.current = null; }, []);
+  const moveSlide = useCallback((fromId: string, toId?: string) => {
+    if (locked || generationBusy || working.current) return;
+    const current = slideRef.current, from = current.findIndex(slide => slide.referenceSlideId === fromId), to = current.findIndex(slide => slide.referenceSlideId === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const selectedId = current[previewIndex]?.referenceSlideId;
+    const next = moveSlideshowSlide(current, from, to);
+    change(next, next.findIndex(slide => slide.referenceSlideId === selectedId));
+  }, [locked, generationBusy, previewIndex, change]);
+  function removeSlide(id: string) {
+    if (locked || generationBusy || working.current) return;
+    const current = slideRef.current, index = current.findIndex(slide => slide.referenceSlideId === id);
+    if (index < 0) return;
+    const selectedId = current[previewIndex]?.referenceSlideId;
+    if (replacementTarget.current === id) startNewSlide();
+    const next = current.filter(slide => slide.referenceSlideId !== id);
+    change(next, selectedId === id ? index : next.findIndex(slide => slide.referenceSlideId === selectedId));
+  }
+  const slideIds = useMemo(() => slides.map(slide => slide.referenceSlideId), [slides]);
+  const arrangementHelpId = useId();
+  const slideDrag = useSlideshowSlideDrag({ ids: slideIds, disabled: locked || generationBusy || !active, onMove: moveSlide });
   function editFingerprint(sequence: SlideshowSaveRequest["slides"]) { return JSON.stringify({ slides: sequence, text: sequence.map(slide => text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT) }); }
   function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (saved.editFingerprint ? saved.editFingerprint === editFingerprint(sequence) : !sequence.some(slide => hasText(text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT))); }
   const archiveDraft = useCallback(() => {
@@ -504,8 +525,12 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     </div>
     <section className={textStyles.sequence} aria-label="Slide sequence">
       <div className={textStyles.sequenceHeading}><div><h3>Your slides</h3><span>{slides.length} / 10</span></div><div><Button type="button" variant="outline" disabled={locked || generationBusy || slides.length >= 10} onClick={() => { startNewSlide(); setAddSlidesOpen(true); }}><Plus aria-hidden="true" />Add slides</Button></div></div>
-      {slides.length ? <div role="group" aria-label="Choose a slide" className={textStyles.filmstrip}>{slides.map((slide, index) => <button key={slide.referenceSlideId} type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => setPreviewIndex(index)} className={textStyles.thumbnail}>{slide.image ? <img src={slide.image.url} alt="" width={1080} height={1350} /> : <span className={textStyles.unavailable}>Unavailable</span>}<span>{index + 1}</span></button>)}</div> : <p>Choose generated images, original reference slides or uploads to begin.</p>}
-      {selected ? <div className={textStyles.arrangement}><p>Slide {previewIndex + 1} of {slides.length}</p><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => change(moveSlideshowSlide(slideRef.current, previewIndex, previewIndex - 1), previewIndex - 1)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => change(moveSlideshowSlide(slideRef.current, previewIndex, previewIndex + 1), previewIndex + 1)}><ArrowRight aria-hidden="true" />Later</Button><Button type="button" variant="ghost" onClick={() => { if (replacementTarget.current === selected.referenceSlideId) startNewSlide(); change(slideRef.current.filter(slide => slide.referenceSlideId !== selected.referenceSlideId), previewIndex); }} disabled={locked || generationBusy}>Remove slide</Button></div></div> : null}
+      {slides.length ? <><p id={arrangementHelpId}>Drag the handle to reorder slides. Use the bin to remove a slide.<span className="sr-only"> Reorder handles also support Left and Right arrow keys, Home and End.</span></p><div ref={slideDrag.railRef} role="group" aria-label="Choose a slide" data-reordering={Boolean(slideDrag.drag) || undefined} className={textStyles.filmstrip}>{slides.map((slide, index) => <div key={slide.referenceSlideId} data-slideshow-slide={slide.referenceSlideId} data-selected={previewIndex === index || undefined} data-dragging={slideDrag.drag?.id === slide.referenceSlideId || undefined} data-drop={slideDrag.drag?.target === index && slideDrag.drag.id !== slide.referenceSlideId ? (index < slides.findIndex(item => item.referenceSlideId === slideDrag.drag?.id) ? "before" : "after") : undefined} className={textStyles.thumbnail}>
+        <button type="button" aria-label={`Preview slide ${index + 1}`} aria-pressed={previewIndex === index} onClick={() => setPreviewIndex(index)} className={textStyles.thumbnailPreview}>{slide.image ? <img src={slide.image.url} alt="" draggable={false} width={1080} height={1350} /> : <span className={textStyles.unavailable}>Unavailable</span>}<span>{index + 1}</span></button>
+        <button type="button" aria-label={`Reorder slide ${index + 1}`} aria-describedby={arrangementHelpId} title="Drag to reorder · or use arrow keys" disabled={locked || generationBusy || slides.length < 2} className={textStyles.dragHandle} {...slideDrag.handleProps(slide.referenceSlideId)}><GripVertical aria-hidden="true" /></button>
+        <button type="button" aria-label={`Remove slide ${index + 1}`} title={`Remove slide ${index + 1} from this slideshow`} disabled={locked || generationBusy} className={textStyles.deleteSlide} onClick={() => removeSlide(slide.referenceSlideId)}><Trash2 aria-hidden="true" /></button>
+      </div>)}</div><span role="status" className="sr-only">{slideDrag.announcement}</span></> : <p>Choose generated images, original reference slides or uploads to begin.</p>}
+      {selected ? <div className={textStyles.arrangement}><p>Slide {previewIndex + 1} of {slides.length}</p><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex - 1]?.referenceSlideId)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex + 1]?.referenceSlideId)}><ArrowRight aria-hidden="true" />Later</Button><Button type="button" variant="ghost" onClick={() => removeSlide(selected.referenceSlideId)} disabled={locked || generationBusy}>Remove slide</Button></div></div> : null}
     </section>
   </section>, resultsTarget)}</>;
 }

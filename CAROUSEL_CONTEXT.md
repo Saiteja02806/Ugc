@@ -1,5 +1,23 @@
 # Carousel System Context
 
+## 2026-10-17 Manual Explore current slideshow overview (local)
+
+- Create → Your Slides reuses Edit slides' mounted current-sequence preview
+  and text overlays, with Add slides, preview/reorder/removal and an Edit slides
+  entry point. It no longer substitutes generation's empty-state placeholder
+  for an existing edited draft. Create retains generation controls in its sidebar.
+- Generated slides reveals the existing grouped versions/History separately.
+  Starting/recovering a job and recreating one slide reveal generation progress;
+  users can return to Your Slides while polling continues. Generated versions
+  still require explicit selection and archive the previous edited sequence.
+- Cross-workflow UI corrections must include checking manual Slideshow's
+  equivalent views while retaining its distinct sequence and version model.
+  Automatic Carousel generation/planners and persistence contracts are unchanged.
+- Local evidence: 180 targeted tests, TypeScript, scoped lint and the real
+  editor/Add slides browser fixture pass, including text/draft continuity,
+  adding from Create, save/reload, pointer/touch reorder and mobile layout.
+  This is not production acceptance and is not deployed.
+
 ## 2026-10-17 Trending planner positions and concise copy (local)
 
 - The user approved useful, nonempty follow-up body copy below the previous

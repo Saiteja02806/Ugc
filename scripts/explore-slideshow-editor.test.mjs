@@ -182,6 +182,32 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
   return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props, navigations };
 }
 
+test("Create preview shares the edited sequence, text and upload actions without mounting the inspector", async () => {
+  const h = await editor();
+  h.heading("Keep my manual text");
+  const target = h.props.resultsTarget;
+  h.props.active = false; h.props.previewActive = true;
+  let opened = 0; h.props.onEdit = () => opened++;
+  h.props.previewActions = { type: "Button", props: { children: "Generated slides" } };
+  const preview = nodes(h.render()).find(n => n.props?.["aria-label"] === "Slideshow edit preview");
+  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Generated slides.*Edit slides/s);
+  assert.equal(nodes(h.render()).some(n => n.type === "FormatSlideshowTextTools"), false);
+  assert.equal(nodes(h.render()).some(n => n.type === "portal" && n.props.target === h.props.actionsTarget), false);
+  assert.ok(nodes(preview).some(n => n.props?.["data-slide-text-overlay"] !== undefined));
+  assert.equal(h.control("input", "Upload slideshow images").props.multiple, true);
+  assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], false);
+  h.control("button", "Preview slide 2").props.onClick();
+  h.control("Button", "Edit slides").props.onClick(); assert.equal(opened, 1);
+  h.props.active = true;
+  assert.equal(h.props.resultsTarget, target);
+  assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], true);
+  h.control("button", "Preview slide 1").props.onClick();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowTextTools").props.design.heading, "Keep my manual text");
+  assert.equal(h.requests.length, 0, "Navigation never saves or replaces a draft");
+  h.props.active = false; h.props.previewActive = false;
+  assert.equal(h.render(), null);
+});
+
 test("Edit version loads every slide in order and switching versions preserves earlier edited drafts", async () => {
   const h = await editor({ generated: false });
   const images = n => Array.from({ length: 5 }, (_, index) => ({ id: id(n + index), url: `https://storage.test/${n + index}.png` }));

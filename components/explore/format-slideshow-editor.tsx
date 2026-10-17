@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, GripVertical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,10 @@ function readTextDraft(raw: string | null, activeIds: ReadonlySet<string>): Reco
   try { const parsed = JSON.parse(raw); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}; return Object.fromEntries(Object.entries(parsed).filter(([id]) => activeIds.has(id)).slice(0, MAX_SLIDESHOW_SLIDES).flatMap(([id, value]) => { try { return [[id, parseSlideText(value)]]; } catch { return []; } })); } catch { return {}; }
 }
 
-export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, previewText, controllerRef, active, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange, libraryItemId }: {
+export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, previewText, controllerRef, active, previewActive = active, previewActions, onEdit, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange, libraryItemId }: {
   reference: RecreateReference | null; legacyReferences?: readonly RecreateReference[]; controllerRef: Ref<SlideshowEditorController>; slideIndex?: number; active: boolean; generationBusy: boolean;
   controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; actionsTarget?: HTMLElement | null; localPreview: boolean; savingEnabled: boolean;
+  previewActive?: boolean; previewActions?: ReactNode; onEdit?: () => void;
   onDirty: () => void; onSaved: (output: SlideshowOutput) => void; onContinue: () => void; onRegenerate: (index: number, image: AIStudioImageResult) => void;
   onBackToPreview?: () => void; onGoToCreate?: () => void; onBusyChange?: (busy: boolean) => void;
   previewImages?: AIStudioImageResult[]; previewText?: ReferenceText | null;
@@ -135,7 +136,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   }
   const slideIds = useMemo(() => slides.map(slide => slide.referenceSlideId), [slides]);
   const arrangementHelpId = useId();
-  const slideDrag = useSlideshowSlideDrag({ ids: slideIds, disabled: locked || generationBusy || !active, onMove: moveSlide });
+  const slideDrag = useSlideshowSlideDrag({ ids: slideIds, disabled: locked || generationBusy || !previewActive, onMove: moveSlide });
   function editFingerprint(sequence: SlideshowSaveRequest["slides"]) { return JSON.stringify({ slides: sequence, text: sequence.map(slide => text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT) }); }
   function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (saved.editFingerprint ? saved.editFingerprint === editFingerprint(sequence) : !sequence.some(slide => hasText(text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT))); }
   const archiveDraft = useCallback(() => {
@@ -494,12 +495,13 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     {output ? <Button type="button" size="lg" className="h-10 rounded-lg px-4 font-semibold" disabled={locked || generationBusy} onClick={continueToSchedule}>Schedule slideshow</Button> : <Button type="button" size="lg" className="h-10 rounded-lg px-4 font-semibold" disabled={!canSave || localPreview || !savingEnabled || busy || uploading || restoring || generationBusy} onClick={() => void save()}>{busy ? "Saving…" : pending ? "Resume save" : "Save slideshow"}</Button>}
     <p role="status" className="text-xs leading-5 text-muted">{busy ? saveProgress ?? "Saving your slideshow…" : restoring ? "Restoring your slides…" : uploading ? "Uploading your slide images…" : localPreview ? "Preview · uploads and saving disabled" : output ? "Your slideshow is saved in Library." : !savingEnabled ? "Slideshow saving is unavailable right now." : slides.length < 2 && !pending ? "Add at least two generated or uploaded images to save a slideshow." : "Save this sequence before scheduling."}</p>
   </div>;
-  if (!active || !controlsTarget || !resultsTarget) return null;
-  return <>{addSlidesOpen ? <SlideshowAddSlides key={`${owner}:${reference?.id ?? "none"}`} owner={owner} reference={reference} existing={slides.flatMap(slide => slide.image ? [slide.image] : [])} slideCount={slides.length} disabled={locked || generationBusy} localPreview={localPreview} onClose={() => setAddSlidesOpen(false)} onAdd={addSelectedSlides} onUpload={() => { setAddSlidesOpen(false); uploadInput.current?.click(); }} onCreate={onGoToCreate ? goToCreate : undefined} /> : null}{actionsTarget ? createPortal(actions, actionsTarget) : null}{createPortal(<div className={textStyles.inspector}>
-    <header className={textStyles.inspectorHeading}><div><h2>{selected ? `Edit slide ${previewIndex + 1}` : "Edit your slides"}</h2><p>Text and appearance</p></div>{selected ? <span>{previewIndex + 1} / {slides.length}</span> : null}</header>
-    {draftHistory.length ? <label className="mb-3 block text-xs text-muted">Earlier drafts on this device<select aria-label="Reopen earlier slideshow draft" className="mt-1 block h-9 w-full rounded-md border border-border bg-card px-2 text-sm text-foreground" value="" disabled={locked || generationBusy} onChange={event => void restoreEarlierDraft(event.target.value)}><option value="">Choose a draft…</option>{draftHistory.map(entry => <option key={entry.id} value={entry.id}>{entry.slides.length} slides · {new Date(entry.savedAt).toLocaleString()}</option>)}</select></label> : null}
+  if ((!active && !previewActive) || !resultsTarget) return null;
+  return <>
     <input ref={uploadInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label="Upload slideshow images" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, false); }} />
     <input ref={replaceInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Replace slideshow image" onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files, true); }} />
+    {addSlidesOpen ? <SlideshowAddSlides key={`${owner}:${reference?.id ?? "none"}`} owner={owner} reference={reference} existing={slides.flatMap(slide => slide.image ? [slide.image] : [])} slideCount={slides.length} disabled={locked || generationBusy} localPreview={localPreview} onClose={() => setAddSlidesOpen(false)} onAdd={addSelectedSlides} onUpload={() => { setAddSlidesOpen(false); uploadInput.current?.click(); }} onCreate={onGoToCreate ? goToCreate : undefined} /> : null}{active && actionsTarget ? createPortal(actions, actionsTarget) : null}{active && controlsTarget ? createPortal(<div className={textStyles.inspector}>
+    <header className={textStyles.inspectorHeading}><div><h2>{selected ? `Edit slide ${previewIndex + 1}` : "Edit your slides"}</h2><p>Text and appearance</p></div>{selected ? <span>{previewIndex + 1} / {slides.length}</span> : null}</header>
+    {draftHistory.length ? <label className="mb-3 block text-xs text-muted">Earlier drafts on this device<select aria-label="Reopen earlier slideshow draft" className="mt-1 block h-9 w-full rounded-md border border-border bg-card px-2 text-sm text-foreground" value="" disabled={locked || generationBusy} onChange={event => void restoreEarlierDraft(event.target.value)}><option value="">Choose a draft…</option>{draftHistory.map(entry => <option key={entry.id} value={entry.id}>{entry.slides.length} slides · {new Date(entry.savedAt).toLocaleString()}</option>)}</select></label> : null}
     {selected ? <div className={textStyles.inspectorContent}>
       {selected.image ? <RemixTextSection expanded={Boolean(slideSource.reference)} editorNavigation referenceFirst={Boolean(slideSource.reference)} key={`${owner}:${selected.referenceSlideId}`} owner={owner} targetKey={`slide:${selected.referenceSlideId}`} format="slideshow" reference={slideSource.reference} previewSource={previewText} defaultSlideId={slideSource.slideId} disabled={locked || generationBusy} localPreview={localPreview} onUse={output => updateText({ heading: output.heading, body: output.body })}><FormatSlideshowTextTools design={design} disabled={locked || generationBusy} onChange={updateText} /></RemixTextSection> : null}
       {selected.error ? <p role="alert" className="text-xs text-destructive">{selected.error}</p> : null}
@@ -510,8 +512,9 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
       </div></details>
     </div> : <div className={textStyles.emptyInspector}><p>Use Add slides in your slideshow to choose images, then select a slide to edit its text.</p></div>}
     {!actionsTarget ? actions : null}
-  </div>, controlsTarget)}{createPortal(<section aria-label="Slideshow edit preview" className={textStyles.editorPreview}>
-    <header className={textStyles.previewHeading}><div><h2>Your slideshow</h2><p>{previewUrls.length ? `${previewUrls.length} slides · Select a slide to edit` : "Build your slide sequence"}</p></div>{onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview}><ArrowLeft aria-hidden="true" />Back to Create</Button> : null}</header>
+  </div>, controlsTarget) : null}{previewActive ? createPortal(<section aria-label="Slideshow edit preview" className={textStyles.editorPreview}>
+    <header className={textStyles.previewHeading}><div><h2>Your slideshow</h2><p>{previewUrls.length ? `${previewUrls.length} slides · ${active ? "Select a slide to edit" : "Preview your current sequence"}` : "Build your slide sequence"}</p></div><div className="flex flex-wrap gap-2">{previewActions}{!active && onEdit ? <Button type="button" variant="outline" onClick={onEdit}>Edit slides</Button> : onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview}><ArrowLeft aria-hidden="true" />Back to Create</Button> : null}</div></header>
+    {!active && error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     <div className={textStyles.previewCanvas}>
     {previewUrls.length ? <>{previewUrls[Math.min(previewIndex, previewUrls.length - 1)] ? <div className={textStyles.preview}>
       <img key={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]} src={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]!} alt={`Slide ${previewIndex + 1} of ${previewUrls.length}`} width={dimensions.url === selectedUrl ? dimensions.width : 1080} height={dimensions.url === selectedUrl ? dimensions.height : 1350} onLoad={event => {
@@ -532,5 +535,5 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
       </div>)}</div><span role="status" className="sr-only">{slideDrag.announcement}</span></> : <p>Choose generated images, original reference slides or uploads to begin.</p>}
       {selected ? <div className={textStyles.arrangement}><p>Slide {previewIndex + 1} of {slides.length}</p><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex - 1]?.referenceSlideId)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex + 1]?.referenceSlideId)}><ArrowRight aria-hidden="true" />Later</Button><Button type="button" variant="ghost" onClick={() => removeSlide(selected.referenceSlideId)} disabled={locked || generationBusy}>Remove slide</Button></div></div> : null}
     </section>
-  </section>, resultsTarget)}</>;
+  </section>, resultsTarget) : null}</>;
 }

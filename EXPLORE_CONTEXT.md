@@ -1,5 +1,55 @@
 # Explore context and UI decision record
 
+### Slideshow Create overview and cross-workflow follow-through — 17 October 2026, local
+
+- Recurring mistake: fixing Hook's Create → Your videos without checking the
+  equivalent Create → Your Slides left slideshows showing generation's generic
+  placeholder instead of the current edited sequence. For workflow corrections,
+  check Hook, Talking Head + Demo, Wall of Text and Slideshow applicability in
+  the same task; preserve meaningful workflow differences and record exceptions.
+- Slideshow Create → Your Slides now uses the same mounted editor preview,
+  ordered sequence and text overlays as Edit slides. Add slides, preview,
+  reorder and removal operate on that one draft. Edit slides opens its text
+  inspector; Create keeps its existing generation instructions in the sidebar.
+- Generated slides opens the existing generated versions and History. New or
+  recovered jobs reveal generation results/progress; explicit Your Slides
+  returns to the current sequence without stopping polling. Recreate slide
+  reveals generation results. Selecting a generated version remains explicit
+  and continues to archive earlier edited drafts; generation never replaces a
+  current sequence automatically. References remains the reference gallery.
+- Scope is manual Explore presentation/navigation. No Carousel planner, slide
+  generation, saving, scheduling or slideshow data contract changes.
+- Local verification: 180 workspace/editor/generation/grouping tests pass;
+  TypeScript and scoped ESLint pass. The real editor/Add slides browser fixture
+  passes Create/Edit text continuity, adding from Create, save/reload, reorder,
+  recovery and mobile checks; Create preview screenshots inspected at laptop
+  viewport sizes (1366 and 1536). These are isolated fixtures, not authenticated
+  production acceptance. Not deployed.
+
+### Hook Create Your videos overview — 17 October 2026, local follow-up
+
+- In Hook Video, Create → Your videos shows the same mounted Hook/Demo clip
+  overview as the Demo stage, including no footage, demo-only, opening-only and
+  two-clip states. Do not show the generic generation empty-state placeholder
+  merely because Generate is selected and no opening has been chosen yet.
+- Keep source cards, selected media, independent edits, in-place Change and
+  Saved demos identical between these views; switching Create/Demo must not
+  mount another demo draft. Demo setup/audio controls still belong to Demo.
+- References retains its gallery. Generated videos stays available from the
+  overview even before a clip is selected and reveals the existing results/
+  History. Starting a generation reveals progress; explicitly clicking Your
+  videos returns to the cards while the generation component/polling remains
+  mounted. Do not discard pending jobs, results or prior selections.
+- This view decision is specific to Hook's existing Create → References/Your
+  videos tabs. Wall stays a single-video workflow; slideshows are unchanged.
+  Local validation and deployed acceptance remain separate.
+- Local verification: 122 workspace/demo regressions, TypeScript and scoped
+  ESLint passed. Checks exercise empty Create cards, the shared Demo portal/
+  draft identity, References, generation progress, results/History access and
+  return while generation is busy. No new CSS/layout is introduced; this reuses
+  the existing Demo cards. A fresh production interaction check and deployment
+  of this follow-up have not been performed.
+
 ### Slideshow thumbnail arrangement — 17 October 2026, local implementation
 
 - Your slides exposes a small, always-visible bin on every thumbnail and a

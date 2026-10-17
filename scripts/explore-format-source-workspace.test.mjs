@@ -77,6 +77,81 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+test("Slideshow Create Your Slides reuses the current editor sequence and keeps generation results separately reachable", () => {
+  const h = harness("slideshow", "", { selected: null });
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach((n, index) => n.props.ref({ clientWidth: 0, index }));
+  const editor = () => nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  const select = label => nodes(h.render()).find(n => n.type === "button" && text(n) === label).props.onClick();
+  select("Your Slides");
+  const overview = editor();
+  assert.equal(overview.props.active, false, "Create keeps generation instructions in its sidebar");
+  assert.equal(overview.props.previewActive, true);
+  assert.equal(nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function")[overview.props.resultsTarget.index].props.hidden, false);
+  nodes(overview.props.previewActions).find(n => text(n) === "Generated slides").props.onClick();
+  assert.equal(editor().props.previewActive, false);
+  assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
+  workflow().onGenerationStart(); workflow().onBusyChange(true);
+  assert.equal(editor().props.previewActive, false, "Starting or recovering generation reveals progress and results");
+  select("Your Slides"); assert.equal(editor().props.previewActive, true);
+  workflow().onBusyChange(false);
+  editor().props.onEdit();
+  assert.equal(editor().props.active, true);
+  assert.equal(editor().props.previewActive, true);
+  assert.equal(editor().key, overview.key);
+  assert.equal(editor().props.resultsTarget, overview.props.resultsTarget, "Both views use one portal and one draft owner");
+  editor().props.onBackToPreview();
+  assert.equal(editor().props.active, false); assert.equal(editor().props.previewActive, true);
+  editor().props.onRegenerate(0, { id: "owned-image" });
+  assert.equal(editor().props.previewActive, false, "Recreating a selected slide still opens generation results");
+  select("References"); assert.equal(editor().props.previewActive, false);
+});
+
+test("A recovered slideshow job opens generated results before the current sequence overview", () => {
+  const h = harness("slideshow", "explore-slideshowJob=recover-job", { selected: null });
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false);
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, true);
+});
+
+test("Hook Create Your videos shows the same two-clip overview as Demo even before an opening is selected", () => {
+  const h = harness("hook", "", { selected: null }); h.source.mode = "generate";
+  let tree = h.render();
+  const stage = view => nodes(view).find(n => n.props?.["aria-label"] === "Clip previews and editor");
+  nodes(tree).find(n => n.type === "button" && text(n) === "Your videos").props.onClick(); tree = h.render();
+  assert.equal(stage(tree).props.hidden, false);
+  assert.match(text(stage(tree)), /Your videos.*Hook video/s);
+  const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+  assert.equal(demo.props.editPreviewActive, true, "Demo's actual empty/selected card renders in Create too");
+  assert.equal(demo.props.active, false, "Its setup/sidebar still belongs to the Demo tab");
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+  const demoTarget = demo.props.editResultsTarget;
+  nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
+  nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("demo"); tree = h.render();
+  assert.equal(stage(tree).props.hidden, false);
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demo.key);
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editResultsTarget, demoTarget);
+  nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("create"); tree = h.render();
+  assert.equal(stage(tree).props.hidden, false);
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editPreviewActive, true);
+  nodes(tree).find(n => n.type === "button" && text(n) === "References").props.onClick();
+  assert.equal(stage(h.render()).props.hidden, true);
+});
+test("Hook's empty overview keeps generation History reachable and allows returning during generation", () => {
+  const h = harness("hook", "", { selected: null }); h.source.mode = "generate";
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  const stage = () => nodes(h.render()).find(n => n.props?.["aria-label"] === "Clip previews and editor");
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
+  nodes(h.render()).find(n => n.type === "Button" && text(n) === "Generated videos").props.onClick();
+  assert.equal(stage().props.hidden, true, "Generated results and their existing History stay reachable without selected footage");
+  workflow().onGenerationStart(); workflow().onBusyChange(true);
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
+  assert.equal(stage().props.hidden, false, "Explicit Your videos selection returns to the clip overview while polling continues");
+  nodes(h.render()).find(n => n.type === "Button" && text(n) === "Generated videos").props.onClick();
+  assert.equal(stage().props.hidden, true);
+  assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
+});
 test("Hook's top Videos action closes either clip editor without navigating or remounting drafts", () => {
   const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
   for (const target of ["opening", "demo"]) {

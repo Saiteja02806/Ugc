@@ -174,7 +174,7 @@ export function validatePackage({ submission = false } = {}) {
     }
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
-  assert.equal(knownTools.size, 83, "Review the package contract when the MCP tool surface changes");
+  assert.equal(knownTools.size, 84, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {

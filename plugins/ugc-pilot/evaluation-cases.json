@@ -901,6 +901,21 @@
       ],
       "forbidden_tools": [],
       "expected": "Checks configuration and the separate publishing:read grant, then shows only the connected account's safe connection labels and current delivery state. Does not request provider credentials or invoke a scheduling, publishing, retry, cancellation or social OAuth flow."
+    },
+    {
+      "id": "scheduling-create-gated",
+      "prompt": "The capability says schedule writes are enabled. Schedule my selected owned video on my selected connected Instagram account tomorrow at 10:00 in Asia/Kolkata. Do not publish immediately.",
+      "expected_skills": [
+        "manage-ugc-scheduling"
+      ],
+      "expected_tools": [
+        "get_scheduling_capabilities",
+        "get_asset",
+        "list_social_connections",
+        "create_schedule"
+      ],
+      "forbidden_tools": [],
+      "expected": "Requires the separate publishing:write grant, uses selected owned IDs, an explicit schedule time and a preserved UUID. It reports a disabled gate or policy rejection honestly and does not call a provider directly, publish immediately, edit or retry another schedule."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

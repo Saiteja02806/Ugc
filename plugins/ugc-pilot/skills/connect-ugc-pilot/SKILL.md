@@ -23,7 +23,7 @@ For requested application reference/group/Library work, use discovered `get_refe
 
 For account-default settings, check discovered `get_account_settings_capabilities` and follow [account defaults](../manage-ugc-account/SKILL.md). Writes need a distinct `account:write` grant; existing media/edit permissions do not cover them. Capability reads do not initialize timezone or activate writes.
 
-For existing social-account and schedule state, check `get_scheduling_capabilities` and follow [scheduling reads](../manage-ugc-scheduling/SKILL.md). The three data reads need a distinct `publishing:read` grant. They do not connect social accounts or create, edit, cancel, retry, schedule or publish posts. `publishing:write` is reserved for a later reviewed adapter and grants no current tool.
+For existing social-account and schedule state, check `get_scheduling_capabilities` and follow [scheduling reads](../manage-ugc-scheduling/SKILL.md). The three data reads need a distinct `publishing:read` grant. When the capability explicitly reports schedule writes enabled, `create_schedule` needs the separate `publishing:write` grant. The consent flow captures only whether Firebase had verified the email; it does not put an email or Firebase credential in the MCP token. Existing token families may need fresh consent after the identity migration before TikTok or YouTube scheduling is eligible. The plugin still cannot connect social accounts, edit, cancel, retry or publish posts.
 
 A Codex, ChatGPT, or Claude subscription does not supply UGC Pilot generation credits. Check the UGC Pilot account's actual entitlements. This connection check is read-only; do not generate a sample unless the user requests generation.
 

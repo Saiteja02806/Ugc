@@ -4,9 +4,11 @@ import { McpServer, requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import {
+  createUserSchedule,
   getMissingSchedulingRuntimeEnvVars,
   getUserSchedule,
   listUserSchedules,
+  SchedulingRequestError,
 } from "@/lib/scheduling/service";
 import {
   scheduledPostStatuses,
@@ -18,11 +20,25 @@ import {
 import { listSocialConnections } from "@/lib/social/oauth";
 import { socialProviders } from "@/lib/social/types";
 
-import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
+import { executeTool, oauthMetadata, principal, principalIdentity, ToolFailure } from "./read-tools";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
+const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 const timestamp = z.string().datetime({ offset: true });
 const id = z.uuid();
+const scheduleCreationSource = z.strictObject({
+  id,
+  kind: z.enum(["media_asset", "library_item"]),
+});
+const createScheduleInput = z.strictObject({
+  caption: z.string().max(5_000).optional(),
+  request_id: id,
+  scheduled_for: timestamp,
+  source: scheduleCreationSource,
+  target_connection_ids: z.array(id).min(1).max(5).refine((values) => new Set(values).size === values.length, "target_connection_ids must not contain duplicates."),
+  timezone: z.string().trim().min(1).max(100),
+  title: z.string().trim().min(1).max(160).optional(),
+});
 
 const connection = z.strictObject({
   id,
@@ -74,6 +90,7 @@ export const registeredSchedulingMcpTools = [
   "list_social_connections",
   "list_schedules",
   "get_schedule",
+  "create_schedule",
 ] as const;
 
 function unavailable(message = "Scheduling data is temporarily unavailable.") {
@@ -94,7 +111,7 @@ function serializeConnection(value: Awaited<ReturnType<typeof listSocialConnecti
   };
 }
 
-function serializeSchedule(value: ScheduledPost) {
+export function serializeSchedule(value: ScheduledPost) {
   return {
     id: value.id,
     title: value.title,
@@ -127,6 +144,28 @@ function serializeSchedule(value: ScheduledPost) {
   };
 }
 
+function writesEnabled() {
+  return process.env.MCP_SCHEDULING_WRITES_ENABLED === "true";
+}
+
+function writeUnavailable() {
+  return new ToolFailure("SCHEDULING_WRITE_DISABLED", "Agent-initiated schedule creation is not enabled for this deployment.");
+}
+
+function schedulingFailure(error: unknown): never {
+  if (error instanceof SchedulingRequestError) {
+    const code = error.status === 404
+      ? "NOT_FOUND"
+      : error.status === 403
+        ? "FORBIDDEN"
+        : error.status === 409
+          ? "CONFLICT"
+          : "INVALID_INPUT";
+    throw new ToolFailure(code, error.message);
+  }
+  throw unavailable();
+}
+
 function date(value: string | undefined, field: string) {
   if (!value) return null;
   const parsed = Date.parse(value);
@@ -144,7 +183,7 @@ export function registerSchedulingMcpTools(server: McpServer) {
       configured: z.boolean(),
       required_read_scope: z.literal("publishing:read"),
       required_write_scope: z.literal("publishing:write"),
-      write_tools_available: z.literal(false),
+      write_tools_available: z.boolean(),
       social_connection_oauth_available: z.literal(false),
       notes: z.array(z.string()).max(2),
     }),
@@ -154,14 +193,17 @@ export function registerSchedulingMcpTools(server: McpServer) {
   }, (_args, ctx) => executeTool(async () => {
     principal(ctx, "account:read");
     const configured = getMissingSchedulingRuntimeEnvVars().length === 0;
+    const writeToolsAvailable = configured && writesEnabled();
     return {
       configured,
       required_read_scope: "publishing:read",
       required_write_scope: "publishing:write",
-      write_tools_available: false,
+      write_tools_available: writeToolsAvailable,
       social_connection_oauth_available: false,
       notes: configured
-        ? ["Schedule and connected-account reads are available. Agent-initiated publishing remains gated."]
+        ? [writeToolsAvailable
+          ? "Schedule reads and explicit schedule creation are available. Publishing, editing, cancellation, retry and social OAuth remain gated."
+          : "Schedule and connected-account reads are available. Agent-initiated schedule creation and publishing remain gated."]
         : ["Scheduling is not configured for this deployment."],
     };
   }));
@@ -224,6 +266,44 @@ export function registerSchedulingMcpTools(server: McpServer) {
     } catch (error) {
       if (error instanceof ToolFailure) throw error;
       throw unavailable();
+    }
+  }));
+
+  server.registerTool("create_schedule", {
+    description: "Create one requested future schedule for selected owned media or a saved Library item and selected owned social connections. Requires an explicit schedule time and stable request ID. This does not connect a social account, publish immediately, edit/cancel/retry a schedule, or return provider credentials.",
+    inputSchema: createScheduleInput,
+    outputSchema: z.strictObject({
+      created: z.boolean(),
+      schedule,
+    }),
+    annotations: write,
+    scopeChallenge: requireScopes("publishing:write"),
+    _meta: oauthMetadata("publishing:write"),
+  }, (args, ctx) => executeTool(async () => {
+    const owner = principalIdentity(ctx, "publishing:write");
+    if (!writesEnabled()) throw writeUnavailable();
+    if (getMissingSchedulingRuntimeEnvVars().length) throw unavailable("Scheduling is not configured for this deployment.");
+    try {
+      const result = await createUserSchedule({
+        allowTikTokTargets: owner.emailVerified,
+        allowYouTubeTargets: owner.emailVerified,
+        input: {
+          caption: args.caption,
+          idempotencyKey: args.request_id,
+          scheduledFor: args.scheduled_for,
+          source: {
+            id: args.source.id,
+            kind: args.source.kind,
+          },
+          targets: args.target_connection_ids.map((connectionId) => ({ connectionId })),
+          timezone: args.timezone,
+          title: args.title,
+        },
+        userId: owner.uid,
+      });
+      return { created: result.created, schedule: serializeSchedule(result.schedule) };
+    } catch (error) {
+      schedulingFailure(error);
     }
   }));
 }

@@ -10,6 +10,13 @@ const assetId = "00000000-0000-4000-8000-000000000004";
 
 let configured = true;
 let calls = [];
+process.env.MCP_SCHEDULING_WRITES_ENABLED = "false";
+class SchedulingRequestError extends Error {
+  constructor(message, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
 const schedule = (owner = "owner-a") => ({
   id: scheduleId,
   title: "Launch Reel",
@@ -46,6 +53,11 @@ const schedule = (owner = "owner-a") => ({
 
 mock.module("../lib/scheduling/service.ts", {
   namedExports: {
+    SchedulingRequestError,
+    createUserSchedule: async (input) => {
+      calls.push({ operation: "create", input });
+      return { created: true, schedule: schedule(input.userId) };
+    },
     getMissingSchedulingRuntimeEnvVars: () => configured ? [] : ["SUPABASE_URL"],
     listUserSchedules: async (input) => {
       calls.push({ operation: "list", input });
@@ -87,19 +99,19 @@ const handler = createMcpHandler(() => {
   return server;
 }, { legacy: "stateless" });
 
-async function rpc(method, params, owner = "owner-a", scopes = ["account:read", "publishing:read"]) {
+async function rpc(method, params, owner = "owner-a", scopes = ["account:read", "publishing:read"], emailVerified = false) {
   const response = await handler.fetch(new Request("https://mcp.getugcpilot.com/mcp", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  }), { authInfo: { token: "fixture", clientId: "fixture", scopes, extra: { firebaseUid: owner } } });
+  }), { authInfo: { token: "fixture", clientId: "fixture", scopes, extra: { emailVerified, firebaseUid: owner } } });
   const text = await response.text();
   const line = text.split("\n").find((item) => item.startsWith("data: "));
   return JSON.parse(line ? line.slice(6) : text);
 }
 
-async function call(name, args = {}, owner, scopes) {
-  const body = await rpc("tools/call", { name, arguments: args }, owner, scopes);
+async function call(name, args = {}, owner, scopes, emailVerified) {
+  const body = await rpc("tools/call", { name, arguments: args }, owner, scopes, emailVerified);
   return body.result ?? { isError: true, content: [{ type: "text", text: JSON.stringify(body.error) }] };
 }
 
@@ -108,13 +120,17 @@ function error(result) {
   return JSON.parse(result.content[0].text);
 }
 
-test("discovery declares four read-only tools with a fresh publishing scope", async () => {
+test("discovery declares four reads and one disabled-gate write with distinct publishing scopes", async () => {
   const tools = (await rpc("tools/list", {})).result.tools;
   assert.deepEqual(tools.map((tool) => tool.name).sort(), [...registeredSchedulingMcpTools].sort());
   for (const tool of tools) {
-    assert.equal(tool.annotations.readOnlyHint, true);
+    assert.equal(tool.annotations.readOnlyHint, tool.name !== "create_schedule");
     assert.equal(tool.annotations.openWorldHint, false);
-    assert.deepEqual(tool._meta.securitySchemes[0].scopes, [tool.name === "get_scheduling_capabilities" ? "account:read" : "publishing:read"]);
+    assert.deepEqual(tool._meta.securitySchemes[0].scopes, [tool.name === "get_scheduling_capabilities"
+      ? "account:read"
+      : tool.name === "create_schedule"
+        ? "publishing:write"
+        : "publishing:read"]);
   }
 });
 
@@ -125,9 +141,62 @@ test("capability reads are pure and unconfigured services stop before data acces
   assert.equal(capability.write_tools_available, false);
   assert.equal(calls.length, 0);
   configured = false;
+  process.env.MCP_SCHEDULING_WRITES_ENABLED = "true";
+  const unavailableCapability = (await call("get_scheduling_capabilities")).structuredContent;
+  assert.equal(unavailableCapability.configured, false);
+  assert.equal(unavailableCapability.write_tools_available, false);
+  assert.equal(calls.length, 0);
   assert.equal(error(await call("list_schedules")).code, "SCHEDULING_UNAVAILABLE");
   assert.equal(calls.length, 0);
   configured = true;
+  process.env.MCP_SCHEDULING_WRITES_ENABLED = "false";
+});
+
+test("schedule creation is scope-protected, disabled by default, and preserves the verified identity policy", async () => {
+  calls = [];
+  const input = {
+    request_id: "00000000-0000-4000-8000-000000000010",
+    source: { id: assetId, kind: "media_asset" },
+    target_connection_ids: [connectionId],
+    scheduled_for: later,
+    timezone: "Asia/Calcutta",
+    title: "Launch Reel",
+  };
+  const missingScope = await call("create_schedule", input);
+  assert.equal(missingScope.isError, true);
+  assert.equal(missingScope.content[0].text, '"insufficient_scope"');
+  assert.equal(calls.length, 0);
+  const disabled = error(await call("create_schedule", input, "owner-a", ["account:read", "publishing:write"]));
+  assert.equal(disabled.code, "SCHEDULING_WRITE_DISABLED");
+  assert.equal(calls.length, 0);
+
+  process.env.MCP_SCHEDULING_WRITES_ENABLED = "true";
+  const accepted = (await call("create_schedule", input, "owner-a", ["account:read", "publishing:write"], true)).structuredContent;
+  assert.equal(accepted.created, true);
+  assert.equal(accepted.schedule.id, scheduleId);
+  assert.equal(JSON.stringify(accepted).includes("must-not-leak"), false);
+  assert.deepEqual(calls.at(-1), {
+    operation: "create",
+    input: {
+      allowTikTokTargets: true,
+      allowYouTubeTargets: true,
+      input: {
+        caption: undefined,
+        idempotencyKey: input.request_id,
+        scheduledFor: later,
+        source: { id: assetId, kind: "media_asset" },
+        targets: [{ connectionId }],
+        timezone: "Asia/Calcutta",
+        title: "Launch Reel",
+      },
+      userId: "owner-a",
+    },
+  });
+  const unverified = await call("create_schedule", { ...input, request_id: "00000000-0000-4000-8000-000000000011" }, "owner-a", ["account:read", "publishing:write"], false);
+  assert.equal(unverified.structuredContent.created, true);
+  assert.equal(calls.at(-1).input.allowTikTokTargets, false);
+  assert.equal(calls.at(-1).input.allowYouTubeTargets, false);
+  process.env.MCP_SCHEDULING_WRITES_ENABLED = "false";
 });
 
 test("owner-bound reads require publishing consent and strip hidden fields", async () => {

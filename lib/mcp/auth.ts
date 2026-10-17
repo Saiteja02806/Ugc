@@ -8,6 +8,7 @@ import { getMcpStore } from "./store";
 
 export type McpPrincipal = {
   firebaseUid: string;
+  emailVerified: boolean;
   clientId: string;
   scopes: string[];
 };
@@ -30,7 +31,7 @@ export async function authenticateMcpRequest(request: Request): Promise<
 
   const { data, error } = await getMcpStore()
     .from("mcp_oauth_tokens")
-    .select("client_id,firebase_uid,resource,scopes,expires_at,revoked_at,token_type")
+    .select("client_id,email_verified,firebase_uid,resource,scopes,expires_at,revoked_at,token_type")
     .eq("token_hash", hashOAuthSecret(token))
     .eq("token_type", "access")
     .maybeSingle();
@@ -44,6 +45,7 @@ export async function authenticateMcpRequest(request: Request): Promise<
 
   const principal: McpPrincipal = {
     firebaseUid: data.firebase_uid,
+    emailVerified: data.email_verified === true,
     clientId: data.client_id,
     scopes: data.scopes,
   };
@@ -56,7 +58,7 @@ export async function authenticateMcpRequest(request: Request): Promise<
       expiresAt: Math.floor(Date.parse(data.expires_at) / 1000),
       resource: new URL(data.resource),
       resourceMetadataUrl: getProtectedResourceMetadataUrl(),
-      extra: { firebaseUid: principal.firebaseUid },
+      extra: { emailVerified: principal.emailVerified, firebaseUid: principal.firebaseUid },
     },
   };
 }

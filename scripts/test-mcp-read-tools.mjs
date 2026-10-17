@@ -54,6 +54,7 @@ globalThis.fetch = async (input, init) => {
     if (bearerMode === "missing") return Response.json(null);
     return Response.json({
       client_id: "local-test-client", firebase_uid: "owner-a",
+      email_verified: bearerMode === "email-verified",
       resource: bearerMode === "wrong-resource" ? "https://other.example.test/mcp" : "https://mcp.getugcpilot.com/mcp",
       scopes: ["account:read", "brand:read", "assets:read"],
       expires_at: bearerMode === "expired" ? "2020-01-01T00:00:00.000Z" : "2099-01-01T00:00:00.000Z",
@@ -186,6 +187,7 @@ globalThis.fetch = async (input, init) => {
 };
 
 const { mcpHandler, registeredMcpTools } = await import("../lib/mcp/server.ts");
+const { authenticateMcpRequest } = await import("../lib/mcp/auth.ts");
 const { decodeAssetCursor, encodeAssetCursor } = await import("../lib/mcp/asset-cursor.ts");
 const { POST: mcpRoutePost } = await import("../app/mcp/route.ts");
 const { gcsStorageProvider } = await import("../lib/storage/gcs.ts");
@@ -221,6 +223,14 @@ gcsStorageProvider.uploadBuffer = async ({ key, buffer, contentType }) => {
 gcsStorageProvider.deleteObject = async ({ key }) => { deletedObjects.push(key); };
 
 const resource = new URL("https://mcp.getugcpilot.com/mcp");
+const authenticatedIdentity = await authenticateMcpRequest(new Request(resource, { headers: { authorization: "Bearer local-route-bearer-secret" } }));
+assert(!(authenticatedIdentity instanceof Response));
+assert.equal(authenticatedIdentity.authInfo.extra?.emailVerified, false);
+bearerMode = "email-verified";
+const verifiedIdentity = await authenticateMcpRequest(new Request(resource, { headers: { authorization: "Bearer local-route-bearer-secret" } }));
+assert(!(verifiedIdentity instanceof Response));
+assert.equal(verifiedIdentity.authInfo.extra?.emailVerified, true);
+bearerMode = "valid";
 const unauthenticated = await mcpRoutePost(new Request(resource, { method: "POST" }));
 assert.equal(unauthenticated.status, 401);
 assert.match(unauthenticated.headers.get("www-authenticate") ?? "", /resource_metadata=/);
@@ -334,7 +344,7 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, tool.name === "remix_reference_text" ? 2 : 1);
-  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft", "generate_audio", "create_audio_upload", "import_audio_for_video", "set_audio_voice_selection", "set_audio_voice_bookmark", "remix_reference_text", "create_asset_group", "rename_asset_group", "delete_asset_group", "add_assets_to_group", "remove_assets_from_group", "save_carousel_to_library", "save_slideshow_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone"];
+  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft", "generate_audio", "create_audio_upload", "import_audio_for_video", "set_audio_voice_selection", "set_audio_voice_bookmark", "remix_reference_text", "create_asset_group", "rename_asset_group", "delete_asset_group", "add_assets_to_group", "remove_assets_from_group", "save_carousel_to_library", "save_slideshow_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone", "create_schedule"];
   const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft", "export_edit_draft", "generate_audio", "remix_reference_text", "create_asset_group", "rename_asset_group", "delete_asset_group", "add_assets_to_group", "remove_assets_from_group", "save_carousel_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone"];
   assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
   assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);

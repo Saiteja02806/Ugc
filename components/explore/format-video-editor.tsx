@@ -48,11 +48,13 @@ export type WorkflowClipEditState = { sourceId: string; editing: ExploreFormatEd
   draftBusy?: boolean; draftError?: string | null };
 
 export type FormatOpeningPreview = { segment: SequencePreviewSegment; referenceAudio: SequencePreviewAudio | null; disabledReason?: string | null };
-export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, showSoundControls = true, prepareInSequence = false, backLabel = format === "wall_text" ? "Back to Create" : "Back to videos", remixScopeLabel }: {
+export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, originalSoundTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, showSoundControls = true, prepareInSequence = false, backLabel = format === "wall_text" ? "Back to Create" : "Back to videos", remixScopeLabel }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
   pendingSource?: boolean;
   onDirty: () => void; onSaved: (output: { id: string; kind: "media_asset"; url: string; title: string }) => void; onContinue: () => void;
   actionsTarget?: HTMLElement | null;
+  /** Reuse this clip's exact draft for the Demo sidebar volume control. */
+  originalSoundTarget?: HTMLElement | null;
   editingActive?: boolean; onEdit?: () => void;
   previewActions?: ReactNode;
   prepareRequest?: number; onPreparationChange?: (status: FormatPreparationStatus) => void; onBackToPreview?: () => void;
@@ -294,7 +296,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   });
   const previewTextTime = clipPreviewTextTimeMs(time, editing.trimEndMs - editing.trimStartMs);
   const referenceFirst = allowRemix && boundReference?.format === format && !boundReference.id.startsWith("uploaded:");
-  if (!active || !controlsTarget || !resultsTarget) return null;
+  const originalSound = <div className="space-y-2"><label className="block space-y-2 text-xs text-muted">Demo original sound · {Math.round(editing.originalVolume * 100)}%<input aria-label="Demo original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} disabled={pendingSource || uploading || draftSave.busy || enabled && !draftSave.loaded} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>{enabled && draftSave.dirty ? <Button type="button" variant="outline" size="sm" disabled={Boolean(draftError) || !draftSave.loaded || !sourceQuery.data || draftSave.busy} onClick={() => void draftSave.save()}>Save demo edits</Button> : null}{draftError ? <p role="alert" className="text-xs text-destructive">{draftError}</p> : null}</div>;
+  if (!active || !controlsTarget || !resultsTarget) return originalSoundTarget ? createPortal(originalSound, originalSoundTarget) : null;
   const actions = <div className={styles.clipActionContent}>
     {validation || draftSave.error || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? draftSave.error ?? finishing.action.error}</p> : null}
     <div className={editorStyles.actionBar}>
@@ -362,5 +365,5 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="opening" disabled={pendingSource || uploading} onClick={onEdit}>Edit {clipLabel.toLowerCase()}</Button>{previewActions}</div></> : null}
     {editingActive && finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}
   </section>;
-  return <>{editingActive ? createPortal(controls, controlsTarget) : null}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}</>;
+  return <>{editingActive ? createPortal(controls, controlsTarget) : null}{createPortal(preview, resultsTarget)}{actionsTarget ? createPortal(actions, actionsTarget) : null}{originalSoundTarget ? createPortal(originalSound, originalSoundTarget) : null}</>;
 }

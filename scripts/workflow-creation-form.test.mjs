@@ -225,13 +225,16 @@ test("the shared settings hook owns the draft, applies rapid changes to current 
     const parent = read(`components/explore/${file}.tsx`);
     if (file === "hook-workflow-preview") {
       assert.match(parent, /useWorkflowSession\(/);
-      assert.match(parent, /normalizeWorkflowGenerationSettings\(\{ \.\.\.generationSettings, \.\.\.patch \}\)/);
-      assert.match(parent, /recovery\.update\(previous => \(\{ \.\.\.previous, generationSettings: settings \}\)\)/);
+      assert.match(parent, /setGenerationSettings\(previous => normalizeWorkflowGenerationSettings\(\{ \.\.\.previous, \.\.\.patch \}\)\)/);
+      assert.match(parent, /updateSession\(previous => \(\{ \.\.\.previous, generationSettings: normalizeWorkflowGenerationSettings\(\{ \.\.\.previous.generationSettings, \.\.\.patch \}\)/);
     } else assert.match(parent, /useWorkflowGenerationSettings\(/);
     assert.match(parent, /generationSettings=\{generation.settings\}/);
     assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
     if (file === "phone-workflow-preview") assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
-    else assert.match(parent, /const dirty = Boolean\(creator.asset \|\| videoReference.asset/);
+    else {
+      assert.match(parent, /const dirty = Boolean\(hasLocalReferences/);
+      assert.match(parent, /videoReference.asset && !references.selectedId/, "Recoverable catalogue clips do not need a local-file loss warning");
+    }
   }
 });
 

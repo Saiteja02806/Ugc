@@ -126,7 +126,8 @@ test("local media is detached before cleanup and Creator selection adds no promp
 test("browser reference state stays local while durable recovery is behind its session hook", () => {
   assert.match(workspace, /const localDemo = useLocalWorkflowMedia\("video"\)/);
   assert.match(workspace, /const localDemoAudio = useLocalWorkflowMedia\("audio"\)/);
-  assert.match(workspace, /const videoReference = useLocalWorkflowMedia\("video"\)/);
+  assert.match(workspace, /const videoReference = references.videoReference/);
+  assert.match(read("components/explore/use-talking-head-reference.ts"), /useLocalWorkflowMedia\("video"\)/);
   assert.match(workspace, /const recovery = useWorkflowSession\(/);
   assert.doesNotMatch(workspace, /\bfetch\(|localStorage|sessionStorage/);
 });

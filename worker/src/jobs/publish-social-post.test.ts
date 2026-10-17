@@ -171,11 +171,15 @@ test("publishes saved carousel slides to TikTok without requiring video media", 
     );
 
     const output = await runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async ({ imageUrls, libraryItemId }) => {
+        assert.equal(libraryItemId, "4d41918d-2997-4f02-a301-5f14a76eb767");
+        return imageUrls.map((url) => url.replace(/\.webp$/, ".jpg"));
+      },
       publishers: {
         async tiktokCarousel(params) {
           assert.deepEqual(params.imageUrls, [
-            "https://cdn.example.com/slide-1.webp",
-            "https://cdn.example.com/slide-2.webp",
+            "https://cdn.example.com/slide-1.jpg",
+            "https://cdn.example.com/slide-2.jpg",
           ]);
           await params.onPublishInitialized?.({
             creatorNickname: "Test creator",
@@ -196,6 +200,60 @@ test("publishes saved carousel slides to TikTok without requiring video media", 
     assert.equal(output.platformPostId, "tiktok-photo-post-1");
     assert.equal(fixture.operation.provider_operation_id, "tiktok-photo-publish-1");
     assert.equal(fixture.operation.provider_operation_kind, "tiktok_publish");
+  });
+});
+
+test("resuming an accepted TikTok photo post skips preparation and preserves its publish ID", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok", status: "initialized", provider_operation_kind: "tiktok_publish", provider_operation_id: "existing-photos" }), { carousel: true, platform: "tiktok" });
+    await runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async () => { assert.fail("An existing post must not upload new media."); },
+      publishers: { async tiktokCarousel(params) {
+        assert.equal(params.publishId, "existing-photos");
+        return { platformPostId: "existing-post", platformPostUrl: null, publishId: "existing-photos" };
+      } }, store: fixture.store,
+    });
+    assert.equal(fixture.operation.platform_post_id, "existing-post");
+  });
+});
+
+test("failed TikTok preparation never calls the publishing API", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok" }), { carousel: true, platform: "tiktok", allowFailure: true });
+    let providerCalls = 0;
+    await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async () => { throw new Error("Could not download carousel slide 1 for TikTok (404)."); },
+      publishers: { async tiktokCarousel() { providerCalls++; throw new Error("Unexpected publish"); } }, store: fixture.store,
+    }));
+    assert.equal(providerCalls, 0);
+    assert.equal(fixture.operation.provider_operation_id, null);
+  });
+});
+
+test("TikTok format rejections fail with an actionable message instead of scheduling unchanged retries", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok" }), { carousel: true, platform: "tiktok", allowFailure: true });
+    await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async ({ imageUrls }) => imageUrls,
+      publishers: { async tiktokCarousel() { throw new TikTokPublishError("TikTok publishing failed: file_format_check_failed.", "file_format_check_failed", "format-log", null, false); } },
+      store: fixture.store,
+    }), error => error instanceof TikTokPublishError);
+    assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-failed"]);
+    assert.equal(fixture.targetErrorCode, "tiktok_file_format_check_failed");
+    assert.match(fixture.targetErrorMessage, /media format/);
+    assert.doesNotMatch(fixture.targetErrorMessage, /video|automatically/);
+  });
+});
+
+test("the final worker attempt fails the target instead of advertising an impossible fourth retry", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), { allowFailure: true });
+    const job = { ...createPublishJob(), attempt_count: 2, max_attempts: 3 };
+    await assert.rejects(runPublishSocialPostJob(job, {
+      publishers: { async instagram() { throw new Error("Instagram API request failed: HTTP 503."); } },
+      store: fixture.store,
+    }), error => error instanceof Error && !(error instanceof RetryableJobError));
+    assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-failed"]);
   });
 });
 
@@ -518,6 +576,7 @@ test("explains TikTok slideshow URL verification failures without asking users t
     });
 
     await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async ({ imageUrls }) => imageUrls,
       publishers: {
         async tiktokCarousel() {
           throw new TikTokPublishError(

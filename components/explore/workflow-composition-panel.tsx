@@ -25,11 +25,12 @@ import { WorkflowCaptionEditor, type WorkflowCaptions } from "./workflow-caption
 const SUBTITLE_STYLES = SUBTITLE_STYLE_REGISTRY;
 
 /** Editing is separate from creation and scheduling; attachment ownership stays above. */
-export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSourceActions, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false, backgroundMusic }: {
+export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSourceActions, demoOriginalSound, demoAudioPlayback, onDemoAudioPlaybackChange, connected = false, options, onOptionsChange, ownerId, demoFramingEnabled = false, demoFraming = null, onDemoFramingChange, outputAspect = 9 / 16, editingBusy = false, demoFramingError = null, onDemoControlsOpen, captions, demoInPreview = false, backgroundMusic }: {
   videoLabel: "Hook" | "Phone video" | "Talking head";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
   demoSourceActions?: ReactNode;
+  demoOriginalSound?: ReactNode;
   demoAudioPlayback: ExploreBackgroundPlayback;
   onDemoAudioPlaybackChange: (playback: ExploreBackgroundPlayback) => void;
   connected?: boolean;
@@ -103,6 +104,7 @@ export function WorkflowCompositionPanel({ videoLabel, demo, demoAudio, demoSour
         {connected && ownerId ? <WorkflowSavedAudioPicker ownerId={ownerId} attachment={demoAudio} disabled={!demo.asset} /> : null}
       </section>
     </div>
+    {demoOriginalSound}
     <section aria-label="Demo audio details" className={demo.asset ? creation.demoAudioDetails : "sr-only"}>
       <h3 className="sr-only">Demo audio</h3>
       {demoAudio.asset ? <WorkflowMediaPlayer asset={demoAudio.asset} kind="audio" label="Demo audio preview" /> : null}

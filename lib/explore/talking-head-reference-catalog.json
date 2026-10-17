@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "talking-car-story",
+      "title": "Car story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-car-story.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-car-story.jpg",
+      "durationSeconds": 9.467,
+      "generationPrompt": "A close conversational shot inside a parked car. Use relaxed hand gestures and natural daylight. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@gab.hustles/video/7693705162321366302"
+    },
+    {
+      "id": "talking-warm-story",
+      "title": "Warm indoor story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-warm-story.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-warm-story.jpg",
+      "durationSeconds": 35.267,
+      "generationPrompt": "A conversational indoor shot with warm lighting and expressive, natural delivery. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@annie.manifests/video/7682942507872701727"
+    },
+    {
+      "id": "talking-outdoor-discovery",
+      "title": "Outdoor discovery",
+      "videoUrl": "/explore/talking-head-references/v1/talking-outdoor-discovery.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-outdoor-discovery.jpg",
+      "durationSeconds": 14.14,
+      "generationPrompt": "A handheld outdoor selfie with an engaged, surprised opening. Keep the camera on the person. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@nicoleexplore/video/7694801757561441557"
+    },
+    {
+      "id": "talking-outdoor-reaction",
+      "title": "Outdoor reaction",
+      "videoUrl": "/explore/talking-head-references/v1/talking-outdoor-reaction.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-outdoor-reaction.jpg",
+      "durationSeconds": 10.355,
+      "generationPrompt": "A close outdoor selfie with expressive facial movement and direct-to-camera delivery. Keep the camera on the person. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@nicoleexplore/video/7695910417155034389"
+    },
+    {
+      "id": "talking-room-explainer",
+      "title": "Room explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-room-explainer.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-room-explainer.jpg",
+      "durationSeconds": 7.967,
+      "generationPrompt": "A close indoor talking-head shot with a casual delivery and small explanatory hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@eric.duan95/video/7693328260175858958"
+    },
+    {
+      "id": "talking-car-explainer",
+      "title": "Car explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-car-explainer.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-car-explainer.jpg",
+      "durationSeconds": 46.416,
+      "generationPrompt": "A seated selfie inside a parked car with conversational gestures and a direct, friendly delivery. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@nicotinebreakuplog/video/7566032305572056333"
+    },
+    {
+      "id": "talking-discovery",
+      "title": "Expressive discovery",
+      "videoUrl": "/explore/talking-head-references/v1/talking-discovery.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-discovery.jpg",
+      "durationSeconds": 2.207,
+      "generationPrompt": "An expressive close selfie, with a raised hand and an animated opening reaction. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7681203672956603662"
+    },
+    {
+      "id": "talking-surprised-story",
+      "title": "Surprised opening",
+      "videoUrl": "/explore/talking-head-references/v1/talking-surprised-story.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-surprised-story.jpg",
+      "durationSeconds": 1.567,
+      "generationPrompt": "An energetic close selfie with expressive eyebrows and a conversational hand gesture. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7687894160086486286"
+    },
+    {
+      "id": "talking-mug-story",
+      "title": "Story with a mug",
+      "videoUrl": "/explore/talking-head-references/v1/talking-mug-story.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-mug-story.jpg",
+      "durationSeconds": 27.867,
+      "generationPrompt": "A close indoor talking-head shot, holding a mug naturally while delivering the opening message. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@studyingwithliz/video/7605588749921029390"
+    }
+  ]
+}

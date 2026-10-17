@@ -48,6 +48,20 @@ test("separate tasks editing the same media have independent opening/demo draft 
   assert.notEqual(a[0].props.draftScope,a[1].props.draftScope);
 });
 
+test("Demo sidebar sound uses the mounted demo draft while its focused editor remains closed", () => {
+  const h = fixture();
+  const target = { id: "demo-sound-sidebar" };
+  h.view().demoOriginalSound.props.ref(target);
+  const [opening, demo] = h.editors();
+  assert.equal(demo.props.originalSoundTarget, target);
+  assert.equal(demo.props.active, false);
+  assert.equal(opening.props.originalSoundTarget, undefined, "Demo volume never changes the opening's draft");
+  demo.props.onClipStateChange({ sourceId: h.props.demoSource.id, editing: { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 10000, originalVolume: .35, musicVolume: .2, text: null }, needsSaving: true, needsDraftSaving: true, busy: false, error: null });
+  assert.equal(h.view().demoState.editing.originalVolume, .35);
+  h.view().openDemo();
+  assert.equal(h.editors()[1].props.originalSoundTarget, target, "Opening the editor retains the same sidebar/draft owner");
+});
+
 test("Videos navigation closes either Talking Head clip editor and preserves its draft state", () => {
   const h = fixture();
   for (const target of ["opening", "demo"]) {

@@ -15,6 +15,7 @@ export type WorkflowSession = {
   demoFraming: { frame: DemoFraming; aspect: number } | null;
   pendingSource: boolean; pendingDemo: boolean; pendingDemoAudio: boolean;
   instructions: string; generationSettings: WorkflowGenerationSettings; localReferences: boolean;
+  talkingReferenceId?: string | null; referenceInstructions?: string;
   options: WorkflowSessionOptions; scheduleDraft: WorkflowScheduleDraft;
 };
 export type WorkflowSessionMediaRole = "source" | "demo" | "demoAudio";
@@ -22,7 +23,7 @@ export type WorkflowSessionAssets = { source: MediaAsset | null; demo: MediaAsse
 export type WorkflowSessionProblems = Partial<Record<WorkflowSessionMediaRole, string>>;
 export const WORKFLOW_SESSION_STORAGE_VERSION = 1;
 const MAX_SESSION_BYTES = 512 * 1024;
-const keys = ["version", "ownerId", "kind", "section", "sourceMode", "sourceAssetId", "generatedAssetId", "generatedSelectionCleared", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "demoFraming", "pendingSource", "pendingDemo", "pendingDemoAudio", "instructions", "generationSettings", "localReferences", "options", "scheduleDraft"];
+const keys = ["version", "ownerId", "kind", "section", "sourceMode", "sourceAssetId", "generatedAssetId", "generatedSelectionCleared", "demoAssetId", "demoAudioAssetId", "demoAudioPlayback", "demoFraming", "pendingSource", "pendingDemo", "pendingDemoAudio", "instructions", "generationSettings", "localReferences", "options", "scheduleDraft", "talkingReferenceId", "referenceInstructions"];
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const fields = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
 const invalid = () => new Error("This saved workflow could not be verified. Retry recovery or reset the saved workflow; its generation and scheduling requests are kept separately.");
@@ -51,6 +52,8 @@ export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowS
       value.options.placement !== undefined && !["bottom", "middle", "top"].includes(String(value.options.placement)) ||
       value.options.backgroundPlayback !== undefined && !["once", "repeat"].includes(String(value.options.backgroundPlayback))) throw invalid();
   const scheduleDraft = readFormatScheduleDraft(JSON.stringify({ version: 1, key: "workflow-session", draft: value.scheduleDraft }), "workflow-session");
+  if (value.talkingReferenceId !== undefined && value.talkingReferenceId !== null && (typeof value.talkingReferenceId !== "string" || !/^talking-[a-z0-9-]{1,80}$/.test(value.talkingReferenceId))) throw invalid();
+  if (value.referenceInstructions !== undefined && (typeof value.referenceInstructions !== "string" || value.referenceInstructions.length > 8000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value.referenceInstructions))) throw invalid();
   if (!scheduleDraft) throw invalid();
   // Model availability may change between visits; retain supported settings atomically.
   const generationSettings = normalizeWorkflowGenerationSettings(value.generationSettings as Partial<WorkflowGenerationSettings>);
@@ -70,7 +73,9 @@ export function parseWorkflowSession(value: unknown, ownerId: string): WorkflowS
     sourceAssetId: assetId(value.sourceAssetId), generatedAssetId: assetId(value.generatedAssetId), generatedSelectionCleared: value.generatedSelectionCleared as boolean, demoAssetId, demoAudioAssetId,
     demoAudioPlayback: demoAudioAssetId ? value.demoAudioPlayback as "once" | "repeat" : "once", demoFraming,
     pendingSource: value.pendingSource as boolean, pendingDemo: value.pendingDemo as boolean, pendingDemoAudio: value.pendingDemoAudio as boolean,
-    instructions: value.instructions, generationSettings, localReferences: value.localReferences as boolean, options, scheduleDraft };
+    instructions: value.instructions, generationSettings, localReferences: value.localReferences as boolean, options, scheduleDraft,
+    ...(value.talkingReferenceId !== undefined ? { talkingReferenceId: value.talkingReferenceId as string | null } : {}),
+    ...(value.referenceInstructions !== undefined ? { referenceInstructions: value.referenceInstructions as string } : {}) };
 }
 export function readWorkflowSession(raw: string | null, ownerId: string): WorkflowSession | null {
   if (raw === null) return null;

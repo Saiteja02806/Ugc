@@ -70,7 +70,11 @@ test("both workflows have three accessible, permanently mounted section panels",
     assert.match(scheduling, /<WorkflowSchedulingPanel/);
     assert.match(source, /Object.values\(scheduleDraft\)\.some\(Boolean\)/);
     assert.match(source, /Your local changes are not saved/);
-    assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
+    if (kind === "hook") {
+      assert.match(source, /const overviewActive = section === "edit" \|\| section === "create"/);
+      assert.match(source, /hidden=\{!overviewActive\}/);
+      assert.equal((source.match(/<WorkflowEditWorkspace /g) ?? []).length, 1, "Create and Demo keep one shared overview");
+    } else assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
     assert.match(source, /<WorkflowScheduleWorkspace[^>]*draft=\{scheduleDraft\}/);
   }
 });

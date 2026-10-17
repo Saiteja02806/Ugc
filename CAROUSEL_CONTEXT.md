@@ -1,5 +1,31 @@
 # Carousel System Context
 
+## 2026-10-17 TikTok publishing derivatives and terminal schedule status
+
+- PNG uploads remain allowed. TikTok publishing prepares separate JPEG copies
+  of saved slideshow/Carousel slides automatically, using actual decoded bytes,
+  orientation correction, white transparency flattening and bounded dimensions.
+  Originals, Library slide URLs, order, text and saved edits are preserved.
+  Instagram retains its existing JPEG preparation. Accepted provider operations
+  resume with their saved IDs without preparing or initializing another post.
+- Retry decisions now honor the physical worker job's maximum attempts as well
+  as the publisher limit. TikTok `file_format_check_failed` is terminal, with a
+  media-specific error instead of an unchanged automatic retry or video wording.
+- Migration `20261017105341_social_publish_terminal_status_and_tiktok_retry.sql`
+  is applied in production. Its invoker trigger atomically settles current
+  owned targets when publishing jobs fail, clears `next_retry_at`, and rolls up
+  partial failures while preserving publication receipts and cancellations.
+  It repaired one stale TikTok target; the reported slideshow is now partially
+  failed because its Instagram publication succeeded. No post was retried.
+- An explicit retry with a new owned queued job can reset only an inactive,
+  format-rejected TikTok operation. It cannot clear an active claim or success.
+- Conversion, retry-budget and UI wording changes are local and require worker/
+  website release. 86 worker regressions plus 9 database/status tests passed,
+  and all five actual affected files converted in memory without uploading or
+  publishing. Database correction is verified in production; a new successful
+  TikTok publication has not been tested. Details:
+  `docs/tiktok-slideshow-publishing-fix-2026-10-17.md`.
+
 ## 2026-10-17 Manual Explore current slideshow overview (local)
 
 - Create → Your Slides reuses Edit slides' mounted current-sequence preview

@@ -14,7 +14,12 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, Error, Buffer, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
+const fontMetrics = JSON.parse(readFileSync(new URL("../worker/src/lib/explore-text-font-metrics.json", import.meta.url), "utf8"));
+const fonts = load("worker/src/lib/explore-text-fonts.ts", { "./explore-text-font-metrics.json": fontMetrics });
+const edit = load("worker/src/lib/explore-format-edit.ts", {
+  "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"),
+  "./explore-text-fonts.ts": fonts,
+});
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });

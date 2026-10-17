@@ -38,12 +38,14 @@ import {Button} from '@/components/ui/button';import {Dialog,DialogContent,Dialo
 import {SocialPlatformIcon} from '@/components/social/platform-icon';import {canonicalHookSource} from '@/worker/src/lib/explore-instagram-source';import {cn} from '@/lib/utils';
 import Link from 'next/link';import {ReferenceVideoPlayer} from '@/components/explore/reference-video-player';
 import studio from '@/components/explore/workflow-studio.module.css';import type {RecreateReference} from '@/lib/explore/recreate-types';
+import {canOpenReferenceSource} from '@/lib/explore/reference-source-access';
+const useBillingSubscription=()=>{const free=new URLSearchParams(location.search).has('free');return {isSuccess:true,isFetching:false,isError:false,data:{isActive:!free,planKey:free?'free':'starter',freeGenerationCredits:{granted:5,remaining:0}}}};
 ${workspace.slice(workspace.indexOf("export function ReferenceCard("), workspace.indexOf("export function EmptyReferences("))}`);
 file("entry.tsx", `import {createRoot} from 'react-dom/client';import {useState} from 'react';import {ReferenceCard,ReferencePreviewDialog} from './card';
-const wall=new URLSearchParams(location.search).has('wall'),pro=!new URLSearchParams(location.search).has('free');
+const wall=new URLSearchParams(location.search).has('wall');
 const refs=${JSON.stringify(refs)}.map(item=>wall?{...item,format:'wall_text',title:'Wall of text'}:item);
 window.cardSelections=0;window.cardPreviews=0;
-function App(){const [selected,select]=useState(null),[preview,show]=useState(null);return <main style={{maxWidth:1000,margin:'24px auto',padding:16}}><h1>References</h1><p>Watch an example, then choose Recreate.</p><div className='fixture-grid'>{refs.map(reference=><ReferenceCard key={reference.id} reference={reference} canOpenSource={pro} compact showActionLabel overlayActions isSelected={selected===reference.id} onRecreate={()=>{window.cardSelections++;select(reference.id)}} onPreview={()=>{window.cardPreviews++;show(reference)}}/>)}</div><ReferencePreviewDialog key={preview?.id??'empty'} reference={preview} open={!!preview} onOpenChange={open=>{if(!open)show(null)}}/></main>};createRoot(document.getElementById('root')).render(<App/>);`);
+function App(){const [selected,select]=useState(null),[preview,show]=useState(null);return <main style={{maxWidth:1000,margin:'24px auto',padding:16}}><h1>References</h1><p>Watch an example, then choose Recreate.</p><div className='fixture-grid'>{refs.map(reference=><ReferenceCard key={reference.id} reference={reference} canOpenSource compact showActionLabel overlayActions isSelected={selected===reference.id} onRecreate={()=>{window.cardSelections++;select(reference.id)}} onPreview={()=>{window.cardPreviews++;show(reference)}}/>)}</div><ReferencePreviewDialog key={preview?.id??'empty'} reference={preview} open={!!preview} onOpenChange={open=>{if(!open)show(null)}}/></main>};createRoot(document.getElementById('root')).render(<App/>);`);
 async function main() {
   console.log("Compiling the production reference card fixture.");
   const globals = fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);')

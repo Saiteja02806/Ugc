@@ -1,6 +1,6 @@
 # UGC Pilot plugin context
 
-Last reviewed: 2026-10-16
+Last reviewed: 2026-10-17
 
 This file is the source-of-truth for the UGC Pilot plugin's release state. It is deliberately outside the distributable plugin folder so internal evidence and open gaps are not presented as user-facing capability claims. Update it whenever the package, deployed MCP catalogue, OAuth behavior, capability gates, or installed-host acceptance changes.
 
@@ -44,6 +44,15 @@ On 2026-10-16, the public endpoint returned all of the following:
 - That account currently reports image and short-video generation available; video finishing and Edit export available with `creative:write`; audio generation, upload, download, import, and voice cloning unavailable.
 
 Use `node scripts/mcp-public-oauth-preflight.mjs` for the no-credential public preflight. It exercises only health, discovery, and the anonymous OAuth challenge. It does not create a client, follow an authorization redirect, use a token, read customer content, or generate media.
+
+## 2026-10-17 verification evidence
+
+- `node scripts/validate-ugc-pilot-plugin.mjs`, `node --test scripts/validate-ugc-pilot-plugin.test.mjs`, and `python scripts/test-ugc-pilot-plugin-build.py` passed for 0.2.2. The deterministic archive contains 41 files and 14 skills, and the historical 0.2.0 public ZIP remains intact with its own checksum.
+- `npm run audit:mcp:oauth-public` passed against `https://mcp.getugcpilot.com/mcp`: health, protected-resource discovery, issuer metadata, PKCE S256, issuer-bound redirects, CIMD, and the anonymous `401` OAuth challenge all matched the package declaration.
+- An isolated Codex marketplace copy of the candidate installed as `ugc-pilot@ugc-pilot-oauth-acceptance`, version 0.2.2, with `authPolicy: "ON_INSTALL"`. The cached `plugin.json`, `mcp.json`, Codex/Claude compatibility manifests, README, and onboarding skill exactly matched the candidate. The disposable plugin and marketplace were then removed; the existing `ugc-pilot-local` connection was preserved.
+- `npm run test:mcp` passed from the clean candidate checkout. It covers OAuth/PKCE, token handling, account isolation, generation receipts, uploads, Demo records, finishing, drafts, exports, audio, references, Creative Asset groups, Library, and account settings using fixtures and database contracts.
+- Authenticated, read-only production calls succeeded for profile, entitlements, generation capabilities, and video-finishing capabilities. The latter reported `available: true` for the connected account.
+- The shared checkout's unrelated pending Explore changes currently make `scripts/mcp-video-finishing.test.mjs` fail because its sandboxed module loader does not whitelist the newly imported `./explore-text-fonts.ts`. This is a pending-application-release test-harness regression, not a failure in the clean plugin candidate; fix it before merging that application release.
 
 ## What is not yet proved or ready
 

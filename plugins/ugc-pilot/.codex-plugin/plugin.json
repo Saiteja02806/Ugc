@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds clear creative-workflow metadata and starter prompts for hooks, wall-of-text videos, and slideshows. UGC Pilot checks each connected account's live capabilities before paid generation."
+        "release_notes": "Adds portable OAuth/CIMD connection metadata and a verified local-install path. UGC Pilot checks each connected account's live capabilities before paid generation."
       }
     }
   }

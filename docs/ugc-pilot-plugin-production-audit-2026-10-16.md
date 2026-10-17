@@ -35,8 +35,12 @@ Steps 2 and 3 are backed by the current live endpoint. Source tests cover reques
 
 ## Tool-code conclusion
 
-The tools are not merely stubs. The MCP server registers a declared 80-tool source catalogue; the test suite exercises authorization, OAuth/PKCE, account isolation, generation receipts, demos, uploads, private-upload denial paths, finishing, drafts, exports, audio, references, groups, Library, and settings using fixtures or database contracts. The correct operational claim is narrower: a passing local suite shows source behavior under controlled dependencies. It does not prove that every rollout gate, external provider, storage bucket, or host client behavior is live.
+The tools are not merely stubs. The MCP server registers a declared 79-tool source catalogue; the test suite exercises authorization, OAuth/PKCE, account isolation, generation receipts, demos, uploads, private-upload denial paths, finishing, drafts, exports, audio, references, groups, Library, and settings using fixtures or database contracts. The correct operational claim is narrower: a passing local suite shows source behavior under controlled dependencies. It does not prove that every rollout gate, external provider, storage bucket, or host client behavior is live.
 
 ## Next action
 
 Create protected staging deployments for the reviewed candidate, then run the clean Codex install → OAuth return → read-only connection test. No customer media generation, rendering, upload, or publishing is needed for that first acceptance run.
+
+## 17 October update
+
+The 0.2.2 candidate now has a successful Codex CLI marketplace install and cache byte-comparison, as well as passing package/archive, full local MCP, live OAuth-discovery, and authenticated read-only checks. This proves the portable package is accepted by Codex and carries the intended OAuth declaration. It still does **not** prove the interactive browser callback: the CLI install does not open a browser. Complete a clean desktop Codex installation and normal UGC Pilot consent, then issue the read-only connection prompt before claiming installed-host readiness. Claude Code needs the same separate clean-host acceptance.

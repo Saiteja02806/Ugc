@@ -23,6 +23,8 @@ For requested application reference/group/Library work, use discovered `get_refe
 
 For account-default settings, check discovered `get_account_settings_capabilities` and follow [account defaults](../manage-ugc-account/SKILL.md). Writes need a distinct `account:write` grant; existing media/edit permissions do not cover them. Capability reads do not initialize timezone or activate writes.
 
+For existing social-account and schedule state, check `get_scheduling_capabilities` and follow [scheduling reads](../manage-ugc-scheduling/SKILL.md). The three data reads need a distinct `publishing:read` grant. They do not connect social accounts or create, edit, cancel, retry, schedule or publish posts. `publishing:write` is reserved for a later reviewed adapter and grants no current tool.
+
 A Codex, ChatGPT, or Claude subscription does not supply UGC Pilot generation credits. Check the UGC Pilot account's actual entitlements. This connection check is read-only; do not generate a sample unless the user requests generation.
 
 For missing or expired authentication, reconnect through the client. For insufficient scope, reauthorize the affected permissions and refresh tool discovery. If `generate_video` is missing, refresh the connection rather than inventing a tool. Preserve account boundaries: inaccessible assets and jobs are not evidence that another account should be used.

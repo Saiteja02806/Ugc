@@ -1,6 +1,6 @@
 {
   "name": "ugc-pilot",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account.",
   "author": {
     "name": "UGC Pilot",
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "UGC Pilot",
     "shortDescription": "Create UGC content",
-    "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review and manage outputs through your connected UGC Pilot account. UGC Pilot checks availability and cost before paid generation. Social publishing is not available through this plugin.",
+    "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review creative, connected social accounts and existing schedule state through your UGC Pilot account. UGC Pilot checks availability and cost before paid generation. Social publishing remains unavailable.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds portable OAuth/CIMD connection metadata and a verified local-install path. UGC Pilot checks each connected account's live capabilities before paid generation."
+        "release_notes": "Adds read-only connected-social-account and schedule discovery. Creation, editing, cancellation, retry, publishing and social-account OAuth remain unavailable."
       }
     }
   }

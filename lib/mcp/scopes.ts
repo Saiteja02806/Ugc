@@ -8,6 +8,8 @@ export const MCP_SCOPES = [
   "jobs:read",
   "jobs:write",
   "creative:write",
+  "publishing:read",
+  "publishing:write",
 ] as const;
 
 export function parseMcpScopes(value: string | null) {

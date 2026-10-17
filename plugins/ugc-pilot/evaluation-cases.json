@@ -887,6 +887,20 @@
         "update_publishing_preferences"
       ],
       "expected": "Uses the saved historical receipt and reads current state; does not force original inputs with a fresh revision/key over later website choices."
+    },
+    {
+      "id": "scheduling-read-only",
+      "prompt": "Show my connected social accounts and schedules for the coming week. Do not create, change, retry, cancel or publish anything.",
+      "expected_skills": [
+        "manage-ugc-scheduling"
+      ],
+      "expected_tools": [
+        "get_scheduling_capabilities",
+        "list_social_connections",
+        "list_schedules"
+      ],
+      "forbidden_tools": [],
+      "expected": "Checks configuration and the separate publishing:read grant, then shows only the connected account's safe connection labels and current delivery state. Does not request provider credentials or invoke a scheduling, publishing, retry, cancellation or social OAuth flow."
     }
   ],
   "notes": "Expected skill sequences are evaluation criteria, not measured host activation results. Brand reads may be used when explicitly relevant and connected. Draft-only cases below supply briefs or declare missing context."

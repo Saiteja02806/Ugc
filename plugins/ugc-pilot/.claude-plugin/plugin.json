@@ -1,6 +1,6 @@
 {
   "name": "ugc-pilot",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account.",
   "author": {
     "name": "UGC Pilot",

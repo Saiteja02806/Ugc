@@ -16,6 +16,53 @@ spec = importlib.util.spec_from_file_location("plugin_builder", ROOT / "scripts/
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
+# Historical packages are immutable. This snapshot records the exact published
+# 0.2.0 bundle rather than incorrectly comparing an old archive to a newer
+# source package that has gained additional skills.
+PUBLISHED_0_2_0_FILES = [
+    ".claude-plugin/plugin.json",
+    ".codex-plugin/plugin.json",
+    ".mcp.json",
+    "README.md",
+    "assets/logo.png",
+    "evaluation-cases.json",
+    "mcp.json",
+    "plugin.json",
+    "references/creative-workflow.md",
+    "skills/connect-ugc-pilot/SKILL.md",
+    "skills/connect-ugc-pilot/references/client-setup.md",
+    "skills/create-ugc-media/SKILL.md",
+    "skills/edit-ugc-draft/SKILL.md",
+    "skills/emotion-hook-director/SKILL.md",
+    "skills/emotion-hook-director/references/performance-guide.md",
+    "skills/emotion-hook-director/schemas/director-output.schema.json",
+    "skills/finish-ugc-video/SKILL.md",
+    "skills/manage-ugc-account/SKILL.md",
+    "skills/manage-ugc-groups/SKILL.md",
+    "skills/manage-ugc-library/SKILL.md",
+    "skills/manage-ugc-media/SKILL.md",
+    "skills/manage-ugc-media/references/audio-workflow.md",
+    "skills/manage-ugc-media/references/local-transfer.md",
+    "skills/manage-ugc-media/scripts/transfer-audio.mjs",
+    "skills/manage-ugc-media/scripts/transfer-media.mjs",
+    "skills/remix-ugc-reference/SKILL.md",
+    "skills/ugc-hook-intelligence/SKILL.md",
+    "skills/ugc-hook-intelligence/references/examples.md",
+    "skills/ugc-hook-intelligence/references/hook-patterns.md",
+    "skills/ugc-hook-intelligence/references/source-hook-library.md",
+    "skills/ugc-hook-intelligence/schemas/hook-output.schema.json",
+    "skills/ugc-native-slideshow/SKILL.md",
+    "skills/ugc-native-slideshow/references/layout-guide.md",
+    "skills/ugc-native-slideshow/references/output-schema.json",
+    "skills/ugc-native-slideshow/references/pattern-library.md",
+    "skills/wall-text-generation/SKILL.md",
+    "skills/wall-text-generation/references/writing-guide.md",
+    "skills/wall-text-generation/schemas/wall-copy.schema.json",
+    "skills/wall-text-video-generation/SKILL.md",
+    "skills/wall-text-video-generation/references/visual-guide.md",
+    "skills/wall-text-video-generation/schemas/video-output.schema.json",
+]
+
 
 class PluginBuildTests(unittest.TestCase):
     def setUp(self):
@@ -43,7 +90,7 @@ class PluginBuildTests(unittest.TestCase):
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
-            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 14)
+            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 15)
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes().replace(b"\r\n", b"\n") if Path(name).suffix in {".md", ".json", ".mjs"} else (builder.SOURCE / name).read_bytes())
                 if Path(name).suffix in {".md", ".json", ".mjs"}:
@@ -56,7 +103,7 @@ class PluginBuildTests(unittest.TestCase):
         guide = (self.destination / f"ugc-pilot-{self.source_version()}-setup.md").read_text(encoding="utf-8")
         self.assertNotIn("](skills/", guide)
         self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
-        for skill in ["manage-ugc-groups", "manage-ugc-library", "remix-ugc-reference", "manage-ugc-account"]:
+        for skill in ["manage-ugc-groups", "manage-ugc-library", "manage-ugc-scheduling", "remix-ugc-reference", "manage-ugc-account"]:
             self.assertIn(f"skills/{skill}/SKILL.md", guide)
         self.assertIn("[client setup](#client-setup)", guide)
         self.assertIn(".agents/plugins/marketplace.json", guide)
@@ -65,7 +112,7 @@ class PluginBuildTests(unittest.TestCase):
         archive = ROOT / "public/downloads/ugc-pilot-0.2.0.zip"
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
-            self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
+            self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in PUBLISHED_0_2_0_FILES))
             self.assertEqual(json.loads(package.read("ugc-pilot/plugin.json"))["version"], "0.2.0")
         self.assertEqual(archive.with_suffix(".zip.sha256").read_text().strip(), hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name)
 

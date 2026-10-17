@@ -1,5 +1,9 @@
 # Explore context and UI decision record
 
+### MCP finishing fixture dependency — 17 October 2026
+
+- `worker/src/lib/explore-format-edit.ts` imports the shared text-font module. Any VM-based MCP finishing fixture that loads this file must also load `explore-text-font-metrics.json` and provide `./explore-text-fonts.ts`; otherwise it fails before exercising video-finishing policy. Keep this test-only loader aligned with the worker import graph.
+
 ### Slideshow Create overview and cross-workflow follow-through — 17 October 2026, local
 
 - Recurring mistake: fixing Hook's Create → Your videos without checking the

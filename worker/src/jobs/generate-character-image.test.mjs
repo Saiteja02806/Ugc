@@ -10,6 +10,7 @@ const provider = async (model, prompt, ratio, reference) => {
 };
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
   SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
+  SLIDESHOW_FLARE_IMAGE_MODEL: "gpt-image-2.5-flare",
   generateOpenAiImageBuffer: (prompt, ratio, reference, override) => {
     if (override !== undefined) assert.equal(override, "gpt-image-2.5-sunburst");
     return provider(override ? "gpt_image_2_5" : "gpt_image", prompt, ratio, reference);

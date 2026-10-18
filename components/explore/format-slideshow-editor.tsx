@@ -473,8 +473,9 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     finally { working.current = false; if (alive.current) { setBusy(false); setSaveProgress(null); } }
   }
   function goToCreate() { setAddSlidesOpen(false); startNewSlide(); onGoToCreate?.(); }
+  const scheduleRevision = revision.current;
   function continueToSchedule() {
-    if (locked || working.current || generationBusy || !output) return;
+    if (locked || working.current || generationBusy || !output || scheduleRevision !== revision.current) return;
     onContinue();
   }
   const selected = slides[Math.min(previewIndex, Math.max(0, slides.length - 1))];
@@ -514,7 +515,6 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     {!actionsTarget ? actions : null}
   </div>, controlsTarget) : null}{previewActive ? createPortal(<section aria-label="Slideshow edit preview" className={textStyles.editorPreview}>
     <header className={textStyles.previewHeading}><div><h2>Your slideshow</h2><p>{previewUrls.length ? `${previewUrls.length} slides · ${active ? "Select a slide to edit" : "Preview your current sequence"}` : "Build your slide sequence"}</p></div><div className="flex flex-wrap gap-2">{previewActions}{!active && onEdit ? <Button type="button" variant="outline" onClick={onEdit}>Edit slides</Button> : onBackToPreview ? <Button type="button" variant="outline" onClick={onBackToPreview}><ArrowLeft aria-hidden="true" />Back to Create</Button> : null}</div></header>
-    {!active && error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     <div className={textStyles.previewCanvas}>
     {previewUrls.length ? <>{previewUrls[Math.min(previewIndex, previewUrls.length - 1)] ? <div className={textStyles.preview}>
       <img key={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]} src={previewUrls[Math.min(previewIndex, previewUrls.length - 1)]!} alt={`Slide ${previewIndex + 1} of ${previewUrls.length}`} width={dimensions.url === selectedUrl ? dimensions.width : 1080} height={dimensions.url === selectedUrl ? dimensions.height : 1350} onLoad={event => {
@@ -535,5 +535,6 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
       </div>)}</div><span role="status" className="sr-only">{slideDrag.announcement}</span></> : <p>Choose generated images, original reference slides or uploads to begin.</p>}
       {selected ? <div className={textStyles.arrangement}><p>Slide {previewIndex + 1} of {slides.length}</p><div><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} earlier`} disabled={locked || generationBusy || previewIndex === 0} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex - 1]?.referenceSlideId)}><ArrowLeft aria-hidden="true" />Earlier</Button><Button type="button" variant="ghost" aria-label={`Move slide ${previewIndex + 1} later`} disabled={locked || generationBusy || previewIndex >= slides.length - 1} onClick={() => moveSlide(selected.referenceSlideId, slideRef.current[previewIndex + 1]?.referenceSlideId)}><ArrowRight aria-hidden="true" />Later</Button><Button type="button" variant="ghost" onClick={() => removeSlide(selected.referenceSlideId)} disabled={locked || generationBusy}>Remove slide</Button></div></div> : null}
     </section>
+    {!active ? <footer aria-label="Slideshow actions" className={textStyles.overviewActions}>{actions}</footer> : null}
   </section>, resultsTarget) : null}</>;
 }

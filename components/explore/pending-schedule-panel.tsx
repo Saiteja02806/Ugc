@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
 import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlatforms, selectWorkflowAccount, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
+import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
 import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "@/lib/explore/pending-schedule-contract";
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
@@ -30,6 +32,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   timezone: string; active: boolean; onBackToEdit?: () => void;
   onScheduled?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const storageKey = `ugc-explore:background-schedule:v1:${encodeURIComponent(owner)}:${encodeURIComponent(scope)}`;
   const [saved, setSaved] = useState<SavedExploreSchedule | null>(null), [result, setResult] = useState<ExplorePendingScheduleResult | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
@@ -45,11 +48,16 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const accept = useCallback((entry: SavedExploreSchedule, raw: unknown) => {
     const value = verifyExploreScheduleReply(raw, entry);
     if (!alive.current || currentIdentity.current.storageKey !== storageKey) return;
+    if (readSavedExploreSchedule(localStorage.getItem(storageKey), owner)?.input.requestKey !== entry.input.requestKey) return;
+    if (value.schedule) {
+      upsertAccountSchedule(queryClient, owner, value.schedule);
+      void invalidateAccountSchedules(queryClient, owner);
+    }
     const next = { ...entry, confirmed: value.preparation.state !== "unconfirmed", timeRejected: value.preparation.state === "unconfirmed" ? entry.timeRejected : undefined };
     setSaved(next); setResult(value);
     if (next.confirmed) localStorage.setItem(storageKey, JSON.stringify(next));
     if (value.preparation.state === "scheduled" && value.schedule) scheduledCallback.current?.();
-  }, [storageKey]);
+  }, [storageKey, owner, queryClient]);
   useEffect(() => {
     let stopped = false;
     void Promise.resolve().then(async () => {
@@ -82,6 +90,23 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const failedBeforePublishing = boundResult?.preparation.state === "failed" && boundResult.schedule?.targets.length === 0;
   const confirmed = saved?.signature === composition.signature && saved.confirmed && !failedBeforePublishing;
   const unresolved = !!saved && !saved.confirmed && !saved.timeRejected;
+  async function startAnother() {
+    if (!active || !restored || !saved?.confirmed || working.current) return;
+    working.current = true; setBusy(true); setError(null);
+    try {
+      if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
+      await navigator.locks.request(storageKey, { ifAvailable: true }, async lock => {
+        if (!lock) throw new Error("Another tab is confirming this schedule. Check its saved request first.");
+        const prior = readSavedExploreSchedule(localStorage.getItem(storageKey), owner);
+        if (currentIdentity.current.storageKey !== storageKey || !alive.current) return;
+        if (!prior) { setSaved(null); setResult(null); return; }
+        if (!prior.confirmed || prior.input.requestKey !== saved.input.requestKey) { setSaved(prior); setResult(null); throw new Error("The saved request changed. Check its current status before scheduling another post."); }
+        archiveConfirmedSchedule(localStorage, storageKey, prior.input.requestKey, prior);
+        setSaved(null); setResult(null);
+      });
+    } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not start another schedule."); }
+    finally { working.current = false; if (alive.current) setBusy(false); }
+  }
   async function check() {
     if (!saved || working.current) return;
     working.current = true; setBusy(true); setError(null);
@@ -125,6 +150,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
         if (finishDraft.sourceAssetId !== composition.sourceId) throw new Error("The prepared video changed. Review the updated video before scheduling.");
         const entry: SavedExploreSchedule = { version: 1, owner, signature: composition.signature, confirmed: false, input: parseExplorePendingSchedule({ version: 1, requestKey: crypto.randomUUID(), draft: finishDraft,
           schedule: { caption: submission.caption, title: composition.title.slice(0,160), targets: submission.targets, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone } }) };
+        if (prior?.confirmed) archiveConfirmedSchedule(localStorage, storageKey, prior.input.requestKey, prior);
         localStorage.setItem(storageKey, JSON.stringify(entry)); setSaved(entry);
         await send(entry);
       });
@@ -151,7 +177,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{saved?.timeRejected && !saved.confirmed ? SCHEDULE_TIME_REJECTED_MESSAGE : boundResult?.preparation.message ?? composition.error ?? (unresolved ? "Check the earlier saved request before confirming another schedule." : "Save your schedule now. Video preparation will continue in the background.")}</p>
-      <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || confirmed || !!composition.error || !composition.draft || !unresolved && !targets.length} onClick={() => { if (unresolved) void check(); else void schedule(); }}>{busy ? "Scheduling…" : unresolved ? "Check saved request" : confirmed ? "Schedule saved" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
+      <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (unresolved) void check(); else if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : unresolved ? "Check saved request" : confirmed ? "Schedule another post" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
     {unresolved && result?.preparation.state === "unconfirmed" ? <Button type="button" variant="outline" disabled={busy} onClick={() => void retrySavedRequest()}>Confirm the same saved request</Button> : null}
     {confirmed ? <Link href="/scheduling" className="text-sm text-primary underline">View saved post in Scheduling</Link> : null}
   </div>;

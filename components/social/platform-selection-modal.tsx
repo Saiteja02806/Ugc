@@ -101,6 +101,7 @@ export type WallTextSchedulePlatformContext = {
 
 export type ReactionSchedulePlatformContext = {
   assignmentId: string;
+  requestKey: string;
   contentType: "reaction";
   coverUrl?: string | null;
   returnTo: "trending";

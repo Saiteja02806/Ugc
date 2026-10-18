@@ -86,7 +86,7 @@ test("public video jobs explain a provider balance failure without exposing diag
     attemptCount: 1,
     errorCode: "JOB_FAILED",
     errorMessage:
-      "Seedance request request-private ended with status failed: Your credit balance is too low.",
+      "Runway request request-private ended with status failed: You do not have enough credits to run this task.",
     jobType: "generate_hook_video",
     maxAttempts: 3,
     status: "failed",

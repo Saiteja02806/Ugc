@@ -395,6 +395,41 @@ test("the dedicated footer exposes exactly one save, resume or schedule action t
   h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
   assert.deepEqual(h.requests[0], h.requests[1]);
 });
+
+test("Create preview saves and resumes the same draft before scheduling, then invalidates after arrangement changes", async () => {
+  let continued = 0;
+  const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
+  h.heading("Keep this heading from Edit");
+  h.props.active = false; h.props.previewActive = true;
+  const actionNodes = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Schedule slideshow", "Saving…"].includes(text(node)));
+  const assertSurface = label => {
+    const tree = h.render(), preview = nodes(tree).find(node => node.props?.["aria-label"] === "Slideshow edit preview");
+    assert.equal(actionNodes().length, 1); assert.equal(text(actionNodes()[0]), label);
+    assert.ok(nodes(preview).some(node => node.props?.["aria-label"] === "Slideshow actions"));
+    assert.equal(nodes(tree).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget), false);
+    assert.equal(nodes(tree).some(node => node.type === "FormatSlideshowTextTools"), false);
+  };
+  assertSurface("Save slideshow");
+  await h.clickSave("Save slideshow"); assertSurface("Resume save");
+  assert.equal(continued, 0); assert.equal(h.saved.length, 0);
+  assert.equal(nodes(h.render()).filter(node => node.props?.role === "alert" && text(node).includes("Interrupted save")).length, 1);
+  await h.clickSave("Resume save"); assertSurface("Schedule slideshow");
+  assert.deepEqual(h.requests[0], h.requests[1]);
+  assert.equal(h.requests[1].editorDraft.slides[0].design.heading, "Keep this heading from Edit");
+  h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
+  const oldSchedule = h.control("Button", "Schedule slideshow");
+  h.control("Button", "Move slide 1 later").props.onClick(); assertSurface("Save slideshow");
+  oldSchedule.props.onClick(); assert.equal(continued, 1, "A stale saved action cannot schedule the changed sequence");
+  h.props.generationBusy = true; assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  h.props.generationBusy = false;
+  await h.clickSave("Save slideshow"); assertSurface("Schedule slideshow");
+  assert.equal(h.requests.at(-1).editorDraft.slides[1].design.heading, "Keep this heading from Edit");
+  h.control("button", "Remove slide 1").props.onClick(); assertSurface("Save slideshow");
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true, "One remaining slide cannot be saved");
+  h.props.active = true;
+  assert.equal(actionNodes().length, 1);
+  assert.ok(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget));
+});
 test("saving edited text uploads its generated image with the owner and keeps untouched generated slides", async () => {
   const h = await editor(); h.heading("My heading"); await h.clickSave("Save slideshow");
   assert.equal(h.renders.length, 1); assert.equal(h.renders[0].design.heading, "My heading");

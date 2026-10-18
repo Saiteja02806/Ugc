@@ -1,5 +1,82 @@
 # Explore context and UI decision record
 
+### Repeat scheduling — 18 October 2026, local
+
+- A confirmed schedule is a completed post, not a permanent lock on its media.
+  Hook, Wall-of-Text, slideshow, Talking Head and background-preparation
+  workflows now show **Schedule another post** after confirmation. The user can
+  choose a different date, time, caption or account and create another post
+  from the same completed content.
+- Confirmation remains intentionally different from an interrupted request. A
+  network-uncertain request keeps its exact idempotency key and must be checked
+  or resumed; it cannot be replaced by editing the form. A confirmed request is
+  archived locally before a new intent is opened, so a late response or another
+  tab cannot replace the active request or create a duplicate post.
+- Background preparation retains its durable request and delivery guarantees.
+  A newly requested repeat is a separately recorded schedule intent; successful
+  posts remain available in Scheduling. Local regression coverage includes an
+  hour-later repeat, double clicks, tab races and owner-scoped cache updates.
+  No production post or media generation was made by this verification.
+
+### Slideshow preview Save and Schedule — 18 October 2026, local implementation
+
+- Create → Your Slides exposes the existing Save slideshow action below its
+  current sequence. After a confirmed save it becomes Schedule slideshow;
+  users no longer have to enter Edit slides just to save or continue.
+- Reuse the same mounted editor, save receipt, retry identity and dirty state.
+  Reordering, removing or adding slides invalidates the saved sequence and
+  restores Save. Never schedule unsaved edits or silently save on navigation.
+- Show one action footer in the visible surface: preview when Create is active,
+  inspector when Edit slides is active. Keep progress/errors and pending-save,
+  upload, generation, recovery and minimum-slide protections in both surfaces.
+- Scope is Explore slideshow UI only. Scheduling still opens its existing
+  account/date confirmation step; no post is submitted by this action.
+- Entering Schedule from the preview reveals the scheduling controls on compact
+  screens, instead of leaving the saved-post preview selected.
+- Validation: 189 focused workspace/editor/generation/import tests, TypeScript,
+  scoped ESLint and actual-editor desktop/mobile browser checks pass. Covered
+  save/retry identity, duplicate clicks, preserved text/order, dirty invalidation,
+  reload and the scheduling handoff. No production save or post was submitted.
+  This implementation is local; deployment and authenticated production
+  acceptance have not been performed for this change.
+
+### Scheduling navigation freshness — 18 October 2026, local fix
+
+- Confirmed schedules from Format Hook/Wall/Slideshow, Talking Head finishing
+  and background preparation now update and invalidate the current owner's
+  shared schedules query. Unconfirmed requests never create calendar rows;
+  restoring a verified receipt updates the cache without another POST.
+- Scheduling keeps cached rows visible but always reconciles the schedule list
+  on entry, bypassing its 30-minute freshness window. Media and connection
+  catalogues retain their existing caching. Existing focus/visibility refresh
+  and bounded preparation/publishing polling remain intact.
+- This fixes the workflow → View in Scheduling handoff that otherwise needed
+  a browser reload. Router refresh alone does not invalidate React Query data.
+  Exact request identity, duplicate protection, saved drafts and account cache
+  isolation are retained. Local regressions are separate from deployment and
+  authenticated production scheduling acceptance; no real post is scheduled by
+  this verification.
+
+### Source-post entitlement loophole — 17 October 2026, production audit
+
+- Audit of deployed commit `a493dbd6` found that Talking Head and Hook reference
+  source icons use `useAIStudioAccess() === "pro"`. That flag comes from
+  `isAIStudioProUser`, which admits inactive/free subscriptions whenever their
+  lifetime free-generation grant is positive, even after the grant is spent.
+  Such free users receive real TikTok/Instagram links instead of Upgrade to Pro.
+- The button/dialog component correctly blocks a locked access value, but prior
+  mocked free/Pro browser checks did not verify the actual entitlement resolver.
+  Passing those tests is not proof that a real free subscription is restricted.
+- Source-post access needs its own active-Pro entitlement, separate from free
+  AI generation eligibility. Preserve free generation credits and apply the
+  source restriction to Talking Head, Hook Format and Recreate entry points.
+  Wall-of-Text reference cards currently render no source-post icon at all.
+- Executing the deployed resolver with inactive/free fixtures confirmed grant
+  zero → locked; positive grant with remaining credits OR remaining zero → pro.
+  This is an audit finding, not a fix: no entitlement or production change was
+  made in this turn. A complete regression must cover free accounts with grants,
+  spent grants, active plans, checking/error states and both social platforms.
+
 ### Source-post entitlement fix — 17 October 2026, local
 
 - `ReferenceSourceAction` now needs a fresh, verified active Starter or Growth
@@ -32,6 +109,129 @@
   locally and await worker/website release. Database status protection is live.
   Keep this distinct from successful end-to-end TikTok publishing acceptance.
   See `docs/tiktok-slideshow-publishing-fix-2026-10-17.md`.
+
+### Complete TikTok mark in references and scheduling — 17 October 2026, local
+
+- The shared TikTok SVG path extends to y=25.522, beyond its former 24×24
+  viewport. This clipped the lower curve in reference source buttons and
+  Schedule platform choices. Pad the full mark with `viewBox="-1 -1 26 28"`
+  and prevent flex shrinking; retain the existing size/color at each use.
+- The complete-workflow browser regression reproduces the old clipping by
+  comparing the path's measured bounds with the SVG viewport. With the fix,
+  the path fits fully inside reference icons and selected/unselected Schedule
+  icons at laptop and mobile widths. This fixes all consumers of the shared
+  icon, including other scheduling/account interfaces. No platform gating,
+  publishing permissions, destinations or source-link behavior changes.
+- Older section tests assumed Demo had a separately conditional overview;
+  check the single shared Create/Demo overview instead. Visibility rollback
+  tests inspect TikTok choice attributes rather than rejecting a preserved
+  saved TikTok draft's required music-agreement notice. These are fixture
+  updates to current product behavior. Local checks remain distinct from
+  authenticated production acceptance; this change is not deployed.
+
+### Talking Head gallery simplification and complete-screen review — 17 October 2026, local
+
+- The user rejected the reference gallery's repeated card names, duration/type
+  rows and long limitation paragraphs. Keep References / Your videos above
+  the gallery, portrait previews, source icons over the footage and one compact
+  action button per card. Remove the additional gallery heading and description.
+  Preserve accessible video names. Preview only is a working playback action;
+  its generation-limit explanation belongs in accessible text/title, not a
+  paragraph repeated beneath every long clip.
+- Match Hook's 200px minimum responsive gallery grid instead of fixed three
+  columns: 1366/1536 laptop layouts show four cards, approximately 209×371 and
+  245×435 respectively. Mobile keeps two columns. Retain the original files.
+- Recurring review mistake: a gallery-only fixture omitted the real Create /
+  Demo / Schedule navigation and References / Your videos, leaving the user
+  unable to assess the actual screen. Present screenshots of the complete
+  `HookWorkflowPreview` component and label local previews accurately. The new
+  full-workflow browser fixture verifies both navigation sets, empty and selected
+  Your videos states, Demo setup, in-place Saved demos Change, demo text editing
+  and return to the same Create overview at 1366, 1536 and 390px.
+- Talking Head's focused editors intentionally hide Sound setup, but that also
+  left no original-demo-volume control in the Demo sidebar. Mount the demo's
+  existing edit draft immediately and portal its original-volume slider into
+  Demo; use the same edit JSON, preview and Save demo edits operation. Keep
+  uploaded demo audio separate from whole-video background music. Returning to
+  the clip editor must preserve the sidebar volume and other text/trim edits.
+- Local acceptance uses browser-only media uploads with generation disabled;
+  no production/API writes. Full-workflow checks prove live demo-volume preview,
+  text edits, correct Saved demos inventory and compact cards. Production still
+  requires authenticated verification after deployment.
+- Final local checks: 101 focused regressions, TypeScript and scoped ESLint
+  pass. Full-workflow browser screenshots use the actual component at laptop
+  and mobile sizes; shared Hook/Demo/Wall editor checks also pass from 320–1900px.
+
+### Talking Head references and Create overview — 17 October 2026, local
+
+- Talking Head + Demo uses References / Your videos in the first-screen right
+  workspace, matching Hook's navigation. Your videos reuses the **one mounted**
+  hook/demo overview from Demo, including empty, opening-only, demo-only and
+  two-clip states, independent text/trim drafts and in-place Change menus.
+  Generated videos opens existing generation results/progress; returning to
+  Your videos does not stop generation or unmount the clip editors. Demo setup
+  and audio controls remain in Demo. Wall remains a single-video workflow;
+  Slideshow already has its analogous current-sequence overview.
+- The separate Talking Head catalogue contains the nine explicitly selected
+  nonignored MP4s from folders 24, 25 (including child folders), 35, 37, 38 and
+  41. Folder 40 contains no selected video. Ignore `fullvideo_ignore` originals.
+  The user said **keep them** when offered opening excerpts: preserve all nine
+  supplied files byte for byte, including mixed/long clips; do not silently
+  cut them to ten seconds. Each has a poster and its matching TikTok source.
+- Video-reference inputs currently support at most 30 seconds with Seedance
+  and 15 with WAN. The 35.267s and 46.416s examples remain full-length previews
+  with an explicit Preview only reason. The 27.867s example requires Seedance.
+  Keep a compatible selected model; otherwise choose an available compatible
+  one. Round generation duration to the nearest supported whole second, respecting
+  model bounds (WAN 3.3 → 3; Seedance minimum 4). Display source and generation
+  durations separately; reference length is not a promise of output length.
+- Use as reference attaches the actual clip and editable reference directions.
+  Keep the user's own instructions and demo untouched; submit both instruction
+  fields together. Directions guide a talking-head opening and explicitly omit
+  source phone demos/overlays. Never insert a reference into Demo/Saved demos.
+  Persist the catalogue ID and edited directions in verified workflow sessions;
+  reacquire the exact static clip on return. Recovery must preserve directions
+  typed during download. Failed replacements retain the prior attachment but
+  block generation until retried, replaced or removed.
+- Reuse custom reference playback without a Download option and the existing
+  free-user Upgrade to Pro source-link gate. Original source links open for Pro.
+- Verification is local: 117 focused regressions, TypeScript (after Next route
+  type generation) and scoped ESLint pass. Catalogue/source hashes, authenticated catalogue reads,
+  model limits, exact attachment, prompt composition, reference recovery and
+  shared overview navigation are covered by focused regressions. Subsequent
+  browser verification plays all nine originals, checks decoded frames/full
+  durations, picker thumbnails, laptop/mobile layouts, in-place Change, pending
+  demo uploads and shared hook/demo/Wall editors. The production browser reaches
+  sign-in; authenticated production acceptance is still pending. Not deployed.
+
+### Reference videos inside the workflow preview — 17 October 2026, local
+
+- The isolated Talking Head gallery initially looked correct, but the surrounding
+  workflow's broad `.preview video` rules capped its footage at 300px: a 281×499
+  card contained only 169×300 media. Reproduce sizing checks inside the actual
+  workspace/stage/preview CSS, not only a standalone gallery wrapper.
+- Mark reference-card footage with `data-reference-preview-video` and exclude
+  it from the shared output/editor caps using zero-specificity `:where`. Cards
+  retain their own full portrait frame. Keep existing editor/player sizing
+  specificity, natural aspect ratios and whole-frame rendering intact.
+- Added a browser assertion for card/media geometry within the surrounding
+  workflow CSS at laptop and mobile widths. All nine reference previews decode
+  and play without native controls; their supplied full durations remain intact.
+  Shared Hook/Demo/Wall tests cover paused edits and portrait/landscape/square
+  edges. Local display regressions pass (155 tests); production remains separate.
+
+### MCP finishing fixture font dependency — 17 October 2026, local
+
+- `scripts/mcp-video-finishing.test.mjs` sandboxes the shared
+  `explore-format-edit` module to validate the MCP finisher. When that module
+  gained the bundled Explore-font metrics dependency, the harness failed before
+  registering any finishing tools because it only mocked the overlay-width
+  module. Load the real, static font-metrics module through the same sandbox
+  before loading the editor contract.
+- This is test-fixture dependency wiring, not a change to rendering, font
+  choices, saved drafts, MCP permissions, or customer media. Keep the fixture
+  loading the actual metrics JSON so a missing or malformed bundled metrics
+  resource fails the focused MCP regression.
 
 ### Slideshow Create overview and cross-workflow follow-through — 17 October 2026, local
 
@@ -685,6 +885,33 @@ Last reconciled: **15 October 2026**.
   targets); the reference text is 13px. Keep user instructions separate and fully
   editable. See `docs/explore-reference-prompt-and-duration-2026-10-16.md` for
   tests, primary provider documentation and local/production limits.
+
+### Video provider routing — 18 October 2026, local implementation
+
+- User clarification: ReAPI means `reapi.ai`, a distinct provider from
+  OpenRouter. Every newly admitted Seedance 2.5 and WAN 3.0 request now freezes
+  `provider: "reapi"`. Seedance uses `doubao-seedance-2.5-face` with the explicitly
+  requested Less Restriction setting (`content_filter: false`). WAN uses
+  `wan3.0-video` with `content_filter: true`; never switch review channels on
+  rejection. The ordered images/audio/video reach their native `image_urls`,
+  `audio_urls` and `video_urls` fields. Existing UI model IDs remain stable.
+- Previously accepted OpenRouter, Runway and Higgsfield jobs retain their exact
+  provider and fingerprint for recovery. Untagged legacy jobs keep their older
+  routing. Lost POST responses stay uncertain and cannot create a second task.
+  ReAPI task IDs are saved before polling, costs come from settled usage, and
+  completed CDN files are copied into the existing application storage.
+- Preserve ownership/readiness and the six-file limit. ReAPI admission permits
+  Seedance audio/video 2–30 seconds, WAN 1–15 seconds, MP3/WAV audio up to 15 MB,
+  and MP4/MOV video (Seedance up to 200 MB; WAN retains the stricter 32 MB app
+  cap). WAN reference video plus output cannot exceed 30 seconds. Validate
+  before billing; never silently trim, drop, or reinterpret a reference.
+- Migration `20261018062729` adds `reapi` to the provider check without changing
+  existing rows or access rules. Release order: migration, funded worker-only
+  `REAPI_API_KEY`, compatible generation worker, then web. Historical
+  `NEXT_PUBLIC_ENABLE_OPENROUTER_*` flag names remain deployment-compatible.
+  Local regressions verify requests and recovery with mocked HTTP; deployment
+  and authenticated paid production acceptance remain pending. See
+  `docs/reapi-video-routing-2026-10-18.md` for the verified provider contract.
 
 ### Slideshow input fidelity audit — 16 October 2026
 

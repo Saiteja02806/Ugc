@@ -118,7 +118,7 @@ test("worker moderation failures become non-retryable without falling back to a 
   assert.equal(ctx.operation().retry_allowed, false);
 });
 
-test("WAN's real worker path preserves a three-second image hook and persists its result", async () => {
+test("WAN's historical OpenRouter path preserves a three-second image hook and persists its result", async () => {
   const ctx = context(); let posts = 0;
   mock.method(globalThis, "fetch", async (url, init) => {
     assert.ok(String(url).startsWith("https://openrouter.ai/api/v1/"));
@@ -153,7 +153,7 @@ test("WAN recovers polling failures using the accepted ID and never submits agai
   assert.equal(posts, 1); assert.equal(ctx.operation().provider_operation_id, "pending-wan");
 });
 
-test("WAN invalid duration and timed references are rejected before any provider call", async () => {
+test("historical OpenRouter WAN invalid duration and unsupported timed references reject before provider access", async () => {
   mock.method(globalThis, "fetch", async () => assert.fail("must reject before provider access"));
   for (const patch of [{ durationSeconds: 1 }, { referenceAudioUrls: ["https://storage.example.com/voice.mp3"] }, { referenceVideoUrl: "https://storage.example.com/demo.mp4", referenceVideoDurationSeconds: 2 }]) {
     await assert.rejects(runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json, model: "wan_3_0", ...patch } }, context()));

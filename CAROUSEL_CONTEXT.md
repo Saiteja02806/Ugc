@@ -1,5 +1,30 @@
 # Carousel System Context
 
+## 2026-10-18 Repeat scheduling is an explicit new post (local)
+
+- A completed Trending Carousel can be scheduled again. Opening the scheduling
+  drawer creates one fresh idempotency key for that explicit post; retries of
+  that open drawer keep the same key. The prior assignment-wide key incorrectly
+  treated every future time as the same request.
+- The same policy applies to Trending Reaction Reels through a browser-created
+  request key. Wall-of-Text already derives its server key from the verified
+  time, accounts and settings, while Hook videos already include the requested
+  date and time in their idempotency identity.
+- This is local code and regression coverage only. It does not submit or alter
+  any production schedule.
+
+## 2026-10-18 Workflow-to-Scheduling cache handoff (local)
+
+- Manual Explore slideshow confirmation now updates and invalidates the owner's
+  shared schedule list, matching the existing Trending Carousel drawer policy.
+  Hook/Wall/Talking Head and background preparation use the same handoff rules.
+  Scheduling always reloads its list on entry while retaining cached rows and
+  the independent media/connection caches. A recent empty calendar can no longer
+  hide a newly confirmed post for the 30-minute account-cache freshness window.
+- Validation/recovery and publishing APIs are unchanged. Only verified server
+  schedules enter the cache; unconfirmed requests cannot invent entries or
+  cause duplicate scheduling. Local tests do not imply production deployment.
+
 ## 2026-10-17 TikTok publishing derivatives and terminal schedule status
 
 - PNG uploads remain allowed. TikTok publishing prepares separate JPEG copies

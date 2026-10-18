@@ -1,5 +1,18 @@
 # AI Studio model routing
 
+**18 October 2026 Seedream local update:** new Seedream 5.0 Pro image jobs in AI
+Studio and Build AI influencer now freeze `provider: "openrouter"` and use
+`bytedance-seed/seedream-5-0-pro` through `/api/v1/images`. Legacy jobs without a
+provider continue through their original Runway operation. Deploy the worker
+before the website; this is implemented locally and not deployed by this task.
+See [the Seedream routing contract](seedream-openrouter-routing-2026-10-18.md).
+
+**18 October 2026 local update:** new Seedance 2.5 Less Restriction and WAN 3.0
+jobs, including audio/video references, now use ReAPI (`reapi.ai`). See the
+[current routing contract and release order](reapi-video-routing-2026-10-18.md).
+The OpenRouter/Runway routing descriptions below are historical for recovery.
+This local change requires its migration, worker credential and deployment.
+
 Image options are **GPT Image** (`gpt_image`, existing OpenAI route) and
 **Gemini 3 Pro** (`gemini_3_pro`, Google `gemini-3-pro-image`). Gemini 3 Pro
 uses Gemini 3 Pro Image, rather than the previous Gemini 3.1 Flash Image

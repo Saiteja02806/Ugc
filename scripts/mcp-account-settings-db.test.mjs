@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {fixture,id} from './mcp-account-settings-fixture.mjs';
+import {fixture,id,promotionalPreferenceMigration} from './mcp-account-settings-fixture.mjs';
 import {DEFAULT_PUBLISHING_PREFERENCES} from '../lib/scheduling/publishing-preferences.ts';
 import {readFile} from 'node:fs/promises';
 const patch=(state,preferences)=>({expected_revision:state.publishing_revision,preferences});
@@ -11,7 +11,7 @@ test('promotional disclosure defaults off for existing and new accounts and chan
    const legacy=await h.read('existing-owner');
    const input=patch(legacy,{youtubeMadeForKids:true});
    const receipt=await h.mutate('existing-owner',id(99),'publishing_preferences',input);
-   await h.db.exec(await readFile(new URL('../supabase/migrations/20261015190906_tiktok_promotional_content_preference.sql',import.meta.url),'utf8'));
+   await h.db.exec(await readFile(await promotionalPreferenceMigration(),'utf8'));
    assert.deepEqual((await h.db.query("select tiktok_brand_organic,contains_synthetic_media,tiktok_allow_comments from public.user_publishing_preferences where user_id='existing-owner'")).rows,[{tiktok_brand_organic:false,contains_synthetic_media:false,tiktok_allow_comments:false}]);
    assert.equal((await h.read('new-owner')).publishing_preferences.tiktokBrandOrganic,false);
    const state=await h.read('existing-owner');

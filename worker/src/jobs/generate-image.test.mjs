@@ -10,7 +10,9 @@ mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { named
   resolveOwnedPrivateMediaUrl: async (url, owner) => { resolvedReferences.push({ url, owner }); return url; },
 } });
 const seedreamCalls = [];
+const openrouterCalls = [];
 let seedreamError;
+let openrouterError;
 const image = Buffer.from("fixture-image");
 const provider = async (model, prompt, ratio, reference, nativeAspectRatio = false) => {
   received.push({ model, prompt, ratio, reference, nativeAspectRatio });
@@ -39,6 +41,13 @@ mock.module(new URL("../../dist/lib/seedream-image.js", import.meta.url), { name
     if (seedreamError) throw seedreamError;
     await params.onOperationSucceeded(params.providerOperationId ?? "saved-seedream-task");
     return image;
+  },
+} });
+mock.module(new URL("../../dist/lib/openrouter-seedream-image.js", import.meta.url), { namedExports: {
+  generateOpenRouterSeedreamImage: async params => {
+    openrouterCalls.push(params);
+    if (openrouterError) throw openrouterError;
+    return { buffer: image, model: "bytedance-seed/seedream-5-0-pro", requestId: undefined, costUsd: 0.054 };
   },
 } });
 mock.module(new URL("../../dist/lib/image-output.js", import.meta.url), { namedExports: {
@@ -432,5 +441,71 @@ test("Seedream polling failures retain the task and terminal failures disable re
     assert.equal(failed.events.find(event => event.name === "failed").retryAllowed, false);
   } finally {
     seedreamError = undefined;
+  }
+});
+
+test("new Seedream jobs use OpenRouter with every owned reference, prompt and app output dimensions", async () => {
+  const f = seedreamFixture();
+  const refs = [f.imageJob.input_json.referenceImageUrl, "https://media.example.test/room.png", "https://media.example.test/light.png"];
+  Object.assign(f.imageJob.input_json, { provider: "openrouter", characterSource: "ugc-pilot-characters", referenceImageUrls: refs });
+  const legacyCalls = seedreamCalls.length, resolved = resolvedReferences.length;
+  const output = await runGenerateImageJob(f.imageJob, f.context);
+  assert.equal(output.model, "seedream_5_pro");
+  assert.equal(output.provider, "openrouter");
+  assert.equal(output.ratio, "9:16");
+  assert.equal(output.width, 720);
+  assert.equal(output.height, 1280);
+  assert.equal(f.events[0].provider, "openrouter");
+  assert.equal(f.events[0].operationKey, "openrouter-image");
+  assert.equal(seedreamCalls.length, legacyCalls);
+  assert.deepEqual(openrouterCalls.at(-1), {
+    prompt: f.imageJob.input_json.prompt, aspectRatio: "9:16", referenceImageUrl: refs[0], referenceImageUrls: refs,
+  });
+  assert.deepEqual(resolvedReferences.slice(resolved), refs.map(url => ({ url, owner: "fixture-user" })));
+  assert.deepEqual(f.events.findLast(event => event.name === "succeeded").metadata, {
+    model: "bytedance-seed/seedream-5-0-pro", costUsd: 0.054,
+    stagingKey: "generation-staging/fixture-job/openrouter-image-source.png",
+  });
+  assert.equal(f.events.at(-1).name, "persisted");
+});
+
+test("OpenRouter staged image recovery does not require a task ID or issue another paid request", async () => {
+  const f = seedreamFixture({ shouldSubmit: false, status: "provider_succeeded", metadata: { stagingKey: "saved-seedream-source.png" } });
+  f.imageJob.input_json.provider = "openrouter";
+  const before = openrouterCalls.length;
+  const output = await runGenerateImageJob(f.imageJob, f.context);
+  assert.equal(output.provider, "openrouter");
+  assert.equal(openrouterCalls.length, before);
+  const uncertain = seedreamFixture({ shouldSubmit: false });
+  uncertain.imageJob.input_json.provider = "openrouter";
+  await assert.rejects(runGenerateImageJob(uncertain.imageJob, uncertain.context), ProviderSubmissionUncertainError);
+  assert.equal(openrouterCalls.length, before);
+});
+
+test("an ambiguous OpenRouter image failure is recorded without switching to Runway or repeating a paid operation", async () => {
+  const f = seedreamFixture();
+  f.imageJob.input_json.provider = "openrouter";
+  const before = seedreamCalls.length;
+  try {
+    openrouterError = new Error("Lost image submission response");
+    await assert.rejects(runGenerateImageJob(f.imageJob, f.context), ProviderSubmissionUncertainError);
+    assert.equal(seedreamCalls.length, before);
+    assert.equal(f.events.find(event => event.name === "uncertain").operationKey, "openrouter-image");
+    assert.equal(f.events.some(event => event.name === "persisted"), false);
+  } finally { openrouterError = undefined; }
+});
+
+test("legacy Seedream reservations keep their original fingerprint and cannot use the new provider key", async () => {
+  const legacy = seedreamFixture();
+  await runGenerateImageJob(legacy.imageJob, legacy.context);
+  const explicit = seedreamFixture();
+  explicit.imageJob.input_json.provider = "openrouter";
+  await runGenerateImageJob(explicit.imageJob, explicit.context);
+  assert.equal(legacy.events[0].operationKey, "runway-image");
+  assert.notEqual(legacy.events[0].requestFingerprint, explicit.events[0].requestFingerprint);
+  for (const [model, route] of [["seedream_5_pro", "unknown"], ["gemini_3_pro", "openrouter"]]) {
+    const invalid = job(model, "An adult portrait");
+    invalid.input_json.provider = route;
+    await assert.rejects(runGenerateImageJob(invalid, context), /unsupported provider route/);
   }
 });

@@ -65,6 +65,7 @@
 .saveActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
 .saveActions > p { flex: 1 1 180px; order: -1; }
 .saveActions > [role="alert"] { flex-basis: 100%; }
+.overviewActions { flex: none; grid-column: 1 / -1; padding-block: 14px 4px; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .field > textarea:focus-visible, .field > select:focus-visible, .field > input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .field > :disabled { opacity: .6; }
 :global(.dark) .field > select { color-scheme: dark; }

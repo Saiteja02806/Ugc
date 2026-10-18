@@ -435,7 +435,7 @@ export function HookVideoLibraryTab({
                         <CalendarClock className="size-3.5" aria-hidden="true" />
                         View schedule
                       </Link>
-                    ) : (
+                    ) : null}
                       <button
                         type="button"
                         onClick={() => {
@@ -453,9 +453,8 @@ export function HookVideoLibraryTab({
                         ) : (
                           <CalendarClock className="size-3.5" aria-hidden="true" />
                         )}
-                        Schedule
+                        {item.scheduledPostId ? "Schedule another post" : "Schedule"}
                       </button>
-                    )}
                   </div>
                 </div>
               </article>

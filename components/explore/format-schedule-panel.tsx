@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
@@ -13,8 +14,10 @@ import type { WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-dr
 import { formatScheduleDraftKey, readFormatScheduleDraft, serializeFormatScheduleDraft } from "@/lib/explore/format-schedule-draft";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
+import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
 import reviewStyles from "@/components/explore/workflow-schedule-review.module.css";
 import { PendingExploreSchedulePanel } from "@/components/explore/pending-schedule-panel";
 import type { ExploreScheduleComposition } from "@/lib/explore/pending-schedule-client";
@@ -28,6 +31,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   pendingComposition?: ExploreScheduleComposition | null;
 }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const accountTimezone = useAccountTimeZone();
   const owner = user?.uid ?? (localPreview ? "signed-out-preview" : null);
   // Form settings follow the selected source while rendering replaces its
@@ -79,6 +83,9 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   }
   function accept(entry: ScheduleReceipt, data: unknown) {
     const schedule = verifySavedSchedule(data, entry);
+    if (saved()?.input.idempotencyKey !== entry.input.idempotencyKey) return;
+    upsertAccountSchedule(queryClient, entry.owner, schedule);
+    void invalidateAccountSchedules(queryClient, entry.owner);
     const next = { ...entry, scheduleId: schedule.id, timeRejected: undefined };
     setReceipt(next); setMessage(scheduleReceiptMessage(schedule));
     if (draftKey) try { localStorage.removeItem(draftKey); } catch { /* The confirmed receipt remains the scheduling authority. */ }
@@ -112,8 +119,18 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
       await navigator.locks.request(key, { ifAvailable: true }, async lock => {
         if (!lock) throw new Error("Another tab is scheduling this output.");
+        if (!alive.current || currentKey.current !== key) return;
         const prior = saved();
-        if (prior && (!prior.timeRejected || prior.scheduleId)) { if (prior.scheduleId) accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); else await send(prior); return; }
+        if (prior?.scheduleId) {
+          if (receipt?.scheduleId !== prior.scheduleId) { accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); return; }
+          archiveConfirmedSchedule(localStorage, key, prior.input.idempotencyKey!, prior);
+          setReceipt(null); setMessage("Your previous post is saved. Choose the accounts and time for another post, then click Schedule post.");
+          return;
+        }
+        // A stale click from a confirmed screen only opens the new intent;
+        // it cannot immediately submit it after another tab cleared the receipt.
+        if (!prior && receipt?.scheduleId) { setReceipt(null); return; }
+        if (prior && !prior.timeRejected) { await send(prior); return; }
         if (prior?.timeRejected) {
           const value = await authorized("/api/schedules");
           if (!Array.isArray(value.schedules)) throw new Error("Could not verify the rejected scheduling request.");
@@ -129,7 +146,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not save scheduling. Resume the saved request."); }
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
-  const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? imageOnly ? "Your slideshow changes are still being prepared. Finish them before scheduling." : "Your selected video is uploading. You can choose your posting settings below." : !output ? preparing ? "Preparing your publishing file. Choose your accounts, caption and time while it finishes." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : receipt?.scheduleId ? "This post already has a saved schedule." : !receipt && !targets.length ? "Choose a connected account for each selected platform." : "Choose your accounts and time, then click Schedule post.";
+  const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? imageOnly ? "Your slideshow changes are still being prepared. Finish them before scheduling." : "Your selected video is uploading. You can choose your posting settings below." : !output ? preparing ? "Preparing your publishing file. Choose your accounts, caption and time while it finishes." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : receipt?.scheduleId ? "Your previous post is saved. You can schedule this content again." : !receipt && !targets.length ? "Choose a connected account for each selected platform." : "Choose your accounts and time, then click Schedule post.";
   const date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? new Date(`${draft.date}T12:00:00Z`) : null;
   const timing = date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.date && /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
     ? `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)}, ${draft.time}`
@@ -144,7 +161,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Resume schedule" : receipt?.scheduleId ? "Check saved schedule" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Resume schedule" : receipt?.scheduleId ? "Schedule another post" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
     {receipt?.scheduleId ? <Link href="/scheduling" className="text-sm text-primary underline">View in Scheduling</Link> : null}

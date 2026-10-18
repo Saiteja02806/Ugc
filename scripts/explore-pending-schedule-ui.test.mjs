@@ -1,5 +1,6 @@
 import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
 import assert from "node:assert/strict";
+import { createScheduleCacheFixture } from "./scheduling-cache-test-helpers.mjs";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -10,6 +11,7 @@ import * as contract from "../lib/explore/pending-schedule-contract.ts";
 import * as client from "../lib/explore/pending-schedule-client.ts";
 import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const element = (type, props) => ({ type, props });
@@ -35,6 +37,7 @@ const savedEntry = (confirmed = false) => ({ version: 1, owner: "owner-a", signa
 // Render the actual panel and execute its real handlers/effects. The transport,
 // browser storage and React scheduling are isolated; parsers remain real.
 function fixture(options = {}) {
+  const cache = createScheduleCacheFixture(options.props?.owner ?? "owner-a");
   let cursor = 0, tree, serverReply = options.serverReply;
   const slots = [], effects = [], calls = [], timers = new Map(), values = new Map(), changes = [];
   let timerId = 0;
@@ -50,8 +53,10 @@ function fixture(options = {}) {
     useLayoutEffect(create, deps) { const i = cursor++, prior = slots[i]; if (changed(prior?.deps, deps)) { prior?.cleanup?.(); slots[i] = { deps, cleanup: create() }; } },
   };
   const imports = {
+    "@/lib/explore/schedule-repeat-intent": repeatIntent,
     react, "react/jsx-runtime": { jsx: element, jsxs: element }, "next/dynamic": { __esModule: true, default: () => "ScheduleEditor" }, "next/link": { __esModule: true, default: "Link" },
-    "lucide-react": { ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" }, "@tanstack/react-query": { useQuery: () => ({ data: true }) },
+    "lucide-react": { ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" }, "@tanstack/react-query": { useQuery: () => ({ data: true }), useQueryClient: () => cache.queryClient },
+    "@/lib/scheduling/account-data-query": cache.api,
     "@/components/ui/button": { Button: "SharedButton" }, "@/components/explore/workflow-scheduling-panel": { WorkflowSchedulingPanel: "WorkflowSchedulingPanel" }, "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "WorkflowConnectedAccounts" },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" }, "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); return value.connections; } },
@@ -63,7 +68,7 @@ function fixture(options = {}) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/pending-schedule-panel.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, {
     exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, AbortSignal, Error, Date, crypto: { randomUUID }, console,
     navigator: { locks: { request: async (_key, _opts, callback) => callback({ name: storageKey }) } },
-    localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) },
+    localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) },
     setInterval: callback => { const key = ++timerId; timers.set(key, callback); return key; }, clearInterval: key => timers.delete(key),
     fetch: async (url, init) => {
       calls.push({ url, method: init?.method ?? "GET", body: init?.body });
@@ -85,7 +90,7 @@ function fixture(options = {}) {
   const props = { owner: "owner-a", scope: "hook", composition: { signature: "exact-clips-v1", sourceId: id(1), title: "My video", draft: finishDraft, error: null, resolve: async () => finishDraft },
     draft: { platform: "instagram", caption: submission.caption, date: submission.scheduledDate, time: submission.scheduledTime, connectionId: id(3) },
     onChange: value => { changes.push(value); props.draft = value; }, timezone: "Asia/Calcutta", active: true, ...options.props };
-  return { props, calls, values, changes, setServerReply(value) { serverReply = value; },
+  return { props, calls, values, changes, cache, setServerReply(value) { serverReply = value; },
     render() { cursor = 0; tree = exports.PendingExploreSchedulePanel(props); while (effects.length) effects.shift()(); return tree; },
     nodes() { return nodes(tree); }, text() { return text(tree) + (nodes(tree).find(node => node.type === "ScheduleEditor")?.props.errorMessage ?? ""); },
     button(label) { return nodes(tree).find(node => node.type === "SharedButton" && text(node) === label); },
@@ -146,11 +151,23 @@ test("source resolver cannot substitute another opening asset", async () => {
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /prepared video changed/); h.unmount();
 });
 
+test("confirmed background preparation reaches Scheduling while unconfirmed requests stay out of its cache", async () => {
+  const h = fixture();
+  await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.equal(h.cache.data().schedules[0].id, id(20));
+  assert.equal(h.cache.queryClient.getQueryState(h.cache.key).isInvalidated, true);
+  assert.equal(h.cache.foreign().schedules[0].id, "foreign-post");
+  h.unmount();
+});
+
 test("lost POST reply is recovered by read-only check or reload without a duplicate POST", async () => {
   const h = fixture({ loseResponse: true }), editor = await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
   const saved = JSON.parse(h.values.values().next().value); assert.equal(saved.confirmed, false);
+  assert.equal(h.cache.data().schedules.length, 0, "An unconfirmed response cannot invent a calendar row");
   h.button("Check saved request").props.onClick(); await settle(); h.render();
+  assert.equal(h.cache.data().schedules[0].id, id(20));
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1); assert.match(h.text(), /Your schedule is saved/); h.unmount();
   const reloaded = fixture({ saved, serverReply: reply(saved.input) }); reloaded.render(); await settle(); reloaded.render();
   assert.equal(reloaded.calls.length, 1); assert.equal(reloaded.calls[0].method, "GET"); assert.equal(JSON.parse(reloaded.values.values().next().value).confirmed, true); reloaded.unmount();
@@ -202,11 +219,53 @@ test("a verified preparation failure with no targets can be explicitly confirmed
   assert.equal(request.schedule.scheduledFor, next.scheduledFor); h.unmount();
 });
 
-test("platform failures with existing publishing targets cannot create a duplicate schedule", async () => {
+test("platform failures retain their schedule until an explicit new intent", async () => {
   const saved = savedEntry(true), failed = reply(saved.input, "failed"); failed.schedule.targets = [{ id: id(80), status: "scheduled" }];
   const h = fixture({ saved, serverReply: failed }); h.render(); await settle(); h.render();
-  assert.equal(h.button("Schedule saved").props.disabled, true);
+  assert.equal(h.button("Schedule another post").props.disabled, false);
+  h.button("Schedule another post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
+});
+
+test("background Hook, Wall and Phone scheduling permits another post an hour later", async () => {
+  for (const format of ["hook", "wall_text", "phone"]) {
+    const h = fixture({ transport: async (_url, init) => {
+      if (init?.method !== "POST") return;
+      const value = reply(JSON.parse(init.body)); value.schedule.id = randomUUID();
+      return Response.json(value, { status: 202 });
+    } });
+    h.props.composition = { ...h.props.composition, signature: format, draft: { ...finishDraft, kind: format === "phone" ? "phone" : "hook" }, resolve: async () => ({ ...finishDraft, kind: format === "phone" ? "phone" : "hook" }) };
+    await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+    const storageKey = "ugc-explore:background-schedule:v1:owner-a:hook", previous = JSON.parse(h.values.get(storageKey));
+    const repeat = h.button("Schedule another post"); assert.equal(repeat.props.disabled, false);
+    repeat.props.onClick(); repeat.props.onClick(); await settle(); h.render();
+    assert.equal(h.calls.filter(c => c.method === "POST").length, 1);
+    assert.equal(h.values.has(storageKey), false);
+    assert.equal(JSON.parse(h.values.get(`${storageKey}:confirmed:${previous.input.requestKey}`)).input.requestKey, previous.input.requestKey);
+    h.props.draft = { ...h.props.draft, time: "17:30" }; h.render();
+    h.button("Schedule post").props.onClick(); await settle(); h.render();
+    const posts = h.calls.filter(c => c.method === "POST").map(c => JSON.parse(c.body));
+    assert.equal(posts.length, 2); assert.deepEqual(posts[1].draft, posts[0].draft);
+    assert.notEqual(posts[1].requestKey, posts[0].requestKey);
+    assert.equal(Date.parse(posts[1].schedule.scheduledFor) - Date.parse(posts[0].schedule.scheduledFor), 3600000);
+    assert.equal(h.cache.data().schedules.length, 2); h.unmount();
+  }
+});
+
+test("a delayed preparation poll cannot restore an archived intent or overwrite its replacement", async () => {
+  let complete, reading = false;
+  const original = savedEntry(true);
+  const h = fixture({ saved: original, serverReply: reply(), transport: async (_url, init) => {
+    if (reading && !init?.method) return new Promise(resolve => { complete = resolve; });
+  } });
+  await h.form(); reading = true;
+  const polling = h.tick(); await settle(); assert.ok(complete);
+  h.button("Schedule another post").props.onClick(); await settle(); h.render();
+  reading = false; h.props.draft = { ...h.props.draft, time: "17:30" }; h.render();
+  h.button("Schedule post").props.onClick(); await settle(); h.render();
+  const key = "ugc-explore:background-schedule:v1:owner-a:hook", replacement = h.values.get(key);
+  complete(Response.json(reply(original.input, "scheduled"))); await polling;
+  assert.equal(h.values.get(key), replacement, "Old status cannot restore the previous request"); h.unmount();
 });
 
 test("reply verification rejects wrong snapshots and allows existing provider defaults", () => {

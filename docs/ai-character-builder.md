@@ -1,5 +1,18 @@
 # AI character builder
 
+Latest local provider change, October 18, 2026: new Seedream 5.0 Pro batches use
+OpenRouter's exact `bytedance-seed/seedream-5-0-pro` model. Existing Runway jobs
+retain their admitted route and paid-operation recovery. References, app credits,
+4,000-character Seedream limit and output dimensions stay unchanged. See
+[the routing contract and deployment order](seedream-openrouter-routing-2026-10-18.md).
+
+Latest local change, October 18, 2026: image downloads accept both `image` and
+`influencer` collections. Automatic saving promotes the existing asset to
+`influencer`; it must preserve download access. Ownership, ready/deleted state,
+image MIME checks and saved-object signing still apply. See
+[the saved-image download diagnosis](influencer-image-download-fix-2026-10-18.md)
+for production evidence, validation and release status.
+
 Latest local change, October 16, 2026: transient workspace notices now have an
 accessible × and dismiss after three seconds, restarting on repeated actions.
 The generation prompt path remains unchanged. See

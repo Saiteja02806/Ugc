@@ -78,6 +78,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
+  createCarouselScheduleIdempotencyKey,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
@@ -2517,6 +2518,7 @@ export function TrendingDeck({
       setScheduleContext({
         assignmentId: candidate.item.assignmentId,
         contentType: "reaction",
+        requestKey: crypto.randomUUID(),
         coverUrl: candidate.item.creative.thumbnailUrl,
         returnTo: "trending",
         title: candidate.item.creative.title,
@@ -2530,7 +2532,7 @@ export function TrendingDeck({
         assignmentId: candidate.item.assignmentId,
         carouselId: candidate.carousel.carouselId,
         coverUrl: carouselLibraryItem.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${candidate.item.assignmentId}`,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: carouselLibraryItem.id,
         returnTo: "trending",
         title: getCarouselTitle(candidate.carousel),
@@ -2668,7 +2670,7 @@ export function TrendingDeck({
         carouselId: candidate.carousel.carouselId,
         coverUrl:
           result.item.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${candidate.item.assignmentId}`,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: result.item.id,
         returnTo: "trending",
         title: getCarouselTitle(candidate.carousel),
@@ -2933,6 +2935,7 @@ export function TrendingDeck({
 
               const schedule = await createPendingReactionSchedule({
                 candidate: pendingReactionScheduleCandidate,
+                requestKey: scheduleContext.requestKey,
                 selection: submission,
               });
 
@@ -4838,6 +4841,7 @@ async function createPendingWallTextSchedule(params: {
 
 async function createPendingReactionSchedule(params: {
   candidate: CompleteReaction;
+  requestKey: string;
   selection: CarouselScheduleSubmission;
 }) {
   const token = await getCurrentUserIdToken();
@@ -4849,6 +4853,7 @@ async function createPendingReactionSchedule(params: {
   const response = await fetch("/api/trending/reactions/schedules", {
     body: JSON.stringify(createReactionScheduleRequest({
       assignmentId: params.candidate.item.assignmentId,
+      requestKey: params.requestKey,
       caption: params.selection.caption,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,

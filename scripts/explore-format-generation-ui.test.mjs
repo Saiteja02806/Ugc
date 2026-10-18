@@ -459,7 +459,7 @@ for (const format of ["hook", "wall_text"]) {
     setting("Video model").props.onChange("wan_3_0");
     const image = { kind: "image", asset: { id: "image", url: "https://owned.test/person.png", title: "Person" } };
     const video = { kind: "video", asset: { id: "video", url: "https://owned.test/motion.mp4", title: "Motion", durationSeconds: 14, fileSizeBytes: 32 * 1024 ** 2 } };
-    const audio = { kind: "audio", asset: { id: "audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 15, fileSizeBytes: 25 * 1024 ** 2 } };
+    const audio = { kind: "audio", asset: { id: "audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 15, fileSizeBytes: 15 * 1024 ** 2 } };
     for (const ref of [image, video, audio]) h.render().composer.props.referenceControls.props.onChange(ref, ref.kind);
     setting("Video duration").props.onChange(3);
     setting("Video model").props.onChange("google_omni");

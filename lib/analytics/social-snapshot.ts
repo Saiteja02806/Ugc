@@ -45,3 +45,40 @@ export async function readOrRefreshSocialAnalytics(params: {
       warning: "Saved analytics are shown. The refresh could not start; please try again shortly." };
   }
 }
+
+/**
+ * Reads only the last durable analytics result for the owner's currently
+ * connected account. Unlike readOrRefreshSocialAnalytics this function never
+ * queues work or calls a provider, so it is safe behind a read-only tool.
+ */
+export async function readSavedSocialAnalytics(params: {
+  userId: string;
+  operation: "tiktok_videos" | "youtube_channel";
+}) {
+  const scope = {
+    userId: params.userId,
+    jobType: "analytics_sync" as const,
+    projectId: `${params.operation}:current`,
+  };
+  const [completed, connections] = await Promise.all([
+    listBackgroundJobsForUser({ ...scope, completedOnly: true, limit: 5 }),
+    listSocialConnections(params.userId),
+  ]);
+  const platform =
+    params.operation === "youtube_channel" ? "youtube" : "tiktok";
+  const current = connections.filter(
+    (connection) => connection.platform === platform,
+  );
+  const snapshot = selectSocialSnapshot(completed, current);
+
+  return {
+    accounts: snapshot?.data.accounts ?? [],
+    hasSavedSnapshot: snapshot !== null,
+    refreshRecommended:
+      snapshot === null ? current.length > 0 : snapshot.savedAt === 0,
+    savedAt:
+      snapshot && snapshot.savedAt > 0
+        ? new Date(snapshot.savedAt).toISOString()
+        : null,
+  };
+}

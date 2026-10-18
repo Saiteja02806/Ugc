@@ -3,6 +3,7 @@
 import {
   ArrowRight,
   ArrowUpRight,
+  BarChart3,
   BriefcaseBusiness,
   CircleCheck,
   Eye,
@@ -67,6 +68,11 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
     title: "Edit and finish videos",
     description: "Render your selected clips, demos, text, audio, and requested subtitles.",
     icon: Sparkles,
+  },
+  "analytics:read": {
+    title: "Saved social analytics",
+    description: "View saved Instagram, TikTok, and YouTube reports. This does not refresh provider data or change social connections.",
+    icon: BarChart3,
   },
 };
 

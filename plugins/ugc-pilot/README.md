@@ -1,6 +1,6 @@
-# UGC Pilot — 0.2.4 public-submission candidate
+# UGC Pilot — 0.2.5 public-submission candidate
 
-Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes fifteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, saved Library outputs, and read-only connected-social-account and schedule discovery where enabled.
+Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes sixteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, saved Library outputs, saved social analytics, and read-only connected-social-account and schedule discovery where enabled.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. Its portable `mcp.json` explicitly declares OAuth with Client Identifier Metadata Document (CIMD) registration and starts with the minimal `account:read` scope; individual write tools request their own consent when needed. It includes no server executable or credentials. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
@@ -29,6 +29,7 @@ The host must load this skill package for the five creative workflows to be disc
 | “Generate the actual video.” | Create UGC Media: current capabilities, cost checks, submission and retrieval |
 | “Upload my hook and demo, attach them, and finish the video.” | Finish UGC Video: local transfer, owned clip preparation, composition and output retrieval where enabled |
 | “Open this video in Edit, trim it, save my text, and export it.” | Edit UGC Draft: the same saved draft as the application, revision-safe changes and dedicated export where enabled |
+| “Show my saved Instagram, TikTok, or YouTube analytics.” | Manage UGC Analytics: owner-scoped stored reports only, with no provider refresh or social-account change |
 | “Show my connected social accounts and scheduled posts.” | Manage UGC Scheduling: account and schedule-state reads only |
 
 The AI selects skills by deliverable and context, not fixed command keywords. Copy plus prompt requests can run both steps; selected copy remains unchanged. It reuses your brief or, when relevant and connected, reads your business profile. Drafting alone does not submit a paid generation. Slideshow JSON is a semantic content plan, not the existing application Carousel worker contract. Exact video text and demo composition use the separately gated finishing tools. Slide rendering still needs separate tools.
@@ -49,6 +50,10 @@ Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing de
 
 Use the [scheduling workflow](skills/manage-ugc-scheduling/SKILL.md) to inspect connected social-account labels, connection health and existing schedule/target delivery state. It requires a separate `publishing:read` grant after a user requests this information. When live capabilities explicitly report schedule writes enabled, the plugin can create one requested future schedule with separate `publishing:write` consent, a selected owned source, selected owned connections, a time and a stable request ID. It cannot connect a social account, edit, cancel or retry a schedule, or publish a post.
 
+## Saved analytics where deployed
+
+Use the [analytics workflow](skills/manage-ugc-analytics/SKILL.md) for the account's saved Instagram, TikTok and YouTube reports. It first checks `get_analytics_capabilities`, then requires fresh `analytics:read` consent and a verified UGC Pilot account identity. These tools return stored owner-scoped reports only. `refresh_recommended` is a state to report, not permission to call a provider or queue a refresh. The plugin cannot refresh analytics, connect a social account or expose provider credentials.
+
 ## Try it
 
 1. “Use UGC Pilot to check my account, credits, and available generation options. Do not generate anything.”
@@ -56,7 +61,7 @@ Use the [scheduling workflow](skills/manage-ugc-scheduling/SKILL.md) to inspect 
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The reviewed 0.2.4 candidate source exposes **84 tools**. The deployed server can retain its prior catalogue until this candidate is promoted, and existing conversations can retain a cached catalogue, so discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The reviewed 0.2.5 candidate source exposes **89 tools**. The deployed server can retain its prior catalogue until this candidate is promoted, and existing conversations can retain a cached catalogue, so discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.
@@ -64,8 +69,9 @@ The reviewed 0.2.4 candidate source exposes **84 tools**. The deployed server ca
 - Owner-scoped operation history and supported cancellation/retry. Writes require `jobs:write`, the exact operation revision and a stable request UUID. Retry can reserve credits under the original plan; replay recovers the accepted action.
 - Shared Edit-page opening, listing, reading and revision-safe saving, plus dedicated export capabilities/submission/status. Save/open do not render. Export snapshots a saved revision using the website's renderer. See [Edit workflow](skills/edit-ugc-draft/SKILL.md). Preserve the dedicated export UUID; `get_operation` can recover `edit_export_request_id` when discovered.
 - Connected-social-account and schedule-state discovery. These calls omit provider credentials, OAuth scopes, target settings, scheduler identifiers and internal metadata. Gated `create_schedule` uses an explicit selected source/connection/time/request UUID and carries only the verified-email decision made during OAuth consent. Editing, cancellation, retry, publishing and social OAuth are not agent actions in this release.
+- Saved social analytics for Instagram, TikTok and YouTube. These read existing owner-scoped snapshots only, omit provider tokens and private publishing records, and return a truthful stale/partial indicator. Provider refresh is not an agent action in this release.
 
-Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, voice sample/clone/verification/removal and default music, advanced generation/character choices, business settings, further Trending/Carousel actions, schedule editing/cancellation/retry, social publishing and analytics require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
+Full application parity remains unfinished. Explore/slideshow working drafts, slideshow rendering, voice sample/clone/verification/removal and default music, advanced generation/character choices, business settings, further Trending/Carousel actions, schedule editing/cancellation/retry, social publishing and analytics refresh require additional implementation. Private-media upload support is a separately gated server rollout. It requires a verified separate private bucket and its signing/read/cleanup configuration; the helper validates the server's explicit bucket descriptor and never bypasses unavailable storage.
 
 ## Verification status
 

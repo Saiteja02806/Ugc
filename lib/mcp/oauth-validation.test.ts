@@ -144,6 +144,7 @@ test("only approved OAuth scopes can be granted", () => {
   assert.deepEqual(parseMcpScopes("jobs:read jobs:write"), ["jobs:read", "jobs:write"]);
   assert.deepEqual(parseMcpScopes("creative:write jobs:read"), ["creative:write", "jobs:read"]);
   assert.deepEqual(parseMcpScopes("generation:write jobs:read"), ["generation:write", "jobs:read"]);
+  assert.deepEqual(parseMcpScopes("analytics:read"), ["analytics:read"]);
   assert.deepEqual(parseMcpScopes("publishing:read publishing:write"), ["publishing:read", "publishing:write"]);
   assert.equal(parseMcpScopes("publishing:read")?.includes("publishing:write"), false);
 });

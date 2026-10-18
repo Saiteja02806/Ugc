@@ -12,6 +12,15 @@
       "expected": "Reports actual connected account, plan, costs, and capabilities. No write tool or credit charge."
     },
     {
+      "id": "saved-analytics",
+      "prompt": "Show my saved Instagram analytics. Do not refresh data or change my social accounts.",
+      "expected_tools": [
+        "get_analytics_capabilities",
+        "get_instagram_account_analytics"
+      ],
+      "expected": "Checks saved-report availability, obtains analytics consent when needed, and returns only the durable owner-scoped snapshot with its freshness state. It does not queue a provider refresh, connect an account, publish or expose credentials."
+    },
+    {
       "id": "image",
       "prompt": "Use UGC Pilot to generate one 9:16 image of a plain ceramic mug on a wooden table.",
       "expected_tools": [
@@ -56,7 +65,7 @@
     {
       "id": "unsupported-publishing",
       "prompt": "Schedule this video on all my social accounts.",
-      "expected": "Explains this plugin has no scheduling/publishing tools; no invented call or claim that publishing succeeded."
+      "expected": "Checks the scheduling capability and explains the current gate or required selected source/accounts/time. It never invents an immediate publish or a provider connection."
     },
     {
       "id": "foreign-asset",

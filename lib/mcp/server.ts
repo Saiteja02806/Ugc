@@ -28,10 +28,11 @@ import { registerLibraryContentMcpTools, registeredLibraryContentMcpTools } from
 
 import {registerAccountSettingsMcpTools,registeredAccountSettingsMcpTools} from "./account-settings-tools";
 import { registerSchedulingMcpTools, registeredSchedulingMcpTools } from "./scheduling-tools";
+import { registerAnalyticsMcpTools, registeredAnalyticsMcpTools } from "./analytics-tools";
 
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools, ...registeredSchedulingMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools, ...registeredSchedulingMcpTools, ...registeredAnalyticsMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -53,6 +54,7 @@ export const mcpHandler = createMcpHandler(
     registerLibraryContentMcpTools(server);
     registerAccountSettingsMcpTools(server);
     registerSchedulingMcpTools(server);
+    registerAnalyticsMcpTools(server);
     return server;
   },
   {

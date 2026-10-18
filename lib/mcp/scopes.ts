@@ -8,6 +8,7 @@ export const MCP_SCOPES = [
   "jobs:read",
   "jobs:write",
   "creative:write",
+  "analytics:read",
   "publishing:read",
   "publishing:write",
 ] as const;

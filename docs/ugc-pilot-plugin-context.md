@@ -1,6 +1,6 @@
 # UGC Pilot plugin context
 
-Last reviewed: 2026-10-17
+Last reviewed: 2026-10-18
 
 Use this file as the release record for the UGC Pilot Codex/Claude plugin. Update it when the package, deployed MCP catalogue, OAuth behaviour, capability gates, installed-host acceptance, or media-transfer readiness changes. Keep source validation, deployed endpoint checks, and real user acceptance separate.
 
@@ -42,7 +42,9 @@ Never infer a later state from an earlier one. Live capability tools override pa
 - `codex/mcp-scheduling-writes-20261017` now merges the current `origin/main` source into the local candidate and adds plugin version `0.2.4`, with 84 source tools and 15 skills. It adds one separately scoped `publishing:write` tool, `create_schedule`; no social OAuth, edit, cancellation, retry, immediate publication or analytics tool was added.
 - `create_schedule` is disabled unless the deployed MCP has both a configured scheduling runtime and `MCP_SCHEDULING_WRITES_ENABLED=true`. It supplies only the selected owned source, selected owned connection IDs, an explicit future time, an IANA timezone and a stable request ID to the existing scheduling service.
 - The candidate adds a service-only OAuth `email_verified` snapshot. It carries no email or Firebase credential. Existing token rows deliberately default to `false`, so only fresh consent after the migration can make TikTok/YouTube targets eligible. The migration has not been applied to production.
-- This merged candidate still requires clean-source validation, protected staging, a fresh OAuth acceptance, and a real user-approved media task before it can be called released or production-ready.
+- On 2026-10-18, the exact merged candidate commit `6b0e0d8c` passed the complete `npm run test:mcp` suite when its temporary `127.0.0.1` transfer server was permitted, plus deterministic package validation and the five archive tests. The package reports 42 files, 15 skills and 84 tools. These are source/package checks only; they did not make an external request other than the test-local loopback transport.
+- On 2026-10-18, the live public OAuth preflight passed again for `https://mcp.getugcpilot.com/mcp`: health, protected-resource and authorization-server metadata, PKCE S256, issuer-bound redirects, CIMD and the anonymous `401` challenge. The connected production account's read-only `get_profile`, `get_entitlements`, `get_capabilities`, `get_video_finishing_capabilities` and `get_edit_export_capabilities` calls also succeeded. It reported Growth access, 317 available credits, video generation, video finishing and Edit export available. This did not perform an install, consent callback, upload, generation or render.
+- The local Git commit has not been pushed because the session's automatic review requires explicit authorization before sending the private source to GitHub. The candidate requires a protected staging deployment, fresh OAuth acceptance in both hosts, and a real user-approved media task before it can be called released or production-ready.
 
 ## Known gaps
 

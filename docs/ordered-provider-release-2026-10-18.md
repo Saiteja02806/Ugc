@@ -51,6 +51,11 @@ including real text rasterization and planner-to-job failure settlement. Actual
 media-library, Trending text editor and slideshow assembly browser checks pass
 on desktop/mobile with isolated APIs, including atomic failed rechecks,
 save/reopen, independent typography, touch/keyboard placement and dirty saves.
+The first staged Turbopack build caught a worker-style `.js` import in the shared
+manual-text module. It now imports the real `.ts` source, with the existing
+worker compiler rewriting that extension for Node output. The corrected release
+must pass an actual Turbopack production build before promotion; the failed
+staged build never changed production domains.
 
 ## Rollout order
 

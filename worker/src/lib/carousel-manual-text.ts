@@ -1,4 +1,4 @@
-import { EXPLORE_TEXT_FONTS, exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, type ExploreTextFont } from "./explore-text-fonts.js";
+import { EXPLORE_TEXT_FONTS, exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, type ExploreTextFont } from "./explore-text-fonts.ts";
 
 export { EXPLORE_TEXT_FONTS as CAROUSEL_EDIT_FONTS };
 export const CAROUSEL_MANUAL_TEXT_VERSION = "carousel-manual-typography-v1";

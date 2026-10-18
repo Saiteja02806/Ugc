@@ -1,5 +1,16 @@
 # Carousel System Context
 
+## 2026-10-18 Shared manual-text production bundling correction
+
+- The staged production Turbopack build exposed a shared worker import using
+  a `.js` source path. Webpack fixture aliases and TypeScript resolved it, but
+  Turbopack did not. Shared manual text now imports the real `.ts` font module;
+  the worker's existing `rewriteRelativeImportExtensions` emits `.js` for Node.
+- Validate this boundary with the actual production bundler as well as worker
+  compilation and browser fixtures. Do not treat fixture builds as a substitute
+  for a passing staged production build. Domains were not promoted on failure.
+
+
 ## 2026-10-18 Shared media library and background collections (local)
 
 - Settings → Media library and Trending's new Library pill manage reusable

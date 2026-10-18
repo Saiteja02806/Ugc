@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-10-18
 
-This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. Production currently exposes **79** tools. The local scheduling candidate at `7785cebe` has **84** registrations: the production set plus five scheduling tools. Its unpushed analytics successor has **89** registrations: those 84 plus five read-only saved-analytics tools. Neither local candidate is deployed. Rollout gates and each account's capability reads remain authoritative.
+This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. Production currently exposes **79** tools. The local scheduling candidate at `89bd0e94` has **84** registrations: the production set plus five scheduling tools. Its unpushed analytics successor has **89** registrations: those 84 plus five read-only saved-analytics tools. Neither local candidate is deployed. Rollout gates and each account's capability reads remain authoritative.
 
 ## Evidence collected
 
@@ -11,7 +11,7 @@ This audit supersedes the initial 15-tool/12-tool snapshot in the historical rem
 - The full `npm run test:mcp` suite passed on 2026-10-18 for candidate commit `ab7d7631`, including OAuth/PKCE, permission isolation, generation, generic uploads/downloads, Demo records, finishing, operation recovery, Edit drafts/exports, audio, reference/remix, asset groups, Library, account settings and scheduling. The temporary test transfer server uses `127.0.0.1`; it did not use customer media.
 - Live OAuth health/discovery and a connected production account's safe reads passed on 2026-10-18. The account reported short-video generation, video finishing and Edit export available. No write or customer-media work occurred in that verification.
 - The local Claude Code client is signed out and is still using the older 0.1.8 plugin, so it does not yet prove clean Claude host acceptance. See `ugc-pilot-plugin-context.md`.
-- The local analytics successor adds `analytics:read` and a verified-identity requirement for saved report reads. Its focused contract and durable-snapshot tests passed locally; it deliberately exposes no provider refresh or analytics write.
+- The local analytics successor adds `analytics:read` and a verified-identity requirement for saved report reads. Its focused contract and durable-snapshot tests passed locally, and the complete `npm run test:mcp` suite passed at source commit `24bc41f5` on 2026-10-18 when its temporary `127.0.0.1` transfer server was permitted. It deliberately exposes no provider refresh or analytics write.
 
 ## Current MCP coverage
 

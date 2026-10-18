@@ -46,9 +46,17 @@ Never infer a later state from an earlier one. Live capability tools override pa
 - On 2026-10-18, the live public OAuth preflight passed again for `https://mcp.getugcpilot.com/mcp`: health, protected-resource and authorization-server metadata, PKCE S256, issuer-bound redirects, CIMD and the anonymous `401` challenge. The connected production account's read-only `get_profile`, `get_entitlements`, `get_capabilities`, `get_video_finishing_capabilities` and `get_edit_export_capabilities` calls also succeeded. It reported Growth access, 317 available credits, video generation, video finishing and Edit export available. This did not perform an install, consent callback, upload, generation or render.
 - The local Git commit has not been pushed because the session's automatic review requires explicit authorization before sending the private source to GitHub. The candidate requires a protected staging deployment, fresh OAuth acceptance in both hosts, and a real user-approved media task before it can be called released or production-ready.
 
+## Current local analytics successor — 18 October 2026
+
+- `codex/mcp-analytics-read-20261018` starts from the 84-tool scheduling candidate and prepares plugin version `0.2.5`, with **89** source registrations and **16** skills. It adds `get_analytics_capabilities`, `get_instagram_account_analytics`, `get_instagram_content_analytics`, `get_tiktok_analytics` and `get_youtube_analytics`.
+- All five tools are read-only. Report reads require fresh `analytics:read` consent, and the four report tools also require the consent-time verified-identity snapshot. The capability check requires only `account:read` so it can explain missing consent or storage without accessing a report. The OAuth consent view names the new scope.
+- Instagram tools read only persisted application snapshot tables. TikTok and YouTube tools select only completed, owner-scoped background-job outputs that still match current connected accounts. The new saved-result reader does not call a provider, enqueue a refresh, read private publishing records, change social connections, schedule, publish or spend credits.
+- Focused source evidence passed on 2026-10-18: 12 saved-snapshot/policy tests, 8 OAuth scope tests and 5 analytics MCP contract tests. The contract suite checks discovery metadata, missing-scope and unverified-identity rejection before data access, owner propagation, no private-record leakage and fail-closed malformed cache handling. This successor has not run the full MCP suite, been pushed, deployed, staged, or exercised through an installed host.
+
 ## Known gaps
 
 - Neither the earlier 0.2.2 OAuth candidate nor the 0.2.4 scheduling candidate has been deployed to protected staging or production.
+- The 0.2.5 analytics successor is also local only. It exposes saved reports, not provider refresh, social OAuth, schedule publishing or analytics mutation.
 - A clean Codex desktop installation has not yet been witnessed from **Install plugin** through sign-in, consent, callback return, and a successful authenticated read-only request.
 - Claude web connector evidence is not a substitute for a clean Claude Code plugin install and OAuth-return test.
 - The local Claude Code package must be upgraded from `0.1.8` to the reviewed `0.2.2` candidate after normal `claude auth login` succeeds. Confirm `claude auth status`, then use `/mcp` in a new Claude Code session to complete the UGC Pilot OAuth consent and run the stated read-only acceptance prompt.
@@ -61,5 +69,6 @@ Never infer a later state from an earlier one. Live capability tools override pa
 1. Deploy the reviewed candidate to protected staging and verify its health/discovery reflect the intended source and tool count.
 2. In a clean Codex profile, install it, complete normal OAuth, return to Codex, and run only `get_profile`, `get_entitlements` and `get_capabilities`.
 3. Repeat that clean install/OAuth/read-only flow in Claude Code.
-4. With a user-selected, owned hook and Demo, run one bounded real finishing task and verify the downloaded output's bytes, duration and saved receipt.
-5. Confirm the release archive, setup page and deployed source commit match. Complete directory-review materials before public listing.
+4. After fresh `analytics:read` consent in a staging account with a verified email and known saved snapshots, verify one saved report in each host. Confirm that it reports stored freshness truthfully and does not start a provider refresh.
+5. With a user-selected, owned hook and Demo, run one bounded real finishing task and verify the downloaded output's bytes, duration and saved receipt.
+6. Confirm the release archive, setup page and deployed source commit match. Complete directory-review materials before public listing.

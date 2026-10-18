@@ -90,7 +90,7 @@ class PluginBuildTests(unittest.TestCase):
         with zipfile.ZipFile(archive) as package:
             self.assertIsNone(package.testzip())
             self.assertEqual(sorted(package.namelist()), sorted("ugc-pilot/" + name for name in builder.FILES))
-            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 15)
+            self.assertEqual(len([name for name in package.namelist() if name.endswith("/SKILL.md")]), 16)
             for name in builder.FILES:
                 self.assertEqual(package.read("ugc-pilot/" + name), (builder.SOURCE / name).read_bytes().replace(b"\r\n", b"\n") if Path(name).suffix in {".md", ".json", ".mjs"} else (builder.SOURCE / name).read_bytes())
                 if Path(name).suffix in {".md", ".json", ".mjs"}:
@@ -103,7 +103,7 @@ class PluginBuildTests(unittest.TestCase):
         guide = (self.destination / f"ugc-pilot-{self.source_version()}-setup.md").read_text(encoding="utf-8")
         self.assertNotIn("](skills/", guide)
         self.assertIn("skills/edit-ugc-draft/SKILL.md", guide)
-        for skill in ["manage-ugc-groups", "manage-ugc-library", "manage-ugc-scheduling", "remix-ugc-reference", "manage-ugc-account"]:
+        for skill in ["manage-ugc-analytics", "manage-ugc-groups", "manage-ugc-library", "manage-ugc-scheduling", "remix-ugc-reference", "manage-ugc-account"]:
             self.assertIn(f"skills/{skill}/SKILL.md", guide)
         self.assertIn("[client setup](#client-setup)", guide)
         self.assertIn(".agents/plugins/marketplace.json", guide)

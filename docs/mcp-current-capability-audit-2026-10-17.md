@@ -12,6 +12,7 @@ This audit supersedes the initial 15-tool/12-tool snapshot in the historical rem
 - Live OAuth health/discovery and a connected production account's safe reads passed on 2026-10-18. The account reported short-video generation, video finishing and Edit export available. No write or customer-media work occurred in that verification.
 - The local Claude Code client is signed out and is still using the older 0.1.8 plugin, so it does not yet prove clean Claude host acceptance. See `ugc-pilot-plugin-context.md`.
 - The local analytics successor adds `analytics:read` and a verified-identity requirement for saved report reads. Its focused contract and durable-snapshot tests passed locally, and the complete `npm run test:mcp` suite passed at source commit `24bc41f5` on 2026-10-18 when its temporary `127.0.0.1` transfer server was permitted. It deliberately exposes no provider refresh or analytics write.
+- The analytics successor is pushed as draft PR [#71](https://github.com/Saiteja02806/Ugc/pull/71) at `4f09f63f`. Git started a protected website preview for that commit, but it remained queued during this review; no matching MCP build was created, no candidate deployment was accepted, and no production target changed. The connected Supabase project has only its default branch and does not list migration `20261018043539`; create an isolated database branch before any staging migration.
 
 ## Current MCP coverage
 

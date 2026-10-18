@@ -1,5 +1,44 @@
 # Explore context and UI decision record
 
+### New workflow edit text defaults — 18 October 2026
+
+- New manual overlays and Remix-created text with no previous authored style
+  default to Inter Bold (700) across the shared Hook, Talking Head, Demo and
+  Wall-of-Text video editors. Keep existing size, position and compact controls.
+- Existing saved font/weight choices and explicit text preset selections remain
+  authoritative. Do not rewrite old drafts or alter the baked-in footage text.
+
+### Automatic 4:5 slideshow uploads — 18 October 2026, local implementation
+
+- Edit slides → Add slides → Upload images and Replace image automatically
+  prepare non-4:5 photos on a 1080×1350 canvas before uploading. This includes
+  9:16, square and landscape images. Exact 4:5 files pass through unchanged.
+- Preserve the full, orientation-corrected image without stretching or cutting
+  off existing text. Center a proportionally fitted foreground over a soft
+  blurred cover copy. This is deterministic canvas processing, with no AI
+  generation, credits or additional manual step. The user's local file is not
+  modified. Conversion errors block that upload and retain the existing draft.
+- Upload the actual fitted bytes as the owned source asset, so preview, text
+  overlays, saved Library output and scheduling use the same ratio. Process at
+  most two images at a time; retain successful files in source order and existing
+  partial-upload/retry guards. No historical saved or scheduled image is rewritten.
+- Scope is new device uploads/replacements in the manual Explore editor. Existing
+  generated images, selected reference originals and Library selections retain
+  their current contracts. Generation's reference uploads are not normalized.
+  4:5 is this product decision, not a claim that TikTok prohibits other ratios.
+- Verification is local; no production image, schedule or migration is written.
+- Local results: 130 focused tests, TypeScript and scoped ESLint pass. The actual
+  editor/Add slides browser suite passes marked 9:16 upload, square replacement,
+  saved asset/reopen, partial failure, ordering, retry and mobile/touch checks.
+- Broader `explore-slideshow.browser.cjs` passes upload/save/retry/owner checks
+  but fails its final image-panel recreation assertion: after changing the edit
+  target, the generation request omits the previously attached owned IDs. A
+  temporary fixture restoring the pre-conversion upload function fails at the
+  same assertion. This is separate from fitting and remains unresolved; do not
+  report full generation acceptance from the passing conversion tests.
+  No deployment was performed for this change.
+
+
 ### Shared image collections and music library — 18 October 2026, local
 
 - Settings → Media library and Trending's Library pill share owned image

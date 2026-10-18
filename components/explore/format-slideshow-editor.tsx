@@ -20,6 +20,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import { EMPTY_SLIDE_TEXT, parseSlideText, type SlideTextDesign } from "@/lib/explore/slideshow-text";
 import { createSlideTextSvg, renderSlideText } from "@/lib/explore/slideshow-text-client";
 import { prepareSlideshowSequence } from "@/lib/explore/slideshow-preparation";
+import { fitSlideshowUpload } from "@/lib/explore/slideshow-image-client";
 import { FormatSlideshowTextTools } from "./format-slideshow-text-tools";
 import { SlideshowAddSlides, type SlideshowSlideSource } from "./slideshow-add-slides";
 import { useSlideshowSlideDrag } from "./use-slideshow-slide-drag";
@@ -418,7 +419,13 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     working.current = true; setUploading(true); setError(null); setOutput(null); onDirty();
     const selectedRevision = revision.current;
     try {
-      const settled = await Promise.allSettled(files.map(async file => imageFromAsset((await uploadAIStudioReferenceMedia(file, "image", 3, owner, { purpose: "explore-slides" })).asset)));
+      const settled = await prepareSlideshowSequence(files, async file => {
+        try {
+          const fitted = await fitSlideshowUpload(file);
+          if (!alive.current || revision.current !== selectedRevision) throw new Error("The slideshow changed while preparing this image.");
+          return { status: "fulfilled" as const, value: imageFromAsset((await uploadAIStudioReferenceMedia(fitted, "image", 3, owner, { purpose: "explore-slides" })).asset) };
+        } catch (reason) { return { status: "rejected" as const, reason }; }
+      });
       if (!alive.current || revision.current !== selectedRevision) return;
       const images = settled.flatMap(value => value.status === "fulfilled" ? [value.value] : []);
       const next = [...slideRef.current];
@@ -537,6 +544,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
       <details className={textStyles.disclosure}><summary>Slide image<span>Replace or recreate</span></summary><div className={textStyles.imageActions}>
       <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={locked || generationBusy || !selected.image} onClick={() => { replacementTarget.current = selected.referenceSlideId; onRegenerate(previewIndex, selected.image!); }}>Recreate slide {previewIndex + 1}</Button><Button type="button" variant="outline" disabled={locked || generationBusy || localPreview || !owner} onClick={() => replaceInput.current?.click()}>Replace image</Button><Button type="button" variant="outline" disabled={locked || generationBusy || localPreview || !owner} onClick={() => openLibrary("background")}>Choose from library</Button></div>
       {selected.previous ? <Button type="button" variant="ghost" disabled={locked || generationBusy} onClick={() => { const next = [...slideRef.current]; const previous = selected.previous!; next[previewIndex] = { ...selected, mediaAssetId: previous.id, image: previous, previous: undefined }; change(next, previewIndex); }}>Restore previous image</Button> : null}
+      <p>Uploads fit a 4:5 canvas automatically. The full image stays visible, with a blurred background where needed.</p>
       <p>Text already inside an image is part of that image. Recreate or replace the image to change it.</p>
       </div></details>
     </div> : <div className={textStyles.emptyInspector}><p>Use Add slides in your slideshow to choose images, then select a slide to edit its text.</p></div>}

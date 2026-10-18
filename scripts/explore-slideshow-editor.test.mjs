@@ -139,7 +139,7 @@ test("access and release gates stop a save before database mutations", async () 
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult, libraryItem, libraryItemId, locationHref } = {}) {
+async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult, fitUpload = async file => file, libraryItem, libraryItemId, locationHref } = {}) {
   let cursor = 0, nextRequest = 100;
   const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], libraryReads = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
   const navigations = [], browserLocation = locationHref ? { href: locationHref } : undefined;
@@ -159,6 +159,7 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _, owner) => { uploads.push({ file, kind, owner }); return uploadResult ? uploadResult(file) : { asset: { id: id(300 + uploads.length) } }; } },
     "@/lib/explore/slideshow-text": { EMPTY_SLIDE_TEXT, parseSlideText },
     "@/lib/explore/slideshow-preparation": { prepareSlideshowSequence },
+    "@/lib/explore/slideshow-image-client": { fitSlideshowUpload: fitUpload },
     "@/lib/explore/slideshow-text-client": { renderSlideText: async (source, design) => { renders.push({ source, design }); return { source, design }; }, createSlideTextSvg: (design, width, height) => slideTextSvg(design, width, height, measure) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "offline-token"; } },
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: uuid }, "./slideshow-editor.module.css": { default: { preview: "preview", overlay: "overlay" } }, "./workflow-creation.module.css": { default: {} },
@@ -327,6 +328,7 @@ test("a pending image replacement blocks scheduling the previously saved sequenc
   assert.equal(continued, 0, "The upload starts locking the old schedule before the next render");
   assert.equal(h.control("Button", "Schedule slideshow"), undefined);
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  await new Promise(setImmediate);
   finishUpload({ asset: { id: id(301), collection: "image", status: "ready", url: "https://storage.test/replacement.png", title: "Replacement", createdAt: "", ratio: "4:5" } });
   await new Promise(setImmediate);
   assert.equal(h.control("Button", "Schedule slideshow"), undefined);
@@ -338,6 +340,21 @@ test("a pending image replacement blocks scheduling the previously saved sequenc
   assert.deepEqual(h.requests[1].slides.map(slide => slide.mediaAssetId), [id(301), id(202)]);
 });
 
+test("slide uploads send fitted files before adding owned images and retain successful files when another conversion fails", async () => {
+  const prepared = [];
+  const h = await editor({ fitUpload: async file => { prepared.push(file.name); if (file.name === "bad.png") throw new Error("Could not read this image"); return { ...file, name: "portrait-4x5.png" }; },
+    uploadResult: file => ({ asset: { id: id(350), collection: "image", status: "ready", url: "https://storage.test/portrait-4x5.png", title: file.name, createdAt: "", ratio: "4:5" } }) });
+  h.control("input", "Upload slideshow images").props.onChange({ currentTarget: { files: ["portrait.png", "bad.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  await new Promise(setImmediate);
+  assert.deepEqual(prepared, ["portrait.png", "bad.png"]);
+  assert.equal(h.uploads.length, 1); assert.equal(h.uploads[0].file.name, "portrait-4x5.png");
+  assert.ok(h.control("button", "Preview slide 3"));
+  assert.match(text(h.render()), /1 image added.*Some images could not be uploaded/s);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(350)]);
+});
+
 test("a failed valid image replacement keeps the old sequence unscheduled until explicit re-save", async () => {
   let rejectUpload, continued = 0;
   const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise((_, reject) => { rejectUpload = reject; }) });
@@ -346,6 +363,7 @@ test("a failed valid image replacement keeps the old sequence unscheduled until 
   h.control("input", "Replace slideshow image").props.onChange({ currentTarget: { files: [{ name: "replacement.png", type: "image/png", size: 100 }], value: "selected" } });
   assert.equal(h.dirty.length, dirtyBefore + 1);
   priorSchedule.props.onClick();
+  await new Promise(setImmediate);
   rejectUpload(new Error("Upload failed"));
   await new Promise(setImmediate);
   assert.equal(continued, 0);

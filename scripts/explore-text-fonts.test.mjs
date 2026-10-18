@@ -19,6 +19,15 @@ const edit = text => ({ version: 1, format: "hook", trimStartMs: 0, trimEndMs: 2
 const tools = { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");
 
+test("new Remix text defaults to Inter Bold in Hook and Wall workflows", () => {
+  for (const format of ["hook", "wall_text"]) {
+    const source = { version: 1, referenceId: "ref", slideId: null, format, language: "en", sourceSha256: "a".repeat(64), blocks: [{ text: "Reference", startMs: 0, endMs: 2000 }] };
+    const remixed = applyVideoTextRemix({ ...edit(null), format }, { blocks: ["New business message"], heading: "", body: "" }, source);
+    assert.equal(remixed.textOverlays[0].font, "inter");
+    assert.equal(remixed.textOverlays[0].fontWeight, 700);
+  }
+});
+
 test("font choices survive save/reopen, blank drafts, preset changes and Remix; legacy shape is unchanged", () => {
   assert.deepEqual(parseExploreFormatEdit(edit(legacyText)), edit(legacyText));
   for (const { id: font } of EXPLORE_TEXT_FONTS) for (const { value: fontWeight } of EXPLORE_TEXT_WEIGHTS) {

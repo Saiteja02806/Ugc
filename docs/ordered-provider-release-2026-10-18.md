@@ -29,6 +29,10 @@ text styling and scoped planning repair, merged into the same release checkout.
   positioning through the compatible worker renderer.
 - Helpful Tips v59 repairs rejected hidden image descriptions without rewriting
   valid slide copy and preserves specific failed-candidate diagnostics.
+- New text in shared workflow video editors starts in Inter Bold (700), including
+  newly applied Remix text without previous styling. Saved choices remain intact.
+- New manual slideshow device uploads and replacements fit a 4:5 canvas with
+  the full image visible; existing exact-4:5 bytes pass through unchanged.
 
 ## Validation
 
@@ -56,6 +60,12 @@ manual-text module. It now imports the real `.ts` source, with the existing
 worker compiler rewriting that extension for Node output. The corrected release
 must pass an actual Turbopack production build before promotion; the failed
 staged build never changed production domains.
+The final web-only additions pass 81 typography/draft/image-fit tests, TypeScript,
+scoped ESLint and actual font/slide-upload desktop/mobile browser checks. The
+broader slideshow fixture has a pre-existing recreation-attachment failure noted
+in `docs/slideshow-auto-fit-2026-10-18.md`; upload acceptance is checked separately.
+The final UI commit retains exactly the worker tree deployed at `b8df8a68`;
+the release receipt verifies tree equality before allowing web promotion.
 
 ## Rollout order
 

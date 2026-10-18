@@ -3340,13 +3340,16 @@ function getTargetStatusHelpText(
 
   if (target.status === "publishing") {
     if (target.nextRetryAt) {
-      return `Temporary platform issue. Retrying ${formatShortDateTime(
+      const prefix = Date.parse(target.nextRetryAt) <= Date.now()
+        ? "Retry pending since"
+        : "Retry scheduled for";
+      return `${prefix} ${formatShortDateTime(
         target.nextRetryAt,
         timezone,
       )}.`;
     }
 
-    return "The worker is posting this video now.";
+    return "The worker is publishing this post now.";
   }
 
   if (target.status === "scheduled") {

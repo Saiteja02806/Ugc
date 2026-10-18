@@ -1,0 +1,11 @@
+.gallery { display: flex; min-width: 0; flex-direction: column; gap: 20px; padding: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 20px 16px; }
+.card { min-width: 0; }
+.referenceAction { width: 100%; min-height: 36px; margin-top: 10px; border-radius: 10px; font-size: 12px; }
+.tabs { display: flex; flex: none; align-items: center; gap: 24px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+.tabs[hidden] { display: none; }
+.tabs button { padding-block: 18px; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 500; }
+.tabs button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); }
+.tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; border-radius: 6px; }
+.overviewHeader { display: flex; justify-content: flex-end; padding: 16px 20px 0; }
+@media (max-width: 480px) { .gallery { padding: 14px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }

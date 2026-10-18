@@ -29,6 +29,19 @@ const draft = (overrides = {}) => ({ kind: "hook", instructions: "  Keep my word
 const queued = (count = 1, overrides = {}) => ({ ok: true, jobId: "job-1", jobs: Array.from({ length: count }, (_, i) => ({ jobId: `job-${i + 1}`, videoId: `video-${i + 1}` })), message: `${count} started.`, partial: false, ...overrides });
 const response = (body, status = 202) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
+test("talking-head reference directions and user instructions reach generation with the exact owned reference", async () => {
+  const actual = harness({ uploadReference: async () => ({ url: "https://storage.googleapis.com/test/reference.mp4", assetId: "00000000-0000-4000-8000-000000000001", duration: 3.3 }) });
+  await actual.client.generate(draft({ instructions: "Say my own product message.", referenceInstructions: "Follow the opening delivery. Do not show the original demo.",
+    videoReference: { name: "opening.mp4", url: "blob:opening", duration: 3.3, file: { type: "video/mp4", size: 1024 } } }));
+  const body = JSON.parse(actual.calls[0].body);
+  assert.equal(body.prompt, "Reference instructions:\nFollow the opening delivery. Do not show the original demo.\n\nYour instructions:\nSay my own product message.");
+  assert.equal(body.referenceVideoAssetId, "00000000-0000-4000-8000-000000000001");
+  assert.equal(body.referenceVideoDurationSeconds, 3.3);
+  const missingOwn = harness();
+  await assert.rejects(missingOwn.client.generate(draft({ instructions: "", referenceInstructions: "Reference directions only" })), /Write your instructions/);
+  assert.equal(missingOwn.calls.length, 0);
+});
+
 function harness(overrides = {}) {
   const calls = [], uploads = [], tokens = [];
   let nextKey = 0;

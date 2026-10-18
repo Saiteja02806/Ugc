@@ -9,7 +9,7 @@ try {
   for (const migration of [
     "20260927202555_mcp_oauth.sql",
     "20260928111109_mcp_oauth_atomic_family_revocation.sql",
-    "20261017080000_mcp_verified_identity.sql",
+    "20261018043539_mcp_verified_identity.sql",
   ]) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), "utf8"));
   }

@@ -10,7 +10,7 @@ The adapter accepts only a caller-owned media asset or saved Library item, calle
 
 The website requires a Firebase-verified identity for TikTok and YouTube. Prior MCP access tokens carried only `firebase_uid` and scopes, so passing a guessed eligibility flag would have weakened that policy.
 
-Migration `20261017080000_mcp_verified_identity.sql` adds a service-only `email_verified` boolean to OAuth authorization codes and access/refresh tokens. The OAuth consent route stores it only after `requireFirebaseUser` has verified the Firebase identity. Code exchange and refresh copy the same boolean. The MCP transport exposes only that boolean internally as `authInfo.extra.emailVerified`; it never returns an email address or Firebase bearer credential. Existing token families default to `false` and need fresh consent before they can qualify for TikTok/YouTube targeting.
+Migration `20261018043539_mcp_verified_identity.sql` adds a service-only `email_verified` boolean to OAuth authorization codes and access/refresh tokens. The OAuth consent route stores it only after `requireFirebaseUser` has verified the Firebase identity. Code exchange and refresh copy the same boolean. The MCP transport exposes only that boolean internally as `authInfo.extra.emailVerified`; it never returns an email address or Firebase bearer credential. Existing token families default to `false` and need fresh consent before they can qualify for TikTok/YouTube targeting.
 
 ## Current scope
 

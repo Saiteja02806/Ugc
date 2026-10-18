@@ -2,74 +2,62 @@
 
 Last reviewed: 2026-10-17
 
-This file is the source-of-truth for the UGC Pilot plugin's release state. It is deliberately outside the distributable plugin folder so internal evidence and open gaps are not presented as user-facing capability claims. Update it whenever the package, deployed MCP catalogue, OAuth behavior, capability gates, or installed-host acceptance changes.
+Use this file as the release record for the UGC Pilot Codex/Claude plugin. Update it when the package, deployed MCP catalogue, OAuth behaviour, capability gates, installed-host acceptance, or media-transfer readiness changes. Keep source validation, deployed endpoint checks, and real user acceptance separate.
 
-## Product goal
+For the current production 79-tool product-parity matrix, see `mcp-current-capability-audit-2026-10-17.md`. This file tracks the plugin and host-install lifecycle rather than every application feature.
 
-An authenticated UGC Pilot user should be able to use Codex, Claude, or another supported IDE host to plan hooks, generate available media, transfer locally selected hook/demo files, attach media, open and update shared Edit drafts, export when available, and retrieve results. The MCP server remains the authority for account isolation, permissions, rollout gates, and media work; the plugin supplies the install metadata, skills, and local transfer guidance.
+## Goal
 
-## Evidence rules
+An authenticated user should be able to use a supported IDE host to discover UGC Pilot, complete OAuth, plan or generate available media, transfer selected local hook or Demo files, attach and edit owned media, export a finished result, and recover the result. The MCP server remains the authority for permissions, account isolation, feature gates, and all media work.
 
-Keep these states separate:
+## Evidence definitions
 
-| State | Meaning |
+| State | What it proves |
 | --- | --- |
-| Source-validated | Static package checks and mocked/fixture tests passed at a particular commit. It does not prove deployment. |
-| Public-preflight-validated | Production health, OAuth discovery, and anonymous OAuth challenge passed. It does not authenticate a user. |
-| Installed-host-validated | A clean Codex or Claude installation completed OAuth and used the stated tool. This needs a real client session. |
-| Live-capability-validated | An authenticated read-only capability call confirmed the deployed setting for the connected account. |
+| Source validated | Package checks and fixture/contract tests passed for a commit. It does not prove a deployment. |
+| Public preflight validated | Health, OAuth discovery and the anonymous OAuth challenge passed. It does not authenticate a user. |
+| Installed-host validated | A clean Codex or Claude Code install completed sign-in, consent, callback return and a stated tool call. |
+| Live-capability validated | An authenticated read-only request confirmed the connected account's deployed capability. |
 
-Never infer a later state from an earlier one. Tool discovery and the capability tools always override package copy.
+Never infer a later state from an earlier one. Live capability tools override package documentation.
 
-## Current package candidate
+## Current evidence
 
-- Branch: `codex/ugc-plugin-oauth-acceptance-20261017`, based on `d73ef153` with the OAuth/package acceptance changes.
-- Plugin version: `0.2.2`. This avoids replacing the existing 0.2.0 public archive or the separate 0.2.1 private-upload candidate with different bytes.
-- Source catalogue: 79 tools, matching the current release package contract.
-- The canonical portable `mcp.json` targets `https://mcp.getugcpilot.com/mcp` as Streamable HTTP and declares OAuth with CIMD plus the initial `account:read` scope. The live issuer advertises CIMD and DCR fallback.
-- `.agents/plugins/marketplace.json` declares **UGC Pilot local development** with `installation: "AVAILABLE"` and `authentication: "ON_INSTALL"`. Codex CLI requires the checkout root to be added explicitly with `codex plugin marketplace add /absolute/path/to/UGC`; merely opening the checkout did not auto-import the repository marketplace in this audit.
-- The package has skills and transfer helpers only. It has no executable hook, account credential, client secret, or embedded bearer token.
+- Candidate branch `codex/ugc-plugin-oauth-acceptance-20261017` contains plugin version `0.2.2`. Its portable `mcp.json` uses `https://mcp.getugcpilot.com/mcp`, OAuth CIMD and the initial `account:read` scope. It is separate from the historical public `0.2.0` archive and the private-upload `0.2.1` candidate.
+- Candidate package checks passed: deterministic package validation, seven Node package tests and five Python archive tests. The package contains 41 files, 14 skills and a 79-tool catalogue declaration.
+- The shared checkout currently contains the historical `0.2.0` package, which also validates with 41 files, 14 skills and 79 declared tools. Do not use that result as proof that the separate `0.2.2` OAuth candidate was deployed or installed.
+- Public OAuth preflight passed against the live MCP endpoint: health, protected-resource metadata, authorization-server metadata, PKCE S256, issuer-bound redirects, CIMD and anonymous `401` challenge.
+- A disposable isolated Codex marketplace installation reported version `0.2.2` with `authPolicy: ON_INSTALL`; the installed manifests and onboarding files exactly matched the candidate. This validated packaging, not browser OAuth return.
+- `claude plugin validate` accepted the candidate's `0.2.2` Claude manifest.
+- On 2026-10-17, the shared checkout's full `npm run test:mcp` suite passed after its Explore font fixture loader was updated. It exercises OAuth/PKCE, account and scope isolation, generation receipts, uploads/downloads, Demo attachment, finishing, Edit drafts/exports, audio, references/remixes, groups, Library and account settings. The test's local loopback transfer server needs an environment where `127.0.0.1` is permitted.
+- On 2026-10-17, the current shared source passed TypeScript's repository-wide no-emit check, the focused `hook-workflow-preview` tests (9/9), the Hook component's ESLint check, and the plugin package tests (7/7). These are source checks only; they do not replace a full runtime bundle or installed-host acceptance.
+- The release-critical path was also rerun directly on 2026-10-17: local upload/download transfer passed 14/14 against its temporary loopback server, Demo-tool tests passed 7/7, and video-finishing tests passed 10/10. The transfer suite required local `127.0.0.1` socket permission; it did not contact production or transfer account media.
+- Authenticated production read-only calls for profile, entitlements, generation capabilities and finishing capabilities succeeded, including a fresh repeat on 2026-10-17. The connected account reported video generation and finishing available. No content was generated, uploaded, edited, rendered or published during this check.
+- The local Claude Code client is version `2.1.76`, but `claude auth status` reported `loggedIn: false` on 2026-10-17. Its enabled UGC Pilot package is the older `0.1.8` package from `ugc-pilot-private-beta`; `claude mcp list` therefore reports its UGC Pilot endpoint as failed to connect. Claude web connector status does not change this result.
+- Vercel inspection on 2026-10-17 found the website project `ugc` and isolated MCP project `ugc-mcp` both `READY` in production at commit `683d750c16c721be03bf7ef23844d4fb4d00aec0`. Those deployments are from `codex/explore-overview-release-20261017`, not the `0.2.2` OAuth/package candidate at `2a6c859`, so their health does not establish candidate install acceptance.
+- A root `npm run build` started normally on 2026-10-17 but remained at Next's `compile` stage without emitted diagnostics or file progress beyond the expected build scaffold. It was stopped after a bounded observation period and is **inconclusive**, not a passing source-build check. The clean candidate's normal Turbopack build is also not evidence because its temporary `node_modules` junction lies outside Turbopack's filesystem root. Resolve a reproducible clean-source build before staging any new candidate.
 
-## Current production evidence
+## Current local scheduling candidate — 18 October 2026
 
-On 2026-10-16, the public endpoint returned all of the following:
+- `codex/mcp-scheduling-writes-20261017` now merges the current `origin/main` source into the local candidate and adds plugin version `0.2.4`, with 84 source tools and 15 skills. It adds one separately scoped `publishing:write` tool, `create_schedule`; no social OAuth, edit, cancellation, retry, immediate publication or analytics tool was added.
+- `create_schedule` is disabled unless the deployed MCP has both a configured scheduling runtime and `MCP_SCHEDULING_WRITES_ENABLED=true`. It supplies only the selected owned source, selected owned connection IDs, an explicit future time, an IANA timezone and a stable request ID to the existing scheduling service.
+- The candidate adds a service-only OAuth `email_verified` snapshot. It carries no email or Firebase credential. Existing token rows deliberately default to `false`, so only fresh consent after the migration can make TikTok/YouTube targets eligible. The migration has not been applied to production.
+- This merged candidate still requires clean-source validation, protected staging, a fresh OAuth acceptance, and a real user-approved media task before it can be called released or production-ready.
 
-- `/mcp/health` returned `200` and `{ "status": "ready" }`.
-- Both protected-resource metadata URLs returned the canonical MCP resource, the `mcp.getugcpilot.com` issuer, and the nine allowed OAuth scopes.
-- Authorization-server metadata returned the authorize, token, revoke, and registration endpoints; PKCE `S256`; issuer-bound redirect support; and CIMD support.
-- An anonymous request to `/mcp` requires OAuth with a `401` `WWW-Authenticate` challenge that points to protected-resource metadata and requests `account:read`.
-- The already-connected Codex session discovered 79 live tools, matching the current release package contract. Discovery itself is separate from a clean installation.
-- A previous candidate package installed through `codex plugin marketplace add` then `codex plugin add ugc-pilot@ugc-pilot-local` and reported `authPolicy: "ON_INSTALL"`. The noninteractive CLI did not open a browser, so it did not prove sign-in or callback return. This 0.2.2 candidate must repeat that install before release.
-- Read-only authenticated calls succeeded for `get_profile`, `get_entitlements`, `get_capabilities`, `get_video_finishing_capabilities`, `get_audio_capabilities`, and `get_edit_export_capabilities`.
-- That account currently reports image and short-video generation available; video finishing and Edit export available with `creative:write`; audio generation, upload, download, import, and voice cloning unavailable.
+## Known gaps
 
-Use `node scripts/mcp-public-oauth-preflight.mjs` for the no-credential public preflight. It exercises only health, discovery, and the anonymous OAuth challenge. It does not create a client, follow an authorization redirect, use a token, read customer content, or generate media.
+- Neither the earlier 0.2.2 OAuth candidate nor the 0.2.4 scheduling candidate has been deployed to protected staging or production.
+- A clean Codex desktop installation has not yet been witnessed from **Install plugin** through sign-in, consent, callback return, and a successful authenticated read-only request.
+- Claude web connector evidence is not a substitute for a clean Claude Code plugin install and OAuth-return test.
+- The local Claude Code package must be upgraded from `0.1.8` to the reviewed `0.2.2` candidate after normal `claude auth login` succeeds. Confirm `claude auth status`, then use `/mcp` in a new Claude Code session to complete the UGC Pilot OAuth consent and run the stated read-only acceptance prompt.
+- Private IDE uploads remain gated pending a verified private bucket and delivery/signing configuration. Audio runtime is also gated in production.
+- A real hook-to-Demo-to-download workflow needs explicit content authorization. Do not create customer media simply as a connectivity test.
+- A public directory listing/reviewer demo recording is still missing.
 
-## 2026-10-17 verification evidence
+## Required release acceptance
 
-- `node scripts/validate-ugc-pilot-plugin.mjs`, `node --test scripts/validate-ugc-pilot-plugin.test.mjs`, and `python scripts/test-ugc-pilot-plugin-build.py` passed for 0.2.2. The deterministic archive contains 41 files and 14 skills, and the historical 0.2.0 public ZIP remains intact with its own checksum.
-- `npm run audit:mcp:oauth-public` passed against `https://mcp.getugcpilot.com/mcp`: health, protected-resource discovery, issuer metadata, PKCE S256, issuer-bound redirects, CIMD, and the anonymous `401` OAuth challenge all matched the package declaration.
-- An isolated Codex marketplace copy of the candidate installed as `ugc-pilot@ugc-pilot-oauth-acceptance`, version 0.2.2, with `authPolicy: "ON_INSTALL"`. The cached `plugin.json`, `mcp.json`, Codex/Claude compatibility manifests, README, and onboarding skill exactly matched the candidate. The disposable plugin and marketplace were then removed; the existing `ugc-pilot-local` connection was preserved.
-- `npm run test:mcp` passed from the clean candidate checkout. It covers OAuth/PKCE, token handling, account isolation, generation receipts, uploads, Demo records, finishing, drafts, exports, audio, references, Creative Asset groups, Library, and account settings using fixtures and database contracts.
-- Authenticated, read-only production calls succeeded for profile, entitlements, generation capabilities, and video-finishing capabilities. The latter reported `available: true` for the connected account.
-- The shared checkout's unrelated pending Explore changes currently make `scripts/mcp-video-finishing.test.mjs` fail because its sandboxed module loader does not whitelist the newly imported `./explore-text-fonts.ts`. This is a pending-application-release test-harness regression, not a failure in the clean plugin candidate; fix it before merging that application release.
-
-## What is not yet proved or ready
-
-- A public Codex directory listing has not been approved. The local marketplace is a development/test install path, not a public listing.
-- The 0.2.2 OAuth-packaging candidate has not been installed and accepted in a clean host. Live discovery may remain 79 tools and does not prove the install path.
-- A clean-user interactive Codex installation has not yet been observed from **Install plugin** through sign-in, consent, return callback, discovery, and a successful authenticated read-only tool. This is the remaining proof for the full install/sign-in question.
-- Claude web showed a connected custom connector earlier, but a clean Claude Code plugin-install and OAuth-return test remains separate.
-- The new private IDE upload path remains disabled. It requires a distinct verified private bucket and its delivery/signing configuration; production bucket policy has not been verified.
-- Audio runtime is disabled in production.
-- The broader application still lacks parity for Explore/slideshow working drafts and rendering, advanced character generation, voice management/default music, parts of Trending/Carousel, social publishing, and analytics.
-- Public-submission material is incomplete: the validator still reports a missing reviewer demo recording, and directory/publisher review is not a code-level pass.
-
-## Required acceptance sequence before calling the plugin production-ready
-
-1. Deploy the reviewed source candidate to a protected staging MCP endpoint and confirm discovery exposes the expected 79 tools.
-2. In a clean Codex profile, install through the local marketplace. Confirm that the `ON_INSTALL` policy opens OAuth, complete normal sign-in and consent, and confirm return to Codex.
-3. Start a new chat, verify the onboarding skill appears, then call `get_profile`, `get_entitlements`, and `get_capabilities` without a write.
-4. Repeat the clean-install/OAuth/read-only path in Claude Code. Treat Claude web custom-connector evidence separately.
-5. With explicit content authorization, perform one bounded real hook → demo → finished download test, preserving request IDs and checking the actual output bytes. Do not generate merely to test connectivity.
-6. Verify the candidate's release archive, setup page, and deployed MCP source commit match. Then separately complete directory submission/reviewer evidence before advertising public installation.
+1. Deploy the reviewed candidate to protected staging and verify its health/discovery reflect the intended source and tool count.
+2. In a clean Codex profile, install it, complete normal OAuth, return to Codex, and run only `get_profile`, `get_entitlements` and `get_capabilities`.
+3. Repeat that clean install/OAuth/read-only flow in Claude Code.
+4. With a user-selected, owned hook and Demo, run one bounded real finishing task and verify the downloaded output's bytes, duration and saved receipt.
+5. Confirm the release archive, setup page and deployed source commit match. Complete directory-review materials before public listing.

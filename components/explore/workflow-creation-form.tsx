@@ -27,6 +27,7 @@ const OUTPUTS = AI_STUDIO_GENERATION_QUANTITIES.map((count) => ({ value: String(
 const RATIOS = AI_STUDIO_VIDEO_ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
 
 export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
+  referenceInstructions?: { value: string; onChange: (value: string) => void };
   instructions: string;
   onInstructionsChange: (value: string) => void;
   creator: WorkflowAttachment;
@@ -37,7 +38,7 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -92,6 +93,11 @@ export function WorkflowCreationForm({ kind, instructions, onInstructionsChange,
     {creator.loading || videoReference.loading || audio.loading ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
     {creator.error || videoReference.error || audio.error ? <p role="alert" className="text-xs leading-5 text-destructive">{creator.error || videoReference.error || audio.error}</p> : null}
 
+    {referenceInstructions ? <section className="space-y-2 rounded-xl border border-border p-3" aria-label="Reference instructions">
+      <label htmlFor={`${promptId}-reference`} className="text-sm font-medium">Reference instructions</label>
+      <p className="text-xs leading-5 text-muted">These directions are sent together with your instructions. Edit them to guide your version.</p>
+      <textarea id={`${promptId}-reference`} rows={4} maxLength={8000} value={referenceInstructions.value} onChange={event => referenceInstructions.onChange(event.target.value)} className="w-full rounded-lg border border-border bg-background p-3 text-sm leading-5" />
+    </section> : null}
     <div className={creation.instructionsField}>
       <label htmlFor={promptId} className="block text-sm font-medium">Your instructions</label>
       {kind === "hook" ? <p id={helperId} className="sr-only">Describe the words, delivery and setting. Text-only prompts are supported; reference images are optional.</p> : null}

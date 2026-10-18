@@ -2,7 +2,31 @@
 
 ### MCP finishing fixture dependency — 17 October 2026
 
-- `worker/src/lib/explore-format-edit.ts` imports the shared text-font module. Any VM-based MCP finishing fixture that loads this file must also load `explore-text-font-metrics.json` and provide `./explore-text-fonts.ts`; otherwise it fails before exercising video-finishing policy. Keep this test-only loader aligned with the worker import graph.
+- `worker/src/lib/explore-format-edit.ts` imports the shared text-font module.
+  Any VM-based MCP finishing fixture that loads this file must also load
+  `explore-text-font-metrics.json` and provide `./explore-text-fonts.ts`;
+  otherwise it fails before exercising video-finishing policy. Keep this
+  test-only loader aligned with the worker import graph.
+
+### TikTok slideshow publishing and stale status — 17 October 2026
+
+- Accept PNG uploads and create platform-compatible JPEG publishing copies
+  automatically. Do not make users re-upload JPG/WebP, overwrite originals,
+  replace Library slide URLs or reorder their sequence. The shared publisher
+  covers manual Explore slideshows and automatic Carousel Library items.
+- A failed physical publishing job must settle its currently linked owned
+  platform target, clear its retry date and retain any other platform success.
+  Retry budgets cannot advertise attempts beyond the worker's actual limit.
+  Upcoming and overdue retry times have distinct neutral UI wording; photo
+  failures must not claim that a video failed or that retrying unchanged helps.
+- Production migration `20261017105341` repaired the reported TikTok target to
+  Failed with no retry date; the overall schedule is Partially failed because
+  Instagram published successfully. Original 11:10 IST time and the Instagram
+  receipt remain unchanged. No historical publishing attempt was submitted.
+- Conversion, worker retry-limit handling and revised UI wording are tested
+  locally and await worker/website release. Database status protection is live.
+  Keep this distinct from successful end-to-end TikTok publishing acceptance.
+  See `docs/tiktok-slideshow-publishing-fix-2026-10-17.md`.
 
 ### Slideshow Create overview and cross-workflow follow-through — 17 October 2026, local
 

@@ -15,13 +15,14 @@ class AccessError extends Error { constructor(message, status) { super(message);
 const service = functions('lib/trending/creative-edit-service.ts', ['mergeSubmittedContent', 'mergeStoredContentWithOwnerDefaults'], { ...manual, clampNormalizedTextPosition: position => position, TrendingCreativeEditAccessError: AccessError });
 test('appearance travels from editor PATCH through validation, stored content and reopen without trusting source URLs', () => {
   const editor = functions('components/trending/trending-creative-editor.tsx', ['toPatchPayload', 'hasCarouselSlidePreviewChanged']);
-  const textStyle = { ...manual.defaultCarouselManualTextStyle(), font: 'montserrat', fontSize: 38, headingSize: 52, color: '#ff8800' };
-  const content = { format: 'carousel', version: 'trending-creative-edit-v1', slides: [{ ...base, textPosition: { x: .35, y: .7 }, textStyle }] };
+  const textStyle = { ...manual.defaultCarouselManualTextStyle(), font: 'montserrat', fontSize: 38, headingSize: 52, color: '#ff8800', textWidth: 600, align: 'right', lineHeight: 1.4, fontWeight: 700, headingBackground: 'none', bodyBackground: 'box', backgroundColor: '#112233', backgroundOpacity: .45, outline: false };
+  const content = { format: 'carousel', version: 'trending-creative-edit-v1', slides: [{ ...base, headline: 'Useful\nhabits\ntoday', textPosition: { x: .35, y: .7 }, textStyle }] };
   const payload = editor.toPatchPayload({ assignmentId: 'assignment', revision: 3 }, content);
   assert.deepEqual(payload.slides[0].textStyle, textStyle); assert.equal(payload.slides[0].backgroundUrl, undefined);
   const merged = service.mergeSubmittedContent({ ...content, slides: [base] }, { ...content, slides: payload.slides });
   const reopened = service.mergeStoredContentWithOwnerDefaults({ ...content, slides: [base] }, { content_json: merged });
   assert.deepEqual(reopened.slides[0].textStyle, textStyle); assert.deepEqual(reopened.slides[0].textPosition, { x: .35, y: .7 });
+  assert.equal(reopened.slides[0].headline, 'Useful\nhabits\ntoday');
   assert.equal(editor.hasCarouselSlidePreviewChanged(base, reopened.slides[0]), true);
   assert.equal(editor.hasCarouselSlidePreviewChanged(reopened.slides[0], structuredClone(reopened.slides[0])), false);
   const reset = service.mergeSubmittedContent(reopened, { ...reopened, slides: [{ ...payload.slides[0], textStyle: null }] });

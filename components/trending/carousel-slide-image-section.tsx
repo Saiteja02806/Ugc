@@ -8,7 +8,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import type { TrendingCarouselEditSlide } from "@/lib/trending/creative-edit-contract";
 import { CAROUSEL_SLIDE_IMAGE_PROJECT, validateCarouselSlideImage } from "@/lib/trending/carousel-slide-image-selection";
 import { useAuth } from "@/contexts/auth-context";
-import { ImageLibraryPicker, type ImageLibraryChoice } from "@/components/media/image-library-picker";
+import { ImageLibraryPicker, type ImageLibraryChoice, type LibrarySlidePreview } from "@/components/media/image-library-picker";
 import { sameBackgroundTargets } from "@/lib/media/image-library";
 import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 
@@ -20,12 +20,13 @@ export async function uploadCarouselSlideImage(file: File) {
 export type CarouselSlideImagePreview = { slideId: string; url: string };
 
 export function CarouselSlideImageSection({
-  slide, slides, disabled = false, onUploaded, onRestore, onBusyChange, onPreviewChange, onLibraryApply,
+  slide, slides, disabled = false, onUploaded, onRestore, onBusyChange, onPreviewChange, onLibraryApply, renderLibrarySlidePreview,
   uploadImage = uploadCarouselSlideImage,
 }: {
   slide: TrendingCarouselEditSlide;
   slides?: TrendingCarouselEditSlide[];
   onLibraryApply?: (choice: ImageLibraryChoice) => void;
+  renderLibrarySlidePreview?: LibrarySlidePreview;
   disabled?: boolean;
   onUploaded: (slideId: string, asset: MediaAsset) => void;
   onRestore: (slideId: string) => void;
@@ -104,7 +105,7 @@ export function CarouselSlideImageSection({
         if (file) void upload(file, target);
       }} />
     <Button type="button" size="sm" variant="outline" className="ml-2 mt-3" disabled={disabled || uploadingSlide !== null || !user} onClick={() => setLibraryTarget({ ids: (slides ?? [slide]).map(item => item.slideId), selected: slide.slideId })}>Choose from library</Button>
-    {libraryTarget && user ? <ImageLibraryPicker key={user.uid} owner={user.uid} slideIds={libraryTarget.ids} selectedSlideId={libraryTarget.selected} onBusyChange={onBusyChange} onClose={() => setLibraryTarget(null)} onApply={async choice => {
+    {libraryTarget && user ? <ImageLibraryPicker key={user.uid} owner={user.uid} slideIds={libraryTarget.ids} selectedSlideId={libraryTarget.selected} renderSlidePreview={renderLibrarySlidePreview} onBusyChange={onBusyChange} onClose={() => setLibraryTarget(null)} onApply={async choice => {
       if (!sameBackgroundTargets((slides ?? [slide]).map(item => item.slideId), libraryTarget.ids)) throw new Error("Your slideshow changed. Reopen the library before applying backgrounds.");
       if (onLibraryApply) onLibraryApply(choice);
       else { const target = choice.assignments[0]; const asset = choice.assets.find(item => item.id === target?.assetId); if (target && asset) onUploaded(target.slideId, asset); }

@@ -1,5 +1,68 @@
 # Carousel System Context
 
+## 2026-10-18 Trending text editor correction — compact controls and explicit styling (local)
+
+- Moving a text group previously initialized a manual preset that always drew
+  white heading panels. Position and background are now independent. New edits
+  default to no panel unless the source explicitly uses pill treatment; saved
+  v1 styles retain their existing panels until the user selects None. This
+  supersedes the unconditional white-background rule in the earlier entry below.
+- Hook/headline is multiline. Enter creates an intentional line break; text
+  width controls automatic wrapping. Explicit newlines activate the shared
+  manual layout so preview, saved JSON, reopening and exported glyphs agree.
+- The compact toolbar provides font, separate heading/body size, color and
+  weight, alignment, outline, wrap width and line spacing. Background is an
+  explicit per-block choice: None, Per line, or Text box. Background color and
+  opacity appear only when needed; position sliders are collapsed by default.
+  Native font/select menus use explicit dark foreground/background styling.
+- Desktop keeps the slideshow preview visible when lower controls are scrolled
+  into view. Phone controls wrap within the modal and retain its save footer.
+- Optional style fields are strictly validated in the shared parser. Manual
+  renderer v2 includes them in shared layout and existing render fingerprints;
+  browser text and worker glyph outlines use the same measured font advances,
+  line breaks, alignment, backgrounds and geometry. No migration is required.
+- Validation: 45 renderer/worker tests and 19 persistence/containment/schema
+  tests pass, as do worker compilation, application TypeScript and scoped lint.
+  Actual-editor browser fixtures cover three lines, movement without adding
+  panels, explicit background choices, compact/dark fields, style persistence,
+  failed-save recovery and mouse/touch/keyboard movement. Laptop/mobile visual
+  checks remain distinct from authenticated production acceptance.
+- Not deployed in this task. Website and rendering worker must be released
+  together, with the compatible worker available before exposing new controls.
+
+## 2026-10-18 Library picker clarity and composed previews (local)
+
+- Background selection now shows This slide/All slides before choosing an image.
+  Selection updates a proposed composition immediately; one fixed Apply action
+  revalidates used sources before updating the draft. Library management uses an
+  in-place Manage library view, without opening a second library dialog. Upload
+  remains available directly in selection. Saving/scheduling stay explicit.
+- Trending's proposal reuses EditorPreview with a temporary copy of the current
+  slide and the same server-normalized centre-crop/original-role values as Apply.
+  Text cannot be dragged inside the proposal. Saved edit/render identities are
+  not changed or submitted merely by viewing it. Explore uses its own SVG overlay.
+- Collection image order/repeat counts are visible, with earlier/later controls
+  for this proposal only. These controls do not persist collection membership
+  order or alter other posts. Full membership is used despite search filters.
+- Images use contained portrait thumbnails; mobile has a collection selector.
+  Music tab state survives navigation, previews play one at a time, and busy
+  uploads/updates block library dismissal/tab changes. Failed uploads can retry
+  only failed files. Existing ownership, archive and save guards remain in place.
+- 313 focused regressions, application TypeScript, scoped ESLint and actual
+  library/editor browser fixtures pass. New browser checks include text/crop,
+  proposed reorder, failed rechecks, laptop/mobile footer bounds, upload retry
+  and interruption, and native audio preview pausing. No migration, worker change,
+  deployment or production mutation. See `docs/library-ui-clarity-2026-10-18.md`.
+
+## 2026-10-18 Library image hover control suppression (local)
+
+- Shared library thumbnails/previews route pointer interaction to their containing
+  controls instead of the image element, suppressing the reported browser image
+  search hover affordance. No app-owned outbound image link was present. Image
+  selection and keyboard controls remain available; no library entry point is
+  removed. This CSS-only change requires a website release. Browser-specific
+  native overlay acceptance remains distinct from DOM hit-target checks.
+
 ## 2026-10-18 Shared manual-text production bundling correction
 
 - The staged production Turbopack build exposed a shared worker import using
@@ -9,7 +72,6 @@
 - Validate this boundary with the actual production bundler as well as worker
   compilation and browser fixtures. Do not treat fixture builds as a substitute
   for a passing staged production build. Domains were not promoted on failure.
-
 
 ## 2026-10-18 Shared media library and background collections (local)
 

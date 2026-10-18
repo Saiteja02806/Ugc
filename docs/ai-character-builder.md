@@ -1,5 +1,58 @@
 # AI character builder
 
+Latest local UI fix, October 18, 2026: each generation batch shows its submitted
+prompt as plain text once directly above its images, with a compact Copy icon.
+The text and Copy icon share the image's width, so the prompt wraps directly
+above the image instead of running across the workspace. There is no Prompt
+heading, disclosure or bordered panel. Long text scrolls
+within six lines; Copy always copies the complete original multiline prompt and
+reports success or failure. Prompt text comes from the authenticated owned
+job, not the editable next draft; queued batches cache the admitted prompt and
+History previews use their saved prompt. Status responses expose only prompts
+marked `promptSource: user`, preserving the existing rule against exposing old
+planner instructions. Equal prompts from separate submissions stay separate.
+
+Candidate cards now isolate their image controls, and the sticky composer has an
+explicit higher stacking order. Image × controls scroll behind the composer
+instead of appearing or receiving clicks on top of it. Reference thumbnail ×
+controls remain available inside the composer. Local browser checks exercise the
+actual overlapping coordinates at desktop and mobile widths, draft independence,
+copying and History prompt display. These fixes are not yet deployed.
+Validation passed: 74 focused tests, full TypeScript, scoped ESLint and the
+real-component browser fixture. Screenshots are saved under
+`.tmp/character-reference-browser/submitted-prompt-desktop.png` and
+`composer-scroll-{desktop,mobile}.png`. Fixture checks make no paid requests;
+authenticated production acceptance remains pending deployment.
+
+Latest local fix, October 18, 2026: uploaded/pasted character references append
+instead of replacing the previous upload. The compact composer retains ordered
+thumbnails, individual removal and the existing ten-reference limit. Rapid
+pastes queue behind an active upload; generation remains locked until the queue
+settles. Failed uploads retain already accepted references and show an error.
+The + chooser allows multiple files, and chooser/drop inputs follow the same
+append behavior. Adding uploads or pasted images retains selections from My
+influencers; selecting saved images also retains uploads. The ten-image limit
+applies to their combined total.
+
+Single uploads retain `referenceImageAssetId`. Multiple uploads submit the ordered
+`referenceImageAssetIds` list. Saved-character IDs and uploaded-asset IDs can be
+combined; singular and plural fields for the same source remain exclusive.
+Each image is owner/ready/MIME/size/storage-checked
+before the batch reserves credits. The original first URL and complete ordered
+`referenceImageUrls` use the already supported worker multi-reference path.
+Plural IDs participate in fingerprints and pending-request recovery; legacy
+requests retain their original fingerprints. No migration or worker change is
+required. This fix has not yet been deployed.
+
+Local validation: 71 composer, uploader, session, hook and API tests passed,
+along with TypeScript and scoped ESLint. The real-component browser fixture
+checks rapid/serial pastes, multi-file selection, drop, three saved references
+plus two uploads reaching the same request, individual removal, the combined
+ten-image limit, retry recovery, and desktop/mobile fit. Fixtures use mocked
+uploads/generation and spend no credits. Review images:
+`.tmp/character-reference-browser/mixed-references-desktop.png` and
+`mixed-references-mobile.png`. Hosted acceptance remains pending deployment.
+
 Latest local provider change, October 18, 2026: new Seedream 5.0 Pro batches use
 OpenRouter's exact `bytedance-seed/seedream-5-0-pro` model. Existing Runway jobs
 retain their admitted route and paid-operation recovery. References, app credits,

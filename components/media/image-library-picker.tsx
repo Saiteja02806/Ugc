@@ -1,65 +1,85 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ImageLibraryBrowser } from "./image-library-browser";
+import { MediaLibraryPanel } from "./media-library-dialog";
 import { resolveLibraryImages } from "@/lib/media/image-library-client";
 import { planSlideshowBackgrounds, type BackgroundAssignment } from "@/lib/media/image-library";
 import type { MediaAsset } from "@/lib/media/types";
 import styles from "./image-library.module.css";
-import { MediaLibraryButton } from "./media-library-dialog";
 
 export type ImageLibraryChoice = { assets: MediaAsset[]; assignments: BackgroundAssignment[] };
-type Review = { title: string; assets: MediaAsset[]; assignments: BackgroundAssignment[] };
+type Candidate = { assets: MediaAsset[]; collection?: string };
+export type LibrarySlidePreview = (slideId: string, asset: MediaAsset) => ReactNode;
 
-/** Target IDs are captured when opened, never read from the currently selected slide. */
-export function ImageLibraryPicker({ owner, slideIds, selectedSlideId, mode = "background", remaining = 10, onApply, onClose, onBusyChange }: {
+/** Selection and scope only propose changes; one explicit Apply verifies every used source. */
+export function ImageLibraryPicker({ owner, slideIds, selectedSlideId, mode = "background", remaining = 10, onApply, onClose, onBusyChange, renderSlidePreview }: {
   owner: string; slideIds: string[]; selectedSlideId?: string; mode?: "background" | "add" | "reference"; remaining?: number;
-  onApply: (choice: ImageLibraryChoice) => Promise<void>; onClose: () => void; onBusyChange?: (busy: boolean) => void;
+  onApply: (choice: ImageLibraryChoice) => Promise<void>; onClose: () => void; onBusyChange?: (busy: boolean) => void; renderSlidePreview?: LibrarySlidePreview;
 }) {
-  const [review, setReview] = useState<Review | null>(null);
-  const [single, setSingle] = useState<MediaAsset | null>(null);
-  const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
+  const [candidate, setCandidate] = useState<Candidate>({ assets: [] });
+  const [scope, setScope] = useState<"slide" | "all">(selectedSlideId ? "slide" : "all");
+  const [manage, setManage] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [busy, setBusy] = useState(false), [libraryBusy, setLibraryBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const working = useRef(false), alive = useRef(true);
   const busyCallback = useRef(onBusyChange);
   useEffect(() => { busyCallback.current = onBusyChange; }, [onBusyChange]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; busyCallback.current?.(false); }; }, []);
-  function preview(assets: MediaAsset[], all: boolean, name: string) {
-    const targets = all ? slideIds : selectedSlideId ? [selectedSlideId] : [];
-    setReview({ assets, title: name, assignments: mode === "background" ? planSlideshowBackgrounds(targets, assets.map(asset => asset.id)) : [] });
-    setSingle(null); setError(null);
+  const locked = busy || libraryBusy;
+  const targets = scope === "all" ? slideIds : selectedSlideId ? [selectedSlideId] : [];
+  const assignments = mode === "background" && candidate.assets.length && targets.length ? planSlideshowBackgrounds(targets, candidate.assets.map(asset => asset.id)) : [];
+  const images = new Map(candidate.assets.map(asset => [asset.id, asset]));
+  const shownIndex = Math.min(previewIndex, Math.max(0, assignments.length - 1));
+  const shownAssignment = assignments[shownIndex];
+  const shownImage = mode === "background" ? images.get(shownAssignment?.assetId ?? "") : candidate.assets[0];
+  const valid = candidate.assets.length > 0 && (mode === "background" ? assignments.length > 0 : mode !== "add" || candidate.assets.length <= remaining);
+  const usedImages = new Set(assignments.map(item => item.assetId)).size;
+  const repeated = assignments.length - usedImages;
+  function propose(assets: MediaAsset[], collection?: string) {
+    setCandidate({ assets, collection }); setError(null); setPreviewIndex(0);
+    if (collection) setScope("all");
   }
+  function changeLibraryBusy(next: boolean) { setLibraryBusy(next); busyCallback.current?.(next); }
   async function apply() {
-    if (!review || working.current) return;
+    if (!valid || locked || working.current) return;
+    const proposed = { assets: candidate.assets, assignments };
     working.current = true; setBusy(true); setError(null); onBusyChange?.(true);
     try {
-      const ids = mode === "background" ? review.assignments.map(item => item.assetId) : review.assets.map(asset => asset.id);
+      const ids = mode === "background" ? proposed.assignments.map(item => item.assetId) : proposed.assets.map(asset => asset.id);
       const fresh = await resolveLibraryImages(owner, ids);
       if (!alive.current) return;
-      await onApply({ assets: [...fresh.values()], assignments: review.assignments });
+      await onApply({ assets: [...fresh.values()], assignments: proposed.assignments });
       if (alive.current) { onBusyChange?.(false); onClose(); }
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : "Could not apply these images. Your draft is unchanged."); }
     finally { working.current = false; if (alive.current) { setBusy(false); onBusyChange?.(false); } }
   }
-  const images = new Map(review?.assets.map(asset => [asset.id, asset]));
-  return <Dialog open onOpenChange={open => { if (!open && !working.current) onClose(); }}><DialogContent className={styles.dialog} showCloseButton={!busy}>
-    <DialogHeader><DialogTitle>{review ? "Review image changes" : "Image library"}</DialogTitle><DialogDescription>{mode === "background" ? "Choose an image for one slide, one image for every slide, or a collection in order. Changes stay in this draft until you save." : mode === "add" ? "Choose library images in the order you want to add them." : "Choose a saved image to guide generation."}</DialogDescription></DialogHeader>
+  function moveCandidate(from: number, to: number) {
+    const next = [...candidate.assets]; [next[from], next[to]] = [next[to], next[from]]; propose(next, candidate.collection);
+  }
+  const targetLabel = scope === "all" ? `All ${slideIds.length} slides` : `Slide ${slideIds.indexOf(selectedSlideId ?? "") + 1} of ${slideIds.length}`;
+  return <Dialog open onOpenChange={open => { if (!open && !working.current && !libraryBusy) onClose(); }}><DialogContent className={`${styles.dialog} ${styles.pickerDialog}`} showCloseButton={!locked}>
+    <DialogHeader><div className={styles.heading}><DialogTitle>{manage ? "Manage library" : mode === "background" ? "Choose slide backgrounds" : mode === "add" ? "Add images to slideshow" : "Choose reference image"}</DialogTitle><Button type="button" variant="ghost" size="sm" className="mr-7" disabled={locked} onClick={() => { setManage(value => !value); setError(null); }}>{manage ? "Back to selection" : "Manage library"}</Button></div><DialogDescription>{manage ? "Organize images and music. Your slideshow stays unchanged." : mode === "background" ? "Choose images and check the slide preview before applying." : mode === "add" ? `Choose up to ${remaining} images in the order you want them.` : "Use a saved image to guide generation."}</DialogDescription></DialogHeader>
+    {!manage && mode === "background" ? <fieldset className={styles.scope} disabled={locked}><legend>Replace backgrounds on</legend>{selectedSlideId ? <label><input type="radio" name="background-scope" value="slide" checked={scope === "slide"} onChange={() => { setScope("slide"); setPreviewIndex(0); }} />This slide <span>{slideIds.indexOf(selectedSlideId) + 1}</span></label> : null}<label><input type="radio" name="background-scope" value="all" checked={scope === "all"} onChange={() => { setScope("all"); setPreviewIndex(0); }} />All slides <span>{slideIds.length}</span></label></fieldset> : null}
     <div className={styles.dialogBody}>
-      {!review && !single ? <div className="mb-3"><MediaLibraryButton label="Add images or music to library" disabled={busy} /></div> : null}
-      {review ? <div className="space-y-4"><p className="text-sm font-medium">{review.title}</p>
-        <div className={styles.review}>{mode === "background" ? review.assignments.map((assignment, index) => <figure key={assignment.slideId}><img src={images.get(assignment.assetId)?.url} alt={`Proposed background for slide ${slideIds.indexOf(assignment.slideId) + 1}`} width={160} height={200} /><figcaption>Slide {slideIds.indexOf(assignment.slideId) + 1 || index + 1}</figcaption></figure>) : review.assets.map((asset, index) => <figure key={asset.id}><img src={asset.url} alt={asset.title} width={160} height={200} /><figcaption>{index + 1}. {asset.title}</figcaption></figure>)}</div>
-        {mode === "background" ? <p className="text-xs text-muted">Only backgrounds change. Slide order and editable text stay in place. The preview shows the image selection; check text contrast in the editor before saving.</p> : null}
-        <div className={styles.actions}><Button type="button" variant="outline" disabled={busy} onClick={() => setReview(null)}>Back to images</Button><Button type="button" disabled={busy} onClick={() => void apply()}>{busy ? "Checking images…" : mode === "background" ? `Apply to ${review.assignments.length} slide${review.assignments.length === 1 ? "" : "s"}` : mode === "reference" ? "Use reference image" : `Add ${review.assets.length} images`}</Button></div>
-      </div> : single ? <div className="space-y-4"><img src={single.url} alt={single.title} width={500} height={400} className="max-h-72 w-full object-contain" /><div className={styles.actions}>
-        <Button type="button" variant="outline" onClick={() => setSingle(null)}>Back to images</Button>
-        {selectedSlideId ? <Button type="button" onClick={() => preview([single], false, single.title)}>Preview selected slide</Button> : null}
-        {slideIds.length > 1 ? <Button type="button" variant="outline" onClick={() => preview([single], true, `${single.title} on every slide`)}>Preview all slides</Button> : null}
-      </div></div> : <ImageLibraryBrowser owner={owner} mode="pick" multiple={mode === "add"} limit={mode === "add" ? remaining : 1} disabled={busy}
-        onChoose={assets => { if (mode === "background") { setSingle(assets[0]); setError(null); } else preview(assets, false, mode === "reference" ? "Reference image" : "Add selected images"); }}
-        onCollection={mode === "background" && slideIds.length ? (assets, name) => preview(assets, true, `${name} · collection order, repeating if needed`) : undefined} />}
+      {manage ? <MediaLibraryPanel key={owner} onBusyChange={changeLibraryBusy} /> : <div className={styles.pickerLayout}>
+        <ImageLibraryBrowser owner={owner} mode="pick" multiple={mode === "add"} limit={mode === "add" ? remaining : 1} disabled={busy} onBusyChange={changeLibraryBusy}
+          onSelectionChange={assets => propose(assets)} onCollection={mode === "background" ? (assets, name) => propose(assets, name) : undefined} />
+        <aside className={styles.proposal} aria-label="Proposed slide preview">
+          <div className={styles.heading}><h3>{mode === "background" ? "Slide preview" : "Your selection"}</h3><span className="text-xs text-muted">{candidate.collection ?? (shownImage?.title || "No image selected")}</span></div>
+          {shownImage ? <>
+            <div className={styles.composition} inert>{mode === "background" && renderSlidePreview && shownAssignment ? renderSlidePreview(shownAssignment.slideId, shownImage) : <img src={shownImage.url} alt={shownImage.title} width={shownImage.width ?? 1080} height={shownImage.height ?? 1350} />}</div>
+            {mode === "background" && assignments.length > 1 ? <div className={styles.previewNavigation}><Button type="button" size="sm" variant="outline" disabled={locked || shownIndex === 0} onClick={() => setPreviewIndex(value => value - 1)}>Previous</Button><span>Slide {slideIds.indexOf(shownAssignment.slideId) + 1} of {slideIds.length}</span><Button type="button" size="sm" variant="outline" disabled={locked || shownIndex === assignments.length - 1} onClick={() => setPreviewIndex(value => value + 1)}>Next</Button></div> : null}
+            <p role="status" className="text-xs text-muted">{mode === "background" ? `${assignments.length} slide${assignments.length === 1 ? "" : "s"} · ${usedImages} image${usedImages === 1 ? "" : "s"}${repeated ? ` · ${repeated} repeated placement${repeated === 1 ? "" : "s"}` : ""}` : `${candidate.assets.length} selected`}</p>
+            {candidate.collection || mode === "add" ? <ol className={styles.orderList} aria-label="Image order for this slideshow">{candidate.assets.map((asset, index) => <li key={asset.id}><span>{index + 1}. {asset.title}</span><Button type="button" size="icon-sm" variant="ghost" aria-label={`Move image ${index + 1} earlier`} disabled={locked || index === 0} onClick={() => moveCandidate(index, index - 1)}>↑</Button><Button type="button" size="icon-sm" variant="ghost" aria-label={`Move image ${index + 1} later`} disabled={locked || index === candidate.assets.length - 1} onClick={() => moveCandidate(index, index + 1)}>↓</Button></li>)}</ol> : null}
+            {candidate.collection ? <p className="text-xs text-muted">Order changes apply to this slideshow only. {repeated ? "Images repeat from the beginning." : ""} {candidate.assets.length > assignments.length ? `${candidate.assets.length - assignments.length} extra images are unused.` : ""}</p> : null}
+          </> : <div className={styles.empty}><p>Select an image{mode === "background" && scope === "all" ? " or use a collection" : ""} to preview it here.</p></div>}
+        </aside>
+      </div>}
     </div>
-    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+    <footer className={styles.pickerFooter} aria-label="Library selection actions"><div><strong>{manage ? "Library management" : mode === "background" ? targetLabel : `${candidate.assets.length} images selected`}</strong><p>{locked ? "Wait for the current operation to finish…" : mode === "background" ? "Text and order stay in place. Save the slideshow after applying." : "Your current draft stays unchanged until you confirm."}</p>{error ? <p role="alert" className={styles.error}>{error}</p> : null}</div><div className={styles.actions}><Button type="button" variant="outline" disabled={locked} onClick={onClose}>Cancel</Button>{!manage ? <Button type="button" disabled={locked || !valid} onClick={() => void apply()}>{busy ? "Checking images…" : mode === "background" ? assignments.length > 1 ? `Apply to ${assignments.length} slides` : "Apply background" : mode === "reference" ? "Use reference image" : `Add ${candidate.assets.length || "selected"} images`}</Button> : null}</div></footer>
   </DialogContent></Dialog>;
 }

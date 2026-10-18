@@ -1,0 +1,24 @@
+.panel { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); display: grid; gap: 14px; }
+.panel > button { justify-self: start; }
+.hint { margin-top: 4px; color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; }
+.field { display: grid; gap: 6px; min-width: 0; font-size: 11px; font-weight: 500; }
+.panel select, .number { height: 34px; max-width: 100%; border: 1px solid var(--input); border-radius: 6px; padding: 0 8px; background: #202020; color: #f2f2f2; color-scheme: dark; font-size: 13px; }
+.panel select { width: 112px; }
+.panel select.font { width: 158px; }
+.number { width: 68px; }
+.swatch { appearance: none; width: 34px; height: 34px; padding: 4px; border: 1px solid var(--input); border-radius: 6px; background: #202020; cursor: pointer; }
+.swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.swatch::-webkit-color-swatch { border: 0; border-radius: 3px; }
+.width { width: 158px; height: 34px; accent-color: var(--primary); }
+.segment { display: flex; border: 1px solid var(--input); border-radius: 6px; overflow: hidden; }
+.segment button { display: grid; place-items: center; width: 34px; height: 32px; background: #202020; color: #bcbcbc; cursor: pointer; }
+.segment button[aria-pressed="true"] { background: #3a302b; color: #ff7044; }
+.segment button:hover { background: #383838; }
+.segment button:focus-visible { outline-offset: -3px; }
+.check { display: flex; align-items: center; gap: 7px; min-height: 34px; font-size: 12px; }
+.check input { accent-color: var(--primary); }
+.panel :is(button, select, input, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.position summary { width: fit-content; cursor: pointer; font-size: 12px; color: var(--muted-foreground); }
+.position[open] summary { margin-bottom: 10px; }
+@media (max-width: 480px) { .toolbar { gap: 10px; } .field { font-size: 10px; } .panel select { width: 100px; } .panel select.font, .width { width: 140px; } }

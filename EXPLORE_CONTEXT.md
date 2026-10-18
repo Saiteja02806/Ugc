@@ -1,5 +1,60 @@
 # Explore context and UI decision record
 
+### Hook generation references — 18 October 2026, redundant library entry removed locally
+
+- Optional references uses the existing Choose image and Choose video tiles.
+  Removed the separate Choose reference from library button and its unused
+  picker state/import from the shared generation-reference component. Choose
+  image still opens upload, Your images and UGC Pilot images; reference selection,
+  removal, ownership validation and generation delivery retain their handlers.
+- This also removes the duplicate entry wherever that same component is used.
+  Slideshow background libraries and other independent library pickers remain
+  available. No assets, saved references or generation data are deleted.
+- This is a local UI removal; no deployment or production write was performed.
+- Validation: 103 existing reference-upload, generation-flow and creation-form
+  checks pass, including saved image reuse, upload failure recovery and delivery
+  of image/video references. Scoped ESLint passes. Production UI was not tested.
+
+### Library picker clarity and upload continuity — 18 October 2026, local
+
+- Image selection is focused on choosing media. Management is reachable within
+  the same dialog through Manage library; collection rename/removal/new-collection
+  controls are no longer mixed into the selection grid. Upload stays direct.
+- This slide/All slides is chosen up front, images preview immediately, and Apply
+  stays outside the scroll region. Explore's preview uses the same SVG text
+  function and actual loaded image dimensions as its editor/export. Trending
+  supplies its separate EditorPreview renderer with the proposed background.
+- One Apply resolves every used image before an atomic draft update. Failed
+  validation/cancel retains the current sequence. Existing dirty/save/recovery
+  boundaries are unchanged. The earlier multi-screen image→Use→scope→review
+  interaction is superseded by this single selection/preview workspace.
+- Whole collections retain deterministic order and repeat behavior, with visible
+  image/slide/repeat counts. Earlier/later controls adjust this slideshow's
+  proposed image order only, not the saved collection. Mobile uses a compact
+  collection dropdown; portrait thumbnails preserve the complete source image.
+- Music panels retain state between tabs and pause hidden/competing previews.
+  Library upload/update work blocks tab switches, dismissal and selection Apply
+  until settled. Failed image/music files can retry without uploading successful
+  siblings again. Saving music still does not attach it automatically.
+- 313 regression checks, TypeScript, scoped ESLint and isolated actual-component
+  browser checks pass. See `docs/library-ui-clarity-2026-10-18.md` for laptop/mobile
+  evidence. No deployment or authenticated production acceptance was performed.
+
+### Library image hover controls — 18 October 2026, local
+
+- The reported image-with-search overlay is consistent with Edge Visual Search,
+  not an app-owned library action. Library thumbnails contain no outbound links.
+- Library and image-picker dialog images no longer receive pointer hit testing;
+  their containing selection buttons retain pointer/keyboard interaction. This
+  suppresses image-hover browser controls without removing library selection,
+  collections, preview or upload. Scope stays inside shared library surfaces.
+- This is a local browser-overlay workaround, not a browser preference change.
+  Browser-provided overlays are outside the page DOM; headless checks verify
+  hit targets and selection, not all browser versions' native chrome.
+- The actual library browser fixture passes pointer hit-testing over thumbnails,
+  click/Space selection, no new tab/navigation, and its existing collection,
+  replacement, music and mobile checks. No deployment was performed.
+
 ### New workflow edit text defaults — 18 October 2026
 
 - New manual overlays and Remix-created text with no previous authored style
@@ -38,7 +93,6 @@
   report full generation acceptance from the passing conversion tests.
   No deployment was performed for this change.
 
-
 ### Shared image collections and music library — 18 October 2026, local
 
 - Settings → Media library and Trending's Library pill share owned image
@@ -68,6 +122,13 @@
 
 ### Trending slideshow text controls — 18 October 2026, scope clarification
 
+- Follow-up correction: movement must not introduce a white background. Trending
+  now separates position from explicit None/Per line/Text box styling and uses
+  compact controls, multiline hooks, wrapping width, alignment, weight and line
+  spacing. Saved styles and line breaks share preview/worker geometry. See the
+  latest CAROUSEL_CONTEXT.md entry for compatibility and local validation. The
+  user-reported implicit panel and single-line input were implementation defects;
+  compilation alone did not establish that these controls were usable.
 - The requested advanced text controls belong to Trending → Carousel Edit,
   which has a different persisted edit contract and worker from manual Explore
   Slideshows. Added per-slide typeface, size, color and free text-group placement

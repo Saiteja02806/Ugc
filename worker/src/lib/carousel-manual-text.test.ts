@@ -1,14 +1,46 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sharp from "sharp";
-import { CAROUSEL_EDIT_FONTS, createCarouselManualLayout, defaultCarouselManualTextStyle, parseCarouselManualTextStyle, carouselManualTextMarkup, type CarouselManualSlide } from "./carousel-manual-text.js";
+import { CAROUSEL_EDIT_FONTS, createCarouselManualLayout, defaultCarouselManualTextStyle, resolveCarouselManualTextStyle, parseCarouselManualTextStyle, carouselManualTextMarkup, type CarouselManualSlide } from "./carousel-manual-text.js";
 import { createCarouselManualSvg, renderCarouselManualSlide } from "./carousel-manual-render.js";
 
 const slide: CarouselManualSlide = { headline: "Small steps", subtext: "Build one useful thing today.\n\nShare what you learned.", ctaText: "", slideNumber: 2, renderFormat: "4:5", textPosition: { x: .5, y: .5 }, textStyle: defaultCarouselManualTextStyle() };
 test("manual typography rejects untrusted fonts, CSS colors and unbounded sizes while legacy edits remain valid", () => {
   assert.equal(parseCarouselManualTextStyle(undefined), null);
-  for (const patch of [{ font: "url(https://evil.test)" }, { fontSize: NaN }, { fontSize: 300 }, { headingSize: 24.5 }, { color: 'red" onload="alert(1)' }, { headingColor: "transparent" }]) assert.throws(() => parseCarouselManualTextStyle({ ...slide.textStyle, ...patch }));
+  for (const patch of [{ font: "url(https://evil.test)" }, { fontSize: NaN }, { fontSize: 300 }, { headingSize: 24.5 }, { color: 'red" onload="alert(1)' }, { headingColor: "transparent" }, { textWidth: 10 }, { align: "justify" }, { fontWeight: 900 }, { headingWeight: 600 }, { lineHeight: 0 }, { backgroundColor: "red" }, { backgroundOpacity: 2 }, { headingBackground: "url(evil)" }, { outline: "yes" }]) assert.throws(() => parseCarouselManualTextStyle({ ...slide.textStyle, ...patch }));
   assert.equal(parseCarouselManualTextStyle({ ...slide.textStyle, color: "#FF00AA" })?.color, "#ff00aa");
+});
+
+test("movement does not introduce a panel; explicit source pills and saved v1 styles retain theirs", () => {
+  const source = { ...slide, slideNumber: 1, textStyle: null, storyTextTreatment: "overlay" };
+  const moved = { ...source, textStyle: resolveCarouselManualTextStyle(source), textPosition: { x: .3, y: .7 } };
+  assert.doesNotMatch(carouselManualTextMarkup(createCarouselManualLayout(moved)), /<rect/);
+  assert.equal(resolveCarouselManualTextStyle({ storyTextTreatment: "pill" }).headingBackground, "line");
+  const legacy = { font: "inter" as const, fontSize: 60, headingSize: 72, color: "#ffffff", headingColor: "#111316" };
+  assert.match(carouselManualTextMarkup(createCarouselManualLayout({ ...source, textStyle: legacy })), /<rect/);
+  assert.doesNotMatch(carouselManualTextMarkup(createCarouselManualLayout({ ...source, textStyle: { ...legacy, headingBackground: "none" } })), /<rect/);
+});
+
+test("explicit three lines, width, alignment, weight and spacing produce matching browser and exported geometry", async () => {
+  const input = { ...slide, slideNumber: 1, headline: "This is what I’d do\nTo improve my\nMarketing fast", textStyle: { ...defaultCarouselManualTextStyle(), headingSize: 38, headingWeight: 700 as const, align: "left" as const, textWidth: 800, lineHeight: 1.5 } };
+  const { layout, svg } = await createCarouselManualSvg(input);
+  assert.deepEqual(layout.rows.map(row => row.text), input.headline.split("\n"));
+  assert.ok(layout.rows.every(row => row.weight === 700 && row.lineHeight === 57));
+  assert.equal(new Set(layout.rows.map(row => row.x - row.width / 2)).size, 1);
+  assert.doesNotMatch(svg, /<rect/);
+  const narrow = createCarouselManualLayout({ ...input, textStyle: { ...input.textStyle, textWidth: 240 } });
+  assert.ok(narrow.rows.length > 3); assert.ok(narrow.rows.every(row => row.size === 38));
+  const right = createCarouselManualLayout({ ...input, textStyle: { ...input.textStyle, align: "right" } });
+  assert.equal(new Set(right.rows.map(row => row.x + row.width / 2)).size, 1);
+});
+
+test("background choices are explicit, colored and translucent, with one box or per-line panels", async () => {
+  for (const background of ["line", "box"] as const) {
+    const { svg } = await createCarouselManualSvg({ ...slide, slideNumber: 1, headline: "One\nTwo\nThree", textStyle: { ...defaultCarouselManualTextStyle(), headingBackground: background, backgroundColor: "#112233", backgroundOpacity: .45, headingSize: 120, lineHeight: .95 } });
+    assert.equal((svg.match(/<rect /g) ?? []).length, background === "line" ? 3 : 1);
+    assert.match(svg, /fill="#112233" fill-opacity="0.45"/);
+    await sharp(Buffer.from(svg)).png().toBuffer();
+  }
 });
 for (const font of CAROUSEL_EDIT_FONTS) for (const renderFormat of ["1:1", "4:5"] as const) {
   test(`${font.label} ${renderFormat} exports bundled glyphs with the shared preview layout and full containment`, async () => {

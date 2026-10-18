@@ -12,7 +12,6 @@ import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
 import { CATALOG_REFERENCE_IMAGE_PROJECT, USER_REFERENCE_IMAGE_PROJECT, fetchFormatReferenceImage, fetchFormatReferenceImages } from "@/lib/explore/format-reference-images";
 import type { MediaAsset } from "@/lib/media/types";
 import { Button } from "@/components/ui/button";
-import { ImageLibraryPicker } from "@/components/media/image-library-picker";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { WorkflowMediaPlayer } from "@/components/explore/hook-workflow-media-controls";
 import { ReferenceVideoThumbnail } from "@/components/explore/workflow-creation-form";
@@ -66,7 +65,6 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   const localVideo = useLocalWorkflowMedia("video");
   const localAudio = useLocalWorkflowMedia("audio");
   const [pending, setPending] = useState<Kind | null>(null);
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const galleryKey = styleVideo ? `${styleVideo.id ?? styleVideo.url}:${styleVideo.selectionRevision ?? 0}` : null;
   const [previousGalleryKey, setPreviousGalleryKey] = useState(galleryKey);
@@ -185,14 +183,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   const catalogSelections = selectedImages.filter(image => image.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || image.asset.projectId === "ai-studio").map(image => image.asset.fileName);
 
   return <section aria-label="Optional generation references" className={cn(presentation.referenceGroup, presentation.classicReferences)}>
-    {active && libraryOpen && ownerId ? <ImageLibraryPicker key={ownerId} owner={ownerId} slideIds={[]} mode="reference" onClose={() => setLibraryOpen(false)} onBusyChange={onPendingChange} onApply={async choice => {
-      const asset = choice.assets[0];
-      if (!asset || selectedImages.length >= maxImages || selectedImages.some(image => image.asset.id === asset.id)) throw new Error("Choose a different image or remove an existing reference first.");
-      if (asset.fileSizeBytes != null && asset.fileSizeBytes > maxImageBytes) throw new Error(`Use a reference image up to ${maxImageBytes / 1024 ** 2} MB.`);
-      onChange({ kind: "image", asset }, "image"); localImage.remove(); setOpenKind(null);
-    }} /> : null}
     <div className={presentation.referenceHeading}><h3>Optional references</h3></div>
-    <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || preview || !ownerId || imageLimitReached} onClick={() => setLibraryOpen(true)}>Choose reference from library</Button>
     <div className={creation.referenceGrid} data-workflow-reference-grid>
       {(["image", "video", "audio"] as const).filter(kind => kind === "image" || kind === "video" && (videoInputEnabled || Boolean(styleVideo) || Boolean(selectedVideo)) || kind === "audio" && (audioInputEnabled || Boolean(selectedAudio))).map(kind => {
         const selected = kind === "image" ? selectedImages[0] ?? null : kind === "video" ? selectedVideo : selectedAudio;

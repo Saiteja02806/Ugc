@@ -74,9 +74,12 @@ async function main() {
     }
     if (url.pathname === "/api/characters/generate") {
       const body = await readBody(req); requests.push(body);
-      if (body.referenceImageAssetId) assert.ok(assets.has(body.referenceImageAssetId));
-      else assert.ok(body.referenceCharacterIds?.length > 1 && body.referenceCharacterIds.every(id => [...generated.values()].some(job => job.output.mediaAssetId === id)));
-      assert.equal(body.referenceImageUrl, undefined); assert.equal(body.referenceCharacterId, undefined);
+      if (body.referenceImageAssetIds) assert.ok(body.referenceImageAssetIds.length > 1 && body.referenceImageAssetIds.every(id => assets.has(id)));
+      else if (body.referenceImageAssetId) assert.ok(assets.has(body.referenceImageAssetId));
+      const savedIds = body.referenceCharacterIds ?? (body.referenceCharacterId ? [body.referenceCharacterId] : []);
+      assert.ok(savedIds.every(id => [...generated.values()].some(job => job.output.mediaAssetId === id)));
+      assert.ok(savedIds.length || body.referenceImageAssetIds?.length || body.referenceImageAssetId);
+      assert.equal(body.referenceImageUrl, undefined);
       let receipt = receipts.get(body.idempotencyKey);
       if (!receipt) { receipt = { ok: true, requestedCount: 1, partial: false, jobs: [{ jobId: uuid(), generationId: uuid() }] }; receipts.set(body.idempotencyKey, receipt); }
       if (mode === "uncertain") { json({ ok: false, message: "Could not confirm this request" }, 503); return; }
@@ -84,7 +87,10 @@ async function main() {
     }
     if (url.pathname === "/api/characters/status") {
       const id = url.searchParams.get("jobId");
-      if (!generated.has(id)) generated.set(id, { id, status: "completed", model: "gpt_image", isTerminal: true, output: { url: `${base}/generated.png`, mediaAssetId: uuid(), generationId: uuid(), ratio: "9:16" } });
+      const submitted = requests.find(body => receipts.get(body.idempotencyKey)?.jobs.some(job => job.jobId === id));
+      if (!generated.has(id)) generated.set(id, { id, status: "completed", model: "gpt_image", isTerminal: true,
+        prompt: submitted?.prompt, batchId: submitted ? receipts.get(submitted.idempotencyKey).jobs[0].jobId : null,
+        output: { url: `${base}/generated.png`, mediaAssetId: uuid(), generationId: uuid(), ratio: "9:16" } });
       json({ ok: true, job: generated.get(id) }); return;
     }
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -108,12 +114,18 @@ async function main() {
     await uploadReached;
     assert.equal(await page.getByRole("button", { name: "Generate", exact: true }).isDisabled(), true);
     await prompt.press("Enter"); assert.equal(requests.length, 0);
+    // A second paste while the first is uploading must queue, then append.
+    await prompt.evaluate((target, data) => {
+      const transfer = new DataTransfer(); transfer.items.add(new File([Uint8Array.from(atob(data), c => c.charCodeAt(0))], "second.png", { type: "image/png" }));
+      target.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, clipboardData: transfer }));
+    }, png.toString("base64"));
     mode = "success"; releaseUpload(); releaseUpload = null;
-    await page.getByRole("button", { name: "Preview Reference: reference image" }).waitFor();
+    await page.getByRole("button", { name: "Preview Ref 1: reference image 1", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Preview Ref 2: reference image 2", exact: true }).waitFor();
     await page.getByRole("button", { name: "Generate", exact: true }).click();
     await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
     assert.equal(await page.getByRole("button", { name: "New session", exact: true }).count(), 0);
-    assert.equal(requests[0].referenceImageAssetId, [...assets.keys()][0]);
+    assert.deepEqual(requests[0].referenceImageAssetIds, [...assets.keys()].slice(0, 2));
     assert.equal(requests[0].prompt, "Give me an influencer image in a similar style to this reference.");
 
     // Real clipboard and drag/drop events bubble from the prompt to its form.
@@ -123,14 +135,68 @@ async function main() {
         const transfer = new DataTransfer(); transfer.items.add(new File([Uint8Array.from(atob(data), c => c.charCodeAt(0))], "reference.png", { type: "image/png" }));
         target.dispatchEvent(event === "paste" ? new ClipboardEvent("paste", { bubbles: true, clipboardData: transfer }) : new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
       }, { event, data: png.toString("base64") });
-      await page.getByRole("button", { name: "Preview Reference: reference image" }).waitFor();
+      await page.getByRole("button", { name: `Preview Ref ${event === "paste" ? 3 : 4}: reference image ${event === "paste" ? 3 : 4}`, exact: true }).waitFor();
       await page.getByRole("button", { name: "Generate", exact: true }).click();
       const expected = event === "paste" ? 2 : 3;
       await page.getByRole("status").filter({ hasText: `${expected} of ${expected} images created` }).waitFor();
     }
-    assert.equal(requests.length, 3); assert.equal(new Set(requests.map(body => body.referenceImageAssetId)).size, 3);
+    assert.equal(requests.length, 3);
+    assert.deepEqual(requests.map(body => body.referenceImageAssetIds.length), [2, 3, 4]);
+    assert.deepEqual(requests[2].referenceImageAssetIds.slice(0, 3), requests[1].referenceImageAssetIds);
+    console.log("Checking submitted prompts remain separate from drafts and image controls stay below the composer…");
+    assert.equal(await page.getByRole("button", { name: "Copy prompt", exact: true }).count(), 3, "identical prompts from different submissions retain their own batches");
+    assert.equal(await page.locator("details").count(), 0);
+    await prompt.fill("This is an unsent draft, not the prompt used for these images.");
+    const submittedText = page.getByRole("button", { name: "Copy prompt", exact: true }).locator("..").locator("p");
+    assert.deepEqual(await submittedText.allTextContents(), requests.map(body => body.prompt));
+    const promptLayout = await page.getByRole("button", { name: "Copy prompt", exact: true }).first().locator("..").evaluate(element => {
+      const image = element.nextElementSibling.querySelector("article").getBoundingClientRect();
+      const row = element.getBoundingClientRect(), text = element.querySelector("p");
+      return { widthDifference: Math.abs(row.width - image.width), leftDifference: Math.abs(row.left - image.left), textHeight: text.clientHeight };
+    });
+    assert.ok(promptLayout.widthDifference < 1 && promptLayout.leftDifference < 1 && promptLayout.textHeight > 21, "prompt wraps over multiple lines within the image width");
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.getByRole("button", { name: "Copy prompt", exact: true }).first().click();
+    await page.getByRole("status").filter({ hasText: "Prompt copied" }).waitFor();
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), requests[0].prompt);
+    await page.clock.runFor(2_001);
+    await page.getByRole("button", { name: "Copy prompt", exact: true }).first().blur();
+    await page.screenshot({ path: path.join(out, "submitted-prompt-desktop.png"), fullPage: false });
+    const checkComposerOcclusion = async () => {
+      await page.evaluate(() => {
+        const cardControl = document.querySelector('button[aria-label="Remove image 3 from workspace"]');
+        const composer = document.querySelector('form[data-layout="unified"]');
+        const control = cardControl.getBoundingClientRect(), bar = composer.getBoundingClientRect();
+        window.scrollTo(0, window.scrollY + control.top + control.height / 2 - (bar.top + 40));
+      });
+      await page.clock.runFor(100);
+      const hit = await page.evaluate(() => {
+        const control = document.querySelector('button[aria-label="Remove image 3 from workspace"]').getBoundingClientRect();
+        const composer = document.querySelector('form[data-layout="unified"]');
+        const bar = composer.getBoundingClientRect();
+        const x = control.x + control.width / 2, y = control.y + control.height / 2;
+        return { overlaps: x > bar.left && x < bar.right && y > bar.top && y < bar.bottom,
+          composerWins: composer.contains(document.elementFromPoint(x, y)) };
+      });
+      assert.deepEqual(hit, { overlaps: true, composerWins: true }, "an image remove control scrolled behind the composer cannot paint or receive clicks above it");
+    };
+    await checkComposerOcclusion();
+    await page.screenshot({ path: path.join(out, "composer-scroll-desktop.png"), fullPage: false });
+    await page.screenshot({ path: path.join(out, "pasted-references-desktop.png"), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await checkComposerOcclusion();
+    await page.screenshot({ path: path.join(out, "composer-scroll-mobile.png"), fullPage: false });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "pasted-references-mobile.png"), fullPage: true });
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.getByRole("button", { name: "Remove reference image 2", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: /Preview Ref \d: reference image \d/, exact: false }).count(), 3);
+    console.log("PASS rapid/serial clipboard pastes and drops append all image IDs; individual removal and mobile fit");
+    await page.getByRole("button", { name: "Clear references", exact: true }).click();
     console.log("Checking image hover stays on the app controls and selection stays in the workspace…");
     const firstCandidate = page.getByRole("button", { name: "Select influencer image 1", exact: true });
+    await firstCandidate.scrollIntoViewIfNeeded();
+    await page.clock.runFor(100);
     const controlAtImage = async locator => locator.locator("img").evaluate(img => {
       const rect = img.getBoundingClientRect();
       return { pointerEvents: getComputedStyle(img).pointerEvents,
@@ -144,6 +210,8 @@ async function main() {
     assert.equal(await firstCandidate.getAttribute("aria-pressed"), "true");
     assert.equal(page.url(), `${base}/`); assert.equal(page.context().pages().length, 1);
     await page.getByRole("button", { name: "Remove influencer reference", exact: true }).click();
+    await page.clock.runFor(100);
+    assert.equal(await firstCandidate.getAttribute("aria-pressed"), "false");
     await firstCandidate.focus();
     await firstCandidate.press("Enter");
     await page.clock.runFor(100);
@@ -176,7 +244,7 @@ async function main() {
     await page.clock.fastForward("10:01");
     await page.getByText("Your creator starts here.", { exact: true }).waitFor();
     assert.equal(await prompt.inputValue(), "");
-    assert.equal(await page.getByRole("button", { name: "Preview Reference: reference image" }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: /Preview Ref \d: reference image \d/ }).count(), 0);
     await page.getByRole("button", { name: "My influencers", exact: true }).click();
     assert.equal(await page.getByRole("dialog").getByRole("button", { name: /Select saved image/ }).count(), 3);
     await page.getByRole("button", { name: "Close", exact: true }).click();
@@ -191,7 +259,7 @@ async function main() {
 
     mode = "uncertain";
     await input.setInputFiles({ name: "reference.png", mimeType: "image/png", buffer: png });
-    await page.getByRole("button", { name: "Preview Reference: reference image" }).waitFor();
+    await page.getByRole("button", { name: "Preview Ref 1: reference image 1", exact: true }).waitFor();
     await page.getByRole("button", { name: "Generate", exact: true }).click();
     await page.getByRole("button", { name: "Retry request", exact: true }).waitFor();
     const original = requests.at(-1);
@@ -219,6 +287,7 @@ async function main() {
     assert.equal(await historyImages.first().locator("img").evaluate(img => getComputedStyle(img).pointerEvents), "none");
     await historyImages.first().click();
     await page.getByText("Image from your character history.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Copy prompt", exact: true }).locator("..").locator("p").textContent(), "Generated influencer");
     assert.equal(await page.getByRole("article", { name: /Influencer candidate/ }).count(), 1);
     await page.getByRole("button", { name: "Back to session", exact: true }).click();
     await page.getByText("Your creator starts here.", { exact: true }).waitFor();
@@ -309,6 +378,53 @@ async function main() {
     assert.ok((await prompt.boundingBox()).width > 100, "reference thumbnails leave room for the prompt on mobile");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(out, "ten-references-mobile.png"), fullPage: true });
+    console.log("Checking multiple chooser uploads preserve My influencers references and the combined limit…");
+    await page.getByRole("button", { name: "Clear references", exact: true }).click();
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.getByRole("button", { name: "My influencers", exact: true }).click();
+    for (let index = 0; index < 3; index++) await savedImages.nth(index).click();
+    await page.getByRole("button", { name: "Use 3 images as references", exact: true }).click();
+    assert.equal(await input.getAttribute("multiple"), "");
+    await input.setInputFiles([
+      { name: "first.png", mimeType: "image/png", buffer: png },
+      { name: "second.png", mimeType: "image/png", buffer: png },
+    ]);
+    await page.getByRole("button", { name: "Preview Ref 5: reference image 2", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: /^Preview Ref \d+: influencer reference/ }).count(), 3);
+    const longPrompt = "Keep all three influencer references.\n" + "Use both uploaded images for the setting, lighting and wardrobe.\n".repeat(40);
+    await prompt.fill(longPrompt);
+    await page.getByRole("button", { name: "Generate", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: "1 of 1 image created" }).waitFor();
+    const mixedRequest = requests.at(-1);
+    assert.equal(mixedRequest.referenceCharacterIds.length, 3);
+    assert.equal(mixedRequest.referenceImageAssetIds.length, 2);
+    const lastCopy = page.getByRole("button", { name: "Copy prompt", exact: true }).last();
+    await lastCopy.click();
+    await page.getByRole("status").filter({ hasText: "Prompt copied" }).waitFor();
+    assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"), longPrompt.trim(), "Copy preserves the whole multiline submitted prompt, allowing native Windows line endings");
+    const promptBounds = await lastCopy.locator("..").locator("p").evaluate(element => ({ height: element.clientHeight, total: element.scrollHeight }));
+    assert.ok(promptBounds.height <= 126 && promptBounds.total > promptBounds.height, "long prompts keep a compact scrollable text area");
+    await page.screenshot({ path: path.join(out, "mixed-references-desktop.png"), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "mixed-references-mobile.png"), fullPage: true });
+    await page.getByRole("button", { name: "My influencers", exact: true }).click();
+    for (let index = 3; index < 8; index++) await savedImages.nth(index).click();
+    assert.equal(await savedImages.nth(8).isDisabled(), true, "eight saved plus two uploads fill the shared ten-image limit");
+    await page.getByRole("button", { name: "Use 8 images as references", exact: true }).click();
+    await page.clock.runFor(100);
+    assert.equal(await page.getByRole("button", { name: /^Preview Ref \d+:/ }).count(), 10);
+    assert.equal(await page.getByRole("button", { name: "Add reference image", exact: true }).isDisabled(), true);
+    await page.getByRole("button", { name: "Remove reference image 1", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: /^Preview Ref \d+: influencer reference/ }).count(), 8);
+    assert.equal(await page.getByRole("button", { name: "Add reference image", exact: true }).isEnabled(), true);
+    await page.getByRole("button", { name: "Remove influencer reference 1", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: /^Preview Ref \d+: reference image/ }).count(), 1);
+    await page.clock.runFor(2_001);
+    await page.evaluate(() => Object.defineProperty(navigator.clipboard, "writeText", { configurable: true, value: async () => { throw Error("Clipboard denied"); } }));
+    await page.getByRole("button", { name: "Copy prompt", exact: true }).last().click();
+    await page.getByRole("status").filter({ hasText: "Could not copy the prompt." }).waitFor();
+    assert.equal(await page.getByRole("status").filter({ hasText: "Prompt copied" }).count(), 0, "clipboard denial does not claim a successful copy");
     assert.deepEqual(errors, []);
     console.log("PASS: multiple references reach generation in order; image downloads save a file; workspace dismissal preserves My influencers and History; pointer/keyboard selection, upload/paste/drop, continuous generation, idle reset and uncertain-request recovery work; desktop and mobile fit.");
   } finally {

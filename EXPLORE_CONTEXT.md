@@ -8,6 +8,19 @@
   otherwise it fails before exercising video-finishing policy. Keep this
   test-only loader aligned with the worker import graph.
 
+### Source-post entitlement fix — 17 October 2026, local
+
+- `ReferenceSourceAction` now needs a fresh, verified active Starter or Growth
+  billing subscription before it renders an external TikTok or Instagram link.
+  Free generation credits, whether remaining or spent, retain generation access
+  but show the social icon as an Upgrade to Pro control.
+- The inherited generation-access flag remains an extra fail-closed condition.
+  This covers Talking Head, Hook Format and Recreate galleries through their
+  shared source action. Wall-of-Text still renders no source-post icon.
+- Regression checks cover free grants, spent grants, valid active plans, and
+  unavailable billing states. Local coverage is distinct from authenticated
+  production acceptance; deployment evidence belongs in the release record.
+
 ### TikTok slideshow publishing and stale status — 17 October 2026
 
 - Accept PNG uploads and create platform-compatible JPEG publishing copies

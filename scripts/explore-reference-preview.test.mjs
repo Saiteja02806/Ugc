@@ -3,10 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { canOpenReferenceSource } from "../lib/explore/reference-source-access.ts";
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 
-function harness(format, reducedMotion = false, canOpenSource = false, showSource = false, overlay = showSource) {
+function harness(format, reducedMotion = false, canOpenSource = false, showSource = false, overlay = showSource, subscription = canOpenSource
+  ? { isSuccess: true, isFetching: false, isError: false, data: { isActive: true, planKey: "starter" } }
+  : { isSuccess: true, isFetching: false, isError: false, data: { isActive: false, planKey: "free", freeGenerationCredits: { granted: 5, remaining: 0 } } }) {
   let cursor = 0, previews = 0, recreations = 0;
   const state = [];
   const video = { muted: false, readyState: 2, currentTime: 4, plays: 0, pauses: 0,
@@ -20,6 +23,8 @@ function harness(format, reducedMotion = false, canOpenSource = false, showSourc
       return [state[index], value => { state[index] = value; }];
     } },
     "@/lib/utils": { cn: (...parts) => parts.filter(Boolean).join(" ") },
+    "@/components/billing/use-billing-subscription": { useBillingSubscription: () => subscription },
+    "@/lib/explore/reference-source-access": { canOpenReferenceSource },
     "@/worker/src/lib/explore-instagram-source": { canonicalHookSource: () => showSource && format === "hook" ? { platform: "instagram", url: "https://www.instagram.com/reel/fixture/" } : null },
   };
   const exports = {};
@@ -39,7 +44,8 @@ function harness(format, reducedMotion = false, canOpenSource = false, showSourc
 }
 
 for (const overlay of [false, true]) test(`free Hook ${overlay ? "overlay" : "caption"} source click opens Upgrade to Pro without an external source link or selecting the reference`, () => {
-  const h = harness("hook", false, false, true, overlay), tree = h.render();
+  // A generation-eligible free account must remain locked for source posts.
+  const h = harness("hook", false, true, true, overlay, { isSuccess: true, isFetching: false, isError: false, data: { isActive: false, planKey: "free", freeGenerationCredits: { granted: 5, remaining: 0 } } }), tree = h.render();
   assert.equal(tree.some(n => n.type === "a"), false);
   const source = tree.find(n => n.type === "button" && n.props["aria-label"]?.includes("Upgrade to Pro"));
   assert.ok(source); assert.match(source.props["aria-label"], /Upgrade to Pro/);

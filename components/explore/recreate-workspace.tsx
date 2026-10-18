@@ -12,6 +12,8 @@ import { RecreateGenerationPanel } from "@/components/explore/recreate-generatio
 import { RecreateSplitPane } from "@/components/explore/recreate-split-pane";
 import { ReferenceVideoPlayer } from "@/components/explore/reference-video-player";
 import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
+import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { canOpenReferenceSource } from "@/lib/explore/reference-source-access";
 import studio from "@/components/explore/workflow-studio.module.css";
 import layout from "@/components/explore/recreate-layout.module.css";
 import { Button } from "@/components/ui/button";
@@ -206,12 +208,14 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
 }
 
 export function ReferenceSourceAction({ source, label, canOpen, overlay = false }: { source: { url: string; platform: "instagram" | "tiktok" }; label: string; canOpen: boolean; overlay?: boolean }) {
+  const subscription = useBillingSubscription({ freshOnMount: true, refreshOnFocus: true });
+  const sourceAllowed = canOpen && canOpenReferenceSource(subscription);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const className = overlay ? "absolute bottom-3 left-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" : "inline-flex size-6 shrink-0 items-center justify-center rounded text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   const icon = <SocialPlatformIcon platform={source.platform} className={cn(overlay ? "size-[18px] text-current drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" : "size-3.5 text-current", source.platform === "tiktok" && "fill-current")} />;
-  return <>{canOpen ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}`} aria-label={label} data-reference-source-overlay={overlay || undefined} className={className}>{icon}</a>
+  return <>{sourceAllowed ? <a href={source.url} target="_blank" rel="noopener noreferrer" title={`View original on ${source.platform === "tiktok" ? "TikTok" : "Instagram"}`} aria-label={label} data-reference-source-overlay={overlay || undefined} className={className}>{icon}</a>
     : <button type="button" title="Upgrade to Pro to view the original post" aria-label={`${label} — Upgrade to Pro`} data-reference-source-overlay={overlay || undefined} className={className} onClick={() => setUpgradeOpen(true)}>{icon}</button>}
-    <Dialog open={upgradeOpen && !canOpen} onOpenChange={setUpgradeOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Upgrade to Pro</DialogTitle><DialogDescription>View original reference posts on Instagram and TikTok with Pro.</DialogDescription></DialogHeader><Button nativeButton={false} render={<Link href="/pricing" />}>Upgrade to Pro</Button></DialogContent></Dialog>
+    <Dialog open={upgradeOpen && !sourceAllowed} onOpenChange={setUpgradeOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Upgrade to Pro</DialogTitle><DialogDescription>View original reference posts on Instagram and TikTok with Pro.</DialogDescription></DialogHeader><Button nativeButton={false} render={<Link href="/pricing" />}>Upgrade to Pro</Button></DialogContent></Dialog>
   </>;
 }
 

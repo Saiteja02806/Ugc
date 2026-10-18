@@ -1,14 +1,15 @@
 # MCP current capability audit
 
-Last reviewed: 2026-10-17
+Last reviewed: 2026-10-18
 
-This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. It describes the current server source at `lib/mcp/server.ts`, whose `registeredMcpTools` export contains **79** registrations. It does not claim that every tool is enabled or accepted in production: rollout gates and each account's capability reads remain authoritative.
+This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. Production currently exposes **79** tools. The local release candidate at `7785cebe` has **84** registrations: the production set plus five scheduling tools. It does not claim that every tool is enabled or accepted in production: rollout gates and each account's capability reads remain authoritative.
 
 ## Evidence collected
 
-- The current `registeredMcpTools` export lists 79 tool names, across 15 registration modules.
-- The full `npm run test:mcp` suite passed on 2026-10-17. It covers OAuth/PKCE, permission isolation, generation, generic uploads/downloads, Demo records, finishing, operation recovery, Edit drafts/exports, audio, reference/remix, asset groups, Library and account settings.
-- A connected production account's safe reads reported short-video generation and video finishing available. No write or customer-media work occurred in that verification.
+- The deployed connected session discovers 79 UGC Pilot tools. It has no scheduling tools.
+- The local 84-tool candidate adds `get_scheduling_capabilities`, `list_social_connections`, `list_schedules`, `get_schedule` and the disabled-by-default `create_schedule`. The first four require fresh `publishing:read`; the write requires fresh `publishing:write`, a verified-email consent snapshot, configured scheduling and `MCP_SCHEDULING_WRITES_ENABLED=true`.
+- The full `npm run test:mcp` suite passed on 2026-10-18 for candidate commit `ab7d7631`, including OAuth/PKCE, permission isolation, generation, generic uploads/downloads, Demo records, finishing, operation recovery, Edit drafts/exports, audio, reference/remix, asset groups, Library, account settings and scheduling. The temporary test transfer server uses `127.0.0.1`; it did not use customer media.
+- Live OAuth health/discovery and a connected production account's safe reads passed on 2026-10-18. The account reported short-video generation, video finishing and Edit export available. No write or customer-media work occurred in that verification.
 - The local Claude Code client is signed out and is still using the older 0.1.8 plugin, so it does not yet prove clean Claude host acceptance. See `ugc-pilot-plugin-context.md`.
 
 ## Current MCP coverage
@@ -25,7 +26,7 @@ This audit supersedes the initial 15-tool/12-tool snapshot in the historical rem
 | Business and account settings | read business context; publishing defaults/timezone reads, updates and receipts | Partial. Onboarding, business/brand editing, logo and screenshot workflows still require the unreleased business candidates. |
 | Slideshows | Library snapshot/save operations | Partial. Backend rendering of finished slides with text is absent; browser canvas export remains the application dependency. |
 | Trending and Carousel | owned Carousel discovery and Library save only | Partial. Feed decisions, creative editing, rendering status and broader Trending actions are not registered MCP workflows. |
-| Social publishing | account defaults only | Missing. There are no MCP tools for account connection, schedule create/update/cancel, publish or retry. |
+| Social publishing | Production: account defaults only. Candidate: social-connection/schedule reads plus a deliberately disabled schedule-create adapter. | Still incomplete. There are no MCP tools for provider account connection/OAuth handoff, schedule update/cancel, immediate publish, per-target retry or publishing analytics. Candidate schedule creation has not been deployed or enabled. |
 | Analytics | no analytics-specific MCP registration | Missing. Platform-report retrieval and refresh are not available through MCP. |
 
 ## Release order

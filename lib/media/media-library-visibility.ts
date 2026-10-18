@@ -33,5 +33,5 @@ export function isMediaAssetVisibleInCreativeLibrary(
       ? (asset.metadata as Record<string, unknown>)
       : null;
 
-  return metadata?.libraryVisibility !== "hook_videos_only";
+  return metadata?.libraryVisibility !== "hook_videos_only" && metadata?.imageLibraryArchived !== true;
 }

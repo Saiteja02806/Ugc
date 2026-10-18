@@ -10,12 +10,15 @@ import { prepareSlideshowSequence } from "../lib/explore/slideshow-preparation.t
 import { readSlideshowEditableDraft } from "../lib/explore/slideshow-editable-draft.ts";
 import { insertReferenceSlides } from "../lib/explore/slideshow-assembly.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import { sameBackgroundTargets } from "../lib/media/image-library.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, require: name => {
     if (name === "server-only") return {};
+    if (name === "@/components/media/image-library-picker") return { ImageLibraryPicker: "ImageLibraryPicker" };
+    if (name === "@/lib/media/image-library") return { sameBackgroundTargets };
       if (name === "./slideshow-editable-draft.ts" || name === "./slideshow-editable-draft" || name === "@/lib/explore/slideshow-editable-draft") return { readSlideshowEditableDraft };
     if (name === "@/lib/explore/slideshow-api") return load("lib/explore/slideshow-api.ts", imports, globals);
     if (name === "./slideshow-draft" || name === "@/lib/explore/slideshow-draft") return load("lib/explore/slideshow-draft.ts", { "../../worker/src/lib/explore-finishing-contract.ts": { isExploreUuid: uuid } });
@@ -98,6 +101,14 @@ test("uploaded slideshow saves resolve every output to an owned ready image and 
   assert.ok(h.owners.every(value => value.userId === "owner"));
   assert.deepEqual(Array.from(h.calls[0].values.p_slides, slide => slide.mediaAssetId), [id(2), id(1)]);
   assert.equal(h.calls[0].values.p_user_id, "owner");
+});
+test("one retained library image can back several distinct slides, including after archive", async () => {
+  const h = route({ assets: new Map([[id(1), { ...asset(1), metadata: { imageLibraryArchived: true } }]]) });
+  const slides = [11, 12, 13].map(number => ({ referenceSlideId: id(number), mediaAssetId: id(1) }));
+  const response = await h.post(`uploaded:${id(40)}`, slides);
+  assert.equal(response.status, 200);
+  assert.deepEqual(Array.from(h.calls[0].values.p_slides, slide => slide.mediaAssetId), [id(1), id(1), id(1)]);
+  assert.deepEqual(Array.from(h.calls[0].values.p_slides, slide => slide.slideNumber), [1, 2, 3]);
 });
 test("foreign, deleted, pending, non-image and untrusted outputs cannot reach Library saving", async () => {
   for (const patch of [{ user_id: "other" }, { deleted_at: "2026-10-08" }, { status: "pending" }, { collection: "video" }, { mime_type: "image/svg+xml" }, { url: "https://evil.test/image.png" }]) {

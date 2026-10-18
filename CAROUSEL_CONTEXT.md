@@ -1,5 +1,96 @@
 # Carousel System Context
 
+## 2026-10-18 Shared media library and background collections (local)
+
+- Settings → Media library and Trending's new Library pill manage reusable
+  images, named image collections and music. Trending Edit can choose one image
+  for the selected slide, one image for every slide, or a whole collection in
+  displayed order, repeating from the beginning as needed. Preview and explicit
+  Apply precede draft changes; normal Save still gates the saved output.
+- Collections reuse owned Creative Asset image groups. Removing a collection
+  keeps its images. Image archive hides future selection through metadata while
+  retaining sources for existing drafts/saved posts. Collection edits never
+  change saved or scheduled slideshows automatically. Manual collection reorder
+  is not included; added time/asset ID gives a stable displayed order.
+- Manual save normalization accepts other ready owned uploads and generated
+  images. Foreign, deleted, unready, unsupported and imported catalogue media
+  remain rejected. Server-owned URLs, centre crop, original roles and existing
+  special screenshot/reviewed-hook rules remain authoritative.
+- Music can be uploaded from the header library and existing edit audio pickers.
+  Saving a track does not attach it automatically or add photo-slideshow music
+  publishing. Existing supported video audio controls can reuse the track.
+- No migration or worker change. 312 focused tests, TypeScript, scoped ESLint
+  and both isolated browser suites pass. No deployment or production mutation
+  occurred; authenticated production acceptance is pending. See
+  `docs/media-library-collections-2026-10-18.md` for scope and evidence.
+
+## 2026-10-18 Trending slideshow manual text controls (local)
+
+- Trending's Carousel Edit screen now exposes per-slide font (Inter, DM Sans,
+  Roboto Condensed, Montserrat), hook/heading and body sizes (24–120 px), separate
+  heading/body colors, horizontal/vertical position sliders and Reset text layout.
+  The text group supports pointer/touch dragging and keyboard arrows on both
+  structures. Structure 2 manual edits no longer quantize movement to upper,
+  middle or lower positions or lock the horizontal coordinate.
+- Optional `textStyle` travels through PATCH validation, owner/revision-fenced
+  content JSON, reopening, preview dirtiness and the edit worker. No schema
+  migration is required. Old edits with no style retain their existing rendering
+  unless the user changes appearance or moves the text; generation typography,
+  planners, slide copy and original assets are unchanged.
+- Manual styling has one shared bundled-font layout for browser SVG and worker
+  glyph outlines. Export uses the requested size without automatic shrinking or
+  truncation, keeps the complete text group inside the canvas, and rejects
+  overflowing copy before saving. Font/color inputs are strictly allowlisted;
+  unsupported font glyphs return a useful render error instead of missing boxes.
+  Headings retain white line backgrounds. Manual render fingerprints include
+  typography/version so saved pixels cannot be reused after a style change.
+- Reset removes the manual style and centers the text group. This does not
+  change the original generated image, slide copy, or other slides' settings.
+  Browser tests use actual Trending editor components and local API fixtures;
+  they do not publish or write production data. A worker and website release
+  are required together; the updated worker must precede UI availability.
+- Validation: 61 focused persistence/containment/renderer regressions, application
+  TypeScript, worker build and scoped ESLint pass. Actual-editor browser checks
+  cover mouse, real touch and keyboard placement, independent per-slide styles,
+  failed saves, reopen, reset and laptop/mobile fit. Raster export tests confirm
+  untouched background pixels remain. An older containment test expected two
+  generic drag overlays before Wall moved to its dedicated component; updated
+  that assertion to verify one Hook overlay and one Wall overlay explicitly.
+  These checks are local; this change is not deployed.
+
+## 2026-10-18 Helpful Tips metadata repair and failure diagnostics (local)
+
+- Production v58 is deployed (successful generation provenance and revision
+  `ugc-carousel-worker-publish-a493dbd6` verified), superseding the deployment
+  status in the 17 October local planner entry below. Candidate failures remain
+  concentrated in Helpful Tips. The reported account ultimately has complete
+  daily packs, despite 45 failed candidate attempts out of 110.
+- A live fictional-business reproduction completed only 2/5 plans: hidden
+  image descriptions tripped the existing object-only rule. Parsing stopped at
+  the first unsafe direction, and isolated repair rewrote entire valid decks
+  without reporting all offending fields. Malformed repair output could also
+  escape before the existing second attempt. Generic aggregate errors then
+  discarded failed-slot diagnostics. Exact causes of old generic failures are
+  unavailable; do not attribute every historical failure to this reproduction.
+- Local Helpful Tips v59 collects every unsafe visual direction with its slide
+  number and repairs only those image fields (plus specifically rejected body
+  fields for mixed failures). All visible copy, facts, roles and other fields
+  stay frozen and the complete publishing checks still run. The object-only
+  safety policy, model, image sourcing, actual font fit and recovery budgets
+  are unchanged. Shape-error recovery uses the existing second repair budget.
+- Failed candidates persist original/final issues, slot and initial/repair
+  responses in existing server diagnostics before job settlement; logs expose
+  issue codes and slide numbers without raw provider copy. Completed siblings
+  and reservation consumption/release behavior remain intact. No migration.
+- The exact same synthetic initial output passed 5/5 after scoped repair;
+  repair time was 5.752s versus 25.665s, tokens 7,474 versus 25,721. This is one
+  controlled reproduction, not a production success-rate guarantee. Worker
+  compilation and 122 focused tests pass, including 60 real renders of the
+  repaired 30 slides in both ratios. All 30 sampled existing hosted slides
+  are accessible; the production worker and queue are healthy. The fix is
+  not deployed and authenticated acceptance with v59 remains pending.
+- Details: `docs/carousel-reliability-investigation-2026-10-18.md`.
+
 ## 2026-10-18 Repeat scheduling is an explicit new post (local)
 
 - A completed Trending Carousel can be scheduled again. Opening the scheduling

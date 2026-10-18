@@ -53,7 +53,7 @@ function measureOverlay(layer: HTMLDivElement): CarouselOverlayGeometry | null {
 
 export function CarouselDraggableOverlay({
   ariaLabel, bounds = DEFAULT_BOUNDS, children, enabled = true,
-  format, onPositionChange, position, structureId,
+  format, onPositionChange, position, structureId, layoutFits,
 }: {
   ariaLabel: string;
   bounds?: CarouselOverlayBounds;
@@ -64,6 +64,8 @@ export function CarouselDraggableOverlay({
   onPositionChange: (position: CarouselOverlayPosition) => void;
   position: CarouselOverlayPosition;
   structureId: "structure_1" | "structure_2";
+  /** Shared SVG layouts already include their full glyph/pill extents. */
+  layoutFits?: boolean;
 }) {
   const layerRef = useRef<HTMLDivElement>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -97,7 +99,7 @@ export function CarouselDraggableOverlay({
     };
   }, [children]);
 
-  const containment = geometry
+  const containment = layoutFits !== undefined ? { fits: layoutFits, bounds } : geometry
     ? getCarouselOverlayContainment(geometry, structureId, format, bounds)
     : null;
   const overflow = enabled && containment?.fits === false;
@@ -108,6 +110,10 @@ export function CarouselDraggableOverlay({
       : { x: 0.5, y: 0.5 };
 
   function moveTo(next: CarouselOverlayPosition) {
+    if (layoutFits !== undefined) {
+      if (layoutFits) onPositionChange(clampCarouselOverlayPosition(next, bounds));
+      return;
+    }
     if (!enabled) {
       // First interaction turns an immutable render into a live preview. Do
       // not use its invisible hit-target as if it were the actual text block.

@@ -18,6 +18,7 @@ import {
   buildCarouselContentPlanBatch,
   CarouselPartialBatchPlanningError,
   buildCarouselContentPlan,
+  CAROUSEL_CONTENT_PLANNER_VERSION,
   type CarouselBatchContentPlanItem,
   type CarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
@@ -187,6 +188,29 @@ export async function generateCarouselBatch(params: {
     } catch (error) {
       planningFailure = error instanceof Error ? error : new Error(String(error));
       if (error instanceof CarouselPartialBatchPlanningError) {
+        // Persist each failed slot before the job-level aggregate can replace
+        // its cause. Completed siblings remain eligible for rendering below.
+        for (const failure of error.failures) {
+          const generation = rows[failure.slotIndex];
+          if (!generation) throw new Error("Carousel planning failure has an invalid slot.");
+          await params.store.updateCarouselGeneration(generation.id, {
+            status: "failed",
+            error_message: failure.message.slice(0, 900),
+            content_planner_version: CAROUSEL_CONTENT_PLANNER_VERSION,
+            content_plan_raw_response: failure.rawLlmResponse as unknown as Json,
+            content_plan_validation: { ok: false, stage: "planning_repair", slotIndex: failure.slotIndex,
+              initialIssues: failure.initialIssues, finalIssues: failure.finalIssues } as unknown as Json,
+          });
+          if (generation.carousel_experiment_assignment_id) {
+            await params.store.updateCarouselExperimentAssignment(generation.carousel_experiment_assignment_id, { status: "failed" });
+          }
+          logger.warn("Carousel candidate planning failed", {
+            carouselId: generation.id, experimentBatchId: params.experimentBatchId,
+            slotIndex: failure.slotIndex, stage: "planning_repair",
+            issueCodes: failure.finalIssues.map(issue => issue.code),
+            slideNumbers: failure.finalIssues.map(issue => issue.slideNumber),
+          });
+        }
         // Keep independently validated siblings. The missing candidates fail
         // through the existing job settlement and slot-preserving refill path.
         // One initial request plus at most two repairs per slot replaces the
@@ -327,7 +351,7 @@ export async function generateCarouselBatch(params: {
           : "partial",
   });
   if (failures.length > 0) {
-    throw new AggregateError(failures, "One or more Carousels failed in the batch.");
+    throw new AggregateError(failures, `Carousel batch partially failed: ${results.length}/${rows.length} completed. See each failed candidate's persisted planning or rendering diagnostics.`);
   }
 
   return {

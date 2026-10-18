@@ -11,6 +11,7 @@ function harness(upload, { images = [], queryError = false, fetchSaved = async i
   const imageCache = new Map([[JSON.stringify(["explore-reference-images", ownerId ?? "signed-out"]), images]]);
   let cursor = 0;
   const imports = {
+    "@/components/media/image-library-picker": { ImageLibraryPicker: "ImageLibraryPicker" },
     react: { useState: initial => { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = value; }]; },
       useRef: initial => { const index = cursor++; return refs[index] ??= { current: initial }; }, useEffect: effect => { effects.push(effect); } },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },

@@ -1,5 +1,42 @@
 # Explore context and UI decision record
 
+### Shared image collections and music library — 18 October 2026, local
+
+- Settings → Media library and Trending's Library pill share owned image
+  collections and music management. Explore slideshow Add slides, selected-slide
+  image replacement and Your slides → Library backgrounds open the shared picker.
+  Optional generation references can also reuse a saved image.
+- Preview one image on the selected slide/every slide, or a collection in its
+  displayed order, repeating from the beginning if needed. Apply rechecks every
+  used source before one draft change; cancellation/failure preserves the draft.
+  Slide identities/order and editable text survive, and changes invalidate the
+  saved output so normal Save still gates scheduling. Collection membership
+  changes never update an existing draft or post automatically.
+- Image collections reuse existing asset groups. Removing a collection/member
+  keeps original files; archive hides future image selection but preserves existing
+  draft/saved sources. Collection order uses added time plus asset ID; manual
+  collection reordering is not implemented.
+- Music management accepts uploads up to 25 MB/10 minutes. Existing edit audio
+  pickers expose Add music to library in place and list those owned tracks.
+  Whole-video background music can reuse a verified media ID directly, without
+  another upload or implicitly enabling music. Dedicated speech/voice-reference
+  libraries and demo/whole-video audio scope remain separate. Native image
+  slideshows do not acquire a new music publishing/composition stage.
+- No migration, worker release or production write. Local API/component tests,
+  TypeScript, scoped ESLint and isolated browser checks pass; hosted authenticated
+  acceptance remains pending a website deployment. See
+  `docs/media-library-collections-2026-10-18.md` for the validation evidence.
+
+### Trending slideshow text controls — 18 October 2026, scope clarification
+
+- The requested advanced text controls belong to Trending → Carousel Edit,
+  which has a different persisted edit contract and worker from manual Explore
+  Slideshows. Added per-slide typeface, size, color and free text-group placement
+  there. See CAROUSEL_CONTEXT.md for the rendering/persistence decision.
+- Explore's generated image text remains baked into the image. This change does
+  not turn those pixels into editable text or change Explore generation, its
+  existing added-text overlay tools, or the preview Save/Schedule correction.
+
 ### Repeat scheduling — 18 October 2026, local
 
 - A confirmed schedule is a completed post, not a permanent lock on its media.

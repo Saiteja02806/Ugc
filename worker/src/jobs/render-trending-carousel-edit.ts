@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { renderCarouselManualSlide } from "../lib/carousel-manual-render.js";
+import { CAROUSEL_MANUAL_TEXT_VERSION, parseCarouselManualTextStyle, type CarouselManualTextStyle } from "../lib/carousel-manual-text.js";
 import { getErrorMessage, logger } from "../logger.js";
 import {
   CAROUSEL_RENDERER_VERSION,
@@ -46,16 +48,19 @@ type EditableCarouselSlide = {
   slideNumber: number;
   subtext: string;
   textPosition: CarouselNormalizedTextPosition;
+  textStyle?: CarouselManualTextStyle | null;
   visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 type RenderTrendingCarouselEditDependencies = {
+  renderCarouselManualSlide: typeof renderCarouselManualSlide;
   renderCarouselSlide: typeof defaultRenderCarouselSlide;
   renderCarouselStructure2Slide: typeof defaultRenderCarouselStructure2Slide;
   uploadRenderedCarouselSlide: typeof defaultUploadRenderedCarouselSlide;
 };
 
 const defaultDependencies: RenderTrendingCarouselEditDependencies = {
+  renderCarouselManualSlide,
   renderCarouselSlide: defaultRenderCarouselSlide,
   renderCarouselStructure2Slide: defaultRenderCarouselStructure2Slide,
   uploadRenderedCarouselSlide: defaultUploadRenderedCarouselSlide,
@@ -171,6 +176,7 @@ export async function runRenderTrendingCarouselEditJob(
         sourceRendererVersion: generation.renderer_version,
         originalSlide,
         editedSlide,
+        ...(editedSlide.textStyle ? { manualTextRendererVersion: CAROUSEL_MANUAL_TEXT_VERSION } : {}),
         textStyle: originalTextStyle,
         plannedSlide: plannedSlideByNumber.get(editedSlide.slideNumber) ?? null,
       })).digest("hex");
@@ -215,7 +221,9 @@ export async function runRenderTrendingCarouselEditJob(
       }
 
       const rendered =
-        generation.structure_id === "structure_2"
+        editedSlide.textStyle
+          ? await dependencies.renderCarouselManualSlide({ assetUrl: editedSlide.backgroundUrl, slide: { ...editedSlide, renderFormat: generation.format } })
+          : generation.structure_id === "structure_2"
           ? await dependencies.renderCarouselStructure2Slide({
               assetUrl: editedSlide.backgroundUrl,
               format: generation.format,
@@ -421,6 +429,7 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
           x: getUnitNumber(textPosition.x, "textPosition.x"),
           y: getUnitNumber(textPosition.y, "textPosition.y"),
         },
+        textStyle: parseCarouselManualTextStyle(slide.textStyle),
         visualRole: getNullableChoice(
           slide.visualRole,
           ["hook", "human", "product_asset", "static"] as const,
@@ -535,6 +544,7 @@ function getReusableOriginalRender(
   );
 
   if (
+    edited.textStyle ||
     edited.backgroundAssetId !== original.category_image_asset_id ||
     edited.ctaText !== (original.cta_text ?? "") ||
     edited.headline !== original.headline ||

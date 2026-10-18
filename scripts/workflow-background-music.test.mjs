@@ -5,9 +5,10 @@ import vm from "node:vm";
 import ts from "typescript";
 import { workflowSessionAssetError } from "../lib/explore/workflow-session.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import { isLibraryMusic } from "../lib/media/music-library.ts";
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const audio = n => ({ id: id(n), title: `Music ${n}`, url: `https://media.test/${n}.mp3`, status: "ready", collection: "audio", mimeType: "audio/mpeg", durationSeconds: 30 });
+const audio = n => ({ id: id(n), title: `Music ${n}`, url: `https://media.test/${n}.mp3`, status: "ready", collection: "audio", sourceType: "upload", mimeType: "audio/mpeg", durationSeconds: 30 });
 function harness() {
   const slots = [], cache = new Map(), reads = [], uploads = [], effects = []; let cursor = 0, fail = false, wait = null;
   let options = { backgroundMusic: false, subtitles: false, style: "clean" }, lastQuery;
@@ -17,6 +18,7 @@ function harness() {
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async assetId => { reads.push(assetId); return audio(Number(assetId.slice(-1))); } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "owner-token" }, "@/lib/http/read-deadline": { withReadDeadline },
     "@/lib/explore/workflow-session": { workflowSessionAssetError },
+    "@/lib/media/music-library": { isLibraryMusic },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async file => { uploads.push(file); if (wait) await wait; if (fail) throw Error("Upload failed"); return { asset: audio(Number(file.name)) }; } },
     "./use-local-workflow-media": { useLocalWorkflowMedia: () => ({ loading: false, error: null, clearError() {}, cancelPending() {}, chooseRemote: async (load, _config, accept) => accept(await load()) }) } };
   const exported = {};
@@ -60,4 +62,16 @@ test("a disabled optional track does not block preparing a video while its music
   const h = harness(); h.restore({ ...h.options, backgroundMusic: false, backgroundAssetId: id(2) });
   assert.equal(h.render().source, null); assert.equal(h.render().selectionError, null);
   assert.equal(h.uploads.length, 0);
+});
+
+test("saved library music reuses the verified owned source without uploading another copy or enabling music", async () => {
+  const h = harness();
+  const view = h.render();
+  assert.equal(await view.attachment.chooseOwnedAudio(id(2)), true);
+  assert.equal(h.options.backgroundAssetId, id(2));
+  assert.equal(h.options.backgroundMusic, false);
+  assert.equal(h.options.backgroundPlayback, "repeat");
+  assert.equal(h.uploads.length, 0);
+  assert.deepEqual(h.reads, [id(2)]);
+  assert.equal(h.render().source.id, id(2));
 });

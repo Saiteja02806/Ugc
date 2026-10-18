@@ -8,6 +8,27 @@ import { CAROUSEL_STRUCTURE_2_RENDERER_VERSION } from "../lib/carousel-structure
 import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
 import type { renderCarouselSlideWithDiagnostics } from "../lib/carousel-render-slide.js";
 import type { renderCarouselStructure2SlideWithDiagnostics } from "../lib/carousel-structure-2-render-slide.js";
+import { defaultCarouselManualTextStyle } from "../lib/carousel-manual-text.js";
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  test(`${structureId} persists manual typography output, reuses its matching fingerprint, and rerenders changed styles`, async () => {
+    let prior: unknown = null, ready: unknown, calls = 0;
+    const textStyle = { ...defaultCarouselManualTextStyle(), fontSize: 40, color: "#00ff88" };
+    const edited = { slideId: "slide-1", slideNumber: 1, headline: "Build useful things", subtext: "", ctaText: "", backgroundAssetId: "image-1", backgroundUrl: "https://owned.test/bg.webp", textPosition: { x: .3, y: .7 }, textStyle };
+    const original = { id: "slide-1", slide_number: 1, category_image_asset_id: "image-1", headline: edited.headline, subtext: "", cta_text: "", text_position: "center", visual_role: "hook", rendered_url: "https://owned.test/original.webp" };
+    const store = { getTrendingCarouselEdit: async () => ({ creative_id: "carousel", render_job_id: "job", render_output_json: prior, render_status: "queued", content_json: { format: "carousel", slides: [edited] } }),
+      getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5", structure_id: structureId, slide_count: 1 }), listCarouselSlides: async () => [original],
+      markTrendingCarouselEditRendering: async () => undefined, markTrendingCarouselEditReady: async (p: { output: unknown }) => { ready = p.output; }, markTrendingCarouselEditFailed: async () => undefined } as unknown as SupabaseJobStore;
+    const run = () => runRenderTrendingCarouselEditJob({ id: "job", input_json: { carouselId: "carousel", editId: "edit", revision: 1, userId: "owner" } } as unknown as BackgroundJobRow, { store, checkpoint: async () => undefined, dependencies: {
+      renderCarouselSlide: async () => { throw Error("Must not use generation typography"); }, renderCarouselStructure2Slide: async () => { throw Error("Must not use generation typography"); },
+      renderCarouselManualSlide: async input => { calls++; assert.deepEqual(input.slide.textStyle, edited.textStyle); assert.equal(input.slide.renderFormat, "4:5"); assert.deepEqual(input.slide.textPosition, edited.textPosition); return { buffer: Buffer.from("manual"), diagnostics: { manualTextStyle: edited.textStyle, position: edited.textPosition, fontSize: 40, headingSize: 72 } }; },
+      uploadRenderedCarouselSlide: async () => ({ key: "manual.webp", url: "https://owned.test/manual.webp" }) } });
+    await run(); assert.equal(calls, 1); prior = ready;
+    await run(); assert.equal(calls, 1, "An unchanged manual slide is reused");
+    edited.textStyle = { ...edited.textStyle, headingColor: "#ff0088" };
+    await run(); assert.equal(calls, 2, "Appearance changes invalidate the exact slide fingerprint");
+  });
+}
 
 function withoutFingerprints(value: unknown) {
   const output = value as { slides: Array<{ renderFingerprint: string }> };

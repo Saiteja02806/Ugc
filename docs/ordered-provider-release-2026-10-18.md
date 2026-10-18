@@ -5,6 +5,8 @@ intentional project change in the workspace. The initial full audit contained
 300 paths: 229 already match production and 71 contain pending changes. Further
 fixture repairs and the current synthetic Carousel audit script are included,
 alongside the release inventory. No intentional source change is deferred.
+The follow-up audit adds 63 paths for the shared media library, manual Carousel
+text styling and scoped planning repair, merged into the same release checkout.
 
 ## Included behavior
 
@@ -20,6 +22,13 @@ alongside the release inventory. No intentional source change is deferred.
   sequence state and the existing confirmation flow.
 - Tests, documentation, Terraform ReAPI secret wiring, and diagnostic scripts
   are included with their corresponding production changes.
+- Shared image collections and music management are available from Settings,
+  Trending and existing Explore image/audio controls, with explicit preview and
+  owner checks before applying backgrounds to a draft.
+- Trending Carousel edits retain per-slide fonts, sizes, colors and free text
+  positioning through the compatible worker renderer.
+- Helpful Tips v59 repairs rejected hidden image descriptions without rewriting
+  valid slide copy and preserves specific failed-candidate diagnostics.
 
 ## Validation
 
@@ -36,6 +45,12 @@ duplicate-click checks. ReAPI's targeted suite also passes.
 These isolated checks do not create paid media or customer posts. Hosted
 deployment identities, authentication boundaries and production acceptance are
 recorded separately in the release receipt after they have been checked.
+After the additional merge, worker compilation, route type generation,
+application TypeScript and scoped ESLint pass. All 189 added/affected tests pass,
+including real text rasterization and planner-to-job failure settlement. Actual
+media-library, Trending text editor and slideshow assembly browser checks pass
+on desktop/mobile with isolated APIs, including atomic failed rechecks,
+save/reopen, independent typography, touch/keyboard placement and dirty saves.
 
 ## Rollout order
 

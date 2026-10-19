@@ -30,6 +30,16 @@ export function getPostDragSnapTop(scrollTop: number, height: number, velocity =
   return distance >= height * .35 || (distance >= height * .1 && velocity >= .65) ? anchor + height : anchor;
 }
 
+/** Finger swipes need a bounded travel threshold, not half of a tall reel. */
+export function getPostTouchSnapTop(scrollTop: number, height: number, velocity = 0, anchor = 0, hasPrevious = false) {
+  if (height <= 0) return anchor;
+  const distance = scrollTop - anchor;
+  const travel = Math.max(48, Math.min(100, height * .2));
+  const flickTravel = Math.max(24, Math.min(48, height * .1));
+  if (hasPrevious && (distance <= -travel || (distance <= -flickTravel && velocity <= -.65))) return anchor - height;
+  return distance >= travel || (distance >= flickTravel && velocity >= .65) ? anchor + height : anchor;
+}
+
 export function shouldSkipScrolledPost({ scrollTop, height, userInitiated, disabled }: {
   scrollTop: number; height: number; userInitiated: boolean; disabled: boolean;
 }) {

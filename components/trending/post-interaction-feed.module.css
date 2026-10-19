@@ -24,7 +24,7 @@
 .viewport[data-post-mouse-down] [data-post-like-target] {
   cursor: grabbing;
 }
-.viewport[data-post-dragging], .viewport[data-post-settling] {
+.viewport[data-post-dragging], .viewport[data-post-touch-dragging], .viewport[data-post-settling] {
   scroll-snap-type: none;
 }
 .viewport[data-post-dragging], .viewport[data-post-dragging] * {

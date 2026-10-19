@@ -947,6 +947,24 @@ test("slideshow shares Schedule actions and returns to Edit without changing its
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
 });
 
+test("Schedule from the slideshow Create preview opens scheduling controls with the confirmed sequence", () => {
+  const h = harness("slideshow", "", { selected: null });
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
+  nodes(nodes(h.render()).find(n => n.props?.["aria-label"] === "Workspace panels")).find(n => n.type === "Button" && text(n) === "Preview").props.onClick();
+  let tree = h.render();
+  const editor = nodes(tree).find(n => n.type === "FormatSlideshowEditor");
+  assert.equal(editor.props.active, false); assert.equal(editor.props.previewActive, true);
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-pane"], "preview");
+  const saved = { id: "saved-from-preview", kind: "library_item", url: "/slide-2.png", title: "Current order", slides: ["/slide-2.png", "/slide-1.png"] };
+  editor.props.onSaved(saved);
+  nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onContinue();
+  tree = h.render();
+  const root = nodes(tree).find(n => n.type === "tabs-root");
+  assert.equal(root.props.value, "schedule"); assert.equal(root.props["data-pane"], "controls");
+  assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
+  assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").key, editor.key);
+});
+
 test("compact panel navigation retains accepted clips and saved output", () => {
   const h = harness("hook"); h.render(); h.accept(video, "assets");
   let tree = h.render();

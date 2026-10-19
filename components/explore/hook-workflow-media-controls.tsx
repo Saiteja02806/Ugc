@@ -12,7 +12,9 @@ import playerStyles from "@/components/explore/workflow-media-player.module.css"
 import secondary from "@/components/explore/workflow-secondary-action.module.css";
 import { cn } from "@/lib/utils";
 
-export type WorkflowAttachment = Omit<ReturnType<typeof useLocalWorkflowMedia>, "cancelPending">;
+export type WorkflowAttachment = Omit<ReturnType<typeof useLocalWorkflowMedia>, "cancelPending"> & {
+  chooseOwnedAudio?: (assetId: string) => Promise<boolean>;
+};
 
 export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel, className, disabled = false }: {
   attachment: WorkflowAttachment;

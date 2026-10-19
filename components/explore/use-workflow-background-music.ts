@@ -11,6 +11,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import type { FinishingOptions } from "./use-workflow-finishing";
 import { useLocalWorkflowMedia } from "./use-local-workflow-media";
 import type { WorkflowAttachment } from "./hook-workflow-media-controls";
+import { isLibraryMusic } from "@/lib/media/music-library";
 
 export type WorkflowBackgroundMusic = {
   attachment: WorkflowAttachment; source: MediaAsset | null; playback: "once" | "repeat";
@@ -61,6 +62,24 @@ export function useWorkflowBackgroundMusic({ ownerId, enabled, options, setOptio
     revision.current++; libraryDownload.cancelPending(); setUpload({ busy: false, error: null });
     setOptions(previous => ({ ...previous, backgroundMusic: false, backgroundAssetId: null, backgroundPlayback: "repeat", corrections: [] }));
   }
+  async function chooseOwnedAudio(assetId: string) {
+    if (!enabled || !ownerId) return false;
+    const request = ++revision.current;
+    setUpload({ busy: true, error: null });
+    try {
+      const token = await getCurrentUserIdToken(ownerId);
+      if (!token) throw new Error("Sign in to select library music.");
+      const asset = await withReadDeadline(signal => fetchAIStudioMediaAsset(assetId, token, { signal }));
+      if (!isLibraryMusic(asset) || asset.id !== assetId) throw new Error("This music is unavailable. Refresh the library and try again.");
+      if (!active.current || request !== revision.current) return false;
+      cache.setQueryData(["workflow-background-music", ownerId, asset.id], asset);
+      setOptions(previous => ({ ...previous, backgroundAssetId: asset.id, backgroundPlayback: "repeat", corrections: [] }));
+      return true;
+    } catch (cause) {
+      if (active.current && request === revision.current) setUpload({ busy: false, error: cause instanceof Error ? cause.message : "Could not choose this music. Your previous track is kept." });
+      return false;
+    } finally { if (active.current && request === revision.current) setUpload(previous => ({ ...previous, busy: false })); }
+  }
   const loading = upload.busy || libraryDownload.loading || !!id && query.isPending && enabled;
   const restoreError = query.isError ? "Could not restore background music. Choose a replacement or remove it." : null;
   return { source, playback: options.backgroundPlayback ?? "repeat", choose,
@@ -68,6 +87,7 @@ export function useWorkflowBackgroundMusic({ ownerId, enabled, options, setOptio
     attachment: { asset: source ? { name: source.title, url: source.url, duration: source.durationSeconds } : null,
       loading, error: upload.error ?? libraryDownload.error ?? restoreError,
       choose: file => choose(file), chooseRemote: (load, config, accept) => libraryDownload.chooseRemote(load, config, accept ?? choose), remove,
+      chooseOwnedAudio,
       chooseLibraryImage: libraryDownload.chooseLibraryImage,
       clearError: () => { libraryDownload.clearError(); setUpload(previous => ({ ...previous, error: null })); if (query.isError) void query.refetch(); } },
     selectionError: options.backgroundMusic && loading ? "Wait for background music to finish loading." : options.backgroundMusic && id && !source ? restoreError ?? "Loading your background music…" : null };

@@ -1,5 +1,6 @@
 import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
 import assert from "node:assert/strict";
+import { createScheduleCacheFixture } from "./scheduling-cache-test-helpers.mjs";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -9,6 +10,7 @@ import * as drafts from "../lib/explore/format-schedule-draft.ts";
 import * as scheduling from "../lib/explore/workflow-scheduling-draft.ts";
 import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 
 const empty = { platform: "", caption: "", date: "", time: "", connectionId: "" };
 const output = { id: "00000000-0000-4000-8000-000000000001", kind: "media_asset", url: "/saved.mp4", title: "Saved video" };
@@ -65,6 +67,7 @@ test("inline review timezone survives draft storage and invalid timezones cannot
 
 /** Actual panel lifecycle with opt-in isolated review/confirmation responses. */
 function harness(storage = new Map(), { allowReview = false, allowConfirm = false, reviewAccountId = "account-a", transport } = {}) {
+  const cache = createScheduleCacheFixture("alice");
   let cursor = 0, owner = "alice", tree;
   const slots = [], effects = [], timers = new Map(), requests = []; let timerId = 0, externalCalls = 0;
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
@@ -76,6 +79,9 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
   react.useLayoutEffect = react.useEffect;
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = { react, "react/jsx-runtime": jsx, "react-dom": { createPortal: children => children },
+    "@/lib/explore/schedule-repeat-intent": repeatIntent,
+    "@tanstack/react-query": { useQueryClient: () => cache.queryClient },
+    "@/lib/scheduling/account-data-query": cache.api,
     "lucide-react": { ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" },
     "@/components/explore/workflow-schedule-review.module.css": { default: {} },
     "next/dynamic": { default: () => "ScheduleEditor" }, "next/link": { default: "Link" },
@@ -109,7 +115,7 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
     }, require(name) { if (name in imports) return imports[name]; if (name.startsWith("@/components/")) return new Proxy({}, { get: (_, key) => String(key) }); throw new Error(name); } });
   const props = { output, format: "hook", localPreview: false, imageOnly: false, active: true };
   const render = () => { cursor = 0; tree = exported.FormatSchedulePanel(props); while (effects.length) effects.shift()(); return tree; };
-  return { props, storage, requests, owner(value) { owner = value; }, render,
+  return { props, storage, requests, cache, owner(value) { owner = value; }, render,
     hydrate() { for (const [id, callback] of [...timers]) { timers.delete(id); callback(); } return render(); },
     form() { return nodes(tree).find(node => node.type === "WorkflowSchedulingPanel").props; },
     editor() { return nodes(tree).find(node => node.type === "ScheduleEditor")?.props ?? null; },
@@ -130,6 +136,10 @@ test("Hook, Wall and Slideshow use the original simple form and schedule directl
     const actual=JSON.parse(posts[0].options.body); assert.deepEqual(actual.source,{id:output.id,kind:h.props.output.kind});
     assert.equal(actual.caption,draft.caption); assert.equal(actual.scheduledFor,"2099-12-01T14:30:00.000Z");
     assert.ok(nodes(h.render()).some(node=>node.props?.["aria-label"] === "Schedule summary"));
+    assert.equal(h.cache.data().schedules.length, 1, "Confirmed posts reach the account cache before navigation");
+    assert.equal(h.cache.data().schedules[0].idempotencyKey, actual.idempotencyKey);
+    assert.equal(h.cache.queryClient.getQueryState(h.cache.key).isInvalidated, true);
+    assert.equal(h.cache.foreign().schedules[0].id, "foreign-post");
   }
 });
 
@@ -152,6 +162,45 @@ test("uncertain format requests replay exact input after visible time and captio
   h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
   h.form().onChange({...h.form().draft,caption:"Changed",time:"19:45"}); h.render(); clickSchedule(h); await settle(); h.render();
   const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].options.body,posts[0].options.body);
+});
+
+test("Hook, Wall and Slideshow can schedule the same output an hour later with a fresh intent", async () => {
+  for (const format of ["hook", "wall_text", "slideshow"]) {
+    const account = randomUUID(), h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account });
+    h.props.format = format; h.props.imageOnly = format === "slideshow";
+    h.props.output = { ...output, kind: h.props.imageOnly ? "library_item" : "media_asset" };
+    h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
+    clickSchedule(h); await settle(); h.render();
+    const key = `ugc-explore:schedule:v1:alice:format:${h.props.output.kind}:${output.id}`;
+    const previous = JSON.parse(h.storage.get(key));
+    assert.ok(previous.scheduleId);
+    const repeat = nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg");
+    assert.equal(repeat.props.disabled, false);
+    repeat.props.onClick(); repeat.props.onClick(); await settle(); h.render();
+    assert.equal(h.requests.filter(r => r.options.method === "POST").length, 1, "Opening another intent never posts");
+    assert.equal(h.storage.has(key), false);
+    assert.equal(JSON.parse(h.storage.get(`${key}:confirmed:${encodeURIComponent(previous.input.idempotencyKey)}`)).scheduleId, previous.scheduleId);
+    h.form().onChange({ ...h.form().draft, time: "19:30" }); h.render();
+    clickSchedule(h); await settle(); h.render();
+    const posts = h.requests.filter(r => r.options.method === "POST").map(r => JSON.parse(r.options.body));
+    assert.equal(posts.length, 2); assert.deepEqual(posts[1].source, posts[0].source);
+    assert.notEqual(posts[1].idempotencyKey, posts[0].idempotencyKey);
+    assert.equal(Date.parse(posts[1].scheduledFor) - Date.parse(posts[0].scheduledFor), 3600000);
+    assert.equal(h.cache.data().schedules.length, 2, "Both posts remain visible in Scheduling");
+  }
+});
+
+test("a stale confirmed Format screen cannot discard another tab's unconfirmed request", async () => {
+  const account = randomUUID(), h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account });
+  h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
+  clickSchedule(h); await settle(); h.render();
+  const key = `ugc-explore:schedule:v1:alice:format:media_asset:${output.id}`;
+  const current = JSON.parse(h.storage.get(key));
+  const other = { ...current, scheduleId: undefined, input: { ...current.input, idempotencyKey: `explore:${randomUUID()}`, scheduledTime: "20:30", scheduledFor: "2099-12-01T15:00:00.000Z" } };
+  h.storage.set(key, JSON.stringify(other));
+  clickSchedule(h); await settle(); h.render();
+  const posts = h.requests.filter(r => r.options.method === "POST").map(r => JSON.parse(r.options.body));
+  assert.deepEqual(posts[1], other.input, "Resume the other tab's exact request instead of replacing it");
 });
 
 test("source or draft changes while settings load cannot submit a stale format schedule", async () => {

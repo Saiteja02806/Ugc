@@ -239,8 +239,8 @@ variable "gemini_api_key_secret_id" {
 variable "runwayml_api_secret_id" {
   description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedream images, Seedance 2.5 and legacy Runway hook generation."
 
-  type        = string
-  default     = "runwayml-api-secret"
+  type    = string
+  default = "runwayml-api-secret"
 }
 
 variable "higgsfield_credentials_secret_id" {
@@ -250,7 +250,13 @@ variable "higgsfield_credentials_secret_id" {
 }
 
 variable "openrouter_api_key_secret_id" {
-  description = "Optional Secret Manager secret ID injected as OPENROUTER_API_KEY for Seedance 2.5 video generation."
+  description = "Optional Secret Manager secret ID injected as OPENROUTER_API_KEY for historical video-job recovery."
+  type        = string
+  default     = ""
+}
+
+variable "reapi_api_key_secret_id" {
+  description = "Secret Manager secret ID injected as REAPI_API_KEY for new Seedance 2.5 Less Restriction and WAN 3.0 jobs."
   type        = string
   default     = ""
 }

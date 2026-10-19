@@ -5,13 +5,24 @@ export function resolveHookVideoProvider(input: {
   model?: "seedance_2_5" | "google_omni" | "kling_3_0" | "wan_3_0";
   provider?: HookVideoProvider;
 }, legacyOperation: { provider_operation_id: string | null; status: string } | null) {
+  if (input.provider === "reapi") {
+    if (input.model !== "seedance_2_5" && input.model !== "wan_3_0") {
+      throw new ProviderRequestNotSubmittedError("ReAPI video generation requires Seedance 2.5 or WAN 3.0.");
+    }
+    // Newly admitted ReAPI jobs must never migrate an existing paid operation.
+    if (legacyOperation) {
+      assertProviderOperationCanContinue({ operation: legacyOperation, shouldSubmit: false });
+      return "higgsfield" as const;
+    }
+    return "reapi" as const;
+  }
   if (input.model === "kling_3_0") return "runway" as const;
   if (input.model === "wan_3_0") {
     if (input.provider && input.provider !== "openrouter" && input.provider !== "runway") {
       throw new ProviderRequestNotSubmittedError("The selected WAN 3.0 generation route is unavailable.");
     }
-    // New multimodal requests freeze Runway routing before queuing. Older
-    // OpenRouter jobs keep their route so recovery cannot create a second job.
+    // New requests are explicitly frozen to ReAPI at admission. Older jobs
+    // retain their recorded route so recovery cannot create a second job.
     return input.provider ?? "openrouter" as const;
   }
   if (legacyOperation) {

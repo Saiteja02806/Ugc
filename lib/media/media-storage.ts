@@ -189,6 +189,21 @@ export async function createUploadingMediaAsset(
   return data;
 }
 
+export async function listImageLibraryAssetsPage(params: { userId: string; offset: number; query: string }) {
+  let query = getSupabaseServerClient().from(MEDIA_ASSETS_TABLE).select("*")
+    .eq("user_id", params.userId).eq("collection", "image").eq("status", "ready").is("deleted_at", null)
+    .in("source_type", ["upload", "generated_image"])
+    .order("created_at", { ascending: false }).order("id", { ascending: false }).range(params.offset, params.offset + 60);
+  if (params.query) {
+    const escaped = params.query.replace(/[\\%_"]/g, character => `\\${character}`);
+    const pattern = `"%${escaped}%"`;
+    query = query.or(`title.ilike.${pattern},file_name.ilike.${pattern}`);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`Could not load image library: ${error.message}`);
+  return data ?? [];
+}
+
 export async function listMediaAssets(params: {
   collection?: MediaCollection | null;
   sourceTypes?: MediaSourceType[] | null;
@@ -419,7 +434,7 @@ export async function updateMediaAssetForOwner(params: {
   metadata?: Record<string, Json | undefined>;
   title?: string;
   userId: string;
-}) {
+}, attempt = 0): Promise<MediaAssetRow | null> {
   const current = await getMediaAssetForOwner(params);
 
   if (!current) {
@@ -442,18 +457,21 @@ export async function updateMediaAssetForOwner(params: {
     update.title = params.title.trim().slice(0, 140);
   }
 
-  const { data, error } = await getSupabaseServerClient()
+  let query = getSupabaseServerClient()
     .from(MEDIA_ASSETS_TABLE)
     .update(update)
     .eq("id", params.assetId)
     .eq("user_id", params.userId)
-    .is("deleted_at", null)
-    .select("*")
-    .single();
+    .is("deleted_at", null);
+  // Archive flags must not overwrite metadata saved concurrently by a worker.
+  if (params.metadata) query = query.eq("updated_at", current.updated_at);
+  const { data, error } = await query.select("*").maybeSingle();
 
   if (error) {
     throw new Error(`Could not update media asset: ${error.message}`);
   }
+  if (!data && params.metadata && attempt < 2) return updateMediaAssetForOwner(params, attempt + 1);
+  if (!data) throw new Error("This media changed while saving. Refresh and try again.");
 
   return data;
 }

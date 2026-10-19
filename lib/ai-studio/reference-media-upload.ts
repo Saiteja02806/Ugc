@@ -17,7 +17,7 @@ export async function uploadAIStudioReferenceMedia(
   kind: AIStudioReferenceKind,
   maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
   expectedUserId?: string,
-  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-catalog-reference" | "explore-slides" | "trending-carousel-slide" },
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-catalog-reference" | "explore-slides" | "trending-carousel-slide" | "image-library" | "music-library" },
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;

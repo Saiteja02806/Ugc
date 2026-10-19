@@ -533,7 +533,10 @@ export function SchedulingWorkspace() {
 
     const timer = window.setTimeout(() => {
       void loadScheduleMedia();
-      void loadSchedules();
+      // Workflow mutations and background preparation may have changed the
+      // calendar while this route was inactive. Keep cached rows visible, but
+      // always reconcile the list when returning to Scheduling.
+      void loadSchedules({ force: true });
       void loadSocialConnections();
     }, 0);
     return () => window.clearTimeout(timer);

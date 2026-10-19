@@ -443,8 +443,10 @@ test("mixed safety/body failures use counted repairs and preserve other batch it
     const content = request.response_format.json_schema.name === "carousel_content_batch"
       ? { items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })) }
       : request.response_format.json_schema.name === "scoped_carousel_batch_repair"
-        ? { concept: fixed.concept, angle: fixed.contentStrategy.angle, broadSituations: fixed.broadSituations,
-          bodiesBySlide: { slide6: counted.slides[5]!.body } }
+        ? { imageDirectionsBySlide: { slide4: rejectRepair ? "A person at a desk." : fixed.slides[3]!.imageDirection },
+          bodiesBySlide: { slide6: needsBodyFollowup
+            ? { firstWords: "Keep the next decision visible for".split(" "), secondWords: [] }
+            : counted.slides[5]!.body } }
         : request.response_format.json_schema.name === "counted_carousel_body_repair"
         ? { bodiesBySlide: { slide6: counted.slides[5]!.body } }
         : rejectRepair ? { ...counted, grounding: { anchorId: "product_detail:invented" } }
@@ -459,9 +461,9 @@ test("mixed safety/body failures use counted repairs and preserve other batch it
     const result = await buildCarouselContentPlanBatch(input);
     assert.equal(result.length, 5);
     assert.equal(requests.length, 2);
-    assert.equal(requests[1]!.response_format.json_schema.name, "repaired_carousel_batch_item");
+    assert.equal(requests[1]!.response_format.json_schema.name, "scoped_carousel_batch_repair");
     for (const request of requests) assert.match(JSON.stringify(request.response_format.json_schema.schema), /firstWords/);
-    assert.equal(result[0]!.plan.concept, fixed.concept);
+    assert.equal(result[0]!.plan.concept, fixtures[0]!.concept, "A visual/body repair freezes the advisory-only concept");
     assert.equal(typeof result[0]!.plan.slides[5]!.body, "string");
     assert.equal(result[0]!.plan.validationResult.ok, true);
     assert.equal(result[1]!.plan.slides[2]!.body, fixtures[1]!.slides[2]!.body);

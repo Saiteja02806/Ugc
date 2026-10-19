@@ -15,7 +15,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   wallText?: boolean; timeMs?: number; onSeek: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
-  const newText = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", font: "inter" as const, fontWeight: (wallText ? 400 : 500) as ExploreTextWeight };
+  const newText = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", font: "inter" as const, fontWeight: 700 as const };
   const editable = overlays.length ? overlays : [{ ...newText, startMs: 0, endMs: durationMs }];
   const index = Math.min(selected, editable.length - 1);
   const text = editable[index];

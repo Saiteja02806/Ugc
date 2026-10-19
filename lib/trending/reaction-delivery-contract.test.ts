@@ -53,7 +53,7 @@ test("requires the accepted decision and uses one idempotent shared schedule", (
   assert.match(scheduleRoute, /markDailyTrendingSlotDecided/);
   assert.match(
     scheduleRoute,
-    /idempotencyKey: `reaction-trending-schedule:\$\{creative\.assignmentId\}`/,
+    /idempotencyKey: parsed\.data\.requestKey[\s\S]*reaction-trending:/,
   );
   assert.match(scheduleRoute, /source: \{ id: creative\.mediaAssetId, kind: "media_asset" \}/);
 });

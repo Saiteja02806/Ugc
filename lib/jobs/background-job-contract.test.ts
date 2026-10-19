@@ -86,7 +86,7 @@ test("public video jobs explain a provider balance failure without exposing diag
     attemptCount: 1,
     errorCode: "JOB_FAILED",
     errorMessage:
-      "Seedance request request-private ended with status failed: Your credit balance is too low.",
+      "Runway request request-private ended with status failed: You do not have enough credits to run this task.",
     jobType: "generate_hook_video",
     maxAttempts: 3,
     status: "failed",
@@ -229,6 +229,28 @@ test("retry suggestions reflect exhausted attempts without hiding a known reason
   assert.equal(isRetryableBackgroundJob(job), false);
   assert.match(getPublicBackgroundJob(job).error?.message ?? "", /provider timed out/);
   assert.doesNotMatch(getPublicBackgroundJob(job).error?.message ?? "", /You can retry/);
+});
+
+test("completed-output failures explain recovery of the existing video and keep diagnostics private", () => {
+  for (const attemptCount of [1, 3]) {
+    const job = { attemptCount, maxAttempts: 3, errorCode: "PROVIDER_OUTPUT_COLLECTION_FAILED",
+      errorMessage: "private-secret https://file.deepytb.com/private-signed-url", jobType: "generate_hook_video", status: "failed" } as BackgroundJobRecord;
+    const error = getPublicBackgroundJob(job).error;
+    assert.equal(error?.code, "PROVIDER_OUTPUT_COLLECTION_FAILED");
+    assert.equal(error?.retryable, attemptCount < 3);
+    assert.match(error?.message ?? "", /provider finished your video/i);
+    assert.match(error?.message ?? "", /existing video/);
+    assert.doesNotMatch(JSON.stringify(error), /private-secret|deepytb|private-signed-url|cause could not be identified|Start a new/);
+  }
+});
+
+test("historical pending failures explain saved-request recovery after attempts are exhausted", () => {
+  const job = { attemptCount: 3, maxAttempts: 3, errorCode: "provider_operation_pending",
+    errorMessage: "The saved provider generation is still being recovered.", jobType: "generate_hook_video", status: "failed" } as BackgroundJobRecord;
+  const error = getPublicBackgroundJob(job).error;
+  assert.equal(error?.retryable, false);
+  assert.match(error?.message ?? "", /Contact support to check the existing request/);
+  assert.doesNotMatch(error?.message ?? "", /cause could not be identified|Start a new|provider finished/);
 });
 
 test("video-specific historical detection leaves Wall privacy and other jobs unchanged", () => {

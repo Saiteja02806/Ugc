@@ -370,7 +370,8 @@ export async function listCreativeAssetGroupItems(input: {
     .select("*")
     .eq("group_id", input.groupId)
     .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("media_asset_id", { ascending: true });
 
   if (error) {
     throw new Error(

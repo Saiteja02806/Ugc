@@ -241,6 +241,22 @@ test("audio guidance stays distinct from video and receives the selected model's
   preview.props.onRemove(); assert.deepEqual(h.selectionChanges.at(-1), { value: null, kind: "audio" });
 });
 
+test("adding image references retains three ordered image/video/audio slots; hidden inputs retain their existing slots", () => {
+  const h = harness(async () => {});
+  for (const count of [0, 1, 2, 6]) {
+    const images = Array.from({ length: count }, (_, index) => ({ kind: "image", asset: savedImage(`reference-${index}`) }));
+    const tree = h.render({ selection: null, imageSelections: images, audioInputEnabled: true, onImagesChange() {} });
+    const grid = h.all(tree, node => node.props?.["data-workflow-reference-grid"])[0];
+    assert.equal(grid.props["data-reference-columns"], 3);
+    const slots = h.all(grid, node => node.type === "input");
+    assert.deepEqual(slots.map(node => node.props["aria-label"]), ["Choose optional image reference", "Choose optional video reference", "Choose optional audio reference"]);
+  }
+  const two = h.render({ selection: null, videoInputEnabled: true, audioInputEnabled: false });
+  assert.equal(h.all(two, node => node.props?.["data-workflow-reference-grid"])[0].props["data-reference-columns"], 2);
+  const retained = h.render({ selection: null, audioInputEnabled: false, audioSelection: { kind: "audio", asset: { id: "voice", url: "https://owned.test/voice.mp3" } } });
+  assert.equal(h.all(retained, node => node.props?.["data-workflow-reference-grid"])[0].props["data-reference-columns"], 3);
+});
+
 test("WAN timed-reference image limits reject an oversized saved image without clearing the current selection", async () => {
   const h = harness(async () => {}, { images: [savedImage()], fetchSaved: async () => ({ ...savedImage(), fileSizeBytes: 17 * 1024 ** 2 }) });
   const tree = h.render({ maxImageBytes: 16 * 1024 ** 2 });

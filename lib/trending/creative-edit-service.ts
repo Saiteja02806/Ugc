@@ -1,4 +1,5 @@
 import "server-only";
+import { createCarouselManualLayout, parseCarouselManualTextStyle } from "@/lib/carousel/manual-text";
 import { hasCarouselSemanticHeading } from "@/lib/carousel/text-presentation";
 import { getOwnedCarouselSlideImages } from "@/lib/trending/carousel-slide-images";
 
@@ -425,6 +426,10 @@ function mergeSubmittedContent(
   submitted: TrendingCreativeEditSaveInput["content"],
 ): TrendingCreativeEditContent {
   if (defaults.format === "carousel" && submitted.format === "carousel") {
+    for (const slide of submitted.slides) {
+      const original = defaults.slides.find(entry => entry.slideId === slide.slideId);
+      if (original && slide.textStyle && !createCarouselManualLayout({ ...original, ...slide }).fits) throw new TrendingCreativeEditAccessError(`Slide ${slide.slideNumber}: reduce the font size or shorten the text to fit.`, 400);
+    }
     const submittedById = new Map(
       submitted.slides.map((slide) => [slide.slideId, slide]),
     );
@@ -454,6 +459,7 @@ function mergeSubmittedContent(
           headline: edited.headline.trim(),
           subtext: edited.subtext.trim(),
           textPosition: clampNormalizedTextPosition(edited.textPosition),
+          textStyle: parseCarouselManualTextStyle(edited.textStyle),
         };
       }),
     };
@@ -826,6 +832,7 @@ function mergeStoredContentWithOwnerDefaults(
               headline: edited.headline,
               subtext: edited.subtext,
               textPosition: clampNormalizedTextPosition(edited.textPosition),
+              textStyle: parseCarouselManualTextStyle(edited.textStyle),
               visualRole:
                 edited.visualRole === "product_asset"
                   ? "product_asset"

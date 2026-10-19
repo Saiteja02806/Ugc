@@ -4,5 +4,6 @@ export function isProviderBalanceFailure(code: string | null | undefined, messag
     return true;
   }
   return /credit balance is too low/i.test(message ?? "") ||
-    /^(?:429\s+)?You have no credits remaining(?:[.!]|$)/i.test(message ?? "");
+    /^(?:429\s+)?You have no credits remaining(?:[.!]|$)/i.test(message ?? "") ||
+    /you do not have enough credits to run this task/i.test(message ?? "");
 }

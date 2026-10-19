@@ -181,11 +181,12 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
     onClearStyle?.(); setError(null); onErrorChange?.(null); setOpenKind(null);
   }
   const catalogSelections = selectedImages.filter(image => image.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || image.asset.projectId === "ai-studio").map(image => image.asset.fileName);
+  const referenceKinds = (["image", "video", "audio"] as const).filter(kind => kind === "image" || kind === "video" && (videoInputEnabled || Boolean(styleVideo) || Boolean(selectedVideo)) || kind === "audio" && (audioInputEnabled || Boolean(selectedAudio)));
 
   return <section aria-label="Optional generation references" className={cn(presentation.referenceGroup, presentation.classicReferences)}>
     <div className={presentation.referenceHeading}><h3>Optional references</h3></div>
-    <div className={creation.referenceGrid} data-workflow-reference-grid>
-      {(["image", "video", "audio"] as const).filter(kind => kind === "image" || kind === "video" && (videoInputEnabled || Boolean(styleVideo) || Boolean(selectedVideo)) || kind === "audio" && (audioInputEnabled || Boolean(selectedAudio))).map(kind => {
+    <div className={creation.referenceGrid} data-workflow-reference-grid data-reference-columns={referenceKinds.length}>
+      {referenceKinds.map(kind => {
         const selected = kind === "image" ? selectedImages[0] ?? null : kind === "video" ? selectedVideo : selectedAudio;
         const isStyle = kind === "video" && !selectedVideo && Boolean(styleVideo);
         const asset = selected ? { name: selected.asset.fileName ?? selected.asset.title, url: selected.asset.url, duration: selected.asset.durationSeconds } : isStyle ? styleVideo : null;

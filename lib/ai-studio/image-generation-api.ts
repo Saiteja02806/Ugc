@@ -357,6 +357,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           batchSize: totalOutputs,
           generationId,
           model,
+          ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
           prompt,
           referenceImageUrl,
           ...(referenceImageUrls ? { referenceImageUrls } : {}),

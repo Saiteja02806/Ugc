@@ -1,5 +1,6 @@
 import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
 import assert from "node:assert/strict";
+import { createScheduleCacheFixture } from "./scheduling-cache-test-helpers.mjs";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -7,6 +8,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as finishClient from "../lib/explore/workflow-finishing-client.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
 import * as defaultMusicClient from "../lib/explore/workflow-default-music-client.ts";
@@ -568,6 +570,7 @@ test("a lost upload completion response is recovered through GET and never delet
 });
 
 function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport, draftId, onScheduled } = {}) {
+  const cache = createScheduleCacheFixture("owner");
   let cursor = 0, pendingFailure = lost;
   const slots = [], effects = [], calls = [], store = new Map();
   const storageKey = `ugc-explore:schedule:v1:owner:${kind}${draftId ? `:${draftId}` : ""}`;
@@ -585,7 +588,10 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
   const jsx = (type, value) => ({ type, props: value });
   const Editor = () => null;
   const testModule = load("components/explore/workflow-finishing-boundary.tsx", {
+    "@/lib/explore/schedule-repeat-intent": repeatIntent,
     react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: Symbol("Fragment") },
+    "@tanstack/react-query": { useQueryClient: () => cache.queryClient },
+    "@/lib/scheduling/account-data-query": cache.api,
     "next/dynamic": { default: (_loader, options) => { assert.equal(options.ssr, false); return Editor; } },
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: () => ({ action: {}, output: finished }) },
     "@/lib/explore/workflow-schedule-client": scheduleClient,
@@ -598,7 +604,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
   }, {
     crypto: { randomUUID },
-    localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (storageFails) throw new Error("storage unavailable"); store.set(key, value); } },
+    localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (storageFails) throw new Error("storage unavailable"); store.set(key, value); }, removeItem: key => store.delete(key) },
     navigator: { locks: locks ? { request: async (_key, _opts, run) => run({}) } : undefined },
     fetch: async (url, init) => {
       calls.push({ url, ...init });
@@ -620,7 +626,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
   });
   const submission = { caption: "My caption", scheduledSource: { kind: "media_asset", id: finished?.id ?? output.id }, targets: [{ connectionId, platform: "instagram", settings: { shareToFeed: true } }], scheduledFor: "2099-12-01T10:00:00.000Z", scheduledDate: "2099-12-01", scheduledTime: "15:30", timezone: "Asia/Calcutta" };
   if (multiple) submission.targets.push({ connectionId: youtubeId, platform: "youtube", settings: { containsSyntheticMedia:true,madeForKids:false,notifySubscribers:false,privacyStatus: "private" } });
-  return { calls, props, store, storageKey, submission, setFinished(value) { finished = value; }, render() {
+  return { calls, props, store, storageKey, submission, cache, setFinished(value) { finished = value; }, render() {
     cursor = 0; const tree = testModule.WorkflowFinishingBoundary(props); while (effects.length) effects.shift()();
     return { view: tree.props.children[0].props.value, editor: tree.props.children[1]?.props ?? null };
   }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
@@ -634,7 +640,10 @@ test("the original simple form submits directly once for Hook and Phone workflow
     const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,1);
     const actual=JSON.parse(posts[0].body); assert.equal(actual.source.id,output.id); assert.equal(actual.caption,h.props.scheduleDraft.caption);
     assert.equal(actual.scheduledFor,h.submission.scheduledFor); assert.deepEqual(actual.targets,h.submission.targets);
-    assert.match(h.render().view.schedule.message,/is scheduled/); h.unmount();
+    assert.match(h.render().view.schedule.message,/is scheduled/);
+    assert.equal(h.cache.data().schedules.length, 1);
+    assert.equal(h.cache.queryClient.getQueryState(h.cache.key).isInvalidated, true);
+    assert.equal(h.cache.foreign().schedules[0].id, "foreign-post"); h.unmount();
   }
 });
 
@@ -717,7 +726,7 @@ test("lost acknowledgements replay the exact durable request despite visible edi
     const first=h.calls.find(call=>call.method === "POST"); h.props.scheduleDraft={...h.props.scheduleDraft,caption:"Changed",time:"18:45"};
     h.render().view.schedule.onAction(); await tick();
     const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].body,first.body);
-    assert.equal(h.render().view.schedule.disabled,true); h.unmount();
+    assert.equal(h.render().view.schedule.label,"Schedule another post"); h.unmount();
   }
 });
 
@@ -728,10 +737,45 @@ test("reload is read-only and can resume the saved request without loaded video"
   screen.view.schedule.onAction(); await tick(); assert.deepEqual(JSON.parse(h.calls.find(call=>call.method === "POST").body),saved.input); h.unmount();
 });
 
-test("confirmed requests are read instead of posted again", async () => {
+test("confirmed requests restore read-only and open another intent without posting", async () => {
   const saved={version:1,owner:"owner",kind:"hook",scheduleId:randomUUID(),input:{caption:"Original",source:{kind:"media_asset",id:output.id},targets:[{connectionId:randomUUID(),platform:"instagram"}],scheduledFor:"2099-12-01T10:00:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
-  const h=schedulingHarness({saved}); h.render(); await tick(); const screen=h.render(); assert.equal(screen.view.schedule.disabled,true);
+  const h=schedulingHarness({saved}); h.render(); await tick(); const screen=h.render(); assert.equal(screen.view.schedule.disabled,false);
   screen.view.schedule.onAction(); await tick(); assert.equal(h.calls.some(call=>call.method === "POST"),false); h.unmount();
+});
+
+test("Hook and Phone can explicitly schedule the same finished video an hour later", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const h = schedulingHarness({ kind }); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    const before = JSON.parse(h.store.get(h.storageKey));
+    const repeat = h.render().view.schedule;
+    assert.equal(repeat.label, "Schedule another post"); assert.equal(repeat.disabled, false);
+    repeat.onAction(); repeat.onAction(); await tick();
+    assert.equal(h.calls.filter(c => c.method === "POST").length, 1);
+    assert.equal(h.store.has(h.storageKey), false);
+    assert.equal(JSON.parse(h.store.get(`${h.storageKey}:confirmed:${encodeURIComponent(before.input.idempotencyKey)}`)).scheduleId, before.scheduleId);
+    h.props.scheduleDraft = { ...h.props.scheduleDraft, time: "16:30" };
+    h.render().view.schedule.onAction(); await tick();
+    const posts = h.calls.filter(c => c.method === "POST").map(c => JSON.parse(c.body));
+    assert.equal(posts.length, 2); assert.deepEqual(posts[1].source, posts[0].source);
+    assert.notEqual(posts[1].idempotencyKey, posts[0].idempotencyKey);
+    assert.equal(Date.parse(posts[1].scheduledFor) - Date.parse(posts[0].scheduledFor), 3600000);
+    assert.equal(h.cache.data().schedules.length, 2); h.unmount();
+  }
+});
+
+test("a delayed old Hook schedule response cannot replace a newer intent", async () => {
+  let complete;
+  const h = schedulingHarness({ transport: async (_url, init) => {
+    if (init?.method === "POST" && !complete) return new Promise(resolve => { complete = resolve; });
+  } });
+  h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+  const first = JSON.parse(h.store.get(h.storageKey));
+  const replacementKey = `explore:${randomUUID()}`;
+  h.store.set(h.storageKey, JSON.stringify({ ...first, input: { ...first.input, idempotencyKey: replacementKey, scheduledFor: "2099-12-01T11:00:00.000Z", scheduledTime: "16:30" } }));
+  complete(Response.json({ ok: true, schedule: { id: randomUUID(), mediaAssetId: output.id, idempotencyKey: first.input.idempotencyKey, status: "scheduled", targets: first.input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) } }));
+  await tick();
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).input.idempotencyKey, replacementKey);
+  assert.equal(h.cache.data().schedules.length, 0, "A stale acknowledgement must not enter the current calendar cache"); h.unmount();
 });
 
 test("unavailable accounts, failed storage and missing locks block schedule submission", async () => {

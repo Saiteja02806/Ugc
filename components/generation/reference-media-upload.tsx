@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { uploadAIStudioReferenceMedia, type AIStudioReferenceKind, type AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { getReferenceImageFileError } from "@/lib/generation/reference-image";
 
-export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = false, expectedUserId, maxVideoDurationSeconds = 3, selection, onChange, onPendingChange, onErrorChange, inline = false, referencePreview }: {
+export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = false, expectedUserId, maxVideoDurationSeconds = 3, selection, onChange, onPendingChange, onErrorChange, inline = false, referencePreview, append = false, referenceCount = 0, maxReferences = 10 }: {
   active?: boolean;
   allowedKinds: readonly AIStudioReferenceKind[];
   disabled?: boolean;
@@ -19,19 +19,27 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
   onErrorChange?: (message: string | null) => void;
   inline?: boolean;
   referencePreview?: ReactNode;
+  append?: boolean;
+  referenceCount?: number;
+  maxReferences?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
   const previewUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(false);
+  const queueRef = useRef<File[]>([]);
+  const processingRef = useRef(false);
+  const countRef = useRef(referenceCount);
   const [pending, setPending] = useState<{ file: File; kind: AIStudioReferenceKind; url?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const busy = pending !== null;
+  useEffect(() => { countRef.current = referenceCount; }, [referenceCount]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      queueRef.current = [];
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, []);
@@ -55,10 +63,11 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
     const url = kind === "image" ? URL.createObjectURL(file) : undefined;
     previewUrlRef.current = url ?? null;
     setPending({ file, kind, url });
-    onPendingChange?.(true);
+    if (!append) onPendingChange?.(true);
+    let succeeded = false;
     try {
       const uploaded = await uploadAIStudioReferenceMedia(file, kind, maxVideoDurationSeconds, expectedUserId);
-      if (mountedRef.current) onChange(uploaded);
+      if (mountedRef.current) { onChange(uploaded); succeeded = true; }
     } catch (error) {
       if (mountedRef.current) setUploadError(error instanceof Error && error.message ? error.message : `Could not upload this reference ${kind}.`);
     } finally {
@@ -67,29 +76,62 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
       busyRef.current = false;
       if (mountedRef.current) {
         setPending(null);
-        onPendingChange?.(false);
+        if (!append) onPendingChange?.(false);
       }
     }
-  }, [allowedKinds, disabled, expectedUserId, maxVideoDurationSeconds, onChange, onPendingChange, setUploadError]);
+    return succeeded;
+  }, [allowedKinds, append, disabled, expectedUserId, maxVideoDurationSeconds, onChange, onPendingChange, setUploadError]);
+
+  const selectFiles = useCallback(async (files: File[]) => {
+    if (!files.length || disabled) return;
+    if (!append) { await selectFile(files[0]); return; }
+    // Include the currently uploading file and queued pastes in the same cap.
+    if (countRef.current + queueRef.current.length + (busyRef.current ? 1 : 0) + files.length > maxReferences) {
+      setUploadError(`Use up to ${maxReferences} reference images at a time.`);
+      return;
+    }
+    for (const file of files) {
+      const error = getReferenceImageFileError(file);
+      if (error) { setUploadError(error); return; }
+    }
+    queueRef.current.push(...files);
+    if (processingRef.current) return;
+    processingRef.current = true;
+    onPendingChange?.(true);
+    try {
+      while (queueRef.current.length && mountedRef.current) {
+        const countBeforeUpload = countRef.current;
+        const succeeded = await selectFile(queueRef.current.shift()!);
+        if (!succeeded) { queueRef.current = []; break; }
+        countRef.current = Math.max(countRef.current, countBeforeUpload + 1);
+      }
+    } finally {
+      processingRef.current = false;
+      if (mountedRef.current) onPendingChange?.(false);
+    }
+  }, [append, disabled, maxReferences, onPendingChange, selectFile, setUploadError]);
 
   useEffect(() => {
     if (!active) return;
     const form = inputRef.current?.closest("form");
     if (!form) return;
     function handlePaste(event: ClipboardEvent) {
-      const file = Array.from(event.clipboardData?.files ?? []).find((candidate) => candidate.type.startsWith("image/")) ?? Array.from(event.clipboardData?.items ?? []).find((item) => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile();
-      if (!file) return;
+      const clipboardFiles = Array.from(event.clipboardData?.files ?? []).filter(file => file.type.startsWith("image/"));
+      const files = clipboardFiles.length ? clipboardFiles : Array.from(event.clipboardData?.items ?? [])
+        .filter(item => item.kind === "file" && item.type.startsWith("image/"))
+        .map(item => item.getAsFile()).filter((file): file is File => file !== null);
+      if (!files.length) return;
       event.preventDefault();
-      void selectFile(file);
+      void selectFiles(files);
     }
     function handleDragOver(event: DragEvent) {
       if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
     }
     function handleDrop(event: DragEvent) {
-      const file = event.dataTransfer?.files[0];
-      if (!file) return;
+      const files = Array.from(event.dataTransfer?.files ?? []);
+      if (!files.length) return;
       event.preventDefault();
-      void selectFile(file);
+      void selectFiles(files);
     }
     form.addEventListener("paste", handlePaste);
     form.addEventListener("dragover", handleDragOver);
@@ -99,23 +141,23 @@ export function ReferenceMediaUpload({ active = true, allowedKinds, disabled = f
       form.removeEventListener("dragover", handleDragOver);
       form.removeEventListener("drop", handleDrop);
     };
-  }, [active, selectFile]);
+  }, [active, selectFiles]);
 
   const allowedLabel = allowedKinds.join(" or ");
-  const buttonLabel = selection ? `Replace reference ${selection.kind}` : `Add reference ${allowedLabel}`;
-  const preview = pending ? <ReferenceUploadPreview kind={pending.kind} url={pending.url} name={pending.file.name} label="Reference" pending />
+  const buttonLabel = !append && selection ? `Replace reference ${selection.kind}` : `Add reference ${allowedLabel}`;
+  const preview = pending ? <>{append ? referencePreview : null}<ReferenceUploadPreview kind={pending.kind} url={pending.url} name={pending.file.name} label="Reference" pending /></>
     : selection ? <ReferenceUploadPreview kind={selection.kind} url={selection.asset.url} name={`reference ${selection.kind}`} label="Reference" disabled={disabled || busy} onRemove={() => { setUploadError(null); onChange(null); }} />
     : referencePreview;
   return (
     <div className="min-w-0 space-y-1.5">
       <div className="flex min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1.5">
-        <input ref={inputRef} type="file" disabled={disabled || busy} accept={allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",")} className="hidden" aria-label={buttonLabel} onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
+        <input ref={inputRef} type="file" multiple={append} disabled={disabled || busy || append && referenceCount >= maxReferences} accept={allowedKinds.flatMap((kind) => REFERENCE_ACCEPTS[kind]).join(",")} className="hidden" aria-label={buttonLabel} onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
           event.currentTarget.value = "";
-          if (file) void selectFile(file);
+          void selectFiles(files);
         }} />
         {inline ? preview : null}
-        <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 rounded-lg border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy} onClick={() => inputRef.current?.click()}>
+        <Button type="button" variant="muted" size="icon-sm" className="size-9 shrink-0 rounded-lg border border-dashed border-border text-muted" aria-label={buttonLabel} title={`${buttonLabel}. Choose, drop, or paste a file.`} disabled={disabled || busy || append && referenceCount >= maxReferences} onClick={() => inputRef.current?.click()}>
           {busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : inline ? <Plus className="size-4" aria-hidden="true" /> : selection ? <RefreshCw className="size-4" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
         </Button>
         {!inline ? preview : null}

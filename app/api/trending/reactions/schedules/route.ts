@@ -76,7 +76,11 @@ export async function POST(request: Request) {
 
     const input: ScheduleCreateInput = {
       caption: parsed.data.caption ?? "",
-      idempotencyKey: `reaction-trending-schedule:${creative.assignmentId}`,
+      // One identity per explicit scheduling intent; retries keep that identity.
+      // Retain the old key for clients open before the website rollout.
+      idempotencyKey: parsed.data.requestKey
+        ? `reaction-trending:${creative.assignmentId}:${parsed.data.requestKey}`
+        : `reaction-trending-schedule:${creative.assignmentId}`,
       metadata: {
         mediaMode: "single_video",
         reactionAssignmentId: creative.assignmentId,

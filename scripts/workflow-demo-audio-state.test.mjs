@@ -73,6 +73,12 @@ function layout(kind) {
     removeUpload() {}, clearUploadError() {}, clearSelection() {},
   };
   const imports = {
+    "./use-talking-head-reference": { useTalkingHeadReference: () => ({
+      query: { data: [], isPending: false, isError: false, refetch() {} }, selectedId: null, instructions: "",
+      changeInstructions() {}, choose: async () => false, retry() {}, videoReference: attachments[mediaCursor++],
+    }) },
+    "./talking-head-references": { TalkingHeadReferences: "talking-head-references" },
+    "./talking-head-references.module.css": css,
     "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
     react: {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, (value) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },

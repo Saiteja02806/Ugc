@@ -182,6 +182,21 @@ test("disabled Seedance is neither offered nor used as the default", () => {
   assert.ok(enabled.props.options.some((option) => option.value === "seedance_2_5"));
 });
 
+test("Talking Head keeps Seedance available after model changes and restores its saved settings", () => {
+  const actual = harness({ seedanceEnabled: true });
+  const field = label => nodes(actual.render()).find(node => node.type === "select" && node.props.ariaLabel === label);
+  assert.match(read("components/explore/hook-workflow-preview.tsx"), /<HookWorkflowComposer[\s\S]*?audioLabel="Talking head audio"/);
+  field("Hook model").props.onChange("google_omni");
+  field("Hook quality").props.onChange("1080p");
+  assert.ok(field("Hook model").props.options.some(option => option.value === "seedance_2_5"));
+  field("Hook model").props.onChange("seedance_2_5");
+  assert.equal(field("Hook model").props.value, "seedance_2_5");
+  assert.equal(field("Hook quality").props.value, "720p");
+  const { workflow } = generationModules(true);
+  const saved = { model: "seedance_2_5", duration: 17, resolution: "480p", quantity: 2, aspectRatio: "16:9" };
+  assert.deepEqual(JSON.parse(JSON.stringify(workflow.normalizeWorkflowGenerationSettings(JSON.parse(JSON.stringify(saved))))), saved);
+});
+
 test("model changes atomically reset incompatible settings but retain valid output and ratio choices", () => {
   const { workflow } = generationModules(true);
   const seedance = workflow.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 30, resolution: "480p", quantity: 4, aspectRatio: "16:9" });

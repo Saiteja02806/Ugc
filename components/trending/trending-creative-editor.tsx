@@ -1,5 +1,7 @@
 "use client";
 import localFont from "next/font/local";
+import { CarouselManualText, CarouselTextControls } from "./carousel-text-controls";
+import { createCarouselManualLayout, resolveCarouselManualTextStyle } from "@/lib/carousel/manual-text";
 import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
 import { getCarouselEditHookFontSize } from "@/lib/carousel/edit-cover-typography";
 import { CAROUSEL_BODY_FONT_WEIGHT, CAROUSEL_COVER_FONT_WEIGHT, CAROUSEL_HEADING_FONT_WEIGHT, CAROUSEL_STATEMENT_FONT_WEIGHT, CAROUSEL_HOOK_LINE_HEIGHT, CAROUSEL_TEXT_OUTLINE_WIDTH } from "@/lib/carousel/cover-typography";
@@ -975,7 +977,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             {item?.format === "carousel"
-              ? "Edit each slide’s text, upload your own slide images, or choose app screenshots."
+              ? "Edit text, choose backgrounds from your library, upload slide images, or choose app screenshots."
               : "Edit your text and choose a Creative Assets video."}
           </DialogDescription>
         </DialogHeader>
@@ -988,6 +990,7 @@ export function TrendingCreativeEditor({
           ) : content && item ? (
             <div className="grid min-h-[590px] gap-0 lg:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)]">
               <div className="border-b border-border bg-muted/25 p-5 lg:border-b-0 lg:border-r sm:p-6">
+                <div className={content.format === "carousel" ? "lg:sticky lg:top-6" : undefined}>
                 <EditorPreview
                   content={content}
                   edit={edit}
@@ -997,35 +1000,44 @@ export function TrendingCreativeEditor({
                   sourcePreview={sourcePreview}
                   activeSlideIndex={activeSlideIndex}
                   slideImagePreview={slideImagePreview}
-                  onContentChange={setContent}
+                  onContentChange={next => { if (!saving && !slideImageBusyRef.current) setContent(next); }}
                 />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
                   <Move className="size-3.5" aria-hidden="true" />
-                  {content.format === "carousel" &&
-                  content.slides[activeSlideIndex]?.structureId ===
-                    "structure_2"
-                    ? "Press the text and drag it vertically in the frame."
-                    : "Press the text and drag it anywhere in the frame."}
+                  Press the text and drag it anywhere in the frame.
+                </div>
                 </div>
               </div>
 
               <div className="min-w-0 p-5 sm:p-6">
-                <EditorFields
+                <fieldset disabled={saving || slideImageUploading} className="contents"><EditorFields
                   activeSlideIndex={activeSlideIndex}
                   content={content}
                   onActiveSlideIndexChange={setActiveSlideIndex}
                   onContentChange={setContent}
-                />
+                /></fieldset>
 
                 {content.format === "carousel" ? (
                   <>
                     {content.slides[activeSlideIndex] ? <CarouselSlideImageSection
                       key={item.assignmentId}
                       slide={content.slides[activeSlideIndex]}
+                      slides={content.slides}
+                      renderLibrarySlidePreview={(slideId, asset) => {
+                        const previewContent = applyCarouselSlideImage(content, slideId, asset);
+                        return previewContent ? <EditorPreview content={previewContent} edit={null} initialContent={null} item={item} sourcePreview={null} fallbackHookPreviewUrl={null} activeSlideIndex={content.slides.findIndex(slide => slide.slideId === slideId)} onContentChange={() => {}} /> : null;
+                      }}
                       disabled={saving || productAssetsUploading}
                       onBusyChange={(busy) => { slideImageBusyRef.current = busy; setSlideImageUploading(busy); }}
                       onPreviewChange={setSlideImagePreview}
                       onUploaded={(slideId, asset) => setContent(current => applyCarouselSlideImage(current, slideId, asset))}
+                      onLibraryApply={choice => setContent(current => {
+                        const assets = new Map(choice.assets.map(asset => [asset.id, asset]));
+                        return choice.assignments.reduce((next, assignment) => {
+                          const asset = assets.get(assignment.assetId);
+                          return asset ? applyCarouselSlideImage(next, assignment.slideId, asset) : next;
+                        }, current);
+                      })}
                       onRestore={(slideId) => setContent(current => current?.format === "carousel" ? {
                         ...current, slides: current.slides.map(slide => slide.slideId === slideId ? restoreOriginalCarouselBackground(slide) : slide),
                       } : current)}
@@ -1201,8 +1213,8 @@ export function EditorPreview({
     const structure2Layout = isStructure2
       ? createStructure2EditorLayout(slide)
       : null;
-    const previewPosition =
-      structure2Layout?.storyPosition ?? slide.textPosition;
+    const manualLayout = slide.textStyle ? createCarouselManualLayout(slide) : null;
+    const previewPosition = manualLayout?.position ?? structure2Layout?.storyPosition ?? slide.textPosition;
     const supportingText = slide.subtext;
     const hasHeading = isStructure2
       ? Boolean(slide.headline.trim() && supportingText)
@@ -1238,11 +1250,8 @@ export function EditorPreview({
           enabled={!showExactRender}
           format={slide.renderFormat}
           structureId={slide.structureId}
-          bounds={
-            isStructure2
-              ? { maxX: 0.5, maxY: 0.88, minX: 0.5, minY: 0.12 }
-              : undefined
-          }
+          bounds={manualLayout?.bounds}
+          layoutFits={manualLayout?.fits}
           position={previewPosition}
           onPositionChange={(textPosition) =>
             onContentChange({
@@ -1251,9 +1260,8 @@ export function EditorPreview({
                 entry.slideId === slide.slideId
                   ? {
                       ...entry,
-                      textPosition: isStructure2
-                        ? { x: 0.5, y: textPosition.y }
-                        : textPosition,
+                      textPosition,
+                      textStyle: resolveCarouselManualTextStyle(entry),
                     }
                   : entry,
               ),
@@ -1267,7 +1275,7 @@ export function EditorPreview({
             >
               {slide.headline}
             </span>
-          ) : isCover ? (
+          ) : manualLayout ? <CarouselManualText slide={slide} /> : isCover ? (
             <CarouselCoverText primaryText={slide.headline.trim() || supportingText} fontSize={getCarouselEditHookFontSize(slide)} />
           ) : (
             <div className="w-[82cqw] text-center">
@@ -1402,6 +1410,7 @@ function hasCarouselSlidePreviewChanged(
     initial.ctaText !== current.ctaText ||
     initial.headline !== current.headline ||
     initial.subtext !== current.subtext ||
+    JSON.stringify(initial.textStyle ?? null) !== JSON.stringify(current.textStyle ?? null) ||
     initial.textPosition.x !== current.textPosition.x ||
     initial.textPosition.y !== current.textPosition.y ||
     initial.visualRole !== current.visualRole
@@ -2006,7 +2015,7 @@ export function EditorFields({
       onContentChange({
         ...content,
         slides: content.slides.map((entry, index) =>
-          index === activeSlideIndex ? { ...entry, [field]: value } : entry,
+          index === activeSlideIndex ? { ...entry, [field]: value, textStyle: entry.textStyle || value.includes("\n") ? resolveCarouselManualTextStyle(entry) : entry.textStyle } : entry,
         ),
       });
 
@@ -2049,12 +2058,15 @@ export function EditorFields({
             <FieldLabel htmlFor="trending-carousel-headline">
               {slide.slideNumber === 1 ? "Hook" : slide.hasHeading === false && !slide.subtext ? "Text" : "Headline (optional)"}
             </FieldLabel>
-            <Input
+            <textarea
               id="trending-carousel-headline"
+              rows={3}
+              className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
               value={slide.headline}
               maxLength={180}
               onChange={(event) => updateSlide("headline", event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">Press Enter for a new line. Use Text width below to adjust wrapping.</p>
           </Field>
           {slide.slideNumber !== 1 ? (
             <Field>
@@ -2068,7 +2080,7 @@ export function EditorFields({
                 maxLength={360}
                 onChange={(event) => updateSlide("subtext", event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Separate thoughts with a blank line. Each block should stay within three lines.</p>
+              <p className="text-xs text-muted-foreground">Press Enter for a new line, or leave a blank line between thoughts.</p>
             </Field>
           ) : null}
           {slide.slideNumber === content.slides.length || slide.ctaText ? (
@@ -2078,6 +2090,7 @@ export function EditorFields({
             </Field>
           ) : null}
         </FieldGroup>
+        <CarouselTextControls slide={slide} onChange={next => onContentChange({ ...content, slides: content.slides.map(entry => entry.slideId === next.slideId ? next : entry) })} />
       </div>
     );
   }
@@ -3126,6 +3139,7 @@ function toPatchPayload(
         slideNumber: slide.slideNumber,
         subtext: slide.subtext,
         textPosition: slide.textPosition,
+        textStyle: slide.textStyle ?? null,
       })),
     };
   }
@@ -3152,6 +3166,9 @@ function toPatchPayload(
 }
 
 function validateContent(content: TrendingCreativeEditContent) {
+  if (content.format === "carousel") {
+    for (const slide of content.slides) if (slide.textStyle && !createCarouselManualLayout(slide).fits) return `Slide ${slide.slideNumber}: reduce the font size or shorten the text to fit.`;
+  }
   if (content.format === "hook_video") {
     try {
       createHookTextLayout(content.hookText, {

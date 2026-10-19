@@ -14,6 +14,7 @@ export const runtime = "nodejs";
 type UpdateAssetBody = {
   draft?: unknown;
   title?: unknown;
+  libraryArchived?: unknown;
 };
 
 export async function GET(
@@ -86,13 +87,18 @@ async function handleRequest(
       );
     }
 
-    if (!title) {
+    const archive = body && "libraryArchived" in body ? body.libraryArchived : undefined;
+    if (archive !== undefined && (typeof archive !== "boolean" || asset.collection !== "image")) {
+      return Response.json({ ok: false, error: "Choose a valid image library action." }, { status: 400 });
+    }
+    if (!title && archive === undefined) {
       return Response.json({ ok: false, error: "No media changes were provided." }, { status: 400 });
     }
 
     const updated = await updateMediaAssetForOwner({
       assetId,
       title,
+      ...(typeof archive === "boolean" ? { metadata: { imageLibraryArchived: archive } } : {}),
       userId: user.uid,
     });
 

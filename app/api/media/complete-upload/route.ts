@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
     // Demo background tracks can be longer than the video and are fitted by
     // the finishing worker. Keep the existing Create-reference upload cap.
-    const maxAudioSeconds = asset.project_id === "explore-demo" ? 600 : 30;
+    const maxAudioSeconds = ["explore-demo", "music-library"].includes(asset.project_id ?? "") ? 600 : 30;
     if (isAudio && durationSeconds! > maxAudioSeconds) {
       return Response.json(
         { ok: false, error: `Audio ${maxAudioSeconds === 600 ? "background tracks" : "references"} must be ${maxAudioSeconds} seconds or shorter.` },

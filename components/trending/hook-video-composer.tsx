@@ -734,7 +734,7 @@ export function HookVideoComposer({
                 <Check className="size-4" aria-hidden="true" />
                 Scheduled · View Scheduling
               </Link>
-            ) : (
+            ) : null}
               <button
                 type="button"
                 onClick={() => setScheduleDrawerOpen(true)}
@@ -749,9 +749,8 @@ export function HookVideoComposer({
                 ) : (
                   <CalendarClock className="size-4" aria-hidden="true" />
                 )}
-                Schedule
+                {scheduledPostId ? "Schedule another post" : "Schedule"}
               </button>
-            )}
           </div>
         </footer>
       ) : null}

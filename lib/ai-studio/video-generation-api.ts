@@ -475,10 +475,19 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       }
       const referenceError = getVideoTimedReferenceError(model, reference.kind, asset.duration_seconds, asset.file_size_bytes, { allowOmniVideo: isFormatVideoReference });
       if (referenceError) return NextResponse.json({ error: referenceError, ok: false }, { status: 400 });
-      if (reference.kind === "audio" && model === "wan_3_0") referenceAudioDurationSeconds.push(asset.duration_seconds);
+      if ((model === "seedance_2_5" || model === "wan_3_0") && !(reference.kind === "audio"
+        ? ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"]
+        : ["video/mp4", "video/quicktime"]).includes(asset.mime_type)) {
+        return NextResponse.json({ error: reference.kind === "audio" ? "Choose an MP3 or WAV reference audio file." : "Choose an MP4 or MOV reference video file.", ok: false }, { status: 400 });
+      }
+      if (reference.kind === "audio" && (model === "wan_3_0" || model === "seedance_2_5")) referenceAudioDurationSeconds.push(asset.duration_seconds);
     }
   } catch {
     return NextResponse.json({ error: "Could not verify your reference uploads. No generation was started. Try again after your files are available.", ok: false }, { status: 503 });
+  }
+
+  if (model === "wan_3_0" && referenceVideoUrl && (referenceVideoDurationSeconds ?? 0) + durationSeconds > 30) {
+    return NextResponse.json({ error: "For WAN 3.0, reference video plus output must fit within 30 seconds. Choose a shorter reference or output duration.", ok: false }, { status: 400 });
   }
 
   const missingRuntimeEnv = getMissingRuntimeEnv();
@@ -494,8 +503,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
 
   const projectId = "ai-studio";
-  const provider = model === "wan_3_0" && (referenceAudioUrls.length || referenceVideoUrl)
-    ? "runway" : model === "seedance_2_5" || model === "wan_3_0" ? "openrouter" : undefined;
+  // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
+  // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
+  const provider = model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
   const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );

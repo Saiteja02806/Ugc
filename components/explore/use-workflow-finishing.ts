@@ -15,7 +15,7 @@ import { withReadDeadline } from "@/lib/http/read-deadline";
 
 export type FinishingOptions = import("@/lib/explore/workflow-session").WorkflowSessionOptions;
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
-export type WorkflowAction = { busy: boolean; processing?: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
+export type WorkflowAction = { busy: boolean; label?: string; processing?: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
 export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, demoAudioSource = null, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false, fastStatus = false, captionPreview = false, captionDraft = null, composition, demoAudioAssetId = null }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;

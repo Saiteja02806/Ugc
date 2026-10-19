@@ -24,6 +24,10 @@ async function main() {
     let pw;try{pw=require("playwright");}catch{pw=require(path.join(process.env.USERPROFILE,".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));}
     browser=await pw.chromium.launch({headless:true,...(process.platform==="win32"?{channel:"msedge"}:{})});const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on("pageerror",e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${server.address().port}`);
     const select=page.getByRole("combobox",{name:"Text font",exact:true}),weight=page.getByRole("combobox",{name:"Text weight",exact:true});
+    // Existing Medium choices remain; newly added text starts in Inter Bold.
+    assert.equal(await weight.inputValue(),"500");
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");
+    await page.getByRole("button",{name:"Remove text block 2",exact:true}).click();assert.equal(await weight.inputValue(),"500");
     for(const font of ["inter","dmsans","robotocondensed","montserrat"]) for(const value of ["400","500","700"]) {
       await select.selectOption(font);await weight.selectOption(value);
       const selected=await page.locator('svg[aria-label="Text preview"] g').evaluate(async node=>{const family=node.getAttribute("font-family"),weight=node.getAttribute("font-weight");await document.fonts.load(weight+' 32px "'+family+'"');return {family,weight,loaded:document.fonts.check(weight+' 32px "'+family+'"'),width:node.getBBox().width};});
@@ -34,7 +38,8 @@ async function main() {
     await page.screenshot({path:path.join(out,"laptop.png")});
     for(const viewport of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]) {await page.setViewportSize(viewport);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await select.scrollIntoViewIfNeeded();assert.equal(await select.isVisible(),true);await page.screenshot({path:path.join(out,`fonts-${viewport.width}.png`),fullPage:viewport.width<600});}
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
-    assert.deepEqual(errors,[]);console.log("PASS: all 12 bundled faces loaded, preview changed, save/reopen preserved choices, Wall advanced-only controls, laptop/mobile fit. "+out);
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");
+    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to Inter Bold; all 12 bundled faces loaded, preview changed, save/reopen preserved choices, Wall advanced-only controls, laptop/mobile fit. "+out);
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

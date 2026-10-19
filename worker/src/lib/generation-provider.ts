@@ -37,6 +37,19 @@ export class ProviderOperationPollingError extends Error {
   }
 }
 
+/** The provider finished; recovery must collect that task, never submit again. */
+export class ProviderOutputCollectionError extends RetryableJobError {
+  constructor(reason: "missing_output" | "untrusted_output_url" | "download_failed") {
+    const messages = {
+      missing_output: "The provider completed the video but returned no output link.",
+      untrusted_output_url: "The provider completed the video but its output link was not accepted.",
+      download_failed: "The provider completed the video but its output could not be downloaded.",
+    };
+    super(messages[reason], { code: "PROVIDER_OUTPUT_COLLECTION_FAILED", retryAfterSeconds: 30 });
+    this.name = "ProviderOutputCollectionError";
+  }
+}
+
 export class ProviderSubmissionUncertainError extends Error {
   readonly code = "provider_submission_uncertain";
 

@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -78,6 +79,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
+  createCarouselScheduleIdempotencyKey,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
@@ -1190,7 +1192,7 @@ export function TrendingWorkspace() {
     <TrendingPreparationContext value={trendingFeedProgress?.preparationState ?? "preparing"}>
     <section className={cn("min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10", reviewLayout.workspace)}>
       <div className={cn("mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]", reviewLayout.workspaceContent)}>
-        <header className="flex items-start justify-between gap-4">
+        <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
@@ -1210,7 +1212,8 @@ export function TrendingWorkspace() {
               Explore slideshows made from your business profile.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <MediaLibraryButton label="Manage library" variant="creative-edit" className="rounded-full" disabled={authLoading || !user} />
             <Button
               data-trending-adjust-control
               type="button"
@@ -2517,6 +2520,7 @@ export function TrendingDeck({
       setScheduleContext({
         assignmentId: candidate.item.assignmentId,
         contentType: "reaction",
+        requestKey: crypto.randomUUID(),
         coverUrl: candidate.item.creative.thumbnailUrl,
         returnTo: "trending",
         title: candidate.item.creative.title,
@@ -2530,7 +2534,7 @@ export function TrendingDeck({
         assignmentId: candidate.item.assignmentId,
         carouselId: candidate.carousel.carouselId,
         coverUrl: carouselLibraryItem.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${candidate.item.assignmentId}`,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: carouselLibraryItem.id,
         returnTo: "trending",
         title: getCarouselTitle(candidate.carousel),
@@ -2668,7 +2672,7 @@ export function TrendingDeck({
         carouselId: candidate.carousel.carouselId,
         coverUrl:
           result.item.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${candidate.item.assignmentId}`,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: result.item.id,
         returnTo: "trending",
         title: getCarouselTitle(candidate.carousel),
@@ -2933,6 +2937,7 @@ export function TrendingDeck({
 
               const schedule = await createPendingReactionSchedule({
                 candidate: pendingReactionScheduleCandidate,
+                requestKey: scheduleContext.requestKey,
                 selection: submission,
               });
 
@@ -4838,6 +4843,7 @@ async function createPendingWallTextSchedule(params: {
 
 async function createPendingReactionSchedule(params: {
   candidate: CompleteReaction;
+  requestKey: string;
   selection: CarouselScheduleSubmission;
 }) {
   const token = await getCurrentUserIdToken();
@@ -4849,6 +4855,7 @@ async function createPendingReactionSchedule(params: {
   const response = await fetch("/api/trending/reactions/schedules", {
     body: JSON.stringify(createReactionScheduleRequest({
       assignmentId: params.candidate.item.assignmentId,
+      requestKey: params.requestKey,
       caption: params.selection.caption,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,

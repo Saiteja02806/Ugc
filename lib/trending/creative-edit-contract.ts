@@ -9,6 +9,7 @@ import {
   type HookTextLayoutVersion,
 } from "./hook-text-layout.ts";
 import type { TrendingTextColor } from "./text-color.ts";
+import type { CarouselManualTextStyle } from "../carousel/manual-text.ts";
 import { getWallTextManualBlocks, normalizeWallTextManualCopy } from "./wall-text-manual-copy.ts";
 import { getWallTextEditSafeArea } from "./wall-text-editor-layout.ts";
 import type { WallTextNormalizedBox } from "./wall-text-types.ts";
@@ -64,6 +65,7 @@ export type TrendingCarouselEditSlide = {
   structureId: "structure_1" | "structure_2";
   subtext: string;
   textPosition: NormalizedTextPosition;
+  textStyle?: CarouselManualTextStyle | null;
   visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
@@ -147,6 +149,7 @@ export type TrendingCreativeEditSaveInput = {
             | "slideNumber"
             | "subtext"
             | "textPosition"
+            | "textStyle"
           >
         >;
         version: typeof TRENDING_CREATIVE_EDIT_VERSION;

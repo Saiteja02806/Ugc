@@ -12,8 +12,8 @@ export function getVideoReferencePolicy(model: AIStudioVideoModel, options: Vide
     maxImageBytes: (model === "wan_3_0" && options.hasTimedReferences ? 16 : 20) * 1024 ** 2,
     maxVideoDuration: model === "wan_3_0" ? 15 : omniVideo ? 10 : 30,
     maxAudioDuration: model === "wan_3_0" ? 15 : 30,
-    maxVideoBytes: (model === "wan_3_0" || omniVideo ? 32 : 250) * 1024 ** 2,
-    maxAudioBytes: 25 * 1024 ** 2,
+    maxVideoBytes: (model === "wan_3_0" || omniVideo ? 32 : model === "seedance_2_5" ? 200 : 250) * 1024 ** 2,
+    maxAudioBytes: (timed ? 15 : 25) * 1024 ** 2,
   };
 }
 
@@ -30,10 +30,12 @@ export function getVideoTimedReferenceError(model: AIStudioVideoModel, kind: "vi
   if (typeError) return typeError;
   const policy = getVideoReferencePolicy(model, options);
   const maxDuration = kind === "video" ? policy.maxVideoDuration : policy.maxAudioDuration;
+  const minDuration = model === "seedance_2_5" ? 2 : model === "wan_3_0" ? 1 : 0;
   const maxBytes = kind === "video" ? policy.maxVideoBytes : policy.maxAudioBytes;
   if (!Number.isFinite(duration) || !duration || duration <= 0 || duration > maxDuration) {
     return `Choose a reference ${kind} up to ${maxDuration} seconds for ${getAIStudioVideoModelLabel(model)}.`;
   }
+  if (duration < minDuration) return `Choose a reference ${kind} of at least ${minDuration} seconds for ${getAIStudioVideoModelLabel(model)}.`;
   if (size !== undefined && (!Number.isFinite(size) || size <= 0 || size > maxBytes)) {
     return `Choose a reference ${kind} up to ${maxBytes / 1024 ** 2} MB for ${getAIStudioVideoModelLabel(model)}.`;
   }

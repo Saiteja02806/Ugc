@@ -41,7 +41,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v58-owned-positions-flexible-body";
+  "llm-carousel-planner-v59-scoped-visual-repair";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -157,6 +157,7 @@ export type CarouselPlanValidationIssue = {
     | "story_structure"
     | "story_repetition"
     | "unresolved_placeholder"
+    | "unsafe_visual_direction"
     | "unsupported_claim";
   message: string;
   slideNumber: number | null;
@@ -235,8 +236,22 @@ export type CarouselBatchContentPlanItem = {
   slotIndex: number;
 };
 
+export type CarouselBatchPlanningFailure = {
+  slotIndex: number;
+  message: string;
+  initialIssues: CarouselPlanValidationIssue[];
+  finalIssues: CarouselPlanValidationIssue[];
+  rawLlmResponse: { initial: string; repair: string | null };
+};
+
+class CarouselBatchItemRepairError extends Error {
+  constructor(message: string, readonly issues: CarouselPlanValidationIssue[], readonly repairResponse: string | null, cause: unknown) {
+    super(message, { cause });
+  }
+}
+
 export class CarouselPartialBatchPlanningError extends Error {
-  constructor(public readonly completedItems: CarouselBatchContentPlanItem[], failures: Error[]) {
+  constructor(public readonly completedItems: CarouselBatchContentPlanItem[], public readonly failures: CarouselBatchPlanningFailure[]) {
     super(`Some Carousel plans failed validation: ${failures.map((error) => error.message).join("; ")}`);
   }
 }
@@ -621,6 +636,7 @@ export async function buildCarouselContentPlanBatch(
           input.bodyRepairPolicy ? decodeCountedPlanBodies(rawItem.plan) : rawItem.plan,
           CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
           requestedItem.context,
+          true,
         );
         const validation = evaluateCarouselContentPlanForPublishing({
           analysis: input.analysis,
@@ -684,7 +700,7 @@ export async function buildCarouselContentPlanBatch(
       }
     }
 
-    const repairFailures: Error[] = [];
+    const repairFailures: CarouselBatchPlanningFailure[] = [];
     for (const pending of pendingRepairs) {
       try {
         const replacement =
@@ -744,7 +760,13 @@ export async function buildCarouselContentPlanBatch(
           workingHistory,
         );
       } catch (error) {
-        repairFailures.push(error instanceof Error ? error : new Error(String(error)));
+        repairFailures.push({
+          slotIndex: pending.requestedItem.item.slotIndex,
+          message: getErrorMessage(error),
+          initialIssues: pending.issues,
+          finalIssues: error instanceof CarouselBatchItemRepairError ? error.issues : [createInvalidPlanIssue(error)],
+          rawLlmResponse: { initial: JSON.stringify(pending.rawItem), repair: error instanceof CarouselBatchItemRepairError ? error.repairResponse : null },
+        });
       }
     }
 
@@ -810,6 +832,7 @@ function parseCarouselContentPlanShape(
   value: unknown,
   requestedSlideCount: number,
   grammarContext: CarouselGrammarGenerationContext | null = null,
+  collectVisualIssues = false,
 ) {
   const slideCount = clampSlideCount(requestedSlideCount);
   const record = asRecord(value, "carousel plan");
@@ -941,7 +964,7 @@ function parseCarouselContentPlanShape(
       throw new Error("Optional CTA text belongs on the final slide only.");
     }
 
-    if (index !== 0 && hasProhibitedVisualSubject(imageDirection)) {
+    if (!collectVisualIssues && index !== 0 && hasProhibitedVisualSubject(imageDirection)) {
       throw new Error(
         `Slide ${index + 1} image direction includes a prohibited human subject.`,
       );
@@ -1897,6 +1920,10 @@ function evaluateCarouselContentPlanForPublishing(params: {
   recentHistory: readonly CarouselRecentAcceptedCopy[] | undefined;
 }) {
   return partitionCarouselContentPlanValidationIssues([
+    ...params.plan.slides.flatMap((slide): CarouselPlanValidationIssue[] => slide.slideNumber > 1 && hasProhibitedVisualSubject(slide.imageDirection)
+      ? [{ code: "unsafe_visual_direction", slideNumber: slide.slideNumber,
+        message: "Image direction must describe objects and text-safe space only. Remove all human-subject terms, including team/customer labels; preserve the visible copy." }]
+      : []),
     ...validateCarouselContentPlan(params.plan, params.analysis),
     ...validateHelpfulTipsPlan(params.plan, params.analysis),
     ...validateCarouselPlanGrounding(params.plan, params.groundingCandidates),
@@ -2460,8 +2487,12 @@ async function buildSingleBatchItemRepair(params: {
   rawItem: Record<string, unknown>;
   replacement: boolean;
   repairPass?: number;
+  repairHistory?: string[];
+  repairShapeFailure?: string;
 }) {
   let repairRawResponse: string | null = null;
+  const repairHistory = [...(params.repairHistory ?? [])];
+  let finalRepairIssues: CarouselPlanValidationIssue[] | null = null;
   let originalPlan: ReturnType<typeof parseCarouselContentPlanShape> | null =
     null;
 
@@ -2472,6 +2503,7 @@ async function buildSingleBatchItemRepair(params: {
           params.input.bodyRepairPolicy ? decodeCountedPlanBodies(params.rawItem.plan) : params.rawItem.plan,
           CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
           params.context,
+          true,
         );
       } catch {
         originalPlan = null;
@@ -2489,13 +2521,15 @@ async function buildSingleBatchItemRepair(params: {
     const completion = await getOpenAIClient().chat.completions.create({
       max_completion_tokens: params.input.bodyRepairPolicy ? 3_000 : 1_800,
       messages: scopedRepair ? [
-        { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the exact fields requested by the schema. All other plan fields are frozen and must not be returned or rewritten. Keep the selected grounding anchor. Replace the specific rejected phrase, repeated word or disconnected concept with concrete useful teaching from that anchor's sourceFact and matchTerms. Never add claims or promotion." },
+        { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the exact fields requested by the schema. All other plan fields are frozen and must not be returned or rewritten. For imageDirectionsBySlide change only the specified hidden image descriptions: name physical objects and useful text-safe space. Remove human-subject words even in labels such as team input or customer notes; describe a form, notes or screen directly. Never rewrite headlines, body copy, facts, roles or grounding to fix image metadata. For requested copy fields, keep the selected grounding anchor and correct only the named validation issues. Never add claims or promotion." },
         { role: "user", content: JSON.stringify({ scope: scopedRepair, issues: params.issues,
+          repairShapeFailure: params.repairShapeFailure,
           grounding: params.context.groundingCandidates, frozenPlan: originalPlan,
           businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief }) },
       ] : countedSlides ? [
         { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the requested carousel body fields. Return firstWords and secondWords arrays of individual words for each body; secondWords may be empty. Join words into one or two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with at most 30 words total and at most 300 characters; do not pad shorter useful copy. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
         { role: "user", content: JSON.stringify({ businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief, grounding: params.context.groundingCandidates,
+          repairShapeFailure: params.repairShapeFailure,
           issues: params.issues, frozenPlan: originalPlan,
           bodiesToReplace: countedSlides.map((n) => ({ slideNumber: n, currentBody: originalPlan!.slides[n - 1]!.body, role: originalPlan!.slides[n - 1]!.formatRole })),
         }) },
@@ -2510,6 +2544,7 @@ async function buildSingleBatchItemRepair(params: {
               : "This is an isolated repair for one broken item from a five-Carousel batch. Correct only this item.",
             "Validation or applicability issue:",
             JSON.stringify(params.issues),
+            params.repairShapeFailure ? `The previous repair had invalid output shape: ${params.repairShapeFailure}` : "",
             "Original batch item:",
             JSON.stringify(params.rawItem),
           ].join("\n"),
@@ -2531,16 +2566,31 @@ async function buildSingleBatchItemRepair(params: {
     });
     repairRawResponse = completion.choices[0]?.message.content ?? null;
     if (!repairRawResponse) throw new Error("OpenAI returned no repaired batch item.");
+    repairHistory.push(repairRawResponse);
 
-    const replacements = countedSlides ? parseCountedBodyRepair(JSON.parse(repairRawResponse), countedSlides) : null;
-    const parsedRepair = parseCarouselContentPlanShape(
+    let parsedRepair: ReturnType<typeof parseCarouselContentPlanShape>;
+    try {
+      const replacements = countedSlides ? parseCountedBodyRepair(JSON.parse(repairRawResponse), countedSlides) : null;
+      parsedRepair = parseCarouselContentPlanShape(
       scopedRepair ? applyScopedPlanRepair(originalPlan!, scopedRepair, JSON.parse(repairRawResponse))
         : replacements ? { ...originalPlan, slides: originalPlan!.slides.map((slide) => replacements.has(slide.slideNumber)
         ? { ...slide, body: replacements.get(slide.slideNumber)!, subtext: replacements.get(slide.slideNumber)! } : slide) }
         : params.input.bodyRepairPolicy ? decodeCountedPlanBodies(JSON.parse(repairRawResponse)) : JSON.parse(repairRawResponse),
       CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
       params.context,
-    );
+      true,
+      );
+    } catch (error) {
+      // A malformed model repair previously escaped before the second-pass
+      // branch. Spend the existing bounded second repair on the named shape
+      // failure; a provider error/empty response never enters this branch.
+      if (params.input.bodyRepairPolicy && !params.repairPass) {
+        return await buildSingleBatchItemRepair({ ...params,
+          repairShapeFailure: getErrorMessage(error), repairPass: 1, repairHistory,
+        });
+      }
+      throw error;
+    }
     const repaired =
       originalPlan && hasOnlySlideOneCoverFitIssues(params.issues)
         ? replaceOnlySlideOne(originalPlan, parsedRepair)
@@ -2552,6 +2602,7 @@ async function buildSingleBatchItemRepair(params: {
       recentHistory: params.input.recentHistory,
     });
     const finalIssues = repairedValidation.blockingIssues;
+    finalRepairIssues = finalIssues;
     if (finalIssues.length > 0) {
       if (
         params.context.hookTemplate &&
@@ -2590,12 +2641,13 @@ async function buildSingleBatchItemRepair(params: {
       }
 
       if (params.input.bodyRepairPolicy && !params.repairPass) {
-        return buildSingleBatchItemRepair({
+        return await buildSingleBatchItemRepair({
           ...params,
           rawItem: { ...params.rawItem, status: "ready", plan: repaired },
           issues: finalIssues,
           replacement: false,
           repairPass: 1,
+          repairHistory,
         });
       }
       throw new Error(formatValidationIssues(finalIssues));
@@ -2623,9 +2675,12 @@ async function buildSingleBatchItemRepair(params: {
       },
     });
   } catch (error) {
-    throw new Error(
+    if (error instanceof CarouselBatchItemRepairError) throw error;
+    throw new CarouselBatchItemRepairError(
       `Carousel Structure 1 isolated batch repair failed: ${getErrorMessage(error)}`,
-      { cause: error },
+      finalRepairIssues?.length ? finalRepairIssues : [createInvalidPlanIssue(error)],
+      repairHistory.length ? repairHistory.join("\n\n--- Structure 1 repair attempt ---\n\n") : null,
+      error,
     );
   }
 }

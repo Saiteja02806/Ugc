@@ -15,9 +15,9 @@ import type { MediaAsset } from "@/lib/media/types";
 import styles from "./slideshow-add-slides.module.css";
 
 export type SlideshowSlideSource = "generated" | "reference";
-export function SlideshowAddSlides({ owner, reference, existing, slideCount, disabled, localPreview, onClose, onAdd, onUpload, onCreate }: {
+export function SlideshowAddSlides({ owner, reference, existing, slideCount, disabled, localPreview, onClose, onAdd, onUpload, onCreate, onLibrary }: {
   owner: string | null; reference: RecreateReference | null; existing: readonly AIStudioImageResult[]; slideCount: number; disabled: boolean; localPreview: boolean;
-  onClose: () => void; onAdd: (source: SlideshowSlideSource, ids: string[]) => Promise<void>; onUpload: () => void; onCreate?: () => void;
+  onClose: () => void; onAdd: (source: SlideshowSlideSource, ids: string[]) => Promise<void>; onUpload: () => void; onCreate?: () => void; onLibrary?: () => void;
 }) {
   const [source, setSource] = useState<SlideshowSlideSource | "upload">(reference ? "reference" : "generated");
   const [selected, setSelected] = useState<string[]>([]);
@@ -63,9 +63,10 @@ export function SlideshowAddSlides({ owner, reference, existing, slideCount, dis
   </button>)}</div>; }
   return <Dialog open onOpenChange={open => { if (!open && !working.current) onClose(); }}><DialogContent className={styles.dialog} showCloseButton={!busy}>
     <DialogHeader><DialogTitle>Add slides</DialogTitle><DialogDescription>Choose images to add to your slideshow. Your existing slides and edits stay in place.</DialogDescription></DialogHeader>
+    {onLibrary ? <Button type="button" variant="outline" disabled={busy || disabled || localPreview || !owner || !remaining} onClick={onLibrary}>Choose from image library</Button> : null}
     <div className={styles.sources} role="group" aria-label="Slide sources">{([["generated", "Generated images"], ["reference", "Original reference"], ["upload", "Upload images"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={source === value} disabled={busy} onClick={() => changeSource(value)}>{label}</button>)}</div>
     <div className={styles.body}>
-      {source === "upload" ? <div className={styles.empty}><Upload aria-hidden="true" /><p>Add finished JPG, PNG or WebP images from your device.</p><Button type="button" variant="outline" disabled={disabled || localPreview || !owner || !remaining} onClick={onUpload}>Choose images</Button></div>
+      {source === "upload" ? <div className={styles.empty}><Upload aria-hidden="true" /><p>Add JPG, PNG or WebP images. Uploads automatically fit 4:5, keeping the full image visible with a blurred background where needed.</p><Button type="button" variant="outline" disabled={disabled || localPreview || !owner || !remaining} onClick={onUpload}>Choose images</Button></div>
         : source === "reference" ? !reference ? <p className={styles.empty}>Choose a slideshow reference in Create to add its original slides.</p> : <>
           <div className={styles.sourceHeading}><div><strong>{reference.title}</strong><p>Add only the originals you want. Slides already added or recreated are marked below.</p></div><Button type="button" variant="ghost" size="sm" disabled={busy || disabled || candidates.every(item => item.used)} onClick={() => { setSelected(candidates.filter(item => !item.used).map(item => item.id)); setError(null); }}>Select all remaining</Button></div>{tiles(candidates)}
         </> : localPreview || !owner ? <p className={styles.empty}>Your saved generated images will appear here when signed in.</p>

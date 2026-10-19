@@ -94,9 +94,8 @@ export async function loadTrendingCreativeReadView(params: {
   userId: string;
 }): Promise<TrendingCreativeEditRecord> {
   if (params.format === "wall_text") return loadTrendingWallTextPreview(params);
-  if (params.format === "hook_video") return loadTrendingCreativeEditor(params);
   await assertReadableTrendingCreative(params);
-  return loadTrendingCreativeRecord(params);
+  return loadTrendingCreativeRecord({ ...params, readOnly: true });
 }
 
 export async function loadTrendingCarouselEditStatus(params: {
@@ -119,6 +118,7 @@ async function loadTrendingCreativeRecord(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditRecord> {
 
   const [defaultContent, row] = await Promise.all([
@@ -291,6 +291,7 @@ async function buildDefaultContent(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditContent> {
   if (params.format === "carousel") {
     const status = await getCarouselGenerationStatus(params.creativeId);
@@ -359,6 +360,7 @@ async function buildDefaultContent(params: {
       assignmentId: params.assignmentId,
       suggestionId: params.creativeId,
       userId: params.userId,
+      readOnly: params.readOnly,
     });
 
     if (!idea) {

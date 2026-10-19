@@ -1,5 +1,38 @@
 # Explore context and UI decision record
 
+### Trending same-quota older-post recovery — 19 October 2026, local correction
+
+- Recovery scope is the same quota/delivered feed, including posts viewed hours
+  earlier. Browsing them again must not consume quota or mix other quota feeds.
+- User supplied a recording and clarified that recent swipe-back works but a
+  slideshow reviewed about two hours earlier cannot be reached. Production
+  records retain older skipped/ready slideshows; the connected browser stops at
+  a later historical post. Deployed backward navigation read only local browser
+  snapshots and cannot retrieve older account history from the server.
+- No two-hour expiry was found. Seven-day/120-entry/serialized-size limits and
+  browser-specific storage do not provide complete account history. Prior
+  gesture and refresh tests did not cover earlier decisions missing from the
+  browser. Keep this acceptance gap explicit; do not repeatedly adjust gestures
+  to address missing historical data.
+- Required correction is paginated, authenticated recovery of existing reviewed
+  records, stable merging and an explicit older-history loading/error boundary.
+  It is now implemented locally through `GET /api/trending/feed/history` using
+  the saved feed ID and original slot order. The gallery preloads pages, merges
+  pending local reviews without moving the current post, scopes storage to
+  owner + quota, and exposes loading/retry/unavailable states. Revisiting is
+  read-only; normal feed preparation and decision writes are unchanged.
+- Local regression and browser checks passed for empty-cache +2h recovery,
+  pagination, reload/navigation, quota isolation, empty feed, retry and blocked
+  storage. The final quota browser rerun passed on the isolated release.
+  Read-only production-service verification recovered all eight reviewed
+  slideshows, denied a different owner, and left quota unchanged.
+  Authenticated deployed-browser acceptance remains pending.
+  Diagnostic evidence and limits, including the
+  different Comet/in-app browser contexts, are in
+  `docs/trending-older-history-investigation-2026-10-19.md`.
+
+
+
 ### Hook audit approval and manual audio collection — 19 October 2026
 
 - User reviewed the scene findings, explicitly chose to keep Hook 18 unchanged,

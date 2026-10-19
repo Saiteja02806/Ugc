@@ -68,6 +68,7 @@ import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
 import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
+import { useQuotaReviewRecovery } from "@/components/trending/use-quota-review-recovery";
 import { isRecoverableTrendingReview, type ReviewedTrendingCandidate } from "@/lib/trending/reviewed-feed-candidate";
 import { POST_LIKE_FEEDBACK_MS } from "@/lib/trending/post-interaction";
 import { TrendingSwipeGuide } from "@/components/trending/trending-swipe-guide";
@@ -164,6 +165,7 @@ type TrendingDailyFeedState =
   | "ready";
 
 type TrendingFeedProgress = {
+  feedId?: string;
   preparationState?: TrendingPreparationState | null;
   completedCount: number;
   pendingSlotCount: number;
@@ -1012,6 +1014,7 @@ export function TrendingWorkspace() {
         setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
         const nextFeedProgress = data.feed
           ? {
+              feedId: data.feed.id,
               preparationState: data.feed.preparationState,
               completedCount:
                 data.feed.completedCount + pendingLocalDecisionCount,
@@ -1243,6 +1246,7 @@ export function TrendingWorkspace() {
             <div className={cn("min-w-0 flex-1", reviewLayout.feedLayer)}>
               <TrendingFeedGallery
                 key={trendingFeedSessionKey}
+                feedId={trendingFeedProgress?.feedId}
                 enqueueDecision={enqueueDecision}
                 failure={trendingFeedFailure}
                 headerActionsRoot={headerActionsRoot}
@@ -1284,6 +1288,7 @@ export function TrendingWorkspace() {
 }
 
 export function TrendingFeedGallery({
+  feedId,
   enqueueDecision,
   error,
   failure,
@@ -1300,6 +1305,7 @@ export function TrendingFeedGallery({
   userId,
   upgradeRequired,
 }: {
+  feedId?: string;
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   error: string | null;
   failure: TrendingFeedFailure | null;
@@ -1317,9 +1323,18 @@ export function TrendingFeedGallery({
   upgradeRequired: boolean;
 }) {
   const postHistory = usePostReviewHistory<ReviewedTrendingCandidate>(userId
-    ? { ownerId: userId, isValue: isRecoverableTrendingReview }
+    ? { ownerId: userId, scopeId: feedId, isValue: isRecoverableTrendingReview }
     : undefined);
-  const showSkeleton = loading || !postHistory.ready;
+  const quotaHistory = useQuotaReviewRecovery(userId, feedId, postHistory.recover);
+  const showSkeleton = loading || !postHistory.ready ||
+    (quotaHistory.loading && items.length === 0 && postHistory.entries.length === 0);
+  const historyNotice = quotaHistory.loading || quotaHistory.error || quotaHistory.unavailable > 0 ? (
+    <div role="status" className="flex flex-wrap items-center justify-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+      {quotaHistory.loading ? "Loading earlier posts from this quota…" : quotaHistory.error
+        ? "Earlier posts could not be loaded." : "Some earlier posts are no longer available."}
+      {quotaHistory.error ? <Button variant="outline" size="sm" onClick={quotaHistory.retry}>Retry earlier posts</Button> : null}
+    </div>
+  ) : null;
   // A right swipe records the decision and removes its card immediately. Keep
   // the already-presented review shell alive for this user/day so the accepted
   // Carousel or Wall action dialog can paint even when that was the final
@@ -1327,6 +1342,8 @@ export function TrendingFeedGallery({
   const hasReviewShell = hasPresentedFeed || postHistory.entries.length > 0;
   const retainingReviewShell = hasReviewShell && items.length === 0;
   const shouldRenderFeed = items.length > 0 || hasReviewShell;
+
+  if (!showSkeleton && !shouldRenderFeed && historyNotice) return historyNotice;
 
   if (!retainingReviewShell && !showSkeleton && error && items.length === 0) {
     return (
@@ -1369,6 +1386,8 @@ export function TrendingFeedGallery({
   }
 
   return (
+    <>
+    {historyNotice}
     <div data-trending-feed-transition className={cn("relative grid w-full", reviewLayout.feedGallery)}>
       <div
         aria-hidden={showSkeleton ? undefined : "true"}
@@ -1396,7 +1415,7 @@ export function TrendingFeedGallery({
             enqueueDecision={enqueueDecision}
             failure={failure}
             headerActionsRoot={headerActionsRoot}
-            items={items}
+            items={items.filter(item => !postHistory.entries.some(entry => entry.value.item.assignmentId === item.assignmentId))}
             pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
@@ -1406,6 +1425,7 @@ export function TrendingFeedGallery({
         ) : null}
       </div>
     </div>
+    </>
   );
 }
 
@@ -2486,7 +2506,7 @@ export function TrendingDeck({
     const { candidate, decision, direction, nextCandidateId } = params;
 
     advancePastActiveItem(direction, () => {
-      postHistory.remember({ id: candidate.item.id,
+      postHistory.remember({ id: candidate.item.id, position: candidate.item.position,
         value: { ...candidate, reviewedEdit: editByCreativeId[candidate.item.creativeId] ?? null },
         decision: decision === "accepted" ? "liked" : "skipped" });
       dismissCandidate(candidate);
@@ -2844,7 +2864,9 @@ export function TrendingDeck({
         <TrendingReadyEmptyState />
       )}
       {postHistory.persistenceUnavailable ? <p role="status" className="mt-2 max-w-md text-center text-sm text-muted">
-        Browser storage is unavailable. Previous posts can only be kept during this visit.
+        {postHistory.quotaScoped
+          ? "Browser storage is unavailable. Earlier posts will be loaded from this quota when you return."
+          : "Browser storage is unavailable. Previous posts can only be kept during this visit."}
       </p> : null}
       {!activeCandidate && postHistory.canGoBack ? <Button
         className="mt-4" variant="secondary"

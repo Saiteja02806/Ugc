@@ -14,10 +14,22 @@ write('entry.tsx', `import {StrictMode,useEffect,useState} from 'react';import {
 function App(){const [owner,so]=useState(sessionStorage.getItem('fixture-owner')||'owner-a');const [items,si]=useState([]);const [loading,sl]=useState(true);useEffect(()=>{let live=true;sl(true);fetch('/fixture/feed?owner='+owner).then(r=>r.json()).then(items=>{if(live){si(items);sl(false)}});return()=>{live=false}},[owner]);return <main><header><a href='/away'>Leave Trending</a><button onClick={()=>{const next=owner==='owner-a'?'owner-b':'owner-a';sessionStorage.setItem('fixture-owner',next);so(next)}}>Switch account</button><span data-owner>{owner}</span></header><div style={{height:'calc(100dvh - 80px)'}}><TrendingFeedGallery key={owner} enqueueDecision={entry=>{si(current=>current.filter(item=>item.assignmentId!==entry.assignmentId));fetch('/fixture/decision?owner='+owner,{method:'POST',body:JSON.stringify(entry)})}} error={null} failure={null} headerActionsRoot={null} hasPresentedFeed={items.length>0} items={items} loading={loading} pendingSlotCount={0} preparing={false} remainingCount={items.length} onCompleteProfile={()=>{}} onRetryHistory={()=>{}} profile={null} userId={owner} upgradeRequired={false}/></div></main>};createRoot(document.getElementById('root')).render(<StrictMode><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider></StrictMode>);`);
 
 async function main() {
+  if (process.argv.includes('--quota-only')) {
+    const entryPath = path.join(out, 'entry.tsx');
+    let source = fs.readFileSync(entryPath, 'utf8');
+    source = source.replace("const [items,si]", "const [quota,sq]=useState(new URLSearchParams(location.search).get('quota')||undefined);const [items,si]")
+      .replace("'/fixture/feed?owner='+owner", "'/fixture/feed?owner='+owner+'&quota='+(quota||'')")
+      .replace('[owner]);return', '[owner,quota]);return')
+      .replace('<span data-owner>', '<button onClick={()=>sq(\'quota-b\')}>Switch quota</button><span data-owner>')
+      .replace('<TrendingFeedGallery key={owner}', '<TrendingFeedGallery feedId={quota} key={owner}');
+    fs.writeFileSync(entryPath, source);
+  }
   await new Promise((resolve,reject)=>{const c=webpack({mode:'development',plugins:[new webpack.DefinePlugin({'process.env':JSON.stringify({NODE_ENV:'development'})})],devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],extensionAlias:{'.js':['.js','.ts','.tsx']},alias:{'next/font/local':path.join(out,'font.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/contexts/auth-context':path.join(out,'auth.ts'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.module\.css$/,use:path.join(out,'module-css.cjs')},{test:/\.css$/,exclude:/\.module\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const items=[1,2,3].map(n=>{const slides=[1,2].map(s=>({headline:'Post '+n+' slide '+s,renderedUrl:'/slide-'+s+'.jpg',slideNumber:s,slideType:s===1?'hook':'body',status:'ready',subtext:null}));return {id:'post-'+n,assignmentId:'assignment-'+n,creativeId:'creative-'+n,feedItemId:'post-'+n,format:'carousel',position:n,readiness:'preview_ready',source:'new',creative:{candidateIndex:n,carouselId:'carousel-'+n,categorySlug:null,generationBatchId:'batch',projectId:'project',readySlideCount:2,selectedAngle:'Post '+n,slideCount:2,slides,status:'completed',thumbnailUrl:slides[0].renderedUrl,updatedAt:'2026-10-19T00:00:00Z'}}});
   const decisions=[], errors=[], writes=[];
+  let historyFailure=false, quotaEmpty=false, releaseOlder;
+  let olderPageGate = process.argv.includes('--quota-only') ? new Promise(resolve=>{releaseOlder=resolve}) : null;
   const reactions=items.map(item=>({...item,format:'reaction',creative:{aspectRatio:'9:16',caption:'Post '+item.position,clipAssetId:'clip',durationSeconds:10,mediaAssetId:'media',previewUrl:'/reel.mp4',primaryReaction:'preview',thumbnailUrl:null,title:'Reel '+item.position}}));
   const server=http.createServer(async(req,res)=>{try{
     const u=new URL(req.url,'http://fixture'),json=value=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));};
@@ -28,10 +40,23 @@ async function main() {
     if(u.pathname==='/style.css'){res.setHeader('Content-Type','text/css');return res.end(css);}
     if(u.pathname==='/reel.mp4'){res.setHeader('Content-Type','video/mp4');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/hook2-preview.mp4')));}
     if(/^\/slide-[12]\.jpg$/.test(u.pathname)){res.setHeader('Content-Type','image/jpeg');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/slideshow/image_'+(Number(u.pathname[7])-1)+'.jpg')));}
-    if(u.pathname==='/fixture/feed')return json(u.searchParams.get('owner')==='owner-a'?(req.headers.referer?.includes('format=reaction')?reactions:items).filter(item=>!decisions.some(d=>d.assignmentId===item.assignmentId)):[]);
+    if(u.pathname==='/fixture/feed'){
+      if(u.searchParams.get('quota')) return json(u.searchParams.get('owner')==='owner-a'&&u.searchParams.get('quota')==='quota-a'&&!quotaEmpty?[items[2]]:[]);
+      return json(u.searchParams.get('owner')==='owner-a'?(req.headers.referer?.includes('format=reaction')?reactions:items).filter(item=>!decisions.some(d=>d.assignmentId===item.assignmentId)):[]);
+    }
     if(u.pathname==='/fixture/decision'){let body='';for await(const part of req)body+=part;decisions.push(JSON.parse(body));return json({ok:true});}
     if(u.pathname.startsWith('/api/')){
       if(req.method!=='GET')writes.push(u.pathname);
+      if(u.pathname==='/api/trending/feed/history'){
+        if(historyFailure){res.statusCode=503;return json({ok:false});}
+        const feedId=u.searchParams.get('feedId');
+        if(feedId!=='quota-a')return json({ok:true,feedId,entries:[],nextBefore:null,unavailableCount:0});
+        const older=u.searchParams.has('before');
+        if(older&&olderPageGate)await olderPageGate;
+        const item=items[older?0:1];
+        return json({ok:true,feedId,entries:[{id:item.id,position:item.position,decision:'skipped',reviewedAt:Date.now()-2*60*60*1000,
+          value:{format:item.format,item,carousel:item.creative,slides:item.creative.slides}}],nextBefore:older?null:2,unavailableCount:0});
+      }
       if(u.pathname==='/api/trending/walkthrough')return json({ok:true,completed:true});
       if(u.pathname==='/api/trending/reactions/presentations')return json({ok:true});
       if(u.pathname.startsWith('/api/trending/reactions/')&&u.pathname.endsWith('/edit')){const item=reactions.find(item=>u.pathname.includes(item.creativeId));return json({ok:true,edit:{assignmentId:item.assignmentId,creativeId:item.creativeId,expectedUpdatedAt:'2026-10-19T00:00:00Z',mediaAssetId:'media',previewUrl:'/reel.mp4',state:'ready',text:item.creative.caption}});}
@@ -47,6 +72,40 @@ async function main() {
   async function key(name){await page.locator('[data-post-interaction-feed]').focus();await page.keyboard.press(name);}
   async function wheelBack(n){const feed=page.locator('[data-post-interaction-feed]');await feed.hover();await page.mouse.wheel(0,-1000);await expectPost(n);}
   try{
+    if(process.argv.includes('--quota-only')){
+      const quotaUrl=origin+'/?quota=quota-a';
+      await page.goto(quotaUrl);await expectPost(3);
+      await page.waitForFunction(()=>document.querySelector('[data-post-interaction-feed]')?.hasAttribute('data-post-has-previous'));
+      await wheelBack(2);
+      releaseOlder();olderPageGate=null;
+      await page.getByText('Loading earlier posts from this quota…',{exact:true}).waitFor({state:'hidden'});
+      await expectPost(2);await wheelBack(1);
+      await page.reload();await expectPost(1);
+      await key('ArrowDown');await expectPost(2);await key('ArrowDown');await expectPost(3);
+      assert.equal(decisions.length,0,'Recovered browsing must not repeat a decision');
+      await page.evaluate(()=>localStorage.clear());await page.goto(origin+'/away');await page.goto(quotaUrl);
+      await expectPost(3);await page.getByText('Loading earlier posts from this quota…',{exact:true}).waitFor({state:'hidden'});
+      await wheelBack(2);await wheelBack(1);
+      await page.screenshot({path:path.join(out,'quota-two-hours-earlier.png')});
+      await page.getByRole('button',{name:'Switch quota',exact:true}).click();await page.getByText("You're all caught up",{exact:true}).waitFor();
+      assert.equal(await active().count(),0,'Another quota cannot display the previous quota cache');
+      quotaEmpty=true;historyFailure=true;
+      await page.evaluate(()=>localStorage.clear());await page.goto(quotaUrl);
+      await page.getByRole('button',{name:'Retry earlier posts'}).waitFor();
+      assert.equal(await page.getByText("You're all caught up",{exact:true}).count(),0,'Failed history must not pretend the quota is empty');
+      historyFailure=false;await page.getByRole('button',{name:'Retry earlier posts'}).click();
+      await page.getByRole('button',{name:'View previous posts'}).click();await expectPost(2);await wheelBack(1);
+      const denied=await browser.newContext({viewport:{width:1366,height:900}});
+      await denied.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Storage blocked','SecurityError')}}));
+      const q=await denied.newPage();q.on('pageerror',e=>errors.push(e.message));await q.goto(quotaUrl);
+      await q.getByRole('button',{name:'View previous posts'}).click();
+      await q.locator('[data-post-feed-active=true][data-post-feed-item="post-2"]').waitFor();
+      await q.reload();await q.getByRole('button',{name:'View previous posts'}).click();
+      await q.locator('[data-post-feed-active=true][data-post-feed-item="post-2"]').waitFor();await denied.close();
+      assert.equal(decisions.length,0);assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);
+      console.log('PASS: actual Trending Gallery/Deck recovers quota posts viewed two hours earlier without cache; pagination preserves cursor; refresh, leave/return, quota isolation, empty quota, retry and denied storage; zero decision/save/schedule writes.');
+      return;
+    }
     if (!process.argv.includes('--desktop-only')) {
     await page.goto(origin);await expectPost(1);
     await key('ArrowDown');await expectPost(2);await key('ArrowDown');await expectPost(3);

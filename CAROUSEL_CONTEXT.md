@@ -1,5 +1,50 @@
 # Carousel System Context
 
+## 2026-10-19 Same-quota older-post recovery (local correction; production pending)
+
+- User subsequently clarified the required scope: previously viewed posts from
+  the same quota/delivered feed, even hours later. Recovery must preserve that
+  feed's ordering and not consume another slot or mix unrelated quotas. This
+  requirement now has a local server-history implementation; it is not deployed.
+- Latest user recording distinguishes immediate swipe-back (now possible) from
+  returning to a slideshow reviewed roughly two hours earlier. Read the evidence
+  in `docs/trending-older-history-investigation-2026-10-19.md` before another
+  gesture-only fix or declaring full history acceptance.
+- Production database reads confirm earlier skipped assignments/ready slides
+  still exist. The connected production browser reaches a newer historical post
+  with no previous item despite those older account records. The normal daily
+  feed excludes completed assignments; the deployed backward browsing had no
+  server-history fetch and relied solely on local snapshots. Comet's exact lost-snapshot cause
+  was not observable from the recording or the separate in-app browser.
+- There is no two-hour cache timeout: current limits are seven days/120 posts/
+  one million serialized characters. An actual parser probe preserves +2h
+  history. The missing capability is owner-scoped recovery/pagination from
+  existing server decisions, merged with local pending reviews without replaying
+  decisions or disturbing the active post. Loading failure must not masquerade
+  as the end of history.
+- Local `GET /api/trending/feed/history` checks feed ownership, pages existing
+  decisions in original quota-slot order, and hydrates available Slideshow,
+  Hook, Wall and Reaction previews. It never prepares replacements, marks a
+  post shown, reactivates assignments or records decisions. No migration.
+- The gallery receives the persisted feed ID, scopes its cache to owner + quota,
+  preloads earlier pages and merges them without moving the selected post or
+  overwriting local edit snapshots. Failed recovery has a Retry action;
+  unavailable creatives are reported. Empty and storage-blocked browsers can
+  recover server decisions. Existing unscoped snapshots are not mixed in.
+- Local checks: `npm run test:trending-history`, the interaction suite, TypeScript
+  and scoped lint. The actual Gallery/Deck browser fixture passed empty-cache
+  +2h recovery, slow pagination, refresh, leave/return, quota isolation, empty
+  quota, retry and blocked storage, with zero decision/save/schedule writes.
+  The final quota browser rerun passed on the isolated release checkout.
+  The new service also recovered all eight reviewed production-quota
+  slideshows (six slides each), denied a different owner, and left quota
+  unchanged. Authenticated deployed-browser acceptance remains pending.
+- Earlier immediate swipe/reload acceptance remains valid within its tested
+  scope; it does not prove older account-history recovery. No production writes
+  were made during this investigation.
+
+
+
 ## 2026-10-19 Same-visit finger swipe-back correction (local)
 
 - User clarified the remaining failure: swipe a Reel upward with a finger, then

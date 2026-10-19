@@ -27,7 +27,7 @@ import type {
 import type { WorkerJobOutput } from "./index.js";
 
 const TRENDING_CAROUSEL_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v3`;
+  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v4-body-copy`;
 const TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION =
   `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v4`;
 
@@ -651,8 +651,12 @@ function applyEditToPlannedSlide(
   const isBodyOnly =
     original.textMode === "body_only" || original.textMode === "single_statement" ||
     (!original.headline && original.textMode !== "checklist" && original.textMode !== "question_list");
-  const bodyOnlyCopy = edited.subtext !== (original.body ?? original.subtext ?? "")
-    ? edited.subtext || null : edited.headline || edited.subtext || null;
+  // Generated body-only slides also use the legacy headline column to carry
+  // their complete copy. Resolve the submitted fields just as the editor does:
+  // an empty subtext is not a deletion while headline still contains the body.
+  // Comparing subtext with the normalized plan mistook background-only edits
+  // for text deletion and rendered every body slide without its copy.
+  const bodyOnlyCopy = edited.subtext.trim() || edited.headline.trim() || null;
 
   return {
     ...original,

@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { imageLibraryRequest } from "@/lib/media/image-library-client";
 import { IMAGE_LIBRARY_MAX_BYTES, IMAGE_LIBRARY_TYPES, isLibraryImage } from "@/lib/media/image-library";
+import { imagePickerThumbnailUrl, REFERENCE_IMAGE_STALE_MS } from "@/lib/media/image-picker";
 import type { MediaAsset } from "@/lib/media/types";
 import styles from "./image-library.module.css";
 
@@ -50,12 +51,12 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
   useEffect(() => { busyCallback.current = onBusyChange; }, [onBusyChange]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; busyCallback.current?.(false); }; }, []);
   const cache = useQueryClient();
-  const groups = useQuery({ queryKey: ["image-library-groups", owner], queryFn: ({ signal }) => imageLibraryRequest<{ groups: Collection[] }>(owner, "/api/media/groups?mediaType=image", { signal }), staleTime: 0 });
+  const groups = useQuery({ queryKey: ["image-library-groups", owner], queryFn: ({ signal }) => imageLibraryRequest<{ groups: Collection[] }>(owner, "/api/media/groups?mediaType=image", { signal }), staleTime: REFERENCE_IMAGE_STALE_MS });
   const pages = useInfiniteQuery({ queryKey: ["image-library-images", owner, search, archived], initialPageParam: 0,
     queryFn: ({ pageParam, signal }) => imageLibraryRequest<Page>(owner, `/api/media/image-library?offset=${pageParam}&q=${encodeURIComponent(search)}&archived=${archived ? 1 : 0}`, { signal }),
-    getNextPageParam: page => page.nextOffset ?? undefined, enabled: !collectionId, staleTime: 0 });
+    getNextPageParam: page => page.nextOffset ?? undefined, enabled: !collectionId, staleTime: REFERENCE_IMAGE_STALE_MS });
   const collection = useQuery({ queryKey: ["image-library-collection", owner, collectionId],
-    queryFn: ({ signal }) => imageLibraryRequest<CollectionResult>(owner, `/api/media/groups/${collectionId}/items`, { signal }), enabled: Boolean(collectionId), staleTime: 0 });
+    queryFn: ({ signal }) => imageLibraryRequest<CollectionResult>(owner, `/api/media/groups/${collectionId}/items`, { signal }), enabled: Boolean(collectionId), staleTime: REFERENCE_IMAGE_STALE_MS });
   const active = collectionId ? collection : pages;
   const group = groups.data?.groups.find(item => item.id === collectionId);
   const assets = collectionId ? (collection.data?.assets.map(item => item.asset).filter(asset => isLibraryImage(asset) && asset.metadata.imageLibraryArchived !== true) ?? []) : (pages.data?.pages.flatMap(page => page.assets) ?? []);
@@ -169,7 +170,7 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
     </form>
     {active.isPending ? <p role="status" className={styles.empty}><LoaderCircle className="animate-spin" aria-hidden="true" />Loading your images…</p> : active.isError ? <div role="alert" className={styles.empty}><p>Could not load these images. Your selections have not been applied.</p><Button type="button" variant="outline" onClick={() => void active.refetch()}>Retry images</Button></div> : <>
       {visible.length ? <div className={styles.grid}>{visible.map(asset => <button type="button" className={styles.tile} key={asset.id} aria-label={`Select image ${asset.title}`} aria-pressed={selectedIds ? selected.includes(asset.id) : collectionSelected || selected.includes(asset.id)} disabled={locked || (!selected.includes(asset.id) && multiple && selected.length >= limit)} onClick={() => toggle(asset.id)}>
-        <img src={asset.thumbnailUrl ?? asset.url} alt="" width={180} height={225} loading="lazy" draggable={false} /><span className={styles.check}>{selected.includes(asset.id) ? multiple ? selected.indexOf(asset.id) + 1 : <Check aria-hidden="true" /> : ""}</span><span className={styles.caption} title={asset.title}>{asset.title}</span>
+        <img src={imagePickerThumbnailUrl(asset.thumbnailUrl ?? asset.url)} alt="" width={180} height={225} loading="lazy" decoding="async" draggable={false} /><span className={styles.check}>{selected.includes(asset.id) ? multiple ? selected.indexOf(asset.id) + 1 : <Check aria-hidden="true" /> : ""}</span><span className={styles.caption} title={asset.title}>{asset.title}</span>
       </button>)}</div> : <div className={styles.empty}><Images aria-hidden="true" /><p>{search ? "No matching images. Try another search." : collectionId ? "This collection is empty. Upload images here or add images from All images." : archived ? "No archived images." : "Upload JPG, PNG or WebP images, up to 25 MB each."}</p></div>}
       {!collectionId && pages.hasNextPage ? <Button type="button" variant="outline" disabled={locked || pages.isFetchingNextPage} onClick={() => void pages.fetchNextPage()}>{pages.isFetchingNextPage ? "Loading…" : "Load more images"}</Button> : null}
     </>}

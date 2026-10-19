@@ -74,19 +74,14 @@ test("retired references still resolve saved remix/video/audio identities withou
   finally { if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous; }
 });
 
-test("reviewed captions preserve timing/audio through remix except the two approved one-frame screen cuts", () => {
+test("reviewed current captions preserve their retained timing and audio through remix", () => {
   for (const hook of getRecreateReferences().filter(item => item.format === "hook")) {
     const source = getReferenceText(hook.id, null, "hook");
     const original = structuredClone(source);
     if (source.status === "no_text") { assert.deepEqual(source.blocks, []); continue; }
     const input = remixInputSource({ requestKey: "00000000-0000-4000-8000-000000000001", referenceId: hook.id, slideId: null,
       format: "hook", instructions: "", referenceBlocks: source.blocks.map(block => block.text) }, source);
-    const normalizedTail = ["explore-paired-hook-4585ee949081c4e5cd835cd3", "explore-paired-hook-7c53cba88343579e7e15c8b0"].includes(hook.id);
-    if (normalizedTail) {
-      assert.equal(source.blocks.length, 2);
-      assert.deepEqual(source.blocks.map(block => [block.startMs, block.endMs]), [[0, 3067], [3067, 3100]]);
-    }
-    assert.deepEqual(input.blocks, normalizedTail ? [{ ...source.blocks[0], endMs: 3100 }] : source.blocks, hook.id);
+    assert.deepEqual(input.blocks, source.blocks, hook.id);
     assert.deepEqual(source, original, "The original reviewed transcription stays intact");
     // Use deterministic copy, so the test verifies integration without a paid AI call.
     const output = validateRemixOutput({ blocks: input.blocks.map(block => block.text), heading: "", body: "" }, input);

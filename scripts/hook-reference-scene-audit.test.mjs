@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 const record=JSON.parse(fs.readFileSync(new URL('./data/hook-reference-scene-audit-2026-10-19.json',import.meta.url),'utf8'));
+const sceneRelease=JSON.parse(fs.readFileSync(new URL('./data/hook-reference-scene-release.json',import.meta.url),'utf8'));
 const batches=['explore-hook-reference-release.json','explore-hook-reference-addition-release.json','explore-hook-reference-new-batch-release.json'].map(f=>JSON.parse(fs.readFileSync(new URL('../worker/src/lib/'+f,import.meta.url),'utf8')));
 const active=batches.flatMap(b=>b.mediaStatus==='published'&&b.activation==='active'?b.items.filter(i=>!b.excludedReferenceIds.includes(i.id)):[]);
 test('all current active Hooks have unique source-bound scene reviews; ambiguous reveal is not trimmed',()=>{
  assert.equal(record.items.length,98);assert.equal(active.length,record.items.length);assert.equal(new Set(record.items.map(i=>i.id)).size,98);
  for(const [n,item]of record.items.entries()){
-  assert.equal(item.ordinal,n+1);assert.equal(item.id,active[n].id);assert.equal(item.sourceSha256,active[n].videoSha256);
+  assert.equal(item.ordinal,n+1);assert.equal(item.id,active[n].id);
+  const released=sceneRelease.items.find(r=>r.id===item.id);
+  assert.equal(item.sourceSha256,released?.original.videoSha256??active[n].videoSha256);
+  assert.equal(active[n].videoSha256,released?.replacement.videoSha256??item.sourceSha256);
   assert.equal(item.audio,'deferred_by_user');
  }
  assert.equal(record.items.reduce((sum,r)=>sum+r.originalFrameCount,0),9773);

@@ -1,4 +1,5 @@
 import catalog from "./explore-paired-reference-catalog.json" with { type: "json" };
+import { hasSilentExploreGeneration } from "./explore-generation-contract.ts";
 import { getHookReferenceReleaseItems } from "./explore-hook-reference-release.ts";
 
 export type ExploreReferenceSoundtrack = {
@@ -25,6 +26,7 @@ export function isSilentExploreReference(reference: unknown): boolean {
 }
 
 export function getGenerationReferenceSoundtrack(input: Record<string, unknown>) {
+  if (hasSilentExploreGeneration(input)) return null;
   const reference = getExplorePairedReference(input.referenceId);
   if (!reference || input.referenceType !== reference.format || input.exploreFormat !== undefined && input.exploreFormat !== null && input.exploreFormat !== reference.format) return null;
   return reference;
@@ -34,6 +36,7 @@ const object = (value: unknown): Record<string, unknown> => value && typeof valu
 
 /** Stored server provenance only. Audio URLs and storage paths supplied by a client are never used. */
 export function getAssetReferenceSoundtrack(metadata: unknown): ExploreReferenceSoundtrack | null {
+  if (hasSilentExploreGeneration(metadata)) return null;
   const raw = object(metadata), saved = object(object(raw.render).referenceSoundtrack);
   const reference = getExplorePairedReference(saved.referenceId ?? raw.exploreReferenceId);
   if (!reference) return null;

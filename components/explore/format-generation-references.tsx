@@ -26,7 +26,7 @@ import studio from "@/components/explore/workflow-studio.module.css";
 type Kind = "image" | "video" | "audio";
 
 /** Optional generation guidance; imported editor footage uses the separate source picker. */
-export function FormatGenerationReferences({ selection, imageSelection, imageSelections, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true }: {
+export function FormatGenerationReferences({ selection, imageSelection, imageSelections, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true, description }: {
   selection: AIStudioReferenceMedia | null;
   imageSelection?: AIStudioReferenceMedia | null;
   imageSelections?: AIStudioReferenceMedia[];
@@ -52,6 +52,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   maxVideoBytes?: number;
   maxAudioBytes?: number;
   preserveVideoTiming?: boolean;
+  description?: string;
 }) {
   const selectedImage = imageSelection === undefined ? selection?.kind === "image" ? selection : null : imageSelection;
   const selectedImages = imageSelections ?? (selectedImage ? [selectedImage] : []);
@@ -295,6 +296,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
         </div>;
       })}
     </div>
+    {description ? <p className={creation.sectionHelp} aria-live="polite">{description}</p> : null}
     {pending ? <p role="status" className={creation.sectionHelp}>{uploadProgress ?? "Reading your reference…"}</p> : null}
     {error ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error}</p><Button type="button" variant="ghost" size="sm" disabled={disabled || Boolean(pending)} onClick={() => { setError(null); onErrorChange?.(null); }}>Cancel reference change</Button></div> : null}
   </section>;

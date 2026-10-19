@@ -1,5 +1,32 @@
 # Explore context and UI decision record
 
+### Hook and Wall source edits and sound — 19 October 2026, implementation pending release
+
+- New Hook/Wall requests with a gallery or owned source video are explicit
+  source edits: preserve scene, framing, lighting, performance and timing;
+  portraits guide replacement facial appearance. Remove source captions.
+  User instructions can request additional changes. Images and a prompt without
+  a video create a new video instead. This is model editing, not a deterministic
+  frame-by-frame face compositor; creative fidelity still needs paid acceptance.
+- Sound defaults OFF in both paths. OFF disables provider audio where supported,
+  strips audio from the delivered MP4 without re-encoding its pictures, and
+  persists silence metadata so reopening/exporting cannot reattach catalogue
+  music. ON explicitly enables generated sound and existing reference-music
+  behavior; retained audio selections are omitted while OFF, not deleted.
+- Compatibility is checked in the client, API before credits, worker and ReAPI
+  adapter. Omni source edits accept sources up to 10 seconds; Seedance source
+  edits require 4–30 seconds and use edit/-1/adaptive provider parameters. WAN's
+  current adapter cannot edit a source and is blocked with a source attached.
+  No automatic source padding, shortening or substitution. App credit estimates
+  use positive source duration rounded up; provider sentinel -1 is never billed
+  as an app duration. Source ratio and timeline are inherited by the provider.
+- New requests record versioned operation/sound metadata. Historical queued
+  jobs retain their old fingerprints and audio behavior. The generated-media
+  trigger copies the new contract only from an owner-matched background job.
+- Local fixtures cover source/image-only paths, explicit sound, billing guards,
+  provider recovery and persistent silence. No paid generation is authorized.
+  Local checks, deployment and production creative acceptance are distinct.
+
 ### Trending same-quota older-post recovery — 19 October 2026, local correction
 
 - Recovery scope is the same quota/delivered feed, including posts viewed hours

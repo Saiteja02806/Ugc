@@ -10,6 +10,27 @@ const apiKey = "reapi-private-test-key";
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const video = () => new Response(new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112]), { headers: { "content-type": "video/mp4" } });
 
+test("new source edits use edit/auto/adaptive while image-only generation keeps its selected duration; sound is explicit", () => {
+  for (const sound of ["off", "on"] as const) {
+    const edit = buildReapiVideoRequest({ ...input, referenceImageUrls: references.referenceImageUrls, referenceVideoUrl: references.referenceVideoUrl,
+      referenceVideoDurationSeconds: 7.923, exploreGeneration: { version: 1, operation: "source_edit", sound } });
+    assert.ok("generate_audio" in edit);
+    assert.equal(edit.duration, -1); assert.equal(edit.size, "adaptive");
+    assert.equal(edit.omni_reference_task_type, "edit"); assert.equal(edit.generate_audio, sound === "on");
+    assert.deepEqual(edit.image_urls, references.referenceImageUrls); assert.deepEqual(edit.video_urls, [references.referenceVideoUrl]);
+    for (const model of ["seedance_2_5", "wan_3_0"] as const) {
+      const generated = buildReapiVideoRequest({ ...input, model, referenceImageUrls: references.referenceImageUrls, exploreGeneration: { version: 1, operation: "generate", sound } });
+      assert.equal(generated.duration, 17); assert.equal(generated.size, "9:16");
+      assert.equal("generate_audio" in generated ? generated.generate_audio : generated.audio, sound === "on");
+      assert.equal(generated.video_urls, undefined);
+    }
+  }
+  for (const seconds of [3.166667, 30.01]) assert.throws(() => buildReapiVideoRequest({ ...input, referenceVideoUrl: references.referenceVideoUrl,
+    referenceVideoDurationSeconds: seconds, exploreGeneration: { version: 1, operation: "source_edit", sound: "off" } }), /4–30/);
+  assert.throws(() => buildReapiVideoRequest({ ...input, model: "wan_3_0", referenceVideoUrl: references.referenceVideoUrl,
+    referenceVideoDurationSeconds: 7, exploreGeneration: { version: 1, operation: "source_edit", sound: "off" } }), /WAN/);
+});
+
 test("Seedance Less Restriction and WAN use ReAPI's exact native schema with every reference intact", () => {
   const seedance = buildReapiVideoRequest({ ...input, ...references });
   assert.ok("generate_audio" in seedance);
@@ -81,8 +102,8 @@ test("saved pending/completed tasks recover by ID with no POST and refresh their
     fetchImpl: (async () => json({ status: "processing" })) as typeof fetch }), ProviderOperationPollingError);
 });
 
-test("recovers completed production WAN output from either verified host without submitting or sending credentials to storage", async () => {
-  for (const host of ["cdn.reapi.ai", "file.deepytb.com"]) {
+test("recovers completed production WAN output from every verified host without submitting or sending credentials to storage", async () => {
+  for (const host of ["cdn.reapi.ai", "file.deepytb.com", "reapiflexible.b-cdn.net"]) {
     const events: string[] = [];
     const outputUrl = `https://${host}/wan/result.mp4?token=private-signed-token`;
     await generateReapiVideoBuffer({ ...input, model: "wan_3_0", providerOperationId: "saved-wan", ...callbacks,
@@ -104,7 +125,7 @@ test("recovers completed production WAN output from either verified host without
 });
 
 test("rejects missing and untrusted outputs without fetching them, retaining safe completion and settlement", async () => {
-  for (const outputUrl of [undefined, "", "http://file.deepytb.com/video.mp4", "https://file.deepytb.com.evil.example/video.mp4",
+  for (const outputUrl of [undefined, "", "https://reapiflexible.b-cdn.net.evil.example/output.mp4", "https://other.b-cdn.net/output.mp4", "http://reapiflexible.b-cdn.net/output.mp4", "http://file.deepytb.com/video.mp4", "https://file.deepytb.com.evil.example/video.mp4",
     "https://cdn.reapi.ai@evil.example/video.mp4", "https://user:private@file.deepytb.com/video.mp4",
     "https://file.deepytb.com:8443/video.mp4", "https://127.0.0.1/video.mp4", "https://evil.example/private-token"]) {
     let completed = 0;

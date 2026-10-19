@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import test from "node:test";
-import ffmpeg from "ffmpeg-static";
-import ffprobe from "ffprobe-static";
+import bundledFfmpeg from "ffmpeg-static";
+import bundledFfprobe from "ffprobe-static";
 import catalog from "../worker/src/lib/explore-paired-reference-catalog.json" with { type: "json" };
 import release from "../worker/src/lib/explore-hook-reference-release.json" with { type: "json" };
 import additions from "../worker/src/lib/explore-hook-reference-addition-release.json" with { type: "json" };
@@ -15,7 +15,8 @@ import { renderExploreReferenceAudio, verifyReferenceAudioFile } from "../worker
 import { finishExploreVideo } from "../worker/dist/lib/explore-video-finishing.js";
 import { scanPairFolders } from "./prepare-explore-paired-references.mjs";
 
-const tools = { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
+const ffmpeg = process.env.FFMPEG_PATH || bundledFfmpeg;
+const tools = { ffmpeg, ffprobe: process.env.FFPROBE_PATH || bundledFfprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
 const command = args => execFileSync(ffmpeg, ["-nostdin", "-v", "error", ...args], { windowsHide: true, timeout: 30000, maxBuffer: 8 * 1024 ** 2 });
 async function workspace(t) {
   const parent = resolve(".tmp"); await mkdir(parent, { recursive: true });

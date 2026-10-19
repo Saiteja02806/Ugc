@@ -1,15 +1,17 @@
 import { downloadVideoToBuffer } from "./download-video.js";
 import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderOutputCollectionError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
+import { exploreGenerationCompatibility, type ExploreGenerationContract } from "./explore-generation-contract.js";
 
 const API_ROOT = "https://reapi.ai/api/v1";
-// The public task examples use cdn.reapi.ai. A verified production WAN task
-// also delivers directly from file.deepytb.com; do not admit arbitrary hosts.
-const OUTPUT_HOSTS = new Set(["cdn.reapi.ai", "file.deepytb.com"]);
+// Public examples and verified production tasks use these exact hosts,
+// including Seedance's signed Bunny CDN results. Do not admit arbitrary hosts.
+const OUTPUT_HOSTS = new Set(["cdn.reapi.ai", "file.deepytb.com", "reapiflexible.b-cdn.net"]);
 export const REAPI_SEEDANCE_MODEL = "doubao-seedance-2.5-face";
 export const REAPI_WAN_MODEL = "wan3.0-video";
 
 type ReapiVideoInput = {
+  exploreGeneration?: ExploreGenerationContract;
   model: "seedance_2_5" | "wan_3_0";
   prompt: string;
   aspectRatio: "9:16" | "16:9";
@@ -33,6 +35,12 @@ type ReapiOptions = { apiKey?: string; fetchImpl?: typeof fetch; pollIntervalMs?
 /** New requests only. Legacy provider adapters and fingerprints stay frozen. */
 export function buildReapiVideoRequest(input: ReapiVideoInput) {
   const seedance = input.model === "seedance_2_5";
+  const editing = input.exploreGeneration?.operation === "source_edit";
+  if (input.exploreGeneration) {
+    const error = exploreGenerationCompatibility(input.model, editing, input.referenceVideoDurationSeconds);
+    if (error || editing !== Boolean(input.referenceVideoUrl)) throw new ProviderRequestNotSubmittedError(error ?? "The source does not match the requested operation.");
+    if (input.exploreGeneration.sound === "off" && input.referenceAudioUrls?.length) throw new ProviderRequestNotSubmittedError("Silent generations cannot use audio guidance.");
+  }
   if (!seedance && input.model !== "wan_3_0") throw new ProviderRequestNotSubmittedError("Choose Seedance 2.5 or WAN 3.0 for this generation route.");
   const minDuration = seedance ? 4 : 2;
   if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < minDuration || input.durationSeconds > 30) {
@@ -62,13 +70,13 @@ export function buildReapiVideoRequest(input: ReapiVideoInput) {
   }
   return {
     model: seedance ? REAPI_SEEDANCE_MODEL : REAPI_WAN_MODEL,
-    prompt, duration: input.durationSeconds, size: input.aspectRatio,
+    prompt, duration: editing ? -1 : input.durationSeconds, size: editing ? "adaptive" : input.aspectRatio,
     resolution: seedance ? input.resolution : input.resolution.toUpperCase(),
     // The user explicitly selected ReAPI's Less Restriction Seedance route.
     // WAN uses its moderated route; never retry on a different review channel.
     content_filter: !seedance,
-    ...(seedance ? { generate_audio: true, output_format: "mp4", ...(media.length ? { omni_reference_task_type: "reference" } : {}) }
-      : { audio: true, ...(media.length ? { generation_type: "reference" } : {}) }),
+    ...(seedance ? { generate_audio: input.exploreGeneration ? input.exploreGeneration.sound === "on" : true, output_format: "mp4", ...(media.length ? { omni_reference_task_type: editing ? "edit" : "reference" } : {}) }
+      : { audio: input.exploreGeneration ? input.exploreGeneration.sound === "on" : true, ...(media.length ? { generation_type: "reference" } : {}) }),
     ...(images.length ? { image_urls: images } : {}),
     ...(audio.length ? { audio_urls: audio } : {}),
     ...(input.referenceVideoUrl ? { video_urls: [input.referenceVideoUrl] } : {}),

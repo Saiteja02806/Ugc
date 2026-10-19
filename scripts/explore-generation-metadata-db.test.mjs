@@ -9,7 +9,7 @@ test('new generated sound/operation metadata is owned and persistent; legacy pro
     await db.exec(`create role anon; create role authenticated;
       create table background_jobs(id text,user_id text,input_json jsonb);
       create table media_assets(id text,user_id text,source_type text,source_record_id text,metadata jsonb);`);
-    await db.exec(readFileSync(new URL('../supabase/migrations/20261019163618_explore_generation_operation_sound.sql', import.meta.url),'utf8'));
+    await db.exec(readFileSync(new URL('../supabase/migrations/20261019173229_explore_generation_operation_sound.sql', import.meta.url),'utf8'));
     await db.exec(`create trigger tag before insert or update on media_assets for each row execute function explore_tag_generated_media();
       insert into background_jobs values ('new','owner','{"exploreFormat":"hook","exploreGeneration":{"version":1,"operation":"source_edit","sound":"off"}}'),
         ('old','owner','{"exploreFormat":"hook"}');

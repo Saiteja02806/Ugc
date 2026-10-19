@@ -259,6 +259,7 @@
     },
     {
       "id": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "audioPolicy": "silent",
       "format": "hook",
       "title": "Hook 59",
       "videoStorageKey": "explore/paired-references/v1/c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b.mp4",

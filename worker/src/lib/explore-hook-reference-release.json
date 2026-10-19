@@ -269,6 +269,7 @@
     },
     {
       "id": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "audioPolicy": "silent",
       "format": "hook",
       "title": "Hook 14",
       "instagramUrl": "https://www.instagram.com/reel/DclXYzBObgb/",

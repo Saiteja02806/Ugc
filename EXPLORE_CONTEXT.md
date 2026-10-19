@@ -2321,3 +2321,10 @@ catalogue/release records rather than copying counts from historical audits.
 | 2026-10-15 | Wall Edit leads with Remix/manual text and preview. A compact Edit action opens advanced trim/style/audio; Back to text retains the same draft. Wall text spans the whole selected clip and has no per-block timing UI; Hook/demo timing stays independent. |
 | 2026-10-15 | Slideshows generate selected slides × versions, with server-owned business context and Flare default. Compact reference selection retains direct thumbnail toggles; History, full-version editing, earlier drafts and saved Library Edit slides restore prior work without overwriting it. |
 | 2026-10-15 | Hook/Demo empty overview slots use centered portrait upload areas with viewport-bounded sizes; Talking Head's empty-demo canvas follows the same principle. Hook reference captions omit catalogue numbers while keeping stable media IDs. Recovery entry points and their distinct limits are recorded per workflow. |
+
+### Rejected Hook background soundtracks — 19 October 2026
+
+- User rejected ONLY Hooks 3, 13 and 59 background tracks as incomplete. Removed those three MP3s from the manual audio-review collection; retained all other background/native tracks and all 98 videos. Exporter tombstones prevent accidental re-export.
+- Production policy is audioPolicy: silent for the three permanent reference IDs. New generation strips provider/native sound and does not attach a catalogue soundtrack; gallery metadata omits pairedAudio. Historical renders/explicit saved audio receipts are retained.
+- Native audio means sound embedded in the original MP4. It exists for Hooks 6, 53, 54, 55, 69, 73, 74 and 88; Hook 78 has none. Extracted review M4As are manual-review artifacts, not production inputs. Providers currently receive original MP4s, including embedded sound; normal final output replaces provider sound with the separate catalogue MP3.
+- All 18 trimmed MP4s were independently verified in the exact original D: import folders; Hook 18 stays unchanged. This soundtrack release does not switch production video source URLs to the local trimmed derivatives.

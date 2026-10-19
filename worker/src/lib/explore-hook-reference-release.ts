@@ -25,6 +25,8 @@ export type HookReferenceReleaseItem = {
   width: number;
   height: number;
   audioTitle: string;
+  /** Explicit review decision; retain the immutable original audio mapping for history. */
+  audioPolicy?: "silent";
   sourceFolder: string;
 };
 

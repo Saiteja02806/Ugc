@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getPostDragScrollTop, getPostDragSnapTop, isPostDoubleTap, isPostTap, shouldSkipScrolledPost, type PostTap } from "./post-interaction.ts";
+import { getPostDragScrollTop, getPostDragSnapTop, getPostTouchSnapTop, isPostDoubleTap, isPostTap, shouldSkipScrolledPost, type PostTap } from "./post-interaction.ts";
 
 const tap: PostTap = { itemId: "first-post", x: 100, y: 120, time: 1000 };
 
@@ -71,4 +71,24 @@ test("backward release mirrors forward distance and flick thresholds without ski
   assert.equal(getPostDragSnapTop(420, 500, 1.2, 500, true), 500);
   assert.equal(getPostDragSnapTop(300, 500, -1.2, 500, false), 500);
   assert.equal(getPostDragSnapTop(580, 500, 1.2, 500, true), 1000);
+});
+
+test("a normal finger swipe uses bounded travel on tall reels in either direction", () => {
+  for (const height of [240, 510, 700, 900]) {
+    assert.equal(getPostTouchSnapTop(height - 120, height, 0, height, true), 0);
+    assert.equal(getPostTouchSnapTop(height + 120, height, 0, height, true), height * 2);
+    assert.equal(getPostTouchSnapTop(height - 10, height, -3, height, true), height);
+    assert.equal(getPostTouchSnapTop(height + 10, height, 3, height, true), height);
+  }
+});
+
+test("touch flicks are directional, bounded and require real travel", () => {
+  assert.equal(getPostTouchSnapTop(450, 510, -1, 510, true), 0);
+  assert.equal(getPostTouchSnapTop(570, 510, 1, 510, true), 1020);
+  assert.equal(getPostTouchSnapTop(450, 510, 1, 510, true), 510);
+  assert.equal(getPostTouchSnapTop(570, 510, -1, 510, true), 510);
+  assert.equal(getPostTouchSnapTop(450, 510, -.2, 510, true), 510);
+  assert.equal(getPostTouchSnapTop(-500, 510, -1, 0, false), 0);
+  assert.equal(getPostTouchSnapTop(1500, 510, 1, 510, true), 1020);
+  assert.equal(getPostTouchSnapTop(200, 0, 1, 0, true), 0);
 });

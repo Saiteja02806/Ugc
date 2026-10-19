@@ -66,7 +66,7 @@ test("only Carousel opts into measured containment; saved renders and other edit
   assert.equal((editor.match(/<CarouselDraggableOverlay\b/g) ?? []).length, 1);
   assert.equal((editor.match(/<DraggableOverlay\b/g) ?? []).length, 1);
   assert.equal((editor.match(/<WallTextEditOverlay\b/g) ?? []).length, 1);
-  assert.match(editor, /layoutFits=\{manualLayout\?\.fits\}/);
+  assert.match(editor, /layoutFits=\{movementLayout\.fits\}/);
   assert.match(editor, /enabled=\{!showExactRender\}/);
   assert.match(overlay, /new ResizeObserver/);
   assert.match(overlay, /document\.fonts\.ready/);

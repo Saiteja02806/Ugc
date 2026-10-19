@@ -168,6 +168,29 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   };
 }
 
+test("Hook demo preview moves only its visible text block and saves/reopens its position", async () => {
+  const saved = { ...draft(), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0]] } };
+  const block = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 };
+  saved.editing.textOverlays = [block, { ...block, value: "Move this" }, { ...block, value: "Keep this", startMs: 1000 }];
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(saved)]]) }); h.render();
+  const overlay = h.find(n => n.type === "FormatVideoTextOverlay"); assert.ok(overlay);
+  assert.equal(overlay.props.text.value, "Move this", "Blank draft blocks do not shift the target index");
+  overlay.props.onChange({ ...overlay.props.text, x: .65, y: .4 }); h.render();
+  const updated = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.deepEqual(normalize(updated.editing.textOverlays[0]), block);
+  assert.equal(updated.editing.textOverlays[1].x, .65); assert.equal(updated.editing.textOverlays[1].y, .4);
+  assert.deepEqual(normalize(updated.editing.textOverlays[2]), saved.editing.textOverlays[2]);
+  assert.equal(Boolean(h.find(n => n.props?.role === "status" && /crop may cut off/.test(text(n)))), false, "An offset caption inside the full frame has no false crop warning");
+  assert.equal(h.dirty, 1); assert.equal(h.saveRun(), undefined, "Dragging never dispatches rendering");
+  await h.button("Save edits").props.onClick(); assert.equal(h.draftSaves.at(-1).editing.textOverlays[1].x, .65);
+  const reopened = harness({ storage: h.storage }); reopened.render();
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.text.x, .65);
+  reopened.render({ editActive: false, editPreviewActive: true });
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.onChange, undefined, "Overview is read-only");
+  reopened.render({ editActive: true, pendingSource: true });
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay")?.props.onChange, undefined);
+});
+
 test("Content Edit selects its requested demo over another browser draft and restores all saved settings without rendering", () => {
   const h = harness({ storage: new Map([[draftKey(), JSON.stringify(draft(3))]]) });
   h.render({ contentDemoId: id(2) });

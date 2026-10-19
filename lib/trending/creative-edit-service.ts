@@ -94,9 +94,8 @@ export async function loadTrendingCreativeReadView(params: {
   userId: string;
 }): Promise<TrendingCreativeEditRecord> {
   if (params.format === "wall_text") return loadTrendingWallTextPreview(params);
-  if (params.format === "hook_video") return loadTrendingCreativeEditor(params);
   await assertReadableTrendingCreative(params);
-  return loadTrendingCreativeRecord(params);
+  return loadTrendingCreativeRecord({ ...params, readOnly: true });
 }
 
 export async function loadTrendingCarouselEditStatus(params: {
@@ -119,6 +118,7 @@ async function loadTrendingCreativeRecord(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditRecord> {
 
   const [defaultContent, row] = await Promise.all([
@@ -142,8 +142,8 @@ async function loadTrendingCreativeRecord(params: {
   });
 }
 
-/** Read-only overlay access also permits owned posts in visit history.
- * The editor/save paths retain their stricter active/selected checks. */
+/** Wall history preview stays read-only. Carousel separately permits reopening
+ * an existing owned edit from history; Hook/Wall editor gates stay unchanged. */
 export async function loadTrendingWallTextPreview(params: {
   assignmentId: string;
   creativeId: string;
@@ -291,6 +291,7 @@ async function buildDefaultContent(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditContent> {
   if (params.format === "carousel") {
     const status = await getCarouselGenerationStatus(params.creativeId);
@@ -359,6 +360,7 @@ async function buildDefaultContent(params: {
       assignmentId: params.assignmentId,
       suggestionId: params.creativeId,
       userId: params.userId,
+      readOnly: params.readOnly,
     });
 
     if (!idea) {

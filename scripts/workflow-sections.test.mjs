@@ -116,6 +116,21 @@ test("panel navigation remains outside scrolling settings and leaves retained co
   assert.equal(continued, 1);
 });
 
+test("focused clip actions stay above scrollable tools without a separate bottom footer", () => {
+  const { WorkflowCreationPanel } = load(panel);
+  let saved = 0;
+  const actions = element("button", { children: "Save edits", onClick: () => saved++ });
+  const content = element("textarea", { value: "Keep text" });
+  const tree = WorkflowCreationPanel({ kind: "hook", section: "edit", children: content, actionContent: actions });
+  const toolbar = nodes(tree).find(n => n.props?.["data-workflow-edit-actions"] !== undefined);
+  const settings = nodes(tree).find(n => n.props?.["data-workflow-section-content"] !== undefined);
+  assert.equal(toolbar.props.children, actions); assert.equal(settings.props.children, content);
+  assert.equal(nodes(tree).some(n => n.type === "footer"), false);
+  assert.equal(nodes(settings).includes(actions), false);
+  toolbar.props.children.props.onClick(); assert.equal(saved, 1);
+  assert.ok(nodes(tree).indexOf(toolbar) < nodes(tree).indexOf(settings));
+});
+
 test("connected Prepare final video and Schedule post forward real actions and render guarded progress/errors", () => {
   const { WorkflowCreationPanel } = load(panel);
   for (const kind of ["hook", "phone"]) for (const section of ["edit", "schedule"]) {

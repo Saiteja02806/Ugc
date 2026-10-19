@@ -26,6 +26,8 @@ test("saved JSON clip drafts reach final composition independently of background
     const h = fixture(capability);
     assert.match(h.view().error, /Loading your saved clip edits/);
     const [opening, demo] = h.editors(); assert.ok(demo, "Restored owned demo mounts its draft without a file upload");
+    assert.equal(opening.props.fullDurationHookText, undefined, "Talking Head opening keeps independent timing despite using format=hook");
+    assert.equal(demo.props.fullDurationHookText, undefined, "Talking Head demo never opts into Hook-only timing");
     assert.equal(opening.props.showSoundControls, false, "Talking-head speech is already in the footage; audio setup stays in Demo");
     assert.equal(demo.props.showSoundControls, false, "The focused demo editor must not duplicate Demo audio setup");
     for (const [editor, source] of [[opening, h.props.source], [demo, h.props.demoSource]]) {

@@ -402,12 +402,13 @@ test("keeps scheduling and recovery controls mounted after the final ready post"
   );
   assert.match(
     gallery,
-    /const retainingReviewShell = hasPresentedFeed && items\.length === 0;/,
+    /const retainingReviewShell = hasReviewShell && items\.length === 0;/,
   );
   assert.match(
     gallery,
-    /const shouldRenderFeed = items\.length > 0 \|\| hasPresentedFeed;/,
+    /const shouldRenderFeed = items\.length > 0 \|\| hasReviewShell;/,
   );
+  assert.match(gallery, /const hasReviewShell = hasPresentedFeed \|\| postHistory\.entries\.length > 0;/);
   assert.match(gallery, /\{shouldRenderFeed \? \(\s*<TrendingFeed/);
   assert.match(feed, /<TrendingDeck[\s\S]*candidates=\{candidates\}/);
   assert.doesNotMatch(feed, /\{candidates\.length > 0 \? \(/);
@@ -617,7 +618,8 @@ test("advances locally and sends decisions through a durable background outbox",
     /\/api\/trending\/(hook-videos|wall-text)\/feed\/prepare/,
   );
   assert.doesNotMatch(workspace, /setActiveItemIndex\(/);
-  assert.match(workspace, /disabled=\{Boolean\(exitDirection \|\| postHistory.browsing\)\}/);
+  assert.match(workspace, /disabled=\{reviewEditDisabled\}/);
+  assert.match(workspace, /const reviewEditDisabled = Boolean\(exitDirection \|\| postHistory\.browsing && \(/);
 });
 
 test("distinguishes ready cards from the complete remaining daily pack", () => {
@@ -691,14 +693,15 @@ test("Carousel editing keeps content headings and shared Slide 1 typography", ()
   assert.match(editor, /function getExactCarouselPreviewUrl/);
   assert.match(editor, /getCarouselBodyBlocks\(supportingText \|\| \(!hasHeading \? slide\.headline : ""\)\)/);
   assert.match(editor, /kind === "headline" \? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE/);
-  assert.match(editor, /WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/);
+  assert.match(editor, /WebkitTextStroke: `\$\{CAROUSEL_TEXT_OUTLINE_WIDTH \/ 10\.8\}cqw rgba\(0, 0, 0, 0\.72\)`/);
   assert.match(editor, /function CarouselEditorBackground/);
   assert.match(editor, /App screenshots use the same full-frame centre crop/);
   assert.match(editor, /function CarouselOutlinedText/);
   assert.match(editor, /function CarouselCoverText/);
   assert.match(editor, /fontSize: `\$\{fontSize \/ 10\.8\}cqw`/);
   assert.match(editor, /fontSize=\{getCarouselEditHookFontSize\(slide\)\}/);
-  assert.match(editor, /className="font-bold leading-\[\.98\] text-white"/);
+  assert.match(editor, /fontWeight: CAROUSEL_COVER_FONT_WEIGHT/);
+  assert.match(editor, /lineHeight: CAROUSEL_HOOK_LINE_HEIGHT/);
   assert.match(editor, /primaryText=\{slide\.headline\.trim\(\) \|\| supportingText\}/);
   assert.match(editor, /const isCover = slide\.slideNumber === 1/);
   assert.match(editor, /fontSize: isCover \? getCarouselEditHookFontSize\(slide\) : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
@@ -709,7 +712,7 @@ test("Carousel editing keeps content headings and shared Slide 1 typography", ()
   );
   assert.match(
     editor,
-    /kind === "body"\s*\? \{\s*paintOrder: "stroke fill",\s*WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/,
+    /kind !== "headline"\s*\? \{\s*paintOrder: "stroke fill",\s*WebkitTextStroke: `\$\{CAROUSEL_TEXT_OUTLINE_WIDTH \/ 10\.8\}cqw rgba\(0, 0, 0, 0\.72\)`/,
   );
   assert.doesNotMatch(editor, /function CarouselBubbleText/);
   assert.doesNotMatch(editor, /fill="#ffffff"/);
@@ -787,7 +790,7 @@ test("shows ready ideas while other daily slots are still preparing or failed", 
   );
   assert.match(
     workspace,
-    /if \(!retainingReviewShell && !loading && error && items\.length === 0\)/,
+    /if \(!retainingReviewShell && !showSkeleton && error && items\.length === 0\)/,
   );
   assert.match(
     workspace,

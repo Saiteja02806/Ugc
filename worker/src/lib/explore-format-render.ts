@@ -33,7 +33,7 @@ export async function prepareExploreFormatEditFilter(input: { width: number; hei
       const file = `format-text-${overlayIndex}-${index}.txt`;
       await writeFile(join(input.workDir, file), line, { flag: "wx" });
       // User text is read from a file; none is interpolated into the filter graph.
-      lineFilters.push(`drawtext=fontfile=format-font.ttf:textfile=${file}:expansion=none:fontsize=${layout.fontSize}:fontcolor=${text.color}:borderw=${Math.max(1, input.width / 540)}:bordercolor=black@0.8:x=(w-text_w)/2:y=${layout.y + index * layout.lineHeight}:enable='gte(t,${text.startMs / 1000})*lt(t,${text.endMs / 1000})'`);
+      lineFilters.push(`drawtext=fontfile=format-font.ttf:textfile=${file}:expansion=none:fontsize=${layout.fontSize}:fontcolor=${text.color}:borderw=${Math.max(1, input.width / 540)}:bordercolor=black@0.8:x=${text.x === undefined ? "(w-text_w)/2" : `${layout.x}-text_w/2`}:y=${layout.y + index * layout.lineHeight}:enable='gte(t,${text.startMs / 1000})*lt(t,${text.endMs / 1000})'`);
     }
     if (lineFilters.length) textLayers.push({ filter: lineFilters.join(",") });
   }

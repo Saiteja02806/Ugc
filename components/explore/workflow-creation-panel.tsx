@@ -18,13 +18,15 @@ export function WorkflowCreationPanel({ kind, section, children, generation, cre
   const createAction = section === "create" ? create : undefined;
   const action = section === "edit" ? edit : section === "schedule" ? schedule : undefined;
   const preparing = Boolean(action?.busy || action?.processing);
+  const editToolbar = section === "edit" && Boolean(actionContent);
   return <section aria-label="Creation controls" data-section={section} className={cn(creation.controls, sections.controls)}>
     {navigation}
     {heading}
+    {editToolbar ? <div data-workflow-edit-actions className={sections.editToolbar}>{actionContent}</div> : null}
     <div data-workflow-section-content className={creation.controlContent} role="region" aria-label="Workflow section settings">
       {children}
     </div>
-    <footer data-workflow-action className={creation.actionFooter}>
+    {!editToolbar ? <footer data-workflow-action className={creation.actionFooter}>
       {actionContent ?? <>
       <p id={`${kind}-preview-limits`} role={action ? "status" : undefined} className={!action && section === "schedule" ? "sr-only" : "mb-2 text-xs leading-5 text-muted"}>{createAction ? createAction.message : action ? action.message : generation ? generation.message : <>Local preview · not saved or connected.<span className="sr-only"> Generation, music, subtitles and scheduling are not connected. Video rendering is also not connected.</span></>}</p>
       {action?.error ? <div className="mb-2"><p role="alert" className="text-xs leading-5 text-destructive">{action.error}</p><Button type="button" variant="ghost" disabled={action.busy} onClick={action.refresh}>Refresh status</Button></div> : null}
@@ -36,6 +38,6 @@ export function WorkflowCreationPanel({ kind, section, children, generation, cre
         Generate video
       </Button> : <Button type="button" disabled={!action || action.disabled} aria-busy={preparing} onClick={action?.onAction} title={!action ? section === "schedule" ? "Scheduling is not connected in this layout preview" : "Editing is not connected in this layout preview" : undefined} aria-describedby={`${kind}-preview-limits`} className={creation.primaryAction}>{preparing ? section === "edit" ? "Preparing video…" : "Preparing schedule…" : section === "edit" ? "Prepare final video" : "Schedule post"}</Button>}
       </>}
-    </footer>
+    </footer> : null}
   </section>;
 }

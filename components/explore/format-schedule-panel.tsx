@@ -95,7 +95,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
     const timer = setTimeout(() => {
       setReceipt(null); setMessage(null); setError(null);
       if (!user || !output || localPreview) return;
-      try { const prior = saved(); setReceipt(prior); if (prior) setMessage(prior.scheduleId ? "This output already has a saved schedule. Review it in Scheduling." : prior.timeRejected ? SCHEDULE_TIME_REJECTED_MESSAGE : "An interrupted schedule is ready to resume."); }
+      try { const prior = saved(); setReceipt(prior); if (prior) setMessage(prior.scheduleId ? "Post scheduled" : prior.timeRejected ? SCHEDULE_TIME_REJECTED_MESSAGE : "Scheduling was interrupted. Try again to finish scheduling your post."); }
       catch (e) { setError(e instanceof Error ? e.message : "Could not restore scheduling."); }
     }, 0);
     return () => clearTimeout(timer);
@@ -108,8 +108,14 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       if (isScheduleTimeRejected(e) && !entry.scheduleId) {
         const rejected = { ...entry, timeRejected: true as const };
         localStorage.setItem(key, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
+        throw e;
       }
-      throw e;
+      try {
+        const value = await authorized("/api/schedules");
+        const match = Array.isArray(value.schedules) && value.schedules.find((item: { idempotencyKey?: string }) => item.idempotencyKey === entry.input.idempotencyKey);
+        if (match) { accept(entry, { ok: true, schedule: match }); return; }
+      } catch { /* Preserve the same idempotency key for Try again. */ }
+      throw new Error("Could not schedule your post. Try again.");
     }
   }
   async function schedule() {
@@ -124,7 +130,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         if (prior?.scheduleId) {
           if (receipt?.scheduleId !== prior.scheduleId) { accept(prior, await authorized(`/api/schedules/${prior.scheduleId}`)); return; }
           archiveConfirmedSchedule(localStorage, key, prior.input.idempotencyKey!, prior);
-          setReceipt(null); setMessage("Your previous post is saved. Choose the accounts and time for another post, then click Schedule post.");
+          setReceipt(null); setMessage(null);
           return;
         }
         // A stale click from a confirmed screen only opens the new intent;
@@ -143,7 +149,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         readScheduleReceipt(JSON.stringify(entry), user.uid, "hook", output.kind);
         localStorage.setItem(key, JSON.stringify(entry)); setReceipt(entry); await send(entry);
       });
-    } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not save scheduling. Resume the saved request."); }
+    } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : "Could not schedule your post. Try again."); }
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
   const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? imageOnly ? "Your slideshow changes are still being prepared. Finish them before scheduling." : "Your selected video is uploading. You can choose your posting settings below." : !output ? preparing ? "Preparing your publishing file. Choose your accounts, caption and time while it finishes." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : receipt?.scheduleId ? "Your previous post is saved. You can schedule this content again." : !receipt && !targets.length ? "Choose a connected account for each selected platform." : "Choose your accounts and time, then click Schedule post.";
@@ -161,7 +167,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Resume schedule" : receipt?.scheduleId ? "Schedule another post" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Try again" : receipt?.scheduleId ? "Schedule another post" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
     {receipt?.scheduleId ? <Link href="/scheduling" className="text-sm text-primary underline">View in Scheduling</Link> : null}

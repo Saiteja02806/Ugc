@@ -215,6 +215,25 @@ test("earlier video discovery preserves newer hints and cannot select an old com
 });
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: Seedance keeps gallery guidance, output duration and audio without Omni edit mode`, async () => {
+    const h = harness(format, { seedanceEnabled: true, captureRequests: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 12);
+    setting("Video model").props.onChange("seedance_2_5");
+    setting("Video duration").props.onChange(17);
+    const audio = { kind: "audio", asset: { id: "seedance-audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 3, fileSizeBytes: 1000 } };
+    h.render().composer.props.referenceControls.props.onChange(audio, "audio");
+    const composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    assert.equal(composer.props.estimatedCredits, 68);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    const input = h.requests[0].body;
+    assert.equal(input.exploreFormat, format); assert.equal(input.model, "seedance_2_5");
+    assert.equal(input.useGalleryVideoReference, true); assert.equal(input.referenceVideoMode, undefined);
+    assert.equal(input.durationSeconds, 17); assert.deepEqual(input.referenceAudioUrls, [audio.asset.url]);
+    assert.deepEqual(input.referenceAudioAssetIds, [audio.asset.id]);
+  });
   test(`${format}: Seedance 2.5 is selectable and submits its exact output settings`, async () => {
     const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
     const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);

@@ -47,7 +47,12 @@
 .emptyControls .emptyIcon { width: 44px; height: 44px; border-radius: 10px; }
 .classicWorkspace:not([data-format="slideshow"]) .workflowControls[data-section="edit"] { align-self: start; }
 .clipStage { container: clip-editor / inline-size; gap: 20px; }
-.clipStage[data-editing="true"] { gap: 12px; }
+.clipStage[data-editing="true"] { gap: 12px; padding: 12px; }
+.clipStage[data-editing="true"] .clipStageHeader { gap: 8px 16px; }
+.clipStage[data-editing="true"] .clipActions { width: auto; min-width: 0; margin-left: auto; }
+.clipStage[data-editing="true"] .clipActions > div { justify-content: flex-end; }
+.clipStage[data-editing="true"] .clipTools { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.clipStage[data-editing="true"] [data-clip-tools-heading] { display: none; }
 .clipStageHeader { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--background); }
 .clipStageHeader button { min-height: 40px; }
 .clipStageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -193,7 +198,7 @@
   .workspace.classicWorkspace .classicMain { min-height: 0; overflow: hidden; }
   .classicMain .referenceArea { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
   .classicMain .results, .classicMain .savedPreview { overflow-y: auto; }
-  /* The action row reserves space instead of floating over the editing fields. */
+  /* The compact header owns actions; the remaining height belongs to tools. */
   .classicMain .clipStage { overflow: hidden; }
   .clipScrollArea { flex: 1; overflow-y: auto; scrollbar-gutter: stable; scroll-padding-block: 12px; padding-bottom: 12px; }
 }

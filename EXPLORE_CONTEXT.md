@@ -7,6 +7,315 @@
   `explore-text-font-metrics.json` and provide `./explore-text-fonts.ts`;
   otherwise it fails before exercising video-finishing policy. Keep this
   test-only loader aligned with the worker import graph.
+### Trending same-quota older-post recovery — 19 October 2026, local correction
+
+- Recovery scope is the same quota/delivered feed, including posts viewed hours
+  earlier. Browsing them again must not consume quota or mix other quota feeds.
+- User supplied a recording and clarified that recent swipe-back works but a
+  slideshow reviewed about two hours earlier cannot be reached. Production
+  records retain older skipped/ready slideshows; the connected browser stops at
+  a later historical post. Deployed backward navigation read only local browser
+  snapshots and cannot retrieve older account history from the server.
+- No two-hour expiry was found. Seven-day/120-entry/serialized-size limits and
+  browser-specific storage do not provide complete account history. Prior
+  gesture and refresh tests did not cover earlier decisions missing from the
+  browser. Keep this acceptance gap explicit; do not repeatedly adjust gestures
+  to address missing historical data.
+- Required correction is paginated, authenticated recovery of existing reviewed
+  records, stable merging and an explicit older-history loading/error boundary.
+  It is now implemented locally through `GET /api/trending/feed/history` using
+  the saved feed ID and original slot order. The gallery preloads pages, merges
+  pending local reviews without moving the current post, scopes storage to
+  owner + quota, and exposes loading/retry/unavailable states. Revisiting is
+  read-only; normal feed preparation and decision writes are unchanged.
+- Local regression and browser checks passed for empty-cache +2h recovery,
+  pagination, reload/navigation, quota isolation, empty feed, retry and blocked
+  storage. The final quota browser rerun passed on the isolated release.
+  Read-only production-service verification recovered all eight reviewed
+  slideshows, denied a different owner, and left quota unchanged.
+  Authenticated deployed-browser acceptance remains pending.
+  Diagnostic evidence and limits, including the
+  different Comet/in-app browser contexts, are in
+  `docs/trending-older-history-investigation-2026-10-19.md`.
+
+
+
+### Hook audit approval and manual audio collection — 19 October 2026
+
+- User reviewed the scene findings, explicitly chose to keep Hook 18 unchanged,
+  and approved all 18 clear end trims. No uncertain scene decision remains.
+  The derivatives are verified locally; catalogue activation/deployment is still
+  separate. The full original Hook 18 stays bound to its existing prompt/text.
+- User requested all background audio together for their own listening review,
+  with names that map each track to its reference and original import folder.
+  `outputs/Hook Reference Audio Review/` contains 98 descriptively named Hook
+  folders, each with its complete byte-identical paired MP3, an original frame,
+  source mapping and editable review notes. Eight embedded native audio tracks
+  are also extracted by packet copy with payload-hash verification. No AI audio
+  analysis, transcription, classification or paid model call was performed.
+- Example: `Hook 003 - Pillow - wide-eyed reaction` retains the original source
+  folder `New folder (3)`, `ReelAudio-77704.mp3`, permanent reference ID and source
+  link in `mapping.json`. Every file includes the stable three-digit Hook number.
+  The parent `index.html` has thumbnails and separate background/native players;
+  `AUDIO-MAP.json` maps all files. Original soundtracks, including Hook 03's
+  previously rejected pairing, remain available for explicit manual review.
+- The exporter `scripts/export-hook-reference-audio-review.mjs` uses the scene
+  labels in `scripts/data/hook-reference-audio-review-labels.json`. It verifies
+  original hashes, refuses to replace differing existing media/mappings and
+  preserves user-written `REVIEW-NOTES.txt` on rerun. It performs no upload or
+  production write. Music remains acceptable; user is checking spoken commentary.
+
+### Complete Hook frame audit and staged cleanup — 19 October 2026
+
+- User explicitly rejected unrelated demo/screen tails in generation references.
+  This supersedes earlier instructions to preserve even single-frame screen cuts,
+  including the Hook 03 entry below and the earlier all-frame prompt review.
+  Keep the influencer performance; a physical laptop/phone beside the performer
+  is not automatically unwanted. Prior prompt review observed tails correctly
+  but accepted the wrong product behavior by instructing generation to retain them.
+- Three agents inspected all 9,773 decoded frames of the 98 active Hook references.
+  79 have no unrelated scene cut; 18 have clear unwanted tails (22 frames total):
+  ordinals 1, 2, 3, 4, 6, 7, 20, 30, 39, 40, 42, 43, 53, 54, 71, 78, 88, 89.
+  These ordinals are audit identifiers, not new product-facing catalogue labels.
+  Exact permanent IDs, source hashes, removed ranges and prompt proposals are in
+  `scripts/data/hook-reference-scene-audit-2026-10-19.json`.
+- Hook 18 continuously pans from an airplane window to a seated smiling performer.
+  It is an authored reveal, not an inserted demo. User asked for the original
+  video and labelled frames at the end of the chat for manual guidance; leave it
+  unchanged until that guidance. Do not choose a crop/trim based on elapsed time.
+- User deferred ALL audio analysis to avoid provider cost. Background music is
+  acceptable; the concern is spoken commentary. No paid audio/model calls were
+  made. Existing Hook 03 silence decision remains separate. The new video audit
+  neither certifies soundtracks nor globally removes singing, music or native audio.
+- `scripts/trim-hook-reference-frames.mjs` creates new lossless H.264 derivatives,
+  checks source SHA before/after, exact decoded retained pixels, frame count,
+  relative PTS and end boundary. Preserve the last performer's display hold up to
+  the first excluded frame PTS; packet-duration-only cuts shorten VFR holds.
+  Disable B frames and set final packet duration without duplicating frames.
+  Native audio in four affected sources is explicitly packet-copied and checked
+  by payload hash/timestamp, without listening or re-encoding. Account for FFmpeg
+  input normalization by container start when aligning nonzero video timestamps.
+- All 18 derivatives and exact revised prompt/Remix-timing proposals are staged
+  in `outputs/hook-reference-audit-2026-10-19/`. Original videos, soundtracks,
+  active catalogue and production remain unchanged by this audit. The review HTML
+  puts ambiguous cases last. Trimming retains baked-in captions; the existing
+  generation text-removal instruction remains. Do not claim pixels were de-texted.
+- Before activation, upload/verify content-addressed derivatives and paired previews,
+  then release matching generation video, duration, prompt source hash and caption
+  source hash/timing together. Keep old media/provenance available for historical
+  jobs. New prompt paragraphs remove discarded-cut instructions. Staged cleanup
+  is not evidence that the current deployed catalogue already uses cleaned inputs.
+- Validation includes real media pixel/PTS/packet checks on all derivatives and
+  regression cases for non-keyframe head/tail trims, VFR holds, nonzero starts,
+  native-audio preservation, invalid ranges, hash mismatches and repeat writes.
+  No paid generation, provider-quality test, deployment or authenticated
+  production workflow acceptance is part of this local audit.
+
+### Hook 03 spoken soundtrack removed — 19 October 2026, local
+
+- User rejected the spoken background audio on Instagram reel `Dd394l1gRWG`,
+  reference `explore-paired-hook-ef59f4b5e69bc9e125f8ada7`. Its 3.766992-second
+  source MP4 is already silent; the audible preview and generated Hook instead
+  attach `ReelAudio-77704.mp3` (31.63425 seconds). Frame review alone never
+  establishes soundtrack suitability. The speech complaint is user-reported;
+  this audit did not transcribe or independently listen to its words.
+- This exact release item now has `audioPolicy: silent`. Catalogue/MCP omit its
+  automatic paired audio and preview the existing silent source. Generation
+  strips provider audio using video stream copy, rather than merely lowering
+  playback volume or relying on a prompt. New outputs omit soundtrack receipts
+  and do not infer a track from this reference ID. Explicit historical receipts
+  retain their immutable mappings for recovery/editing; old rendered media is
+  not automatically rewritten. Other references retain their existing policy.
+- Rechecked all 110 decoded frames in sequence. The performance paragraph is
+  accurate: reclining, blink, widening eyes, right/left glances, return to lens
+  and final sideways glance. Frame 109 at 3733 ms cuts to hand/stylus and screen;
+  keep that single-frame tail brief. Added explicit silence, no speech/voiceover/
+  singing/lip-sync/music, while retaining naturally parted lips. Overlay removal
+  and separate Remix caption wording/timing remain unchanged.
+- Review, exact prompt, silent output and receipt: `outputs/hook-03-review/`.
+  The actual audible preview was stripped and all 110 decoded pictures and
+  timestamps match the silent source; ffprobe confirms zero audio streams.
+  Local source hashes match production catalogue object names read through MCP.
+  Direct production byte fetching failed DNS in this shell. No paid generation,
+  deployment or authenticated production acceptance is claimed. Release worker
+  and web/MCP together; already selected browser state may require reload.
+- Worker build, app TypeScript, scoped lint and focused catalogue/prompt/audio/
+  generation checks pass. The wider release test still expects Hook 01's old
+  final-frame Remix block, conflicting with the earlier caption normalization;
+  that unrelated expectation was left unchanged. Full audio suite passes when
+  run independently (an initial concurrent run exited before completion).
+
+### Single Hook opening text follows trim — 19 October 2026, local
+
+- Root cause: shared trim handling uses `min(previous text end, new length)`.
+  Shortening a 3s clip to 1.5s overwrites the text end with 1.5s; extending to
+  3s leaves it at 1.5s. The shortened interval can survive draft recovery,
+  manual styling and Remix because those paths retain previous timing.
+- User explicitly limited this correction to the Hook Video workflow's opening
+  editor. `FormatWorkspace` opts that opening into `fullDurationHookText`.
+  Never infer this policy from `format: hook`: Talking Head opening/demo and
+  other shared editor callers also use that render format but MUST retain
+  independent timing. Hook's separate demo editor is not opted in either.
+- With exactly one text block, timing is normalized to 0–selected duration on
+  local/server/receipt/metadata restoration, editing, trim changes, Remix and
+  drag updates. Preview, saved draft and final composition use the same JSON.
+  A short explanation replaces the single block's separate timing inputs.
+  Multiple blocks retain authored per-block timing; adding a second block
+  restores the timing inputs. Removing down to one restores full-clip coverage.
+- Keep copy, position, font, preset, sound, trim and legacy draft shape. No
+  worker/global parser policy or database schema change; no provider requests
+  or existing rendered-media rewrites. Changed recovered timing still needs an
+  explicit Save edits and final preparation to replace previously saved output.
+- This specific exception overrides the general instruction to carry shared
+  editor fixes across workflows. Wall, Talking Head, demo and slideshow timing
+  behavior stays as it was. This correction is local and not deployed.
+- Validation: 216 focused checks pass, including repeated shrink/expand/shift
+  cycles, local/server/receipt/metadata recovery, style/copy preservation and
+  negative checks for Talking Head/demo callers. Actual-component desktop and
+  phone browsers verify end-of-clip visibility, reload and switching between
+  one and multiple blocks. Real exports show Hook text at 2.8s after expanding
+  1.5s back to 3s while independently timed demo text still ends at 1.5s.
+  App TypeScript and scoped lint pass. These are local checks, not authenticated
+  production acceptance. Evidence: `.tmp/hook-text-timing-tests-20261019.log`
+  and `.tmp/explore-demo-loading-browser/hook-single-timing-*.png`.
+
+### Trending history survives leaving and refreshing — 19 October 2026, local
+
+- User clarified that the repeated scroll-back failure occurs after leaving
+  Trending or refreshing, not during the same visit. React-only review snapshots
+  disappeared on unmount; gesture-only fixes did not address that lifecycle.
+- Authenticated Trending opts into owner-scoped browser history for up to 120
+  recent posts/seven days, including the selected historical post. Recovery
+  lives above the gallery's empty/loading branches so an empty server feed cannot
+  hide View previous posts. Other accounts never receive those previews.
+- Browsing recovered posts does not replay a decision, Library save or scheduling
+  action. Demos remain visit-local. This does not recover visits already lost
+  before the change or synchronize between devices. See CAROUSEL_CONTEXT.md for
+  storage bounds, failure handling and the exact acceptance boundary.
+- Actual-component browser checks cover leaving/returning, refresh, backward and
+  forward browsing, final-post recovery, account switching and unavailable
+  storage. Local only; no deployment or authenticated production acceptance.
+
+### Edit-screen space usage correction — 19 October 2026, local
+
+- Repeated mistake reported by the user: the focused Hook/demo edit screen
+  reserved a full-width bottom row for Back and Save, repeated the edit title
+  inside a padded tools card, and left a broad empty band above those tools.
+  Shrinking buttons alone did not fix the unnecessary layout containers.
+- Focused Hook opening/demo actions now live in the compact editor header.
+  The bottom action container is removed. The duplicate tools heading is hidden
+  in that frame; the nested tools border, background and padding are removed.
+  The outer editor keeps one short title, then starts preview/tools directly.
+- Talking Head's shared focused panel places supplied clip actions above its
+  scrollable tools and omits its bottom footer. Duplicate clip headings are
+  hidden there too; the preview identifies the current clip. Wall's actual
+  FormatWorkspace uses a separate action target, now also above its tools with
+  the legacy footer hidden during Edit. Keep Wall's Back to text control.
+  Panel border/padding are removed only during focused editing. Create, Demo
+  setup, Schedule and slideshow retain their own layout and action behavior.
+- Carry corrections across shared workflow editors automatically. Preserve
+  mounted preview/tool/draft targets, Back/Save handlers, disabled/error states
+  and reachable actions while scrolling. Do not create empty header/footer rows
+  or duplicate cards merely to hold actions; use compact controls and measure
+  usable space with long text/block lists on laptops as well as mobile.
+- This correction is local, not deployed. Isolated component/browser checks
+  do not constitute authenticated production acceptance.
+- Validation: 197 editor/navigation/source/draft/drag checks pass. Browser
+  checks cover Hook demo upload/edit continuity at 1280×720 and 1536×864,
+  seven text blocks and 390px mobile scrolling, paired opening/demo and Wall
+  at 320–1920px. Hook's header actions measure 44px, nested tools padding/border
+  and initial tools gap measure zero; shared top actions use 56px including
+  spacing. TypeScript and scoped lint pass. Evidence screenshots are in
+  `.tmp/explore-demo-loading-browser/` and `.tmp/talking-head-editor-layout/`.
+
+### Trending slideshow shared styling and history edit — 19 October 2026, local
+
+- These changes belong to Trending Carousel Edit, not manual Explore Slideshows.
+  Body style/position changes share by default; hook and per-slide copy/media
+  stay separate. Individual styling is persisted and protected from future
+  shared changes unless the user explicitly rejoins that slide. Existing manual
+  styles without metadata are treated as individual to preserve authored work.
+- New manual text motion reaches canvas edges without the former fixed inset,
+  while glyphs/panels stay contained. Body overflow is surfaced for individual
+  review. Existing generation typography and Explore image pixels are unchanged.
+- Existing owned Carousel edits can reopen from Trending review history; other
+  formats retain current restrictions. This requires a local trigger migration
+  as well as UI/API changes, with no automatic skip/schedule state changes.
+  See CAROUSEL_CONTEXT.md for the exact access boundary and release requirements.
+- No deployment or production mutation; local fixtures are separate from final
+  authenticated production acceptance.
+
+### Drag text directly on clip previews — 19 October 2026, local
+
+- Text in the focused Hook, Wall, Talking Head opening and demo editors can be
+  dragged horizontally and vertically on the live preview. Starting a drag
+  pauses video/audio; pointer capture supports mouse, pen and touch. Arrow keys
+  move focused text in small steps; Shift uses larger steps. Read-only overview
+  and sequence previews retain their playback behavior without drag targets.
+- Only the visible text region intercepts input. A subtle boundary appears on
+  hover/focus. Movement uses the displayed frame scale and clamps the complete
+  text within the video. Existing timing, copy, style and other blocks remain.
+- The optional normalized text `x` field is parsed and saved through existing
+  clip drafts; absent `x` retains legacy shape and centered rendering. The same
+  layout drives browser SVG, bundled glyph outlines and legacy FFmpeg text.
+  Snapchat's full-width background remains full width. No saved media is
+  rewritten; users save edits and prepare the resulting video as usual.
+- Deployment must release the updated worker parser/renderer before the website
+  can submit edits containing `x`. This change is local, not deployed. Browser
+  fixtures and local real-video exports are distinct from authenticated
+  production acceptance.
+- Validation: 165 focused checks pass, including strict draft round trips,
+  blank/neighbor block preservation, all 160 font/size/preset/frame boundary
+  combinations, and actual video exports through all three text render paths.
+  Actual-component browsers pass mouse/keyboard and saved-position recovery at
+  laptop/desktop/phone sizes, touch on phone, and the complete Talking Head
+  opening/demo and Wall editors at 320–1920px. App TypeScript, worker build and
+  scoped lint pass. Screenshots: `.tmp/talking-head-editor-layout/` and
+  `.tmp/explore-text-fonts-browser/`.
+
+### Video text preset switching — 19 October 2026, local correction
+
+- Reproduced Snapchat Classic → Bold white staying on Snapchat in the shared
+  dropdown. `applyFormatTextPreset` correctly removes `preset` and
+  `backgroundOpacity` for Bold, but the editor's partial-update merge restored
+  both from the previous text object. This kept the Snapchat background and
+  selected option even though some typography changed.
+- Preset changes now replace the selected text block with the helper's complete
+  result. Individual field changes still merge only their changed fields. Copy,
+  selected font, other blocks and timing remain; Wall retains full-clip timing.
+- The same control is used by Hook, Wall advanced styling, Talking Head opening
+  and demo editors, and Hook demo editing. No slideshow preset behavior changes.
+  Existing persisted/rendered content is not rewritten; users can change the
+  preset through the corrected editor. This fix is local and not deployed.
+- Validation: the new dropdown regression failed before the fix with Snapchat
+  still selected. All 107 focused editor/draft/export/finishing checks now pass.
+  Actual-component browser checks verify Snapchat → Bold, removed preview
+  background, retained copy/font, and saved/reopened Bold in Hook at laptop,
+  desktop and phone sizes, plus Wall advanced styling on phone. TypeScript and
+  scoped lint pass. These are local fixtures, not production acceptance.
+
+### Generation image picker multi-selection — 19 October 2026, local correction
+
+- Hook/Wall-of-Text's Choose image popup and Talking Head's shared creator
+  picker remain open after choosing saved or catalogue images when multiple
+  references are supported. Each thumbnail shows an empty square or a ticked
+  square; pressing a selected thumbnail again deselects just that image.
+- A selected-count row and Done close action replace duplicate selected-image
+  previews inside the popup, keeping the grid stable while selecting. The
+  existing sidebar tile still displays the selected-image mosaic.
+- At the model's image limit, unselected tiles cannot add images; selected tiles
+  remain removable. Saved images still resolve their current owned record;
+  catalogue copies retain their existing upload scope. Pending work, errors,
+  account guards and generation reference delivery are preserved. Single-image
+  callers retain their existing close-on-selection behavior.
+- This correction is local and is not deployed. Browser fixtures use isolated
+  auth/storage boundaries, without paid generation or production changes.
+- Validation: 121 reference/collection/generation regressions, TypeScript and
+  scoped lint pass. The actual Hook and Talking Head pickers pass six browser
+  scenarios at 1536×864, 1366×768 and 390×844: checked multiple selections,
+  individual deselection, catalogue/saved-image mixing, Done/reopen persistence
+  and unchanged instructions. Screenshots: `.tmp/workflow-image-library-browser/`.
+
 ### Approved reusable backgrounds workflow — 19 October 2026, local
 
 - The user confirmed Settings collection management followed by applying images
@@ -235,6 +544,22 @@
   not turn those pixels into editable text or change Explore generation, its
   existing added-text overlay tools, or the preview Save/Schedule correction.
 
+### Simple scheduling and repeat posts — 19 October 2026, local
+
+- The user-approved flow is accounts/caption/date/time → **Schedule post** →
+  **Post scheduled** with **View in Scheduling** → **Schedule another post**.
+  The last action opens a fresh intent for the same content and keeps the form
+  settings available to edit. This applies to background-prepared video,
+  prepared Hook/Wall/Talking Head/Phone video, and Explore slideshow scheduling.
+- Remove the user-facing Check saved request / Confirm the same saved request
+  controls. After a lost POST response, reconcile the exact receipt with a
+  read automatically. If it is still unconfirmed, expose one **Try again**
+  action that preserves the original request; do not invent success or silently
+  create a replacement. Hydration and preparation polling remain read-only.
+- Retain time/account validation, receipt verification, cross-tab locks and
+  double-click protection. Local fixtures are distinct from production
+  acceptance; this change has not been deployed by this task.
+
 ### Repeat scheduling — 18 October 2026, local
 
 - A confirmed schedule is a completed post, not a permanent lock on its media.
@@ -243,8 +568,9 @@
   choose a different date, time, caption or account and create another post
   from the same completed content.
 - Confirmation remains intentionally different from an interrupted request. A
-  network-uncertain request keeps its exact idempotency key and must be checked
-  or resumed; it cannot be replaced by editing the form. A confirmed request is
+  network-uncertain request keeps its exact idempotency key and is checked
+  automatically or retried through Try again; it cannot be replaced by editing
+  the form. A confirmed request is
   archived locally before a new intent is opened, so a late response or another
   tab cannot replace the active request or create a duplicate post.
 - Background preparation retains its durable request and delivery guarantees.
@@ -2035,3 +2361,19 @@ catalogue/release records rather than copying counts from historical audits.
 | 2026-10-15 | Wall Edit leads with Remix/manual text and preview. A compact Edit action opens advanced trim/style/audio; Back to text retains the same draft. Wall text spans the whole selected clip and has no per-block timing UI; Hook/demo timing stays independent. |
 | 2026-10-15 | Slideshows generate selected slides × versions, with server-owned business context and Flare default. Compact reference selection retains direct thumbnail toggles; History, full-version editing, earlier drafts and saved Library Edit slides restore prior work without overwriting it. |
 | 2026-10-15 | Hook/Demo empty overview slots use centered portrait upload areas with viewport-bounded sizes; Talking Head's empty-demo canvas follows the same principle. Hook reference captions omit catalogue numbers while keeping stable media IDs. Recovery entry points and their distinct limits are recorded per workflow. |
+
+### Rejected Hook background soundtracks — 19 October 2026
+
+- User rejected ONLY Hooks 3, 13 and 59 background tracks as incomplete. Removed those three MP3s from the manual audio-review collection; retained all other background/native tracks and all 98 videos. Exporter tombstones prevent accidental re-export.
+- Production policy is audioPolicy: silent for the three permanent reference IDs. New generation strips provider/native sound and does not attach a catalogue soundtrack; gallery metadata omits pairedAudio. Historical renders/explicit saved audio receipts are retained.
+- Native audio means sound embedded in the original MP4. It exists for Hooks 6, 53, 54, 55, 69, 73, 74 and 88; Hook 78 has none. Extracted review M4As are manual-review artifacts, not production inputs. Providers currently receive original MP4s, including embedded sound; normal final output replaces provider sound with the separate catalogue MP3.
+- All 18 trimmed MP4s were independently verified in the exact original D: import folders; Hook 18 stays unchanged. This soundtrack release does not switch production video source URLs to the local trimmed derivatives.
+
+## Combined Hook, Seedance, image picker and Trending correction — 19 October 2026
+
+- This release activates the 18 user-approved tail trims and matching gallery previews, durations, reviewed prompts and caption source hashes. Hook 18 remains unchanged. Immutable old media identities and original text/prompt records are retained in scripts/data/hook-reference-scene-release.json.
+- Background tracks for Hooks 3, 13 and 59 remain disabled; all other reference music remains unchanged. This does not rewrite historical generated output.
+- Seedance 2.5 now passes Explore Hook/Wall model admission and the corresponding gallery/audio guards, retaining ReAPI routing, model limits, ownership and billing checks. No paid generation is part of validation.
+- Shared image pickers use small public previews, 24 initial entries, no hidden-tab downloads and a one-minute owner-scoped metadata window. Multi-reference Add images accepts a batch with bounded uploads and existing limits.
+- Trending body-only slide edits now resolve copy from the same submitted fields as the editor; renderer version advances so cached blank renders are not reused. Previously saved blank images require a new save/render. Earlier deployed quota-history behavior is retained by basing this release on main 283afc17.
+- These are release preparation decisions. Production acceptance is recorded separately after deployment; successful local checks alone are not live acceptance.

@@ -1,11 +1,22 @@
 # AI character builder
 
+Prompt display correction, October 19, 2026 (local): the user explicitly wants
+the full submitted prompt visible with its Copy icon beside it, without an
+internal scrollbar. Let the text expand naturally above its images; do not cap
+its height, clip it or add a disclosure. Keep this correction limited to the
+submitted prompt display. Do not infer changes to the composer, image layout,
+generation or reference behavior from this request. The earlier six-line
+scrolling policy below is superseded. This correction is not deployed yet.
+Local browser verification passed at desktop and mobile widths: the full long
+prompt has no height limit or internal overflow, Copy stays beside its first
+line and copies the complete multiline text. Scoped lint and diff checks pass.
+
 Latest local UI fix, October 18, 2026: each generation batch shows its submitted
 prompt as plain text once directly above its images, with a compact Copy icon.
 The text and Copy icon share the image's width, so the prompt wraps directly
 above the image instead of running across the workspace. There is no Prompt
-heading, disclosure or bordered panel. Long text scrolls
-within six lines; Copy always copies the complete original multiline prompt and
+heading, disclosure or bordered panel. Long text expands to show the complete
+prompt without an internal scrollbar; Copy copies the original multiline prompt and
 reports success or failure. Prompt text comes from the authenticated owned
 job, not the editable next draft; queued batches cache the admitted prompt and
 History previews use their saved prompt. Status responses expose only prompts

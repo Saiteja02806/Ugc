@@ -150,6 +150,56 @@ async function main() {
     assert.equal(await page.getByLabel('Hook',{exact:true}).inputValue(),before.content.slides[0].headline);
     assert.deepEqual(errors,[]);
     console.log('PASS actual Trending library flow: collection preview/cancel, explicit Use, separate Save to the same creative/revision, preserved text/style/order/originals and reopen');
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();
+    const coverBefore=structuredClone(record.content.slides[0]);
+    record={...record,renderOutput:null,content:{...record.content,slides:[coverBefore,baseSlide(2),{...baseSlide(3),headline:'Different heading',subtext:'Keep this different copy on slide three.'},{...baseSlide(4),headline:'Last thought',subtext:'A longer body that wraps independently while sharing the same styling.'}]}};
+    await open();await page.getByRole('button',{name:'Next slide',exact:true}).click();
+    const shared=page.getByRole('checkbox',{name:'Apply styling to all body slides',exact:true});
+    assert.equal(await shared.isChecked(),true);
+    await page.getByLabel('Font',{exact:true}).selectOption('montserrat');
+    await page.getByLabel('Text size',{exact:true}).fill('36');
+    await page.getByLabel('Text color',{exact:true}).fill('#44dd88');
+    await page.getByLabel('Supporting text',{exact:true}).fill('Only slide two gets this copy.');
+    const position=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Position$/})});
+    await position.locator('summary').click();
+    await page.getByLabel(/Horizontal position/).fill('0');await page.getByLabel(/Vertical position/).fill('0');
+    const edgeText=await preview().locator('[data-carousel-manual-text]').boundingBox(),edgeFrame=await preview().boundingBox();
+    assert.ok(Math.abs(edgeText.x-edgeFrame.x)<2 && Math.abs(edgeText.y-edgeFrame.y)<2,'Text can reach the top-left canvas corner');
+    await page.getByLabel(/Horizontal position/).fill('100');await page.getByLabel(/Vertical position/).fill('100');
+    const bottomText=await preview().locator('[data-carousel-manual-text]').boundingBox();
+    assert.ok(Math.abs(bottomText.x+bottomText.width-edgeFrame.x-edgeFrame.width)<2 && Math.abs(bottomText.y+bottomText.height-edgeFrame.y-edgeFrame.height)<2,'Text can reach the bottom-right canvas corner');
+    await page.getByRole('button',{name:'Next slide',exact:true}).click();
+    assert.equal(await page.getByLabel('Font',{exact:true}).inputValue(),'montserrat');
+    assert.equal(await page.getByLabel('Text size',{exact:true}).inputValue(),'36');
+    assert.equal(await page.getByLabel('Supporting text',{exact:true}).inputValue(),'Keep this different copy on slide three.');
+    await shared.uncheck();await page.getByLabel('Text size',{exact:true}).fill('42');
+    for(const [width,height] of [[1366,768],[1536,864],[390,844]]){
+      await page.setViewportSize({width,height});await shared.scrollIntoViewIfNeeded();
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      await page.screenshot({path:path.join(out,'shared-body-styling-'+width+'.png')});
+    }
+    await save();
+    assert.deepEqual(record.content.slides[0],coverBefore,'Body changes leave the hook untouched');
+    assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.font),['montserrat','montserrat','montserrat']);
+    assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.fontSize),[36,42,36]);
+    assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.color),['#44dd88','#44dd88','#44dd88']);
+    assert.equal(record.content.slides[1].subtext,'Only slide two gets this copy.');
+    assert.equal(record.content.slides[2].subtext,'Keep this different copy on slide three.');
+    assert.ok(record.content.slides.slice(1).every(s=>s.textPosition.x===1 && s.textPosition.y===1));
+    await open();await page.getByRole('button',{name:'Next slide',exact:true}).click();
+    assert.equal(await page.getByLabel('Text size',{exact:true}).inputValue(),'36');
+    await page.getByRole('button',{name:'Next slide',exact:true}).click();assert.equal(await page.getByLabel('Text size',{exact:true}).inputValue(),'42');
+    await page.getByRole('button',{name:'Use this layout on shared body slides',exact:true}).click();
+    await save();assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.fontSize),[42,42,42]);assert.deepEqual(record.content.slides[0],coverBefore);
+    assert.equal(record.content.slides[2].textStyle.bodyStyleMode,'individual');
+    await open();await page.getByRole('button',{name:'Next slide',exact:true}).click();await page.getByLabel('Text size',{exact:true}).fill('50');await save();
+    assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.fontSize),[50,42,50],'Manual slide-three layout survives subsequent shared styling after reopen');
+    await open();await page.getByRole('button',{name:'Next slide',exact:true}).click();await page.getByRole('button',{name:'Next slide',exact:true}).click();
+    await page.getByText(/Custom layout kept/).waitFor();assert.equal(await shared.isChecked(),false);
+    await shared.check();await page.getByLabel('Text size',{exact:true}).fill('44');await save();
+    assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.fontSize),[44,44,44],'Explicitly rejoining shared styling allows propagation again');
+    assert.deepEqual(errors,[]);
+    console.log('PASS body styling: linked by default, independent copy/images, separate hook, single-slide override, explicit whole-layout reuse, save/reopen and full-canvas corner placement');
   } catch(e){await page.screenshot({path:path.join(out,'failure.png')});console.error('Browser/server errors:',errors);console.error(await page.locator('body').innerText());throw e;}
   finally {await browser.close();await new Promise(r=>server.close(r));}
 }

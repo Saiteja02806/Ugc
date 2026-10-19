@@ -72,6 +72,15 @@ export function getMissingTrendingDecisionEnvVars() {
   ].filter((value): value is string => Boolean(value));
 }
 
+/** Reading history never updates assignments, counters or decisions. */
+export async function listTrendingCreativeDecisions(userId: string, assignmentIds: readonly string[]) {
+  if (!assignmentIds.length) return [];
+  const { data, error } = await getClient().from("trending_creative_decisions")
+    .select("*").eq("user_id", userId).in("assignment_id", [...assignmentIds]);
+  if (error) throw new Error(`Could not load previous Trending decisions: ${error.message}`);
+  return data ?? [];
+}
+
 export async function recordTrendingCreativeDecision(params: {
   assignmentId: string;
   creativeId: string;

@@ -1,6 +1,6 @@
 # MCP current capability audit
 
-Last reviewed: 2026-10-18
+Last reviewed: 2026-10-19
 
 This audit supersedes the initial 15-tool/12-tool snapshot in the historical remaining-work report. Production currently exposes **79** tools. The local scheduling candidate at `89bd0e94` has **84** registrations: the production set plus five scheduling tools. Its unpushed analytics successor has **89** registrations: those 84 plus five read-only saved-analytics tools. Neither local candidate is deployed. Rollout gates and each account's capability reads remain authoritative.
 
@@ -13,6 +13,10 @@ This audit supersedes the initial 15-tool/12-tool snapshot in the historical rem
 - The local Claude Code client is signed out and is still using the older 0.1.8 plugin, so it does not yet prove clean Claude host acceptance. See `ugc-pilot-plugin-context.md`.
 - The local analytics successor adds `analytics:read` and a verified-identity requirement for saved report reads. Its focused contract and durable-snapshot tests passed locally, and the complete `npm run test:mcp` suite passed at source commit `24bc41f5` on 2026-10-18 when its temporary `127.0.0.1` transfer server was permitted. It deliberately exposes no provider refresh or analytics write.
 - The analytics successor is pushed as draft PR [#71](https://github.com/Saiteja02806/Ugc/pull/71) at `4f09f63f`. Git started a protected website preview for that commit, but it remained queued during this review; no matching MCP build was created, no candidate deployment was accepted, and no production target changed. The connected Supabase project has only its default branch and does not list migration `20261018043539`; create an isolated database branch before any staging migration.
+- On 2026-10-19, the candidate was brought forward through current `origin/main` commit `93df700e`, including the production-source changes merged by PRs #72–#75. The merged package remains version `0.2.5` with 89 tools, 16 skills and 43 packaged files.
+- The complete MCP suite passes on that merged source when the installed system FFmpeg is supplied to the local media-transfer fixture. The focused transfer suite passes 21/21; the current-main Trending history suite passes 22/22; the migration reconciliation guard passes; the release audit passes 16/16; and deterministic plugin validation plus all five archive tests pass. These are local source/package results, not deployment or installed-host acceptance.
+- Hosted isolation remains the release blocker. Supabase branching is unavailable on the current free plan, and the organization already uses both free active-project slots. No branch/project was created, no charge began and no production migration ran. The candidate has no exact-commit MCP staging deployment, so clean Codex/Claude OAuth and the bounded real media workflow have not started.
+- A separate READY production-target MCP deployment at source `1323837c` appeared during review. It was not created or changed by this candidate work and is not evidence for the later `93df700e` merge or the 89-tool package.
 
 ## Current MCP coverage
 

@@ -640,7 +640,7 @@ test("the original simple form submits directly once for Hook and Phone workflow
     const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,1);
     const actual=JSON.parse(posts[0].body); assert.equal(actual.source.id,output.id); assert.equal(actual.caption,h.props.scheduleDraft.caption);
     assert.equal(actual.scheduledFor,h.submission.scheduledFor); assert.deepEqual(actual.targets,h.submission.targets);
-    assert.match(h.render().view.schedule.message,/is scheduled/);
+    assert.equal(h.render().view.schedule.message,"Post scheduled");
     assert.equal(h.cache.data().schedules.length, 1);
     assert.equal(h.cache.queryClient.getQueryState(h.cache.key).isInvalidated, true);
     assert.equal(h.cache.foreign().schedules[0].id, "foreign-post"); h.unmount();
@@ -673,13 +673,13 @@ test("late hydration status or error cannot overwrite a corrected accepted sched
     h.render().view.schedule.onAction(); await tick();
     const confirmedReceipt = h.store.get(h.storageKey);
     assert.ok(JSON.parse(confirmedReceipt).scheduleId);
-    assert.match(h.render().view.schedule.message, /is scheduled/);
+    assert.equal(h.render().view.schedule.message, "Post scheduled");
     if (response === "failed") complete(Response.json({ ok: false, message: "Earlier status lookup failed" }, { status: 500 }));
     else if (response === "accepted-old") complete(Response.json({ ok: true, schedules: [{ id: randomUUID(), mediaAssetId: output.id, idempotencyKey: saved.input.idempotencyKey, status: "scheduled", targets: saved.input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) }] }));
     else complete(Response.json({ ok: true, schedules: [] }));
     await tick();
     const screen = h.render();
-    assert.match(screen.view.schedule.message, /is scheduled/);
+    assert.equal(screen.view.schedule.message, "Post scheduled");
     assert.equal(screen.view.schedule.error, null);
     assert.equal(h.store.get(h.storageKey), confirmedReceipt, "A late read cannot restore the superseded draft or schedule ID");
     assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
@@ -698,31 +698,50 @@ test("a corrected request with an uncertain server failure clears old time help 
     } });
     h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
     let screen = h.render();
-    assert.match(screen.view.schedule.error, /Could not create this schedule/);
-    assert.match(screen.view.schedule.message, /unconfirmed/);
+    assert.match(screen.view.schedule.error, /Could not schedule your post/);
+    assert.match(screen.view.schedule.message, /Scheduling was interrupted/);
     assert.doesNotMatch(screen.view.schedule.message, /time was rejected|Choose a future time/);
     const pendingReceipt = h.store.get(h.storageKey), firstPost = h.calls.find(call => call.method === "POST");
     assert.equal(JSON.parse(pendingReceipt).timeRejected, undefined, "A 500 cannot permit changing the durable request");
     assert.equal(JSON.parse(firstPost.body).scheduledFor, h.submission.scheduledFor);
     complete(Response.json({ ok: false, message: "Earlier status lookup failed" }, { status: 500 })); await tick();
     screen = h.render();
-    assert.match(screen.view.schedule.error, /Could not create this schedule/);
-    assert.match(screen.view.schedule.message, /unconfirmed/);
+    assert.match(screen.view.schedule.error, /Could not schedule your post/);
+    assert.match(screen.view.schedule.message, /Scheduling was interrupted/);
     assert.equal(h.store.get(h.storageKey), pendingReceipt);
     h.props.scheduleDraft = { ...h.props.scheduleDraft, caption: "New visible caption", time: "18:45" };
     h.render().view.schedule.onAction(); await tick();
     const mutations = h.calls.filter(call => call.method === "POST");
     assert.equal(mutations.length, 2);
     assert.equal(mutations[1].body, firstPost.body, "Uncertainty can only replay the original corrected confirmation");
-    assert.match(h.render().view.schedule.message, /is scheduled/);
+    assert.equal(h.render().view.schedule.message, "Post scheduled");
     h.unmount();
+  }
+});
+
+test("accepted schedules recover silently after a lost response in Hook and Phone workflows", async () => {
+  for (const kind of ["hook", "phone"]) {
+    let accepted;
+    const h = schedulingHarness({ kind, transport: async (url, init) => {
+      if (url === "/api/schedules" && init.method === "POST") {
+        const input = JSON.parse(init.body);
+        accepted = { id: randomUUID(), mediaAssetId: input.source.id, idempotencyKey: input.idempotencyKey, status: "scheduled", targets: input.targets.map(t => ({ socialConnectionId: t.connectionId, platform: t.platform })) };
+        throw new Error("Lost response after acceptance");
+      }
+      if (url === "/api/schedules" && !init.method) return Response.json({ ok: true, schedules: accepted ? [accepted] : [] });
+    } });
+    h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    const action = h.render().view.schedule;
+    assert.equal(action.error, null); assert.equal(action.message, "Post scheduled"); assert.equal(action.label, "Schedule another post");
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
   }
 });
 
 test("lost acknowledgements replay the exact durable request despite visible edits", async () => {
   for(const kind of ["hook","phone"]) {
     const h=schedulingHarness({kind,lost:true,multiple:true}); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
-    assert.match(h.render().view.schedule.error,/lost schedule response/);
+    assert.match(h.render().view.schedule.error,/Could not schedule your post/);
+    assert.equal(h.render().view.schedule.label,"Try again");
     const first=h.calls.find(call=>call.method === "POST"); h.props.scheduleDraft={...h.props.scheduleDraft,caption:"Changed",time:"18:45"};
     h.render().view.schedule.onAction(); await tick();
     const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].body,first.body);

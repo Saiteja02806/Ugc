@@ -40,7 +40,7 @@
 .candidate { position: relative; isolation: isolate; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
 .resultGroup + .resultGroup { margin-top: 24px; }
 .submittedPrompt { display: flex; align-items: flex-start; gap: 10px; min-width: 0; width: var(--candidate-width); max-width: 100%; margin-bottom: 12px; font-size: 13px; line-height: 21px; }
-.promptText { flex: 0 1 auto; min-width: 0; max-height: 126px; overflow-y: auto; overscroll-behavior-y: contain; white-space: pre-wrap; overflow-wrap: anywhere; }
+.promptText { flex: 0 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .copyPrompt { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; margin-top: -3px; border-radius: 6px; color: var(--muted); cursor: pointer; }
 .copyPrompt:hover { color: var(--foreground); background: var(--card-muted); }
 .copyPrompt:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

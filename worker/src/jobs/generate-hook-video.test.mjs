@@ -109,7 +109,7 @@ test("both Explore formats apply their selected MP3 to the completed provider re
   }
 });
 
-test("each new eligible Hook reaches the generation soundtrack postprocessor with its exact registered MP3", async () => {
+test("each eligible Hook reaches audio postprocessing and silent references omit automatic soundtrack receipts", async () => {
   const { getHookReferenceGalleryItems } = await import("../../dist/lib/explore-hook-reference-release.js");
   const references = getHookReferenceGalleryItems(); assert.equal(references.length, 98);
   for (const reference of references) {
@@ -118,7 +118,11 @@ test("each new eligible Hook reaches the generation soundtrack postprocessor wit
     const output = await runGenerateHookVideoJob(f.job, f.context);
     assert.equal(referenceAudioCalls.length, before + 1);
     assert.equal(referenceAudioCalls.at(-1).reference.audioStorageKey, reference.audioStorageKey);
-    assert.deepEqual(output.referenceSoundtrack, { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 });
+    if (reference.audioPolicy === "silent") {
+      assert.ok(["explore-paired-hook-ef59f4b5e69bc9e125f8ada7", "explore-paired-hook-4f4ca22ed141ee115d1eb913", "explore-paired-hook-bfd6368d9fc52f44c6422a2b"].includes(reference.id));
+      assert.equal(referenceAudioCalls.at(-1).reference.audioPolicy, "silent");
+      assert.equal(output.referenceSoundtrack, undefined);
+    } else assert.deepEqual(output.referenceSoundtrack, { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 });
   }
 });
 

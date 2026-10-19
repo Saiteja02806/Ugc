@@ -1,6 +1,6 @@
 # UGC Pilot plugin context
 
-Last reviewed: 2026-10-18
+Last reviewed: 2026-10-19
 
 Use this file as the release record for the UGC Pilot Codex/Claude plugin. Update it when the package, deployed MCP catalogue, OAuth behaviour, capability gates, installed-host acceptance, or media-transfer readiness changes. Keep source validation, deployed endpoint checks, and real user acceptance separate.
 
@@ -54,10 +54,21 @@ Never infer a later state from an earlier one. Live capability tools override pa
 - Focused source evidence passed on 2026-10-18: 12 saved-snapshot/policy tests, 8 OAuth scope tests and 5 analytics MCP contract tests. The contract suite checks discovery metadata, missing-scope and unverified-identity rejection before data access, owner propagation, no private-record leakage and fail-closed malformed cache handling. The complete `npm run test:mcp` suite also passed at source commit `24bc41f5` when its temporary `127.0.0.1` transfer server was permitted; the final analytics/scheduling section passed 10 tests. These are source checks only: this successor has not been deployed, staged, or exercised through an installed host.
 - The candidate was pushed as draft PR [#71](https://github.com/Saiteja02806/Ugc/pull/71) at `4f09f63f`. The Git-connected website preview was queued during the release review; it is not a production-target deployment and has not been accepted. The MCP project did not create a deployment for this branch. The connected Supabase project has no isolated branch and does not yet record this candidate's verified-identity migration, so staging must create and validate that branch before any production migration.
 
+## Current merged release candidate — 19 October 2026
+
+- Draft PR [#71](https://github.com/Saiteja02806/Ugc/pull/71) now carries the `0.2.5` candidate on top of current `origin/main` commit `93df700e`. The candidate first merged and validated production source `1323837c`; while that review was running, main advanced through PRs #72–#75. Those newer changes are now included as a second reviewed merge so the candidate does not omit the current Hook, Explore and Trending fixes.
+- The merged source still validates as version `0.2.5`, **43 package files, 16 skills and 89 tools**. Deterministic validation and all five Python archive tests pass. The validator still reports the public-review demo recording as missing and cannot establish marketplace/platform approval.
+- The complete `npm run test:mcp` chain passes on the merged source, including OAuth/PKCE, verified identity, image/video generation contracts, local uploads/downloads, Demo attachment, finishing, operations, Edit drafts/exports, audio, references/remixes, groups, Library, account settings, scheduling and saved analytics. The optional `ffmpeg-static` binary was absent from the shared dependency cache, so the final pass explicitly used the installed system FFmpeg. The focused media-transfer suite independently passed 21/21 with that binary.
+- Current-main validation also passes: the new Trending history suite passes 22/22, the migration reconciliation guard passes, and the release audit passes 16/16. No test contacted a media provider, spent credits, generated customer content or changed production data.
+- A normal Turbopack build is not usable in this sparse worktree because its shared `node_modules` junction lies outside the filesystem root. The repository's isolated Webpack helper progressed past that condition but hit a Windows/OneDrive `EPERM` while creating `.next` directories. This local build result is inconclusive; an exact-commit Linux Vercel preview is still required.
+- Safe hosted database isolation is currently blocked. Supabase database branches require the organization's Pro plan, and the free organization already has its maximum two active projects. No branch or project was created, no hourly branch charge began, and no migration was applied to production. The staging database must reconcile current main plus candidate migration `20261018043539_mcp_verified_identity.sql` before OAuth acceptance is meaningful.
+- A READY production-target MCP deployment for source `1323837c` appeared while this review was running. It was created outside this work and does not contain the final merged candidate. This review did not create, promote, alias or alter that deployment or any production domain.
+- End-to-end host testing is therefore **not ready yet**. It still needs an isolated hosted database, a matching protected website/MCP staging pair from the exact candidate commit, and clean Codex and Claude Code install → sign-in → consent → callback → authenticated-read acceptance. Only after those pass should the previously authorized bounded one-second Hook/Demo finishing test run.
+
 ## Known gaps
 
 - Neither the earlier 0.2.2 OAuth candidate nor the 0.2.4 scheduling candidate has been deployed to protected staging or production.
-- The 0.2.5 analytics successor is also local only. It exposes saved reports, not provider refresh, social OAuth, schedule publishing or analytics mutation.
+- The 0.2.5 analytics successor is pushed in draft PR #71 but is not deployed as a matching staged pair. It exposes saved reports, not provider refresh, social OAuth, schedule publishing or analytics mutation.
 - A clean Codex desktop installation has not yet been witnessed from **Install plugin** through sign-in, consent, callback return, and a successful authenticated read-only request.
 - Claude web connector evidence is not a substitute for a clean Claude Code plugin install and OAuth-return test.
 - The local Claude Code package must be upgraded from `0.1.8` to the reviewed `0.2.2` candidate after normal `claude auth login` succeeds. Confirm `claude auth status`, then use `/mcp` in a new Claude Code session to complete the UGC Pilot OAuth consent and run the stated read-only acceptance prompt.

@@ -61,7 +61,7 @@ test("all manual fonts and weights export full mixed copy at different sizes and
 });
 for (const font of CAROUSEL_EDIT_FONTS) for (const renderFormat of ["1:1", "4:5"] as const) {
   test(`${font.label} ${renderFormat} exports bundled glyphs with the shared preview layout and full containment`, async () => {
-    const input = { ...slide, renderFormat, textPosition: { x: 0, y: 1 }, textStyle: { ...defaultCarouselManualTextStyle(), font: font.id, fontSize: 38, headingSize: 56, color: "#ff00aa" } };
+    const input = { ...slide, renderFormat, textPosition: { x: 0, y: 1 }, textStyle: { ...defaultCarouselManualTextStyle(), canvasEdgePlacement: false, font: font.id, fontSize: 38, headingSize: 56, color: "#ff00aa" } };
     const expected = createCarouselManualLayout(input), { layout, svg } = await createCarouselManualSvg(input);
     assert.deepEqual(layout, expected); assert.equal(layout.fits, true);
     assert.ok(layout.position.x < .5); assert.ok(layout.position.y > .5);
@@ -81,6 +81,31 @@ test("large manual copy is not shrunk or truncated; smaller requested typography
   assert.equal(createCarouselManualLayout(crowded).fits, false);
   await assert.rejects(createCarouselManualSvg(crowded), /Reduce the font size/);
   assert.equal(createCarouselManualLayout({ ...crowded, textStyle: { ...crowded.textStyle, fontSize: 24 } }).fits, true);
+});
+
+test("manual text reaches all canvas edges with no fixed safe inset, and legacy styles keep their prior inset", async () => {
+  for (const renderFormat of ["1:1", "4:5"] as const) for (const x of [0, 1]) for (const y of [0, 1]) {
+    const input = { ...slide, renderFormat, slideNumber: 1, headline: "Ág wish", textPosition: { x, y }, textStyle: { ...defaultCarouselManualTextStyle(), headingSize: 40 } };
+    const { layout, svg } = await createCarouselManualSvg(input);
+    assert.equal(Math.round(layout.position.x * 1080 + (x ? layout.width / 2 : -layout.width / 2)), x * 1080);
+    assert.equal(Math.round(layout.position.y * layout.frameHeight + (y ? layout.height / 2 : -layout.height / 2)), y * layout.frameHeight);
+    assert.doesNotMatch(svg, /NaN|Infinity/);
+    const legacy = createCarouselManualLayout({ ...input, textStyle: { font: "inter", headingSize: 40, fontSize: 60, color: "#ffffff", headingColor: "#ffffff" } });
+    assert.ok(legacy.position.x * 1080 - legacy.width / 2 >= 95.99);
+    assert.ok(legacy.position.y * legacy.frameHeight - legacy.height / 2 >= 95.99);
+  }
+});
+
+test("edge placement retains complete glyph and panel pixels outside the original clipped SVG viewport", async () => {
+  for (const { id: font } of CAROUSEL_EDIT_FONTS) for (const background of ["none", "line", "box"] as const) for (const corner of [0, 1]) {
+    const { svg } = await createCarouselManualSvg({ ...slide, slideNumber: 1, headline: "Ágj\nwish", textPosition: { x: corner, y: corner }, textStyle: { ...defaultCarouselManualTextStyle(), font, headingWeight: 700, headingSize: 120, lineHeight: .95, headingBackground: background } });
+    // Draw on a larger transparent canvas so clipping cannot hide lost ink.
+    const expanded = svg.replace('width="1080" height="1350"', 'width="1480" height="1750"').replace('<g transform=', '<g transform="translate(200 200)"><g transform=').replace('</svg>', '</g></svg>');
+    const { data, info } = await sharp(Buffer.from(expanded)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let outside = 0;
+    for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) if ((x < 200 || x >= 1280 || y < 200 || y >= 1550) && data[(y * info.width + x) * 4 + 3]! > 32) outside++;
+    assert.equal(outside, 0, `${font} ${background} corner ${corner}: no glyph/panel pixels are clipped`);
+  }
 });
 test("manual SVG escapes user markup and cover exports only the requested hook", () => {
   const layout = createCarouselManualLayout({ ...slide, slideNumber: 1, headline: '<script>alert("test")</script>', subtext: "Ignored supporting copy", ctaText: "Ignored CTA" });

@@ -1,5 +1,5 @@
 import { logger } from "../logger.js";
-import { getGenerationReferenceSoundtrack } from "../lib/explore-reference-soundtrack.js";
+import { getGenerationReferenceSoundtrack, isSilentExploreReference } from "../lib/explore-reference-soundtrack.js";
 import { applyGeneratedReferenceAudio } from "../lib/explore-generated-reference-audio.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import {
@@ -501,7 +501,7 @@ function buildOutput(params: {
     resolution: params.input.resolution,
     url: params.uploaded.url,
     videoId: params.input.videoId,
-    ...(params.referenceSoundtrack ? { referenceSoundtrack: { version: 1, referenceId: params.referenceSoundtrack.id, audioSha256: params.referenceSoundtrack.audioSha256, volume: .2 } } : {}),
+    ...(params.referenceSoundtrack && !isSilentExploreReference(params.referenceSoundtrack) ? { referenceSoundtrack: { version: 1, referenceId: params.referenceSoundtrack.id, audioSha256: params.referenceSoundtrack.audioSha256, volume: .2 } } : {}),
   };
 }
 

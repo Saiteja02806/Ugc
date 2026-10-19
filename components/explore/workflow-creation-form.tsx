@@ -141,17 +141,17 @@ function CreatorPicker({ creator, imageReferences, ownerId, tile = false }: { cr
       <PopoverTitle>Choose image</PopoverTitle>
       <p className="text-sm leading-6 text-muted">{imageReferences ? `Add up to ${imageReferences.maxImages} appearance or product images. Describe how to use them in your instructions.` : "Optional creator image. Your instructions decide how the creator appears."}</p>
       <div className="flex flex-wrap items-center gap-2">{imageReferences ? <Button type="button" variant="outline" className="h-9 gap-2 rounded-xl text-sm" disabled={creator.loading || full} onClick={() => uploadInput.current?.click()}><Plus className="size-4" aria-hidden="true" />Add images</Button> : <WorkflowFilePicker attachment={creator} kind="image" label="Upload creator" className="h-9 rounded-xl text-sm" />}<Button type="button" variant="ghost" aria-label="Remove creator" className="h-9 rounded-lg text-sm" onClick={() => { creator.remove(); setOpen(false); }}>None</Button></div>
-      {imageReferences && images.length ? <div className="grid grid-cols-3 gap-2" aria-label="Selected reference images">{images.map(image => <div key={image.url} className="relative overflow-hidden rounded-lg"><Image src={image.url} alt={image.name} width={96} height={96} unoptimized className="aspect-square w-full object-cover" /><Button type="button" size="sm" variant="outline" disabled={creator.loading} aria-label={`Remove image ${image.name}`} className="w-full" onClick={() => imageReferences.removeImage(image.url)}>Remove</Button></div>)}</div> : null}
-      <WorkflowImageLibrary ownerId={ownerId} open={open} disabled={creator.loading || full} selectedIds={images.map(image => image.assetId)} onSelect={async asset => {
+      {imageReferences ? <div className="flex items-center justify-between gap-3"><p role="status" className="text-xs text-muted">{images.length} of {imageReferences.maxImages} images selected</p><Button type="button" variant="outline" size="sm" disabled={creator.loading} onClick={() => setOpen(false)}>Done</Button></div> : null}
+      <WorkflowImageLibrary ownerId={ownerId} open={open} disabled={creator.loading} limitReached={full} selectedIds={images.map(image => image.assetId)} onDeselect={imageReferences ? id => { const image = images.find(image => image.assetId === id); if (image) imageReferences.removeImage(image.url); } : undefined} onSelect={async asset => {
         if (!ownerId) return false;
         const accepted = await imageReferences?.chooseSavedImage?.(asset, ownerId) ?? false;
-        if (accepted) setOpen(false); return accepted;
+        if (accepted && !imageReferences) setOpen(false); return accepted;
       }}>
       <div className="grid max-h-60 grid-cols-4 gap-2 overflow-y-auto py-1 sm:grid-cols-5">
         {CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={images.some(image => image.url === reference.src)}
-          disabled={creator.loading || full && !images.some(image => image.url === reference.src)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { creator.chooseLibraryImage({ name: reference.fileName, url: reference.src }); setOpen(false); }}>
+          disabled={creator.loading || full && !images.some(image => image.url === reference.src)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { const existing = images.find(image => image.url === reference.src); if (existing && imageReferences) { imageReferences.removeImage(existing.url); return; } creator.chooseLibraryImage({ name: reference.fileName, url: reference.src }); if (!imageReferences) setOpen(false); }}>
           <Image src={reference.src} alt="" width={56} height={74} sizes="56px" className="aspect-[3/4] w-full object-cover" />
-          {images.some(image => image.url === reference.src) ? <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground"><Check className="size-3" aria-hidden="true" /></span> : null}
+          <span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", images.some(image => image.url === reference.src) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{images.some(image => image.url === reference.src) ? <Check className="size-3.5" /> : null}</span>
         </Button>)}
       </div>
       </WorkflowImageLibrary>

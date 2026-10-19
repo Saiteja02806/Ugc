@@ -171,6 +171,44 @@ test("Hook's top Videos action closes either clip editor without navigating or r
     assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Back to videos overview"), false);
   }
 });
+test("Hook opening and demo editors put actions in their compact header, without a bottom action row", () => {
+  const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
+  for (const target of ["opening", "demo"]) {
+    let tree = h.render();
+    nodes(tree).find(n => n.type === (target === "opening" ? "FormatVideoEditor" : "FormatDemoSection")).props.onEdit();
+    tree = h.render();
+    const stage = nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor");
+    const header = nodes(stage).find(n => n.type === "header");
+    const actions = nodes(stage).filter(n => n.props?.["aria-label"] === "Clip edit action");
+    assert.equal(actions.length, 1); assert.ok(nodes(header).includes(actions[0])); assert.equal(actions[0].props.hidden, false);
+    assert.equal(nodes(stage).filter(n => n.type === "h2").length, 1);
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onBackToPreview();
+  }
+});
+
+test("Wall's actual workflow keeps edit actions above its tools and hides the legacy bottom footer", () => {
+  const h = harness("wall_text", "step=edit");
+  h.render(); h.accept(video, "assets");
+  nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("edit");
+  const tree = h.render(), aside = nodes(tree).find(n => n.type === "aside");
+  const toolbar = nodes(aside).find(n => n.props?.["aria-label"] === "Wall edit actions");
+  const footer = nodes(aside).find(n => n.type === "footer");
+  assert.equal(toolbar.props.hidden, false); assert.equal(footer.props.hidden, true);
+  assert.equal(nodes(footer).some(n => n.props?.ref === toolbar.props.ref), false);
+  const editor = nodes(tree).find(n => n.type === "FormatVideoEditor");
+  assert.ok(editor); assert.equal(editor.props.active, true);
+});
+
+test("full-duration single text is enabled only on the Hook workflow opening, never its demo or Wall", () => {
+  for (const format of ["hook", "wall_text"]) {
+    const h = harness(format); h.render(); h.accept(video, "assets");
+    const tree = h.render(), opening = nodes(tree).find(n => n.type === "FormatVideoEditor");
+    assert.equal(opening.props.fullDurationHookText, format === "hook");
+    const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    if (demo) assert.equal(demo.props.fullDurationHookText, undefined);
+  }
+});
+
 test("Hook Change chooses replacement assets in place, with cancellation and failed upload preserving the current clips", async () => {
   const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
   const current = () => nodes(h.render()).find(n => n.type === "FormatVideoEditor");

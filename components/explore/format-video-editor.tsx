@@ -29,6 +29,7 @@ import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-cont
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { prepareFormatEditForExport, readFormatEditDraft } from "@/lib/explore/format-edit-draft";
 import { fullDurationWallText } from "@/lib/explore/wall-text-editor";
+import { fullDurationSingleHookText } from "@/lib/explore/hook-text-timing";
 import { canReuseUnchangedHookSource } from "@/lib/explore/unchanged-hook-source";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import styles from "@/components/explore/format-workspace.module.css";
@@ -42,13 +43,17 @@ import { formatPreviewAudioPosition, type SequencePreviewAudio, type SequencePre
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 const defaultEdit = (format: "hook" | "wall_text", duration: number): ExploreFormatEdit => ({ version: 1, format, trimStartMs: 0, trimEndMs: Math.round(duration * 1000), originalVolume: 1, musicVolume: .2, text: null });
+function normalizeTextTiming(edit: ExploreFormatEdit, fullDurationHookText: boolean) {
+  const next = fullDurationWallText(edit);
+  return fullDurationHookText ? fullDurationSingleHookText(next) : next;
+}
 export type FormatPreparationStatus = { busy: boolean; error: string | null; message: string };
 export type WorkflowClipEditState = { sourceId: string; editing: ExploreFormatEdit; output: MediaAsset | null; busy: boolean; error: string | null; needsSaving: boolean;
   backgroundAssetId?: string | null; backgroundPlayback?: "once" | "repeat"; savedDraft?: ExploreClipDraft | null; needsDraftSaving?: boolean;
   draftBusy?: boolean; draftError?: string | null };
 
 export type FormatOpeningPreview = { segment: SequencePreviewSegment; referenceAudio: SequencePreviewAudio | null; disabledReason?: string | null };
-export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, originalSoundTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, showSoundControls = true, prepareInSequence = false, backLabel = format === "wall_text" ? "Back to Create" : "Back to videos", remixScopeLabel }: {
+export function FormatVideoEditor({ format, video, active, controlsTarget, resultsTarget, actionsTarget, originalSoundTarget, enabled, onDirty, onSaved, onContinue, pendingSource = false, editingActive = true, onEdit, previewActions, prepareRequest = 0, onPreparationChange, onBackToPreview, draftScope, videoLabel, continueLabel = "Continue to Demo", onClipStateChange, onPreviewChange, remixReference, remixReferences, previewText, localPreview = false, allowRemix = true, showSoundControls = true, prepareInSequence = false, backLabel = format === "wall_text" ? "Back to Create" : "Back to videos", remixScopeLabel, fullDurationHookText = false }: {
   format: "hook" | "wall_text"; video: FormatVideoSource; active: boolean; controlsTarget: HTMLElement | null; resultsTarget: HTMLElement | null; enabled: boolean;
   pendingSource?: boolean;
   onDirty: () => void; onSaved: (output: { id: string; kind: "media_asset"; url: string; title: string }) => void; onContinue: () => void;
@@ -63,6 +68,8 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   remixReference?: RecreateReference | null; remixReferences?: readonly RecreateReference[]; previewText?: ReferenceText | null; localPreview?: boolean;
   allowRemix?: boolean; showSoundControls?: boolean;
   prepareInSequence?: boolean; backLabel?: string; remixScopeLabel?: string;
+  /** Only the Hook Video workflow opening opts in; never infer from format. */
+  fullDurationHookText?: boolean;
 }) {
   const { user } = useAuth();
   const owner = user?.uid ?? null;
@@ -72,7 +79,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       const raw = typeof window !== "undefined" ? localStorage.getItem(draftKey) : null;
       if (raw && raw.length < 65536) {
         const value = JSON.parse(raw);
-        const editing = fullDurationWallText(readFormatEditDraft(value.editing ?? value));
+        const editing = normalizeTextTiming(readFormatEditDraft(value.editing ?? value), fullDurationHookText);
         if (editing.format === format) return { editing, backgroundId: isExploreUuid(value.backgroundId) ? value.backgroundId as string : null, playback: value.playback === "repeat" ? "repeat" as const : "once" as const, restored: true };
       }
     } catch { /* An invalid local draft cannot replace the server receipt. */ }
@@ -134,7 +141,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   }});
   const remixSource = sourceQuery.data && Object.hasOwn(sourceQuery.data.metadata ?? {}, "remixTextSource") ? readRemixSource(sourceQuery.data.metadata.remixTextSource) : video.remixTextSource;
   const boundReference = remixSource === undefined ? remixReference : resolveRemixSource(remixSource, remixReferences ?? (remixReference ? [remixReference] : []), format).reference;
-  const editing = repairHookRemixEdit(storedEditing, boundReference?.id);
+  const editing = normalizeTextTiming(repairHookRemixEdit(storedEditing, boundReference?.id), fullDurationHookText);
   const backgroundQuery = useQuery({ queryKey: ["explore-edit-audio", owner, backgroundId], enabled: Boolean(owner && backgroundId), queryFn: async () => {
     const token = await getCurrentUserIdToken(owner ?? undefined); if (!token || !backgroundId) throw new Error("Sign in to load this audio.");
     const asset = await fetchAIStudioMediaAsset(backgroundId, token);
@@ -164,18 +171,18 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   const restore = useCallback((draft: ExploreFinishDraft) => {
     if (localDraftExists.current || !draft.editing || draft.editing.format !== format || draft.sourceAssetId !== video.mediaAssetId) return;
     setReferenceAudioVolumeInitialized(true);
-    setEditing(fullDurationWallText(draft.editing)); setBackgroundId(draft.backgroundAssetId); setPlayback(draft.backgroundPlayback);
-  }, [format, video.mediaAssetId]);
+    setEditing(normalizeTextTiming(draft.editing, fullDurationHookText)); setBackgroundId(draft.backgroundAssetId); setPlayback(draft.backgroundPlayback);
+  }, [format, video.mediaAssetId, fullDurationHookText]);
   const restoreSavedDraft = useCallback((draft: ExploreClipDraftContent, explicit: boolean) => {
     if (!explicit && localDraftExists.current || draft.editing.format !== format || draft.sourceAssetId !== video.mediaAssetId) return;
     localDraftExists.current = true; setReferenceAudioVolumeInitialized(true);
-    const restoredEditing = fullDurationWallText(draft.editing);
+    const restoredEditing = normalizeTextTiming(draft.editing, fullDurationHookText);
     setEditing(restoredEditing); setBackgroundId(draft.backgroundAssetId); setPlayback(draft.backgroundPlayback);
     if (explicit) {
       onDirty();
       try { localStorage.setItem(draftKey, JSON.stringify({ version: 1, editing: restoredEditing, backgroundId: draft.backgroundAssetId, playback: draft.backgroundPlayback })); } catch { /* The server copy remains authoritative. */ }
     }
-  }, [format, video.mediaAssetId, draftKey, onDirty]);
+  }, [format, video.mediaAssetId, draftKey, onDirty, fullDurationHookText]);
   const clipDraftContent: ExploreClipDraftContent | null = video.mediaAssetId ? { version: 1, sourceAssetId: video.mediaAssetId, editing,
     backgroundAssetId: backgroundId, backgroundPlayback: backgroundId ? playback : "once" } : null;
   const draftSave = useClipDraftSave({ owner, sourceAssetId: video.mediaAssetId ?? null, scope: draftScope ?? format,
@@ -221,7 +228,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
     try { localStorage.setItem(draftKey, JSON.stringify({ version: 1, editing: next, backgroundId: audioId, playback: mode })); } catch { /* No provider request is made by editing. */ }
   }
   function change(next: ExploreFormatEdit) {
-    next = fullDurationWallText(next);
+    next = normalizeTextTiming(next, fullDurationHookText);
     setReferenceAudioVolumeInitialized(true);
     setEditing(next);
     if (JSON.stringify(prepareFormatEditForExport(next)) !== JSON.stringify(exportEditing)) onDirty();
@@ -318,13 +325,13 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
       <ClipTrimTimeline disabled={uploading || pendingSource || draftSave.busy} durationMs={Math.round(duration * 1000)} startMs={editing.trimStartMs} endMs={editing.trimEndMs} timeMs={editing.trimStartMs + time} onChange={trim} />
     </section></details>;
   const remixEditor = allowRemix ? <RemixTextSection expanded editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }} /> : null;
-  const manualTextEditor = <FormatVideoTextFields styleTarget={textStyleTarget} showStyleControls={!simpleWall} editing={editing} onChange={change} timeMs={time} onSeek={seekText} />;
+  const manualTextEditor = <FormatVideoTextFields fullDurationHookText={fullDurationHookText} styleTarget={textStyleTarget} showStyleControls={!simpleWall} editing={editing} onChange={change} timeMs={time} onSeek={seekText} />;
   const textControls = <div key="text" className={`${styles.clipTextControls} ${editorStyles.textControlSection}`}>{allowRemix ? <RemixTextSection expanded={referenceFirst} editorNavigation referenceFirst={referenceFirst} scopeLabel={remixScopeLabel ?? (format === "wall_text" ? "Applies to this video only." : undefined)} key={`${owner}:${video.id}`} owner={owner} targetKey={`video:${video.id}`} format={format} reference={boundReference} previewSource={previewText} disabled={uploading || pendingSource || sourceQuery.isFetching || finishing.action.busy} localPreview={localPreview} onUse={(output, source) => { try { const next = applyVideoTextRemix(editing, output, source); change(next); seekText(formatTextOverlays(next)[0]?.startMs ?? 0); return true; } catch (e) { setUploadError(e instanceof Error ? e.message : "Review the remixed text."); return false; } }}>{manualTextEditor}</RemixTextSection> : manualTextEditor}</div>;
   const manualTextControls = <div key="manual-text" className={`${styles.clipTextControls} ${editorStyles.textControlSection} ${editorStyles.manualTextSection}`}>{manualTextEditor}</div>;
   const remixControls = <div key="remix" className={`${styles.clipTextControls} ${editorStyles.remixControlSection}`}>{remixEditor}</div>;
   const controls = <div className={`${styles.clipControlContent} ${editorStyles.editorRoot}`} data-remix-priority={referenceFirst || undefined} data-wall-mode={format === "wall_text" ? simpleWall ? "text" : "advanced" : undefined}>
     {format === "wall_text" && previewActions ? <div className="flex flex-wrap items-center justify-end gap-2">{previewActions}</div> : null}
-    <div className={editorStyles.editorHeader}>{format === "wall_text" ? <h2 className="text-sm font-semibold">{simpleWall ? "Edit text" : "Edit video"}</h2> : videoLabel ? <h2 className="text-sm font-semibold">Edit {videoLabel.toLowerCase()}</h2> : <p className="truncate text-xs text-muted" title={video.title}>{video.title}</p>}{format === "wall_text" && wallAdvanced ? <Button ref={wallModeButton} type="button" size="sm" variant="ghost" aria-expanded={true} aria-controls={wallToolsId} onClick={() => setWallAdvanced(false)}><ArrowLeft className="size-4" aria-hidden="true" />Back to text</Button> : <span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span>}</div>
+    <div data-clip-tools-heading={format === "wall_text" ? "wall" : "clip"} className={editorStyles.editorHeader}>{format === "wall_text" ? <h2 className="text-sm font-semibold">{simpleWall ? "Edit text" : "Edit video"}</h2> : videoLabel ? <h2 className="text-sm font-semibold">Edit {videoLabel.toLowerCase()}</h2> : <p className="truncate text-xs text-muted" title={video.title}>{video.title}</p>}{format === "wall_text" && wallAdvanced ? <Button ref={wallModeButton} type="button" size="sm" variant="ghost" aria-expanded={true} aria-controls={wallToolsId} onClick={() => setWallAdvanced(false)}><ArrowLeft className="size-4" aria-hidden="true" />Back to text</Button> : <span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span>}</div>
     <fieldset id={format === "wall_text" ? wallToolsId : undefined} className={`${styles.clipControlsGrid} ${editorStyles.controlGrid}`} disabled={uploading || pendingSource || draftSave.busy}>
     {referenceFirst ? <>{remixControls}{!simpleWall ? trimControls : null}{manualTextControls}</> : !simpleWall ? trimControls : null}
     {referenceFirst ? null : textControls}
@@ -347,7 +354,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
         const d = event.currentTarget.duration;
         const { videoWidth, videoHeight } = event.currentTarget;
         if (videoWidth > 0 && videoHeight > 0) setNaturalSize({ width: videoWidth, height: videoHeight });
-        if (Number.isFinite(d) && d >= 1) { setDuration(d); if (!localDraftExists.current && !video.durationSeconds && editing.trimEndMs === 5000) setEditing(current => fullDurationWallText({ ...current, trimEndMs: Math.round(d * 1000) })); }
+        if (Number.isFinite(d) && d >= 1) { setDuration(d); if (!localDraftExists.current && !video.durationSeconds && editing.trimEndMs === 5000) setEditing(current => normalizeTextTiming({ ...current, trimEndMs: Math.round(d * 1000) }, fullDurationHookText)); }
         event.currentTarget.volume = previewOriginalVolume;
         if (Number.isFinite(d) && d >= 1) event.currentTarget.currentTime = Math.min(editing.trimStartMs / 1000, d - .001);
         setTime(0);
@@ -357,10 +364,13 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
         if (!event.currentTarget.paused && event.currentTarget.currentTime * 1000 >= editing.trimEndMs) { event.currentTarget.pause(); event.currentTarget.currentTime = Math.max(editing.trimStartMs, editing.trimEndMs - 50) / 1000; }
         synchronizeSound();
       }} />
-      {overlays.map((text, overlayIndex) => previewTextTime >= text.startMs && previewTextTime < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height} /> : null)}
+      {overlays.map((text, overlayIndex) => previewTextTime >= text.startMs && previewTextTime < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height}
+        onMoveStart={() => { player.current?.pause(); stopSoundtrackPlayback(); }}
+        onChange={editingActive && !pendingSource && !uploading && !draftSave.busy && (!enabled || draftSave.loaded) ? next => change({ ...editing,
+          ...(editing.textOverlays ? { textOverlays: editing.textOverlays.map(overlay => overlay === text ? next : overlay) } : { text: next }) }) : undefined} /> : null)}
     </div>
     <ClipPreviewControls player={player} onMute={muted => { if (player.current) player.current.muted = muted; if (soundtrack.current) soundtrack.current.muted = muted; }} timeMs={time} startMs={editing.trimStartMs} endMs={editing.trimEndMs} onSeek={seekText} />
-    {editingActive ? <p className="text-xs text-muted" aria-label="Selected clip duration">{((editing.trimEndMs - editing.trimStartMs) / 1000).toFixed(1)}s selected · Changes appear here as you edit.</p> : null}
+    {editingActive ? <p className="text-xs text-muted" aria-label="Selected clip duration">{((editing.trimEndMs - editing.trimStartMs) / 1000).toFixed(1)}s selected · {overlays.length ? "Drag text to position it." : "Changes appear here as you edit."}</p> : null}
     {previewAudioUrl ? <audio ref={soundtrack} src={previewAudioUrl} loop={previewPlayback === "repeat"} preload="metadata" onLoadedMetadata={synchronizeSound} aria-label="Background audio preview" /> : null}
     {!editingActive && onEdit ? <><p className="max-w-full truncate text-xs text-muted" title={video.title}>{video.title}</p><div className={styles.clipCardActions}><Button type="button" variant="outline" data-edit-clip="opening" disabled={pendingSource || uploading} onClick={onEdit}>Edit {clipLabel.toLowerCase()}</Button>{previewActions}</div></> : null}
     {editingActive && finishing.output ? <div className="w-full max-w-sm space-y-2"><h3 className="text-sm font-medium">Saved video</h3><video src={finishing.output.url} controls playsInline className="max-h-80 w-full rounded-xl" /></div> : null}

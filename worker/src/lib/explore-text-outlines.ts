@@ -32,7 +32,7 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
     }
     const advance = (value: string) => Array.from(value).reduce((sum, character) => sum + (font.charToGlyph(character).advanceWidth ?? font.unitsPerEm) * layout.fontSize / font.unitsPerEm, 0);
     const advances = runs.map(run => run.supported ? advance(run.text) : estimateEditOverlayLineWidth(run.text, layout.fontSize));
-    let x = (width - advances.reduce((sum, advance) => sum + advance, 0)) / 2;
+    let x = layout.x - advances.reduce((sum, advance) => sum + advance, 0) / 2;
     const y = layout.y + i * layout.lineHeight + layout.fontSize;
     return runs.map((run, index) => {
       let glyphX = x;

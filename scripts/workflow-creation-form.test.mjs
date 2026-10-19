@@ -95,7 +95,8 @@ test("Talking Head exposes its saved image library with owner, limits and explic
   assert.deepEqual(chosen,[]); assert.equal(await library.props.onSelect(saved),true);
   assert.deepEqual(chosen,[[saved,"owner-a"]]);
   const full = nodes(h.render({imageReferences:{assets:Array.from({length:6},(_,n)=>({url:`/image-${n}`})),maxImages:6}})).find(n=>n.type === "image-library");
-  assert.equal(full.props.disabled,true);
+  assert.equal(full.props.disabled,false);
+  assert.equal(full.props.limitReached,true, "At capacity, selected images must remain removable");
 });
 
 test("all optional generation references remain visible above instructions and errors stay visible", () => {

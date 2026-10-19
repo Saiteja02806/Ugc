@@ -12,13 +12,15 @@ test('all current active Hooks have unique source-bound scene reviews; ambiguous
  }
  assert.equal(record.items.reduce((sum,r)=>sum+r.originalFrameCount,0),9773);
  assert.equal(record.items.filter(r=>r.status==='clean').length,79);
- assert.deepEqual(record.items.filter(r=>r.status==='needs_review').map(r=>r.ordinal),[18]);
+ assert.deepEqual(record.items.filter(r=>r.status==='needs_review').map(r=>r.ordinal),[]);
+ assert.deepEqual(record.items.filter(r=>r.status==='keep_by_user').map(r=>r.ordinal),[18]);
  assert.equal(record.items[17].outputSha256,undefined);
  assert.equal(record.activation,'staged_only_not_published');
 });
 test('cleanup records remove exactly reviewed contiguous tails and pair prompts/captions with the new media hash',()=>{
  const trims=record.items.filter(r=>r.status==='trim_boundary');assert.equal(trims.length,18);let removed=0;
  for(const row of trims){
+  assert.equal(row.approval,'approved_by_user');
   assert.equal(row.keepStartFrame,0);assert.equal(row.outputFrameCount,row.keepEndFrameExclusive);
   assert.deepEqual(row.unwantedRanges.flatMap(r=>Array.from({length:r.endFrame-r.startFrame+1},(_,i)=>r.startFrame+i)),Array.from({length:row.originalFrameCount-row.outputFrameCount},(_,i)=>row.outputFrameCount+i));
   assert.notEqual(row.outputSha256,row.sourceSha256);assert.equal(row.proposedRemixText.sourceSha256,row.outputSha256);

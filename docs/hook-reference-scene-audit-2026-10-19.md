@@ -29,9 +29,9 @@ footage, totalling 22 frames. Exact zero-based frames to remove:
 | 88 | 74 |
 | 89 | 77 |
 
-Hook 18 is unresolved: its opening continuously pans from an airplane window to
-the smiling performer. The user requested its original video and labelled opening
-frames for manual guidance. No trim is applied. Physical devices beside a
+The user reviewed Hook 18's opening, which continuously pans from an airplane
+window to the smiling performer, and explicitly chose to keep it unchanged.
+All 18 clear tail trims were approved. No trim is applied to Hook 18. Physical devices beside a
 performer and same-performer pose changes are retained rather than treated as
 separate screen recordings. No other uncertain or inserted midclip scene was found.
 
@@ -71,6 +71,15 @@ regenerate and verify derivatives, or add `--report-only` to rebuild the review
 after confirming prior source/output hashes. Run
 `node --test scripts/trim-hook-reference-frames.test.mjs` for the media regressions.
 The helpers use local preexisting source media; they do not fetch or publish files.
+
+For manual audio review, `outputs/Hook Reference Audio Review/` contains 98 named
+Hook folders, 98 full original paired MP3s and eight native-audio extracts.
+`index.html` provides thumbnails and players; `AUDIO-MAP.json` and each folder's
+`mapping.json` preserve the reference ID, original import folder, original audio
+filename, source URL and checksums. `REVIEW-NOTES.txt` is editable and preserved
+on rerun. The exporter copies background bytes exactly and verifies extracted
+native packet payloads without analyzing their contents. Names use the same Hook
+ordinal plus a visual scene description; no audio suitability is inferred.
 
 The current catalogue, originals, soundtracks and production were not changed by
 this audit. Before rollout, content-addressed cleaned videos and previews must be

@@ -1,5 +1,30 @@
 # Explore context and UI decision record
 
+### Hook audit approval and manual audio collection — 19 October 2026
+
+- User reviewed the scene findings, explicitly chose to keep Hook 18 unchanged,
+  and approved all 18 clear end trims. No uncertain scene decision remains.
+  The derivatives are verified locally; catalogue activation/deployment is still
+  separate. The full original Hook 18 stays bound to its existing prompt/text.
+- User requested all background audio together for their own listening review,
+  with names that map each track to its reference and original import folder.
+  `outputs/Hook Reference Audio Review/` contains 98 descriptively named Hook
+  folders, each with its complete byte-identical paired MP3, an original frame,
+  source mapping and editable review notes. Eight embedded native audio tracks
+  are also extracted by packet copy with payload-hash verification. No AI audio
+  analysis, transcription, classification or paid model call was performed.
+- Example: `Hook 003 - Pillow - wide-eyed reaction` retains the original source
+  folder `New folder (3)`, `ReelAudio-77704.mp3`, permanent reference ID and source
+  link in `mapping.json`. Every file includes the stable three-digit Hook number.
+  The parent `index.html` has thumbnails and separate background/native players;
+  `AUDIO-MAP.json` maps all files. Original soundtracks, including Hook 03's
+  previously rejected pairing, remain available for explicit manual review.
+- The exporter `scripts/export-hook-reference-audio-review.mjs` uses the scene
+  labels in `scripts/data/hook-reference-audio-review-labels.json`. It verifies
+  original hashes, refuses to replace differing existing media/mappings and
+  preserves user-written `REVIEW-NOTES.txt` on rerun. It performs no upload or
+  production write. Music remains acceptable; user is checking spoken commentary.
+
 ### Complete Hook frame audit and staged cleanup — 19 October 2026
 
 - User explicitly rejected unrelated demo/screen tails in generation references.

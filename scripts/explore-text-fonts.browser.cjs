@@ -35,9 +35,22 @@ async function main() {
     }
     await weight.selectOption("500");await page.getByRole("button",{name:"Save edits",exact:true}).click();await page.reload();assert.equal(await select.inputValue(),"montserrat");assert.equal(await weight.inputValue(),"500");
     assert.equal(await page.getByRole("textbox",{name:"Overlay text",exact:true}).inputValue(),"One thing I wish I knew sooner");
+    async function checkPresetSwitch(wall=false) {
+      const preset=page.getByRole("combobox",{name:"Text preset",exact:true}),text=page.getByRole("textbox",{name:wall?"Wall of text":"Overlay text",exact:true}),copy=await text.inputValue(),font=await select.inputValue();
+      await preset.selectOption("snapchat-classic");
+      assert.equal(await preset.inputValue(),"snapchat-classic");assert.equal(await page.locator('svg[aria-label="Text preview"] rect').count(),1);assert.equal(await weight.inputValue(),"400");
+      await preset.selectOption("bold");
+      assert.equal(await preset.inputValue(),"bold");assert.equal(await page.locator('svg[aria-label="Text preview"] rect').count(),0);assert.equal(await weight.inputValue(),"700");
+      assert.equal(await page.getByRole("slider",{name:"Caption background opacity",exact:true}).count(),0);assert.equal(await select.inputValue(),font);assert.equal(await text.inputValue(),copy);
+      await page.getByRole("button",{name:"Save edits",exact:true}).click();await page.getByRole("status").waitFor();await page.reload();
+      if(wall)await page.getByRole("button",{name:"Edit",exact:true}).click();
+      assert.equal(await preset.inputValue(),"bold");assert.equal(await text.inputValue(),copy);assert.equal(await select.inputValue(),font);assert.equal(await weight.inputValue(),"700");assert.equal(await page.locator('svg[aria-label="Text preview"] rect').count(),0);
+      console.log("PASS preset Snapchat → Bold white, preview background removed, copy/font and save/reopen preserved: "+(wall?"Wall":"Hook")+" "+JSON.stringify(page.viewportSize()));
+    }
     await page.screenshot({path:path.join(out,"laptop.png")});
-    for(const viewport of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]) {await page.setViewportSize(viewport);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await select.scrollIntoViewIfNeeded();assert.equal(await select.isVisible(),true);await page.screenshot({path:path.join(out,`fonts-${viewport.width}.png`),fullPage:viewport.width<600});}
+    for(const viewport of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]) {await page.setViewportSize(viewport);await checkPresetSwitch();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await select.scrollIntoViewIfNeeded();assert.equal(await select.isVisible(),true);await page.screenshot({path:path.join(out,`fonts-${viewport.width}.png`),fullPage:viewport.width<600});}
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
+    await checkPresetSwitch(true);
     await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");
     assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to Inter Bold; all 12 bundled faces loaded, preview changed, save/reopen preserved choices, Wall advanced-only controls, laptop/mobile fit. "+out);
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

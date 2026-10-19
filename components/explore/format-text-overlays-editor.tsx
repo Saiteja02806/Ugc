@@ -20,11 +20,14 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   const index = Math.min(selected, editable.length - 1);
   const text = editable[index];
   const weight = text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700);
-  function update(patch: Partial<ExploreFormatText>) {
-    const next = { ...text, ...patch, ...(wallText ? { startMs: 0, endMs: durationMs } : {}) };
+  function changeText(value: ExploreFormatText) {
+    const next = wallText ? { ...value, startMs: 0, endMs: durationMs } : value;
     onChange(editable.map((overlay, i) => i === index ? next : overlay));
     // Keep the selected text visible while editing, including paused playback.
     if (timeMs < next.startMs || timeMs >= next.endMs) onSeek(Math.max(0, Math.min(next.startMs, next.endMs - 1, durationMs - 1)));
+  }
+  function update(patch: Partial<ExploreFormatText>) {
+    changeText({ ...text, ...patch });
   }
   function add() {
     const previousEnd = editable.at(-1)?.endMs ?? 0;
@@ -33,7 +36,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
     setSelected(editable.length); onSeek(startMs);
   }
   const styleControls = <details className={`${styles.clipTextStyle} ${tools.stylePanel}`} open><summary className="cursor-pointer text-sm font-medium">Text style</summary><div className={`mt-3 ${styles.clipTextStyleFields}`}>
-        <label className="block space-y-2 text-xs text-muted"><span>Text preset{text.font || text.fontWeight !== undefined ? <span className="ml-2 text-[10px]">Customized</span> : null}</span><select aria-label="Text preset" value={text.preset ?? "bold"} onChange={event => update(applyFormatTextPreset(text, event.target.value as FormatTextPreset))} className={field}><option value="bold">Bold white</option><option value="snapchat-classic">Snapchat Classic</option></select></label>
+        <label className="block space-y-2 text-xs text-muted"><span>Text preset{text.font || text.fontWeight !== undefined ? <span className="ml-2 text-[10px]">Customized</span> : null}</span><select aria-label="Text preset" value={text.preset ?? "bold"} onChange={event => changeText(applyFormatTextPreset(text, event.target.value as FormatTextPreset))} className={field}><option value="bold">Bold white</option><option value="snapchat-classic">Snapchat Classic</option></select></label>
         {text.preset === "snapchat-classic" ? <label className="block space-y-2 text-xs text-muted">Background opacity · {Math.round((text.backgroundOpacity ?? .58) * 100)}%<input aria-label="Caption background opacity" type="range" min={0} max={100} value={(text.backgroundOpacity ?? .58) * 100} onChange={event => update({ backgroundOpacity: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label> : null}
         <div className={tools.positionColor}><label className="space-y-2 text-xs text-muted">Position<select aria-label="Text position" value={text.y} onChange={event => update({ y: Number(event.target.value) })} className={field}><option value={text.preset === "snapchat-classic" ? .075 : .1}>Top</option><option value={.3}>Middle</option><option value={.55}>Bottom</option>{![text.preset === "snapchat-classic" ? .075 : .1,.3,.55].includes(text.y) ? <option value={text.y}>Custom · {Math.round(text.y * 100)}%</option> : null}</select></label><label className="space-y-2 text-xs text-muted">Color<input type="color" aria-label="Text color" value={text.color} onChange={event => update({ color: event.target.value })} className={field} /></label></div>
         <label className="block space-y-2 text-xs text-muted">Vertical position · {Math.round(text.y * 1000) / 10}%<input type="range" aria-label="Text vertical position" min={3} max={90} step={.5} value={text.y * 100} onChange={event => update({ y: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>

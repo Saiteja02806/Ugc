@@ -169,6 +169,34 @@ test("changing a timed text block outside its visible range seeks into that bloc
   labelled(tree, "Text size").props.onChange({ target: { value: "56" } }); assert.equal(seeks.length, count, "Already visible text keeps the current frame");
 });
 
+test("shared video preset dropdown switches Snapchat Classic back to Bold white and survives save/reopen", () => {
+  for (const format of ["hook", "wall_text"]) for (const font of [undefined, "inter"]) {
+    const h = harness("format-text-overlays-editor");
+    const original = { value: "Keep this exact copy", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: format === "wall_text" ? 0 : 1000, endMs: 5000, ...(font ? { font, fontWeight: 700 } : {}) };
+    const neighbor = { ...original, value: "Another block", color: "#ff0000" };
+    let editing = { version: 1, format, trimStartMs: 0, trimEndMs: 5000, originalVolume: 1, musicVolume: .2, text: null, textOverlays: [original, neighbor] };
+    const render = () => h.render(() => h.exports.FormatTextOverlaysEditor({ overlays: editing.textOverlays, wallText: format === "wall_text", durationMs: 5000, timeMs: 2000, onSeek() {}, onChange: textOverlays => { editing = formatEdit.parseExploreFormatEdit({ ...editing, textOverlays }); } }));
+    for (let cycle = 0; cycle < 2; cycle++) {
+      labelled(render(), "Text preset").props.onChange({ target: { value: "snapchat-classic" } });
+      assert.equal(labelled(render(), "Text preset").props.value, "snapchat-classic");
+      labelled(render(), "Caption background opacity").props.onChange({ target: { value: "35" } });
+      assert.match(formatEdit.createFormatTextSvg(editing.textOverlays[0], 1080, 1920), /<rect/);
+      labelled(render(), "Text preset").props.onChange({ target: { value: "bold" } });
+      assert.equal(labelled(render(), "Text preset").props.value, "bold");
+      const bold = editing.textOverlays[0];
+      assert.equal(Object.hasOwn(bold, "backgroundOpacity"), false);
+      assert.equal(bold.preset, undefined);
+      assert.equal(bold.font, font);
+      assert.equal(labelled(render(), "Text weight").props.value, 700);
+      assert.equal(bold.value, original.value); assert.equal(bold.startMs, original.startMs); assert.equal(bold.endMs, original.endMs);
+      assert.deepEqual(editing.textOverlays[1], neighbor);
+      assert.doesNotMatch(formatEdit.createFormatTextSvg(bold, 1080, 1920), /<rect/);
+      editing = formatEdit.parseExploreFormatEdit(JSON.parse(JSON.stringify(editing)));
+      assert.equal(labelled(render(), "Text preset").props.value, "bold");
+    }
+  }
+});
+
 test("Wall manual text hides timing and style until advanced mode while keeping full-duration blocks", () => {
   const h = harness("format-text-overlays-editor"), updates = [];
   const overlay = { value: "Wall message", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 5000 };

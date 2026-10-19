@@ -147,7 +147,8 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   }
   async function chooseSavedImage(saved: MediaAsset) {
     if (disabled || pending || preview || !ownerId) return;
-    if (selectedImages.some(image => image.asset.id === saved.id)) return;
+    const existing = selectedImages.find(image => image.asset.id === saved.id);
+    if (existing) { if (onImagesChange) removeImage(existing); return; }
     if (imageLimitReached) { setError(`Use up to ${maxImages} image references with these inputs.`); return; }
     const request = ++revision.current;
     setError(null); onErrorChange?.(null); setPending("image"); onPendingChange(true);
@@ -156,7 +157,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
       if (request !== revision.current) return;
       if (asset.fileSizeBytes != null && asset.fileSizeBytes > maxImageBytes) throw new Error(`Use a reference image up to ${maxImageBytes / 1024 ** 2} MB.`);
       onChange({ kind: "image", asset }, "image");
-      localImage.remove(); setOpenKind(null);
+      localImage.remove(); if (!onImagesChange) setOpenKind(null);
     } catch (cause) {
       if (request === revision.current) {
         const message = cause instanceof Error ? cause.message : "Could not use this image.";
@@ -180,7 +181,8 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
     if (disabled || pending) return;
     onClearStyle?.(); setError(null); onErrorChange?.(null); setOpenKind(null);
   }
-  const catalogSelections = selectedImages.filter(image => image.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || image.asset.projectId === "ai-studio").map(image => image.asset.fileName);
+  const catalogImages = selectedImages.filter(image => image.asset.projectId === CATALOG_REFERENCE_IMAGE_PROJECT || image.asset.projectId === "ai-studio");
+  const catalogSelections = catalogImages.map(image => image.asset.fileName);
   const referenceKinds = (["image", "video", "audio"] as const).filter(kind => kind === "image" || kind === "video" && (videoInputEnabled || Boolean(styleVideo) || Boolean(selectedVideo)) || kind === "audio" && (audioInputEnabled || Boolean(selectedAudio)));
 
   return <section aria-label="Optional generation references" className={cn(presentation.referenceGroup, presentation.classicReferences)}>
@@ -210,9 +212,9 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
             <PopoverContent ref={popup} initialFocus={popup} tabIndex={-1} side="bottom" align="center" className={cn(studio.floating, creation.floating)} style={{ maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" }}>
               <PopoverTitle>{kind === "image" ? "Choose image" : kind === "video" ? "Video reference" : "Audio reference"}</PopoverTitle>
               <p className="text-sm leading-6 text-muted">{isStyle ? `This gallery clip is sent to generation. Add images for appearance and describe the changes. Clips over ${maxVideoDuration} seconds must be trimmed and uploaded first.` : kind === "image" ? `Add up to ${maxImages} appearance or product images. Describe how to use each image in your instructions.` : kind === "audio" ? `Audio reference up to ${maxAudioDuration} seconds and ${maxAudioBytes / 1024 ** 2} MB. Describe how it should guide the generated sound.` : `Video reference up to ${maxVideoDuration} seconds and ${maxVideoBytes / 1024 ** 2} MB. ${preserveVideoTiming ? "The edit follows the source clip's actions and timing." : "It guides the new video; choose its output duration below."}`}</p>
-              {asset ? <>{kind === "image" ? <ReferenceImagePreview asset={asset} /> : <WorkflowMediaPlayer asset={asset} kind={kind} label={`${kind === "audio" ? "Audio" : "Video"} reference preview`} className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" />}<p className="break-all text-xs text-muted">{asset.name}</p></> : null}
+              {asset && (kind !== "image" || !onImagesChange) ? <>{kind === "image" ? <ReferenceImagePreview asset={asset} /> : <WorkflowMediaPlayer asset={asset} kind={kind} label={`${kind === "audio" ? "Audio" : "Video"} reference preview`} className="mx-auto aspect-auto h-auto max-h-[40dvh] w-auto max-w-full bg-transparent" />}<p className="break-all text-xs text-muted">{asset.name}</p></> : null}
               {uploadActions}
-              {kind === "image" && onImagesChange && selectedImages.length ? <div className="grid grid-cols-3 gap-2" aria-label="Selected image references">{selectedImages.map(image => <div key={image.asset.id} className="overflow-hidden rounded-2xl"><ReferenceCreatorImage url={image.asset.url} /><Button type="button" variant="ghost" size="sm" disabled={disabled || Boolean(pending)} aria-label={`Remove image ${image.asset.fileName ?? image.asset.title}`} className="w-full" onClick={() => removeImage(image)}>Remove</Button></div>)}</div> : null}
+              {kind === "image" && onImagesChange ? <div className="flex items-center justify-between gap-3"><p role="status" className="text-xs text-muted">{selectedImages.length} of {maxImages} images selected</p><Button type="button" variant="outline" size="sm" disabled={Boolean(pending)} onClick={() => setOpenKind(null)}>Done</Button></div> : null}
               {kind === "image" ? <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog") setImageTab(value); }} className="space-y-3">
                 <Tabs.List aria-label="Image sources" className="flex gap-2">
                   <Tabs.Tab value="user" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:bg-card-muted data-[active]:text-foreground-strong">Your images</Tabs.Tab>
@@ -224,14 +226,14 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
                     : imagesQuery.isPending ? <p role="status" className="text-xs text-muted">Loading your images…</p>
                     : imagesQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load your images. Use Refresh to try again.</p>
                     : imagesQuery.data?.length ? <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">{imagesQuery.data.map(saved => <Button key={saved.id} type="button" variant="ghost" aria-label={`Use your image ${saved.fileName ?? saved.title}`} title={saved.fileName ?? saved.title} aria-pressed={selectedImages.some(image => image.asset.id === saved.id)} disabled={disabled || Boolean(pending) || imageLimitReached && !selectedImages.some(image => image.asset.id === saved.id)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => void chooseSavedImage(saved)}>
-                      <ReferenceCreatorImage url={saved.thumbnailUrl ?? saved.url} />{selectedImages.some(image => image.asset.id === saved.id) ? <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground"><Check className="size-3" aria-hidden="true" /></span> : null}
+                      <ReferenceCreatorImage url={saved.thumbnailUrl ?? saved.url} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", selectedImages.some(image => image.asset.id === saved.id) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{selectedImages.some(image => image.asset.id === saved.id) ? <Check className="size-3.5" /> : null}</span>
                     </Button>)}</div> : <p className="text-xs leading-5 text-muted">Upload an image to keep it here for next time.</p>}
                 </Tabs.Panel>
                 <Tabs.Panel value="catalog" keepMounted aria-label="UGC Pilot images" className="max-h-72 overflow-y-auto p-1">
-                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">{CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={catalogSelections.includes(reference.fileName)} disabled={disabled || Boolean(pending)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { if (catalogSelections.includes(reference.fileName)) return; void choose("image", async () => {
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">{CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={catalogSelections.includes(reference.fileName)} disabled={disabled || Boolean(pending) || imageLimitReached && !catalogSelections.includes(reference.fileName)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { const existing = catalogImages.find(image => image.asset.fileName === reference.fileName); if (existing) { if (onImagesChange) removeImage(existing); return; } void choose("image", async () => {
                 const response = await fetch(reference.src); if (!response.ok) throw new Error("Could not load this creator image.");
                 const blob = await response.blob(); return new File([blob], reference.fileName, { type: blob.type || "image/png" });
-              }, () => setOpenKind(null), "catalog"); }}><ReferenceCreatorImage url={reference.src} />{catalogSelections.includes(reference.fileName) ? <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground"><Check className="size-3" aria-hidden="true" /></span> : null}</Button>)}</div>
+              }, () => { if (!onImagesChange) setOpenKind(null); }, "catalog"); }}><ReferenceCreatorImage url={reference.src} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", catalogSelections.includes(reference.fileName) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{catalogSelections.includes(reference.fileName) ? <Check className="size-3.5" /> : null}</span></Button>)}</div>
                 </Tabs.Panel>
               </Tabs.Root> : null}
               {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}

@@ -263,3 +263,38 @@ test("WAN timed-reference image limits reject an oversized saved image without c
   h.all(tree, node => node.type === "Button" && node.props["aria-label"] === "Use your image my-reference.png")[0].props.onClick(); await flush();
   assert.equal(h.changes.length, 0); assert.match(h.errors.at(-1), /16 MB/);
 });
+
+test("image picker keeps multiple saved/catalogue selections open with toggles and a capacity count", async () => {
+  const assets = ["one", "two", "three"].map(id => ({ ...savedImage(id), fileName: `${id}.png` }));
+  const h = harness(async () => ({ kind: "image", asset: { ...savedImage("catalog"), fileName: "creator-reference-01.png", projectId: "explore-catalog-reference" } }), { images: assets, fetchSaved: async id => assets.find(asset => asset.id === id) });
+  let selected = [];
+  const render = () => h.render({ selection: null, imageSelections: selected, maxImages: 2,
+    onChange: value => { selected = [...selected, value]; }, onImagesChange: images => { selected = images; } });
+  const button = label => h.all(render(), node => node.type === "Button" && node.props["aria-label"] === label)[0];
+  const popover = () => h.all(render(), node => node.type === "Popover")[0];
+  const count = () => h.all(render(), node => node.props?.role === "status").find(node => Array.isArray(node.props.children) && node.props.children.includes(" images selected"));
+  popover().props.onOpenChange(true);
+  assert.ok(h.all(button("Use your image one.png"), node => node.type === "span" && node.props.className?.includes("border-2")).length, "Every thumbnail has a visible checkbox");
+  button("Use your image one.png").props.onClick(); await flush();
+  assert.equal(popover().props.open, true);
+  assert.equal(button("Use your image one.png").props["aria-pressed"], true);
+  assert.equal(h.all(button("Use your image one.png"), node => node.type === "Check").length, 1);
+  button("Use creator 1").props.onClick(); await flush();
+  assert.equal(popover().props.open, true);
+  assert.deepEqual(selected.map(image => image.asset.id), ["one", "catalog"]);
+  assert.equal(button("Use creator 1").props["aria-pressed"], true);
+  assert.equal(button("Use your image two.png").props.disabled, true);
+  assert.equal(button("Use your image one.png").props.disabled, false);
+  assert.equal(count().props.children[0], 2);
+  button("Use creator 1").props.onClick(); await flush();
+  assert.deepEqual(Array.from(selected, image => image.asset.id), ["one"]);
+  assert.equal(button("Use creator 1").props["aria-pressed"], false);
+  button("Use your image two.png").props.onClick(); await flush();
+  button("Use your image one.png").props.onClick(); await flush();
+  assert.deepEqual(Array.from(selected, image => image.asset.id), ["two"]);
+  assert.equal(h.savedReads.length, 2, "Deselecting must not upload or fetch again");
+  h.all(render(), node => node.type === "Button" && node.props.children === "Done")[0].props.onClick();
+  assert.equal(popover().props.open, false);
+  popover().props.onOpenChange(true);
+  assert.equal(button("Use your image two.png").props["aria-pressed"], true);
+});

@@ -1,5 +1,48 @@
 # Explore context and UI decision record
 
+### Video text preset switching — 19 October 2026, local correction
+
+- Reproduced Snapchat Classic → Bold white staying on Snapchat in the shared
+  dropdown. `applyFormatTextPreset` correctly removes `preset` and
+  `backgroundOpacity` for Bold, but the editor's partial-update merge restored
+  both from the previous text object. This kept the Snapchat background and
+  selected option even though some typography changed.
+- Preset changes now replace the selected text block with the helper's complete
+  result. Individual field changes still merge only their changed fields. Copy,
+  selected font, other blocks and timing remain; Wall retains full-clip timing.
+- The same control is used by Hook, Wall advanced styling, Talking Head opening
+  and demo editors, and Hook demo editing. No slideshow preset behavior changes.
+  Existing persisted/rendered content is not rewritten; users can change the
+  preset through the corrected editor. This fix is local and not deployed.
+- Validation: the new dropdown regression failed before the fix with Snapchat
+  still selected. All 107 focused editor/draft/export/finishing checks now pass.
+  Actual-component browser checks verify Snapchat → Bold, removed preview
+  background, retained copy/font, and saved/reopened Bold in Hook at laptop,
+  desktop and phone sizes, plus Wall advanced styling on phone. TypeScript and
+  scoped lint pass. These are local fixtures, not production acceptance.
+
+### Generation image picker multi-selection — 19 October 2026, local correction
+
+- Hook/Wall-of-Text's Choose image popup and Talking Head's shared creator
+  picker remain open after choosing saved or catalogue images when multiple
+  references are supported. Each thumbnail shows an empty square or a ticked
+  square; pressing a selected thumbnail again deselects just that image.
+- A selected-count row and Done close action replace duplicate selected-image
+  previews inside the popup, keeping the grid stable while selecting. The
+  existing sidebar tile still displays the selected-image mosaic.
+- At the model's image limit, unselected tiles cannot add images; selected tiles
+  remain removable. Saved images still resolve their current owned record;
+  catalogue copies retain their existing upload scope. Pending work, errors,
+  account guards and generation reference delivery are preserved. Single-image
+  callers retain their existing close-on-selection behavior.
+- This correction is local and is not deployed. Browser fixtures use isolated
+  auth/storage boundaries, without paid generation or production changes.
+- Validation: 121 reference/collection/generation regressions, TypeScript and
+  scoped lint pass. The actual Hook and Talking Head pickers pass six browser
+  scenarios at 1536×864, 1366×768 and 390×844: checked multiple selections,
+  individual deselection, catalogue/saved-image mixing, Done/reopen persistence
+  and unchanged instructions. Screenshots: `.tmp/workflow-image-library-browser/`.
+
 ### Approved reusable backgrounds workflow — 19 October 2026, local
 
 - The user confirmed Settings collection management followed by applying images

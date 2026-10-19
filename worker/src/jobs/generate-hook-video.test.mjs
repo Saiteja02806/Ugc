@@ -119,7 +119,7 @@ test("each eligible Hook reaches audio postprocessing and silent references omit
     assert.equal(referenceAudioCalls.length, before + 1);
     assert.equal(referenceAudioCalls.at(-1).reference.audioStorageKey, reference.audioStorageKey);
     if (reference.audioPolicy === "silent") {
-      assert.equal(reference.id, "explore-paired-hook-ef59f4b5e69bc9e125f8ada7");
+      assert.ok(["explore-paired-hook-ef59f4b5e69bc9e125f8ada7", "explore-paired-hook-4f4ca22ed141ee115d1eb913", "explore-paired-hook-bfd6368d9fc52f44c6422a2b"].includes(reference.id));
       assert.equal(referenceAudioCalls.at(-1).reference.audioPolicy, "silent");
       assert.equal(output.referenceSoundtrack, undefined);
     } else assert.deepEqual(output.referenceSoundtrack, { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 });

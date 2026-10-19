@@ -18,7 +18,7 @@ type CollectionResult = { group: Collection; assets: { addedAt: string; asset: M
 type Page = { assets: MediaAsset[]; nextOffset: number | null };
 type Props = { owner: string; mode?: "manage" | "pick"; multiple?: boolean; limit?: number; disabled?: boolean;
   onChoose?: (assets: MediaAsset[]) => void; onCollection?: (assets: MediaAsset[], name: string) => void;
-  onSelectionChange?: (assets: MediaAsset[]) => void; onBusyChange?: (busy: boolean) => void };
+  onSelectionChange?: (assets: MediaAsset[]) => void; onBusyChange?: (busy: boolean) => void; selectedIds?: readonly string[] };
 
 export function ImageLibraryManager() {
   const { user, loading } = useAuth();
@@ -27,12 +27,13 @@ export function ImageLibraryManager() {
   return <ImageLibraryBrowser key={user.uid} owner={user.uid} />;
 }
 
-export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, limit = 100, disabled = false, onChoose, onCollection, onSelectionChange, onBusyChange }: Props) {
+export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, limit = 100, disabled = false, onChoose, onCollection, onSelectionChange, onBusyChange, selectedIds }: Props) {
   const [collectionId, setCollectionId] = useState("");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [localSelected, setSelected] = useState<string[]>([]);
+  const selected = selectedIds ?? localSelected;
   const [collectionSelected, setCollectionSelected] = useState(false);
   const [destination, setDestination] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
   function toggle(id: string) {
     setCollectionSelected(false);
     setError(null);
-    const next = selected.includes(id) ? selected.filter(value => value !== id) : multiple ? selected.length < limit ? [...selected, id] : selected : [id];
+    const next = selected.includes(id) ? selected.filter(value => value !== id) : multiple ? selected.length < limit ? [...selected, id] : [...selected] : [id];
     setSelected(next); onSelectionChange?.(next.flatMap(value => byId.has(value) ? [byId.get(value)!] : []));
   }
   async function upload(files: File[]) {
@@ -143,41 +144,43 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
   }
 
   return <section className={styles.library} aria-label="Image library">
-    <div className={styles.heading}><div><h3>{mode === "manage" ? "Your images" : multiple ? "Choose images" : "Choose an image"}</h3>{mode === "manage" ? <p>Organize reusable images into collections.</p> : null}</div><div className={styles.actions}>
+    <div className={styles.heading}><div><h3>{mode === "manage" ? "Your slideshow backgrounds" : multiple ? "Choose images" : "Choose an image"}</h3>{mode === "manage" ? <p>Manage reusable images and collections. Library changes save automatically.</p> : <p>{multiple ? "Select images in the order you want them used." : "Select a background for this slide."}</p>}</div><div className={styles.actions}>
       {mode === "manage" ? <Button type="button" variant="outline" size="sm" disabled={locked} onClick={() => { setName(""); setEdit("create"); }}><FolderPlus aria-hidden="true" />New collection</Button> : null}
       <Button type="button" size="sm" disabled={locked || archived} onClick={() => input.current?.click()}><Upload aria-hidden="true" />Upload images</Button>
       <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh image library" disabled={locked || active.isFetching} onClick={() => void refresh()}><RefreshCw aria-hidden="true" /></Button>
     </div></div>
+    {mode === "manage" ? <p className={styles.usageHint}>To use these backgrounds: open your slideshow on Trending → Edit → Choose backgrounds from library. Choose images or a collection, preview, then use them and save the slideshow.</p> : null}
     <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label="Upload library images" disabled={locked} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void upload(files); }} />
     <label className={styles.mobileCollections}>Collection<select aria-label="Image collection" value={collectionId} disabled={locked} onChange={event => switchCollection(event.target.value)}><option value="">All images</option>{groups.data?.groups.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
     <div className={styles.collections} role="group" aria-label="Image collections"><Button type="button" variant={collectionId ? "outline" : "secondary"} disabled={locked} onClick={() => switchCollection("")}>All images</Button>
       {groups.data?.groups.map(item => <Button type="button" key={item.id} variant={collectionId === item.id ? "secondary" : "outline"} aria-pressed={collectionId === item.id} disabled={locked} onClick={() => switchCollection(item.id)}>{item.name}</Button>)}
     </div>
     {groups.isError ? <p role="alert">Could not load collections. <Button type="button" variant="link" onClick={() => void groups.refetch()}>Retry collections</Button></p> : null}
-    {group ? <div className={styles.collectionHeading}><div><strong>{group.name}</strong><p>{assets.length} images · in collection order</p></div>{mode === "manage" ? <div className={styles.actions}>
+    {group ? <div className={styles.collectionHeading}><div><strong>{group.name}</strong><p>{assets.length} images · in collection order</p></div><div className={styles.actions}>
+      {onCollection ? <Button type="button" variant="outline" disabled={locked || active.isError || active.isPending || active.isFetching || !assets.length} onClick={() => { setCollectionSelected(true); setSelected([]); onCollection(assets, group.name); }}>Use collection</Button> : null}
+      {mode === "manage" ? <>
       <Button type="button" size="sm" variant="ghost" disabled={locked} onClick={() => { setName(group.name); setEdit("rename"); }}>Rename collection</Button>
       <Button type="button" size="sm" variant="ghost" disabled={locked} onClick={() => setEdit("delete")}>Remove collection</Button>
-    </div> : null}</div> : null}
+    </> : null}</div>{onCollection ? <p className={styles.collectionNote}>Use every image in this collection, including images hidden by search. Images repeat if there are more slides.</p> : null}</div> : null}
     <form className={styles.filters} onSubmit={event => { event.preventDefault(); setSearch(query.trim()); clearSelection(); }}>
       <input aria-label="Search library images" placeholder="Search images…" value={query} disabled={locked} onChange={event => setQuery(event.target.value)} maxLength={140} /><Button type="submit" variant="outline" size="sm" disabled={locked}>Search</Button>
       <select aria-label="Image source" value={source} disabled={locked} onChange={event => { setSource(event.target.value); clearSelection(); }}><option value="all">All sources</option><option value="upload">Uploaded</option><option value="generated_image">Generated</option></select>
       {mode === "manage" && !collectionId ? <label><input type="checkbox" checked={archived} disabled={locked} onChange={event => { setArchived(event.target.checked); setSelected([]); }} />Archived</label> : null}
     </form>
     {active.isPending ? <p role="status" className={styles.empty}><LoaderCircle className="animate-spin" aria-hidden="true" />Loading your images…</p> : active.isError ? <div role="alert" className={styles.empty}><p>Could not load these images. Your selections have not been applied.</p><Button type="button" variant="outline" onClick={() => void active.refetch()}>Retry images</Button></div> : <>
-      {visible.length ? <div className={styles.grid}>{visible.map(asset => <button type="button" className={styles.tile} key={asset.id} aria-label={`Select image ${asset.title}`} aria-pressed={collectionSelected || selected.includes(asset.id)} disabled={locked || (!selected.includes(asset.id) && multiple && selected.length >= limit)} onClick={() => toggle(asset.id)}>
-        <img src={asset.thumbnailUrl ?? asset.url} alt="" width={180} height={225} loading="lazy" draggable={false} /><span className={styles.check}>{selected.includes(asset.id) ? multiple ? selected.indexOf(asset.id) + 1 : <Check aria-hidden="true" /> : collectionId ? assets.indexOf(asset) + 1 : ""}</span><span className={styles.caption} title={asset.title}>{asset.title}</span>
+      {visible.length ? <div className={styles.grid}>{visible.map(asset => <button type="button" className={styles.tile} key={asset.id} aria-label={`Select image ${asset.title}`} aria-pressed={selectedIds ? selected.includes(asset.id) : collectionSelected || selected.includes(asset.id)} disabled={locked || (!selected.includes(asset.id) && multiple && selected.length >= limit)} onClick={() => toggle(asset.id)}>
+        <img src={asset.thumbnailUrl ?? asset.url} alt="" width={180} height={225} loading="lazy" draggable={false} /><span className={styles.check}>{selected.includes(asset.id) ? multiple ? selected.indexOf(asset.id) + 1 : <Check aria-hidden="true" /> : ""}</span><span className={styles.caption} title={asset.title}>{asset.title}</span>
       </button>)}</div> : <div className={styles.empty}><Images aria-hidden="true" /><p>{search ? "No matching images. Try another search." : collectionId ? "This collection is empty. Upload images here or add images from All images." : archived ? "No archived images." : "Upload JPG, PNG or WebP images, up to 25 MB each."}</p></div>}
       {!collectionId && pages.hasNextPage ? <Button type="button" variant="outline" disabled={locked || pages.isFetchingNextPage} onClick={() => void pages.fetchNextPage()}>{pages.isFetchingNextPage ? "Loading…" : "Load more images"}</Button> : null}
     </>}
     {mode === "manage" && chosen.length === 1 ? <details className={styles.imagePreview}><summary>Image details · {chosen[0].title}</summary><p>{chosen[0].width} × {chosen[0].height}</p><img src={chosen[0].url} alt={chosen[0].title} width={600} height={600} /></details> : null}
-    {mode === "manage" && chosen.length ? <div className={styles.selection}><span>{chosen.length} selected</span>
+    {mode === "manage" && chosen.length ? <details className={styles.organize}><summary>Organize selected images</summary><div className={styles.selection}><span>{chosen.length} selected</span>
       {!archived ? <><select aria-label="Destination collection" value={destination} onChange={event => setDestination(event.target.value)} disabled={locked}><option value="">Choose collection…</option>{groups.data?.groups.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><Button type="button" size="sm" variant="outline" disabled={locked || !destination} onClick={() => void changeMembership(false)}>Add to collection</Button>
         {collectionId ? <Button type="button" size="sm" variant="outline" disabled={locked} onClick={() => void changeMembership(true)}>Remove from collection</Button> : null}
         {chosen.length === 1 ? <Button type="button" size="sm" variant="ghost" disabled={locked} onClick={() => { setName(chosen[0].title); setEdit("image"); }}>Rename image</Button> : null}</> : null}
       <Button type="button" size="sm" variant="ghost" disabled={locked} onClick={() => void archiveImages()}><Archive aria-hidden="true" />{archived ? "Restore images" : "Archive images"}</Button>
-    </div> : null}
-    {mode === "pick" ? <div className={styles.selection}><span aria-live="polite">{collectionSelected ? `Collection selected · ${assets.length} images` : `${chosen.length} selected${multiple ? ` · up to ${limit}` : ""}`}</span><div className={styles.actions}>
-      {onCollection && group ? <div><Button type="button" variant="outline" disabled={locked || active.isError || active.isPending || active.isFetching || !assets.length} onClick={() => { setCollectionSelected(true); setSelected([]); onCollection(assets, group.name); }}>Use collection</Button><p className="mt-1 text-xs text-muted">All {assets.length} images, including filtered images.</p></div> : null}
+    </div></details> : null}
+    {mode === "pick" ? <div className={styles.selection}><span aria-live="polite">{collectionSelected && (!selectedIds || assets.length === selected.length && assets.every(asset => selected.includes(asset.id))) ? `Collection selected · ${assets.length} images` : `${selected.length} selected${multiple ? ` · up to ${limit}` : ""}`}</span><div className={styles.actions}>
       {!onSelectionChange ? <Button type="button" disabled={locked || active.isError || active.isPending || !chosen.length} onClick={() => onChoose?.(chosen)}>{multiple ? "Use selected images" : "Use selected image"}</Button> : null}
     </div></div> : null}
     {message ? <p role="status" className={styles.notice}>{message}</p> : null}{error ? <p role="alert" className={styles.error}>{error}</p> : null}

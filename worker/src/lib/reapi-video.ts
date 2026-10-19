@@ -1,8 +1,11 @@
 import { downloadVideoToBuffer } from "./download-video.js";
-import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderOutputCollectionError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 
 const API_ROOT = "https://reapi.ai/api/v1";
+// The public task examples use cdn.reapi.ai. A verified production WAN task
+// also delivers directly from file.deepytb.com; do not admit arbitrary hosts.
+const OUTPUT_HOSTS = new Set(["cdn.reapi.ai", "file.deepytb.com"]);
 export const REAPI_SEEDANCE_MODEL = "doubao-seedance-2.5-face";
 export const REAPI_WAN_MODEL = "wan3.0-video";
 
@@ -106,14 +109,24 @@ export async function generateReapiVideoBuffer(input: ReapiVideoInput & ReapiOpe
     if (task.status === "completed") {
       const urls = asRecord(task.output)?.video_urls;
       const url = Array.isArray(urls) ? urls[0] : undefined;
-      if (typeof url !== "string" || !isReapiOutputUrl(url)) throw new ProviderOperationPollingError("ReAPI returned no valid saved video output.");
+      const acceptedUrl = typeof url === "string" && isReapiOutputUrl(url) ? url : undefined;
       const credits = asRecord(task.usage)?.credits;
-      await input.onOperationSucceeded(id, url, {
+      // Persist completion/usage even if collection fails. Never persist an
+      // untrusted link; retries re-read this same task for a refreshed output.
+      await input.onOperationSucceeded(id, acceptedUrl, {
         generationId: id,
         ...(typeof credits === "number" && Number.isSafeInteger(credits) && credits >= 0 ? { costUsd: credits / 1000 } : {}),
       });
+      if (typeof url !== "string" || !url) throw new ProviderOutputCollectionError("missing_output");
+      if (!acceptedUrl) throw new ProviderOutputCollectionError("untrusted_output_url");
       // CDN downloads are public bearer URLs, never authenticated with our key.
-      return downloadVideoToBuffer(url, { fetchImpl, redirect: "error" });
+      try {
+        return await downloadVideoToBuffer(acceptedUrl, { fetchImpl, redirect: "error" });
+      } catch {
+        // Raw download errors can contain signed links. Keep a safe, distinct
+        // collection diagnostic instead of misreporting rendering as pending.
+        throw new ProviderOutputCollectionError("download_failed");
+      }
     }
     if (task.status !== "processing" && task.status !== "pending" && task.status !== "queued") {
       throw new ProviderOperationPollingError("ReAPI returned an unrecognized saved-task status.");
@@ -149,5 +162,8 @@ function isHttpsUrl(value: string) {
   try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; } catch { return false; }
 }
 function isReapiOutputUrl(value: string) {
-  try { return isHttpsUrl(value) && new URL(value).hostname === "cdn.reapi.ai"; } catch { return false; }
+  try {
+    const url = new URL(value);
+    return isHttpsUrl(value) && !url.port && OUTPUT_HOSTS.has(url.hostname);
+  } catch { return false; }
 }

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import opentype from "opentype.js";
 import { estimateEditOverlayLineWidth } from "./edit-overlay-render-spec.js";
 import { formatTextLayout, type ExploreFormatText } from "./explore-format-edit.js";
+import { serializeGlyphPath } from "./svg-glyph-path.js";
 
 const fonts = new Map<string, Promise<opentype.Font>>();
 const escapeXml = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -36,7 +37,7 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
     return runs.map((run, index) => {
       let glyphX = x;
       const paths = run.supported ? Array.from(run.text).map(character => {
-        const glyph = font.charToGlyph(character), data = glyph.getPath(glyphX, y, layout.fontSize).toPathData(3);
+        const glyph = font.charToGlyph(character), data = serializeGlyphPath(glyph.getPath(glyphX, y, layout.fontSize));
         glyphX += (glyph.advanceWidth ?? font.unitsPerEm) * layout.fontSize / font.unitsPerEm;
         return `<path d="${data}"/>`;
       }).join("") : "";

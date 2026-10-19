@@ -53,8 +53,12 @@ these provider credits are separate from application credits. Existing storage
 and MP4 verification run before marking output persisted.
 
 Recovery polls the saved task, refreshes its CDN URL, and downloads without
-forwarding the API key to the CDN. Only documented HTTPS `cdn.reapi.ai` output
-URLs are admitted; redirects are rejected. Credentials, signed reference URLs
+forwarding the API key to the CDN. HTTPS `cdn.reapi.ai` and the verified live
+WAN output host `file.deepytb.com` are admitted as exact hostnames; embedded
+credentials, nonstandard ports and redirects are rejected. Completion and
+settlement are recorded even if collection fails, without storing untrusted
+links. A safe `PROVIDER_OUTPUT_COLLECTION_FAILED` error preserves the actual
+collection stage through retries and customer reporting. Credentials, signed reference URLs
 and raw provider errors are not written into diagnostics.
 
 HTTP 402 is classified as provider credits, 80006 as terminal moderation,
@@ -63,6 +67,15 @@ Uncertain submissions never create another paid task. Historical jobs retain
 their OpenRouter/Runway/Higgsfield adapters, fingerprints and provider IDs.
 
 ## Release status and order
+
+18 October follow-up: the underlying integration is deployed. The corrected
+output-host/collection-error behavior above is local and not yet deployed.
+The corrected adapter successfully downloaded existing WAN task
+`task_01a14f1e0128769d801b2ff0513c92c0` using only read requests; no task was
+resubmitted or database/billing state changed. The original app job remains
+failed after exhausting its attempts. See
+`wan-output-collection-fix-2026-10-18.md` for current validation and recovery
+requirements. The initial rollout record below is historical.
 
 Implementation and mocked regressions are local; no paid provider submission
 or production deployment was performed. A read-only hosted-database query

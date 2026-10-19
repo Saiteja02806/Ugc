@@ -1,5 +1,69 @@
 # Carousel System Context
 
+## 2026-10-19 Approved library workflow — existing Trending slideshow (local)
+
+- Settings → Media library creates/manages image collections. Upload inside a
+  collection adds membership; existing images can also be added. Management
+  explains where these backgrounds are used. Trending's header pill is labelled
+  Manage library so organization is distinct from changing a particular post.
+- The approved apply path is Trending → Edit → Choose backgrounds from library.
+  One image defaults to the selected slide; All slides supports multiple selected
+  images in click order or a whole collection in saved order, repeating as needed.
+  Collection use is beside its name, before the grid. Unselected thumbnails no
+  longer display competing order numbers; thumbnail frames fill without side strips.
+- Preview backgrounds opens the actual proposed composition. Use these
+  backgrounds revalidates owned sources and changes only the editor draft. Normal
+  Save persists that same assignment/creative through existing revision/render
+  handling. Text, styling, original sources, slide IDs and order are preserved.
+  Cancelling preview leaves the creative unchanged. Library edits do not update
+  existing/scheduled slideshows automatically.
+- Removed the attempted standalone library → Explore editor URL handoff. It did
+  not implement the approved purpose. Existing Explore library picker integrations
+  remain; no new slideshow/navigation is initiated by background selection.
+- The picker has full-width selection and a separate explicit preview, without
+  side panels or reorder arrows. Management retains the selection and uses Done
+  with automatic-save wording. Scoped scrollbar arrows are suppressed. Narrow
+  dialogs restrict transitions to opacity/transform so viewport resizing does not
+  animate dimensions outside the screen. This supersedes the earlier library
+  picker entries' side-by-side preview and up/down proposal-order controls.
+- Local actual-editor browser checks verify collection preview/cancel, separate
+  Use and Save boundaries, the same creative/revision, preserved text/style/order
+  and reopening. Shared component checks cover single/multiple images, repeats,
+  source-check failure, collection creation/membership/upload, music reuse and
+  32-image mobile collections at 390px and 320px. Production acceptance is separate;
+  no deployment, worker change, migration or production mutation was performed.
+
+## 2026-10-18 Missing glyph segments in edited slides — confirmed worker serialization defect (local fix)
+
+- Read-only inspection found the matching saved first slide: the full headline
+  `5 websites I wish I knew before launching my SaaS` was intact. Its style was
+  Montserrat Bold, 40px, 431px wrapping width, yellow, with fractional position.
+  Reproducing that exact style in the worker damaged `s`, `a` and `u`, while the
+  live browser font rendered the same text correctly. A saved-render preview
+  can therefore show the defect inside Edit as well as on the Trending card.
+- The installed OpenType.js 2.0.0 `toPathData(3)` rounds fractional coordinates
+  using decimal-string exponent arithmetic. Near-integer values such as
+  `83.00000000000001` can produce `NaN` tokens. SVG rasterization then damages
+  parts of the glyph. Font glyph availability, prompt rewriting and text saving
+  were not the cause; affected characters depend on placement and font metrics.
+- Both callers now use a shared finite-coordinate SVG command serializer:
+  Carousel manual text and Explore's bundled-font video overlay renderer.
+  It preserves every M/L/Q/C/Z command, rounds with numeric `toFixed`, and
+  rejects nonfinite coordinates rather than writing malformed SVG.
+- Manual renderer version advances to v3 so new saves do not reuse v2 damaged
+  output. Existing assets/posts/receipts are not rewritten; after worker rollout,
+  affected Carousel edits must be saved again to generate corrected pixels.
+- Local validation: 60 worker/renderer tests and 9 font/export/persistence tests
+  pass. Includes per-glyph raster ink across 12 font faces (letters, numbers,
+  punctuation, accents), the exact reported cover, 48 font/weight/size cover
+  combinations and invalid-coordinate rejection. Worker compilation, application
+  TypeScript, scoped lint and actual-editor save/reopen browser checks pass.
+  The standalone browser fixture needed Next's client env substitution after
+  unrelated library navigation introduced Next Link; no app runtime change.
+- Production reads only; no deployment or customer edit mutation. Exact source
+  background/style were rendered locally for visual comparison. Signed-in
+  production acceptance remains pending because local browser access is disabled.
+
 ## 2026-10-18 Trending text editor correction — compact controls and explicit styling (local)
 
 - Moving a text group previously initialized a manual preset that always drew

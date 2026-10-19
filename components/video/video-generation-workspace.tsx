@@ -1492,7 +1492,7 @@ export function VideoGenerationStudioPanel({
               fieldLayout={workflow ? "classic" : undefined}
               disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending || creatorReferenceUploadPending}
               size="sm"
-              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "wan_3_0").map((value) => ({
+              options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "seedance_2_5" || value === "wan_3_0").map((value) => ({
                 label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " · temporarily unavailable"}`,
                 disabled: !isAIStudioVideoModelAvailable(value),
                 value,

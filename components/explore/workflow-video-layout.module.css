@@ -50,6 +50,7 @@
 .classicReferences.classicReferences { gap: 8px; padding-block: 0; border: 0; }
 .classicReferences .referenceHeading h3 { color: var(--muted); font-size: 13px; font-weight: 400; }
 .videoWorkspace.videoWorkspace .controls .classicReferences [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 128px)); gap: 12px; }
+.videoWorkspace.videoWorkspace .controls .classicReferences [data-workflow-reference-grid][data-reference-columns="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 408px; }
 .classicReferences.classicReferences .referenceCard { display: flex; align-items: center; justify-content: center; min-height: 104px; padding: 0; border: 0; background: transparent; }
 .classicReferences.classicReferences .referenceCard > div:last-child { width: 100%; margin: 0; }
 .classicReferences.classicReferences .referenceCard[data-reference-state="selected"] { min-height: 104px; }

@@ -1213,7 +1213,7 @@ export function TrendingWorkspace() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <MediaLibraryButton variant="creative-edit" className="rounded-full" disabled={authLoading || !user} />
+            <MediaLibraryButton label="Manage library" variant="creative-edit" className="rounded-full" disabled={authLoading || !user} />
             <Button
               data-trending-adjust-control
               type="button"

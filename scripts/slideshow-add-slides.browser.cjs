@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { webpack } = require('next/dist/compiled/webpack/webpack');
+const clientEnv = new webpack.DefinePlugin({ 'process.env': JSON.stringify({ NODE_ENV: 'development' }) });
 let playwright;
 try { playwright = require('playwright'); }
 catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
@@ -31,7 +32,7 @@ const uploadedBytes=new Map(),uploadShapes=[];
 const imports=[], saves=[], api=[], assetMap=new Map([1,5,7,8].map(n=>[id(n),asset(n)]));
 async function main(){
   const aliases={'@/contexts/auth-context':path.join(out,'auth.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/components/explore/remix-text-section':path.join(out,'remix.tsx'),'./remix-text-section':path.join(out,'remix.tsx'),'@/lib/explore/slideshow-text-client':path.join(out,'text-client.ts'),'@/lib/ai-studio/reference-media-upload':path.join(out,'upload.ts'),'@':root};
-  await new Promise((resolve,reject)=>{const c=webpack({mode:'development',devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],alias:aliases},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
+  await new Promise((resolve,reject)=>{const c=webpack({mode:'development',devtool:false,plugins:[clientEnv],context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],alias:aliases},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/explore";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const server=http.createServer(async(req,res)=>{try{
     const url=new URL(req.url,'http://fixture');const json=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};

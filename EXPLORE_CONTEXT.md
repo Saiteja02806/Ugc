@@ -1,5 +1,96 @@
 # Explore context and UI decision record
 
+### Approved reusable backgrounds workflow — 19 October 2026, local
+
+- The user confirmed Settings collection management followed by applying images
+  to the existing Trending slideshow through its Edit screen. Removed the local
+  libraryImages URL/import handoff to Explore; it was the wrong destination for
+  that requirement. No standalone library action creates/replaces an Explore draft.
+- Existing Explore background and Add slides pickers still work. The shared
+  background picker now selects images/collections, then Preview backgrounds,
+  then Use these backgrounds. Normal Save remains separate. Multiple images fill
+  all slides in selection order, repeating; collections follow saved order.
+- Shared selection/preview is full width, with no preview side panel or up/down
+  reorder buttons. Collection use appears above its grid, selection survives
+  management, and management uses Done with immediate-save wording. Thumbnail
+  crops affect browsing only; composed previews retain each editor's renderer.
+- Source rechecks, unchanged target guards, text preservation and draft/save
+  boundaries remain. Shared music behavior is unchanged. See CAROUSEL_CONTEXT.md
+  and docs/media-library-trending-flow-2026-10-19.md for the approved workflow.
+  Local browser evidence is distinct from signed-in production acceptance.
+
+### Shared text glyph serialization fix — 18 October 2026, local
+
+- Trending's missing letters were reproduced in saved glyph output with intact
+  input copy. OpenType.js `toPathData(3)` can emit NaN from near-integer floating
+  coordinates, damaging character segments. The shared finite SVG serializer
+  now replaces both Carousel manual and Explore bundled-font video callers.
+- Preserve text, font, wrapping and layout; reject invalid geometry. Regression
+  coverage verifies visible glyph ink in all 12 faces and real video exports,
+  including the existing fallback/timing behavior. No generation prompt, image
+  input, schema, saved receipt or publishing behavior changes.
+- See CAROUSEL_CONTEXT.md for exact reproduction and validation. This fix is
+  local; old rendered media is not repaired automatically. Existing immutable
+  finish receipts remain recoverable; a new explicit edit/render uses the fix.
+
+### WAN/ReAPI completed-output collection — 18 October 2026, local correction
+
+- Production WAN job `56b8b792-b13f-448d-9fed-8e14b4cf9c52` completed at
+  ReAPI but returned `file.deepytb.com`, while the adapter admitted only
+  `cdn.reapi.ai`. Recovery exhausted three attempts and reported a generic
+  failure. The provider video already exists; do not submit another generation
+  as its recovery. See `docs/video-generation-quality-audit-2026-10-18.md`.
+- Admit those two exact HTTPS hosts with no embedded credentials/nonstandard
+  port; reject lookalikes and redirects. Keep API credentials off CDN requests.
+  Record provider completion/settlement before collection, without persisting
+  untrusted links. Retries poll the same saved task and refresh the output URL.
+- Collection failures now retain a safe `PROVIDER_OUTPUT_COLLECTION_FAILED`
+  reason through worker retries and website/MCP reporting. Historical pending
+  failures explain recovery of the existing request instead of an unknown cause.
+- Targeted API/worker/recovery checks, 12 MCP-operation tests, worker build and
+  scoped ESLint pass. The corrected local adapter also collected the actual
+  existing production task with two GETs, no POST or database write; its bytes
+  match the previously audited video. This is live read-only adapter validation,
+  not acceptance of a deployed fix. The website job remains failed/exhausted.
+- Full app TypeScript currently reports an unrelated readonly-array assignment
+  in `components/media/image-library-browser.tsx:85`. No deployment, production
+  job reset or billing change was made. Worker deployment and website/MCP error
+  rollout, followed by controlled recovery of the original job, remain separate.
+
+### Seedance 2.5 in Explore video model selectors — 18 October 2026, local correction
+
+- The modern Hook and Wall-of-Text composer had an explicit model allowlist
+  containing only Omni and WAN. Seedance was supported by generation settings
+  and the API but absent from this dropdown. Include Seedance 2.5 there, using
+  the existing provider availability flag. The production website's public
+  Seedance flag was checked and is already enabled; no flag change was needed.
+- Talking Head uses the shared workflow creation form, whose model list already
+  includes enabled Seedance. Preserve its model normalization, saved settings,
+  reference policies and existing provider routing. The modern composer's default
+  remains Omni; selecting Seedance uses its own duration and quality options.
+- This correction is local, not deployed. Component request tests exercise the
+  model actually offered in the dropdown and its submitted settings. No paid
+  generation or signed-in production visual acceptance was performed.
+- Validation: 147 model/settings, composer, client and API contract checks pass,
+  including Talking Head saved settings. Full TypeScript and scoped ESLint pass.
+
+### Stable generation reference controls — 18 October 2026, local correction
+
+- The compact video-workspace override forced two columns even when Image,
+  Video and Audio were all visible. Audio consequently appeared on a second
+  row. The shared generation reference component now exposes its visible slot
+  count, and three visible controls use three equal shrinking columns, capped
+  at the existing 128px tile width. Selected images remain a mosaic inside the
+  single Image tile; adding images does not add controls or displace Audio.
+- Applies wherever the shared control is used, including Hook, Talking Head
+  and Wall-of-Text configurations that expose audio. Two-control layouts retain
+  their existing dimensions. Generation inputs and selection handlers are unchanged.
+- This correction is local and is not yet deployed. Signed-in production visual
+  acceptance remains separate from local source/component checks.
+- Validation: 72 reference/upload/workflow regressions, full TypeScript and
+  scoped ESLint pass. Covers zero, one, two and six images, unchanged slot order,
+  two-input configurations and selected audio retained after a model change.
+
 ### Hook generation references — 18 October 2026, redundant library entry removed locally
 
 - Optional references uses the existing Choose image and Choose video tiles.

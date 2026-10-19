@@ -2,6 +2,8 @@
 /* Actual Trending editor with isolated auth/API boundaries. No production calls. */
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), http = require('node:http');
 const { webpack } = require('next/dist/compiled/webpack/webpack');
+// Match Next's client env substitution without reading any local credentials.
+const clientEnv = new webpack.DefinePlugin({ 'process.env': JSON.stringify({ NODE_ENV: 'development' }) });
 let playwright; try { playwright = require('playwright'); } catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
 const root = path.resolve(__dirname, '..'), out = path.join(root, '.tmp/trending-carousel-text'); fs.mkdirSync(out, { recursive: true });
 const write = (file, text) => fs.writeFileSync(path.join(out, file), text);
@@ -19,8 +21,10 @@ async function main() {
   const baseSlide = n => ({ slideId: 'slide-'+n, slideNumber:n, headline:n===1?'Small steps, better work':'Useful habits', subtext:n===1?'':'Start with ten minutes.', ctaText:'', backgroundAssetId:'image-'+n, backgroundUrl:'/background.webp', originalBackgroundAssetId:'image-'+n, originalBackgroundUrl:'/background.webp', renderedUrl:'/background.webp', textPosition:{x:.5,y:.5}, renderFormat:'4:5', structureId:'structure_2', visualRole:'human', originalVisualRole:'human', storyLayoutVariant:'story_overlay_only', storyTextTreatment:'overlay' });
   let record={assignmentId:'assignment',creativeId:'creative',format:'carousel',id:'edit',revision:0,renderState:'ready',renderOutput:null,source:null,content:{format:'carousel',version:'trending-creative-edit-v1',slides:[baseSlide(1),baseSlide(2)]}};
   const patches=[],errors=[],requests=[]; let failSave=false;
-  await new Promise((resolve,reject)=>{const c=webpack({mode:'development',devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],extensionAlias:{'.js':['.js','.ts','.tsx']},alias:{'next/font/local':path.join(out,'font.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/contexts/auth-context':path.join(out,'auth.ts'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.module\.css$/,use:path.join(out,'module-css.cjs')},{test:/\.css$/,exclude:/\.module\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
-  const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
+  const mediaId=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+  const libraryImages=[1,2].map(n=>({id:mediaId(n),collection:'image',sourceType:'upload',status:'ready',createdAt:'2026-10-19T00:00:00Z',updatedAt:'2026-10-19T00:00:00Z',url:'https://owned.test/'+n+'.png',thumbnailUrl:null,ratio:'4:5',width:1080,height:1350,mimeType:'image/png',title:'Nature '+n,fileName:'nature-'+n+'.png',projectId:'image-library',metadata:{}}));
+  await new Promise((resolve,reject)=>{const c=webpack({mode:'development',plugins:[clientEnv],devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],extensionAlias:{'.js':['.js','.ts','.tsx']},alias:{'next/font/local':path.join(out,'font.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/contexts/auth-context':path.join(out,'auth.ts'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.module\.css$/,use:path.join(out,'module-css.cjs')},{test:/\.css$/,exclude:/\.module\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
+  const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/media";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const server=http.createServer(async(req,res)=>{try {
     const url=new URL(req.url,'http://fixture'),json=(body,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));};
     if(url.pathname==='/favicon.ico'){res.writeHead(204);return res.end();}
@@ -32,13 +36,17 @@ async function main() {
     if(/^\/render-\d+-\d+\.svg$/.test(url.pathname)){res.setHeader('Content-Type','image/svg+xml');return res.end(fs.readFileSync(path.join(out,url.pathname.slice(1))));}
     assert.equal(req.headers.authorization,'Bearer fixture-token'); requests.push(url.pathname);
     if(url.pathname==='/api/trending/carousel-product-assets')return json({ok:true,assets:[]});
+    if(url.pathname==='/api/media/groups')return json({ok:true,groups:[{id:mediaId(100),name:'Nature backgrounds',mediaType:'image'}]});
+    if(url.pathname==='/api/media/groups/'+mediaId(100)+'/items')return json({ok:true,group:{id:mediaId(100),name:'Nature backgrounds',mediaType:'image'},assets:[libraryImages[1],libraryImages[0]].map(asset=>({addedAt:asset.createdAt,asset}))});
+    if(url.pathname==='/api/media/image-library')return json({ok:true,assets:libraryImages,nextOffset:null});
+    if(url.pathname.startsWith('/api/media/')){const asset=libraryImages.find(asset=>url.pathname==='/api/media/'+asset.id);if(asset)return json({ok:true,asset});}
     assert.equal(url.pathname,'/api/trending/creatives/carousel/creative/edit');
     if(req.method==='PATCH'){
       let raw='';for await(const b of req)raw+=b;const body=JSON.parse(raw);patches.push(body);
       if(failSave){failSave=false;return json({ok:false,error:'Fixture save interrupted'},503);}
       assert.equal(body.expectedRevision,record.revision);
       const slides=record.content.slides.map((slide,index)=>({...slide,...body.slides[index],textStyle:manual.parseCarouselManualTextStyle(body.slides[index].textStyle)}));
-      for(const slide of slides)if(slide.textStyle){const {svg}=await createCarouselManualSvg(slide);write('render-'+(record.revision+1)+'-'+slide.slideNumber+'.svg',svg);}
+      for(const slide of slides)if(slide.textStyle){const {svg}=await createCarouselManualSvg(slide);assert.doesNotMatch(svg,/NaN|Infinity|undefined/,'Saved output must contain valid glyph coordinates');write('render-'+(record.revision+1)+'-'+slide.slideNumber+'.svg',svg);}
       record={...record,revision:record.revision+1,content:{...record.content,slides},renderOutput:{slides:slides.map(slide=>({slideNumber:slide.slideNumber,renderedUrl:slide.textStyle?'/render-'+(record.revision+1)+'-'+slide.slideNumber+'.svg':'/background.webp'}))}};
     }
     return json({ok:true,edit:record});
@@ -54,6 +62,20 @@ async function main() {
     await page.goto('http://127.0.0.1:'+server.address().port);await page.getByLabel('Font',{exact:true}).waitFor();
     console.log('Editor loaded');
     assert.equal(await preview().getAttribute('data-carousel-editor-preview'),'exact-render');
+    await page.getByLabel('Hook',{exact:true}).fill('5 websites I wish I knew before launching my SaaS');
+    await page.getByLabel('Hook color',{exact:true}).fill('#ffea00');
+    await page.getByLabel('Font',{exact:true}).selectOption('montserrat');
+    await page.getByLabel('Hook size',{exact:true}).fill('40');
+    await page.getByLabel('Hook weight',{exact:true}).selectOption('700');
+    await page.getByLabel(/Text width/).fill('431');
+    await page.evaluate(()=>document.fonts.ready);
+    assert.deepEqual(await preview().locator('svg text').allTextContents(),['5 websites I wish I','knew before','launching my SaaS']);
+    const reported={...baseSlide(1),headline:'5 websites I wish I knew before launching my SaaS',textPosition:{x:.7268518518518519,y:.38841611893746303},textStyle:{...manual.defaultCarouselManualTextStyle(),font:'montserrat',headingSize:40,headingWeight:700,textWidth:431,headingColor:'#ffea00'}};
+    const exported=await createCarouselManualSvg(reported);assert.doesNotMatch(exported.svg,/NaN|Infinity|undefined/);
+    write('wish-exact-worker.svg',exported.svg);
+    await require('sharp')(Buffer.from(exported.svg)).resize(340,425).png().toFile(path.join(out,'wish-fixed-worker.png'));
+    await preview().screenshot({path:path.join(out,'wish-fixed-preview.png')});
+    await page.getByRole('button',{name:'Reset text layout',exact:true}).click();
     await page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Position$/})}).locator('summary').click();
     await page.getByLabel(/Horizontal position/).fill('45');
     assert.equal(await preview().locator('svg[data-carousel-manual-text] rect').count(),0,'Moving an overlay never adds a white background');
@@ -94,7 +116,41 @@ async function main() {
     await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});for(let i=1;i<=8;i++)await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+15*i/8,y:y+15*i/8}]});await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     await touch.getByRole('button',{name:'Confirm and save creative edit',exact:true}).click();await touch.getByRole('dialog').waitFor({state:'hidden'});const touchSaved=await touch.evaluate(()=>window.saved);assert.ok(touchSaved.content.slides[1].textPosition.x>.5);assert.ok(touchSaved.content.slides[1].textPosition.y>.5);await client.detach();await touchContext.close();assert.deepEqual(errors,[]);
     console.log('PASS actual Trending editor: no implicit background, three explicit lines, compact fields, dark selects, background choices, alignment/weight/spacing, independent slides, mouse/touch/keyboard position, failed save recovery, PATCH content, worker SVG, reopen, reset and desktop/mobile layout');
-  } catch(e){await page.screenshot({path:path.join(out,'failure.png')});console.error(await page.locator('body').innerText());throw e;}
+    await page.setViewportSize({width:1366,height:768});
+    await page.route('https://owned.test/**',route=>route.fulfill({contentType:'image/webp',body:fs.readFileSync(path.join(root,'public/explore/characters/creator-office-v2.webp'))}));
+    const before=structuredClone(record),writeCount=patches.length;
+    await open();
+    await page.getByRole('button',{name:'Choose backgrounds from library',exact:true}).click();
+    let picker=page.getByRole('dialog').last();
+    await picker.getByRole('button',{name:'Nature backgrounds',exact:true}).click();
+    await picker.getByRole('button',{name:'Use collection',exact:true}).click();
+    await picker.getByRole('button',{name:'Preview backgrounds',exact:true}).click();
+    assert.equal(patches.length,writeCount,'Browsing and previewing do not save the creative');
+    assert.deepEqual(record,before);
+    await picker.getByRole('button',{name:'Cancel',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelectorAll('[role="dialog"]').length===1);
+    assert.deepEqual(record,before);
+    await page.getByRole('button',{name:'Choose backgrounds from library',exact:true}).click();
+    picker=page.getByRole('dialog').last();
+    await picker.getByRole('button',{name:'Nature backgrounds',exact:true}).click();
+    await picker.getByRole('button',{name:'Use collection',exact:true}).click();
+    await picker.getByRole('button',{name:'Preview backgrounds',exact:true}).click();
+    await page.screenshot({path:path.join(out,'library-background-preview.png')});
+    await picker.getByRole('button',{name:'Use these backgrounds',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelectorAll('[role="dialog"]').length===1);
+    assert.equal(patches.length,writeCount,'Using backgrounds updates only the editor until Save');
+    assert.deepEqual(record,before);
+    await save();
+    assert.equal(patches.length,writeCount+1);
+    assert.equal(record.assignmentId,before.assignmentId);assert.equal(record.creativeId,before.creativeId);assert.equal(record.id,before.id);
+    assert.equal(record.revision,before.revision+1);
+    assert.deepEqual(record.content.slides.map(s=>s.backgroundAssetId),[mediaId(2),mediaId(1)]);
+    for(let i=0;i<before.content.slides.length;i++)for(const key of ['slideId','slideNumber','headline','subtext','ctaText','textStyle','textPosition','originalBackgroundAssetId'])assert.deepEqual(record.content.slides[i][key],before.content.slides[i][key],key+' must survive background replacement');
+    await open();
+    assert.equal(await page.getByLabel('Hook',{exact:true}).inputValue(),before.content.slides[0].headline);
+    assert.deepEqual(errors,[]);
+    console.log('PASS actual Trending library flow: collection preview/cancel, explicit Use, separate Save to the same creative/revision, preserved text/style/order/originals and reopen');
+  } catch(e){await page.screenshot({path:path.join(out,'failure.png')});console.error('Browser/server errors:',errors);console.error(await page.locator('body').innerText());throw e;}
   finally {await browser.close();await new Promise(r=>server.close(r));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

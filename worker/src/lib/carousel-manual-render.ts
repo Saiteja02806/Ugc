@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { carouselManualTextMarkup, createCarouselManualLayout, type CarouselManualSlide } from "./carousel-manual-text.js";
+import { serializeGlyphPath } from "./svg-glyph-path.js";
 
 const fonts = new Map<string, Promise<opentype.Font>>();
 const fontsDir = ["../../assets/fonts/", "../../src/assets/fonts/", "../assets/fonts/"].map(path => fileURLToPath(new URL(path, import.meta.url)))
@@ -25,7 +26,7 @@ export async function createCarouselManualSvg(slide: CarouselManualSlide) {
     // Unsupported glyphs must not silently become missing-character boxes.
     if (Array.from(row.text).some(c => !font.hasChar(c))) throw new Error(`Slide ${slide.slideNumber}: this font does not support all characters in the text.`);
     let x = row.x - row.width / 2;
-    return Array.from(row.text).map(c => { const glyph = font.charToGlyph(c), path = glyph.getPath(x, row.y, row.size).toPathData(3); x += (glyph.advanceWidth ?? font.unitsPerEm) / font.unitsPerEm * row.size; return `<path d="${path}"/>`; }).join("");
+    return Array.from(row.text).map(c => { const glyph = font.charToGlyph(c), path = serializeGlyphPath(glyph.getPath(x, row.y, row.size)); x += (glyph.advanceWidth ?? font.unitsPerEm) / font.unitsPerEm * row.size; return `<path d="${path}"/>`; }).join("");
   });
   return { layout, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="${layout.frameHeight}"><g transform="translate(${layout.position.x * 1080 - layout.width / 2},${layout.position.y * layout.frameHeight - layout.height / 2})">${markup}</g></svg>` };
 }

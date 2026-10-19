@@ -42,6 +42,23 @@ test("background choices are explicit, colored and translucent, with one box or 
     await sharp(Buffer.from(svg)).png().toBuffer();
   }
 });
+
+test("the reported narrow Montserrat cover exports every letter with finite SVG coordinates", async () => {
+  const input = { ...slide, slideNumber: 1, headline: "5 websites I wish I knew before launching my SaaS", subtext: "", textPosition: { x: .7268518518518519, y: .38841611893746303 },
+    textStyle: { ...defaultCarouselManualTextStyle(), font: "montserrat" as const, headingSize: 40, headingWeight: 700 as const, textWidth: 431, headingColor: "#ffea00" } };
+  const { layout, svg } = await createCarouselManualSvg(input);
+  assert.deepEqual(layout.rows.map(row => row.text), ["5 websites I wish I", "knew before", "launching my SaaS"]);
+  assert.doesNotMatch(svg, /NaN|Infinity|undefined/);
+  assert.equal((svg.match(/<path d=/g) ?? []).length, input.headline.replaceAll(" ", "").length + input.headline.split(" ").length - layout.rows.length);
+  await sharp(Buffer.from(svg)).png().toBuffer();
+});
+
+test("all manual fonts and weights export full mixed copy at different sizes and fractional placements", async () => {
+  for (const { id: font } of CAROUSEL_EDIT_FONTS) for (const weight of [400, 500, 700] as const) for (const size of [24, 40, 72, 120]) {
+    const { svg } = await createCarouselManualSvg({ ...slide, slideNumber: 1, headline: "wish WISH\na/u s/S i/j", textPosition: { x: .35487, y: .41263 }, textStyle: { ...defaultCarouselManualTextStyle(), font, headingSize: size, headingWeight: weight } });
+    assert.doesNotMatch(svg, /NaN|Infinity|undefined/, `${font} ${weight} ${size}`);
+  }
+});
 for (const font of CAROUSEL_EDIT_FONTS) for (const renderFormat of ["1:1", "4:5"] as const) {
   test(`${font.label} ${renderFormat} exports bundled glyphs with the shared preview layout and full containment`, async () => {
     const input = { ...slide, renderFormat, textPosition: { x: 0, y: 1 }, textStyle: { ...defaultCarouselManualTextStyle(), font: font.id, fontSize: 38, headingSize: 56, color: "#ff00aa" } };

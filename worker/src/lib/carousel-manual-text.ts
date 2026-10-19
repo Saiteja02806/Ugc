@@ -1,7 +1,7 @@
 import { EXPLORE_TEXT_FONTS, exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, isExploreTextWeight, type ExploreTextFont } from "./explore-text-fonts.ts";
 
 export { EXPLORE_TEXT_FONTS as CAROUSEL_EDIT_FONTS };
-export const CAROUSEL_MANUAL_TEXT_VERSION = "carousel-manual-typography-v2";
+export const CAROUSEL_MANUAL_TEXT_VERSION = "carousel-manual-typography-v3-finite-glyphs";
 type Background = "none" | "line" | "box";
 export type CarouselManualTextStyle = {
   font: ExploreTextFont;

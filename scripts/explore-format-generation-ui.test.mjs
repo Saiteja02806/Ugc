@@ -215,6 +215,28 @@ test("earlier video discovery preserves newer hints and cannot select an old com
 });
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: Seedance 2.5 is selectable and submits its exact output settings`, async () => {
+    const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    const option = setting("Video model").props.options.find(option => option.value === "seedance_2_5");
+    assert.ok(option, "Explore must offer Seedance alongside Omni and WAN");
+    assert.equal(option.label, "Seedance 2.5");
+    assert.equal(option.disabled, false);
+    setting("Video model").props.onChange(option.value);
+    setting("Video duration").props.onChange(17);
+    setting("Video quality").props.onChange("480p");
+    const composer = h.render().composer;
+    assert.match(composer.props.settingsSummary, /Seedance 2\.5.*17s/);
+    assert.equal(composer.props.referenceControls.props.audioInputEnabled, true);
+    assert.equal(composer.props.referenceControls.props.videoInputEnabled, true);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].body.model, "seedance_2_5");
+    assert.equal(h.requests[0].body.durationSeconds, 17);
+    assert.equal(h.requests[0].body.resolution, "480p");
+    const disabled = harness(format).composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.options.find(option => option.value === "seedance_2_5");
+    assert.equal(disabled.disabled, true, "the provider kill switch remains respected");
+  });
   test(`${format}: local preview allows supported quality changes while generation remains locked`, () => {
     const h = harness(format, { preview: true, access: "signed_out", reference: false });
     const setting = (label) => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);

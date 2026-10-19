@@ -10,7 +10,6 @@ import { CAROUSEL_SLIDE_IMAGE_PROJECT, validateCarouselSlideImage } from "@/lib/
 import { useAuth } from "@/contexts/auth-context";
 import { ImageLibraryPicker, type ImageLibraryChoice, type LibrarySlidePreview } from "@/components/media/image-library-picker";
 import { sameBackgroundTargets } from "@/lib/media/image-library";
-import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 
 export async function uploadCarouselSlideImage(file: File) {
   validateCarouselSlideImage(file);
@@ -104,13 +103,12 @@ export function CarouselSlideImageSection({
         fileTargetRef.current = null;
         if (file) void upload(file, target);
       }} />
-    <Button type="button" size="sm" variant="outline" className="ml-2 mt-3" disabled={disabled || uploadingSlide !== null || !user} onClick={() => setLibraryTarget({ ids: (slides ?? [slide]).map(item => item.slideId), selected: slide.slideId })}>Choose from library</Button>
+    <Button type="button" size="sm" variant="outline" className="ml-2 mt-3" disabled={disabled || uploadingSlide !== null || !user} onClick={() => setLibraryTarget({ ids: (slides ?? [slide]).map(item => item.slideId), selected: slide.slideId })}>Choose backgrounds from library</Button>
     {libraryTarget && user ? <ImageLibraryPicker key={user.uid} owner={user.uid} slideIds={libraryTarget.ids} selectedSlideId={libraryTarget.selected} renderSlidePreview={renderLibrarySlidePreview} onBusyChange={onBusyChange} onClose={() => setLibraryTarget(null)} onApply={async choice => {
       if (!sameBackgroundTargets((slides ?? [slide]).map(item => item.slideId), libraryTarget.ids)) throw new Error("Your slideshow changed. Reopen the library before applying backgrounds.");
       if (onLibraryApply) onLibraryApply(choice);
       else { const target = choice.assignments[0]; const asset = choice.assets.find(item => item.id === target?.assetId); if (target && asset) onUploaded(target.slideId, asset); }
     }} /> : null}
-    <MediaLibraryButton label="Add to library" className="ml-2 mt-3" disabled={disabled || uploadingSlide !== null} />
     <div role="status" className="mt-2 text-xs text-muted-foreground">{message}</div>
     {error ? <p role="alert" className="mt-2 text-xs text-destructive">{error}</p> : null}
   </section>;

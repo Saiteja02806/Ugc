@@ -93,6 +93,36 @@ test("poll failures preserve the accepted ReAPI ID and never submit again", asyn
   assert.equal(posts, 1); assert.equal(ctx.operation().provider_operation_id, "accepted");
 });
 
+test("WAN collection failure preserves completion and recovers the same task from the production output host", async () => {
+  const ctx = context(); let posts = 0; let recovered = false;
+  mock.method(globalThis, "fetch", async (url, init) => {
+    if (init?.method === "POST") { posts++; return json({ id: "existing-wan" }, 202); }
+    if (String(url).startsWith("https://reapi.ai/api/v1/tasks/")) {
+      assert.equal(String(url), "https://reapi.ai/api/v1/tasks/existing-wan");
+      return json({ id: "existing-wan", status: "completed", output: {
+        video_urls: [recovered ? "https://file.deepytb.com/wan.mp4" : "https://untrusted.example/private-token"],
+      }, usage: { credits: 495 } });
+    }
+    assert.equal(String(url), "https://file.deepytb.com/wan.mp4");
+    assert.equal(new Headers(init?.headers).has("Authorization"), false);
+    assert.equal(init?.redirect, "error");
+    return new Response(video, { headers: { "content-type": "video/mp4" } });
+  });
+  const wanJob = { ...job, input_json: { ...job.input_json, model: "wan_3_0" } };
+  await assert.rejects(runGenerateHookVideoJob(wanJob, ctx), error =>
+    error.code === "PROVIDER_OUTPUT_COLLECTION_FAILED" && /output link was not accepted/.test(error.message) && !/private-token/.test(error.message));
+  assert.equal(ctx.operation().status, "provider_succeeded");
+  assert.equal(ctx.operation().output_url, undefined);
+  assert.equal(ctx.operation().metadata.providerCostUsd, .495);
+  recovered = true;
+  const result = await runGenerateHookVideoJob(wanJob, ctx);
+  assert.equal(result.provider, "reapi");
+  assert.equal(posts, 1);
+  assert.equal(ctx.operation().provider_operation_id, "existing-wan");
+  assert.equal(ctx.operation().status, "output_persisted");
+  assert.equal(ctx.operation().metadata.providerCostUsd, .495);
+});
+
 test("ReAPI credit and moderation rejections are terminal without provider fallback", async () => {
   for (const [status, errorCode, expectedCode] of [[402, 20001, "PROVIDER_INSUFFICIENT_CREDITS"], [400, 80006, "PROVIDER_CONTENT_MODERATION"]]) {
     const ctx = context(); let posts = 0;

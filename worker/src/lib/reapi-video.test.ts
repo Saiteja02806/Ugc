@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildReapiVideoRequest, generateReapiVideoBuffer } from "./reapi-video.js";
-import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderOperationPollingError, ProviderOperationTerminalError, ProviderOutputCollectionError, ProviderRequestNotSubmittedError } from "./generation-provider.js";
 
 const input = { model: "seedance_2_5", prompt: "The creator introduces an app in a calm voice.", aspectRatio: "9:16", durationSeconds: 17, resolution: "720p" } as const;
 const references = { referenceImageUrls: ["https://storage.example.com/portrait.png"], referenceAudioUrls: ["https://storage.example.com/voice.mp3"], referenceAudioDurationSeconds: [8], referenceVideoUrl: "https://storage.example.com/source.mp4", referenceVideoDurationSeconds: 7.923 };
@@ -79,6 +79,56 @@ test("saved pending/completed tasks recover by ID with no POST and refresh their
   }
   await assert.rejects(generateReapiVideoBuffer({ ...input, ...callbacks, providerOperationId: "pending" }, { apiKey, timeoutMs: 0,
     fetchImpl: (async () => json({ status: "processing" })) as typeof fetch }), ProviderOperationPollingError);
+});
+
+test("recovers completed production WAN output from either verified host without submitting or sending credentials to storage", async () => {
+  for (const host of ["cdn.reapi.ai", "file.deepytb.com"]) {
+    const events: string[] = [];
+    const outputUrl = `https://${host}/wan/result.mp4?token=private-signed-token`;
+    await generateReapiVideoBuffer({ ...input, model: "wan_3_0", providerOperationId: "saved-wan", ...callbacks,
+      onOperationSucceeded: async (id, url, usage) => {
+        assert.equal(id, "saved-wan"); assert.equal(url, outputUrl);
+        assert.deepEqual(usage, { generationId: id, costUsd: .495 }); events.push("completed");
+      },
+    }, { apiKey, fetchImpl: (async (url, init) => {
+      assert.notEqual(init?.method, "POST"); assert.equal(init?.redirect, "error");
+      if (String(url).startsWith("https://reapi.ai/api/v1/tasks/")) {
+        assert.equal(new Headers(init?.headers).get("Authorization"), `Bearer ${apiKey}`);
+        return json({ id: "saved-wan", status: "completed", output: { video_urls: [outputUrl] }, usage: { credits: 495 } });
+      }
+      assert.equal(String(url), outputUrl); assert.equal(new Headers(init?.headers).has("Authorization"), false);
+      events.push("download"); return video();
+    }) as typeof fetch });
+    assert.deepEqual(events, ["completed", "download"]);
+  }
+});
+
+test("rejects missing and untrusted outputs without fetching them, retaining safe completion and settlement", async () => {
+  for (const outputUrl of [undefined, "", "http://file.deepytb.com/video.mp4", "https://file.deepytb.com.evil.example/video.mp4",
+    "https://cdn.reapi.ai@evil.example/video.mp4", "https://user:private@file.deepytb.com/video.mp4",
+    "https://file.deepytb.com:8443/video.mp4", "https://127.0.0.1/video.mp4", "https://evil.example/private-token"]) {
+    let completed = 0;
+    await assert.rejects(generateReapiVideoBuffer({ ...input, ...callbacks, providerOperationId: "saved",
+      onOperationSucceeded: async (id, url, usage) => { completed++; assert.equal(id, "saved"); assert.equal(url, undefined); assert.equal(usage?.costUsd, .495); },
+    }, { apiKey, fetchImpl: (async (url) => {
+      assert.equal(String(url), "https://reapi.ai/api/v1/tasks/saved", "untrusted output must never be fetched");
+      return json({ id: "saved", status: "completed", output: { video_urls: outputUrl === undefined ? [] : [outputUrl] }, usage: { credits: 495 } });
+    }) as typeof fetch }), error => error instanceof ProviderOutputCollectionError && error.code === "PROVIDER_OUTPUT_COLLECTION_FAILED" &&
+      !/private-token|evil|private@/.test(error.message));
+    assert.equal(completed, 1);
+  }
+});
+
+test("completed video download failures retain collection diagnostics without leaking raw CDN errors", async () => {
+  let completed = false;
+  await assert.rejects(generateReapiVideoBuffer({ ...input, ...callbacks, providerOperationId: "saved",
+    onOperationSucceeded: async () => { completed = true; },
+  }, { apiKey, fetchImpl: (async (url, init) => {
+    assert.notEqual(init?.method, "POST"); assert.equal(init?.redirect, "error");
+    if (String(url).includes("/tasks/")) return json({ status: "completed", output: { video_urls: ["https://file.deepytb.com/video.mp4"] } });
+    assert.equal(completed, true); throw new Error("private-signed-url private-secret");
+  }) as typeof fetch }), error => error instanceof ProviderOutputCollectionError && error.code === "PROVIDER_OUTPUT_COLLECTION_FAILED" &&
+    /could not be downloaded/.test(error.message) && !/private|still being recovered/.test(error.message));
 });
 
 test("provider rejections remain terminal and raw keys or signed URL diagnostics stay private", async () => {

@@ -977,7 +977,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             {item?.format === "carousel"
-              ? "Edit each slide’s text, upload your own slide images, or choose app screenshots."
+              ? "Edit text, choose backgrounds from your library, upload slide images, or choose app screenshots."
               : "Edit your text and choose a Creative Assets video."}
           </DialogDescription>
         </DialogHeader>

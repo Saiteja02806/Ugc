@@ -1,5 +1,8 @@
 # Media library usability validation — 18 October 2026
 
+Historical review. The approved workflow and local fixes are recorded in
+[the 19 October implementation](media-library-trending-flow-2026-10-19.md).
+
 The basic flow is simple, but the implementation needs clarity and mobile fixes
 before a complete usability sign-off. This is an expert review with isolated
 component browser checks, not a first-time-user study or production acceptance.

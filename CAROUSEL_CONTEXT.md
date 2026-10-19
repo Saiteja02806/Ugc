@@ -1,5 +1,37 @@
 # Carousel System Context
 
+## 2026-10-19 Same-visit finger swipe-back correction (local)
+
+- User clarified the remaining failure: swipe a Reel upward with a finger, then
+  pull/swipe downward to return to it during the same visit. Deployment of browser
+  history recovery does not establish that this native touch gesture works.
+- Reproduced with the actual Trending gallery/deck, Reaction Reel and native
+  Chromium touch events: long upward travel advanced to post 2, but a 120px
+  downward swipe stayed on post 2, despite the previous entry remaining present.
+  Long downward travel worked. The prior browser test used keyboard advance and
+  an 85%-height downward touch, missing this normal shorter reversal.
+- The touch path previously relied on native mandatory scroll-snap selection;
+  it had no explicit distance/speed-based adjacent-post target. Mouse dragging
+  already had a separate release policy. History storage was not this failure.
+- Touch now tracks a single finger through TouchEvents (native scrolling can
+  cancel PointerEvents). Native panning remains; native snap pauses during a
+  deliberate vertical drag. On release, bounded travel of 48–100px depending
+  on viewport, or a directional flick with nontrivial travel, chooses exactly
+  one adjacent post. The existing settle/decision locks perform the hand-off.
+  This is a distinct touch policy; mouse and wheel thresholds are unchanged.
+- Tiny/horizontal/reversed/cancelled gestures, pinch/multitouch, controls,
+  tutorial acknowledgement, missing previous history and disabled interactions
+  cannot create a touch history transition. Taps still use existing double-tap
+  behavior. Resize, blur, item changes and cancellation clean gesture state.
+- Local acceptance covers long/120px up-down sequences on actual Reels at phone
+  and tablet widths, reduced motion, repeated backward/forward history, mouse
+  drag, exact IDs and decision counts. Unit tests execute the real touch handlers
+  for double taps, jitter, direction, cancellation and interaction guards.
+  The fixture accepts existing Reaction presentation telemetry separately from
+  decisions; no paid generation, social publish, save or scheduling is submitted.
+- Release checks now pass: 86 interaction tests, application TypeScript, scoped lint, and the complete actual-gallery browser run including native touch at phone/tablet sizes, reduced motion and desktop mouse reversal. The prior desktop fixture started below the clipped feed; its coordinates now use the visible media/feed intersection with an explicit hit-target check. Product mouse behavior is unchanged.
+- Signed-in production browser access is available during the release. Local Chromium checks remain distinct from deployed-site acceptance and physical-device verification. See `docs/trending-touch-swipe-back-2026-10-19.md`.
+
 ## 2026-10-19 Trending review recovery after navigation or refresh (local)
 
 - Recurring root cause: `usePostReviewHistory` was explicitly visit-local React

@@ -4,6 +4,7 @@ const { webpack } = require('next/dist/compiled/webpack/webpack');
 let playwright; try { playwright = require('playwright'); } catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
 const root = path.resolve(__dirname, '..'), out = path.join(root, '.tmp/trending-history-recovery'); fs.mkdirSync(out, { recursive: true });
 const write = (name, value) => fs.writeFileSync(path.join(out, name), value);
+async function boundedInput(action){let timer;try{return await Promise.race([action(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Native touch input did not complete within 10 seconds')),10000)})]);}finally{clearTimeout(timer);}}
 write('loader.cjs', `const ts=require(${JSON.stringify(require.resolve('typescript'))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
 write('css.cjs', `module.exports=s=>'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default {};';`);
 write('module-css.cjs', String.raw`module.exports=function(s){const prefix=require('node:path').basename(this.resourcePath).replace(/[^a-zA-Z]/g,'')+'_',names={};s=s.replace(/:global\(([^)]+)\)/g,(_,value)=>'GLOBALSTART'+Buffer.from(value).toString('hex')+'GLOBALEND');s=s.replace(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,name)=>{names[name]=prefix+name;return '.'+prefix+name;});s=s.replace(/GLOBALSTART([a-f0-9]+)GLOBALEND/g,(_,value)=>Buffer.from(value,'hex').toString());return 'const style=document.createElement("style");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
@@ -17,6 +18,7 @@ async function main() {
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const items=[1,2,3].map(n=>{const slides=[1,2].map(s=>({headline:'Post '+n+' slide '+s,renderedUrl:'/slide-'+s+'.jpg',slideNumber:s,slideType:s===1?'hook':'body',status:'ready',subtext:null}));return {id:'post-'+n,assignmentId:'assignment-'+n,creativeId:'creative-'+n,feedItemId:'post-'+n,format:'carousel',position:n,readiness:'preview_ready',source:'new',creative:{candidateIndex:n,carouselId:'carousel-'+n,categorySlug:null,generationBatchId:'batch',projectId:'project',readySlideCount:2,selectedAngle:'Post '+n,slideCount:2,slides,status:'completed',thumbnailUrl:slides[0].renderedUrl,updatedAt:'2026-10-19T00:00:00Z'}}});
   const decisions=[], errors=[], writes=[];
+  const reactions=items.map(item=>({...item,format:'reaction',creative:{aspectRatio:'9:16',caption:'Post '+item.position,clipAssetId:'clip',durationSeconds:10,mediaAssetId:'media',previewUrl:'/reel.mp4',primaryReaction:'preview',thumbnailUrl:null,title:'Reel '+item.position}}));
   const server=http.createServer(async(req,res)=>{try{
     const u=new URL(req.url,'http://fixture'),json=value=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));};
     if(u.pathname==='/away')return res.end('<a href="/">Return to Trending</a>');
@@ -24,12 +26,15 @@ async function main() {
     if(u.pathname==='/favicon.ico'){res.writeHead(204);return res.end();}
     if(u.pathname==='/bundle.js'){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(out,'bundle.js')));}
     if(u.pathname==='/style.css'){res.setHeader('Content-Type','text/css');return res.end(css);}
+    if(u.pathname==='/reel.mp4'){res.setHeader('Content-Type','video/mp4');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/hook2-preview.mp4')));}
     if(/^\/slide-[12]\.jpg$/.test(u.pathname)){res.setHeader('Content-Type','image/jpeg');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/slideshow/image_'+(Number(u.pathname[7])-1)+'.jpg')));}
-    if(u.pathname==='/fixture/feed')return json(u.searchParams.get('owner')==='owner-a'?items.filter(item=>!decisions.some(d=>d.assignmentId===item.assignmentId)):[]);
+    if(u.pathname==='/fixture/feed')return json(u.searchParams.get('owner')==='owner-a'?(req.headers.referer?.includes('format=reaction')?reactions:items).filter(item=>!decisions.some(d=>d.assignmentId===item.assignmentId)):[]);
     if(u.pathname==='/fixture/decision'){let body='';for await(const part of req)body+=part;decisions.push(JSON.parse(body));return json({ok:true});}
     if(u.pathname.startsWith('/api/')){
       if(req.method!=='GET')writes.push(u.pathname);
       if(u.pathname==='/api/trending/walkthrough')return json({ok:true,completed:true});
+      if(u.pathname==='/api/trending/reactions/presentations')return json({ok:true});
+      if(u.pathname.startsWith('/api/trending/reactions/')&&u.pathname.endsWith('/edit')){const item=reactions.find(item=>u.pathname.includes(item.creativeId));return json({ok:true,edit:{assignmentId:item.assignmentId,creativeId:item.creativeId,expectedUpdatedAt:'2026-10-19T00:00:00Z',mediaAssetId:'media',previewUrl:'/reel.mp4',state:'ready',text:item.creative.caption}});}
       if(u.pathname.endsWith('/edit'))return json({ok:true,edit:null});
     }
     errors.push('Unexpected request '+u.pathname);res.writeHead(404);res.end();
@@ -42,6 +47,7 @@ async function main() {
   async function key(name){await page.locator('[data-post-interaction-feed]').focus();await page.keyboard.press(name);}
   async function wheelBack(n){const feed=page.locator('[data-post-interaction-feed]');await feed.hover();await page.mouse.wheel(0,-1000);await expectPost(n);}
   try{
+    if (!process.argv.includes('--desktop-only')) {
     await page.goto(origin);await expectPost(1);
     await key('ArrowDown');await expectPost(2);await key('ArrowDown');await expectPost(3);
     await page.waitForFunction(()=>JSON.parse(localStorage.getItem('ugc:trending-review-history:v1:owner-a'))?.entries.length===2);
@@ -62,7 +68,54 @@ async function main() {
     await blockedPage.getByText('Browser storage is unavailable. Previous posts can only be kept during this visit.',{exact:true}).waitFor();
     await blockedPage.locator('[data-post-interaction-feed]').focus();await blockedPage.keyboard.press('ArrowDown');await blockedPage.locator('[data-post-feed-active=true][data-post-feed-item="post-2"]').waitFor();
     await blockedPage.locator('[data-post-interaction-feed]').focus();await blockedPage.keyboard.press('ArrowUp');await blockedPage.locator('[data-post-feed-active=true][data-post-feed-item="post-1"]').waitFor();assert.equal(decisions.length,1);
-    await blocked.close();assert.deepEqual(errors,[]);console.log('PASS: actual Trending gallery/deck: navigate away/back, refresh selected history, scroll backward, browse forward without replay, final-post recovery, account isolation, corrupt/blocked storage, StrictMode.');
+    await blocked.close();
+    // Reproduce the user's actual sequence: native finger swipe UP to retire a
+    // reel, then DOWN to revisit it. Keyboard-created history is insufficient.
+    for(const scenario of [{distance:'long',width:390},{distance:'short',width:390},{distance:'short',width:390,reducedMotion:'reduce'},{distance:'short',width:768}]){
+      const {distance,width,reducedMotion}=scenario;
+      decisions.length=0;
+      const mobile=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,...(reducedMotion?{reducedMotion}:{})});
+      const p=await mobile.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(origin+'/?format=reaction');
+      const feed=p.locator('[data-post-interaction-feed]');await feed.waitFor();
+      await p.waitForFunction(()=>document.querySelector('[data-post-interaction-feed]')?.getAttribute('aria-busy')==='false');
+      const cdp=await mobile.newCDPSession(p);
+      const current=()=>feed.locator('[data-post-feed-active=true]').getAttribute('data-post-feed-item');
+      async function swipe(direction){
+        const b=await feed.boundingBox(), target=await feed.locator('[data-post-feed-active=true] [data-post-like-target]').boundingBox();
+        const x=target.x+target.width*.7, length=distance==='long'?b.height*.72:120;
+        const y=direction<0?Math.min(b.y+b.height-30,target.y+target.height-40):Math.max(b.y+25,target.y+35);
+        await boundedInput(()=>cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]}));
+        for(let step=1;step<=8;step++){await boundedInput(()=>cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+direction*length*step/8}]}));await p.waitForTimeout(20);}
+        await boundedInput(()=>cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}));
+        await p.waitForTimeout(900);
+        console.log('touch',distance,width,reducedMotion||'normal',direction,await current(),await feed.evaluate(e=>({top:e.scrollTop,height:e.clientHeight,previous:e.dataset.postHasPrevious,busy:e.getAttribute('aria-busy')})));
+      }
+      await swipe(-1);assert.equal(await current(),'post-2',distance+' finger-up must advance exactly once');
+      await swipe(1);assert.equal(await current(),'post-1',distance+' finger-down must return to the exact reel');
+      assert.equal(decisions.length,1,'Backward touch must not repeat the skip');
+      await swipe(-1);assert.equal(await current(),'post-2');assert.equal(decisions.length,1,'Forward history touch must not skip twice');
+      await swipe(-1);assert.equal(await current(),'post-3');assert.equal(decisions.length,2);
+      await swipe(1);assert.equal(await current(),'post-2');await swipe(1);assert.equal(await current(),'post-1');
+      assert.equal(decisions.length,2);assert.ok(writes.every(url=>url==='/api/trending/reactions/presentations'),'Touch history must not save or schedule');
+      await p.screenshot({path:path.join(out,'touch-'+distance+'-'+width+'-'+(reducedMotion||'normal')+'-returned-reel.png')});
+      await mobile.close();
+    }
+    }
+    decisions.length=0;
+    const desktop=await browser.newContext({viewport:{width:1366,height:900}}), dp=await desktop.newPage();dp.on('pageerror',e=>errors.push(e.message));
+    await dp.goto(origin+'/?format=reaction');const df=dp.locator('[data-post-interaction-feed]');await df.waitFor();
+    await dp.waitForFunction(()=>{const feed=document.querySelector('[data-post-interaction-feed]');if(!feed||feed.getAttribute('aria-busy')!=='false')return false;for(let e=feed;e;e=e.parentElement)if(Number(getComputedStyle(e).opacity)<.999)return false;return feed.querySelector('[data-post-feed-active=true] video')?.readyState>=2});
+    async function mouseDrag(direction){const b=await df.boundingBox(),m=await df.locator('[data-post-feed-active=true] [data-post-like-target]').boundingBox();
+      // The portrait media can extend beyond the clipped feed at desktop sizes.
+      // Start inside the visible intersection, as a real user must.
+      const left=Math.max(b.x,m.x),right=Math.min(b.x+b.width,m.x+m.width),top=Math.max(b.y,m.y),bottom=Math.min(b.y+b.height,m.y+m.height);
+      const x=left+(right-left)*.7,y=direction<0?bottom-40:top+40;
+      assert.ok(await dp.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('[data-post-like-target]'),{x,y}),'Mouse drag must start on visible Reel content');
+      await dp.mouse.move(x,y);await dp.mouse.down();await dp.mouse.move(x,y+direction*b.height*.6,{steps:8});await dp.mouse.up();await dp.waitForTimeout(900);
+    }
+    await mouseDrag(-1);assert.equal(await df.locator('[data-post-feed-active=true]').getAttribute('data-post-feed-item'),'post-2');
+    await mouseDrag(1);assert.equal(await df.locator('[data-post-feed-active=true]').getAttribute('data-post-feed-item'),'post-1');assert.equal(decisions.length,1);await desktop.close();
+    assert.deepEqual(errors,[]);console.log(process.argv.includes('--desktop-only')?'PASS: actual Trending Reaction Reel desktop mouse advance/reversal without duplicate decisions.':'PASS: actual Trending gallery/deck: navigate away/back, refresh selected history, scroll backward, browse forward without replay, final-post recovery, account isolation, corrupt/blocked storage, native touch reversal, StrictMode.');
   }finally{await browser.close();await new Promise(r=>server.close(r));}
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

@@ -7,6 +7,7 @@ const received = [];
 const referenceAudioCalls = [];
 mock.module(new URL("../../dist/lib/explore-generated-reference-audio.js", import.meta.url), { namedExports: {
   applyGeneratedReferenceAudio: async (video, reference) => { referenceAudioCalls.push({ video, reference }); return video; },
+  silenceGeneratedVideo: async () => assert.fail("Historical jobs must retain their recorded sound behavior"),
 } });
 const buffer = Buffer.from("fixture-video");
 let outputBuffer = buffer;

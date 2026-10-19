@@ -1,4 +1,5 @@
 import "server-only";
+import { buildExploreGenerationPrompt, exploreGenerationCompatibility, parseExploreGenerationContract, type ExploreGenerationContract } from "@/worker/src/lib/explore-generation-contract";
 
 import { NextResponse } from "next/server";
 
@@ -48,6 +49,7 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
+  exploreGeneration?: unknown;
   exploreFormat?: unknown;
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
@@ -72,6 +74,7 @@ type GenerateVideoRequest = {
 };
 
 function referenceSoundtrackInput(body: GenerateVideoRequest | null) {
+  if (parseExploreGenerationContract(body?.exploreGeneration)?.sound === "off") return {};
   const reference = getGenerationReferenceSoundtrack({ referenceId: body?.referenceId, referenceType: body?.referenceType, exploreFormat: body?.exploreFormat });
   return reference ? { referenceSoundtrack: { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 } } : {};
 }
@@ -208,7 +211,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   let referenceVideoDurationSeconds = cleanReferenceVideoDuration(
     body?.referenceVideoDurationSeconds,
   );
-  const aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
+  let aspectRatio = parseAIStudioVideoAspectRatio(body?.aspectRatio);
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
   if (body?.model !== undefined && !AI_STUDIO_VIDEO_MODELS.some((value) => value === body?.model)) {
     return NextResponse.json({ error: "Choose a supported video model.", ok: false }, { status: 400 });
@@ -222,14 +225,29 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Choose the workflow's supported video model.", ok: false }, { status: 400 });
   }
   const useGalleryVideoReference = body?.useGalleryVideoReference === true;
+  let exploreGeneration: ExploreGenerationContract | undefined;
+  try {
+    const supplied = parseExploreGenerationContract(body?.exploreGeneration);
+    if (supplied && !body?.exploreFormat) throw new Error("These operation settings belong to Hook and Wall of Text.");
+    if (body?.exploreFormat) {
+      const operation = referenceVideoUrl || useGalleryVideoReference ? "source_edit" : "generate";
+      if (supplied && supplied.operation !== operation) throw new Error("The operation must match the selected source. Remove the video to create a new clip.");
+      exploreGeneration = supplied ?? { version: 1 as const, operation: operation as "source_edit" | "generate", sound: "off" as const };
+      body.exploreGeneration = exploreGeneration;
+      if (operation === "source_edit" && model === "wan_3_0") throw new Error(exploreGenerationCompatibility(model, true) ?? "Choose a source-edit model.");
+      if (exploreGeneration.sound === "off" && referenceAudioUrls.length) throw new Error("Turn sound on to use an audio reference, or remove the audio reference.");
+    }
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Choose valid video settings." }, { status: 400 });
+  }
   if ((body?.useGalleryVideoReference !== undefined && typeof body.useGalleryVideoReference !== "boolean") ||
       (body?.referenceVideoMode !== undefined && body.referenceVideoMode !== "edit")) {
     return NextResponse.json({ error: "Choose a supported video reference mode.", ok: false }, { status: 400 });
   }
-  const referenceVideoMode = body?.referenceVideoMode === "edit" || (useGalleryVideoReference && model === "google_omni") ||
+  const referenceVideoMode = exploreGeneration?.operation === "source_edit" || body?.referenceVideoMode === "edit" || (useGalleryVideoReference && model === "google_omni") ||
     Boolean(body?.exploreFormat && model === "google_omni" && referenceVideoUrl && referenceImageUrls.length)
     ? "edit" : undefined;
-  if (referenceVideoMode && (!body?.exploreFormat || model !== "google_omni" || (!referenceVideoUrl && !useGalleryVideoReference))) {
+  if (referenceVideoMode && (!body?.exploreFormat || (model !== "google_omni" && !(model === "seedance_2_5" && exploreGeneration?.operation === "source_edit")) || (!referenceVideoUrl && !useGalleryVideoReference))) {
     return NextResponse.json({ error: "Use Google Omni in a video workflow to edit a video with image references.", ok: false }, { status: 400 });
   }
   if (useGalleryVideoReference) {
@@ -252,7 +270,12 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     }
   }
   const isFormatVideoReference = Boolean(body?.exploreFormat && referenceVideoUrl && model === "google_omni");
-  const durationSeconds = referenceVideoMode ? Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
+  if (exploreGeneration) {
+    const compatibilityError = exploreGenerationCompatibility(model, exploreGeneration.operation === "source_edit", referenceVideoDurationSeconds);
+    if (compatibilityError) return NextResponse.json({ ok: false, error: compatibilityError }, { status: 400 });
+  }
+  const durationSeconds = exploreGeneration?.operation === "source_edit" ? Math.max(1, Math.ceil(referenceVideoDurationSeconds ?? 3))
+    : referenceVideoMode ? Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
     : isFormatVideoReference ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
   if (!referenceVideoMode && !isFormatVideoReference && body?.durationSeconds !== undefined && (
@@ -312,8 +335,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (body?.exploreFormat && referenceAudioUrls.length && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
   }
-  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS || referenceImageUrls.length > 5)) {
-    return NextResponse.json({ error: "Use up to five images with a reference video up to 10 seconds.", ok: false }, { status: 400 });
+  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > (model === "seedance_2_5" ? 30 : OMNI_EDIT_MAX_VIDEO_SECONDS) || referenceImageUrls.length > 5)) {
+    return NextResponse.json({ error: `Use up to five images with a source video up to ${model === "seedance_2_5" ? 30 : OMNI_EDIT_MAX_VIDEO_SECONDS} seconds.`, ok: false }, { status: 400 });
   }
   if (isFormatVideoReference && !referenceVideoMode && (referenceImageUrls.length || !referenceVideoDurationSeconds || referenceVideoDurationSeconds > 3)) {
     return NextResponse.json({ error: "Choose one optional image or a video reference up to 3 seconds.", ok: false }, { status: 400 });
@@ -376,7 +399,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
-  if (model === "google_omni" && (durationSeconds < 3 || durationSeconds > 10)) {
+  if (model === "google_omni" && !referenceVideoMode && (durationSeconds < 3 || durationSeconds > 10)) {
     return NextResponse.json(
       { error: "Google Omni duration must be between 3 and 10 seconds.", ok: false },
       { status: 400 },
@@ -393,7 +416,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
-  if (model === "seedance_2_5" && body?.durationSeconds !== undefined && (
+  if (model === "seedance_2_5" && !referenceVideoMode && body?.durationSeconds !== undefined && (
     typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) ||
     body.durationSeconds < 4 || body.durationSeconds > 30
   )) {
@@ -430,7 +453,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
 
   const promptLengthError = getAIStudioPromptLengthError(
-    prompt,
+    exploreGeneration ? buildExploreGenerationPrompt(prompt, exploreGeneration, referenceImageUrls.length) : prompt,
     getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined }),
   );
 
@@ -485,6 +508,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         return NextResponse.json({ error: reference.kind === "audio" ? "Choose an MP3 or WAV reference audio file." : "Choose an MP4 or MOV reference video file.", ok: false }, { status: 400 });
       }
       if (reference.kind === "audio" && (model === "wan_3_0" || model === "seedance_2_5")) referenceAudioDurationSeconds.push(asset.duration_seconds);
+      if (reference.kind === "video" && exploreGeneration?.operation === "source_edit" && (asset.ratio === "9:16" || asset.ratio === "16:9")) aspectRatio = asset.ratio;
     }
   } catch {
     return NextResponse.json({ error: "Could not verify your reference uploads. No generation was started. Try again after your files are available.", ok: false }, { status: 503 });
@@ -520,6 +544,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       userId: user.uid,
       inputs: Array.from({ length: quantity }, (_, index) => ({
         aspectRatio, avatarImageUrl, referenceImageUrls, referenceAudioUrls,
+        ...(exploreGeneration ? { exploreGeneration } : {}),
         ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
         ...(referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds } : {}),
         ...(referenceVideoAssetId ? { referenceVideoAssetId } : {}),
@@ -587,6 +612,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           referenceUrl:
             useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
           ...referenceSoundtrackInput(body),
+          ...(exploreGeneration ? { exploreGeneration } : {}),
           resolution,
           userId: user.uid,
           videoId,

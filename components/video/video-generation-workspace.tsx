@@ -1,4 +1,5 @@
 "use client";
+import { exploreGenerationCompatibility } from "@/worker/src/lib/explore-generation-contract";
 
 import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
 import { useGenerationDiscovery } from "@/components/generation/use-generation-discovery";
@@ -327,6 +328,13 @@ export function VideoGenerationStudioPanel({
   const earlierRequests = useGenerationDiscovery({ ownerId: user?.uid ?? null, kind: "video", scope: workflowFormat ?? "studio", enabled: active && !recreateView?.preview, onRecovered: restoreDiscoveredJobs });
   const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
+  const [generationSound, setGenerationSound] = useState(false);
+  const soundOwner = user?.uid ?? null;
+  const [previousSoundOwner, setPreviousSoundOwner] = useState(soundOwner);
+  if (previousSoundOwner !== soundOwner) {
+    setPreviousSoundOwner(soundOwner);
+    setGenerationSound(false);
+  }
   const [aspectRatio, setAspectRatio] =
     useState<AIStudioVideoAspectRatio>("9:16");
   const [quantity, setQuantity] =
@@ -464,16 +472,16 @@ export function VideoGenerationStudioPanel({
   const galleryVideoReference = workflow ? recreateView?.styleVideo : undefined;
   useEffect(() => { activeGalleryVideoUrl.current = galleryVideoReference?.url; }, [galleryVideoReference?.url]);
   const uploadedReferenceVideo = galleryVideoReference ? null : uploadedVideoReference;
-  const hasWorkflowVideoReference = Boolean(workflow && model === "google_omni" && (uploadedReferenceVideo || galleryVideoReference));
+  const hasWorkflowVideoReference = Boolean(workflow && (uploadedReferenceVideo || galleryVideoReference));
   const sourceDuration = uploadedReferenceVideo?.asset.durationSeconds
     ?? (galleryVideoMetadata?.url === galleryVideoReference?.url ? galleryVideoMetadata?.duration : null)
     ?? galleryVideoReference?.duration;
-  const sourceDurationLabel = sourceDuration ? `${Math.max(3, Math.round(sourceDuration))} sec` : "Reading…";
+  const sourceDurationLabel = sourceDuration ? `${Number(sourceDuration.toFixed(2))} sec` : "Reading…";
   function reportGalleryVideoDuration(url: string, duration: number) {
     if (url !== activeGalleryVideoUrl.current || !Number.isFinite(duration) || duration <= 0) return;
     setGalleryVideoMetadata(previous => previous?.url === url && previous.duration === duration ? previous : { url, duration });
   }
-  const billedDuration = hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.round(sourceDuration)) : durationSeconds;
+  const billedDuration = hasWorkflowVideoReference && sourceDuration ? Math.max(1, Math.ceil(sourceDuration)) : durationSeconds;
   const creditsPerVideo = billedDuration * creditsPerSecond;
   const requiredCredits = creditsPerVideo * quantity;
   const hasInsufficientCredits =
@@ -493,18 +501,20 @@ export function VideoGenerationStudioPanel({
     ...additionalImageReferences,
   ];
   const hasVideoReference = Boolean(uploadedReferenceVideo || galleryVideoReference);
-  const referencePolicyOptions = { allowOmniVideo: Boolean(workflow), hasTimedReferences: hasVideoReference || audioReferences.length > 0 };
+  const effectiveAudioReferences = workflow && !generationSound ? [] : audioReferences;
+  const referencePolicyOptions = { allowOmniVideo: Boolean(workflow), hasTimedReferences: hasVideoReference || effectiveAudioReferences.length > 0 };
   const referencePolicy = getVideoReferencePolicy(model, referencePolicyOptions);
-  const workflowImageLimit = Math.max(0, referencePolicy.maxFiles - Number(hasVideoReference) - audioReferences.length);
+  const workflowImageLimit = Math.max(0, referencePolicy.maxFiles - Number(hasVideoReference) - effectiveAudioReferences.length);
   const referenceLimitError = referenceImages.length > workflowImageLimit ? `Use up to ${workflowImageLimit} image references with these inputs. Remove an image before generating.` : null;
-  const referenceTypeError = getVideoReferenceTypeError(model, hasVideoReference, audioReferences.length > 0, referencePolicyOptions);
-  const timedReferenceError = referenceTypeError ?? (audioReferences.length > 1 ? "Use one audio reference. Remove an audio before generating." : null)
+  const referenceTypeError = getVideoReferenceTypeError(model, hasVideoReference, effectiveAudioReferences.length > 0, referencePolicyOptions);
+  const timedReferenceError = referenceTypeError ?? (effectiveAudioReferences.length > 1 ? "Use one audio reference. Remove an audio before generating." : null)
     ?? (hasVideoReference && (uploadedReferenceVideo || sourceDuration != null)
       ? getVideoTimedReferenceError(model, "video", sourceDuration, uploadedReferenceVideo?.asset.fileSizeBytes ?? undefined, referencePolicyOptions) : null)
-    ?? audioReferences.map(audio => getVideoTimedReferenceError(model, "audio", audio.asset.durationSeconds, audio.asset.fileSizeBytes ?? undefined, referencePolicyOptions)).find(Boolean) ?? null;
+    ?? effectiveAudioReferences.map(audio => getVideoTimedReferenceError(model, "audio", audio.asset.durationSeconds, audio.asset.fileSizeBytes ?? undefined, referencePolicyOptions)).find(Boolean) ?? null;
   const imageReferenceError = referenceImages.some(image => image.asset.fileSizeBytes != null && image.asset.fileSizeBytes > referencePolicy.maxImageBytes)
     ? `Use reference images up to ${referencePolicy.maxImageBytes / 1024 ** 2} MB with these inputs. Remove or replace the oversized image.` : null;
-  const generationReferenceError = referenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError;
+  const operationError = workflow ? exploreGenerationCompatibility(model, hasWorkflowVideoReference, sourceDuration) : null;
+  const generationReferenceError = referenceError ?? operationError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError;
   const activeReferenceImageUrl = uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null) ?? null;
   const promptMaxLength = getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(uploadedReferenceVideo || galleryVideoReference), referenceVideoMode: hasWorkflowVideoReference ? "edit" : undefined, format: workflowFormat === "slideshow" ? undefined : workflowFormat });
   const referenceFiles = [...referenceImages, ...(uploadedVideoReference ? [uploadedVideoReference] : []), ...audioReferences];
@@ -531,7 +541,7 @@ export function VideoGenerationStudioPanel({
       if (!selection && !changedKind) { setUploadedReference(null); setAdditionalImageReferences([]); setUploadedVideoReference(null); }
       if (selection?.kind === "video") {
         recreateView?.onClearReference?.();
-        if (model === "google_omni" && (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9")) setAspectRatio(selection.asset.ratio);
+        if (selection.asset.ratio === "9:16" || selection.asset.ratio === "16:9") setAspectRatio(selection.asset.ratio);
       }
       return;
     }
@@ -923,7 +933,7 @@ export function VideoGenerationStudioPanel({
       setActionError(`${getAIStudioVideoModelLabel(model)} is temporarily unavailable. Choose another video model.`);
       return;
     }
-    if (!pendingSubmission && hasWorkflowVideoReference && sourceDuration && sourceDuration > 10) {
+    if (!pendingSubmission && hasWorkflowVideoReference && sourceDuration && sourceDuration > (model === "seedance_2_5" ? 30 : 10)) {
       setActionError("Upload a trimmed reference video up to 10 seconds. The selected clip will not be shortened automatically.");
       return;
     }
@@ -954,11 +964,12 @@ export function VideoGenerationStudioPanel({
         onStored(saved) { setPendingSubmission(saved); submissionKeyRef.current = saved.requestKey; }, input: {
           aspectRatio,
           exploreFormat: workflow?.format,
+          ...(workflow ? { exploreGeneration: { version: 1, operation: hasWorkflowVideoReference ? "source_edit" : "generate", sound: generationSound ? "on" : "off" } } : {}),
           avatarImageUrl: activeReferenceImageUrl,
           referenceImageUrls: referenceImages.length ? referenceImages.map((image) => image.asset.url) : activeReferenceImageUrl ? [activeReferenceImageUrl] : [],
-          referenceAudioUrls: audioReferences.map((audio) => audio.asset.url),
-          referenceAudioAssetIds: audioReferences.map((audio) => audio.asset.id),
-          durationSeconds: hasWorkflowVideoReference && sourceDuration ? Math.max(3, Math.round(sourceDuration)) : durationSeconds,
+          referenceAudioUrls: workflow && !generationSound ? [] : audioReferences.map((audio) => audio.asset.url),
+          referenceAudioAssetIds: workflow && !generationSound ? [] : audioReferences.map((audio) => audio.asset.id),
+          durationSeconds: hasWorkflowVideoReference && sourceDuration ? Math.max(1, Math.ceil(sourceDuration)) : durationSeconds,
           model,
           prompt: trimmedPrompt,
           quantity,
@@ -1183,7 +1194,7 @@ export function VideoGenerationStudioPanel({
                 setResolution(value as AIStudioVideoResolution);
               }}
             />);
-  const durationSetting = hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" title="Auto-selected to the nearest second, with a three-second minimum. Omni editing preserves the original source timeline; this selection sets the credit estimate." className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output><small className={creation.referenceTimingHint}>{sourceDuration ? `${Number(sourceDuration.toFixed(1))}s reference · source timing kept` : "Reading reference length…"}</small></div> : workflow ? (
+  const durationSetting = hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" title="Source timing is preserved. The credit estimate rounds the measured source length up to a whole second." className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output><small className={creation.referenceTimingHint}>{sourceDuration ? "Source timing kept" : "Reading reference length…"}</small></div> : workflow ? (
     <WorkflowDurationControl
       key={model}
       ariaLabel="Video duration"
@@ -1344,7 +1355,7 @@ export function VideoGenerationStudioPanel({
       <AiStudioComposer
         portalTarget={workflow?.controlsTarget}
         actionsTarget={workflow?.actionsTarget}
-        promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; the image supplies appearance." : workflow.format === "wall_text" ? "Describe the background; add your text in Edit." : "Scene, action and spoken words in quotes." : undefined}
+        promptHelper={workflow ? hasWorkflowVideoReference ? "Describe your changes. The video supplies actions; portraits guide the face." : workflow.format === "wall_text" ? "Describe the background; add your text in Edit." : generationSound ? "Scene, action and spoken words in quotes." : "Describe the scene, action and appearance. Sound is off." : undefined}
         promptLabel={workflow ? "Your instructions" : undefined}
         promptSupplement={suggestedReferencePrompt && gallerySelectionKey ? <section aria-label="Reference prompt" className={cn(creation.referencePromptSection, "mb-3 space-y-2 rounded-lg border border-border p-3")}>
           <div className="flex items-center justify-between gap-2">
@@ -1367,7 +1378,7 @@ export function VideoGenerationStudioPanel({
         estimatedCredits={workflow && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} maxImageBytes={referencePolicy.maxImageBytes} videoSelection={uploadedReferenceVideo} audioSelection={audioReferences[0] ?? null} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={referencePolicy.allowedKinds.includes("video")} audioInputEnabled={referencePolicy.allowedKinds.includes("audio")} maxVideoDuration={referencePolicy.maxVideoDuration} maxAudioDuration={referencePolicy.maxAudioDuration} maxVideoBytes={referencePolicy.maxVideoBytes} maxAudioBytes={referencePolicy.maxAudioBytes} preserveVideoTiming={model === "google_omni"} /> : undefined}
+        referenceControls={workflow ? <FormatGenerationReferences key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} maxImageBytes={referencePolicy.maxImageBytes} videoSelection={uploadedReferenceVideo} audioSelection={generationSound ? audioReferences[0] ?? null : null} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={recreateView?.styleVideo} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={referencePolicy.allowedKinds.includes("video")} audioInputEnabled={generationSound && referencePolicy.allowedKinds.includes("audio")} maxVideoDuration={referencePolicy.maxVideoDuration} maxAudioDuration={referencePolicy.maxAudioDuration} maxVideoBytes={referencePolicy.maxVideoBytes} maxAudioBytes={referencePolicy.maxAudioBytes} preserveVideoTiming={hasWorkflowVideoReference} description={`${hasWorkflowVideoReference ? "Edit source video · portraits guide the face; source scene and timing stay." : "Create a new video · images and your prompt guide the result."} ${generationSound ? "Sound on: generated sound or the selected reference’s music is included." : "Sound off: the generated clip will be silent."}`} /> : undefined}
         compact={Boolean(recreateView)}
         accessMessage={!generationLocked && generationReferenceError ? generationReferenceError : workflow && !generationLocked && !hasInsufficientCredits ? null : composerMessage}
         active={workflow?.controlsActive ?? active}
@@ -1493,8 +1504,8 @@ export function VideoGenerationStudioPanel({
               disabled={generationLocked && !recreateView?.preview || isGenerating || referenceFilesPending || creatorReferenceUploadPending}
               size="sm"
               options={AI_STUDIO_VIDEO_MODELS.filter(value => !workflow || value === "google_omni" || value === "seedance_2_5" || value === "wan_3_0").map((value) => ({
-                label: `${getAIStudioVideoModelLabel(value)}${isAIStudioVideoModelAvailable(value) ? "" : " · temporarily unavailable"}`,
-                disabled: !isAIStudioVideoModelAvailable(value),
+                label: `${getAIStudioVideoModelLabel(value)}${!isAIStudioVideoModelAvailable(value) ? " · temporarily unavailable" : workflow && exploreGenerationCompatibility(value, hasWorkflowVideoReference, sourceDuration) ? " · incompatible with source" : ""}`,
+                disabled: !isAIStudioVideoModelAvailable(value) || Boolean(workflow && exploreGenerationCompatibility(value, hasWorkflowVideoReference, sourceDuration)),
                 value,
               }))}
               value={model}
@@ -1502,6 +1513,11 @@ export function VideoGenerationStudioPanel({
                 if (isGenerating || referenceFilesPending || creatorReferenceUploadPending) return;
                 submissionKeyRef.current = null;
                 const nextModel = value as AIStudioVideoModel;
+                const incompatibility = workflow ? exploreGenerationCompatibility(nextModel, hasWorkflowVideoReference, sourceDuration) : null;
+                if (incompatibility || !isAIStudioVideoModelAvailable(nextModel)) {
+                  setActionError(incompatibility ?? "This model is temporarily unavailable.");
+                  return;
+                }
                 if (!getAIStudioVideoDurations(nextModel).includes(durationSeconds)) {
                   setDurationSeconds(5);
                 }
@@ -1516,6 +1532,9 @@ export function VideoGenerationStudioPanel({
             />
             {workflow ? durationSetting : qualitySetting}
             {workflow ? qualitySetting : durationSetting}
+            {workflow ? <div className={creation.settingField}><span>Sound</span><Button type="button" variant="outline" size="sm" role="switch" aria-checked={generationSound} aria-label="Generated video sound" disabled={generationLocked || isGenerating || Boolean(pendingSubmission)} onClick={() => { submissionKeyRef.current = null; setGenerationSound(value => !value); }}>
+              {generationSound ? <Volume2 className="size-3.5" aria-hidden="true" /> : <VolumeX className="size-3.5" aria-hidden="true" />} Sound {generationSound ? "on" : "off"}
+            </Button></div> : null}
             {workflow ? null : <CreatorReferencePicker
               active={active}
               iconOnly
@@ -1554,11 +1573,12 @@ export function VideoGenerationStudioPanel({
               size="sm"
               value={aspectRatio}
               onChange={(value) => {
+                if (hasWorkflowVideoReference) return;
                 submissionKeyRef.current = null;
                 setAspectRatio(value as AIStudioVideoAspectRatio);
               }}
               allowedRatios={["9:16", "16:9"]}
-              disabled={generationLocked && !recreateView?.preview || isGenerating}
+              disabled={hasWorkflowVideoReference || generationLocked && !recreateView?.preview || isGenerating}
             />
           </>
         }

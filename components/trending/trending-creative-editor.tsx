@@ -2,6 +2,7 @@
 import localFont from "next/font/local";
 import { CarouselManualText, CarouselTextControls } from "./carousel-text-controls";
 import { createCarouselManualLayout, resolveCarouselManualTextStyle } from "@/lib/carousel/manual-text";
+import { applyCarouselBodyTextEdit, getCarouselTextOverflowSlides, type CarouselTextEditScope } from "@/lib/trending/carousel-body-text-edit";
 import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
 import { getCarouselEditHookFontSize } from "@/lib/carousel/edit-cover-typography";
 import { CAROUSEL_BODY_FONT_WEIGHT, CAROUSEL_COVER_FONT_WEIGHT, CAROUSEL_HEADING_FONT_WEIGHT, CAROUSEL_STATEMENT_FONT_WEIGHT, CAROUSEL_HOOK_LINE_HEIGHT, CAROUSEL_TEXT_OUTLINE_WIDTH } from "@/lib/carousel/cover-typography";
@@ -221,6 +222,7 @@ export function TrendingCreativeEditor({
   const [initialContent, setInitialContent] =
     useState<TrendingCreativeEditContent | null>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [textEditScope, setTextEditScope] = useState<CarouselTextEditScope>("body");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -272,6 +274,7 @@ export function TrendingCreativeEditor({
     setError(null);
     groupRequestRef.current += 1;
     setActiveSlideIndex(0);
+    setTextEditScope("body");
     setProtectedHookPreviewUrl(null);
     setProductAssets([]);
     slideImageBusyRef.current = false;
@@ -1000,6 +1003,7 @@ export function TrendingCreativeEditor({
                   sourcePreview={sourcePreview}
                   activeSlideIndex={activeSlideIndex}
                   slideImagePreview={slideImagePreview}
+                  textEditScope={textEditScope}
                   onContentChange={next => { if (!saving && !slideImageBusyRef.current) setContent(next); }}
                 />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
@@ -1013,6 +1017,8 @@ export function TrendingCreativeEditor({
                 <fieldset disabled={saving || slideImageUploading} className="contents"><EditorFields
                   activeSlideIndex={activeSlideIndex}
                   content={content}
+                  textEditScope={textEditScope}
+                  onTextEditScopeChange={setTextEditScope}
                   onActiveSlideIndexChange={setActiveSlideIndex}
                   onContentChange={setContent}
                 /></fieldset>
@@ -1164,6 +1170,7 @@ export function EditorPreview({
   onContentChange,
   sourcePreview,
   slideImagePreview = null,
+  textEditScope = "slide",
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
@@ -1173,6 +1180,7 @@ export function EditorPreview({
   item: TrendingFeedItem;
   onContentChange: (content: TrendingCreativeEditContent) => void;
   slideImagePreview?: CarouselSlideImagePreview | null;
+  textEditScope?: CarouselTextEditScope;
   sourcePreview: {
     thumbnailUrl: string | null;
     title: string;
@@ -1214,6 +1222,7 @@ export function EditorPreview({
       ? createStructure2EditorLayout(slide)
       : null;
     const manualLayout = slide.textStyle ? createCarouselManualLayout(slide) : null;
+    const movementLayout = createCarouselManualLayout({ ...slide, textStyle: { ...resolveCarouselManualTextStyle(slide), canvasEdgePlacement: true } });
     const previewPosition = manualLayout?.position ?? structure2Layout?.storyPosition ?? slide.textPosition;
     const supportingText = slide.subtext;
     const hasHeading = isStructure2
@@ -1250,22 +1259,16 @@ export function EditorPreview({
           enabled={!showExactRender}
           format={slide.renderFormat}
           structureId={slide.structureId}
-          bounds={manualLayout?.bounds}
-          layoutFits={manualLayout?.fits}
+          bounds={movementLayout.bounds}
+          layoutFits={movementLayout.fits}
           position={previewPosition}
           onPositionChange={(textPosition) =>
-            onContentChange({
-              ...content,
-              slides: content.slides.map((entry) =>
-                entry.slideId === slide.slideId
-                  ? {
-                      ...entry,
-                      textPosition,
-                      textStyle: resolveCarouselManualTextStyle(entry),
-                    }
-                  : entry,
-              ),
-            })
+            onContentChange(applyCarouselBodyTextEdit(content, { ...confirmedSlide, textPosition: {
+              x: Math.abs(textPosition.x - movementLayout.bounds.minX) < .00001 ? 0 : Math.abs(textPosition.x - movementLayout.bounds.maxX) < .00001 ? 1 : textPosition.x,
+              y: Math.abs(textPosition.y - movementLayout.bounds.minY) < .00001 ? 0 : Math.abs(textPosition.y - movementLayout.bounds.maxY) < .00001 ? 1 : textPosition.y,
+            },
+              textStyle: { ...resolveCarouselManualTextStyle(confirmedSlide), canvasEdgePlacement: true },
+            }, textEditScope))
           }
         >
           {showExactRender ? (
@@ -1998,15 +2001,21 @@ export function EditorFields({
   content,
   onActiveSlideIndexChange,
   onContentChange,
+  textEditScope = "slide",
+  onTextEditScopeChange,
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
   onActiveSlideIndexChange: (index: number) => void;
   onContentChange: (content: TrendingCreativeEditContent) => void;
+  textEditScope?: CarouselTextEditScope;
+  onTextEditScopeChange?: (scope: CarouselTextEditScope) => void;
 }) {
   if (content.format === "carousel") {
     const slide = content.slides[activeSlideIndex];
     if (!slide) return null;
+    const overflowSlides = getCarouselTextOverflowSlides(content);
+    const individualBodyStyle = Boolean(slide.textStyle && resolveCarouselManualTextStyle(slide).bodyStyleMode === "individual");
 
     const updateSlide = (
       field: "ctaText" | "headline" | "subtext",
@@ -2090,7 +2099,16 @@ export function EditorFields({
             </Field>
           ) : null}
         </FieldGroup>
-        <CarouselTextControls slide={slide} onChange={next => onContentChange({ ...content, slides: content.slides.map(entry => entry.slideId === next.slideId ? next : entry) })} />
+        {slide.slideNumber !== 1 && content.slides.length > 2 && onTextEditScopeChange ? <div className="mt-4 rounded-lg border border-border px-3 py-2">
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="accent-primary" checked={textEditScope === "body" && !individualBodyStyle} onChange={event => {
+            onTextEditScopeChange(event.target.checked ? "body" : "slide");
+            if (event.target.checked && individualBodyStyle) onContentChange({ ...content, slides: content.slides.map(entry => entry.slideId === slide.slideId ? { ...entry, textStyle: { ...resolveCarouselManualTextStyle(entry), bodyStyleMode: "shared" } } : entry) });
+          }} />Apply styling to all body slides</label>
+          <p className="mt-1 text-xs text-muted-foreground">{individualBodyStyle ? "Custom layout kept. Other slides’ shared changes will not replace it. Turn on to include this slide again." : textEditScope === "body" ? "Shares style and position across body slides, keeping individual custom layouts. Copy, images and hook stay separate." : "Only this slide changes. Its custom styling will be kept."}</p>
+          <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => onContentChange(applyCarouselBodyTextEdit(content, { ...slide, textStyle: { ...resolveCarouselManualTextStyle(slide), canvasEdgePlacement: true } }, "body", true))}>Use this layout on shared body slides</Button>
+        </div> : null}
+        <CarouselTextControls slide={slide} onChange={next => onContentChange(applyCarouselBodyTextEdit(content, next, textEditScope))} />
+        {overflowSlides.length ? <div role="alert" className="mt-3 rounded-lg border border-destructive p-3 text-xs"><p>Review text fit on {overflowSlides.length === 1 ? "slide" : "slides"} {overflowSlides.map(entry => entry.slideNumber).join(", ")}. Copy has not been shortened or resized automatically.</p><div className="mt-1 flex flex-wrap gap-2">{overflowSlides.map(entry => <Button key={entry.slideId} type="button" variant="outline" size="sm" onClick={() => { onTextEditScopeChange?.("slide"); onActiveSlideIndexChange(content.slides.findIndex(item => item.slideId === entry.slideId)); }}>Review slide {entry.slideNumber}</Button>)}</div></div> : null}
       </div>
     );
   }

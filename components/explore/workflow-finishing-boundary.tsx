@@ -21,7 +21,7 @@ import type { WorkflowCaptions } from "./workflow-caption-editor";
 import { useWorkflowBackgroundMusic, type WorkflowBackgroundMusic } from "./use-workflow-background-music";
 
 type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void; captions: WorkflowCaptions; music: WorkflowBackgroundMusic; pendingComposition?: ExploreScheduleComposition };
-const UNCONFIRMED_SCHEDULE_MESSAGE = "This scheduling request is unconfirmed. Resume the saved request to check or retry the same request without creating a duplicate.";
+const UNCONFIRMED_SCHEDULE_MESSAGE = "Scheduling was interrupted. Try again to finish scheduling your post.";
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
@@ -146,12 +146,19 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       if (isCurrent() && isScheduleTimeRejected(e) && !saved.scheduleId) {
         const rejected = { ...saved, timeRejected: true as const };
         localStorage.setItem(storageKey, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
+        throw e;
       } else if (isCurrent() && !saved.scheduleId) {
         // A server or transport failure cannot prove that creation was rejected.
         // Preserve the exact receipt while replacing help for an older time error.
         setMessage(UNCONFIRMED_SCHEDULE_MESSAGE);
       }
-      throw e;
+      try {
+        const value = await authorized("/api/schedules");
+        if (!isCurrent()) return;
+        const match = Array.isArray(value.schedules) && value.schedules.find((item: { idempotencyKey?: string }) => item.idempotencyKey === saved.input.idempotencyKey);
+        if (match) { accept(saved, { ok: true, schedule: match }); return; }
+      } catch { /* Preserve the original scheduling intent for Try again. */ }
+      throw new Error("Could not schedule your post. Try again.");
     }
   }
   async function locked(run: (saved: ScheduleReceipt | null) => Promise<void>) {
@@ -187,7 +194,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         if (prior?.scheduleId && (prior.input.source.id === finishing.output?.id || !finishing.output)) {
           if (receipt?.scheduleId !== prior.scheduleId) { await check(prior, isCurrent); return; }
           archiveConfirmedSchedule(localStorage, storageKey, prior.input.idempotencyKey!, prior);
-          setReceipt(null); setMessage("Your previous post is saved. Choose the accounts and time for another post, then click Schedule post.");
+          setReceipt(null); setMessage("Choose your accounts and time, then click Schedule post.");
           return;
         }
         if (!prior && receipt?.scheduleId) { setReceipt(null); return; }
@@ -208,11 +215,11 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         setMessage("Confirming your scheduling request…");
         await send(saved, isCurrent);
       });
-    } catch (e) { if (isCurrent()) setError(e instanceof Error ? e.message : "Could not save scheduling. Resume the saved request."); }
+    } catch (e) { if (isCurrent()) setError(e instanceof Error ? e.message : "Could not schedule your post. Try again."); }
     finally { working.current = false; if (active.current) setBusy(false); }
   }
   const output = finishing.output;
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, label: receipt?.scheduleId ? "Schedule another post" : undefined, disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, label: receipt?.scheduleId ? "Schedule another post" : resumeSaved && !receipt.timeRejected ? "Try again" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

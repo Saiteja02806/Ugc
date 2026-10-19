@@ -91,6 +91,9 @@
 .videoWorkspace.videoWorkspace[data-format="wall_text"][data-stage="edit"][data-has-video="false"] .videoLayout { grid-template-columns: minmax(0, 1fr); }
 .videoWorkspace.videoWorkspace[data-format="wall_text"][data-stage="edit"][data-has-video="false"] .controls { display: none; }
 .videoWorkspace.videoWorkspace[data-format="wall_text"][data-stage="edit"][data-has-video="false"] .preview { grid-column: 1; grid-row: 1; position: static; }
+.videoWorkspace.videoWorkspace[data-format="wall_text"][data-stage="edit"] .controls { border: 0; border-radius: 0; background: transparent; }
+.videoWorkspace.videoWorkspace[data-format="wall_text"][data-stage="edit"] .controls > div { padding: 0; }
+.videoWorkspace.videoWorkspace[data-format="wall_text"][data-stage="edit"] .controls > .wallEditToolbar { flex: none; padding-bottom: 12px; }
 @media (min-width: 1024px) and (min-height: 521px) {
   .videoWorkspace.videoWorkspace[data-stage="schedule"] .preview > div:not([hidden]) { overflow: hidden; }
 }

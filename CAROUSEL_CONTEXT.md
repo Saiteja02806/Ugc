@@ -1,5 +1,90 @@
 # Carousel System Context
 
+## 2026-10-19 Trending review recovery after navigation or refresh (local)
+
+- Recurring root cause: `usePostReviewHistory` was explicitly visit-local React
+  state. Earlier gesture checks proved backward scrolling only within one visit.
+  Leaving Trending/reloading removed the snapshots, while the server correctly
+  excluded already-decided assignments from the new-post feed. An empty feed
+  could also return before mounting any history controls.
+- Authenticated Trending now opts into account-scoped browser recovery of up to
+  120 reviewed post snapshots and the selected historical post, retained for
+  seven days and bounded to one million serialized characters per account.
+  Saving is synchronous in the history action, before navigation can unmount.
+  Landing/Try demos remain visit-local. No credentials or image bytes are added
+  to this cache; previews retain their existing media URLs and edit snapshots.
+- The gallery owns recovery above its loading/empty branches and Hook composer.
+  A recovered history keeps the real review deck mounted when the server returns
+  no new posts. View previous posts remains available after reviewing the final
+  post. Account changes hide the old snapshots before recovering the new owner.
+- Recovery and backward/forward browsing do not replay outbox decisions, saves,
+  likes, scheduling or generation. An explicit user action still uses existing
+  ownership/assignment checks and scheduling flows. Cached edits refresh through
+  the existing owned API. Other tabs' reviews merge on the next history action;
+  an existing liked decision is not downgraded by a stale skip snapshot.
+- Invalid versions, malformed entries, expired snapshots and missing positions
+  recover safely. Blocked/quota-failed browser storage keeps current-visit history
+  working and shows a concise explanation. This is same-browser recovery, not
+  cross-device server history or a backfill of previously lost visits. Clearing
+  site data removes this cache; historical media deletion/access expiry still
+  follows the existing media/preview renewal rules.
+- Local checks: storage/gesture/decision tests plus a headless Edge fixture using
+  the actual Trending gallery/deck, full document navigation, reload while
+  browsing, wheel-back/forward, empty server feed, account switching, corrupt and
+  blocked storage, and React StrictMode. `docs/trending-history-recovery-2026-10-19.md`
+  records the acceptance boundary. Not deployed; authenticated production-domain
+  acceptance remains pending. Earlier visit-local history notes are superseded
+  only for authenticated Trending opting into this recovery.
+
+## 2026-10-19 Shared body styling, protected overrides and reopening edited history (local)
+
+- Trending Carousel Edit defaults to sharing changed style fields and placement
+  across body slides. The hook remains separate. Each slide keeps its copy,
+  source image, ID and order; shared typography wraps its own copy. A visible
+  checkbox switches to individual edits. Use this layout on shared body slides
+  explicitly copies the complete selected layout to unprotected body slides.
+- Individually changed body styling persists as `textStyle.bodyStyleMode:
+  individual` and is excluded from later shared updates, including full-layout
+  copies. Previously saved manual styles with no mode are conservatively treated
+  as individual. Shared styles carry explicit `shared`. The UI identifies custom
+  layouts and lets the user explicitly include one in shared styling again.
+  Text/copy edits remain local regardless of styling scope. Scope defaults to
+  shared on reopening, while persisted individual protection remains in force.
+- New manual text placement uses actual canvas edges instead of a fixed 96px
+  inset. Only full text/glyph/panel containment limits motion. Position sliders
+  span the usable travel distance from 0% to 100%; corner intent survives changes
+  to the other axis and wraps independently per slide. Unchanged old styles keep
+  their previous inset until moved. Renderer v4 fences cached manual output.
+- Overlong body copy is flagged with per-slide Review actions. Those actions
+  switch to individual editing, so corrections need not affect other slides.
+  No AI inference, automatic copy rewriting, truncation or hidden font reduction.
+- The disabled Edit control was caused by a blanket review-history UI guard.
+  Existing edited Carousel history can now reopen using click or E, while
+  transitions and other formats keep their existing guards. API access verifies
+  owner/creative/assignment and requires an existing edit in terminal history.
+- Local migration `20261019061132_allow_existing_carousel_history_edits.sql`
+  permits only UPDATE of the same Carousel edit in completed_skipped/saved/
+  scheduled assignment states. Scope immutability, revision fencing and source
+  validation remain. New history inserts, reassignment and Hook/Wall history
+  writes remain rejected. No assignment state or scheduled snapshot is rewritten.
+  This supersedes earlier blanket read-only-history rules for existing Carousel
+  edits only; history browsing does not create a new edit or unskip a post.
+- Local validation covers shared/individual persistence, legacy protection,
+  one/two/five/ten-slide sequences, hook isolation, overflow and all canvas corners.
+  Pixel tests draw on an enlarged canvas to detect clipped glyph/panel pixels.
+  The actual editor browser verifies manual overrides after reopen, explicit
+  rejoining, distinct copy, corner movement, normal Save and library flows at
+  laptop/mobile sizes. PostgreSQL PGlite executes the old/new trigger behavior
+  and owner/scope/state/revision/other-format negative cases.
+- No deployment or production mutation. Rollout requires the local migration,
+  compatible renderer worker and website. Authenticated production acceptance
+  remains pending; production trigger inspection in this task was read-only.
+- Results: 99 focused checks pass (62 worker/rendering, 19 style/persistence/
+  containment and 18 history/decision/database checks), along with the actual
+  editor browser suite, worker compilation, application TypeScript and scoped
+  ESLint. Body-scope controls were visually checked at 1366×768, 1536×864 and
+  390×844; other zoom levels remain untested.
+
 ## 2026-10-19 Approved library workflow — existing Trending slideshow (local)
 
 - Settings → Media library creates/manages image collections. Upload inside a
@@ -227,6 +312,18 @@
   are accessible; the production worker and queue are healthy. The fix is
   not deployed and authenticated acceptance with v59 remains pending.
 - Details: `docs/carousel-reliability-investigation-2026-10-18.md`.
+
+## 2026-10-19 Explore slideshow scheduling confirmation (local)
+
+- Explore's shared slideshow scheduling form follows Schedule post → Post
+  scheduled / View in Scheduling → Schedule another post. A repeat opens a
+  fresh request for the same saved slideshow; edits to date/time remain the
+  user's choice. No extra saved-request confirmation controls are shown.
+- A lost creation response triggers a read to recover its verified receipt.
+  An unresolved attempt exposes Try again with the original idempotency key.
+  This changes client recovery presentation only; Carousel generation,
+  publishing APIs, source validation and Trending drawer behavior are unchanged.
+- Local regression coverage does not establish deployed production acceptance.
 
 ## 2026-10-18 Repeat scheduling is an explicit new post (local)
 
@@ -2076,7 +2173,9 @@ disabled for customer jobs; their isolated results do not justify activation.
 - Revisited posts remain available for video, audio, and slideshow viewing.
   In the demo and homepage, their heart and edit actions are disabled. Trending
   now permits explicitly selecting a skipped post as described below; already
-  liked posts and history editing remain disabled. Browsing by itself never
+  liked posts retain their decision restriction. The 2026-10-19 correction
+  permits reopening existing owned Carousel edits from history; other formats
+  retain the history-edit restriction. Browsing by itself never
   repeats a decision, changes daily review counts, or starts a schedule.
 - Trending keeps this history above the Hook composer so it survives the deck's
   temporary replacement, including the saved creative edit snapshot. Existing

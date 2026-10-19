@@ -142,8 +142,8 @@ async function loadTrendingCreativeRecord(params: {
   });
 }
 
-/** Read-only overlay access also permits owned posts in visit history.
- * The editor/save paths retain their stricter active/selected checks. */
+/** Wall history preview stays read-only. Carousel separately permits reopening
+ * an existing owned edit from history; Hook/Wall editor gates stay unchanged. */
 export async function loadTrendingWallTextPreview(params: {
   assignmentId: string;
   creativeId: string;

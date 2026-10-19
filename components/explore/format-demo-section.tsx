@@ -246,9 +246,12 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
     const exportEditing = prepareFormatEditForExport(draft.editing);
     const overlays = formatTextOverlays(exportEditing);
     const textLayouts = overlays.map(text => formatTextLayout(text, width, height));
-    const textMayBeCropped = draft.framing && overlays.some((text, index) => draft.framing!.points.some(([, x, y]) =>
-        (1 - text.width) / 2 < x || (1 + text.width) / 2 > x + draft.framing!.width ||
-        textLayouts[index].y / height < y || (textLayouts[index].y + textLayouts[index].lines.length * textLayouts[index].lineHeight) / height > y + draft.framing!.height));
+    const textMayBeCropped = draft.framing && overlays.some((text, index) => {
+        const layout = textLayouts[index], halfWidth = (text.x === undefined ? text.width : layout.textWidth / width) / 2;
+        return draft.framing!.points.some(([, x, y]) =>
+            layout.x / width - halfWidth < x || layout.x / width + halfWidth > x + draft.framing!.width ||
+            layout.y / height < y || (layout.y + layout.lines.length * layout.lineHeight) / height > y + draft.framing!.height);
+    });
     let validation: string | null = null;
     try {
         parseExploreFormatEdit(exportEditing);
@@ -485,7 +488,7 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       {problems}
     </div>;
     const editingControls = <div className={editorStyles.editorRoot}>
-      <div className={editorStyles.editorHeader}><h2 className="text-sm font-semibold">Edit demo video</h2><span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span></div>
+      <div data-clip-tools-heading="clip" className={editorStyles.editorHeader}><h2 className="text-sm font-semibold">Edit demo video</h2><span className="shrink-0 text-xs text-muted">{duration.toFixed(1)}s source</span></div>
       {preview ? <fieldset disabled={editingBusy} className={`${styles.clipControlsGrid} ${editorStyles.controlGrid}`}>
         <details className={`${styles.demoOptions} ${editorStyles.trimSection}`} aria-label="Demo trim" data-editor-section="trim" open><summary>Trim <span>{Math.max(0, draft.editing.trimEndMs - draft.editing.trimStartMs) / 1000}s selected</span></summary><section className={editorStyles.trimBody} aria-label="Trim">
           <div className={editorStyles.trimTimingFields}>{(["trimStartMs", "trimEndMs"] as const).map((name, index) => <label key={name}>{index === 0 ? "Start" : "End"}<span>Seconds</span><input type="number" aria-label={index === 0 ? "Demo trim start" : "Demo trim end"} min={index === 0 ? 0 : draft.editing.trimStartMs / 1000 + 1} max={index === 0 ? Math.max(0, draft.editing.trimEndMs / 1000 - 1) : duration} step={.1} value={draft.editing[name] / 1000} className={field} onChange={event => trimDemo(name === "trimStartMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimStartMs, name === "trimEndMs" ? Math.round(Number(event.target.value) * 1000) : draft.editing.trimEndMs)}/></label>)}</div>
@@ -543,7 +546,10 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
           if (!video.paused && video.currentTime * 1000 >= draft.editing.trimEndMs) { video.pause(); video.currentTime = Math.max(draft.editing.trimStartMs, draft.editing.trimEndMs - 50) / 1000; }
           synchronizeEditSound();
         }} />
-        {overlays.map((text, overlayIndex) => previewTime >= text.startMs && previewTime < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Demo text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height} /> : null)}
+        {overlays.map((text, overlayIndex) => previewTime >= text.startMs && previewTime < text.endMs ? <FormatVideoTextOverlay key={overlayIndex} label={`Demo text overlay ${overlayIndex + 1} preview`} text={text} width={width} height={height}
+          onMoveStart={() => { editPlayer.current?.pause(); editAudio.current?.pause(); }}
+          onChange={editActive && !busy ? next => change({ ...draft, editing: { ...draft.editing,
+            ...(draft.editing.textOverlays ? { textOverlays: draft.editing.textOverlays.map(overlay => overlay === text ? next : overlay) } : { text: next }) } }) : undefined} /> : null)}
       </div> : <div className={styles.emptyClip}>
         <span className={styles.emptyClipIcon}><Video aria-hidden="true" /></span>
         <div className={styles.emptyClipCopy}>

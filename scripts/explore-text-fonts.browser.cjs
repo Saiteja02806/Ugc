@@ -10,7 +10,7 @@ write("entry.tsx", `import {createRoot} from 'react-dom/client';import {useState
 import {FormatTextOverlaysEditor} from '@/components/explore/format-text-overlays-editor';import {FormatVideoTextOverlay} from '@/components/explore/format-video-text-overlay';
 import {readFormatEditDraft} from '@/lib/explore/format-edit-draft';
 const original={version:1,format:'hook',trimStartMs:0,trimEndMs:5000,originalVolume:1,musicVolume:.2,text:null,textOverlays:[{value:'One thing I wish I knew sooner',font:'inter',fontWeight:500,width:.8,y:.18,fontSize:64,color:'#ffffff',startMs:0,endMs:5000}]};
-function App(){const [edit,setEdit]=useState(()=>readFormatEditDraft(JSON.parse(localStorage.getItem('font-draft')||JSON.stringify(original)))),[saved,setSaved]=useState(false),[advanced,setAdvanced]=useState(false);const wall=new URLSearchParams(location.search).has('wall');return <main><h1>{wall?'Wall of text':'Edit hook video'}</h1><div className='fixture'><section className='portrait'><img src='/background.png'/><FormatVideoTextOverlay text={edit.textOverlays[0]} label='Text preview' width={1080} height={1920}/></section><section className='settings'><div className='scroller'><FormatTextOverlaysEditor overlays={edit.textOverlays} wallText={wall} durationMs={5000} timeMs={1000} onSeek={()=>{}} showStyleControls={!wall||advanced} onChange={textOverlays=>{setSaved(false);setEdit({...edit,textOverlays})}}/>{wall?<button onClick={()=>setAdvanced(v=>!v)}>{advanced?'Back to text':'Edit'}</button>:null}</div><footer><button onClick={()=>{localStorage.setItem('font-draft',JSON.stringify(readFormatEditDraft(edit)));setSaved(true)}}>Save edits</button>{saved?<span role='status'>Saved</span>:null}</footer></section></div></main>};createRoot(document.getElementById('root')).render(<App/>);`);
+function App(){const [edit,setEdit]=useState(()=>readFormatEditDraft(JSON.parse(localStorage.getItem('font-draft')||JSON.stringify(original)))),[saved,setSaved]=useState(false),[advanced,setAdvanced]=useState(false);const wall=new URLSearchParams(location.search).has('wall');return <main><h1>{wall?'Wall of text':'Edit hook video'}</h1><div className='fixture'><section className='portrait'><img src='/background.png'/><FormatVideoTextOverlay text={edit.textOverlays[0]} label='Text preview' width={1080} height={1920} onChange={text=>{setSaved(false);setEdit({...edit,textOverlays:[text,...edit.textOverlays.slice(1)]})}}/></section><section className='settings'><div className='scroller'><FormatTextOverlaysEditor overlays={edit.textOverlays} wallText={wall} durationMs={5000} timeMs={1000} onSeek={()=>{}} showStyleControls={!wall||advanced} onChange={textOverlays=>{setSaved(false);setEdit({...edit,textOverlays})}}/>{wall?<button onClick={()=>setAdvanced(v=>!v)}>{advanced?'Back to text':'Edit'}</button>:null}</div><footer><button onClick={()=>{localStorage.setItem('font-draft',JSON.stringify(readFormatEditDraft(edit)));setSaved(true)}}>Save edits</button>{saved?<span role='status'>Saved</span>:null}</footer></section></div></main>};createRoot(document.getElementById('root')).render(<App/>);`);
 
 async function main() {
   await new Promise((resolve,reject)=>{const compiler=webpack({mode:"development",devtool:false,context:root,entry:path.join(out,"entry.tsx"),output:{path:out,filename:"bundle.js"},plugins:[new webpack.DefinePlugin({"process.env":JSON.stringify({NODE_ENV:"development"})})],resolve:{extensions:[".tsx",".ts",".js"],alias:{"@":root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,"loader.cjs")},{test:/\.css$/,use:path.join(out,"css.cjs")}]}});compiler.run((e,s)=>compiler.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
@@ -38,17 +38,37 @@ async function main() {
     async function checkPresetSwitch(wall=false) {
       const preset=page.getByRole("combobox",{name:"Text preset",exact:true}),text=page.getByRole("textbox",{name:wall?"Wall of text":"Overlay text",exact:true}),copy=await text.inputValue(),font=await select.inputValue();
       await preset.selectOption("snapchat-classic");
-      assert.equal(await preset.inputValue(),"snapchat-classic");assert.equal(await page.locator('svg[aria-label="Text preview"] rect').count(),1);assert.equal(await weight.inputValue(),"400");
+      assert.equal(await preset.inputValue(),"snapchat-classic");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),1);assert.equal(await weight.inputValue(),"400");
       await preset.selectOption("bold");
-      assert.equal(await preset.inputValue(),"bold");assert.equal(await page.locator('svg[aria-label="Text preview"] rect').count(),0);assert.equal(await weight.inputValue(),"700");
+      assert.equal(await preset.inputValue(),"bold");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),0);assert.equal(await weight.inputValue(),"700");
       assert.equal(await page.getByRole("slider",{name:"Caption background opacity",exact:true}).count(),0);assert.equal(await select.inputValue(),font);assert.equal(await text.inputValue(),copy);
       await page.getByRole("button",{name:"Save edits",exact:true}).click();await page.getByRole("status").waitFor();await page.reload();
       if(wall)await page.getByRole("button",{name:"Edit",exact:true}).click();
-      assert.equal(await preset.inputValue(),"bold");assert.equal(await text.inputValue(),copy);assert.equal(await select.inputValue(),font);assert.equal(await weight.inputValue(),"700");assert.equal(await page.locator('svg[aria-label="Text preview"] rect').count(),0);
+      assert.equal(await preset.inputValue(),"bold");assert.equal(await text.inputValue(),copy);assert.equal(await select.inputValue(),font);assert.equal(await weight.inputValue(),"700");assert.equal(await page.locator('svg[aria-label="Text preview"] rect:not([data-text-handle])').count(),0);
       console.log("PASS preset Snapchat → Bold white, preview background removed, copy/font and save/reopen preserved: "+(wall?"Wall":"Hook")+" "+JSON.stringify(page.viewportSize()));
     }
+    async function checkDrag() {
+      const handle=page.getByRole('button',{name:'Move Text preview',exact:true}),svg=page.locator('svg[aria-label="Text preview"]'),first=svg.locator('text').first();
+      await handle.scrollIntoViewIfNeeded();
+      const box=await handle.boundingBox(),frame=await svg.boundingBox(),before={x:Number(await first.getAttribute('x')),y:Number(await first.getAttribute('y'))};
+      await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+4,box.y+box.height/2+20,{steps:6});await page.mouse.up();
+      assert.ok(Math.abs(Number(await first.getAttribute('x'))-before.x-4*1080/frame.width)<.1,'Horizontal drag uses displayed frame scale');
+      assert.ok(Math.abs(Number(await first.getAttribute('y'))-before.y-20*1920/frame.height)<.1,'Vertical drag uses displayed frame scale');
+      await handle.press('ArrowLeft');await handle.press('Shift+ArrowDown');
+      if(page.viewportSize().width<600){
+        const touch=await page.context().newCDPSession(page),b=await handle.boundingBox(),x=b.x+b.width/2,y=b.y+b.height/2,previous=Number(await first.getAttribute('y'));
+        await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-3,y:y+6}]});await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.detach();
+        assert.ok(Number(await first.getAttribute('y'))>previous,'Real touch drag updates the caption');
+      }
+      const positioned={x:await first.getAttribute('x'),y:await first.getAttribute('y')};
+      await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.getByRole('status').waitFor();
+      const draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('font-draft')));assert.ok(draft.textOverlays[0].x!==undefined);
+      await page.reload();assert.equal(await first.getAttribute('x'),positioned.x);assert.equal(await first.getAttribute('y'),positioned.y);
+      assert.equal(draft.textOverlays[0].value,'One thing I wish I knew sooner');assert.equal(draft.textOverlays[0].startMs,0);assert.equal(draft.textOverlays[0].endMs,5000);
+      console.log('PASS mouse/keyboard'+(page.viewportSize().width<600?'/touch':'')+' positioning and save/reopen '+JSON.stringify(page.viewportSize()));
+    }
     await page.screenshot({path:path.join(out,"laptop.png")});
-    for(const viewport of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]) {await page.setViewportSize(viewport);await checkPresetSwitch();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await select.scrollIntoViewIfNeeded();assert.equal(await select.isVisible(),true);await page.screenshot({path:path.join(out,`fonts-${viewport.width}.png`),fullPage:viewport.width<600});}
+    for(const viewport of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]) {await page.setViewportSize(viewport);await checkPresetSwitch();await checkDrag();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await select.scrollIntoViewIfNeeded();assert.equal(await select.isVisible(),true);await page.screenshot({path:path.join(out,`fonts-${viewport.width}.png`),fullPage:viewport.width<600});}
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
     await checkPresetSwitch(true);
     await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");

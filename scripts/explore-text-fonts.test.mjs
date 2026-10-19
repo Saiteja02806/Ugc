@@ -19,6 +19,27 @@ const edit = text => ({ version: 1, format: "hook", trimStartMs: 0, trimEndMs: 2
 const tools = { ffmpeg, ffprobe: ffprobe.path, fontsDir: resolve("worker/src/assets/fonts") };
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");
 
+test("dragged positions reach real video exports for legacy, bundled-font and Snapchat text", async () => {
+  await mkdir(resolve(".tmp"), { recursive: true });
+  const root = await mkdtemp(resolve(".tmp/explore-position-video-")), sourcePath = join(root, "source.mp4");
+  execFileSync(ffmpeg, ["-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=360x640:r=30:d=2", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", sourcePath], { windowsHide: true });
+  const before = digest(await readFile(sourcePath));
+  const positions = [{}, { font: "inter", fontWeight: 700 }, { preset: "snapchat-classic", backgroundOpacity: .58 }];
+  const textOverlays = positions.map((style, i) => ({ ...legacyText, ...style, value: "Move", fontSize: 84, x: .7, y: .5, startMs: i * 600, endMs: i * 600 + 500 }));
+  const saved = readFormatEditDraft(JSON.parse(JSON.stringify({ ...edit(null), textOverlays })));
+  const output = await finishExploreVideo({ sourcePath, editing: saved, workDir: join(root, "render"), tools });
+  for (let i = 0; i < positions.length; i++) {
+    const frame = execFileSync(ffmpeg, ["-v", "error", "-ss", String((i * 600 + 200) / 1000), "-i", output.outputPath, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], { windowsHide: true });
+    const pixels = [];
+    for (let n = 0; n < frame.length; n += 3) if (frame[n] > 200 && frame[n + 1] > 200 && frame[n + 2] > 200) pixels.push({ x: (n / 3) % 360, y: Math.floor(n / 3 / 360) });
+    assert.ok(pixels.length > 100, `Rendered text is visible for mode ${i}`);
+    const xs = pixels.map(p => p.x), ys = pixels.map(p => p.y), center = (Math.min(...xs) + Math.max(...xs)) / 2;
+    assert.ok(Math.abs(center - .7 * 360) < 5, `Mode ${i}: saved horizontal position reaches output (${center})`);
+    assert.ok(Math.min(...ys) >= 320 && Math.max(...ys) < 370, `Mode ${i}: saved vertical position reaches output`);
+  }
+  assert.equal(digest(await readFile(sourcePath)), before);
+});
+
 test("new Remix text defaults to Inter Bold in Hook and Wall workflows", () => {
   for (const format of ["hook", "wall_text"]) {
     const source = { version: 1, referenceId: "ref", slideId: null, format, language: "en", sourceSha256: "a".repeat(64), blocks: [{ text: "Reference", startMs: 0, endMs: 2000 }] };

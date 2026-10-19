@@ -44,6 +44,16 @@ async function main() {
   try {
     browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
     const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    async function checkTextDrag() {
+      const handle=page.getByRole('button',{name:'Move Text overlay 1 preview',exact:true}),svg=page.getByLabel('Text overlay 1 preview',{exact:true});
+      await handle.scrollIntoViewIfNeeded();
+      const before=await svg.locator('text').first().getAttribute('y'),box=await handle.boundingBox();
+      await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+2,box.y+box.height/2+12,{steps:4});await page.mouse.up();
+      assert.ok(Number(await svg.locator('text').first().getAttribute('y'))>Number(before),'Dragging the real editor updates its text position');
+      assert.equal(await page.locator('[data-clip-media] video').evaluate(v=>v.paused),true,'Moving text pauses playback');
+      const drafts=await page.evaluate(()=>Object.values(localStorage).flatMap(value=>{try{return [JSON.parse(value)]}catch{return []}}));
+      assert.ok(drafts.some(d=>d.editing?.textOverlays?.some(t=>typeof t.x==='number')),'The real editor persists the drag through its existing draft path');
+    }
     for (const viewport of [{width:1920,height:1080},{width:1536,height:864},{width:1366,height:768},{width:1900,height:806},{width:1440,height:900},{width:1280,height:720},{width:390,height:844},{width:320,height:700}]) {
       await page.setViewportSize(viewport);await page.goto('http://127.0.0.1:'+server.address().port);
       await page.getByRole('button',{name:'Edit hook video',exact:true}).waitFor();
@@ -90,6 +100,7 @@ async function main() {
       await page.waitForFunction(()=>Math.abs(document.querySelector('[data-clip-media] video').currentTime-1.5)<.03);
       await page.getByLabel('Text overlay 1 preview',{exact:true}).waitFor();
       await page.getByLabel('Text color',{exact:true}).fill('#ff0000');
+      await checkTextDrag();
       assert.ok(await page.getByLabel('Text overlay 1 preview',{exact:true}).evaluate(el=>el.querySelector('g').getAttribute('fill')==='#ff0000'),'Text styling appears while paused');
       assert.equal(await page.getByLabel('Original volume',{exact:true}).count(),0,'Audio setup belongs in Demo, outside focused clip editing');
       assert.equal(await page.getByRole('group',{name:'Audio',exact:true}).count(),0,'Focused editing does not duplicate a Sound panel');
@@ -113,8 +124,9 @@ async function main() {
       const visiblePixels=await player.evaluate(video=>{const canvas=document.createElement('canvas');canvas.width=32;canvas.height=32;const context=canvas.getContext('2d');context.drawImage(video,0,0,32,32);const pixels=context.getImageData(0,0,32,32).data;let colored=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]+pixels[i+1]+pixels[i+2]>90)colored++;return colored;});
       assert.ok(visiblePixels>256,'Preview contains decoded footage, not a blank black frame');
       await page.getByRole('button',{name:'Back to videos',exact:true}).click();await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
-      await page.getByRole('heading',{name:'Edit demo video',exact:true}).waitFor();await page.getByLabel('Overlay text',{exact:true}).fill('Demo live change');
+      await page.getByRole('heading',{name:'Demo video · Live preview',exact:true}).waitFor();await page.getByLabel('Overlay text',{exact:true}).fill('Demo live change');
       await page.getByLabel('Text overlay 1 preview',{exact:true}).waitFor();assert.equal(await page.getByLabel('Text overlay 1 preview',{exact:true}).textContent(),'Demo live change');
+      await checkTextDrag();
       await page.getByRole('button',{name:'Back to videos overview',exact:true}).click();await page.getByRole('button',{name:'Edit hook video',exact:true}).click();
       await page.waitForFunction(()=>document.querySelector('[data-clip-media] video')?.readyState>=2);
       await page.getByRole('button',{name:'Play preview',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-clip-media] video')?.currentTime>1.55);await page.getByRole('button',{name:'Pause preview',exact:true}).click();
@@ -126,6 +138,7 @@ async function main() {
     for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
       await page.setViewportSize(viewport);await page.goto('http://127.0.0.1:'+server.address().port+'/?format=wall_text');
       await page.getByLabel('Wall of text',{exact:true}).fill('Wall text live change');await page.getByLabel('Text overlay 1 preview',{exact:true}).waitFor();
+      await checkTextDrag();
       assert.equal(await page.getByLabel('Trim end',{exact:true}).count(),0,'Wall starts with text editing only');
       assert.equal(await page.getByLabel('Show from (s)',{exact:true}).count(),0,'Wall text has no timing controls');
       await page.getByRole('button',{name:'Edit video with advanced controls',exact:true}).click();

@@ -18,6 +18,17 @@ export function CarouselTextControls({ slide, onChange }: { slide: TrendingCarou
   const id = useId(), style = resolveCarouselManualTextStyle(slide);
   const hasHeading = slide.slideNumber === 1 || Boolean(slide.headline.trim() && slide.subtext.trim());
   const layout = slide.textStyle ? createCarouselManualLayout(slide) : null;
+  const movement = createCarouselManualLayout({ ...slide, textStyle: { ...style, canvasEdgePlacement: true } });
+  const axisLimits = (axis: "x" | "y") => axis === "x" ? [movement.bounds.minX, movement.bounds.maxX] : [movement.bounds.minY, movement.bounds.maxY];
+  const positionPercent = (axis: "x" | "y") => {
+    const [min, max] = axisLimits(axis);
+    return max > min ? Math.round((movement.position[axis] - min) / (max - min) * 100) : 50;
+  };
+  const moveAxis = (axis: "x" | "y", percent: number) => {
+    const [min, max] = axisLimits(axis);
+    const value = percent === 0 ? 0 : percent === 100 ? 1 : min + (max - min) * percent / 100;
+    onChange({ ...slide, textStyle: { ...style, canvasEdgePlacement: true }, textPosition: { ...slide.textPosition, [axis]: value } });
+  };
   const update = (patch: Partial<CarouselManualTextStyle>) => onChange({ ...slide, textStyle: { ...style, ...patch } });
   const backgroundVisible = style.headingBackground !== "none" || style.bodyBackground !== "none";
   const blocks = [...(hasHeading ? [{ name: slide.slideNumber === 1 ? "Hook" : "Heading", heading: true }] : []), ...(slide.slideNumber !== 1 ? [{ name: "Text", heading: false }] : [])];
@@ -43,7 +54,7 @@ export function CarouselTextControls({ slide, onChange }: { slide: TrendingCarou
       <div className={styles.field}><label htmlFor={`${id}-spacing`}>Line spacing</label><input id={`${id}-spacing`} className={styles.number} type="number" min={.95} max={2} step={.01} value={style.lineHeight} onChange={event => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value) && value >= .95 && value <= 2) update({ lineHeight: value }); }} /></div>
       {backgroundVisible ? <><div className={styles.field}><label htmlFor={`${id}-bg-color`}>Background color</label><input id={`${id}-bg-color`} className={styles.swatch} type="color" value={style.backgroundColor} onChange={event => update({ backgroundColor: event.target.value })} /></div><div className={styles.field}><label htmlFor={`${id}-opacity`}>Opacity · {Math.round(style.backgroundOpacity! * 100)}%</label><input id={`${id}-opacity`} className={styles.width} type="range" min={0} max={1} step={.05} value={style.backgroundOpacity} onChange={event => update({ backgroundOpacity: Number(event.target.value) })} /></div></> : null}
     </div>
-    <details className={styles.position}><summary>Position</summary><div className={styles.toolbar}>{(["x", "y"] as const).map(axis => <div className={styles.field} key={axis}><label htmlFor={`${id}-${axis}`}>{axis === "x" ? "Horizontal position" : "Vertical position"} · {Math.round((layout?.position ?? slide.textPosition)[axis] * 100)}%</label><input id={`${id}-${axis}`} className={styles.width} type="range" min={0} max={100} step={1} value={Math.round((layout?.position ?? slide.textPosition)[axis] * 100)} onChange={event => onChange({ ...slide, textStyle: style, textPosition: { ...(layout?.position ?? slide.textPosition), [axis]: Number(event.target.value) / 100 } })} /></div>)}</div></details>
+    <details className={styles.position}><summary>Position</summary><p className={styles.hint}>Move to any edge. The full text stays inside the image.</p><div className={styles.toolbar}>{(["x", "y"] as const).map(axis => <div className={styles.field} key={axis}><label htmlFor={`${id}-${axis}`}>{axis === "x" ? "Horizontal position" : "Vertical position"} · {positionPercent(axis)}%</label><input id={`${id}-${axis}`} className={styles.width} type="range" min={0} max={100} step={1} value={positionPercent(axis)} onChange={event => moveAxis(axis, Number(event.target.value))} /></div>)}</div></details>
     {layout && !layout.fits ? <p role="alert" className="text-xs text-destructive">Text exceeds the slide. Reduce its size or spacing, increase its width, or shorten the copy before saving.</p> : null}
     <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...slide, textStyle: null, textPosition: { x: .5, y: .5 } })}>Reset text layout</Button>
   </section>;

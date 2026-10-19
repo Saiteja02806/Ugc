@@ -402,10 +402,21 @@ async function main() {
     await lastCopy.click();
     await page.getByRole("status").filter({ hasText: "Prompt copied" }).waitFor();
     assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"), longPrompt.trim(), "Copy preserves the whole multiline submitted prompt, allowing native Windows line endings");
-    const promptBounds = await lastCopy.locator("..").locator("p").evaluate(element => ({ height: element.clientHeight, total: element.scrollHeight }));
-    assert.ok(promptBounds.height <= 126 && promptBounds.total > promptBounds.height, "long prompts keep a compact scrollable text area");
+    const assertFullPrompt = async () => {
+      const promptBounds = await lastCopy.locator("..").evaluate(element => {
+        const text = element.querySelector("p"), copy = element.querySelector("button");
+        const textRect = text.getBoundingClientRect(), copyRect = copy.getBoundingClientRect();
+        return { height: text.clientHeight, total: text.scrollHeight, maxHeight: getComputedStyle(text).maxHeight, overflow: getComputedStyle(text).overflowY,
+          copyBesideText: copyRect.left >= textRect.right && Math.abs(copyRect.top - textRect.top) < 8 };
+      });
+      assert.ok(promptBounds.height > 126 && promptBounds.total <= promptBounds.height + 1, "the full long prompt expands without clipping or internal scrolling");
+      assert.equal(promptBounds.maxHeight, "none"); assert.equal(promptBounds.overflow, "visible");
+      assert.equal(promptBounds.copyBesideText, true, "Copy stays beside the top of the prompt");
+    };
+    await assertFullPrompt();
     await page.screenshot({ path: path.join(out, "mixed-references-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
+    await assertFullPrompt();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(out, "mixed-references-mobile.png"), fullPage: true });
     await page.getByRole("button", { name: "My influencers", exact: true }).click();

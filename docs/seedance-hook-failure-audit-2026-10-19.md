@@ -1,5 +1,9 @@
 # Seedance 2.5 Hook failure investigation — 19 October 2026
 
+Follow-up key/model research verifies the current deployed ReAPI key and Less
+Restriction request configuration, while preserving the historical/live-output
+distinction below. See `seedance-less-restriction-verification-2026-10-19.md`.
+
 The latest recorded Seedance Hook failure was an upstream reference-image
 privacy rejection during submission, not a render timeout or missing-output
 download. Production database records and the original worker log agree.

@@ -68,6 +68,7 @@ import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
 import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
+import { isRecoverableTrendingReview, type ReviewedTrendingCandidate } from "@/lib/trending/reviewed-feed-candidate";
 import { POST_LIKE_FEEDBACK_MS } from "@/lib/trending/post-interaction";
 import { TrendingSwipeGuide } from "@/components/trending/trending-swipe-guide";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
@@ -210,7 +211,6 @@ type TrendingCandidate =
   | CompleteWallText
   | CompleteReaction;
 
-type ReviewedTrendingCandidate = TrendingCandidate & { reviewedEdit?: TrendingCreativeEditRecord | null };
 type TrendingReviewHistory = ReturnType<typeof usePostReviewHistory<ReviewedTrendingCandidate>>;
 
 type TrendingHookComposition = {
@@ -1283,7 +1283,7 @@ export function TrendingWorkspace() {
   );
 }
 
-function TrendingFeedGallery({
+export function TrendingFeedGallery({
   enqueueDecision,
   error,
   failure,
@@ -1316,15 +1316,19 @@ function TrendingFeedGallery({
   userId: string | null;
   upgradeRequired: boolean;
 }) {
-  const showSkeleton = loading;
+  const postHistory = usePostReviewHistory<ReviewedTrendingCandidate>(userId
+    ? { ownerId: userId, isValue: isRecoverableTrendingReview }
+    : undefined);
+  const showSkeleton = loading || !postHistory.ready;
   // A right swipe records the decision and removes its card immediately. Keep
   // the already-presented review shell alive for this user/day so the accepted
   // Carousel or Wall action dialog can paint even when that was the final
   // ready card.
-  const retainingReviewShell = hasPresentedFeed && items.length === 0;
-  const shouldRenderFeed = items.length > 0 || hasPresentedFeed;
+  const hasReviewShell = hasPresentedFeed || postHistory.entries.length > 0;
+  const retainingReviewShell = hasReviewShell && items.length === 0;
+  const shouldRenderFeed = items.length > 0 || hasReviewShell;
 
-  if (!retainingReviewShell && !loading && error && items.length === 0) {
+  if (!retainingReviewShell && !showSkeleton && error && items.length === 0) {
     return (
       <TrendingFeedFailureState
         failure={failure}
@@ -1334,7 +1338,7 @@ function TrendingFeedGallery({
     );
   }
 
-  if (!retainingReviewShell && !loading && profile?.state === "missing") {
+  if (!retainingReviewShell && !showSkeleton && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
   }
 
@@ -1388,6 +1392,7 @@ function TrendingFeedGallery({
       >
         {shouldRenderFeed ? (
           <TrendingFeed
+            reviewHistory={postHistory}
             enqueueDecision={enqueueDecision}
             failure={failure}
             headerActionsRoot={headerActionsRoot}
@@ -1531,6 +1536,7 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
 }
 
 function TrendingFeed({
+  reviewHistory,
   enqueueDecision,
   failure,
   headerActionsRoot,
@@ -1541,6 +1547,7 @@ function TrendingFeed({
   userId,
   upgradeRequired,
 }: {
+  reviewHistory: TrendingReviewHistory;
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
@@ -1556,7 +1563,7 @@ function TrendingFeed({
   >({});
   const [hookComposition, setHookComposition] =
     useState<TrendingHookComposition | null>(null);
-  const postHistory = usePostReviewHistory<ReviewedTrendingCandidate>();
+  const postHistory = reviewHistory;
 
   const candidates = items.flatMap<TrendingCandidate>((item) => {
     if (item.format === "hook_video") {
@@ -2055,6 +2062,9 @@ export function TrendingDeck({
   );
   const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
   const activeReviewItemId = activeCandidate?.item.id;
+  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && (
+    activeCandidate?.format !== "carousel" || !getLatestTrendingEdit(editByCreativeId[activeCandidate.item.creativeId], activeCandidate.reviewedEdit)?.id
+  ));
 
   useLayoutEffect(() => {
     const frame = reviewFrameRef.current;
@@ -2553,7 +2563,7 @@ export function TrendingDeck({
     if (
       !activeCandidate ||
       decisionLockRef.current ||
-      exitDirection || postHistory.browsing
+      reviewEditDisabled
     ) {
       return;
     }
@@ -2777,7 +2787,7 @@ export function TrendingDeck({
       {activeCandidate && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
-              disabled={Boolean(exitDirection || postHistory.browsing)}
+              disabled={reviewEditDisabled}
               onEdit={handleEditActiveCandidate}
             />,
             headerActionsRoot,
@@ -2833,6 +2843,9 @@ export function TrendingDeck({
       ) : (
         <TrendingReadyEmptyState />
       )}
+      {postHistory.persistenceUnavailable ? <p role="status" className="mt-2 max-w-md text-center text-sm text-muted">
+        Browser storage is unavailable. Previous posts can only be kept during this visit.
+      </p> : null}
       {!activeCandidate && postHistory.canGoBack ? <Button
         className="mt-4" variant="secondary"
         disabled={Boolean(exitDirection || editorCandidate || scheduleContext || actionCandidate || wallTextCandidate)}

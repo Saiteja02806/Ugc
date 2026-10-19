@@ -38,6 +38,59 @@ function harness(file, dependencies = {}) {
 }
 const labelled = (tree, label) => nodes(tree).find(node => node.props?.["aria-label"] === label);
 
+test("preview text drags in both axes at display scale, clamps, and stops on release or cancellation", () => {
+  const h = harness("format-video-text-overlay");
+  let text = { value: "Move me", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const original = { ...text }, changes = []; let paused = 0, captured = null;
+  const target = { ownerSVGElement: { getBoundingClientRect: () => ({ width: 270, height: 480 }) }, focus() {},
+    setPointerCapture(id) { captured = id; }, hasPointerCapture(id) { return captured === id; }, releasePointerCapture() { captured = null; } };
+  const event = (x, y, id = 7) => ({ pointerId: id, button: 0, clientX: x, clientY: y, currentTarget: target, preventDefault() {}, stopPropagation() {} });
+  const render = (editable = true) => h.render(() => h.exports.FormatVideoTextOverlay({ text, width: 1080, height: 1920, label: "Caption",
+    onMoveStart: () => paused++, onChange: editable ? next => { text = next; changes.push(next); } : undefined }));
+  let handle = labelled(render(), "Move Caption");
+  handle.props.onPointerDown(event(100, 100)); assert.equal(captured, 7); assert.equal(paused, 1);
+  handle.props.onPointerMove(event(127, 148, 8)); assert.equal(changes.length, 0, "Ignore another finger");
+  handle.props.onPointerMove(event(127, 148)); assert.equal(text.x, .6); assert.equal(text.y, .28);
+  handle = labelled(render(), "Move Caption"); handle.props.onPointerMove(event(10000, 10000));
+  const layout = formatEdit.formatTextLayout(text, 1080, 1920);
+  assert.equal(layout.fits, true); assert.ok(layout.x + layout.textWidth / 2 <= 1080 * .97 + .001);
+  handle.props.onPointerUp(event(127, 148)); assert.equal(captured, null);
+  handle.props.onPointerMove(event(0, 0)); assert.equal(text.x, .6);
+  handle = labelled(render(), "Move Caption"); handle.props.onPointerDown(event(127, 148));
+  handle.props.onPointerMove(event(-10000, -10000)); assert.equal(text.y, .03);
+  handle.props.onPointerCancel(event(0, 0)); const count = changes.length;
+  handle.props.onPointerMove(event(100, 100)); assert.equal(changes.length, count);
+  assert.equal(text.value, original.value); assert.equal(text.startMs, original.startMs); assert.equal(text.endMs, original.endMs);
+  assert.equal(labelled(render(false), "Move Caption"), undefined, "Read-only overview has no drag target");
+});
+
+test("bottom-edge drag clamping passes strict fit checks across fonts, presets and frame ratios", () => {
+  for (const { id: font } of formatEdit.EXPLORE_TEXT_FONTS) for (const fontSize of [24, 48, 56, 64, 84])
+    for (const preset of [undefined, "snapchat-classic"]) for (const [width, height] of [[1080,1920], [720,1280], [1920,1080], [640,360]]) {
+      const text = { value: "Move this text\nSecond line", font, fontWeight: 700, width: .8, y: .18, fontSize, color: "#ffffff", startMs: 0, endMs: 2000, ...(preset ? { preset } : {}) };
+      const moved = formatEdit.positionFormatText(text, 5, 5, width, height);
+      assert.equal(formatEdit.formatTextLayout(moved, width, height).fits, true, JSON.stringify({ font, fontSize, preset, width, height }));
+    }
+});
+
+test("keyboard preview positioning persists through strict draft parsing without changing legacy shapes", () => {
+  const h = harness("format-video-text-overlay");
+  let text = { value: "Keyboard text", font: "inter", fontWeight: 700, width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const edit = () => ({ version: 1, format: "hook", trimStartMs: 0, trimEndMs: 2000, originalVolume: 1, musicVolume: .2, text });
+  assert.equal(Object.hasOwn(formatEdit.parseExploreFormatEdit(edit()).text, "x"), false);
+  const render = () => h.render(() => h.exports.FormatVideoTextOverlay({ text, width: 1080, height: 1920, label: "Caption", onChange: next => { text = next; } }));
+  const key = (key, shiftKey = false) => ({ key, shiftKey, preventDefault() {}, stopPropagation() {} });
+  labelled(render(), "Move Caption").props.onKeyDown(key("ArrowRight")); assert.equal(text.x, .505);
+  labelled(render(), "Move Caption").props.onKeyDown(key("ArrowDown", true)); assert.ok(Math.abs(text.y - .23) < 1e-10);
+  const saved = formatEdit.parseExploreFormatEdit(JSON.parse(JSON.stringify(edit())));
+  assert.equal(saved.text.x, text.x); assert.equal(saved.text.y, text.y);
+  assert.match(formatEdit.createFormatTextSvg(saved.text, 1080, 1920), /<text x="545.4"/);
+  for (const x of [NaN, Infinity, -.1, 1.1, "0.4"]) assert.throws(() => formatEdit.parseExploreFormatEdit({ ...edit(), text: { ...text, x } }));
+  const classic = formatEdit.positionFormatText({ ...text, preset: "snapchat-classic" }, .9, 2, 1080, 1920);
+  assert.equal(formatEdit.formatTextLayout(classic, 1080, 1920).fits, true);
+  assert.equal(formatEdit.formatTextLayout(classic, 1080, 1920).background.x, 0);
+});
+
 test("returning to the overview keeps local clip edits visible and never applies another clip's preview", () => {
   const imports = Object.fromEntries([
     "@/components/explore/workflow-scheduling-panel", "@/lib/explore/workflow-scheduling-draft", "@/components/explore/workflow-demo-controls",
@@ -195,6 +248,18 @@ test("shared video preset dropdown switches Snapchat Classic back to Bold white 
       assert.equal(labelled(render(), "Text preset").props.value, "bold");
     }
   }
+});
+
+test("single Hook text explains automatic timing; adding another block returns to timed controls", () => {
+  const h = harness("format-text-overlays-editor");
+  let overlays = [{ value: "Hook text", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 3000 }];
+  const render = () => h.render(() => h.exports.FormatTextOverlaysEditor({ overlays, durationMs: 3000, fullDuration: overlays.length === 1, onChange: next => { overlays = next; }, onSeek() {} }));
+  let tree = render(); assert.equal(labelled(tree, "Text start time"), undefined);
+  assert.ok(JSON.stringify(tree).includes("Its timing follows your trim"));
+  nodes(tree).find(n => n.type === "button" && n.props.children === "Add text").props.onClick();
+  tree = render(); assert.ok(labelled(tree, "Text start time")); assert.ok(labelled(tree, "Text end time"));
+  labelled(tree, "Text start time").props.onChange({ target: { value: "1" } });
+  assert.equal(overlays[1].startMs, 1000);
 });
 
 test("Wall manual text hides timing and style until advanced mode while keeping full-duration blocks", () => {

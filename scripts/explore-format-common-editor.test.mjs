@@ -9,6 +9,7 @@ import ts from "typescript";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
 import * as wallTextEditor from "../lib/explore/wall-text-editor.ts";
+import * as hookTextTiming from "../lib/explore/hook-text-timing.ts";
 import * as unchangedHook from "../lib/explore/unchanged-hook-source.ts";
 import * as referenceAudio from "../lib/explore/reference-audio-preview.ts";
 import * as remixSource from "../lib/explore/remix-source.ts";
@@ -25,6 +26,7 @@ function load(path, imports, globals = {}) {
   }).outputText, { exports, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, ...globals, require(name) {
     if (name === "@/lib/explore/format-edit-draft") return editDraft;
     if (name === "@/lib/explore/wall-text-editor") return wallTextEditor;
+    if (name === "@/lib/explore/hook-text-timing") return hookTextTiming;
     if (name === "@/components/explore/use-clip-draft-save") return imports[name] ?? { useClipDraftSave: () => ({ saved: null, loaded: true, busy: false, dirty: true, error: null, save() {}, reload() {} }) };
     if (name === "@/lib/explore/unchanged-hook-source") return unchangedHook;
     if (name === "@/lib/explore/reference-audio-preview") return referenceAudio;
@@ -321,6 +323,49 @@ test("shared opening and demo text controls retain timing within the edited clip
   clear.props.onChange([]);
   assert.equal(next.text, null);
   assert.deepEqual(next.textOverlays, []);
+});
+
+for (const recovery of ["local", "server", "receipt", "metadata"]) for (const optIn of [true, false])
+test(`single Hook text ${recovery}: full trim coverage only with explicit opening opt-in=${optIn}`, () => {
+  let cursor = 0, saveInput, finishInput, persisted;
+  const slots = [], sourceId = "00000000-0000-4000-8000-000000000001";
+  const original = { value: "Keep this hook", width: .8, x: .6, y: .18, font: "inter", fontWeight: 700, fontSize: 48, color: "#ffffff", startMs: 500, endMs: 1500 };
+  const stored = { ...editing, trimStartMs: 0, trimEndMs: 3000, textOverlays: [original] };
+  const react = { useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
+    return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }]; },
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; }, useCallback: fn => fn, useEffect() {} };
+  const mod = load("components/explore/format-video-editor.tsx", { react, "react-dom": { createPortal: children => children },
+    "@tanstack/react-query": { useQuery: () => ({}) }, "@/contexts/auth-context": { useAuth: () => ({ user: null }) },
+    "@/components/explore/format-video-text-fields": fields, "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({}) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { saveInput = input; return { saved: null, loaded: true, dirty: true, busy: false, error: null }; } },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing: input => { finishInput = input; return { action: { disabled: true } }; } },
+  }, { window: {}, localStorage: { getItem: () => recovery === "local" ? JSON.stringify({ editing: stored }) : null,
+    setItem(key, value) { persisted = JSON.parse(value).editing; } } });
+  const props = { format: "hook", fullDurationHookText: optIn, video: { id: sourceId, mediaAssetId: sourceId, url: "blob:hook", title: "Hook", ...(recovery === "metadata" ? {} : { durationSeconds: 3 }), ratio: "9:16" },
+    active: true, controlsTarget: {}, resultsTarget: {}, enabled: false, onDirty() {}, onSaved() {}, onContinue() {} };
+  const render = () => { cursor = 0; return mod.FormatVideoEditor(props); };
+  let tree = render();
+  const restored = { sourceAssetId: sourceId, editing: stored, backgroundAssetId: null, backgroundPlayback: "once" };
+  if (recovery === "server") saveInput.onRestore(restored, false);
+  if (recovery === "receipt") finishInput.onRestoreDraft(restored);
+  if (recovery === "metadata") {
+    nodes(tree).find(n => n.type === "video").props.onLoadedMetadata({ currentTarget: { duration: 3, videoWidth: 720, videoHeight: 1280 } });
+    tree = render(); nodes(tree).find(n => n.type === fields.FormatVideoTextFields).props.onChange({ ...saveInput.content.editing, textOverlays: [original] });
+  }
+  tree = render();
+  assert.deepEqual([saveInput.content.editing.textOverlays[0].startMs, saveInput.content.editing.textOverlays[0].endMs], optIn ? [0,3000] : [500,1500]);
+  for (const [start, end] of [[0,1.5], [0,3], [.5,2], [0,3], [0,1], [0,3]]) {
+    // First lower the start to keep every intermediate trim valid.
+    nodes(tree).find(n => n.props?.["aria-label"] === "Trim start").props.onChange({ target: { value: "0" } }); tree = render();
+    nodes(tree).find(n => n.props?.["aria-label"] === "Trim end").props.onChange({ target: { value: String(end) } }); tree = render();
+    nodes(tree).find(n => n.props?.["aria-label"] === "Trim start").props.onChange({ target: { value: String(start) } }); tree = render();
+    const result = saveInput.content.editing, text = result.textOverlays[0];
+    if (optIn) assert.deepEqual([text.startMs, text.endMs], [0, (end-start)*1000]);
+    assert.equal(text.value, original.value); assert.equal(text.x, original.x); assert.equal(text.font, original.font);
+    assert.equal(finishInput.editing.textOverlays[0].endMs, text.endMs, "Final renderer receives the same timing as the draft");
+    assert.equal(persisted.textOverlays[0].endMs, text.endMs, "Browser recovery retains the current timing");
+  }
+  if (!optIn) assert.equal(saveInput.content.editing.textOverlays[0].endMs, 1000, "Demo/Talking Head default keeps its existing independent timing");
 });
 
 test("Wall text covers the whole selection after recovery, manual editing and shorter or longer trims", () => {

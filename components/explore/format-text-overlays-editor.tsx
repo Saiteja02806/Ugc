@@ -10,9 +10,9 @@ import "./explore-text-fonts.css";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 
-export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallText = false, timeMs = 0, onSeek, styleTarget, showStyleControls = true }: {
+export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallText = false, fullDuration = false, timeMs = 0, onSeek, styleTarget, showStyleControls = true }: {
   overlays: ExploreFormatText[]; durationMs: number; onChange: (value: ExploreFormatText[]) => void;
-  wallText?: boolean; timeMs?: number; onSeek: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
+  wallText?: boolean; fullDuration?: boolean; timeMs?: number; onSeek: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
   const newText = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", font: "inter" as const, fontWeight: 700 as const };
@@ -20,8 +20,9 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   const index = Math.min(selected, editable.length - 1);
   const text = editable[index];
   const weight = text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700);
+  const automaticTiming = wallText || fullDuration;
   function changeText(value: ExploreFormatText) {
-    const next = wallText ? { ...value, startMs: 0, endMs: durationMs } : value;
+    const next = automaticTiming ? { ...value, startMs: 0, endMs: durationMs } : value;
     onChange(editable.map((overlay, i) => i === index ? next : overlay));
     // Keep the selected text visible while editing, including paused playback.
     if (timeMs < next.startMs || timeMs >= next.endMs) onSeek(Math.max(0, Math.min(next.startMs, next.endMs - 1, durationMs - 1)));
@@ -50,7 +51,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   return <section className="space-y-3" aria-label="Text overlays">
     <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{wallText ? "Your wall of text" : "Text overlays"}</h2>
       <Button type="button" size="sm" variant="outline" disabled={editable.length >= MAX_FORMAT_TEXT_OVERLAYS || durationMs < 1} onClick={add}>Add text</Button></div>
-    {!wallText ? <p className="text-xs leading-5 text-muted">Each text block has its own timing within the trimmed clip.</p> : null}
+    {fullDuration && !wallText ? <p className="text-xs leading-5 text-muted">This text stays on screen for the entire selected hook. Its timing follows your trim.</p> : !wallText ? <p className="text-xs leading-5 text-muted">Each text block has its own timing within the trimmed clip.</p> : null}
     {editable.length > 1 || text.value ? <div className="space-y-2" role="group" aria-label="Text blocks">
       {editable.map((overlay, i) => <div key={i} className="flex items-center gap-2">
         <Button type="button" size="sm" variant={i === index ? "secondary" : "ghost"} className="min-w-0 flex-1 justify-start" aria-pressed={i === index} aria-label={`Edit text block ${i + 1}`} onClick={() => { setSelected(i); onSeek(overlay.startMs); }}>
@@ -61,7 +62,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
     </div> : null}
     {text ? <>
       <label className="block space-y-2 text-xs text-muted">Text block {index + 1}<textarea aria-label={wallText ? "Wall of text" : "Overlay text"} placeholder="Type text to show on this clip…" value={text.value} onChange={event => update({ value: event.target.value })} rows={3} maxLength={600} className={field} /></label>
-      {!wallText ? <div className={tools.textTiming}><label className="space-y-2 text-xs text-muted">Show from (s)<input type="number" aria-label="Text start time" min={0} max={durationMs / 1000} step={.1} value={text.startMs / 1000} onChange={event => update({ startMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label><label className="space-y-2 text-xs text-muted">Until (s)<input type="number" aria-label="Text end time" min={.1} max={durationMs / 1000} step={.1} value={text.endMs / 1000} onChange={event => update({ endMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label></div> : null}
+      {!automaticTiming ? <div className={tools.textTiming}><label className="space-y-2 text-xs text-muted">Show from (s)<input type="number" aria-label="Text start time" min={0} max={durationMs / 1000} step={.1} value={text.startMs / 1000} onChange={event => update({ startMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label><label className="space-y-2 text-xs text-muted">Until (s)<input type="number" aria-label="Text end time" min={.1} max={durationMs / 1000} step={.1} value={text.endMs / 1000} onChange={event => update({ endMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label></div> : null}
       {showStyleControls ? styleTarget ? createPortal(styleControls, styleTarget) : styleControls : null}
     </> : <p className="text-xs text-muted">Add text to show a message at a specific time.</p>}
     <p className="text-xs leading-5 text-muted">Text already inside the original video is part of the footage.</p>

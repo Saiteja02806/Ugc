@@ -27,7 +27,7 @@ const { getRecreateReferences, getRecreateReference, getArchivedHookReferences, 
 const { getReferenceText } = await import("../lib/explore/reference-text-store.ts");
 const { getExplorePairedReference, getAssetReferenceSoundtrack } = await import("../worker/src/lib/explore-reference-soundtrack.ts");
 
-test("the active Hook gallery contains all reviewed releases with source links and separate audible previews", () => {
+test("the active Hook gallery retains reviewed source links and respects silent preview decisions", () => {
   const ready = validateHookRelease(release, textCatalog), additionReady = validateHookAdditionRelease(additions, textCatalog), hooks = getRecreateReferences().filter(item => item.format === "hook");
   const batchReady = validateHookAdditionRelease(newBatch, textCatalog);
   const expected = [...ready.eligible, ...additionReady.eligible, ...batchReady.eligible];
@@ -38,12 +38,18 @@ test("the active Hook gallery contains all reviewed releases with source links a
   assert.deepEqual(hooks.map(item => item.title), Array(98).fill("Hook"));
   for (const hook of hooks) {
     const registered = [...release.items, ...additions.items, ...newBatch.items].find(item => item.id === hook.id);
-    assert.equal(hook.instagramUrl, registered.instagramUrl); assert.notEqual(hook.previewVideoUrl, hook.videoUrl);
+    assert.equal(hook.instagramUrl, registered.instagramUrl);
     assert.equal(hook.sourceUrl, registered.sourceUrl ?? registered.instagramUrl);
     assert.equal(hook.sourcePlatform, registered.sourcePlatform ?? (registered.instagramUrl ? "instagram" : undefined));
-    assert.ok(hook.previewVideoUrl.endsWith(`${registered.previewSha256}.mp4`));
+    if (registered.audioPolicy === "silent") {
+      assert.equal(hook.previewVideoUrl, hook.videoUrl);
+      assert.equal(hook.pairedAudio, undefined);
+    } else {
+      assert.notEqual(hook.previewVideoUrl, hook.videoUrl);
+      assert.ok(hook.previewVideoUrl.endsWith(`${registered.previewSha256}.mp4`));
+      assert.ok(hook.pairedAudio.url.endsWith(`${registered.audioSha256}.mp3`));
+    }
     assert.ok(hook.videoUrl.endsWith(`${registered.videoSha256}.mp4`));
-    assert.ok(hook.pairedAudio.url.endsWith(`${registered.audioSha256}.mp3`));
     assert.equal(getReferenceText(hook.id, null, "hook").status, textCatalog.items.find(item => item.referenceId === hook.id && item.slideId === null).status);
     assert.equal(getExplorePairedReference(hook.id).audioSha256, registered.audioSha256);
   }
@@ -68,13 +74,20 @@ test("retired references still resolve saved remix/video/audio identities withou
   finally { if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous; }
 });
 
-test("all reviewed caption sources pass through remix without losing blocks, timing order or audio settings", () => {
+test("reviewed captions preserve timing/audio through remix except the two approved one-frame screen cuts", () => {
   for (const hook of getRecreateReferences().filter(item => item.format === "hook")) {
     const source = getReferenceText(hook.id, null, "hook");
+    const original = structuredClone(source);
     if (source.status === "no_text") { assert.deepEqual(source.blocks, []); continue; }
     const input = remixInputSource({ requestKey: "00000000-0000-4000-8000-000000000001", referenceId: hook.id, slideId: null,
       format: "hook", instructions: "", referenceBlocks: source.blocks.map(block => block.text) }, source);
-    assert.deepEqual(input.blocks, source.blocks, hook.id);
+    const normalizedTail = ["explore-paired-hook-4585ee949081c4e5cd835cd3", "explore-paired-hook-7c53cba88343579e7e15c8b0"].includes(hook.id);
+    if (normalizedTail) {
+      assert.equal(source.blocks.length, 2);
+      assert.deepEqual(source.blocks.map(block => [block.startMs, block.endMs]), [[0, 3067], [3067, 3100]]);
+    }
+    assert.deepEqual(input.blocks, normalizedTail ? [{ ...source.blocks[0], endMs: 3100 }] : source.blocks, hook.id);
+    assert.deepEqual(source, original, "The original reviewed transcription stays intact");
     // Use deterministic copy, so the test verifies integration without a paid AI call.
     const output = validateRemixOutput({ blocks: input.blocks.map(block => block.text), heading: "", body: "" }, input);
     for (const duration of [3000, 5000, 10000]) {

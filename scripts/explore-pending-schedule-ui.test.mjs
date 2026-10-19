@@ -104,7 +104,7 @@ test("mount, receipt restoration and preparation polling never create a schedule
   const empty = fixture(); empty.render(); await settle(); empty.render(); assert.equal(empty.calls.filter(call => call.method === "POST").length, 0); empty.unmount();
   const h = fixture({ saved: savedEntry(true), serverReply: reply() }); h.render(); await settle(); h.render(); await h.tick();
   assert.equal(h.calls.length, 2); assert.ok(h.calls.every(call => call.method === "GET"));
-  assert.match(h.text(), /Your schedule is saved/); h.unmount();
+  assert.match(h.text(), /Post scheduled/); h.unmount();
 });
 
 test("a pending preparation does not complete the editing draft; a verified scheduled result does",async()=>{
@@ -122,7 +122,9 @@ test("the original simple form submits directly with one Schedule post click", a
   assert.deepEqual(request.schedule.targets, [{ connectionId: id(3), platform: "instagram", settings: { shareToFeed: true } }]);
   assert.equal(request.schedule.caption, submission.caption); assert.equal(request.schedule.scheduledFor, submission.scheduledFor);
   assert.equal(request.schedule.timezone, submission.timezone); assert.equal(h.changes.length, 0);
-  assert.equal(JSON.parse(h.values.values().next().value).confirmed, true); assert.match(h.text(), /You can leave this screen/); h.unmount();
+  assert.equal(JSON.parse(h.values.values().next().value).confirmed, true); assert.match(h.text(), /Post scheduled/);
+  assert.ok(h.button("Schedule another post"));
+  assert.doesNotMatch(h.text(), /Check saved|Confirm the same|unconfirmed/); h.unmount();
 });
 
 test("unavailable accounts and invalid compositions cannot enqueue video preparation", async () => {
@@ -137,7 +139,7 @@ test("clip or account changes during async source resolution block the stale con
   for (const field of ["clip", "account"]) {
     let resolve;
     const h = fixture(); h.props.composition.resolve = () => new Promise(done => { resolve = done; });
-    const editor = await h.form(); h.button("Schedule post").props.onClick(); await settle();
+    await h.form(); h.button("Schedule post").props.onClick(); await settle();
     if (field === "clip") h.props.composition = { ...h.props.composition, signature: "changed-clips-v2" };
     else h.props.draft = { ...h.props.draft, connectionId: id(90) };
     h.render(); resolve(finishDraft); await settle(); h.render();
@@ -147,7 +149,7 @@ test("clip or account changes during async source resolution block the stale con
 
 test("source resolver cannot substitute another opening asset", async () => {
   const h = fixture(); h.props.composition.resolve = async () => ({ ...finishDraft, sourceAssetId: id(99) });
-  const editor = await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /prepared video changed/); h.unmount();
 });
 
@@ -161,14 +163,14 @@ test("confirmed background preparation reaches Scheduling while unconfirmed requ
   h.unmount();
 });
 
-test("lost POST reply is recovered by read-only check or reload without a duplicate POST", async () => {
-  const h = fixture({ loseResponse: true }), editor = await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+test("lost POST reply is recovered silently with one read and no duplicate POST or recovery questions", async () => {
+  const h = fixture({ loseResponse: true }); await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
-  const saved = JSON.parse(h.values.values().next().value); assert.equal(saved.confirmed, false);
-  assert.equal(h.cache.data().schedules.length, 0, "An unconfirmed response cannot invent a calendar row");
-  h.button("Check saved request").props.onClick(); await settle(); h.render();
+  const saved = JSON.parse(h.values.values().next().value); assert.equal(saved.confirmed, true);
   assert.equal(h.cache.data().schedules[0].id, id(20));
-  assert.equal(h.calls.filter(call => call.method === "POST").length, 1); assert.match(h.text(), /Your schedule is saved/); h.unmount();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1); assert.match(h.text(), /Post scheduled/);
+  assert.equal(h.calls.filter(call => call.method === "GET" && call.url.startsWith("/api/explore/schedules?requestKey=")).length, 1);
+  assert.doesNotMatch(h.text(), /Check saved|Confirm the same|unconfirmed/); h.unmount();
   const reloaded = fixture({ saved, serverReply: reply(saved.input) }); reloaded.render(); await settle(); reloaded.render();
   assert.equal(reloaded.calls.length, 1); assert.equal(reloaded.calls[0].method, "GET"); assert.equal(JSON.parse(reloaded.values.values().next().value).confirmed, true); reloaded.unmount();
 });
@@ -195,16 +197,18 @@ test("rejected background requests survive reload without automatic submissions"
 test("an absent server receipt permits only explicit replay of the same durable input", async () => {
   const saved = savedEntry(), h = fixture({ saved }); h.render(); await settle(); h.render();
   assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
-  h.button("Confirm the same saved request").props.onClick(); await settle(); h.render();
+  assert.equal(h.button("Confirm the same saved request"), undefined);
+  assert.equal(h.button("Check saved request"), undefined);
+  h.button("Try again").props.onClick(); await settle(); h.render();
   const mutation = h.calls.find(call => call.method === "POST"); assert.deepEqual(JSON.parse(mutation.body), saved.input);
   assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
 });
 
 test("another tab's confirmed receipt is read before any new mutation", async () => {
-  const h = fixture(), editor = await h.form(), saved = savedEntry(true);
+  const h = fixture(), saved = savedEntry(true); await h.form();
   h.values.set("ugc-explore:background-schedule:v1:owner-a:hook", JSON.stringify(saved)); h.setServerReply(reply(saved.input));
   h.button("Schedule post").props.onClick(); await settle(); h.render();
-  assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /Your schedule is saved/); h.unmount();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0); assert.match(h.text(), /Post scheduled/); h.unmount();
 });
 
 test("a verified preparation failure with no targets can be explicitly confirmed for a new future time", async () => {

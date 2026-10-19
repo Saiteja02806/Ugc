@@ -617,6 +617,13 @@ export async function getDailyTrendingFeed(feedId: string, userId: string) {
   };
 }
 
+export async function findOwnedDailyTrendingFeed(feedId: string, userId: string) {
+  const { data, error } = await getClient().from(DAILY_FEEDS_TABLE)
+    .select("id").eq("id", feedId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(`Could not read the saved Trending quota: ${error.message}`);
+  return data ? getDailyTrendingFeed(data.id, userId) : null;
+}
+
 export async function getDailyTrendingFeedForDate(params: {
   localDate: string;
   userId: string;

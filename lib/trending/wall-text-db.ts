@@ -1823,6 +1823,8 @@ export async function listActiveTrendingWallTextIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   pinnedAssignmentIds?: readonly string[];
+  /** Exact owned assignments from a delivered quota; read-only history. */
+  reviewedAssignmentIds?: readonly string[];
   userId: string;
 }): Promise<TrendingWallTextIdeaRecord[]> {
   const pinnedAssignmentIds = new Set(params.pinnedAssignmentIds ?? []);
@@ -1838,14 +1840,18 @@ export async function listActiveTrendingWallTextIdeas(params: {
     return [];
   }
 
-  const { data: assignments, error: assignmentError } = await getClient()
+  if (params.reviewedAssignmentIds?.length === 0) return [];
+  let assignmentQuery = getClient()
     .from("user_wall_text_assignments")
     .select("*")
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
-    .eq("state", "active")
     .order("position", { ascending: true });
+  assignmentQuery = params.reviewedAssignmentIds
+    ? assignmentQuery.in("id", [...params.reviewedAssignmentIds])
+    : assignmentQuery.eq("state", "active");
+  const { data: assignments, error: assignmentError } = await assignmentQuery;
 
   if (assignmentError) {
     throw new Error(

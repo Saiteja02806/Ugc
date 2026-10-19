@@ -109,17 +109,23 @@ export async function listActiveTrendingReactionIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   pinnedAssignmentIds?: readonly string[];
+  /** Exact owned assignments from a delivered quota; read-only history. */
+  reviewedAssignmentIds?: readonly string[];
   userId: string;
 }): Promise<TrendingReactionSourceRecord[]> {
   const pinned = new Set(params.pinnedAssignmentIds ?? []);
-  const { data: assignments, error: assignmentError } = await getClient()
+  if (params.reviewedAssignmentIds?.length === 0) return [];
+  let assignmentQuery = getClient()
     .from("user_reaction_assignments")
     .select("id,position,reaction_creative_id,state")
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
-    .in("state", ["active", "selected"])
     .order("position", { ascending: true });
+  assignmentQuery = params.reviewedAssignmentIds
+    ? assignmentQuery.in("id", [...params.reviewedAssignmentIds])
+    : assignmentQuery.in("state", ["active", "selected"]);
+  const { data: assignments, error: assignmentError } = await assignmentQuery;
 
   if (assignmentError) {
     throw new Error(

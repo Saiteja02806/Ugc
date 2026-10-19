@@ -59,6 +59,27 @@ test("a stale tab keeps reviews from the other tab and cannot undo an explicit l
   assert.equal(merged.activeId, "1");
 });
 
+test("quota history cannot leak between quotas or accept the legacy unscoped cache", () => {
+  const state = { entries: [entry("1")], activeId: "1" };
+  const scoped = { ...config, scopeId: "quota-a" };
+  const raw = serializePostReviewHistory(state, config.ownerId, scoped.scopeId);
+  assert.deepEqual(parsePostReviewHistory(raw, scoped, now + 2 * 60 * 60 * 1000), state);
+  assert.deepEqual(parsePostReviewHistory(raw, { ...scoped, scopeId: "quota-b" }, now), emptyPostReviewState());
+  assert.deepEqual(parsePostReviewHistory(serializePostReviewHistory(state, config.ownerId), scoped, now), emptyPostReviewState());
+  assert.notEqual(getPostReviewHistoryKey(config.ownerId, "quota-a"), getPostReviewHistoryKey(config.ownerId, "quota-b"));
+});
+
+test("recovering older quota pages preserves the current post, local edits and original slot order", () => {
+  const current = { entries: [{ ...entry("2"), position: 2, value: "Edited locally" }, { ...entry("3"), position: 3 }], activeId: "2" };
+  const recovered = { entries: [{ ...entry("1", now + 100), position: 1 }, { ...entry("2", now + 200), position: 2, decision: "liked" as const }], activeId: null };
+  const merged = mergePostReviewHistory(recovered, current);
+  assert.deepEqual(merged.entries.map(post => post.id), ["1", "2", "3"]);
+  assert.equal(merged.activeId, "2");
+  assert.equal(merged.entries[1].value, "Edited locally");
+  assert.equal(merged.entries[1].decision, "liked");
+  assert.deepEqual(mergePostReviewHistory(recovered, merged), merged, "Repeated recovery must be idempotent");
+});
+
 const item = { id: "post", assignmentId: "assignment", creativeId: "creative", feedItemId: "feed", readiness: "preview_ready" };
 const slide = { headline: "A useful habit", renderedUrl: "/slide.webp", slideNumber: 1, status: "ready" };
 const carousel = { carouselId: "carousel", status: "completed", slideCount: 1, slides: [slide] };

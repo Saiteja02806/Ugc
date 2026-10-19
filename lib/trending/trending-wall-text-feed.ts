@@ -962,7 +962,7 @@ export class TrendingWallTextPreparationError extends Error {
   }
 }
 
-function toWallTextSourceRecord(
+export function toWallTextSourceRecord(
   idea: Awaited<ReturnType<typeof listActiveTrendingWallTextIdeas>>[number],
 ): TrendingWallTextSourceRecord {
   return {

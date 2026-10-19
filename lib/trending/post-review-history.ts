@@ -3,18 +3,19 @@ export type ReviewedPost<T> = {
   value: T;
   decision: "liked" | "skipped";
   reviewedAt?: number;
+  position?: number;
 };
 
 export type PostReviewState<T> = { entries: ReviewedPost<T>[]; activeId: string | null };
-export type PostReviewPersistence<T> = { ownerId: string; isValue: (value: unknown) => value is T };
+export type PostReviewPersistence<T> = { ownerId: string; scopeId?: string; isValue: (value: unknown) => value is T };
 
 const PREFIX = "ugc:trending-review-history:v1:";
 export const POST_REVIEW_LIMIT = 120;
 export const POST_REVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const POST_REVIEW_STORAGE_LIMIT = 1_000_000;
 
-export function getPostReviewHistoryKey(ownerId: string) {
-  return `${PREFIX}${encodeURIComponent(ownerId)}`;
+export function getPostReviewHistoryKey(ownerId: string, scopeId?: string) {
+  return `${PREFIX}${encodeURIComponent(ownerId)}${scopeId ? `:quota:${encodeURIComponent(scopeId)}` : ""}`;
 }
 
 export function emptyPostReviewState<T>(): PostReviewState<T> {
@@ -25,7 +26,7 @@ export function parsePostReviewHistory<T>(raw: string | null, persistence: PostR
   if (!raw || raw.length > POST_REVIEW_STORAGE_LIMIT) return emptyPostReviewState();
   try {
     const saved = JSON.parse(raw);
-    if (saved?.version !== 1 || saved.ownerId !== persistence.ownerId || !Array.isArray(saved.entries)) return emptyPostReviewState();
+    if (saved?.version !== 1 || saved.ownerId !== persistence.ownerId || saved.scopeId !== persistence.scopeId || !Array.isArray(saved.entries)) return emptyPostReviewState();
     const entries: ReviewedPost<T>[] = [];
     for (const entry of saved.entries.slice(-POST_REVIEW_LIMIT)) {
       if (!entry || typeof entry.id !== "string" || !entry.id ||
@@ -33,6 +34,7 @@ export function parsePostReviewHistory<T>(raw: string | null, persistence: PostR
         !Number.isFinite(entry.reviewedAt) || entry.reviewedAt > now + 60_000 ||
         now - entry.reviewedAt > POST_REVIEW_RETENTION_MS || !persistence.isValue(entry.value)) continue;
       if (entries.some(previous => previous.id === entry.id)) continue;
+      if (entry.position !== undefined && !Number.isSafeInteger(entry.position)) continue;
       entries.push(entry);
     }
     return { entries, activeId: entries.some(entry => entry.id === saved.activeId) ? saved.activeId : null };
@@ -46,18 +48,19 @@ export function mergePostReviewHistory<T>(stored: PostReviewState<T>, current: P
     const previous = byId.get(entry.id);
     byId.set(entry.id, previous?.decision === "liked" ? { ...entry, decision: "liked" } : entry);
   }
-  const entries = [...byId.values()].sort((a, b) => (a.reviewedAt ?? 0) - (b.reviewedAt ?? 0)).slice(-POST_REVIEW_LIMIT);
+  const entries = [...byId.values()].sort((a, b) =>
+    a.position !== undefined && b.position !== undefined ? a.position - b.position : (a.reviewedAt ?? 0) - (b.reviewedAt ?? 0)).slice(-POST_REVIEW_LIMIT);
   return { entries, activeId: entries.some(entry => entry.id === current.activeId) ? current.activeId : null };
 }
 
 /** Bound local storage by both count and serialized size; never store image bytes. */
-export function serializePostReviewHistory<T>(state: PostReviewState<T>, ownerId: string) {
+export function serializePostReviewHistory<T>(state: PostReviewState<T>, ownerId: string, scopeId?: string) {
   const entries = state.entries.slice(-POST_REVIEW_LIMIT);
   while (entries.length) {
     const activeId = entries.some(entry => entry.id === state.activeId) ? state.activeId : null;
-    const raw = JSON.stringify({ version: 1, ownerId, entries, activeId });
+    const raw = JSON.stringify({ version: 1, ownerId, scopeId, entries, activeId });
     if (raw.length <= POST_REVIEW_STORAGE_LIMIT) return raw;
     entries.shift();
   }
-  return JSON.stringify({ version: 1, ownerId, ...emptyPostReviewState<T>() });
+  return JSON.stringify({ version: 1, ownerId, scopeId, ...emptyPostReviewState<T>() });
 }

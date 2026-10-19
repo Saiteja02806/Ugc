@@ -2,6 +2,17 @@
 
 ### Hook and Wall source edits and sound — 19 October 2026, implementation pending release
 
+- An approved Omni visual test of the user's exact 3.166667-second `cdd.mp4`
+  and all three portraits completed through release `4fb1c433`. It replaced
+  the facial appearance, removed captions and returned a silent 720x1280 clip
+  of the same duration. It also changed hair shape/texture and shifted the
+  hand-to-mouth timing. This FAILS the strict face-only preservation requirement.
+  Keep PR #76 unmerged and the website/MCP/worker release staged pending review.
+  Passing request/metadata tests does not establish creative acceptance.
+  Source-preserving face-region compositing needs evaluation for strict fidelity.
+  A single accepted provider operation was used; do not resubmit it. The separate
+  local credential's earlier HTTP 402 rejection did not create a provider job.
+
 - New Hook/Wall requests with a gallery or owned source video are explicit
   source edits: preserve scene, framing, lighting, performance and timing;
   portraits guide replacement facial appearance. Remove source captions.
@@ -24,7 +35,8 @@
   jobs retain their old fingerprints and audio behavior. The generated-media
   trigger copies the new contract only from an owner-matched background job.
 - Local fixtures cover source/image-only paths, explicit sound, billing guards,
-  provider recovery and persistent silence. No paid generation is authorized.
+  provider recovery and persistent silence. One paid visual test was authorized
+  and completed; additional paid generations require fresh approval.
   Local checks, deployment and production creative acceptance are distinct.
 
 ### Trending same-quota older-post recovery — 19 October 2026, local correction

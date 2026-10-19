@@ -3,21 +3,25 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as imagePicker from "../lib/media/image-picker.ts";
+import * as imageBatch from "../lib/explore/reference-image-batch.ts";
 
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
 
-function harness(upload, { images = [], queryError = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner" } = {}) {
+function harness(upload, { images = [], queryError = false, queryPending = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner" } = {}) {
   const states = [], refs = [], effects = [], changes = [], selectionChanges = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [], errors = [];
   const imageCache = new Map([[JSON.stringify(["explore-reference-images", ownerId ?? "signed-out"]), images]]);
   let cursor = 0;
   const imports = {
-    react: { useState: initial => { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = value; }]; },
+    "@/lib/media/image-picker": imagePicker,
+    "@/lib/explore/reference-image-batch": imageBatch,
+    react: { useState: initial => { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = typeof value === "function" ? value(states[index]) : value; }]; },
       useRef: initial => { const index = cursor++; return refs[index] ??= { current: initial }; }, useEffect: effect => { effects.push(effect); } },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
     "lucide-react": new Proxy({}, { get: (_, key) => String(key) }),
     "@base-ui/react/tabs": { Tabs: { Root: "TabsRoot", List: "TabsList", Tab: "TabsTab", Panel: "TabsPanel" } },
     "@tanstack/react-query": {
-      useQuery: options => { queries.push(options); const data = imageCache.get(JSON.stringify(options.queryKey)); return { data, isPending: data === undefined, isError: queryError, refetch: async () => {} }; },
+      useQuery: options => { queries.push(options); const data = imageCache.get(JSON.stringify(options.queryKey)); return { data, isPending: queryPending || data === undefined, isError: queryError, refetch: async () => {} }; },
       useQueryClient: () => ({ cancelQueries: async options => { cancellations.push(options); }, setQueryData: (key, update) => { const cacheKey = JSON.stringify(key); imageCache.set(cacheKey, update(imageCache.get(cacheKey))); } }),
     },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
@@ -57,7 +61,7 @@ function harness(upload, { images = [], queryError = false, fetchSaved = async i
   return { calls, changes, selectionChanges, pending, errors, queries, savedReads, imageCache, cancellations, render, all, cleanup: () => cleanups.forEach(cleanup => cleanup()),
     button(label) { return all(render(), node => node.type === "Button" && node.props["aria-label"] === label)[0]; },
     openImage() { all(render(), node => node.type === "Popover")[0].props.onOpenChange(true); return render(); },
-    choose(kind) { all(tree, node => node.type === "input" && node.props["aria-label"] === `Choose optional ${kind} reference`)[0].props.onChange({ currentTarget: { files: [{ name: "reference.mp4" }], value: "selected" } }); },
+    choose(kind) { all(tree, node => node.type === "input" && node.props["aria-label"] === `Choose optional ${kind} reference`)[0].props.onChange({ currentTarget: { files: [new File(["reference"], kind === "image" ? "reference.png" : "reference.mp4", {type: kind === "image" ? "image/png" : "video/mp4"})], value: "selected" } }); },
   };
 }
 const flush = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
@@ -297,4 +301,62 @@ test("image picker keeps multiple saved/catalogue selections open with toggles a
   assert.equal(popover().props.open, false);
   popover().props.onOpenChange(true);
   assert.equal(button("Use your image two.png").props["aria-pressed"], true);
+});
+
+test("one file-picker action uploads multiple images, preserves input order and existing selections after a partial failure", async () => {
+  const original={kind:"image",asset:savedImage("original")};
+  const h=harness(async file=>{
+    if(file.name==='bad.png')throw Error('Upload failed');
+    return {kind:'image',asset:{...savedImage(file.name),fileName:file.name}};
+  });
+  const selections=[];
+  const tree=h.render({selection:null,imageSelections:[original],maxImages:5,onImagesChange:items=>selections.push(items)});
+  const input=h.all(tree,node=>node.type==='input'&&node.props['aria-label']==='Choose optional image reference')[0];
+  assert.equal(input.props.multiple,true);
+  input.props.onChange({currentTarget:{files:['one.png','bad.png','two.png'].map(name=>new File(['image'],name,{type:'image/png'})),value:'selected'}});
+  await flush();await flush();
+  assert.equal(h.calls.length,3);assert.equal(selections.length,1);
+  assert.deepEqual(Array.from(selections[0],image=>image.asset.id),['original','one.png','two.png']);
+  assert.match(h.errors.at(-1),/2 added.*bad.png.*Upload failed/);
+  assert.deepEqual(h.pending,[true,false]);
+});
+
+test("over-limit multiple files are rejected before uploading, and single-image callers keep a single-file chooser", async()=>{
+  const h=harness(async()=>{throw Error('Must not upload');});
+  const tree=h.render({selection:null,imageSelections:[{kind:'image',asset:savedImage()}],maxImages:2,onImagesChange(){}});
+  const input=h.all(tree,node=>node.type==='input'&&node.props['aria-label']==='Choose optional image reference')[0];
+  input.props.onChange({currentTarget:{files:['one.png','two.png'].map(name=>new File(['image'],name,{type:'image/png'})),value:'selected'}});
+  await flush();assert.equal(h.calls.length,0);assert.match(h.errors.at(-1),/1 more image/);
+  const single=h.all(h.render(),node=>node.type==='input'&&node.props['aria-label']==='Choose optional image reference')[0];
+  assert.equal(single.props.multiple,false);
+});
+
+test("the first picker page is bounded and does not start catalogue images while saved images load",()=>{
+  const assets=Array.from({length:100},(_,i)=>({...savedImage(String(i)),fileName:`${i}.png`}));
+  const h=harness(async()=>{}, {images:assets});
+  const tree=h.openImage();
+  assert.equal(h.all(tree,node=>node.type==='Button'&&node.props['aria-label']?.startsWith('Use your image ')).length,24);
+  const more=h.all(tree,node=>node.type==='Button'&&node.props.children==='Load more images')[0];assert.ok(more);
+  more.props.onClick();
+  assert.equal(h.all(h.render(),node=>node.type==='Button'&&node.props['aria-label']?.startsWith('Use your image ')).length,48);
+  h.openImage();
+  assert.equal(h.all(h.render(),node=>node.type==='Button'&&node.props['aria-label']?.startsWith('Use your image ')).length,24);
+  assert.equal(h.queries.at(-1).staleTime,60_000);
+  const empty=harness(async()=>{}, {queryPending:true});empty.openImage();
+  assert.equal(empty.all(empty.render(),node=>node.type==='TabsRoot')[0].props.value,'user');
+});
+
+test("an image batch cannot append late uploads or start queued files after its owner unmounts",async()=>{
+  const completions=[];
+  const h=harness(file=>new Promise(resolve=>completions.push(()=>resolve({kind:'image',asset:savedImage(file.name)}))));
+  const appended=[];
+  const tree=h.render({selection:null,imageSelections:[],maxImages:5,onImagesChange:items=>appended.push(items)});
+  const input=h.all(tree,node=>node.type==='input'&&node.props['aria-label']==='Choose optional image reference')[0];
+  const event=()=>({currentTarget:{files:['one.png','two.png','three.png'].map(name=>new File(['image'],name,{type:'image/png'})),value:'selected'}});
+  input.props.onChange(event());
+  input.props.onChange(event());
+  assert.equal(h.calls.length,2,'Two simultaneous uploads; a second click cannot launch another batch');
+  h.cleanup();completions.forEach(complete=>complete());await flush();await flush();
+  assert.equal(h.calls.length,2);assert.deepEqual(appended,[]);assert.deepEqual(h.pending,[true,false]);
+  assert.equal(h.cancellations.length,0,'Late records must not enter the next owner’s cache');
 });

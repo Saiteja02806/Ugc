@@ -7778,7 +7778,7 @@
     {
       "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
       "slideId": null,
-      "sourceSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+      "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -7786,21 +7786,16 @@
           "text": "Computer Science students!!\nThis website is EVERYTHING",
           "startMs": 0,
           "endMs": 3067
-        },
-        {
-          "text": "I used to think learning coding\nwould be so difficult",
-          "startMs": 3067,
-          "endMs": 3100
         }
       ],
       "extractedAt": "2026-10-15T07:11:08.393Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at the single final screen-view frame 91 / 3067 ms, confirmed using actual frame presentation timestamps. Existing wording, emojis and timing retained; interface text excluded. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
       "slideId": null,
-      "sourceSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+      "sourceSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -7808,21 +7803,16 @@
           "text": "editors, get ready to\nwash dishes for $100/mo 💀🤡",
           "startMs": 0,
           "endMs": 3067
-        },
-        {
-          "text": "1. drop your videos",
-          "startMs": 3067,
-          "endMs": 3100
         }
       ],
       "extractedAt": "2026-10-15T07:11:09.090Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at the single final screen-view frame 91 / 3067 ms, confirmed using actual frame presentation timestamps. Existing wording, emojis and timing retained; interface text excluded. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
       "slideId": null,
-      "sourceSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+      "sourceSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -7834,17 +7824,17 @@
         {
           "text": "Go to Pinterest",
           "startMs": 3033,
-          "endMs": 3234
+          "endMs": 3067
         }
       ],
       "extractedAt": "2026-10-15T07:11:12.425Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 94 decoded frames on 2026-10-15 alongside the performance prompt. Original wording, capitalization and emojis preserved; app interface, packaging and incidental scene text excluded. Go to Pinterest begins at decoded frame 91 (3033 ms), before the browser cut; corrected the previous sampled boundary of 3200 ms. Timings rounded to milliseconds from decoded frame presentation timestamps. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
       "slideId": null,
-      "sourceSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+      "sourceSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -7856,7 +7846,7 @@
       ],
       "extractedAt": "2026-10-15T07:11:12.689Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 110 decoded frames on 2026-10-16 alongside the performance prompt. Caption disappears at the single final screen-view frame 109 / 3733 ms, confirmed using actual frame presentation timestamps. Existing wording, flushed-face emoji and timing retained. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
@@ -7878,7 +7868,7 @@
     {
       "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
       "slideId": null,
-      "sourceSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+      "sourceSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -7890,34 +7880,29 @@
         {
           "text": "Go to “Google”",
           "startMs": 3733,
-          "endMs": 3767
+          "endMs": 3734
         }
       ],
       "extractedAt": "2026-10-15T07:11:19.212Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 112 decoded frames on 2026-10-15 alongside the performance prompt. Original wording, capitalization and emojis preserved; app interface, packaging and incidental scene text excluded. The final Go to Google caption begins at 3733 ms. Timings rounded to milliseconds from decoded frame presentation timestamps. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
       "slideId": null,
-      "sourceSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+      "sourceSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "Wasted 2 hours editing my\npodcast when THIS exists\n🤯🤯",
           "startMs": 0,
-          "endMs": 2700
-        },
-        {
-          "text": "Go to agent.vizard.ai",
-          "startMs": 2667,
-          "endMs": 2700
+          "endMs": 2667
         }
       ],
       "extractedAt": "2026-10-15T07:11:20.173Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-15 alongside the performance prompt. Two creator caption blocks overlap in the final frame: the original podcast caption remains while Go to agent.vizard.ai appears at 2667 ms. Existing wording and timing confirmed, including both exploding-head emojis. Timings checked against decoded frame presentation timestamps and rounded to milliseconds. App interface and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
@@ -8137,7 +8122,7 @@
     {
       "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
       "slideId": null,
-      "sourceSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+      "sourceSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -8149,12 +8134,12 @@
         {
           "text": "Open Cantina",
           "startMs": 2933,
-          "endMs": 2967
+          "endMs": 2934
         }
       ],
       "extractedAt": "2026-10-15T07:11:55.921Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 88 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
@@ -8312,7 +8297,7 @@
     {
       "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
       "slideId": null,
-      "sourceSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+      "sourceSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -8324,7 +8309,7 @@
       ],
       "extractedAt": "2026-10-15T07:12:13.642Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 70 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-df58806df2ea040df347f267",
@@ -8465,7 +8450,7 @@
     {
       "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
       "slideId": null,
-      "sourceSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+      "sourceSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -8477,17 +8462,17 @@
         {
           "text": "Go to Tesana.ai",
           "startMs": 4533,
-          "endMs": 4567
+          "endMs": 4534
         }
       ],
       "extractedAt": "2026-10-15T07:12:30.061Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 136 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
       "slideId": null,
-      "sourceSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+      "sourceSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -8495,16 +8480,11 @@
           "text": "HOW is this even LEGAL?!?",
           "startMs": 0,
           "endMs": 3200
-        },
-        {
-          "text": "go to wand.com",
-          "startMs": 3200,
-          "endMs": 3234
         }
       ],
       "extractedAt": "2026-10-15T07:12:32.020Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 95 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-2575e61e1f8151761d13e032",
@@ -8526,7 +8506,7 @@
     {
       "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
       "slideId": null,
-      "sourceSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+      "sourceSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -8538,17 +8518,17 @@
         {
           "text": "GOOD 😆",
           "startMs": 3400,
-          "endMs": 3767
+          "endMs": 3734
         }
       ],
       "extractedAt": "2026-10-15T07:12:35.447Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes to GOOD at decoded frame 102 / 3400 ms; corrected prior sampled boundary of 3467 ms. Wording and emojis unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
       "slideId": null,
-      "sourceSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+      "sourceSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
       "format": "hook",
       "status": "ready",
       "blocks": [
@@ -8556,16 +8536,11 @@
           "text": "Kids YouTube + AI\n= 💰💰💰",
           "startMs": 0,
           "endMs": 3167
-        },
-        {
-          "text": "Kids channel clips are\nBLOWING up rn 👀",
-          "startMs": 3167,
-          "endMs": 3234
         }
       ],
       "extractedAt": "2026-10-15T07:12:37.884Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at decoded frame 95 / 3167 ms, correcting the previous 3200 ms sampled boundary. Wording and emojis unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
@@ -8728,36 +8703,36 @@
     {
       "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
       "slideId": null,
-      "sourceSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+      "sourceSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "4 YEARS of Amazon shopping and nobody told\nme about this!!! 👀",
           "startMs": 0,
-          "endMs": 2833
+          "endMs": 2800
         }
       ],
       "extractedAt": "2026-10-15T09:07:21.303Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
       "slideId": null,
-      "sourceSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+      "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "No way I’ve been shopping on Amazon for 4 YEARS\nand NOW I find this 💀💀💀",
           "startMs": 0,
-          "endMs": 1833
+          "endMs": 1767
         }
       ],
       "extractedAt": "2026-10-15T09:07:22.410Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 52 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
@@ -9022,19 +8997,19 @@
     {
       "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
       "slideId": null,
-      "sourceSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+      "sourceSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "My boyfriend changed my alarm so now I have\nto fly to turn it off 😭😭💔",
           "startMs": 0,
-          "endMs": 3233
+          "endMs": 3100
         }
       ],
       "extractedAt": "2026-10-15T09:08:01.830Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-c709e563045b8e9e473929a9",
@@ -9311,36 +9286,36 @@
     {
       "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
       "slideId": null,
-      "sourceSha256": "fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee",
+      "sourceSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "italian girls are you OKAY???",
           "startMs": 0,
-          "endMs": 2833
+          "endMs": 2734
         }
       ],
       "extractedAt": "2026-10-15T12:52:58.127Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 75 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
       "slideId": null,
-      "sourceSha256": "c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99",
+      "sourceSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "paris girls are you OKAY???",
           "startMs": 0,
-          "endMs": 3000
+          "endMs": 2900
         }
       ],
       "extractedAt": "2026-10-15T12:53:01.012Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     },
     {
       "referenceId": "explore-paired-hook-349e499826f7491d91f6b712",
@@ -9486,19 +9461,19 @@
     {
       "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
       "slideId": null,
-      "sourceSha256": "f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b",
+      "sourceSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
       "format": "hook",
       "status": "ready",
       "blocks": [
         {
           "text": "I found a game where I\nneed to stalk a girl's cell\nphone to find out what\nhappened With her",
           "startMs": 0,
-          "endMs": 2100
+          "endMs": 1967
         }
       ],
       "extractedAt": "2026-10-15T12:59:25.270Z",
       "model": "windows-ocr-en-US-v2",
-      "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
     }
   ]
 }

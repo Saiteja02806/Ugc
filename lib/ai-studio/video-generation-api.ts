@@ -218,7 +218,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "hook" && body.exploreFormat !== "wall_text") {
     return NextResponse.json({ error: "Choose a video workflow.", ok: false }, { status: 400 });
   }
-  if (body?.exploreFormat && model !== "google_omni" && model !== "wan_3_0") {
+  if (body?.exploreFormat && model !== "google_omni" && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Choose the workflow's supported video model.", ok: false }, { status: 400 });
   }
   const useGalleryVideoReference = body?.useGalleryVideoReference === true;
@@ -233,14 +233,18 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Use Google Omni in a video workflow to edit a video with image references.", ok: false }, { status: 400 });
   }
   if (useGalleryVideoReference) {
-    if (!body?.exploreFormat || model !== "google_omni" && model !== "wan_3_0") {
+    if (!body?.exploreFormat || model !== "google_omni" && model !== "seedance_2_5" && model !== "wan_3_0") {
       return NextResponse.json({ error: "Choose a supported model in this video workflow to use a gallery video reference.", ok: false }, { status: 400 });
     }
     if (body?.referenceVideoUrl || body?.referenceVideoAssetId || body?.referenceVideoDurationSeconds != null) {
       return NextResponse.json({ error: "Choose either a gallery video or an uploaded video as the source.", ok: false }, { status: 400 });
     }
     try {
-      const gallery = await resolveGalleryGenerationVideo(body?.referenceId, body?.exploreFormat, model === "wan_3_0" ? 15 : 10);
+      const gallery = await resolveGalleryGenerationVideo(body?.referenceId, body?.exploreFormat, model === "seedance_2_5" ? 30 : model === "wan_3_0" ? 15 : 10);
+      if (model === "seedance_2_5") {
+        const referenceError = getVideoTimedReferenceError(model, "video", gallery.durationSeconds);
+        if (referenceError) return NextResponse.json({ error: referenceError, ok: false }, { status: 400 });
+      }
       referenceVideoUrl = gallery.url;
       referenceVideoDurationSeconds = gallery.durationSeconds;
     } catch (error) {
@@ -305,7 +309,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       { status: 400 },
     );
   }
-  if (body?.exploreFormat && referenceAudioUrls.length && model !== "wan_3_0") {
+  if (body?.exploreFormat && referenceAudioUrls.length && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
   }
   if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS || referenceImageUrls.length > 5)) {

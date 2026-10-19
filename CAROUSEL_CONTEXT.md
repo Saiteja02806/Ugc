@@ -7976,3 +7976,7 @@ The records below are retained from the deployed branch during release reconcili
   Refresh accounts keeps a single line and a stable 148px width while loading.
   Mobile stacking, expanded clip-edit tools and publishing contracts retain
   their existing behavior. This supersedes earlier 360–440px controls guidance.
+
+## Trending library backgrounds retain body copy — 19 October 2026 release preparation
+
+- Include the completed worker correction in render-trending-carousel-edit.ts: body-only/single-statement copy resolves submitted subtext then headline, so replacing backgrounds cannot interpret the legacy headline column as deletion. Advance the renderer cache signature to normalized-edit-v4-body-copy. Six-slide render and editor browser regressions passed in the originating task. Production rollout is tracked in the combined Hook/Seedance release receipt.

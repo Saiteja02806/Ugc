@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
 import { CATALOG_REFERENCE_IMAGE_PROJECT, USER_REFERENCE_IMAGE_PROJECT, fetchFormatReferenceImage, fetchFormatReferenceImages } from "@/lib/explore/format-reference-images";
 import type { MediaAsset } from "@/lib/media/types";
+import { imagePickerThumbnailUrl, REFERENCE_IMAGE_PAGE_SIZE, REFERENCE_IMAGE_STALE_MS } from "@/lib/media/image-picker";
+import { prepareReferenceImageBatch, validateReferenceImageFiles } from "@/lib/explore/reference-image-batch";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { WorkflowMediaPlayer } from "@/components/explore/hook-workflow-media-controls";
@@ -61,11 +63,15 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   const audioInput = useRef<HTMLInputElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const revision = useRef(0);
+  const working = useRef(false);
+  const batchLocalUrls = useRef(new Set<string>());
   const localImage = useLocalWorkflowMedia("image");
   const localVideo = useLocalWorkflowMedia("video");
   const localAudio = useLocalWorkflowMedia("audio");
   const [pending, setPending] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [imagePages, setImagePages] = useState(1);
   const galleryKey = styleVideo ? `${styleVideo.id ?? styleVideo.url}:${styleVideo.selectionRevision ?? 0}` : null;
   const [previousGalleryKey, setPreviousGalleryKey] = useState(galleryKey);
   if (previousGalleryKey !== galleryKey) {
@@ -80,17 +86,20 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
     queryKey: imagesKey,
     queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal),
     enabled: active && openKind === "image" && !preview && Boolean(ownerId),
-    staleTime: 0,
+    staleTime: REFERENCE_IMAGE_STALE_MS,
   });
-  const activeImageTab = imageTab ?? (!preview && ownerId && imagesQuery.data?.length ? "user" : "catalog");
+  const activeImageTab = imageTab ?? (!preview && ownerId && (imagesQuery.isPending || imagesQuery.data?.length) ? "user" : "catalog");
   const [wasActive, setWasActive] = useState(active);
   const pendingCallback = useRef(onPendingChange);
   useEffect(() => { pendingCallback.current = onPendingChange; }, [onPendingChange]);
-  useEffect(() => () => { revision.current += 1; pendingCallback.current(false); }, [ownerId]);
+  useEffect(() => {
+    const urls = batchLocalUrls.current;
+    return () => { revision.current += 1; working.current = false; pendingCallback.current(false); for (const url of urls) URL.revokeObjectURL(url); urls.clear(); };
+  }, [ownerId]);
   if (wasActive !== active) { setWasActive(active); setOpenKind(null); }
 
   async function choose(kind: Kind, input: File | (() => Promise<File>), onAccepted?: () => void, source: "upload" | "catalog" = "upload") {
-    if (disabled || pending || kind === "video" && !videoInputEnabled || kind === "audio" && !audioInputEnabled) return;
+    if (disabled || pending || working.current || kind === "video" && !videoInputEnabled || kind === "audio" && !audioInputEnabled) return;
     if (kind === "image" && imageLimitReached) { setError(`Use up to ${maxImages} image references with these inputs.`); return; }
     const request = ++revision.current;
     setError(null); onErrorChange?.(null); setPending(kind); onPendingChange(true);
@@ -145,8 +154,47 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
       if (request === revision.current) { setPending(null); onPendingChange(false); }
     }
   }
+  async function chooseImageFiles(files: File[]) {
+    if (!files.length || disabled || pending || working.current) return;
+    try { validateReferenceImageFiles(files, onImagesChange ? maxImages - selectedImages.length : 1, maxImageBytes); }
+    catch (cause) { const message = (cause as Error).message; setError(message); onErrorChange?.(message); return; }
+    const request = ++revision.current;
+    working.current = true; setPending("image"); onPendingChange(true); setError(null); onErrorChange?.(null);
+    setUploadProgress(`Adding 0 of ${files.length} images…`);
+    try {
+      const results = await prepareReferenceImageBatch(files, async file => {
+        if (!preview) {
+          if (!ownerId) throw new Error("Sign in before adding images.");
+          return uploadAIStudioReferenceMedia(file, "image", 10, ownerId, { purpose: USER_REFERENCE_IMAGE_PROJECT });
+        }
+        const metadata = await readAIStudioReferenceMetadata(file, "image");
+        if (request !== revision.current) throw new Error("Image selection was cancelled.");
+        const url = URL.createObjectURL(file); batchLocalUrls.current.add(url);
+        return { kind: "image", asset: { collection: "image", createdAt: "", updatedAt: "", durationSeconds: null,
+          fileName: file.name, fileSizeBytes: file.size, height: metadata.height, width: metadata.width,
+          id: `local:${url}`, metadata: { preview: true }, mimeType: file.type, parentAssetId: null,
+          projectId: USER_REFERENCE_IMAGE_PROJECT, ratio: metadata.ratio, sourceRecordId: null,
+          sourceType: "upload", status: "ready", thumbnailUrl: null, title: file.name, url } } satisfies AIStudioReferenceMedia;
+      }, () => request === revision.current, (done, total) => setUploadProgress(`Adding ${done} of ${total} images…`));
+      if (request !== revision.current) return;
+      const accepted = results.flatMap(result => result?.value ? [result.value] : []);
+      if (!preview && accepted.length) {
+        await queryClient.cancelQueries({ queryKey: imagesKey });
+        if (request !== revision.current) return;
+        queryClient.setQueryData<MediaAsset[]>(imagesKey, previous => [...accepted.map(image => image.asset), ...(previous ?? []).filter(asset => !accepted.some(image => image.asset.id === asset.id))]);
+        setImageTab("user");
+      }
+      if (accepted.length) { if (onImagesChange) onImagesChange([...selectedImages, ...accepted]); else onChange(accepted[0], "image"); }
+      const failures = results.flatMap(result => result?.error ? [result.error] : []);
+      if (failures.length) { const message = `${accepted.length} added. ${failures.join(" ")}`; setError(message); onErrorChange?.(message); }
+    } catch (cause) {
+      if (request === revision.current) { const message = cause instanceof Error ? cause.message : "Could not add these images."; setError(message); onErrorChange?.(message); }
+    } finally {
+      if (request === revision.current) { working.current = false; setPending(null); setUploadProgress(null); onPendingChange(false); }
+    }
+  }
   async function chooseSavedImage(saved: MediaAsset) {
-    if (disabled || pending || preview || !ownerId) return;
+    if (disabled || pending || working.current || preview || !ownerId) return;
     const existing = selectedImages.find(image => image.asset.id === saved.id);
     if (existing) { if (onImagesChange) removeImage(existing); return; }
     if (imageLimitReached) { setError(`Use up to ${maxImages} image references with these inputs.`); return; }
@@ -169,12 +217,14 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   }
   function remove(kind: Kind) {
     if (disabled || pending) return;
+    if (kind === "image") { for (const url of batchLocalUrls.current) URL.revokeObjectURL(url); batchLocalUrls.current.clear(); }
     (kind === "image" ? localImage : kind === "video" ? localVideo : localAudio).remove(); setError(null); onErrorChange?.(null); onChange(null, kind); setOpenKind(null);
   }
   function removeImage(image: AIStudioReferenceMedia) {
     if (disabled || pending) return;
     if (!onImagesChange) { remove("image"); return; }
     onImagesChange(selectedImages.filter(item => item.asset.id !== image.asset.id));
+    if (batchLocalUrls.current.delete(image.asset.url)) URL.revokeObjectURL(image.asset.url);
     setError(null); onErrorChange?.(null);
   }
   function removeStyleVideo() {
@@ -194,17 +244,18 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
         const asset = selected ? { name: selected.asset.fileName ?? selected.asset.title, url: selected.asset.url, duration: selected.asset.durationSeconds } : isStyle ? styleVideo : null;
         const input = kind === "image" ? imageInput : kind === "video" ? videoInput : audioInput;
         const inputEnabled = kind === "image" || kind === "video" && videoInputEnabled || kind === "audio" && audioInputEnabled;
-        const uploadActions = <div className="flex flex-wrap items-center gap-2">{inputEnabled ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || kind === "image" && imageLimitReached} onClick={() => input.current?.click()} className={kind === "image" ? "h-8 gap-1.5 rounded-xl px-3 text-xs" : "h-9 rounded-lg text-sm"}>{kind === "image" ? <><Plus className="size-3.5" aria-hidden="true" />Add image</> : isStyle ? "Upload video reference" : asset ? `Replace ${kind}` : `Attach ${kind}`}</Button> : null}
+        const uploadActions = <div className="flex flex-wrap items-center gap-2">{inputEnabled ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || kind === "image" && imageLimitReached} onClick={() => input.current?.click()} className={kind === "image" ? "h-8 gap-1.5 rounded-xl px-3 text-xs" : "h-9 rounded-lg text-sm"}>{kind === "image" ? <><Plus className="size-3.5" aria-hidden="true" />{onImagesChange ? "Add images" : "Add image"}</> : isStyle ? "Upload video reference" : asset ? `Replace ${kind}` : `Attach ${kind}`}</Button> : null}
           {asset ? <Button type="button" variant="ghost" aria-label={isStyle ? "Remove gallery video reference" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? removeStyleVideo : () => remove(kind)} className="h-9 rounded-lg text-sm">{kind === "image" ? "None" : `Remove ${kind}`}</Button> : null}
           {kind === "image" && activeImageTab === "user" && !preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" title="Refresh your images" disabled={Boolean(pending) || imagesQuery.isFetching} onClick={() => void imagesQuery.refetch()}><RefreshCw className={cn("size-3.5", imagesQuery.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" /></Button> : null}
         </div>;
         return <div key={kind} data-reference-state={asset ? "selected" : "empty"} className={cn("relative min-w-0", presentation.referenceCard)}>
-          <input ref={input} type="file" className="hidden" aria-label={`Choose optional ${kind} reference`} accept={kind === "image" ? "image/png,image/jpeg,image/webp" : kind === "video" ? "video/mp4,video/quicktime,video/webm" : "audio/mpeg,audio/wav,audio/x-wav"} disabled={disabled || Boolean(pending) || !inputEnabled} onChange={event => {
-            const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void choose(kind, file);
+          <input ref={input} type="file" multiple={kind === "image" && Boolean(onImagesChange)} className="hidden" aria-label={`Choose optional ${kind} reference`} accept={kind === "image" ? "image/png,image/jpeg,image/webp" : kind === "video" ? "video/mp4,video/quicktime,video/webm" : "audio/mpeg,audio/wav,audio/x-wav"} disabled={disabled || Boolean(pending) || !inputEnabled} onChange={event => {
+            const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = "";
+            if (kind === "image") void chooseImageFiles(files); else if (files[0]) void choose(kind, files[0]);
           }} />
           <div className={imagePreview.picker}>
           {kind === "image" && selectedImages.length ? <><div className={imagePreview.images} data-count={selectedImages.length}>{selectedImages.map(image => <WorkflowReferencePreview key={image.asset.id} url={image.asset.url} name={image.asset.fileName ?? image.asset.title} disabled={disabled || Boolean(pending)} onRemove={() => removeImage(image)} />)}</div>{selectedImages.length > 1 ? <span className={imagePreview.count}>{selectedImages.length} images</span> : null}</> : asset ? <WorkflowReferencePreview key={asset.url} kind={kind === "audio" ? "voice" : kind} url={asset.url} name={asset.name ?? "Selected reference"} disabled={disabled || Boolean(pending)} onRemove={isStyle ? onClearStyle ? removeStyleVideo : undefined : () => remove(kind)} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} onDurationChange={isStyle ? duration => onStyleVideoDurationChange?.(asset.url, duration) : undefined} /> : undefined} /> : null}
-          <Popover open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(null); setOpenKind(open ? kind : null); }}>
+          <Popover open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(null); setImagePages(1); setOpenKind(open ? kind : null); }}>
             <PopoverTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={cn(creation.referenceButton, imagePreview.action)} />}>
               {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : !asset ? kind === "image" ? <UserRound aria-hidden="true" /> : kind === "video" ? <Video aria-hidden="true" /> : <AudioLines aria-hidden="true" /> : null}
               {pending === kind || !asset ? <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : `Choose ${kind}`}</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
@@ -225,15 +276,16 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
                     : !ownerId ? <p className="text-xs leading-5 text-muted">Sign in to see your saved images.</p>
                     : imagesQuery.isPending ? <p role="status" className="text-xs text-muted">Loading your images…</p>
                     : imagesQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load your images. Use Refresh to try again.</p>
-                    : imagesQuery.data?.length ? <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">{imagesQuery.data.map(saved => <Button key={saved.id} type="button" variant="ghost" aria-label={`Use your image ${saved.fileName ?? saved.title}`} title={saved.fileName ?? saved.title} aria-pressed={selectedImages.some(image => image.asset.id === saved.id)} disabled={disabled || Boolean(pending) || imageLimitReached && !selectedImages.some(image => image.asset.id === saved.id)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => void chooseSavedImage(saved)}>
-                      <ReferenceCreatorImage url={saved.thumbnailUrl ?? saved.url} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", selectedImages.some(image => image.asset.id === saved.id) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{selectedImages.some(image => image.asset.id === saved.id) ? <Check className="size-3.5" /> : null}</span>
+                    : imagesQuery.data?.length ? <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">{imagesQuery.data.slice(0, imagePages * REFERENCE_IMAGE_PAGE_SIZE).map(saved => <Button key={saved.id} type="button" variant="ghost" aria-label={`Use your image ${saved.fileName ?? saved.title}`} title={saved.fileName ?? saved.title} aria-pressed={selectedImages.some(image => image.asset.id === saved.id)} disabled={disabled || Boolean(pending) || imageLimitReached && !selectedImages.some(image => image.asset.id === saved.id)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => void chooseSavedImage(saved)}>
+                      <ReferenceCreatorImage url={activeImageTab === "user" ? saved.thumbnailUrl ?? saved.url : undefined} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", selectedImages.some(image => image.asset.id === saved.id) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{selectedImages.some(image => image.asset.id === saved.id) ? <Check className="size-3.5" /> : null}</span>
                     </Button>)}</div> : <p className="text-xs leading-5 text-muted">Upload an image to keep it here for next time.</p>}
+                  {imagesQuery.data && imagesQuery.data.length > imagePages * REFERENCE_IMAGE_PAGE_SIZE ? <Button type="button" variant="outline" size="sm" onClick={() => setImagePages(value => value + 1)}>Load more images</Button> : null}
                 </Tabs.Panel>
                 <Tabs.Panel value="catalog" keepMounted aria-label="UGC Pilot images" className="max-h-72 overflow-y-auto p-1">
                   <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">{CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={catalogSelections.includes(reference.fileName)} disabled={disabled || Boolean(pending) || imageLimitReached && !catalogSelections.includes(reference.fileName)} className="relative h-auto overflow-hidden rounded-2xl p-0" onClick={() => { const existing = catalogImages.find(image => image.asset.fileName === reference.fileName); if (existing) { if (onImagesChange) removeImage(existing); return; } void choose("image", async () => {
                 const response = await fetch(reference.src); if (!response.ok) throw new Error("Could not load this creator image.");
                 const blob = await response.blob(); return new File([blob], reference.fileName, { type: blob.type || "image/png" });
-              }, () => { if (!onImagesChange) setOpenKind(null); }, "catalog"); }}><ReferenceCreatorImage url={reference.src} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", catalogSelections.includes(reference.fileName) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{catalogSelections.includes(reference.fileName) ? <Check className="size-3.5" /> : null}</span></Button>)}</div>
+              }, () => { if (!onImagesChange) setOpenKind(null); }, "catalog"); }}><ReferenceCreatorImage url={activeImageTab === "catalog" ? reference.src : undefined} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", catalogSelections.includes(reference.fileName) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{catalogSelections.includes(reference.fileName) ? <Check className="size-3.5" /> : null}</span></Button>)}</div>
                 </Tabs.Panel>
               </Tabs.Root> : null}
               {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
@@ -243,7 +295,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
         </div>;
       })}
     </div>
-    {pending ? <p role="status" className={creation.sectionHelp}>Reading your reference…</p> : null}
+    {pending ? <p role="status" className={creation.sectionHelp}>{uploadProgress ?? "Reading your reference…"}</p> : null}
     {error ? <div className="space-y-2"><p role="alert" className="text-xs leading-5 text-destructive">{error}</p><Button type="button" variant="ghost" size="sm" disabled={disabled || Boolean(pending)} onClick={() => { setError(null); onErrorChange?.(null); }}>Cancel reference change</Button></div> : null}
   </section>;
 }
@@ -252,7 +304,7 @@ function ReferenceImagePreview({ asset }: { asset: LocalWorkflowMedia }) {
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={asset.url} alt="Selected image reference" className="mx-auto max-h-56 max-w-full rounded-2xl object-contain" />;
 }
-function ReferenceCreatorImage({ url }: { url: string }) {
+function ReferenceCreatorImage({ url }: { url?: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="" width={56} height={74} loading="lazy" className="aspect-[3/4] w-full object-cover" />;
+  return <img src={imagePickerThumbnailUrl(url)} alt="" width={56} height={74} loading="lazy" decoding="async" className="aspect-[3/4] w-full object-cover" />;
 }

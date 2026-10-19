@@ -2361,3 +2361,12 @@ catalogue/release records rather than copying counts from historical audits.
 - Production policy is audioPolicy: silent for the three permanent reference IDs. New generation strips provider/native sound and does not attach a catalogue soundtrack; gallery metadata omits pairedAudio. Historical renders/explicit saved audio receipts are retained.
 - Native audio means sound embedded in the original MP4. It exists for Hooks 6, 53, 54, 55, 69, 73, 74 and 88; Hook 78 has none. Extracted review M4As are manual-review artifacts, not production inputs. Providers currently receive original MP4s, including embedded sound; normal final output replaces provider sound with the separate catalogue MP3.
 - All 18 trimmed MP4s were independently verified in the exact original D: import folders; Hook 18 stays unchanged. This soundtrack release does not switch production video source URLs to the local trimmed derivatives.
+
+## Combined Hook, Seedance, image picker and Trending correction — 19 October 2026
+
+- This release activates the 18 user-approved tail trims and matching gallery previews, durations, reviewed prompts and caption source hashes. Hook 18 remains unchanged. Immutable old media identities and original text/prompt records are retained in scripts/data/hook-reference-scene-release.json.
+- Background tracks for Hooks 3, 13 and 59 remain disabled; all other reference music remains unchanged. This does not rewrite historical generated output.
+- Seedance 2.5 now passes Explore Hook/Wall model admission and the corresponding gallery/audio guards, retaining ReAPI routing, model limits, ownership and billing checks. No paid generation is part of validation.
+- Shared image pickers use small public previews, 24 initial entries, no hidden-tab downloads and a one-minute owner-scoped metadata window. Multi-reference Add images accepts a batch with bounded uploads and existing limits.
+- Trending body-only slide edits now resolve copy from the same submitted fields as the editor; renderer version advances so cached blank renders are not reused. Previously saved blank images require a new save/render. Earlier deployed quota-history behavior is retained by basing this release on main 283afc17.
+- These are release preparation decisions. Production acceptance is recorded separately after deployment; successful local checks alone are not live acceptance.

@@ -8,6 +8,7 @@ import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 import { getExplorePairedReferences, getGenerationReferenceSoundtrack, getAssetReferenceSoundtrack, isSilentExploreReference } from "../worker/dist/lib/explore-reference-soundtrack.js";
 import { applyGeneratedReferenceAudio } from "../worker/dist/lib/explore-generated-reference-audio.js";
+import { referenceVideoPrompts } from "../lib/explore/reference-video-prompts.ts";
 
 const id = "explore-paired-hook-ef59f4b5e69bc9e125f8ada7";
 const reference = getGenerationReferenceSoundtrack({ referenceId: id, referenceType: "hook", exploreFormat: "hook" });
@@ -21,6 +22,7 @@ test("only the three rejected soundtracks are silent; new provenance has no auto
   assert.equal(getAssetReferenceSoundtrack({ exploreReferenceId: id }), null);
   const saved = { version: 1, referenceId: id, audioSha256: reference.audioSha256, volume: .2 };
   assert.deepEqual(getAssetReferenceSoundtrack({ render: { referenceSoundtrack: saved } }), saved);
+  assert.match(referenceVideoPrompts[id].performance, /no speech, spoken words, voiceover, singing, lip-sync, music or background audio/);
 });
 
 test("silent policy removes actual native audio without changing a single decoded picture or its timestamps", async () => {

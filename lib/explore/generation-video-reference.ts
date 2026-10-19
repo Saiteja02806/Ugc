@@ -3,7 +3,7 @@ import "server-only";
 import { downloadVideoReference, readMp4DurationSeconds, OMNI_EDIT_MAX_VIDEO_SECONDS } from "../../worker/src/lib/video-reference-input";
 
 /** Resolve a registered clip on the server; a client URL is never an authority. */
-export async function resolveGalleryGenerationVideo(referenceId: unknown, format: unknown, maxDurationSeconds: 10 | 15 = OMNI_EDIT_MAX_VIDEO_SECONDS) {
+export async function resolveGalleryGenerationVideo(referenceId: unknown, format: unknown, maxDurationSeconds: 10 | 15 | 30 = OMNI_EDIT_MAX_VIDEO_SECONDS) {
   const { getRecreateReference } = await import("./recreate-catalog");
   const reference = getRecreateReference(referenceId);
   if (!reference?.videoUrl || reference.format !== format) throw new Error("Choose a published video from this workflow's gallery.");

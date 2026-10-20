@@ -2082,9 +2082,9 @@ export function TrendingDeck({
   );
   const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
   const activeReviewItemId = activeCandidate?.item.id;
-  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && (
-    activeCandidate?.format !== "carousel" || !getLatestTrendingEdit(editByCreativeId[activeCandidate.item.creativeId], activeCandidate.reviewedEdit)?.id
-  ));
+  // An owned slideshow can receive its first edit after it was skipped. History
+  // is a navigation state, not evidence that its source is no longer editable.
+  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && activeCandidate?.format !== "carousel");
 
   useLayoutEffect(() => {
     const frame = reviewFrameRef.current;

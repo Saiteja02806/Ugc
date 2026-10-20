@@ -31,6 +31,14 @@ test('history revision migration permits existing owned carousel updates while p
     for(const patch of ["user_id='foreign'","assignment_id='b'","creative_id='new'","format='hook_video'"]) await assert.rejects(db.exec(`update trending_creative_edits set ${patch} where id='edit'`),/scope_immutable/);
     await assert.rejects(db.exec("update trending_creative_edits set revision=1 where id='edit'"),/revision_regressed/);
     await assert.rejects(db.exec("insert into trending_creative_edits(id,user_id,assignment_id,creative_id,format,revision) values ('new','owner','b','new','carousel',1)"),/assignment_unavailable/);
+    await db.exec(readFileSync(new URL('../supabase/migrations/20261020102121_allow_first_carousel_edit_from_history.sql', import.meta.url),'utf8'));
+    for (const [index,state] of ['completed_skipped','completed_saved','completed_scheduled'].entries()) {
+      await db.query("update user_carousel_assignments set state=$1 where id='b'",[state]);
+      await db.query("insert into trending_creative_edits(id,user_id,assignment_id,creative_id,format,revision) values ($1,'owner','b','new','carousel',1)",['history-'+index]);
+      assert.equal((await db.query("select state from user_carousel_assignments where id='b'")).rows[0].state,state);
+    }
+    await assert.rejects(db.exec("insert into trending_creative_edits(id,user_id,assignment_id,creative_id,format,revision) values ('foreign','other-owner','b','new','carousel',1)"),/assignment_unavailable/);
+    await assert.rejects(db.exec("insert into trending_creative_edits(id,user_id,assignment_id,creative_id,format,revision) values ('wrong','owner','b','another-creative','carousel',1)"),/assignment_unavailable/);
     await db.exec("update user_carousel_assignments set state='superseded' where id='a'");
     await assert.rejects(db.exec("update trending_creative_edits set revision=revision+1 where id='edit'"),/assignment_unavailable/);
     for(const [table,id] of [['user_hook_video_assignments','hook'],['user_wall_text_assignments','wall']]) {

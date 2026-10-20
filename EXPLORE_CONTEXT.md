@@ -1,5 +1,23 @@
 # Explore context and UI decision record
 
+## 2026-10-20 First edit on revisited slideshows and rejected source
+
+- The exact hook “if you’re stuck on creating fresh content, read this.” belongs
+  to generation `4b7c163f-9505-4502-b08e-a696b7aa4a79`. Source asset
+  `6e07f2d4-3d18-413a-be31-0e29604671e2` is a 736×919 JPEG enlarged to 1080×1350.
+  User requested removal; it is now inactive/archived with explicit historical
+  preservation. Exact hash and path are in the import/reconciliation denylist.
+- Edit was disabled because the assignment was completed_skipped with no existing
+  saved edit. Revisited owned Carousel slideshows now permit a first manual edit;
+  Hook/Wall restrictions, foreign-owner checks and transition locks remain.
+- Migration `20261020102121_allow_first_carousel_edit_from_history.sql` permits
+  insertion for owned skipped/saved/scheduled Carousel assignments. Scope/revision
+  checks remain. Saving a manual edit does not change decisions, quota, or prior
+  saved/scheduled snapshots. Database rollout precedes website rollout.
+- Focused checks cover UI/API/real database rules and historical-source retention.
+  Production release and final browser evidence are recorded separately.
+
+
 ### Trending same-quota older-post recovery — 19 October 2026, local correction
 
 - Recovery scope is the same quota/delivered feed, including posts viewed hours

@@ -1,5 +1,27 @@
 # Explore context and UI decision record
 
+## 2026-10-20 Reference upload latency and Omni image capacity
+
+- Upload audit found a sequential local metadata-read/authentication path and
+  image/video event handlers installed after assigning `src`, which could miss
+  an immediate load event. Read/authenticate in parallel, register handlers
+  first, keep bounded metadata/network waits, and retain owned-asset recovery
+  after an uncertain completion response. Never re-encode face originals or
+  blindly resubmit an upload after a lost completion acknowledgement.
+- Explore batch uploads retain two concurrent files, input order and the main
+  photo. Display Preparing / Uploading with byte progress / Saving phases.
+  These are confirmed code corrections; a user's minute-scale transfer delay
+  cannot be attributed to one phase without a live timing trace.
+- Raise Omni image capacity from six to ten independently of its source video.
+  Google's Enterprise Omni 1.1 model card documents ten images; applying it to
+  our direct Gemini stable route is an explicit model-family inference. It is
+  not a paid ten-image generation acceptance result. Seedance/ReAPI remains30,
+  WAN/ReAPI10 and Kling/Runway two keyframes; validate before charging.
+- User renewed deployment authorization, while the decision to defer the
+  Supabase recovery migration remains. Show recovered completed Seedance MP4s
+  without another generation. Deploy web+generation worker and verify live
+  identity; do not claim old exhausted app jobs were repaired by a source push.
+
 ## 2026-10-20 Deferred recovery migration and delivery release checks
 
 - User explicitly chose to leave Supabase unchanged. The completed-output

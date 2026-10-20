@@ -8,7 +8,9 @@ test("connected routes expose independent image and timed-reference capacities",
     assert.equal(getVideoReferencePolicy(model).maxFiles, maxFiles);
     assert.equal(getVideoReferencePolicy(model, { hasTimedReferences: true }).maxImages, maxImages);
   }
-  assert.equal(getVideoReferencePolicy("google_omni").maxImages, 6);
-  assert.equal(getVideoReferencePolicy("google_omni", { allowOmniVideo: true }).maxImages, 6);
-  assert.equal(getVideoReferencePolicy("google_omni", { allowOmniVideo: true }).maxFiles, 7);
+  // Same-family Enterprise specification; this test checks application policy,
+  // not direct stable-route provider acceptance or generated output quality.
+  assert.equal(getVideoReferencePolicy("google_omni").maxImages, 10);
+  assert.equal(getVideoReferencePolicy("google_omni", { allowOmniVideo: true }).maxImages, 10);
+  assert.equal(getVideoReferencePolicy("google_omni", { allowOmniVideo: true }).maxFiles, 11);
 });

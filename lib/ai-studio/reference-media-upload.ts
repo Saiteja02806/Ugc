@@ -10,6 +10,8 @@ export type AIStudioReferenceMedia = {
   kind: AIStudioReferenceKind;
 };
 
+export type ReferenceUploadStage = "preparing" | "uploading" | "verifying" | "ready";
+
 const DEFAULT_MAX_REFERENCE_VIDEO_SECONDS = 3;
 
 export async function uploadAIStudioReferenceMedia(
@@ -17,7 +19,7 @@ export async function uploadAIStudioReferenceMedia(
   kind: AIStudioReferenceKind,
   maxVideoDurationSeconds = DEFAULT_MAX_REFERENCE_VIDEO_SECONDS,
   expectedUserId?: string,
-  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-catalog-reference" | "explore-slides" | "trending-carousel-slide" | "image-library" | "music-library" },
+  options?: { maxAudioDurationSeconds?: number; requireVideoReferenceRatio?: boolean; purpose?: "explore-demo" | "explore-source" | "explore-reference" | "explore-catalog-reference" | "explore-slides" | "trending-carousel-slide" | "image-library" | "music-library"; onProgress?: (stage: ReferenceUploadStage) => void; onUploadProgress?: (loaded: number, total: number) => void },
 ): Promise<AIStudioReferenceMedia> {
   const collection: MediaCollection = kind;
   const expectedPrefix = `${kind}/`;
@@ -26,14 +28,19 @@ export async function uploadAIStudioReferenceMedia(
     throw new Error(`Choose a valid ${kind} file.`);
   }
 
-  const metadata = await readAIStudioReferenceMetadata(file, kind, maxVideoDurationSeconds, options);
-  const token = await getCurrentUserIdToken(expectedUserId);
+  options?.onProgress?.("preparing");
+  // Reading the local file and authenticating are independent. Keep both off
+  // the serial upload path, but validate both before creating/uploading media.
+  const [metadata, token] = await Promise.all([
+    readAIStudioReferenceMetadata(file, kind, maxVideoDurationSeconds, options),
+    getCurrentUserIdToken(expectedUserId),
+  ]);
 
   if (!token) {
     throw new Error(`Sign in before uploading a reference ${kind}.`);
   }
 
-  const preparedResponse = await fetch("/api/media/create-upload-url", {
+  const preparedResponse = await fetchUploadStep("/api/media/create-upload-url", {
     body: JSON.stringify({
       collection,
       contentType: file.type,
@@ -69,18 +76,12 @@ export async function uploadAIStudioReferenceMedia(
 
   let completionAttempted = false;
   try {
-    const uploadResponse = await fetch(prepared.uploadUrl, {
-      body: file,
-      headers: prepared.requiredHeaders,
-      method: "PUT",
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`The reference ${kind} could not be uploaded.`);
-    }
+    options?.onProgress?.("uploading");
+    await uploadOriginalReference(prepared.uploadUrl, file, prepared.requiredHeaders, options?.onUploadProgress);
 
     completionAttempted = true;
-    const completedResponse = await fetch("/api/media/complete-upload", {
+    options?.onProgress?.("verifying");
+    const completedResponse = await fetchUploadStep("/api/media/complete-upload", {
       body: JSON.stringify({
         assetId: prepared.assetId,
         durationSeconds: metadata.durationSeconds,
@@ -94,7 +95,7 @@ export async function uploadAIStudioReferenceMedia(
         "Content-Type": "application/json",
       },
       method: "POST",
-    });
+    }, 60_000);
     const completed = (await completedResponse.json()) as {
       asset?: MediaAsset;
       error?: string;
@@ -105,18 +106,48 @@ export async function uploadAIStudioReferenceMedia(
       throw new Error(completed.error || `Could not finish this reference ${kind} upload.`);
     }
 
+    options?.onProgress?.("ready");
     return { asset: completed.asset, kind };
   } catch (error) {
     // A lost acknowledgement does not mean the upload failed. Never delete a
     // potentially committed asset; first recover it through the owner API.
     if (completionAttempted) {
-      const recovered = await fetch(`/api/media/${encodeURIComponent(prepared.assetId)}`, {
+      const recovered = await fetchUploadStep(`/api/media/${encodeURIComponent(prepared.assetId)}`, {
         cache: "no-store", headers: { Authorization: `Bearer ${token}` },
       }).then(async response => response.ok ? response.json() : null).catch(() => null);
-      if (recovered?.ok && recovered.asset?.id === prepared.assetId && recovered.asset.status === "ready" && recovered.asset.collection === kind) return { asset: recovered.asset, kind };
+      if (recovered?.ok && recovered.asset?.id === prepared.assetId && recovered.asset.status === "ready" && recovered.asset.collection === kind) {
+        options?.onProgress?.("ready");
+        return { asset: recovered.asset, kind };
+      }
     }
     throw error;
   }
+}
+
+function fetchUploadStep(url: string, init: RequestInit, timeoutMs = 30_000) {
+  return fetch(url, { ...init, ...(typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
+}
+
+/** Upload original bytes once. Progress does not require re-encoding the face image. */
+async function uploadOriginalReference(url: string, file: File, headers?: Record<string, string>, onProgress?: (loaded: number, total: number) => void) {
+  if (onProgress && typeof XMLHttpRequest !== "undefined") {
+    await new Promise<void>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open("PUT", url);
+      request.timeout = 180_000;
+      for (const [key, value] of Object.entries(headers ?? {})) request.setRequestHeader(key, value);
+      request.upload.onprogress = event => { if (event.lengthComputable) onProgress(event.loaded, event.total); };
+      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error("The reference file could not be uploaded."));
+      request.onerror = () => reject(new Error("The reference file could not be uploaded. Check your connection and try again."));
+      request.ontimeout = () => reject(new Error("The reference upload took too long. Check your connection and try again."));
+      request.onabort = () => reject(new Error("The reference upload was cancelled."));
+      request.send(file);
+    });
+    return;
+  }
+  const response = await fetchUploadStep(url, { body: file, headers, method: "PUT" }, 180_000);
+  if (!response.ok) throw new Error("The reference file could not be uploaded.");
+  onProgress?.(file.size, file.size);
 }
 
 /** Local validation shared by read-only workflow previews and owned uploads. */
@@ -133,10 +164,10 @@ async function readImageMetadata(file: File) {
 
   try {
     const image = new window.Image();
-    image.src = objectUrl;
-    await new Promise<void>((resolve, reject) => {
+    await waitForReferenceMetadata((resolve, reject) => {
       image.onload = () => resolve();
       image.onerror = () => reject(new Error("Could not read this reference image."));
+      image.src = objectUrl;
     });
 
     if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
@@ -160,10 +191,10 @@ async function readVideoMetadata(file: File, maxDurationSeconds: number, require
   try {
     const video = document.createElement("video");
     video.preload = "metadata";
-    video.src = objectUrl;
-    await new Promise<void>((resolve, reject) => {
+    await waitForReferenceMetadata((resolve, reject) => {
       video.onloadedmetadata = () => resolve();
       video.onerror = () => reject(new Error("Could not read this reference video."));
+      video.src = objectUrl;
     });
 
     if (
@@ -196,12 +227,23 @@ async function readVideoMetadata(file: File, maxDurationSeconds: number, require
   }
 }
 
+function waitForReferenceMetadata(register: (resolve: () => void, reject: (error: Error) => void) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const timer = typeof setTimeout === "function" ? setTimeout(() => reject(new Error("Could not read this file in time. Choose the file again.")), 15_000) : undefined;
+    const settle = (error?: Error) => {
+      if (timer !== undefined) clearTimeout(timer);
+      if (error) reject(error); else resolve();
+    };
+    register(() => settle(), error => settle(error));
+  });
+}
+
 async function readAudioMetadata(file: File, maxDurationSeconds: number) {
   const objectUrl = URL.createObjectURL(file);
   const audio = document.createElement("audio");
   try {
     audio.preload = "metadata";
-    await new Promise<void>((resolve, reject) => {
+    await waitForReferenceMetadata((resolve, reject) => {
       audio.onloadedmetadata = () => resolve();
       audio.onerror = () => reject(new Error("Could not read this audio reference. Use an MP3 or WAV file."));
       audio.src = objectUrl;

@@ -133,6 +133,39 @@ test("video edits preserve every selected appearance image in model input and to
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("ten Omni images reach the model intact with or without a source; eleven never submit", async () => {
+  // These are mocked transport boundary checks. The ten-image cap follows the
+  // official Enterprise model-family specification, not paid direct-route QA.
+  const originalFetch = globalThis.fetch;
+  const images = Array.from({ length: 10 }, (_, index) => `https://owned.test/identity-${index}.png`);
+  let downloads = 0;
+  globalThis.fetch = async url => {
+    downloads += 1;
+    return new Response(url.endsWith(".mp4") ? clip(5) : Buffer.from(url), {
+      headers: { "Content-Type": url.endsWith(".mp4") ? "video/mp4" : "image/png" },
+    });
+  };
+  try {
+    for (const source of [{}, { referenceVideoUrl: "https://owned.test/source.mp4", referenceVideoDurationSeconds: 5, referenceVideoMode: "edit" }]) {
+      await generateGeminiOmniVideoBuffer({ ...params("Preserve the scene and use these identity references."), ...source, referenceImageUrls: images });
+      const submitted = requests.at(-1);
+      assert.deepEqual(submitted.input.filter(part => part.type === "image").map(part => Buffer.from(part.data, "base64").toString()), images);
+      const count = requests.findLast(request => request.type === "count");
+      assert.equal(count.contents.filter(part => part.inlineData?.mimeType === "image/png").length, 10);
+      if (source.referenceVideoUrl) {
+        assert.equal(submitted.input[0].type, "video");
+        assert.match(submitted.input.at(-1).text, /<IMAGE_REF_9>@Image10/);
+      }
+      const before = creates(), beforeDownloads = downloads;
+      await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Too many images."), ...source,
+        referenceImageUrls: [...images, "https://owned.test/excess.png"] }),
+        error => error instanceof ProviderRequestNotSubmittedError && /up to 10/.test(error.message));
+      assert.equal(creates(), before);
+      assert.equal(downloads, beforeDownloads, "excess fails before downloading or submitting media");
+    }
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("a ten-second MP4 is sent intact with its image, and false source-duration metadata cannot submit a paid edit", async () => {
   const originalFetch = globalThis.fetch;
   let source = clip(10);

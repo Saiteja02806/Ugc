@@ -194,7 +194,7 @@ test("image limits include the phone screenshot and block before any upload or a
     await assert.rejects(actual.client.generate(input));
     assert.equal(actual.uploads.length + actual.calls.length + actual.tokens.length, 0);
   }
-  for (const [model, limit] of [["kling_3_0", 2], ["google_omni", 6], ["seedance_2_5", 30], ["wan_3_0", 10]]) {
+  for (const [model, limit] of [["kling_3_0", 2], ["google_omni", 10], ["seedance_2_5", 30], ["wan_3_0", 10]]) {
     const actual = harness();
     await actual.client.generate(draft({ referenceImages: images(limit), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
     assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, limit);

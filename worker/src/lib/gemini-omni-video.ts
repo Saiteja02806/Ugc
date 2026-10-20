@@ -80,8 +80,12 @@ export async function generateGeminiOmniVideoBuffer({
     const imageUrls = referenceImageUrls?.length
       ? referenceImageUrls
       : referenceImageUrl ? [referenceImageUrl] : [];
-    if (imageUrls.length > 6) {
-      throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 6 Google Omni reference images.");
+    // Google documents ten images for the Omni 1.1 Enterprise model family:
+    // https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/omni-1-1-flash
+    // Direct stable-route parity is inferred, not paid-test acceptance. Keep
+    // the live token preflight below; a source video does not use an image slot.
+    if (imageUrls.length > 10) {
+      throw new ProviderRequestNotSubmittedError("UGC Pilot accepts up to 10 Google Omni reference images.");
     }
     const referenceImages = await Promise.all(imageUrls.map(downloadReferenceImage));
     let referenceVideo;

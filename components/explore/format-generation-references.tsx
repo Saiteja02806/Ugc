@@ -169,11 +169,24 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
     const request = ++revision.current;
     working.current = true; setPending("image"); onPendingChange(true); setError(null); onErrorChange?.(null);
     setUploadProgress(`Adding 0 of ${files.length} images…`);
+    const stages = new Map<File, string>();
+    let completed = 0;
+    function reportStage(file: File, label: string) {
+      if (request !== revision.current) return;
+      stages.set(file, label);
+      setUploadProgress(`${completed} of ${files.length} processed · ${[...stages.values()].join(" · ")}`);
+    }
     try {
       const results = await prepareReferenceImageBatch(files, async file => {
         if (!preview) {
           if (!ownerId) throw new Error("Sign in before adding images.");
-          return uploadAIStudioReferenceMedia(file, "image", 10, ownerId, { purpose: USER_REFERENCE_IMAGE_PROJECT });
+          try {
+            return await uploadAIStudioReferenceMedia(file, "image", 10, ownerId, {
+              purpose: USER_REFERENCE_IMAGE_PROJECT,
+              onProgress: stage => reportStage(file, stage === "uploading" ? "Uploading" : stage === "verifying" ? "Saving" : stage === "ready" ? "Saved" : "Preparing"),
+              onUploadProgress: (loaded, total) => reportStage(file, `Uploading ${Math.round(loaded / Math.max(1, total) * 100)}%`),
+            });
+          } finally { stages.delete(file); }
         }
         const metadata = await readAIStudioReferenceMetadata(file, "image");
         if (request !== revision.current) throw new Error("Image selection was cancelled.");
@@ -183,7 +196,10 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
           id: `local:${url}`, metadata: { preview: true }, mimeType: file.type, parentAssetId: null,
           projectId: USER_REFERENCE_IMAGE_PROJECT, ratio: metadata.ratio, sourceRecordId: null,
           sourceType: "upload", status: "ready", thumbnailUrl: null, title: file.name, url } } satisfies AIStudioReferenceMedia;
-      }, () => request === revision.current, (done, total) => setUploadProgress(`Adding ${done} of ${total} images…`));
+      }, () => request === revision.current, (done, total) => {
+        completed = done;
+        setUploadProgress(`${done} of ${total} processed${stages.size ? ` · ${[...stages.values()].join(" · ")}` : ""}`);
+      });
       if (request !== revision.current) return;
       const accepted = results.flatMap(result => result?.value ? [result.value] : []);
       if (!preview && accepted.length) {

@@ -88,7 +88,7 @@ test("both workflow clients reach the real API's text-only contract for every av
         assert.equal(job.input.model, model);
         assert.equal(job.input.hookIdea, input.instructions);
         assert.deepEqual(job.input.referenceImageUrls, []);
-        assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "openrouter" : undefined);
+        assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined);
       }
       assert.equal(reservations.size, quantity);
     }
@@ -109,7 +109,7 @@ test("creator and app screenshots reach the real API as uploaded multi-image gui
   }
 });
 
-test("both Explore workflows send owned Create audio/video to OpenRouter, independently of appended demos", async () => {
+test("both Explore workflows send owned Create audio/video to ReAPI, independently of appended demos", async () => {
   for (const kind of ["hook", "phone"]) {
     jobs.clear(); reservations.clear(); uploads.length = 0;
     const reference = (media) => ({ name: `${media}.media`, url: `blob:${media}`, duration: 30, file: { type: `${media}/${media === "audio" ? "mpeg" : "mp4"}`, size: 1024 } });
@@ -119,7 +119,7 @@ test("both Explore workflows send owned Create audio/video to OpenRouter, indepe
       demo: { url: "blob:not-a-reference" }, demoAudio: { url: "blob:not-reference-audio" },
     }));
     const input = [...jobs.values()][0].input;
-    assert.equal(input.provider, "openrouter");
+    assert.equal(input.provider, "reapi");
     assert.equal(input.referenceVideoAssetId, videoId);
     assert.equal(input.referenceVideoDurationSeconds, 30);
     assert.deepEqual(input.referenceAudioAssetIds, [audioId]);
@@ -142,7 +142,7 @@ test("Talking Head and Hook retain all three reference kinds through their real 
       audioReference: reference("audio"),
     }));
     const input = [...jobs.values()][0].input;
-    assert.equal(input.provider, "runway"); assert.equal(input.model, "wan_3_0");
+    assert.equal(input.provider, "reapi"); assert.equal(input.model, "wan_3_0");
     assert.deepEqual(input.referenceImageUrls, ["https://storage.example.com/1.png"]);
     assert.deepEqual(input.referenceAudioUrls, ["https://storage.example.com/audio.media"]);
     assert.deepEqual(input.referenceAudioDurationSeconds, [15]);
@@ -159,7 +159,7 @@ test("timed-reference ownership is also checked before Explore's atomic startBat
     method: "POST", headers: { Authorization: "Bearer fake-owner-token" }, body: JSON.stringify(body),
   }), { startBatch: async (batch) => {
     starts++;
-    assert.equal(batch.inputs[0].provider, "openrouter");
+    assert.equal(batch.inputs[0].provider, "reapi");
     assert.deepEqual(batch.inputs[0].referenceAudioAssetIds, [audioId]);
     return new Response(null, { status: 202 });
   } });

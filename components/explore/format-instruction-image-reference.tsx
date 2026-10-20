@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { fetchFormatReferenceImage, fetchFormatReferenceImages, USER_REFERENCE_IMAGE_PROJECT } from "@/lib/explore/format-reference-images";
 import { readAIStudioReferenceMetadata, uploadAIStudioReferenceMedia, type AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
+import { imagePickerThumbnailUrl, REFERENCE_IMAGE_PAGE_SIZE, REFERENCE_IMAGE_STALE_MS } from "@/lib/media/image-picker";
 import type { MediaAsset } from "@/lib/media/types";
 import { MAX_IMAGE_REFERENCE_CONTEXT } from "@/worker/src/lib/image-reference-context";
 
@@ -33,16 +34,17 @@ export function FormatInstructionImageReference({ selections, onChange, onPendin
   const pendingCallback = useRef(onPendingChange);
   const errorCallback = useRef(onErrorChange);
   const [open, setOpen] = useState(false);
+  const [imagePages, setImagePages] = useState(1);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [wasActive, setWasActive] = useState(active);
   if (wasActive !== active) { setWasActive(active); setOpen(false); setPreviewId(null); }
   const queryClient = useQueryClient();
-  const queryKey = ["explore-reference-images", ownerId ?? "signed-out"] as const;
+  const queryKey = ["explore-reference-images", ownerId ?? "signed-out", "explore-only-v2"] as const;
   const limit = Math.max(0, Math.min(MAX_IMAGE_REFERENCE_CONTEXT, maxImages));
   const full = selections.length >= limit;
-  const images = useQuery({ queryKey, queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal), enabled: active && open && !preview && Boolean(ownerId), staleTime: 0 });
+  const images = useQuery({ queryKey, queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal), enabled: active && open && !preview && Boolean(ownerId), staleTime: REFERENCE_IMAGE_STALE_MS });
   useEffect(() => { pendingCallback.current = onPendingChange; }, [onPendingChange]);
   useEffect(() => { errorCallback.current = onErrorChange; }, [onErrorChange]);
   useEffect(() => {
@@ -125,7 +127,7 @@ export function FormatInstructionImageReference({ selections, onChange, onPendin
 
   return <div className="absolute inset-x-3 bottom-3 flex min-w-0 flex-wrap items-center gap-2">
     <input ref={input} type="file" multiple className="hidden" aria-label="Choose instruction reference images" accept="image/jpeg,image/png,image/webp" disabled={disabled || pending || full} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void choose(files); }} />
-    <Popover open={active && open} onOpenChange={next => { setOpen(next); if (next) setPreviewId(null); }}>
+    <Popover open={active && open} onOpenChange={next => { setOpen(next); if (next) { setPreviewId(null); setImagePages(1); } }}>
       <PopoverTrigger render={<Button type="button" variant="outline" size="icon-sm" className="shrink-0 rounded-lg" aria-label="Add images to your instructions" aria-busy={pending} title="Attach reference images" disabled={disabled || pending} />}>
         {pending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="size-4" aria-hidden="true" />}
       </PopoverTrigger>
@@ -134,14 +136,15 @@ export function FormatInstructionImageReference({ selections, onChange, onPendin
         <p className="text-xs leading-5 text-muted">Add product, person or style images. Your selected slideshow keeps guiding the layout. Explain how to use each attached image in your instructions.</p>
         <p aria-live="polite" className="text-xs text-muted">{selections.length} attached · {limit} available with your slideshow references. Up to {MAX_IMAGE_REFERENCE_CONTEXT} images total, 25 MB each and 50 MB combined.</p>
         {selections.length ? <div className="grid grid-cols-4 gap-2" aria-label="Attached images">{selections.map((selection, index) => <Button key={selection.asset.id} type="button" variant="ghost" className="group relative h-auto overflow-hidden rounded-lg p-0" aria-label={`Remove reference ${index + 1}: ${selection.asset.fileName ?? selection.asset.title}`} disabled={disabled || pending} onClick={() => clear(selection.asset.id)}>
-          <img src={selection.asset.thumbnailUrl ?? selection.asset.url} alt="" width={64} height={64} className="aspect-square w-full object-cover" /><span className="absolute right-1 top-1 rounded-full bg-background/90 p-0.5"><X className="size-3.5" aria-hidden="true" /></span>
+          <img src={imagePickerThumbnailUrl(selection.asset.thumbnailUrl ?? selection.asset.url)} alt="" width={64} height={64} className="aspect-square w-full object-cover" /><span className="absolute right-1 top-1 rounded-full bg-background/90 p-0.5"><X className="size-3.5" aria-hidden="true" /></span>
         </Button>)}</div> : null}
         <div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={disabled || pending || full} onClick={() => input.current?.click()}>Upload images</Button>
           {!preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" disabled={pending || images.isFetching} onClick={() => void images.refetch()}><RefreshCw className="size-4" aria-hidden="true" /></Button> : null}</div>
-        {!preview && ownerId ? images.isPending ? <p role="status" className="text-xs text-muted">Loading your images…</p> : images.isError ? <p role="alert" className="text-xs text-destructive">Could not load your images. Refresh or upload an image.</p> : images.data?.length ? <div className="grid grid-cols-4 gap-2">{images.data.map(asset => <Button key={asset.id} type="button" variant="ghost" className="relative h-auto overflow-hidden rounded-lg p-0" aria-label={`Attach your image ${asset.fileName ?? asset.title}`} aria-pressed={selections.some(selection => selection.asset.id === asset.id)} disabled={disabled || pending || (full && !selections.some(selection => selection.asset.id === asset.id))} onClick={() => void choose(undefined, asset)}>
-          <img src={asset.thumbnailUrl ?? asset.url} alt="" width={64} height={64} loading="lazy" className="aspect-square w-full object-cover" />
+        {!preview && ownerId ? images.isPending ? <p role="status" className="text-xs text-muted">Loading your images…</p> : images.isError ? <p role="alert" className="text-xs text-destructive">Could not load your images. Refresh or upload an image.</p> : images.data?.length ? <div className="grid grid-cols-4 gap-2">{images.data.slice(0, imagePages * REFERENCE_IMAGE_PAGE_SIZE).map(asset => <Button key={asset.id} type="button" variant="ghost" className="relative h-auto overflow-hidden rounded-lg p-0" aria-label={`Attach your image ${asset.fileName ?? asset.title}`} aria-pressed={selections.some(selection => selection.asset.id === asset.id)} disabled={disabled || pending || (full && !selections.some(selection => selection.asset.id === asset.id))} onClick={() => void choose(undefined, asset)}>
+          <img src={imagePickerThumbnailUrl(asset.thumbnailUrl ?? asset.url)} alt="" width={64} height={64} loading="lazy" decoding="async" className="aspect-square w-full object-cover" />
           {selections.some(selection => selection.asset.id === asset.id) ? <Check className="absolute right-1 top-1 size-4 text-primary" aria-hidden="true" /> : null}
         </Button>)}</div> : <p className="text-xs text-muted">Your uploaded images will appear here.</p> : null}
+        {images.data && images.data.length > imagePages * REFERENCE_IMAGE_PAGE_SIZE ? <Button type="button" variant="outline" size="sm" onClick={() => setImagePages(value => value + 1)}>Load more images</Button> : null}
         <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Done</Button>
       </PopoverContent>
     </Popover>
@@ -150,7 +153,7 @@ export function FormatInstructionImageReference({ selections, onChange, onPendin
         const name = selection.asset.fileName ?? selection.asset.title;
         return <PreviewCard.Root key={selection.asset.id} open={active && !open && previewId === selection.asset.id} onOpenChange={next => setPreviewId(current => next ? selection.asset.id : current === selection.asset.id ? null : current)}>
           <PreviewCard.Trigger delay={180} closeDelay={150} render={<button type="button" />} aria-label={`Preview reference ${index + 1}: ${name}`} onClick={() => setPreviewId(current => current === selection.asset.id ? null : selection.asset.id)} style={{ zIndex: previewId === selection.asset.id ? 30 : index + 1 }} className="relative h-11 w-10 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-card bg-background shadow-sm outline-none hover:z-30 focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-safe:transition-transform motion-safe:duration-150 motion-safe:hover:-translate-y-1 motion-safe:hover:rotate-0 motion-safe:hover:scale-110 motion-safe:focus-visible:-translate-y-1 odd:rotate-[-5deg] even:rotate-[4deg]">
-            <img src={selection.asset.thumbnailUrl ?? selection.asset.url} alt="" width={40} height={44} className="size-full object-cover" />
+            <img src={imagePickerThumbnailUrl(selection.asset.thumbnailUrl ?? selection.asset.url)} alt="" width={40} height={44} decoding="async" className="size-full object-cover" />
           </PreviewCard.Trigger>
           <PreviewCard.Portal>
             <PreviewCard.Positioner side="top" align="start" sideOffset={12} collisionPadding={16} className="z-[70]">

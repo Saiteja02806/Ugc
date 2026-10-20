@@ -1,4 +1,5 @@
 import "server-only";
+import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
 
 import { NextResponse } from "next/server";
 
@@ -278,6 +279,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
   let businessProfile: { businessProfileId: string; businessProfileVersion: number } | undefined;
   let slideshowBusinessContext: SlideshowBusinessContext | undefined;
   if (body?.exploreFormat === "slideshow") {
+    if (requiresScreenshotAttachment(prompt) && !attachmentReferences.length) return NextResponse.json({ ok: false, message: "Your instructions refer to an uploaded screenshot, but none is attached. Attach it with + before generating." }, { status: 400 });
     const references = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
     if (!references.length) return NextResponse.json({ ok: false, message: "Choose a slideshow style reference, attach an image or select a slide to recreate." }, { status: 400 });
     const indexOf = (url: string) => references.indexOf(url) + 1;
@@ -305,6 +307,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
       return NextResponse.json({ ok: false, message: "Shorten your instructions so the slideshow prompt, including reference guidance, fits within 32,000 characters." }, { status: 400 });
     }
   }
+
 
   const missingRuntimeEnv = getMissingRuntimeEnv();
 
@@ -354,6 +357,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           batchSize: totalOutputs,
           generationId,
           model,
+          ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
           prompt,
           referenceImageUrl,
           ...(referenceImageUrls ? { referenceImageUrls } : {}),

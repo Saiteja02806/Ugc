@@ -9,8 +9,23 @@ import {
   ProviderOperationTerminalError,
   ProviderInsufficientCreditsError,
   ProviderSubmissionUncertainError,
+  ProviderOutputCollectionError,
+  toProviderPollingRetry,
 } from "./generation-provider.js";
 import type { SupabaseJobStore } from "./supabase.js";
+
+test("completed-output collection failures retain their safe reason through retry wrapping", () => {
+  for (const reason of ["missing_output", "untrusted_output_url", "download_failed"] as const) {
+    const error = new ProviderOutputCollectionError(reason);
+    assert.equal(toProviderPollingRetry(error), error);
+    assert.equal(error.code, "PROVIDER_OUTPUT_COLLECTION_FAILED");
+    assert.match(error.message, /provider completed the video/);
+    assert.equal(error.retryAfterSeconds, 30);
+  }
+  const unknown = toProviderPollingRetry(new Error("private signed URL"));
+  assert.equal(unknown.code, "provider_operation_pending");
+  assert.doesNotMatch(unknown.message, /private/);
+});
 
 test("terminal provider failures carry a structured code for durable job reporting", () => {
   for (const failureCode of ["INPUT_PREPROCESSING.SAFETY.THIRD_PARTY", "INPUT_PREPROCESSING.SAFETY.TEXT", "SAFETY.INPUT.IMAGE", "SAFETY.OUTPUT.TEXT"]) {

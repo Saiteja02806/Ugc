@@ -1,5 +1,672 @@
 # Carousel System Context
 
+## 2026-10-20 Second rejected source: exhausted-at-laptop body slide
+
+- Traced “I felt drained trying to keep up with trends. The constant pressure
+  left me exhausted.” to slide 2 (`ffb65e6d-d4d3-423c-a246-fbabe0de71df`) of
+  generation `4b7c163f-9505-4502-b08e-a696b7aa4a79`. Visually verified the original
+  1440×1920 JPEG `productivity-human/Pinterest_2026-08-16 (74)/pinterest_002.jpg`.
+- Production asset `c8b4cefd-4905-433e-aa2f-e71e258fc3de` and all exact-hash
+  matches were retired at 10:39 UTC; zero matching active assets remain. Hash:
+  `3046ddbc7ac7584172f6b98ec839e18f7aaed7e0684f9337ddb4f3de27aed2a9`.
+  Historical source bytes/renders remain available. The previously rejected
+  cover source was read back and is also still inactive/archived.
+- Local import/reconciliation denylist updated by exact path and hash; all 12
+  source-retirement checks pass. This local policy addition is not a website
+  deployment. Production pool retirement is already effective through the DB.
+  Receipt: `outputs/trending-exhausted-source-retirement-2026-10-20.json`.
+
+## 2026-10-20 Revisited slideshow first-edit fix — production release receipt
+
+- The exact hook “if you’re stuck on creating fresh content, read this.” uses
+  source asset `6e07f2d4-3d18-413a-be31-0e29604671e2`, a 736×919 JPEG enlarged
+  to 1080×1350. It is archived/inactive and denied by hash/path during import
+  and reconciliation. Existing historical bytes/renders remain available.
+- A completed_skipped assignment with no saved edit was incorrectly blocked
+  by the UI, API and database trigger. Owned revisited Carousel assignments
+  now allow a first edit; ownership, immutable scope, revision checks and
+  Hook/Wall restrictions remain. Edits do not replay decisions, consume quota,
+  or rewrite previously saved/scheduled snapshots.
+- Database migration `20261020102121` was applied before website deployment.
+  PR #77 merged as `d70541952ee42538265f2e95e11d3942d94ddc76`; its tree matches
+  validated source `ba8b2a8aaa6969d3907746a87adf5df8b046f819`.
+- Production deployment `dpl_56RnJrvJ6MR63KAoWhpp3ewfnQb9` is READY and both
+  getugcpilot.com and www.getugcpilot.com aliases resolve to it. Build settings
+  were restored; MCP production and workers were unchanged by this patch.
+- 25 focused checks, application TypeScript, scoped lint and production build
+  passed. Database retirement/migration/function readback passed. Signed-in UI
+  acceptance is still unverified because Work local browser access is disabled.
+  Receipt: `outputs/trending-source-and-first-edit-release-2026-10-20.json`.
+
+
+## 2026-10-20 Repeated library-background text loss: missed dedicated worker repaired
+
+- The 19 October rollout receipt incorrectly treated video-render service/job
+  deployment as sufficient for slideshow edits. The real route is
+  `render_trending_carousel_edit` → `carousel-edit` →
+  `GCP_CAROUSEL_EDIT_TASK_URL` → `ugc-carousel-edit-worker`. That dedicated
+  service still served `release-771878a1` at 100% traffic; the new 20 October edit
+  `b464c4e1-dc75-456d-93b0-c28af2fa0994` therefore rendered with the old v3 mapping.
+  This was a deployment-target omission, not lost copy or a new prompt failure.
+- Repaired the dedicated service using the already tested immutable image
+  `sha256:96afdde1f42c980281c3b68182ad91874c41c997d9d20219bd472f8d0f15a36d`, source
+  `fac61da3`. Ready revision `ugc-carousel-edit-worker-bodycopy-fac61da3` now
+  receives 100% traffic. Queue/job restrictions, ingress, scaling, concurrency,
+  resources and unrelated environment settings were verified unchanged.
+- Saved the affected in-progress edit through the signed-in production UI with
+  no copy/background changes. Revision 2, job
+  `ed04de7b-f9ea-4e8c-80e2-1d7c6fe49d6e`, completed with
+  `normalized-edit-v4-body-copy`. Slides 2/3 visibly recovered in Trending;
+  all six actual stored 1080×1350 output images were downloaded and visually
+  checked with visible copy. Browser access was disabled afterward, so final
+  inspection of slides 4–6 used those exact output images, not a local render.
+- Future worker releases must derive targets from queue routing, including the
+  dedicated Carousel edit service. Do not use video-render readiness as Carousel
+  edit acceptance. Read back a fresh edit job's renderer version and inspect all
+  saved slides. A fingerprint bump alone does not repair existing image bytes.
+- Receipt: `outputs/carousel-edit-worker-repair-2026-10-20.json`; evidence montage:
+  `outputs/carousel-repair-all-six-2026-10-20.png`. Earlier claims of complete
+  Trending body-copy deployment are superseded by this verified repair.
+
+## Trending body-copy correction deployed — 19 October 2026
+
+- The completed library-background body-text mapping fix shipped with PR #75,
+  main `93df700e`, tested source `fac61da3`. Video render service and render job
+  use verified digest `96afdde1f42c980281c3b68182ad91874c41c997d9d20219bd472f8d0f15a36d`;
+  the service is READY with 100% traffic on `hookfix2-fac61da3`.
+- `normalized-edit-v4-body-copy` resolves body-only text from current subtext,
+  then legacy headline, and invalidates the old blank-render cache signature.
+  Existing blank saved images need a new edit/save/render. Existing scheduled
+  snapshots were not rewritten. The earlier quota-history release is preserved.
+- Combined 182 regressions, web/worker builds and application types passed;
+  six-slide real-render/editor-browser checks passed in the originating task.
+  Final deployment/source/settings readback passed. Receipt:
+  `outputs/combined-hook-seedance-trending-release-2026-10-19.json`.
+
+## 2026-10-19 Library backgrounds lost body text (local worker correction)
+
+- Confirmed from an owned production edit: all six saved slides retained copy
+  and changed backgrounds, but Structure 1 body-only copy was in the legacy
+  `headline` transport with empty `subtext`. The normalized plan instead had
+  `body`/`subtext`. The edit worker compared these different representations,
+  treated empty `subtext` as deletion, and rendered blank body slides. The hook
+  uses separate mapping. The library picker did not discard the copy.
+- Body-only mapping now uses current nonempty `subtext`, then `headline`, matching
+  the editor preview. Structure 1 edit fingerprint advances to
+  `normalized-edit-v4-body-copy` so a new render cannot reuse the bad output.
+- Worker build, 16 worker render tests, 14 image access/save checks, and the actual
+  editor browser suite pass. A real six-slide raster test checks text pixels on
+  every output and fails with the old mapping. Browser coverage now includes six
+  fresh body-only slides without manual styles and six selected library images.
+- Local only: requires render-worker deployment and signed-in production check.
+  Existing blank saved images need a new render after rollout; retained copy and
+  scheduled snapshots were not modified. See
+  `docs/carousel-library-background-text-2026-10-19.md`.
+
+## 2026-10-19 Quota-history release verification
+
+- PR #74 merged as `283afc17`; staged production build `4c22c19e` has the identical Git tree and is live on both `getugcpilot.com` and `www.getugcpilot.com`.
+- Deployment `dpl_Dfbks1DRK3L4AMnmWQRJFU9ohNSM` is READY. No migrations or worker changes; MCP production unchanged. Deployment build settings restored.
+- Final history (22), interaction (88), TypeScript, lint, full browser and quota browser checks passed. The service recovered all eight reviewed production-quota slideshows, denied a different owner and left quota unchanged. Both live history endpoints reject anonymous requests with 401 and private/no-store caching.
+- Authenticated production-browser acceptance is still pending: the available browser is signed out. Deployment success does not establish that final user-session check. This entry supersedes earlier local-only/blocked-rerun status below.
+- Receipt: `outputs/trending-quota-history-release-verification-2026-10-19.json`.
+
+
+## 2026-10-19 Explore Focus reference addition
+
+- Explore slideshow catalogue adds `explore-slideshow-nota-f79553cb5f15c74e`:
+  six 1320×1760 JPEGs in supplied numeric order, first image as cover, topic Focus.
+  The user renamed the source folder and corrected the category to `focus`;
+  keep the existing internal reference ID and asset keys stable.
+  Uploaded immutable objects are hash-verified; reviewed captions support Remix.
+  No Trending Carousel planner, rendering or publishing behavior changes.
+- Catalogue activation on the frontend still requires the web release; media
+  upload is complete and distinct from deployed catalogue acceptance.
+
+
+## 2026-10-19 Explore slideshow added-text symbol colors (local)
+
+- Explore's manual added-text SVG now shares deterministic colored cross,
+  check and right-arrow artwork with its video overlays. The same SVG supplies
+  preview and PNG export, and wrapping preserves full emoji graphemes.
+- This corrects the Explore symbol-color bug without changing generated/baked
+  slideshow content or Trending Carousel's independent manual glyph renderer.
+  Trending manual glyph export still rejects unsupported characters explicitly.
+  Production rollout and authenticated acceptance remain pending.
+
+
+## 2026-10-19 Same-quota older-post recovery (local correction; production pending)
+
+- User subsequently clarified the required scope: previously viewed posts from
+  the same quota/delivered feed, even hours later. Recovery must preserve that
+  feed's ordering and not consume another slot or mix unrelated quotas. This
+  requirement now has a local server-history implementation; it is not deployed.
+- Latest user recording distinguishes immediate swipe-back (now possible) from
+  returning to a slideshow reviewed roughly two hours earlier. Read the evidence
+  in `docs/trending-older-history-investigation-2026-10-19.md` before another
+  gesture-only fix or declaring full history acceptance.
+- Production database reads confirm earlier skipped assignments/ready slides
+  still exist. The connected production browser reaches a newer historical post
+  with no previous item despite those older account records. The normal daily
+  feed excludes completed assignments; the deployed backward browsing had no
+  server-history fetch and relied solely on local snapshots. Comet's exact lost-snapshot cause
+  was not observable from the recording or the separate in-app browser.
+- There is no two-hour cache timeout: current limits are seven days/120 posts/
+  one million serialized characters. An actual parser probe preserves +2h
+  history. The missing capability is owner-scoped recovery/pagination from
+  existing server decisions, merged with local pending reviews without replaying
+  decisions or disturbing the active post. Loading failure must not masquerade
+  as the end of history.
+- Local `GET /api/trending/feed/history` checks feed ownership, pages existing
+  decisions in original quota-slot order, and hydrates available Slideshow,
+  Hook, Wall and Reaction previews. It never prepares replacements, marks a
+  post shown, reactivates assignments or records decisions. No migration.
+- The gallery receives the persisted feed ID, scopes its cache to owner + quota,
+  preloads earlier pages and merges them without moving the selected post or
+  overwriting local edit snapshots. Failed recovery has a Retry action;
+  unavailable creatives are reported. Empty and storage-blocked browsers can
+  recover server decisions. Existing unscoped snapshots are not mixed in.
+- Local checks: `npm run test:trending-history`, the interaction suite, TypeScript
+  and scoped lint. The actual Gallery/Deck browser fixture passed empty-cache
+  +2h recovery, slow pagination, refresh, leave/return, quota isolation, empty
+  quota, retry and blocked storage, with zero decision/save/schedule writes.
+  A final browser rerun after the last small loading/deduplication changes was
+  blocked by automatic approval review's usage limit. Production acceptance
+  remains pending; see the investigation document for exact evidence/limits.
+- Earlier immediate swipe/reload acceptance remains valid within its tested
+  scope; it does not prove older account-history recovery. No production writes
+  were made during this investigation.
+
+## 2026-10-19 Same-visit finger swipe-back correction (local)
+
+- User clarified the remaining failure: swipe a Reel upward with a finger, then
+  pull/swipe downward to return to it during the same visit. Deployment of browser
+  history recovery does not establish that this native touch gesture works.
+- Reproduced with the actual Trending gallery/deck, Reaction Reel and native
+  Chromium touch events: long upward travel advanced to post 2, but a 120px
+  downward swipe stayed on post 2, despite the previous entry remaining present.
+  Long downward travel worked. The prior browser test used keyboard advance and
+  an 85%-height downward touch, missing this normal shorter reversal.
+- The touch path previously relied on native mandatory scroll-snap selection;
+  it had no explicit distance/speed-based adjacent-post target. Mouse dragging
+  already had a separate release policy. History storage was not this failure.
+- Touch now tracks a single finger through TouchEvents (native scrolling can
+  cancel PointerEvents). Native panning remains; native snap pauses during a
+  deliberate vertical drag. On release, bounded travel of 48–100px depending
+  on viewport, or a directional flick with nontrivial travel, chooses exactly
+  one adjacent post. The existing settle/decision locks perform the hand-off.
+  This is a distinct touch policy; mouse and wheel thresholds are unchanged.
+- Tiny/horizontal/reversed/cancelled gestures, pinch/multitouch, controls,
+  tutorial acknowledgement, missing previous history and disabled interactions
+  cannot create a touch history transition. Taps still use existing double-tap
+  behavior. Resize, blur, item changes and cancellation clean gesture state.
+- Local acceptance covers long/120px up-down sequences on actual Reels at phone
+  and tablet widths, reduced motion, repeated backward/forward history, mouse
+  drag, exact IDs and decision counts. Unit tests execute the real touch handlers
+  for double taps, jitter, direction, cancellation and interaction guards.
+  The fixture accepts existing Reaction presentation telemetry separately from
+  decisions; no paid generation, social publish, save or scheduling is submitted.
+- Release checks now pass: 86 interaction tests, application TypeScript, scoped lint, and the complete actual-gallery browser run including native touch at phone/tablet sizes, reduced motion and desktop mouse reversal. The prior desktop fixture started below the clipped feed; its coordinates now use the visible media/feed intersection with an explicit hit-target check. Product mouse behavior is unchanged.
+- Signed-in production browser access is available during the release. Local Chromium checks remain distinct from deployed-site acceptance and physical-device verification. See `docs/trending-touch-swipe-back-2026-10-19.md`.
+
+## 2026-10-19 Trending review recovery after navigation or refresh (local)
+
+- Recurring root cause: `usePostReviewHistory` was explicitly visit-local React
+  state. Earlier gesture checks proved backward scrolling only within one visit.
+  Leaving Trending/reloading removed the snapshots, while the server correctly
+  excluded already-decided assignments from the new-post feed. An empty feed
+  could also return before mounting any history controls.
+- Authenticated Trending now opts into account-scoped browser recovery of up to
+  120 reviewed post snapshots and the selected historical post, retained for
+  seven days and bounded to one million serialized characters per account.
+  Saving is synchronous in the history action, before navigation can unmount.
+  Landing/Try demos remain visit-local. No credentials or image bytes are added
+  to this cache; previews retain their existing media URLs and edit snapshots.
+- The gallery owns recovery above its loading/empty branches and Hook composer.
+  A recovered history keeps the real review deck mounted when the server returns
+  no new posts. View previous posts remains available after reviewing the final
+  post. Account changes hide the old snapshots before recovering the new owner.
+- Recovery and backward/forward browsing do not replay outbox decisions, saves,
+  likes, scheduling or generation. An explicit user action still uses existing
+  ownership/assignment checks and scheduling flows. Cached edits refresh through
+  the existing owned API. Other tabs' reviews merge on the next history action;
+  an existing liked decision is not downgraded by a stale skip snapshot.
+- Invalid versions, malformed entries, expired snapshots and missing positions
+  recover safely. Blocked/quota-failed browser storage keeps current-visit history
+  working and shows a concise explanation. This is same-browser recovery, not
+  cross-device server history or a backfill of previously lost visits. Clearing
+  site data removes this cache; historical media deletion/access expiry still
+  follows the existing media/preview renewal rules.
+- Local checks: storage/gesture/decision tests plus a headless Edge fixture using
+  the actual Trending gallery/deck, full document navigation, reload while
+  browsing, wheel-back/forward, empty server feed, account switching, corrupt and
+  blocked storage, and React StrictMode. `docs/trending-history-recovery-2026-10-19.md`
+  records the acceptance boundary. Not deployed; authenticated production-domain
+  acceptance remains pending. Earlier visit-local history notes are superseded
+  only for authenticated Trending opting into this recovery.
+
+## 2026-10-19 Shared body styling, protected overrides and reopening edited history (local)
+
+- Trending Carousel Edit defaults to sharing changed style fields and placement
+  across body slides. The hook remains separate. Each slide keeps its copy,
+  source image, ID and order; shared typography wraps its own copy. A visible
+  checkbox switches to individual edits. Use this layout on shared body slides
+  explicitly copies the complete selected layout to unprotected body slides.
+- Individually changed body styling persists as `textStyle.bodyStyleMode:
+  individual` and is excluded from later shared updates, including full-layout
+  copies. Previously saved manual styles with no mode are conservatively treated
+  as individual. Shared styles carry explicit `shared`. The UI identifies custom
+  layouts and lets the user explicitly include one in shared styling again.
+  Text/copy edits remain local regardless of styling scope. Scope defaults to
+  shared on reopening, while persisted individual protection remains in force.
+- New manual text placement uses actual canvas edges instead of a fixed 96px
+  inset. Only full text/glyph/panel containment limits motion. Position sliders
+  span the usable travel distance from 0% to 100%; corner intent survives changes
+  to the other axis and wraps independently per slide. Unchanged old styles keep
+  their previous inset until moved. Renderer v4 fences cached manual output.
+- Overlong body copy is flagged with per-slide Review actions. Those actions
+  switch to individual editing, so corrections need not affect other slides.
+  No AI inference, automatic copy rewriting, truncation or hidden font reduction.
+- The disabled Edit control was caused by a blanket review-history UI guard.
+  Existing edited Carousel history can now reopen using click or E, while
+  transitions and other formats keep their existing guards. API access verifies
+  owner/creative/assignment and requires an existing edit in terminal history.
+- Local migration `20261019061132_allow_existing_carousel_history_edits.sql`
+  permits only UPDATE of the same Carousel edit in completed_skipped/saved/
+  scheduled assignment states. Scope immutability, revision fencing and source
+  validation remain. New history inserts, reassignment and Hook/Wall history
+  writes remain rejected. No assignment state or scheduled snapshot is rewritten.
+  This supersedes earlier blanket read-only-history rules for existing Carousel
+  edits only; history browsing does not create a new edit or unskip a post.
+- Local validation covers shared/individual persistence, legacy protection,
+  one/two/five/ten-slide sequences, hook isolation, overflow and all canvas corners.
+  Pixel tests draw on an enlarged canvas to detect clipped glyph/panel pixels.
+  The actual editor browser verifies manual overrides after reopen, explicit
+  rejoining, distinct copy, corner movement, normal Save and library flows at
+  laptop/mobile sizes. PostgreSQL PGlite executes the old/new trigger behavior
+  and owner/scope/state/revision/other-format negative cases.
+- No deployment or production mutation. Rollout requires the local migration,
+  compatible renderer worker and website. Authenticated production acceptance
+  remains pending; production trigger inspection in this task was read-only.
+- Results: 99 focused checks pass (62 worker/rendering, 19 style/persistence/
+  containment and 18 history/decision/database checks), along with the actual
+  editor browser suite, worker compilation, application TypeScript and scoped
+  ESLint. Body-scope controls were visually checked at 1366×768, 1536×864 and
+  390×844; other zoom levels remain untested.
+
+## 2026-10-19 Approved library workflow — existing Trending slideshow (local)
+
+- Settings → Media library creates/manages image collections. Upload inside a
+  collection adds membership; existing images can also be added. Management
+  explains where these backgrounds are used. Trending's header pill is labelled
+  Manage library so organization is distinct from changing a particular post.
+- The approved apply path is Trending → Edit → Choose backgrounds from library.
+  One image defaults to the selected slide; All slides supports multiple selected
+  images in click order or a whole collection in saved order, repeating as needed.
+  Collection use is beside its name, before the grid. Unselected thumbnails no
+  longer display competing order numbers; thumbnail frames fill without side strips.
+- Preview backgrounds opens the actual proposed composition. Use these
+  backgrounds revalidates owned sources and changes only the editor draft. Normal
+  Save persists that same assignment/creative through existing revision/render
+  handling. Text, styling, original sources, slide IDs and order are preserved.
+  Cancelling preview leaves the creative unchanged. Library edits do not update
+  existing/scheduled slideshows automatically.
+- Removed the attempted standalone library → Explore editor URL handoff. It did
+  not implement the approved purpose. Existing Explore library picker integrations
+  remain; no new slideshow/navigation is initiated by background selection.
+- The picker has full-width selection and a separate explicit preview, without
+  side panels or reorder arrows. Management retains the selection and uses Done
+  with automatic-save wording. Scoped scrollbar arrows are suppressed. Narrow
+  dialogs restrict transitions to opacity/transform so viewport resizing does not
+  animate dimensions outside the screen. This supersedes the earlier library
+  picker entries' side-by-side preview and up/down proposal-order controls.
+- Local actual-editor browser checks verify collection preview/cancel, separate
+  Use and Save boundaries, the same creative/revision, preserved text/style/order
+  and reopening. Shared component checks cover single/multiple images, repeats,
+  source-check failure, collection creation/membership/upload, music reuse and
+  32-image mobile collections at 390px and 320px. Production acceptance is separate;
+  no deployment, worker change, migration or production mutation was performed.
+
+## 2026-10-18 Missing glyph segments in edited slides — confirmed worker serialization defect (local fix)
+
+- Read-only inspection found the matching saved first slide: the full headline
+  `5 websites I wish I knew before launching my SaaS` was intact. Its style was
+  Montserrat Bold, 40px, 431px wrapping width, yellow, with fractional position.
+  Reproducing that exact style in the worker damaged `s`, `a` and `u`, while the
+  live browser font rendered the same text correctly. A saved-render preview
+  can therefore show the defect inside Edit as well as on the Trending card.
+- The installed OpenType.js 2.0.0 `toPathData(3)` rounds fractional coordinates
+  using decimal-string exponent arithmetic. Near-integer values such as
+  `83.00000000000001` can produce `NaN` tokens. SVG rasterization then damages
+  parts of the glyph. Font glyph availability, prompt rewriting and text saving
+  were not the cause; affected characters depend on placement and font metrics.
+- Both callers now use a shared finite-coordinate SVG command serializer:
+  Carousel manual text and Explore's bundled-font video overlay renderer.
+  It preserves every M/L/Q/C/Z command, rounds with numeric `toFixed`, and
+  rejects nonfinite coordinates rather than writing malformed SVG.
+- Manual renderer version advances to v3 so new saves do not reuse v2 damaged
+  output. Existing assets/posts/receipts are not rewritten; after worker rollout,
+  affected Carousel edits must be saved again to generate corrected pixels.
+- Local validation: 60 worker/renderer tests and 9 font/export/persistence tests
+  pass. Includes per-glyph raster ink across 12 font faces (letters, numbers,
+  punctuation, accents), the exact reported cover, 48 font/weight/size cover
+  combinations and invalid-coordinate rejection. Worker compilation, application
+  TypeScript, scoped lint and actual-editor save/reopen browser checks pass.
+  The standalone browser fixture needed Next's client env substitution after
+  unrelated library navigation introduced Next Link; no app runtime change.
+- Production reads only; no deployment or customer edit mutation. Exact source
+  background/style were rendered locally for visual comparison. Signed-in
+  production acceptance remains pending because local browser access is disabled.
+
+## 2026-10-18 Trending text editor correction — compact controls and explicit styling (local)
+
+- Moving a text group previously initialized a manual preset that always drew
+  white heading panels. Position and background are now independent. New edits
+  default to no panel unless the source explicitly uses pill treatment; saved
+  v1 styles retain their existing panels until the user selects None. This
+  supersedes the unconditional white-background rule in the earlier entry below.
+- Hook/headline is multiline. Enter creates an intentional line break; text
+  width controls automatic wrapping. Explicit newlines activate the shared
+  manual layout so preview, saved JSON, reopening and exported glyphs agree.
+- The compact toolbar provides font, separate heading/body size, color and
+  weight, alignment, outline, wrap width and line spacing. Background is an
+  explicit per-block choice: None, Per line, or Text box. Background color and
+  opacity appear only when needed; position sliders are collapsed by default.
+  Native font/select menus use explicit dark foreground/background styling.
+- Desktop keeps the slideshow preview visible when lower controls are scrolled
+  into view. Phone controls wrap within the modal and retain its save footer.
+- Optional style fields are strictly validated in the shared parser. Manual
+  renderer v2 includes them in shared layout and existing render fingerprints;
+  browser text and worker glyph outlines use the same measured font advances,
+  line breaks, alignment, backgrounds and geometry. No migration is required.
+- Validation: 45 renderer/worker tests and 19 persistence/containment/schema
+  tests pass, as do worker compilation, application TypeScript and scoped lint.
+  Actual-editor browser fixtures cover three lines, movement without adding
+  panels, explicit background choices, compact/dark fields, style persistence,
+  failed-save recovery and mouse/touch/keyboard movement. Laptop/mobile visual
+  checks remain distinct from authenticated production acceptance.
+- Not deployed in this task. Website and rendering worker must be released
+  together, with the compatible worker available before exposing new controls.
+
+## 2026-10-18 Library picker clarity and composed previews (local)
+
+- Background selection now shows This slide/All slides before choosing an image.
+  Selection updates a proposed composition immediately; one fixed Apply action
+  revalidates used sources before updating the draft. Library management uses an
+  in-place Manage library view, without opening a second library dialog. Upload
+  remains available directly in selection. Saving/scheduling stay explicit.
+- Trending's proposal reuses EditorPreview with a temporary copy of the current
+  slide and the same server-normalized centre-crop/original-role values as Apply.
+  Text cannot be dragged inside the proposal. Saved edit/render identities are
+  not changed or submitted merely by viewing it. Explore uses its own SVG overlay.
+- Collection image order/repeat counts are visible, with earlier/later controls
+  for this proposal only. These controls do not persist collection membership
+  order or alter other posts. Full membership is used despite search filters.
+- Images use contained portrait thumbnails; mobile has a collection selector.
+  Music tab state survives navigation, previews play one at a time, and busy
+  uploads/updates block library dismissal/tab changes. Failed uploads can retry
+  only failed files. Existing ownership, archive and save guards remain in place.
+- 313 focused regressions, application TypeScript, scoped ESLint and actual
+  library/editor browser fixtures pass. New browser checks include text/crop,
+  proposed reorder, failed rechecks, laptop/mobile footer bounds, upload retry
+  and interruption, and native audio preview pausing. No migration, worker change,
+  deployment or production mutation. See `docs/library-ui-clarity-2026-10-18.md`.
+
+## 2026-10-18 Library image hover control suppression (local)
+
+- Shared library thumbnails/previews route pointer interaction to their containing
+  controls instead of the image element, suppressing the reported browser image
+  search hover affordance. No app-owned outbound image link was present. Image
+  selection and keyboard controls remain available; no library entry point is
+  removed. This CSS-only change requires a website release. Browser-specific
+  native overlay acceptance remains distinct from DOM hit-target checks.
+
+## 2026-10-18 Shared manual-text production bundling correction
+
+- The staged production Turbopack build exposed a shared worker import using
+  a `.js` source path. Webpack fixture aliases and TypeScript resolved it, but
+  Turbopack did not. Shared manual text now imports the real `.ts` font module;
+  the worker's existing `rewriteRelativeImportExtensions` emits `.js` for Node.
+- Validate this boundary with the actual production bundler as well as worker
+  compilation and browser fixtures. Do not treat fixture builds as a substitute
+  for a passing staged production build. Domains were not promoted on failure.
+
+## 2026-10-18 Shared media library and background collections (local)
+
+- Settings → Media library and Trending's new Library pill manage reusable
+  images, named image collections and music. Trending Edit can choose one image
+  for the selected slide, one image for every slide, or a whole collection in
+  displayed order, repeating from the beginning as needed. Preview and explicit
+  Apply precede draft changes; normal Save still gates the saved output.
+- Collections reuse owned Creative Asset image groups. Removing a collection
+  keeps its images. Image archive hides future selection through metadata while
+  retaining sources for existing drafts/saved posts. Collection edits never
+  change saved or scheduled slideshows automatically. Manual collection reorder
+  is not included; added time/asset ID gives a stable displayed order.
+- Manual save normalization accepts other ready owned uploads and generated
+  images. Foreign, deleted, unready, unsupported and imported catalogue media
+  remain rejected. Server-owned URLs, centre crop, original roles and existing
+  special screenshot/reviewed-hook rules remain authoritative.
+- Music can be uploaded from the header library and existing edit audio pickers.
+  Saving a track does not attach it automatically or add photo-slideshow music
+  publishing. Existing supported video audio controls can reuse the track.
+- No migration or worker change. 312 focused tests, TypeScript, scoped ESLint
+  and both isolated browser suites pass. No deployment or production mutation
+  occurred; authenticated production acceptance is pending. See
+  `docs/media-library-collections-2026-10-18.md` for scope and evidence.
+
+## 2026-10-18 Trending slideshow manual text controls (local)
+
+- Trending's Carousel Edit screen now exposes per-slide font (Inter, DM Sans,
+  Roboto Condensed, Montserrat), hook/heading and body sizes (24–120 px), separate
+  heading/body colors, horizontal/vertical position sliders and Reset text layout.
+  The text group supports pointer/touch dragging and keyboard arrows on both
+  structures. Structure 2 manual edits no longer quantize movement to upper,
+  middle or lower positions or lock the horizontal coordinate.
+- Optional `textStyle` travels through PATCH validation, owner/revision-fenced
+  content JSON, reopening, preview dirtiness and the edit worker. No schema
+  migration is required. Old edits with no style retain their existing rendering
+  unless the user changes appearance or moves the text; generation typography,
+  planners, slide copy and original assets are unchanged.
+- Manual styling has one shared bundled-font layout for browser SVG and worker
+  glyph outlines. Export uses the requested size without automatic shrinking or
+  truncation, keeps the complete text group inside the canvas, and rejects
+  overflowing copy before saving. Font/color inputs are strictly allowlisted;
+  unsupported font glyphs return a useful render error instead of missing boxes.
+  Headings retain white line backgrounds. Manual render fingerprints include
+  typography/version so saved pixels cannot be reused after a style change.
+- Reset removes the manual style and centers the text group. This does not
+  change the original generated image, slide copy, or other slides' settings.
+  Browser tests use actual Trending editor components and local API fixtures;
+  they do not publish or write production data. A worker and website release
+  are required together; the updated worker must precede UI availability.
+- Validation: 61 focused persistence/containment/renderer regressions, application
+  TypeScript, worker build and scoped ESLint pass. Actual-editor browser checks
+  cover mouse, real touch and keyboard placement, independent per-slide styles,
+  failed saves, reopen, reset and laptop/mobile fit. Raster export tests confirm
+  untouched background pixels remain. An older containment test expected two
+  generic drag overlays before Wall moved to its dedicated component; updated
+  that assertion to verify one Hook overlay and one Wall overlay explicitly.
+  These checks are local; this change is not deployed.
+
+## 2026-10-18 Helpful Tips metadata repair and failure diagnostics (local)
+
+- Production v58 is deployed (successful generation provenance and revision
+  `ugc-carousel-worker-publish-a493dbd6` verified), superseding the deployment
+  status in the 17 October local planner entry below. Candidate failures remain
+  concentrated in Helpful Tips. The reported account ultimately has complete
+  daily packs, despite 45 failed candidate attempts out of 110.
+- A live fictional-business reproduction completed only 2/5 plans: hidden
+  image descriptions tripped the existing object-only rule. Parsing stopped at
+  the first unsafe direction, and isolated repair rewrote entire valid decks
+  without reporting all offending fields. Malformed repair output could also
+  escape before the existing second attempt. Generic aggregate errors then
+  discarded failed-slot diagnostics. Exact causes of old generic failures are
+  unavailable; do not attribute every historical failure to this reproduction.
+- Local Helpful Tips v59 collects every unsafe visual direction with its slide
+  number and repairs only those image fields (plus specifically rejected body
+  fields for mixed failures). All visible copy, facts, roles and other fields
+  stay frozen and the complete publishing checks still run. The object-only
+  safety policy, model, image sourcing, actual font fit and recovery budgets
+  are unchanged. Shape-error recovery uses the existing second repair budget.
+- Failed candidates persist original/final issues, slot and initial/repair
+  responses in existing server diagnostics before job settlement; logs expose
+  issue codes and slide numbers without raw provider copy. Completed siblings
+  and reservation consumption/release behavior remain intact. No migration.
+- The exact same synthetic initial output passed 5/5 after scoped repair;
+  repair time was 5.752s versus 25.665s, tokens 7,474 versus 25,721. This is one
+  controlled reproduction, not a production success-rate guarantee. Worker
+  compilation and 122 focused tests pass, including 60 real renders of the
+  repaired 30 slides in both ratios. All 30 sampled existing hosted slides
+  are accessible; the production worker and queue are healthy. The fix is
+  not deployed and authenticated acceptance with v59 remains pending.
+- Details: `docs/carousel-reliability-investigation-2026-10-18.md`.
+
+## 2026-10-19 Explore slideshow scheduling confirmation (local)
+
+- Explore's shared slideshow scheduling form follows Schedule post → Post
+  scheduled / View in Scheduling → Schedule another post. A repeat opens a
+  fresh request for the same saved slideshow; edits to date/time remain the
+  user's choice. No extra saved-request confirmation controls are shown.
+- A lost creation response triggers a read to recover its verified receipt.
+  An unresolved attempt exposes Try again with the original idempotency key.
+  This changes client recovery presentation only; Carousel generation,
+  publishing APIs, source validation and Trending drawer behavior are unchanged.
+- Local regression coverage does not establish deployed production acceptance.
+
+## 2026-10-18 Repeat scheduling is an explicit new post (local)
+
+- A completed Trending Carousel can be scheduled again. Opening the scheduling
+  drawer creates one fresh idempotency key for that explicit post; retries of
+  that open drawer keep the same key. The prior assignment-wide key incorrectly
+  treated every future time as the same request.
+- The same policy applies to Trending Reaction Reels through a browser-created
+  request key. Wall-of-Text already derives its server key from the verified
+  time, accounts and settings, while Hook videos already include the requested
+  date and time in their idempotency identity.
+- This is local code and regression coverage only. It does not submit or alter
+  any production schedule.
+
+## 2026-10-18 Workflow-to-Scheduling cache handoff (local)
+
+- Manual Explore slideshow confirmation now updates and invalidates the owner's
+  shared schedule list, matching the existing Trending Carousel drawer policy.
+  Hook/Wall/Talking Head and background preparation use the same handoff rules.
+  Scheduling always reloads its list on entry while retaining cached rows and
+  the independent media/connection caches. A recent empty calendar can no longer
+  hide a newly confirmed post for the 30-minute account-cache freshness window.
+- Validation/recovery and publishing APIs are unchanged. Only verified server
+  schedules enter the cache; unconfirmed requests cannot invent entries or
+  cause duplicate scheduling. Local tests do not imply production deployment.
+
+## 2026-10-17 TikTok publishing derivatives and terminal schedule status
+
+- PNG uploads remain allowed. TikTok publishing prepares separate JPEG copies
+  of saved slideshow/Carousel slides automatically, using actual decoded bytes,
+  orientation correction, white transparency flattening and bounded dimensions.
+  Originals, Library slide URLs, order, text and saved edits are preserved.
+  Instagram retains its existing JPEG preparation. Accepted provider operations
+  resume with their saved IDs without preparing or initializing another post.
+- Retry decisions now honor the physical worker job's maximum attempts as well
+  as the publisher limit. TikTok `file_format_check_failed` is terminal, with a
+  media-specific error instead of an unchanged automatic retry or video wording.
+- Migration `20261017105341_social_publish_terminal_status_and_tiktok_retry.sql`
+  is applied in production. Its invoker trigger atomically settles current
+  owned targets when publishing jobs fail, clears `next_retry_at`, and rolls up
+  partial failures while preserving publication receipts and cancellations.
+  It repaired one stale TikTok target; the reported slideshow is now partially
+  failed because its Instagram publication succeeded. No post was retried.
+- An explicit retry with a new owned queued job can reset only an inactive,
+  format-rejected TikTok operation. It cannot clear an active claim or success.
+- Conversion, retry-budget and UI wording changes are local and require worker/
+  website release. 86 worker regressions plus 9 database/status tests passed,
+  and all five actual affected files converted in memory without uploading or
+  publishing. Database correction is verified in production; a new successful
+  TikTok publication has not been tested. Details:
+  `docs/tiktok-slideshow-publishing-fix-2026-10-17.md`.
+
+## 2026-10-17 Manual Explore current slideshow overview (local)
+
+- Create → Your Slides reuses Edit slides' mounted current-sequence preview
+  and text overlays, with Add slides, preview/reorder/removal and an Edit slides
+  entry point. It no longer substitutes generation's empty-state placeholder
+  for an existing edited draft. Create retains generation controls in its sidebar.
+- Generated slides reveals the existing grouped versions/History separately.
+  Starting/recovering a job and recreating one slide reveal generation progress;
+  users can return to Your Slides while polling continues. Generated versions
+  still require explicit selection and archive the previous edited sequence.
+- Cross-workflow UI corrections must include checking manual Slideshow's
+  equivalent views while retaining its distinct sequence and version model.
+  Automatic Carousel generation/planners and persistence contracts are unchanged.
+- Local evidence: 180 targeted tests, TypeScript, scoped lint and the real
+  editor/Add slides browser fixture pass, including text/draft continuity,
+  adding from Create, save/reload, pointer/touch reorder and mobile layout.
+  This is not production acceptance and is not deployed.
+
+## 2026-10-17 Trending planner positions and concise copy (local)
+
+- The user approved useful, nonempty follow-up body copy below the previous
+  18-word Helpful Tips / 14-word Product Story minimums. Both planners and their
+  initial/full/targeted repair prompts now accept shorter complete thoughts,
+  with a maximum of 30 body words. Cover hooks retain their 5-14 word contract.
+  Optional content headings may wrap onto two measured lines, up to 10 words;
+  measured overflow still requires repair rather than font shrinking.
+- Helpful Tips batch output now uses `items.first` through `items.fifth`.
+  Only the backend maps those keys to the five existing reserved briefs; model
+  output cannot select `slotIndex` or `candidateIndex`. Each key has its assigned
+  format schema. Missing/malformed items use isolated bounded repairs; valid
+  siblings retain their assigned positions. Historical persisted plans and
+  reservation/delivery contracts keep their existing shapes.
+- Counted body transport permits one complete block and an optional second
+  block, with at most 30 words combined. All paths retain actual font-fit,
+  maximum lengths, factual checks, slide roles and CTA restrictions.
+- Planner versions are Helpful Tips v58 and Product Story v26. Worker build and
+  145 local regression tests passed, including both canvas ratios and partial
+  batch settlement. Additional database tests and lint were unavailable because
+  local PGlite / ESLint dependencies are missing. No deployment, paid generation
+  or production retry was performed; hosted acceptance is pending. Details:
+  `docs/trending-slideshow-planning-fix-2026-10-17.md`.
+
+## 2026-10-16 Manual Explore one-box prompt rewrite (local)
+
+- Latest user correction removes separate per-slide prompt forms. One sparkle
+  button rewrites the text in the existing composer; the text remains editable,
+  Undo restores the original, and generation is a separate action. The rewriter
+  accepts only user text, with no image/reference/attachment metadata or profile.
+- The prior per-slide compiler and optional attachment-label worker modification
+  were removed. Existing image-generation APIs/workers, reference inputs,
+  business context and automatic Trending allocation/mixer/queues are retained.
+- Exact screenshot compositing remains unimplemented. A private prompt receipt
+  migration, web deployment and feature enablement are required before production
+  acceptance; no new worker version is needed for this feature. Local evidence:
+  docs/slideshow-prompt-improvement-2026-10-16.md.
+
+## 2026-10-16 Manual Explore assembly UI (local)
+
+- Manual slideshow results now group one version's images and require explicit
+  opening. Add slides offers generated images, chosen unchanged originals and
+  uploads; a safe server import turns approved catalogue originals into owned
+  ready media without generation. Existing text, drafts, v2 saving, legacy
+  receipts and the ten-slide limit are retained. No automatic Trending planning,
+  mixer, queue, worker, prompt/model or quality-policy change is included.
+- Local build, 150 tests and desktop/mobile editor/recovery fixtures passed;
+  deployment and authenticated production acceptance are pending. Details:
+  `docs/slideshow-assembly-ui-2026-10-16.md`.
+
+## 2026-10-16 Fresh Explore v3 acceptance and assembly gap
+
+- The preservation policy was deployed in release `d73ef153`. A fresh v3
+  Sunburst batch completed technically but still invented the requested laptop
+  interface. Exact screenshot placement requires a separate compositor; it is
+  not implemented by the deployed prompt policy.
+- The user's manual Explore requirement includes grouped version previews and
+  mixing selected regenerated slides with unchanged master-reference slides in
+  original order. Current owned-media editor/import gaps and the 10-slide limit
+  prevent that full flow; Marketing has 12 originals. This does not change
+  automatic Trending Carousel allocation, planning, queues or rendering.
+  Audit and unimplemented correction design:
+  `docs/slideshow-fidelity-and-master-assembly-2026-10-16.md`.
+
 ## 2026-10-16 Explore slideshow reference preservation (local)
 
 - Follow-up user clarification: new Explore slideshow prompts explicitly require
@@ -1715,7 +2382,9 @@ disabled for customer jobs; their isolated results do not justify activation.
 - Revisited posts remain available for video, audio, and slideshow viewing.
   In the demo and homepage, their heart and edit actions are disabled. Trending
   now permits explicitly selecting a skipped post as described below; already
-  liked posts and history editing remain disabled. Browsing by itself never
+  liked posts retain their decision restriction. The 2026-10-19 correction
+  permits reopening existing owned Carousel edits from history; other formats
+  retain the history-edit restriction. Browsing by itself never
   repeats a decision, changes daily review counts, or starts a schedule.
 - Trending keeps this history above the Hook composer so it survives the deck's
   temporary replacement, including the saved creative edit snapshot. Existing
@@ -7439,3 +8108,8 @@ The records below are retained from the deployed branch during release reconcili
   Refresh accounts keeps a single line and a stable 148px width while loading.
   Mobile stacking, expanded clip-edit tools and publishing contracts retain
   their existing behavior. This supersedes earlier 360–440px controls guidance.
+
+### Trending touch rollout acceptance — 19 October 2026
+
+- Source 426b37fd is deployed to the real production dashboard; PR #73 merged as d2f698a7 with an identical source tree. All 86 interaction tests, application TypeScript/lint, the combined actual-gallery browser gate, contract CI and Vercel production build passed.
+- Real signed-in production mouse advance/reversal restored the exact prior post; reload preserved that selection. One initial skip was recorded, with no save/schedule/publish/generation. Phone/tablet native touch is covered by local Chromium tests; physical device acceptance remains separate. Receipt: outputs/trending-touch-release-verification-2026-10-19.json.

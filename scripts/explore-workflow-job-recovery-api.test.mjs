@@ -1,3 +1,4 @@
+import * as providerBalance from "../worker/src/lib/provider-balance.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -14,6 +15,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, URL, console, require(name) {
     if (name in imports) return imports[name];
+    if (name === "../../worker/src/lib/provider-balance.ts") return providerBalance;
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts") return slideshowBatch;
     if (name === "../explore/remix-source.ts") return remixSource;
     throw new Error(`Unexpected import: ${name}`);

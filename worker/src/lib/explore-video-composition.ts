@@ -12,9 +12,13 @@ import { parseExploreFormatEdit, type ExploreFormatEdit } from "./explore-format
 import { prepareExploreFormatEditFilter } from "./explore-format-render.js";
 
 type CompositionTools = { ffmpeg: string; ffprobe: string };
-type VideoInput = { width: number; height: number; durationMs: number; videoIndex: number; audioIndex: number | null };
+type VideoInput = { width: number; height: number; durationMs: number; videoIndex: number; audioIndex: number | null;
+  videoDelayMs?: number; audioDelayMs?: number; videoTailPadMs?: number };
 const MAX_INPUT_BYTES = 250 * 1024 * 1024;
 const MAX_INPUT_DURATION_MS = 120_000;
+// Accept short mux/encoder offsets without silently discarding their A/V sync.
+// Larger/negative or unmeasurable timelines still need an explicit re-export.
+const MAX_TRACK_START_SECONDS = .1;
 
 async function hashFile(path: string) {
   const hash = createHash("sha256");
@@ -23,7 +27,7 @@ async function hashFile(path: string) {
 }
 
 /** Local files only. Ownership/downloads and durable publication belong to the job handler. */
-async function probeLocal(path: string, tools: CompositionTools, signal?: AbortSignal, audioOnly = false) {
+async function probeLocal(path: string, tools: CompositionTools, signal?: AbortSignal, audioOnly = false, allowVideoOffsets = false) {
   if (!path || /^[a-z][a-z\d+.-]*:\/\//i.test(path)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Composition requires a downloaded local file.");
   const file = await stat(path);
   const maximumBytes = audioOnly ? EXPLORE_BACKGROUND_AUDIO_MAX_BYTES : MAX_INPUT_BYTES;
@@ -33,13 +37,13 @@ async function probeLocal(path: string, tools: CompositionTools, signal?: AbortS
   try { data = record(JSON.parse(result.stdout)); } catch { throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Could not read this media file."); }
   const streams = Array.isArray(data.streams) ? data.streams.map(record) : [];
   const format = record(data.format);
-  // Do not silently shift an offset soundtrack relative to its pictures.
+  // Validate metadata here; probeVideo carries supported relative timing into
+  // the filters rather than independently moving each track to time zero.
   for (const stream of streams.filter((stream) => stream.codec_type === "video" || stream.codec_type === "audio")) {
     const start = Number(stream.start_time ?? 0);
     // Standalone MP3/AAC uploads commonly carry encoder-delay timestamps. They
     // have no pictures to synchronize; reset their decoded audio to time zero.
-    // Original video soundtracks still require the strict shared timeline.
-    if (!Number.isFinite(start) || (!audioOnly && Math.abs(start) > 1e-6) || !Number.isInteger(stream.index)) {
+    if (!Number.isFinite(start) || (!audioOnly && (start < -1e-6 || start > (allowVideoOffsets ? MAX_TRACK_START_SECONDS : 1e-6))) || !Number.isInteger(stream.index)) {
       throw new SubtitleError("COMPOSITION_TIMELINE_UNSUPPORTED", "This file's track start times need timing review. Choose a file whose tracks start together.");
     }
   }
@@ -57,7 +61,7 @@ function durationMs(stream: Record<string, unknown>, format: Record<string, unkn
 }
 
 async function probeVideo(path: string, tools: CompositionTools, signal?: AbortSignal): Promise<VideoInput> {
-  const { streams, format } = await probeLocal(path, tools, signal);
+  const { streams, format } = await probeLocal(path, tools, signal, false, true);
   const video = streams.find((stream) => stream.codec_type === "video" && (!stream.disposition || record(stream.disposition).attached_pic !== 1));
   const audio = streams.find((stream) => stream.codec_type === "audio");
   if (!video) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Choose a playable video, not an audio-only file.");
@@ -70,7 +74,39 @@ async function probeVideo(path: string, tools: CompositionTools, signal?: AbortS
   if (Math.abs(rotation) % 180 === 90) [width, height] = [height, width];
   width = Math.ceil(width / 2) * 2; height = Math.ceil(height / 2) * 2;
   if (![width, height].every((value) => Number.isFinite(value) && value >= 64 && value <= 4096)) throw new SubtitleError("COMPOSITION_INPUT_INVALID", "Unsupported video dimensions.");
-  return { width, height, durationMs: durationMs(video, format), videoIndex: video.index as number, audioIndex: audio ? audio.index as number : null };
+  let measuredDurationMs = durationMs(video, format);
+  let timing: Pick<VideoInput, "videoDelayMs" | "audioDelayMs" | "videoTailPadMs"> = {};
+  const videoStart = Math.max(0, Number(video.start_time ?? 0));
+  const audioStart = audio ? Math.max(0, Number(audio.start_time ?? 0)) : videoStart;
+  if (videoStart > 1e-6 || audioStart > 1e-6) {
+    const origin = Math.min(videoStart, audioStart);
+    const videoDelayMs = (videoStart - origin) * 1000, audioDelayMs = (audioStart - origin) * 1000;
+    // Stream durations exclude their start; container duration is already an
+    // end timestamp. Never add a start twice when a stream omits its duration.
+    const endMs = (stream: Record<string, unknown>, start: number) => {
+      const end = stream.duration == null ? durationMs(stream, format) - origin * 1000
+        : durationMs(stream, format) + (start - origin) * 1000;
+      // Some demuxer versions include the MOV edit-list interval in stream
+      // duration. Its end cannot extend beyond the measured container end.
+      const containerEnd = Number(format.duration) * 1000 - origin * 1000;
+      if (Number.isFinite(containerEnd) && containerEnd > 0) {
+        if (end - containerEnd > MAX_TRACK_START_SECONDS * 1000 + 1e-3) {
+          throw new SubtitleError("COMPOSITION_TIMELINE_UNSUPPORTED", "This file's track start times need timing review. Choose a file whose tracks start together.");
+        }
+        return Math.min(end, containerEnd);
+      }
+      return end;
+    };
+    const videoEndMs = endMs(video, videoStart);
+    const audioEndMs = audio ? endMs(audio, audioStart) : videoEndMs;
+    measuredDurationMs = Math.max(videoEndMs, audioEndMs);
+    const videoTailPadMs = Math.max(0, audioEndMs - videoEndMs);
+    if (videoTailPadMs > MAX_TRACK_START_SECONDS * 1000 || !Number.isFinite(measuredDurationMs) || measuredDurationMs <= 0 || measuredDurationMs > MAX_INPUT_DURATION_MS) {
+      throw new SubtitleError("COMPOSITION_TIMELINE_UNSUPPORTED", "This file's track start times need timing review. Choose a file whose tracks start together.");
+    }
+    timing = { videoDelayMs, audioDelayMs, videoTailPadMs };
+  }
+  return { width, height, durationMs: measuredDurationMs, videoIndex: video.index as number, audioIndex: audio ? audio.index as number : null, ...timing };
 }
 
 async function probeAudio(path: string, tools: CompositionTools, signal?: AbortSignal) {
@@ -105,17 +141,22 @@ export function buildExploreCompositionFilter(videos: VideoInput[], demoAudio?: 
   const filters: string[] = [];
   for (const [index, video] of videos.entries()) {
     const seconds = String(video.durationMs / 1000);
+    // fps fills the short leading interval with the first frame; subsequent
+    // pictures retain their original relative times on the 30 fps output grid.
+    const videoClock = video.videoDelayMs ? `setpts=PTS-STARTPTS+${video.videoDelayMs / 1000}/TB,fps=30:start_time=0` : "setpts=PTS-STARTPTS,fps=30";
+    const tailPad = video.videoTailPadMs ? `,tpad=stop_mode=clone:stop_duration=${video.videoTailPadMs / 1000}` : "";
     const framing = index === 1 ? options.demoFraming : options.sourceFraming;
     if (framing && !options.audioOnly) {
       const cropWidth = Math.floor(video.width * framing.width / 2) * 2, cropHeight = Math.floor(video.height * framing.height / 2) * 2;
       if (cropWidth < 64 || cropHeight < 64 || Math.abs((video.width * framing.width) / (video.height * framing.height) / (width / height) - 1) > .015 ||
           framing.points[framing.points.length - 1][0] > video.durationMs + 50) throw new SubtitleError("COMPOSITION_FRAMING_INVALID", "Record a frame matching your selected video, within the demo's duration and at least 64 pixels wide and high.");
       const x = demoFramingExpression(framing, 1, video.width), y = demoFramingExpression(framing, 2, video.height);
-      filters.push(`[${index}:${video.videoIndex}]scale=${video.width}:${video.height},setsar=1,setpts=PTS-STARTPTS,fps=30,crop=w=${cropWidth}:h=${cropHeight}:x='${x}':y='${y}':exact=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p[v${index}]`);
-    } else if (!options.audioOnly) filters.push(`[${index}:${video.videoIndex}]scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS[v${index}]`);
+      filters.push(`[${index}:${video.videoIndex}]scale=${video.width}:${video.height},setsar=1,${videoClock},crop=w=${cropWidth}:h=${cropHeight}:x='${x}':y='${y}':exact=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p${tailPad}[v${index}]`);
+    } else if (!options.audioOnly) filters.push(`[${index}:${video.videoIndex}]scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,${video.videoDelayMs ? `${videoClock},format=yuv420p` : "fps=30,format=yuv420p,setpts=PTS-STARTPTS"}${tailPad}[v${index}]`);
     const selected = video.audioIndex === null ? null : { inputIndex: index, audioIndex: video.audioIndex };
     const original = selected === null ? "anullsrc=channel_layout=stereo:sample_rate=48000" : `[${selected.inputIndex}:${selected.audioIndex}]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo`;
-    filters.push(`${original},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
+    const audioDelay = selected && video.audioDelayMs ? `,asetpts=PTS-STARTPTS,adelay=delays=${Math.round(video.audioDelayMs * 48)}S:all=1` : "";
+    filters.push(`${original}${audioDelay},apad,atrim=duration=${seconds},asetpts=PTS-STARTPTS[main${index}]`);
     const originalVolume = index === 0 ? options.sourceOriginalVolume ?? options.originalVolume : options.demoOriginalVolume ?? options.originalVolume;
     filters.push(`[main${index}]${originalVolume === undefined ? "anull" : `volume=${originalVolume}`}[original${index}]`);
     if (index === 1 && demoAudio) {

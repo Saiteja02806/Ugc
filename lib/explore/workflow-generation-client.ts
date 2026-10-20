@@ -3,11 +3,13 @@ import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } 
 import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
 
 export type WorkflowKind = "hook" | "phone";
-export type WorkflowImageSource = { name: string; url: string; file?: File };
+export type WorkflowImageSource = { name: string; url: string; file?: File; assetId?: string };
 export type WorkflowTimedSource = { url: string; name?: string; duration?: number | null; file?: File };
 export type WorkflowGenerationDraft = {
   kind: WorkflowKind;
   instructions: string;
+  /** Editable reference directions shown beside the user's own instructions. */
+  referenceInstructions?: string;
   settings: WorkflowGenerationSettings;
   creator: WorkflowImageSource | null;
   referenceImages?: WorkflowImageSource[];
@@ -26,6 +28,12 @@ export type WorkflowGenerationBatch = {
 const JOB_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 
+export function workflowGenerationPrompt(draft: Pick<WorkflowGenerationDraft, "instructions" | "referenceInstructions">) {
+  const own = normalizeAIStudioPrompt(draft.instructions);
+  const reference = normalizeAIStudioPrompt(draft.referenceInstructions ?? "");
+  return reference ? `Reference instructions:\n${reference}\n\nYour instructions:\n${own}` : own;
+}
+
 function selectedWorkflowImages(draft: WorkflowGenerationDraft) {
   const selected = [...(draft.referenceImages ?? (draft.creator ? [draft.creator] : [])), ...(draft.appScreen?.kind === "image" ? [draft.appScreen] : [])];
   return [...new Map(selected.map(image => [image.url, image])).values()];
@@ -36,8 +44,8 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   // A failed replacement may retain the prior preview. Do not submit that
   // stale reference until the user replaces or removes the rejected input.
   if (draft.referencesError) return draft.referencesError;
-  const prompt = normalizeAIStudioPrompt(draft.instructions);
-  if (!prompt) return "Write your instructions before generating a video.";
+  if (!normalizeAIStudioPrompt(draft.instructions)) return "Write your instructions before generating a video.";
+  const prompt = workflowGenerationPrompt(draft);
   const lengthError = getAIStudioPromptLengthError(prompt, draft.settings.model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH);
   if (lengthError) return lengthError;
   if (draft.settings.model === "kling_3_0" && prompt.length < 2) return "Kling 3.0 requires a prompt of at least 2 characters.";
@@ -111,7 +119,8 @@ export function createWorkflowGenerationClient(dependencies: {
   let submitting = false;
 
   async function prepareImage(image: WorkflowImageSource) {
-    const cached = uploaded.get(image.url);
+    // A saved record can be removed or replaced between explicit generations.
+    const cached = image.assetId ? undefined : uploaded.get(image.url);
     if (cached) return cached;
     dependencies.assertActive();
     const result = await dependencies.uploadImage(image);
@@ -142,7 +151,7 @@ export function createWorkflowGenerationClient(dependencies: {
       dependencies.assertActive();
       // Snapshot the click, so later edits cannot change an in-flight request.
       const settings = { ...draft.settings };
-      const prompt = normalizeAIStudioPrompt(draft.instructions);
+      const prompt = workflowGenerationPrompt(draft);
       const images = selectedWorkflowImages(draft).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;

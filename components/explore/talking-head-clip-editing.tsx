@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import { FormatVideoEditor, type FormatOpeningPreview, type WorkflowClipEditState } from "@/components/explore/format-video-editor";
 import type { WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
-import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
+import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import { formatVideoFromAsset, type FormatVideoSource } from "@/lib/explore/format-video-source";
 import type { MediaAsset } from "@/lib/media/types";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
@@ -14,8 +14,9 @@ type ClipEditingView = {
   source: MediaAsset | null; demoSource: MediaAsset | null; demo: LocalWorkflowMedia | null;
   rawSource: MediaAsset | null; rawDemoSource: MediaAsset | null; openingState: WorkflowClipEditState | null; demoState: WorkflowClipEditState | null;
   demoFraming: DemoFraming | null; error: string | null; editing: boolean; busy: boolean;
-  controls: ReactNode; preview: ReactNode; actions: ReactNode;
+  controls: ReactNode; preview: ReactNode; actions: ReactNode; demoOriginalSound: ReactNode;
   openOpening: (() => void) | undefined; openDemo: (() => void) | undefined;
+  closeEditor: () => void;
   openingPreview: FormatOpeningPreview | null; demoPreview: FormatOpeningPreview | null;
 };
 const ignoreSaved = () => {};
@@ -42,11 +43,11 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
   const [openingPreview, setOpeningPreview] = useState<FormatOpeningPreview | null>(null);
   const [demoPreview, setDemoPreview] = useState<FormatOpeningPreview | null>(null);
   const [demoInput, setDemoInput] = useState<{ url: string; asset: MediaAsset } | null>(null);
-  const [demoStarted, setDemoStarted] = useState<string | null>(null);
   const [upload, setUpload] = useState<{ url: string; busy: boolean; error: string | null } | null>(null);
   const [controlsTarget, setControlsTarget] = useState<HTMLDivElement | null>(null);
   const [resultsTarget, setResultsTarget] = useState<HTMLDivElement | null>(null);
   const [actionsTarget, setActionsTarget] = useState<HTMLDivElement | null>(null);
+  const [demoSoundTarget, setDemoSoundTarget] = useState<HTMLDivElement | null>(null);
   const alive = useRef(true), uploading = useRef(false);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const reportOpening = useCallback((value: WorkflowClipEditState) => reportState(setOpeningState, value), []);
@@ -84,17 +85,16 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
   async function openDemo() {
     const media = demo.asset;
     if (uploading.current) return;
-    if (ownedDemo) { setDemoStarted(ownedDemo.id); setRequested({ target: "demo", key: ownedDemo.id }); return; }
+    if (ownedDemo) { setRequested({ target: "demo", key: ownedDemo.id }); return; }
     if (!media) return;
-    if (!enabled) { setDemoStarted(media.url); setRequested({ target: "demo", key: media.url }); return; }
+    if (!enabled) { setRequested({ target: "demo", key: media.url }); return; }
     if (!ownerId || !media.file) { setUpload({ url: media.url, busy: false, error: "Choose your demo file again before editing it." }); return; }
     uploading.current = true; setUpload({ url: media.url, busy: true, error: null });
     try {
-      const uploaded = await uploadAIStudioReferenceMedia(media.file, "video", 120, ownerId, { requireVideoReferenceRatio: false, purpose: "explore-demo" });
-      const asset = uploaded.asset;
+      const asset = await uploadHookVideoDemo(media.file, ownerId);
       formatVideoFromAsset(asset);
       if (!alive.current) return;
-      setDemoInput({ url: media.url, asset }); setDemoStarted(asset.id); setRequested({ target: "demo", key: asset.id });
+      setDemoInput({ url: media.url, asset }); setRequested({ target: "demo", key: asset.id });
       onDemoSourceReady?.(asset);
       setUpload({ url: media.url, busy: false, error: null });
     } catch (e) { if (alive.current) setUpload({ url: media.url, busy: false, error: e instanceof Error ? e.message : "Could not prepare the demo. Choose Edit demo video to retry." }); }
@@ -108,9 +108,11 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
       demo: ownedDemo ? null : demo.asset,
       demoFraming,
       error, editing, busy: Boolean(uploadState?.busy || draftBusy),
+      closeEditor: close,
       controls: <div hidden={!editing} ref={setControlsTarget} className={sections.clipControls} />,
       preview: <div hidden={!editing} ref={setResultsTarget} className={sections.clipPreview} />,
       actions: <div ref={setActionsTarget} />,
+      demoOriginalSound: <div ref={setDemoSoundTarget} hidden={!demoVideo} />,
       openOpening: openingKey ? () => setRequested({ target: "opening", key: openingKey }) : undefined,
       openDemo: demo.asset || ownedDemo ? () => { void openDemo(); } : undefined,
       openingPreview: openingPreview?.segment.id === openingKey ? openingPreview : null,
@@ -118,7 +120,7 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
     }}>{children}</ClipEditingView>
     {opening ? <FormatVideoEditor key={`opening:${openingKey}`} format="hook" video={opening} active={editing && target === "opening"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
       prepareInSequence showSoundControls={false} draftScope={draftId ? `talking-head-opening:${draftId}` : "talking-head-opening"} videoLabel="Hook video" continueLabel="Back to videos" onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportOpening} onPreviewChange={reportOpeningPreview} /> : null}
-    {demoVideo && (ownedDemo || demoStarted === demoKey) ? <FormatVideoEditor key={`demo:${demoVideo.mediaAssetId ?? demoVideo.id}`} format="hook" video={demoVideo} active={editing && target === "demo"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
-      prepareInSequence showSoundControls={false} draftScope={draftId ? `talking-head-demo:${draftId}` : "talking-head-demo"} videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
+    {demoVideo ? <FormatVideoEditor key={`demo:${demoVideo.mediaAssetId ?? demoVideo.id}`} format="hook" video={demoVideo} active={editing && target === "demo"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
+      prepareInSequence showSoundControls={false} originalSoundTarget={demoSoundTarget} draftScope={draftId ? `talking-head-demo:${draftId}` : "talking-head-demo"} videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
   </>;
 }

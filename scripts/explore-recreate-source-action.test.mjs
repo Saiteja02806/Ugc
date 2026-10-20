@@ -15,7 +15,7 @@ const sourceAsset = { id: "00000000-0000-4000-8000-000000000001", mediaAssetId: 
 
 // Execute the real FormatWorkspace click handlers with React/Next and network
 // boundaries isolated. The gallery entries retain separate MP4 and poster URLs.
-function fixture(format, { mode = "generate", preview = false, busy = false, generationBusy = false, existingOpening = false, initialReference = false, staleSearchParams = false } = {}) {
+function fixture(format, { mode = "generate", preview = false, busy = false, generationBusy = false, existingOpening = false, initialReference = false, staleSearchParams = false, access = "pro" } = {}) {
   const reference = { id: `${format}-gallery-video`, format, title: "The selected gallery clip", category: null, categoryLabel: null,
     posterUrl: "https://media.example/poster.jpg", videoUrl: "https://media.example/reference.mp4", durationSeconds: 7, slides: [] };
   let cursor = 0, tree, component;
@@ -43,7 +43,7 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
     "@tanstack/react-query": { useQuery: query => ({ data: query.queryKey[0] === "recreate-references" ? [reference] : query.queryKey[0] === "explore-edit-restore" && existingOpening && location.search.includes("editVideoId=") ? sourceAsset : undefined, isFetching: false, isError: false }) },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner-a" }, loading: false }) },
     "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: { isActive: true } }) },
-    "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
+    "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => access },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => source },
     "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => ({ data: false, isFetching: false }) },
     "@/lib/explore/wall-pending-composition": { createWallScheduleComposition: () => ({ signature: "fixture", error: null, resolve: async () => ({}) }) },
@@ -90,6 +90,12 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
 }
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: only verified Pro accounts can open external reference posts`, () => {
+    for (const access of ["checking", "error", "locked", "pro"]) {
+      assert.equal(fixture(format, { access }).card().props.canOpenSource, access === "pro");
+    }
+    assert.equal(fixture(format, { preview: true }).card().props.canOpenSource, false);
+  });
   for (const preview of [false, true]) test(`${format}: removing the initial ${preview ? "preview" : "linked"} reference stays cleared while URL hooks catch up and Recreate can select it again`, () => {
     const h = fixture(format, { preview, initialReference: true, staleSearchParams: true });
     assert.equal(h.panel().props.recreateView.styleVideo.id, h.reference.id);

@@ -75,6 +75,7 @@ export function characterRequestFingerprint(request: CharacterGenerateRequest) {
     ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds } : {}),
     // Preserve fingerprints for requests admitted before uploaded references existed.
     ...(request.referenceImageAssetId ? { referenceImageAssetId: request.referenceImageAssetId } : {}),
+    ...(request.referenceImageAssetIds ? { referenceImageAssetIds: request.referenceImageAssetIds } : {}),
     count: request.imageCount ?? CHARACTER_CANDIDATE_COUNT,
   })).digest("hex");
 }
@@ -165,13 +166,14 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       throw new CharacterGenerationError("REFERENCE_NOT_FOUND", "The saved influencer could not be found.", 404);
     }
     const reference = references[0] ?? null;
-    const referenceImageUrls = references.map((reference) => reference!.referenceImageUrl);
+    const uploadedIds = request.referenceImageAssetIds ?? (request.referenceImageAssetId ? [request.referenceImageAssetId] : []);
+    const uploadedUrls = await Promise.all(uploadedIds.map(async id =>
+      uploadedReferenceUrl(await dependencies.getReferenceAsset(id, userId), id, userId)));
+    const referenceImageUrls = [...references.map((reference) => reference!.referenceImageUrl), ...uploadedUrls];
     if (new Set(referenceImageUrls).size !== referenceImageUrls.length) {
       throw new CharacterGenerationError("INPUT_INVALID", "Choose each reference image only once.");
     }
-    const referenceImageUrl = request.referenceImageAssetId
-      ? uploadedReferenceUrl(await dependencies.getReferenceAsset(request.referenceImageAssetId, userId), request.referenceImageAssetId, userId)
-      : reference?.referenceImageUrl ?? null;
+    const referenceImageUrl = referenceImageUrls[0] ?? null;
     const inputs = Array.from({ length: access.count }, (_, index): Record<string, Json | undefined> => ({
       aspectRatio: "9:16",
       batchId,
@@ -186,11 +188,14 @@ export async function generateCharacterBatch(userId: string, rawRequest: unknown
       generationId: (dependencies.createId ?? crypto.randomUUID)(),
       mode: request.mode,
       model: request.model,
+      ...(request.model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
       prompt: request.prompt,
       promptSource: "user",
       referenceCharacterId: reference?.id ?? null,
       ...(request.referenceCharacterIds ? { referenceCharacterIds: request.referenceCharacterIds, referenceImageUrls } : {}),
       ...(request.referenceImageAssetId ? { referenceImageAssetId: request.referenceImageAssetId } : {}),
+      ...(request.referenceImageAssetIds ? { referenceImageAssetIds: request.referenceImageAssetIds, referenceImageUrls } : {}),
+      ...(referenceIds.length && uploadedIds.length ? { referenceImageUrls } : {}),
       referenceImageUrl,
     }));
     jobs = await dependencies.reserveBatch({

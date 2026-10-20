@@ -38,6 +38,71 @@ function harness(file, dependencies = {}) {
 }
 const labelled = (tree, label) => nodes(tree).find(node => node.props?.["aria-label"] === label);
 
+test("preview uses colored artwork for cross/arrow/check while retaining emoji and authored text", () => {
+  const h = harness("format-video-text-overlay");
+  const text = { value: "Features ❌\nMarketing ✅ → ✔️ 😂", width: .9, y: .18, fontSize: 64, color: "#ffffff", startMs: 0, endMs: 2000, font: "inter", fontWeight: 700 };
+  const tree = h.render(() => h.exports.FormatVideoTextOverlay({ text, width: 1080, height: 1920, label: "Caption" }));
+  const symbols = nodes(tree).filter(node => node.props?.["data-format-inline-symbol"]);
+  assert.deepEqual(symbols.map(node => node.props["data-format-inline-symbol"]), ["cross", "check-box", "arrow-right", "check"]);
+  assert.equal(nodes(symbols[0]).find(node => node.type === "path").props.fill, "#e53935");
+  assert.equal(nodes(symbols[1]).find(node => node.type === "path").props.fill, "#22a447");
+  assert.ok(nodes(tree).some(node => node.type === "text" && node.props.children === "😂"));
+  assert.equal(text.value, "Features ❌\nMarketing ✅ → ✔️ 😂"); h.unmount();
+});
+
+test("preview text drags in both axes at display scale, clamps, and stops on release or cancellation", () => {
+  const h = harness("format-video-text-overlay");
+  let text = { value: "Move me", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const original = { ...text }, changes = []; let paused = 0, captured = null;
+  const target = { ownerSVGElement: { getBoundingClientRect: () => ({ width: 270, height: 480 }) }, focus() {},
+    setPointerCapture(id) { captured = id; }, hasPointerCapture(id) { return captured === id; }, releasePointerCapture() { captured = null; } };
+  const event = (x, y, id = 7) => ({ pointerId: id, button: 0, clientX: x, clientY: y, currentTarget: target, preventDefault() {}, stopPropagation() {} });
+  const render = (editable = true) => h.render(() => h.exports.FormatVideoTextOverlay({ text, width: 1080, height: 1920, label: "Caption",
+    onMoveStart: () => paused++, onChange: editable ? next => { text = next; changes.push(next); } : undefined }));
+  let handle = labelled(render(), "Move Caption");
+  handle.props.onPointerDown(event(100, 100)); assert.equal(captured, 7); assert.equal(paused, 1);
+  handle.props.onPointerMove(event(127, 148, 8)); assert.equal(changes.length, 0, "Ignore another finger");
+  handle.props.onPointerMove(event(127, 148)); assert.equal(text.x, .6); assert.equal(text.y, .28);
+  handle = labelled(render(), "Move Caption"); handle.props.onPointerMove(event(10000, 10000));
+  const layout = formatEdit.formatTextLayout(text, 1080, 1920);
+  assert.equal(layout.fits, true); assert.ok(layout.x + layout.textWidth / 2 <= 1080 * .97 + .001);
+  handle.props.onPointerUp(event(127, 148)); assert.equal(captured, null);
+  handle.props.onPointerMove(event(0, 0)); assert.equal(text.x, .6);
+  handle = labelled(render(), "Move Caption"); handle.props.onPointerDown(event(127, 148));
+  handle.props.onPointerMove(event(-10000, -10000)); assert.equal(text.y, .03);
+  handle.props.onPointerCancel(event(0, 0)); const count = changes.length;
+  handle.props.onPointerMove(event(100, 100)); assert.equal(changes.length, count);
+  assert.equal(text.value, original.value); assert.equal(text.startMs, original.startMs); assert.equal(text.endMs, original.endMs);
+  assert.equal(labelled(render(false), "Move Caption"), undefined, "Read-only overview has no drag target");
+});
+
+test("bottom-edge drag clamping passes strict fit checks across fonts, presets and frame ratios", () => {
+  for (const { id: font } of formatEdit.EXPLORE_TEXT_FONTS) for (const fontSize of [24, 48, 56, 64, 84])
+    for (const preset of [undefined, "snapchat-classic"]) for (const [width, height] of [[1080,1920], [720,1280], [1920,1080], [640,360]]) {
+      const text = { value: "Move this text\nSecond line", font, fontWeight: 700, width: .8, y: .18, fontSize, color: "#ffffff", startMs: 0, endMs: 2000, ...(preset ? { preset } : {}) };
+      const moved = formatEdit.positionFormatText(text, 5, 5, width, height);
+      assert.equal(formatEdit.formatTextLayout(moved, width, height).fits, true, JSON.stringify({ font, fontSize, preset, width, height }));
+    }
+});
+
+test("keyboard preview positioning persists through strict draft parsing without changing legacy shapes", () => {
+  const h = harness("format-video-text-overlay");
+  let text = { value: "Keyboard text", font: "inter", fontWeight: 700, width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };
+  const edit = () => ({ version: 1, format: "hook", trimStartMs: 0, trimEndMs: 2000, originalVolume: 1, musicVolume: .2, text });
+  assert.equal(Object.hasOwn(formatEdit.parseExploreFormatEdit(edit()).text, "x"), false);
+  const render = () => h.render(() => h.exports.FormatVideoTextOverlay({ text, width: 1080, height: 1920, label: "Caption", onChange: next => { text = next; } }));
+  const key = (key, shiftKey = false) => ({ key, shiftKey, preventDefault() {}, stopPropagation() {} });
+  labelled(render(), "Move Caption").props.onKeyDown(key("ArrowRight")); assert.equal(text.x, .505);
+  labelled(render(), "Move Caption").props.onKeyDown(key("ArrowDown", true)); assert.ok(Math.abs(text.y - .23) < 1e-10);
+  const saved = formatEdit.parseExploreFormatEdit(JSON.parse(JSON.stringify(edit())));
+  assert.equal(saved.text.x, text.x); assert.equal(saved.text.y, text.y);
+  assert.match(formatEdit.createFormatTextSvg(saved.text, 1080, 1920), /<text x="545.4"/);
+  for (const x of [NaN, Infinity, -.1, 1.1, "0.4"]) assert.throws(() => formatEdit.parseExploreFormatEdit({ ...edit(), text: { ...text, x } }));
+  const classic = formatEdit.positionFormatText({ ...text, preset: "snapchat-classic" }, .9, 2, 1080, 1920);
+  assert.equal(formatEdit.formatTextLayout(classic, 1080, 1920).fits, true);
+  assert.equal(formatEdit.formatTextLayout(classic, 1080, 1920).background.x, 0);
+});
+
 test("returning to the overview keeps local clip edits visible and never applies another clip's preview", () => {
   const imports = Object.fromEntries([
     "@/components/explore/workflow-scheduling-panel", "@/lib/explore/workflow-scheduling-draft", "@/components/explore/workflow-demo-controls",
@@ -56,6 +121,33 @@ test("returning to the overview keeps local clip edits visible and never applies
   assert.equal(nodes(tree).find(node => node.type === "media-player").props.asset.url, "blob:replacement");
   tree = h.exports.WorkflowEditWorkspace({ ...props, generatedVideo: { id: "different-owned-clip" } });
   assert.equal(nodes(tree).some(node => node.type === "sequence-preview"), false, "Owned identity takes priority over a local URL");
+});
+
+test("overview source changes remain distinct from edits, including restored demo previews and empty openings", () => {
+  const imports = Object.fromEntries([
+    "@/components/explore/workflow-scheduling-panel", "@/lib/explore/workflow-scheduling-draft", "@/components/explore/workflow-demo-controls",
+    "@/lib/explore/sequence-preview", "@/lib/explore/reference-audio-preview", "@/lib/explore/workflow-default-music-client", "@/lib/firebase/auth",
+  ].map(name => [name, {}]));
+  const h = harness("workflow-edit-workspace", { ...imports,
+    "@/components/explore/hook-workflow-media-controls": { WorkflowMediaPlayer: "media-player", WorkflowFilePicker: "file-picker" },
+    "@/components/explore/workflow-sequence-preview": { WorkflowSequencePreview: "sequence-preview" } });
+  const calls = [], demo = { asset: null, choose: file => calls.push(file), remove() {} };
+  const props = { kind: "hook", demo, demoAudio: {}, demoPreview: { name: "Restored demo", url: "/saved-demo.mp4" },
+    sourcePreview: { name: "Uploaded hook", url: "blob:hook" }, onChangeSource: () => calls.push("change"), onEditSource: () => calls.push("edit") };
+  const tree = h.exports.WorkflowEditWorkspace(props);
+  labelled(tree, "Change hook video").props.onClick();
+  nodes(tree).find(node => node.type === "button" && JSON.stringify(node.props.children).includes("Edit hook video")).props.onClick();
+  const picker = nodes(tree).find(node => node.type === "file-picker");
+  assert.equal(picker.props.label, "Replace demo video"); assert.equal(picker.props.buttonLabel, "Change");
+  assert.equal(picker.props.attachment, demo, "Restored media still has the real replacement attachment");
+  assert.deepEqual(calls, ["change", "edit"]);
+  const empty = h.exports.WorkflowEditWorkspace({ ...props, sourcePreview: null });
+  const add = nodes(empty).find(node => node.type === "button" && [node.props.children].flat().join("") === "Add hook video");
+  assert.ok(add); add.props.onClick(); assert.equal(calls.at(-1), "change");
+  assert.equal(labelled(empty, "Change hook video"), undefined, "Empty opening offers Add, not Change");
+  for (const label of ["Hook video segment", "Demo segment"]) {
+    assert.ok(nodes(labelled(empty, label)).filter(node => node.type === "h3").every(node => !JSON.stringify(node.props.children).includes("Optional")));
+  }
 });
 
 test("dragging a trim handle uses the source timeline, clamps to a one-second clip, and stops on cancellation", () => {
@@ -142,6 +234,46 @@ test("changing a timed text block outside its visible range seeks into that bloc
   labelled(tree, "Text size").props.onChange({ target: { value: "56" } }); assert.equal(seeks.length, count, "Already visible text keeps the current frame");
 });
 
+test("shared video preset dropdown switches Snapchat Classic back to Bold white and survives save/reopen", () => {
+  for (const format of ["hook", "wall_text"]) for (const font of [undefined, "inter"]) {
+    const h = harness("format-text-overlays-editor");
+    const original = { value: "Keep this exact copy", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: format === "wall_text" ? 0 : 1000, endMs: 5000, ...(font ? { font, fontWeight: 700 } : {}) };
+    const neighbor = { ...original, value: "Another block", color: "#ff0000" };
+    let editing = { version: 1, format, trimStartMs: 0, trimEndMs: 5000, originalVolume: 1, musicVolume: .2, text: null, textOverlays: [original, neighbor] };
+    const render = () => h.render(() => h.exports.FormatTextOverlaysEditor({ overlays: editing.textOverlays, wallText: format === "wall_text", durationMs: 5000, timeMs: 2000, onSeek() {}, onChange: textOverlays => { editing = formatEdit.parseExploreFormatEdit({ ...editing, textOverlays }); } }));
+    for (let cycle = 0; cycle < 2; cycle++) {
+      labelled(render(), "Text preset").props.onChange({ target: { value: "snapchat-classic" } });
+      assert.equal(labelled(render(), "Text preset").props.value, "snapchat-classic");
+      labelled(render(), "Caption background opacity").props.onChange({ target: { value: "35" } });
+      assert.match(formatEdit.createFormatTextSvg(editing.textOverlays[0], 1080, 1920), /<rect/);
+      labelled(render(), "Text preset").props.onChange({ target: { value: "bold" } });
+      assert.equal(labelled(render(), "Text preset").props.value, "bold");
+      const bold = editing.textOverlays[0];
+      assert.equal(Object.hasOwn(bold, "backgroundOpacity"), false);
+      assert.equal(bold.preset, undefined);
+      assert.equal(bold.font, font);
+      assert.equal(labelled(render(), "Text weight").props.value, 700);
+      assert.equal(bold.value, original.value); assert.equal(bold.startMs, original.startMs); assert.equal(bold.endMs, original.endMs);
+      assert.deepEqual(editing.textOverlays[1], neighbor);
+      assert.doesNotMatch(formatEdit.createFormatTextSvg(bold, 1080, 1920), /<rect/);
+      editing = formatEdit.parseExploreFormatEdit(JSON.parse(JSON.stringify(editing)));
+      assert.equal(labelled(render(), "Text preset").props.value, "bold");
+    }
+  }
+});
+
+test("single Hook text explains automatic timing; adding another block returns to timed controls", () => {
+  const h = harness("format-text-overlays-editor");
+  let overlays = [{ value: "Hook text", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 3000 }];
+  const render = () => h.render(() => h.exports.FormatTextOverlaysEditor({ overlays, durationMs: 3000, fullDuration: overlays.length === 1, onChange: next => { overlays = next; }, onSeek() {} }));
+  let tree = render(); assert.equal(labelled(tree, "Text start time"), undefined);
+  assert.ok(JSON.stringify(tree).includes("Its timing follows your trim"));
+  nodes(tree).find(n => n.type === "button" && n.props.children === "Add text").props.onClick();
+  tree = render(); assert.ok(labelled(tree, "Text start time")); assert.ok(labelled(tree, "Text end time"));
+  labelled(tree, "Text start time").props.onChange({ target: { value: "1" } });
+  assert.equal(overlays[1].startMs, 1000);
+});
+
 test("Wall manual text hides timing and style until advanced mode while keeping full-duration blocks", () => {
   const h = harness("format-text-overlays-editor"), updates = [];
   const overlay = { value: "Wall message", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 5000 };
@@ -159,4 +291,23 @@ test("Wall manual text hides timing and style until advanced mode while keeping 
   tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, showStyleControls: true }));
   assert.ok(labelled(tree, "Text preset"));
   assert.equal(labelled(tree, "Text start time"), undefined, "Advanced Wall also keeps text for the whole clip");
+});
+
+test("font and weight controls preserve text/timing/position, support old drafts, and default new text to Inter Bold", () => {
+  const h = harness("format-text-overlays-editor"), updates = [];
+  const text = { value: "Existing message", width: .7, y: .4, fontSize: 42, color: "#ff00ff", startMs: 1000, endMs: 3000 };
+  const props = { overlays: [text], durationMs: 5000, timeMs: 1500, onChange: next => updates.push(next), onSeek() {} };
+  let tree = h.render(() => h.exports.FormatTextOverlaysEditor(props));
+  assert.equal(labelled(tree, "Text font").props.value, ""); assert.equal(labelled(tree, "Text weight").props.value, 700);
+  for (const { id } of formatEdit.EXPLORE_TEXT_FONTS) {
+    labelled(tree, "Text font").props.onChange({ target: { value: id } });
+    assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), { ...text, font: id });
+  }
+  tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, overlays: [{ ...text, font: "dmsans", fontWeight: 700 }] }));
+  labelled(tree, "Text weight").props.onChange({ target: { value: "500" } });
+  assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), { ...text, font: "dmsans", fontWeight: 500 });
+  tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, overlays: [] }));
+  assert.equal(labelled(tree, "Text font").props.value, "inter"); assert.equal(labelled(tree, "Text weight").props.value, 700);
+  labelled(tree, "Overlay text").props.onChange({ target: { value: "New hook" } });
+  assert.equal(updates.at(-1)[0].font, "inter"); assert.equal(updates.at(-1)[0].fontWeight, 700);
 });

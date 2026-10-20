@@ -41,6 +41,8 @@ function harness({ seedanceEnabled = false } = {}) {
       useCallback(callback) { cursor++; return callback; },
     },
     "next/image": { default: "image" },
+    "@/components/explore/workflow-image-library": { WorkflowImageLibrary: "image-library" },
+    "@/lib/explore/format-reference-images": { fetchFormatReferenceImage: async assetId => ({id: assetId}) },
     "lucide-react": Object.fromEntries(["Check", "Plus", "UserRound", "Video"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
@@ -82,6 +84,19 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   assert.deepEqual(nodes(tree).filter((node) => ["select", "duration-control"].includes(node.type)).map((node) => node.props.ariaLabel), [
     "Hook model", "Hook duration", "Hook quality", "Number of hook videos", "Hook aspect ratio",
   ]);
+});
+
+test("Talking Head exposes its saved image library with owner, limits and explicit selection", async () => {
+  const chosen = [], saved = {id:"saved",url:"https://owned.test/product.png"};
+  const h = harness();
+  const tree = h.render({ ownerId:"owner-a", imageReferences:{assets:[],maxImages:6,chooseSavedImage:async (...args)=>{chosen.push(args);return true;}} });
+  const library = nodes(tree).find(n=>n.type === "image-library");
+  assert.equal(library.props.ownerId,"owner-a"); assert.equal(library.props.disabled,false);
+  assert.deepEqual(chosen,[]); assert.equal(await library.props.onSelect(saved),true);
+  assert.deepEqual(chosen,[[saved,"owner-a"]]);
+  const full = nodes(h.render({imageReferences:{assets:Array.from({length:6},(_,n)=>({url:`/image-${n}`})),maxImages:6}})).find(n=>n.type === "image-library");
+  assert.equal(full.props.disabled,false);
+  assert.equal(full.props.limitReached,true, "At capacity, selected images must remain removable");
 });
 
 test("all optional generation references remain visible above instructions and errors stay visible", () => {
@@ -168,6 +183,21 @@ test("disabled Seedance is neither offered nor used as the default", () => {
   assert.ok(enabled.props.options.some((option) => option.value === "seedance_2_5"));
 });
 
+test("Talking Head keeps Seedance available after model changes and restores its saved settings", () => {
+  const actual = harness({ seedanceEnabled: true });
+  const field = label => nodes(actual.render()).find(node => node.type === "select" && node.props.ariaLabel === label);
+  assert.match(read("components/explore/hook-workflow-preview.tsx"), /<HookWorkflowComposer[\s\S]*?audioLabel="Talking head audio"/);
+  field("Hook model").props.onChange("google_omni");
+  field("Hook quality").props.onChange("1080p");
+  assert.ok(field("Hook model").props.options.some(option => option.value === "seedance_2_5"));
+  field("Hook model").props.onChange("seedance_2_5");
+  assert.equal(field("Hook model").props.value, "seedance_2_5");
+  assert.equal(field("Hook quality").props.value, "720p");
+  const { workflow } = generationModules(true);
+  const saved = { model: "seedance_2_5", duration: 17, resolution: "480p", quantity: 2, aspectRatio: "16:9" };
+  assert.deepEqual(JSON.parse(JSON.stringify(workflow.normalizeWorkflowGenerationSettings(JSON.parse(JSON.stringify(saved))))), saved);
+});
+
 test("model changes atomically reset incompatible settings but retain valid output and ratio choices", () => {
   const { workflow } = generationModules(true);
   const seedance = workflow.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 30, resolution: "480p", quantity: 4, aspectRatio: "16:9" });
@@ -211,13 +241,16 @@ test("the shared settings hook owns the draft, applies rapid changes to current 
     const parent = read(`components/explore/${file}.tsx`);
     if (file === "hook-workflow-preview") {
       assert.match(parent, /useWorkflowSession\(/);
-      assert.match(parent, /normalizeWorkflowGenerationSettings\(\{ \.\.\.generationSettings, \.\.\.patch \}\)/);
-      assert.match(parent, /recovery\.update\(previous => \(\{ \.\.\.previous, generationSettings: settings \}\)\)/);
+      assert.match(parent, /setGenerationSettings\(previous => normalizeWorkflowGenerationSettings\(\{ \.\.\.previous, \.\.\.patch \}\)\)/);
+      assert.match(parent, /updateSession\(previous => \(\{ \.\.\.previous, generationSettings: normalizeWorkflowGenerationSettings\(\{ \.\.\.previous.generationSettings, \.\.\.patch \}\)/);
     } else assert.match(parent, /useWorkflowGenerationSettings\(/);
     assert.match(parent, /generationSettings=\{generation.settings\}/);
     assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
     if (file === "phone-workflow-preview") assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
-    else assert.match(parent, /const dirty = Boolean\(creator.asset \|\| videoReference.asset/);
+    else {
+      assert.match(parent, /const dirty = Boolean\(hasLocalReferences/);
+      assert.match(parent, /videoReference.asset && !references.selectedId/, "Recoverable catalogue clips do not need a local-file loss warning");
+    }
   }
 });
 

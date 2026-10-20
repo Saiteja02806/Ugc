@@ -680,6 +680,7 @@ async function requestInstagramGraph(params: {
 }) {
   const response = await fetch(params.url, {
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${params.accessToken}`,
     },

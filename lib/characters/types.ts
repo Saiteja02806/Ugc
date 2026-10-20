@@ -42,6 +42,8 @@ export type CharacterJobStatusResponse = {
   job: {
     id: string;
     model?: CharacterImageModel;
+    prompt?: string | null;
+    batchId?: string | null;
     status: BackgroundJobStatus;
     isTerminal: boolean;
     error: string | null;

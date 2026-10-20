@@ -3,6 +3,8 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { createFormatTextSvg, formatTextLayout, formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "./explore-format-edit.js";
 import { runMediaCommand, type SubtitleTools } from "../subtitles/media.js";
+import { createOutlinedFormatTextSvg } from "./explore-text-outlines.js";
+import { formatInlineRuns, formatTextGraphemes, needsFormatEmojiFallback } from "./explore-inline-symbols.js";
 
 /** Shared by standalone edits and composition. User text remains in local
  * files rather than being interpolated into an FFmpeg filter graph. */
@@ -14,13 +16,15 @@ export async function prepareExploreFormatEditFilter(input: { width: number; hei
   const overlays = formatTextOverlays(edit);
   const captionImages: string[] = [];
   const textLayers: { filter: string; inputIndex?: number }[] = [];
-  if (overlays.some(text => text.preset !== "snapchat-classic")) await copyFile(join(input.tools.fontsDir, "arial-bold.ttf"), join(input.workDir, "format-font.ttf"));
+  if (overlays.some(text => text.preset !== "snapchat-classic" && text.font === undefined && text.fontWeight === undefined)) await copyFile(join(input.tools.fontsDir, "arial-bold.ttf"), join(input.workDir, "format-font.ttf"));
   for (const [overlayIndex, text] of overlays.entries()) {
     const layout = formatTextLayout(text, input.width, input.height);
     if (!layout.fits) throw new Error("Your text does not fit. Reduce its size or move it higher.");
-    if (text.preset === "snapchat-classic") {
+    const colorSymbols = formatInlineRuns(text.value).some(run => run.symbol) || formatTextGraphemes(text.value).some(needsFormatEmojiFallback);
+    if (text.preset === "snapchat-classic" || text.font || text.fontWeight !== undefined || colorSymbols) {
       const file = `format-caption-${overlayIndex}.png`;
-      await sharp(Buffer.from(createFormatTextSvg(text, input.width, input.height))).png().toFile(join(input.workDir, file));
+      const svg = text.font || text.fontWeight !== undefined || colorSymbols ? await createOutlinedFormatTextSvg(text, input.width, input.height, input.tools.fontsDir) : createFormatTextSvg(text, input.width, input.height);
+      await sharp(Buffer.from(svg)).png().toFile(join(input.workDir, file));
       captionImages.push(file);
       textLayers.push({ inputIndex: (input.firstImageInputIndex ?? 1) + captionImages.length - 1, filter: `overlay=x=0:y=0:shortest=1:enable='gte(t,${text.startMs / 1000})*lt(t,${text.endMs / 1000})'` });
       continue;
@@ -31,7 +35,7 @@ export async function prepareExploreFormatEditFilter(input: { width: number; hei
       const file = `format-text-${overlayIndex}-${index}.txt`;
       await writeFile(join(input.workDir, file), line, { flag: "wx" });
       // User text is read from a file; none is interpolated into the filter graph.
-      lineFilters.push(`drawtext=fontfile=format-font.ttf:textfile=${file}:expansion=none:fontsize=${layout.fontSize}:fontcolor=${text.color}:borderw=${Math.max(1, input.width / 540)}:bordercolor=black@0.8:x=(w-text_w)/2:y=${layout.y + index * layout.lineHeight}:enable='gte(t,${text.startMs / 1000})*lt(t,${text.endMs / 1000})'`);
+      lineFilters.push(`drawtext=fontfile=format-font.ttf:textfile=${file}:expansion=none:fontsize=${layout.fontSize}:fontcolor=${text.color}:borderw=${Math.max(1, input.width / 540)}:bordercolor=black@0.8:x=${text.x === undefined ? "(w-text_w)/2" : `${layout.x}-text_w/2`}:y=${layout.y + index * layout.lineHeight}:enable='gte(t,${text.startMs / 1000})*lt(t,${text.endMs / 1000})'`);
     }
     if (lineFilters.length) textLayers.push({ filter: lineFilters.join(",") });
   }

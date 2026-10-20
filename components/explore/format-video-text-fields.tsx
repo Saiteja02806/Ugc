@@ -3,14 +3,19 @@
 import { FormatTextOverlaysEditor } from "@/components/explore/format-text-overlays-editor";
 import { formatTextOverlays, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { fullDurationWallText } from "@/lib/explore/wall-text-editor";
+import { fullDurationSingleHookText } from "@/lib/explore/hook-text-timing";
 
 /** Shared clip controls always show a first blank box; only authored text exports. */
-export function FormatVideoTextFields({ editing, onChange, timeMs = 0, onSeek, styleTarget, showStyleControls = true }: {
-  editing: ExploreFormatEdit; onChange: (next: ExploreFormatEdit) => void; timeMs?: number; onSeek?: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
+export function FormatVideoTextFields({ editing, onChange, timeMs = 0, onSeek, styleTarget, showStyleControls = true, fullDurationHookText = false }: {
+  editing: ExploreFormatEdit; onChange: (next: ExploreFormatEdit) => void; timeMs?: number; onSeek?: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean; fullDurationHookText?: boolean;
 }) {
   return <FormatTextOverlaysEditor overlays={formatTextOverlays(editing)} durationMs={editing.trimEndMs - editing.trimStartMs}
     styleTarget={styleTarget} showStyleControls={showStyleControls} wallText={editing.format === "wall_text"} timeMs={timeMs} onSeek={onSeek ?? (() => {})}
-    onChange={textOverlays => onChange(fullDurationWallText({ ...editing, text: null, textOverlays }))} />;
+    fullDuration={fullDurationHookText && editing.format === "hook" && formatTextOverlays(editing).length <= 1}
+    onChange={textOverlays => {
+      const next = fullDurationWallText({ ...editing, text: null, textOverlays });
+      onChange(fullDurationHookText ? fullDurationSingleHookText(next) : next);
+    }} />;
 }
 
 export function trimFormatVideoEdit(editing: ExploreFormatEdit, startMs: number, endMs: number): ExploreFormatEdit {

@@ -26,6 +26,7 @@ const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts
   "../lib/runway-seedance-video.js": { generateRunwaySeedanceVideoBuffer: provider("runway-seedance") },
   "../lib/runway-wan-video.js": { generateRunwayWanVideoBuffer: provider("runway-wan") },
   "../lib/openrouter-wan-video.js": { generateOpenRouterWanVideoBuffer: provider("openrouter") },
+  "../lib/reapi-video.js": { generateReapiVideoBuffer: provider("reapi") },
   "../lib/video-prompt-policy.js": load("worker/src/lib/video-prompt-policy.ts"),
   "../lib/openrouter-seedance-video.js": { generateOpenRouterSeedanceVideoBuffer: provider("openrouter") },
   "../lib/kling-video.js": { generateKlingVideoBuffer: provider("kling") },

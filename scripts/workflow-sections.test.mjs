@@ -70,7 +70,11 @@ test("both workflows have three accessible, permanently mounted section panels",
     assert.match(scheduling, /<WorkflowSchedulingPanel/);
     assert.match(source, /Object.values\(scheduleDraft\)\.some\(Boolean\)/);
     assert.match(source, /Your local changes are not saved/);
-    assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
+    if (kind === "hook") {
+      assert.match(source, /const overviewActive = section === "edit" \|\| section === "create"/);
+      assert.match(source, /hidden=\{!overviewActive\}/);
+      assert.equal((source.match(/<WorkflowEditWorkspace /g) ?? []).length, 1, "Create and Demo keep one shared overview");
+    } else assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
     assert.match(source, /<WorkflowScheduleWorkspace[^>]*draft=\{scheduleDraft\}/);
   }
 });
@@ -110,6 +114,21 @@ test("panel navigation remains outside scrolling settings and leaves retained co
   assert.equal(stageNavigation.props.activateOnFocus, undefined);
   nodes(tree).find(node => node.type === "button").props.onClick();
   assert.equal(continued, 1);
+});
+
+test("focused clip actions stay above scrollable tools without a separate bottom footer", () => {
+  const { WorkflowCreationPanel } = load(panel);
+  let saved = 0;
+  const actions = element("button", { children: "Save edits", onClick: () => saved++ });
+  const content = element("textarea", { value: "Keep text" });
+  const tree = WorkflowCreationPanel({ kind: "hook", section: "edit", children: content, actionContent: actions });
+  const toolbar = nodes(tree).find(n => n.props?.["data-workflow-edit-actions"] !== undefined);
+  const settings = nodes(tree).find(n => n.props?.["data-workflow-section-content"] !== undefined);
+  assert.equal(toolbar.props.children, actions); assert.equal(settings.props.children, content);
+  assert.equal(nodes(tree).some(n => n.type === "footer"), false);
+  assert.equal(nodes(settings).includes(actions), false);
+  toolbar.props.children.props.onClick(); assert.equal(saved, 1);
+  assert.ok(nodes(tree).indexOf(toolbar) < nodes(tree).indexOf(settings));
 });
 
 test("connected Prepare final video and Schedule post forward real actions and render guarded progress/errors", () => {

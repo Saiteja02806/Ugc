@@ -3,6 +3,7 @@ import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL, SLIDESHOW_FLARE_IMAGE
 import { readSlideshowGenerationSlot, slideshowSlotPrompt, type SlideshowGenerationSlot } from "../lib/slideshow-generation-batch.js";
 import { parseSlideshowBusinessContext, slideshowBusinessContextPrompt, type SlideshowBusinessContext } from "../lib/slideshow-business-context.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
+import { generateOpenRouterSeedreamImage } from "../lib/openrouter-seedream-image.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -38,6 +39,7 @@ type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
   model: "gpt_image" | "gpt_image_2_5" | "gpt_image_2_5_flare" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  provider?: "runway" | "openrouter";
   slideshowGeneration?: SlideshowGenerationSlot;
   slideshowBusinessContext?: SlideshowBusinessContext;
   prompt: string;
@@ -73,6 +75,10 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   }
 
   const model = getImageModel(job.input_json.model);
+  const provider = job.input_json.provider;
+  if (provider !== undefined && (model !== "seedream_5_pro" || provider !== "runway" && provider !== "openrouter")) {
+    throw new ProviderRequestNotSubmittedError("This image job has an unsupported provider route.");
+  }
   const characterReferenceContext = promptDrivenCharacter && job.input_json.exploreFormat === undefined;
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
@@ -106,6 +112,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
     model,
+    ...(provider === undefined ? {} : { provider }),
     prompt: prompt.trim(),
     referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
     referenceImageUrls,
@@ -126,23 +133,27 @@ export async function runGenerateImageJob(
   const preserveReference = input.slideshowReferenceContract?.version === 3;
   const contextualPrompt = input.slideshowBusinessContext ? slideshowBusinessContextPrompt(input.prompt, input.slideshowBusinessContext, preserveReference) : input.prompt;
   const slidePrompt = input.slideshowGeneration ? slideshowSlotPrompt(contextualPrompt, input.slideshowGeneration, preserveReference) : contextualPrompt;
-  const providerPrompt = input.slideshowReferenceContract
+  const referencePrompt = input.slideshowReferenceContract
     ? slideshowGenerationPrompt(slidePrompt, input.aspectRatio, input.slideshowReferenceContract)
     : input.additionalReferenceStartIndex
     ? slideshowReferenceImagesPrompt(slidePrompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
     : input.subjectReferenceIndex
     ? slideshowReferencePrompt(slidePrompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
     : slidePrompt;
+  const providerPrompt = referencePrompt;
   if ((input.slideshowReferenceContract || input.slideshowBusinessContext || input.slideshowGeneration) && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
-  const provider = input.model === "seedream_5_pro" ? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
+  // Jobs admitted before the OpenRouter switch have no route field. Keep their
+  // Runway operation key and fingerprint so recovery cannot spend twice.
+  const provider = input.model === "seedream_5_pro" ? input.provider ?? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
+  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   if (existingOutput) {
-    return buildOutput(input, existingOutput, provider);
+    return buildOutput(input, existingOutput, provider, providerPrompt, dimensions);
   }
 
   await context.checkpoint({
@@ -154,6 +165,7 @@ export async function runGenerateImageJob(
     aspectRatio: input.aspectRatio,
     generationId: input.generationId,
     model: input.model,
+    ...(input.provider === undefined ? {} : { provider: input.provider }),
     outputKey,
     prompt: input.prompt,
     referenceImageUrl: input.referenceImageUrl ?? null,
@@ -174,7 +186,7 @@ export async function runGenerateImageJob(
   });
   let generatedImageBuffer: Buffer;
 
-  if (input.model === "gemini_3_pro" || input.model === "seedream_5_pro") {
+  if (input.model === "gemini_3_pro" || input.model === "seedream_5_pro" && provider === "runway") {
     generatedImageBuffer = await generateDurableImageForJob(job, context, input, reservation, stagingKey, operationKey);
   } else if (reservation.shouldSubmit) {
     let generated;
@@ -186,7 +198,13 @@ export async function runGenerateImageJob(
         ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
         : referenceImageUrl;
       generated =
-        input.model === "nano_banana_2"
+        input.model === "seedream_5_pro"
+          ? await generateOpenRouterSeedreamImage({
+              prompt: providerPrompt, aspectRatio: input.aspectRatio,
+              referenceImageUrl,
+              ...(input.referenceImageUrls ? { referenceImageUrls: referenceImages as string[] } : {}),
+            })
+          : input.model === "nano_banana_2"
           ? await generateGeminiImageBuffer(
               providerPrompt,
               input.aspectRatio,
@@ -208,9 +226,13 @@ export async function runGenerateImageJob(
       });
     }
 
+    const providerMetadata = {
+      model: generated.model,
+      ...("costUsd" in generated && typeof generated.costUsd === "number" ? { costUsd: generated.costUsd } : {}),
+    };
     await context.store.markGenerationProviderSucceeded({
       jobId: job.id,
-      metadata: { model: generated.model },
+      metadata: providerMetadata,
       operationKey,
       providerOperationId: generated.requestId ?? undefined,
     });
@@ -223,7 +245,7 @@ export async function runGenerateImageJob(
     await context.store.markGenerationProviderSucceeded({
       jobId: job.id,
       metadata: {
-        model: generated.model,
+        ...providerMetadata,
         stagingKey: staged.key,
       },
       operationKey,
@@ -258,7 +280,6 @@ export async function runGenerateImageJob(
     input.aspectRatio,
     { preserveComposition: Boolean(input.slideshowReferenceContract) },
   );
-  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   await context.checkpoint({
     progress: 90,
@@ -285,7 +306,7 @@ export async function runGenerateImageJob(
     outputUrl: uploaded.url,
   });
 
-  return buildOutput(input, uploaded, provider);
+  return buildOutput(input, uploaded, provider, providerPrompt, dimensions);
 }
 
 async function generateDurableImageForJob(
@@ -355,9 +376,10 @@ async function generateDurableImageForJob(
 function buildOutput(
   input: GenerateImageInput,
   uploaded: { key: string; url: string },
-  provider: "gemini" | "openai" | "runway",
+  provider: "gemini" | "openai" | "runway" | "openrouter",
+  effectivePrompt: string,
+  dimensions: { width: number; height: number },
 ) {
-  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   return {
     fileSizeBytes: undefined,
@@ -367,6 +389,8 @@ function buildOutput(
     key: uploaded.key,
     ok: true,
     model: input.model,
+    prompt: input.prompt,
+    effectivePrompt,
     provider,
     ratio: input.aspectRatio,
     url: uploaded.url,

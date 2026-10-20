@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { parseCarouselManualTextStyle } from "@/lib/carousel/manual-text";
 
 import {
   FirebaseAuthRequestError,
@@ -73,6 +74,10 @@ const CAROUSEL_PATCH_SCHEMA = z
             slideNumber: z.number().int().min(1).max(20),
             subtext: z.string().max(360),
             textPosition: POSITION_SCHEMA,
+            textStyle: z.unknown().optional().transform((value, context) => {
+              try { return parseCarouselManualTextStyle(value); }
+              catch { context.addIssue({ code: "custom", message: "Choose a valid slideshow font, size and color." }); return z.NEVER; }
+            }),
           })
           .strip(),
       )

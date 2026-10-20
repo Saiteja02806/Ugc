@@ -1,8 +1,8 @@
 "use client";
 
 import { Heart } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type PointerEvent, type ReactNode } from "react";
-import { getPostDragScrollTop, getPostDragSnapTop, isPostDoubleTap, isPostTap, POST_LIKE_FEEDBACK_MS, POST_TAP_MOVEMENT_PX, shouldSkipScrolledPost, type PostTap } from "@/lib/trending/post-interaction";
+import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type PointerEvent, type ReactNode, type TouchEvent } from "react";
+import { getPostDragScrollTop, getPostDragSnapTop, getPostTouchSnapTop, isPostDoubleTap, isPostTap, POST_LIKE_FEEDBACK_MS, POST_TAP_MOVEMENT_PX, shouldSkipScrolledPost, type PostTap } from "@/lib/trending/post-interaction";
 import { cn } from "@/lib/utils";
 import styles from "./post-interaction-feed.module.css";
 
@@ -39,6 +39,8 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
     lastY: number; lastTime: number; velocity: number } | null>(null);
   const snapFrame = useRef<number | null>(null);
   const touchScrolling = useRef(false);
+  const touchDrag = useRef<{ identifier: number; x: number; y: number; scrollTop: number;
+    lastY: number; lastTime: number; velocity: number; dragged: boolean } | null>(null);
   const committingScroll = useRef(false);
   const ignoreDragClick = useRef(false);
   const userScroll = useRef(false);
@@ -71,6 +73,9 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
   const cancelMouseDrag = useCallback(() => {
     cancelSnap();
     clearMouseDrag();
+    touchDrag.current = null;
+    touchScrolling.current = false;
+    if (viewportRef.current) delete viewportRef.current.dataset.postTouchDragging;
     pointerStart.current = null;
     previousTap.current = null;
     userScroll.current = false;
@@ -83,6 +88,8 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
     pointerStart.current = null;
     userScroll.current = false;
     touchScrolling.current = false;
+    touchDrag.current = null;
+    if (viewportRef.current) delete viewportRef.current.dataset.postTouchDragging;
     committingScroll.current = false;
     cancelSnap();
     clearMouseDrag();
@@ -120,7 +127,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
   }, [cancelMouseDrag]);
 
   useEffect(() => {
-    const cancelOnBlur = () => { if (mouseDrag.current || snapFrame.current !== null) cancelMouseDrag(); };
+    const cancelOnBlur = () => { if (mouseDrag.current || touchDrag.current || snapFrame.current !== null) cancelMouseDrag(); };
     const cancelOutsideRelease = (event: globalThis.PointerEvent) => {
       if (mouseDrag.current?.pointerId === event.pointerId) cancelMouseDrag();
     };
@@ -202,6 +209,12 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
       pointerStart.current = null;
       return;
     }
+    if (event.pointerType === "touch") {
+      // Native scrolling cancels pointer events when it takes over. Track the
+      // complete finger gesture through TouchEvents; pointer events retain taps.
+      pointerStart.current = { itemId: currentId, x: event.clientX, y: event.clientY, time: event.timeStamp, pointerId: event.pointerId };
+      return;
+    }
     if (callbacks.current.disabled || callbacks.current.onStart?.()) {
       previousTap.current = null;
       return;
@@ -222,6 +235,78 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
         scrollTop: viewport.scrollTop, dragged: false, lastY: event.clientY, lastTime: event.timeStamp, velocity: 0 };
       viewport.dataset.postMouseDown = "true";
     }
+  }
+
+  function startTouch(event: TouchEvent<HTMLDivElement>) {
+    touchScrolling.current = true;
+    touchDrag.current = null;
+    if (!currentId || event.touches.length !== 1 ||
+      (event.target as Element).closest(CONTROL_SELECTOR) || callbacks.current.disabled || callbacks.current.onStart?.()) {
+      userScroll.current = false;
+      previousTap.current = null;
+      pointerStart.current = null;
+      return;
+    }
+    cancelSnap();
+    const touch = event.touches[0];
+    userScroll.current = true;
+    touchDrag.current = { identifier: touch.identifier, x: touch.clientX, y: touch.clientY,
+      scrollTop: event.currentTarget.scrollTop, lastY: touch.clientY, lastTime: event.timeStamp, velocity: 0, dragged: false };
+  }
+
+  function moveTouch(event: TouchEvent<HTMLDivElement>) {
+    const drag = touchDrag.current;
+    if (!drag) return;
+    if (event.touches.length !== 1 || callbacks.current.disabled) {
+      touchDrag.current = null;
+      userScroll.current = false;
+      pointerStart.current = null;
+      return;
+    }
+    const touch = Array.from(event.touches).find(touch => touch.identifier === drag.identifier);
+    if (!touch) return;
+    const elapsed = event.timeStamp - drag.lastTime;
+    if (elapsed > 0) drag.velocity = elapsed > 100 ? 0 :
+      drag.velocity * .4 + ((drag.lastY - touch.clientY) / elapsed) * .6;
+    drag.lastY = touch.clientY;
+    drag.lastTime = event.timeStamp;
+    const dy = touch.clientY - drag.y;
+    if (!drag.dragged && Math.abs(dy) > POST_TAP_MOVEMENT_PX && Math.abs(dy) > Math.abs(touch.clientX - drag.x)) {
+      drag.dragged = true;
+      ignoreDragClick.current = true;
+      pointerStart.current = null;
+      previousTap.current = null;
+      // Retain native panning and pinch zoom. Pause only snap selection until
+      // release, when distance/speed choose one adjacent post in either direction.
+      event.currentTarget.dataset.postTouchDragging = "true";
+    }
+  }
+
+  function finishTouch(event: TouchEvent<HTMLDivElement>) {
+    touchScrolling.current = event.touches.length > 0;
+    if (touchScrolling.current) return;
+    const drag = touchDrag.current;
+    touchDrag.current = null;
+    const viewport = event.currentTarget;
+    if (!drag?.dragged) {
+      delete viewport.dataset.postTouchDragging;
+      scheduleScrollSettlement();
+      return;
+    }
+    // Use finger travel rather than a browser's partially snapped offset. The
+    // native scroll includes its own dead zone and can otherwise return a valid
+    // short downward flick to the current reel before history sees it.
+    const velocity = event.timeStamp - drag.lastTime <= 100 ? drag.velocity : 0;
+    const top = getPostDragScrollTop({ startScrollTop: drag.scrollTop, startY: drag.y,
+      y: drag.lastY, height: viewport.clientHeight, anchor: restingTop(), hasPrevious: callbacks.current.hasPrevious });
+    const target = callbacks.current.disabled ? restingTop() :
+      getPostTouchSnapTop(top, viewport.clientHeight, velocity, restingTop(), callbacks.current.hasPrevious);
+    viewport.dataset.postSettling = "true";
+    delete viewport.dataset.postTouchDragging;
+    pointerStart.current = null;
+    previousTap.current = null;
+    userScroll.current = target !== restingTop() && !callbacks.current.disabled;
+    snapToPost(target);
   }
 
   function movePointer(event: PointerEvent<HTMLDivElement>) {
@@ -245,7 +330,7 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
       ignoreDragClick.current = true;
       pointerStart.current = null;
       previousTap.current = null;
-      // Snap is suspended only during a mouse drag; touch keeps native scrolling.
+      // Mouse dragging is scripted; finger gestures retain native panning.
       event.currentTarget.dataset.postDragging = "true";
       try { event.currentTarget.setPointerCapture(event.pointerId); }
       catch { cancelMouseDrag(); return; }
@@ -330,16 +415,11 @@ export function PostInteractionFeed({ items, previousItem, onPrevious, onLike, o
     className={cn("relative isolate rounded-[20px] outline-none", styles.viewport, className)}
     style={{ overflowY: disabled ? "hidden" : undefined }}
     onWheelCapture={armScroll}
-    onTouchStartCapture={() => { touchScrolling.current = true; }}
-    onTouchEndCapture={(event) => {
-      touchScrolling.current = event.touches.length > 0;
-      scheduleScrollSettlement();
-    }}
+    onTouchStartCapture={startTouch}
+    onTouchMoveCapture={moveTouch}
+    onTouchEndCapture={finishTouch}
     onTouchCancelCapture={() => {
-      touchScrolling.current = false;
-      previousTap.current = null;
-      pointerStart.current = null;
-      scheduleScrollSettlement();
+      cancelMouseDrag();
     }}
     onPointerDownCapture={startPointer}
     onPointerMoveCapture={movePointer}

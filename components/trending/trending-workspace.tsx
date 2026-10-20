@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -67,6 +68,8 @@ import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
 import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
 import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
+import { useQuotaReviewRecovery } from "@/components/trending/use-quota-review-recovery";
+import { isRecoverableTrendingReview, type ReviewedTrendingCandidate } from "@/lib/trending/reviewed-feed-candidate";
 import { POST_LIKE_FEEDBACK_MS } from "@/lib/trending/post-interaction";
 import { TrendingSwipeGuide } from "@/components/trending/trending-swipe-guide";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
@@ -78,6 +81,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
+  createCarouselScheduleIdempotencyKey,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
@@ -161,6 +165,7 @@ type TrendingDailyFeedState =
   | "ready";
 
 type TrendingFeedProgress = {
+  feedId?: string;
   preparationState?: TrendingPreparationState | null;
   completedCount: number;
   pendingSlotCount: number;
@@ -208,7 +213,6 @@ type TrendingCandidate =
   | CompleteWallText
   | CompleteReaction;
 
-type ReviewedTrendingCandidate = TrendingCandidate & { reviewedEdit?: TrendingCreativeEditRecord | null };
 type TrendingReviewHistory = ReturnType<typeof usePostReviewHistory<ReviewedTrendingCandidate>>;
 
 type TrendingHookComposition = {
@@ -1010,6 +1014,7 @@ export function TrendingWorkspace() {
         setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
         const nextFeedProgress = data.feed
           ? {
+              feedId: data.feed.id,
               preparationState: data.feed.preparationState,
               completedCount:
                 data.feed.completedCount + pendingLocalDecisionCount,
@@ -1190,7 +1195,7 @@ export function TrendingWorkspace() {
     <TrendingPreparationContext value={trendingFeedProgress?.preparationState ?? "preparing"}>
     <section className={cn("min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10", reviewLayout.workspace)}>
       <div className={cn("mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]", reviewLayout.workspaceContent)}>
-        <header className="flex items-start justify-between gap-4">
+        <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
@@ -1210,7 +1215,8 @@ export function TrendingWorkspace() {
               Explore slideshows made from your business profile.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <MediaLibraryButton label="Manage library" variant="creative-edit" className="rounded-full" disabled={authLoading || !user} />
             <Button
               data-trending-adjust-control
               type="button"
@@ -1240,6 +1246,7 @@ export function TrendingWorkspace() {
             <div className={cn("min-w-0 flex-1", reviewLayout.feedLayer)}>
               <TrendingFeedGallery
                 key={trendingFeedSessionKey}
+                feedId={trendingFeedProgress?.feedId}
                 enqueueDecision={enqueueDecision}
                 failure={trendingFeedFailure}
                 headerActionsRoot={headerActionsRoot}
@@ -1280,7 +1287,8 @@ export function TrendingWorkspace() {
   );
 }
 
-function TrendingFeedGallery({
+export function TrendingFeedGallery({
+  feedId,
   enqueueDecision,
   error,
   failure,
@@ -1297,6 +1305,7 @@ function TrendingFeedGallery({
   userId,
   upgradeRequired,
 }: {
+  feedId?: string;
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   error: string | null;
   failure: TrendingFeedFailure | null;
@@ -1313,15 +1322,30 @@ function TrendingFeedGallery({
   userId: string | null;
   upgradeRequired: boolean;
 }) {
-  const showSkeleton = loading;
+  const postHistory = usePostReviewHistory<ReviewedTrendingCandidate>(userId
+    ? { ownerId: userId, scopeId: feedId, isValue: isRecoverableTrendingReview }
+    : undefined);
+  const quotaHistory = useQuotaReviewRecovery(userId, feedId, postHistory.recover);
+  const showSkeleton = loading || !postHistory.ready ||
+    (quotaHistory.loading && items.length === 0 && postHistory.entries.length === 0);
+  const historyNotice = quotaHistory.loading || quotaHistory.error || quotaHistory.unavailable > 0 ? (
+    <div role="status" className="flex flex-wrap items-center justify-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+      {quotaHistory.loading ? "Loading earlier posts from this quota…" : quotaHistory.error
+        ? "Earlier posts could not be loaded." : "Some earlier posts are no longer available."}
+      {quotaHistory.error ? <Button variant="outline" size="sm" onClick={quotaHistory.retry}>Retry earlier posts</Button> : null}
+    </div>
+  ) : null;
   // A right swipe records the decision and removes its card immediately. Keep
   // the already-presented review shell alive for this user/day so the accepted
   // Carousel or Wall action dialog can paint even when that was the final
   // ready card.
-  const retainingReviewShell = hasPresentedFeed && items.length === 0;
-  const shouldRenderFeed = items.length > 0 || hasPresentedFeed;
+  const hasReviewShell = hasPresentedFeed || postHistory.entries.length > 0;
+  const retainingReviewShell = hasReviewShell && items.length === 0;
+  const shouldRenderFeed = items.length > 0 || hasReviewShell;
 
-  if (!retainingReviewShell && !loading && error && items.length === 0) {
+  if (!showSkeleton && !shouldRenderFeed && historyNotice) return historyNotice;
+
+  if (!retainingReviewShell && !showSkeleton && error && items.length === 0) {
     return (
       <TrendingFeedFailureState
         failure={failure}
@@ -1331,7 +1355,7 @@ function TrendingFeedGallery({
     );
   }
 
-  if (!retainingReviewShell && !loading && profile?.state === "missing") {
+  if (!retainingReviewShell && !showSkeleton && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
   }
 
@@ -1362,6 +1386,8 @@ function TrendingFeedGallery({
   }
 
   return (
+    <>
+    {historyNotice}
     <div data-trending-feed-transition className={cn("relative grid w-full", reviewLayout.feedGallery)}>
       <div
         aria-hidden={showSkeleton ? undefined : "true"}
@@ -1385,10 +1411,11 @@ function TrendingFeedGallery({
       >
         {shouldRenderFeed ? (
           <TrendingFeed
+            reviewHistory={postHistory}
             enqueueDecision={enqueueDecision}
             failure={failure}
             headerActionsRoot={headerActionsRoot}
-            items={items}
+            items={items.filter(item => !postHistory.entries.some(entry => entry.value.item.assignmentId === item.assignmentId))}
             pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
@@ -1398,6 +1425,7 @@ function TrendingFeedGallery({
         ) : null}
       </div>
     </div>
+    </>
   );
 }
 
@@ -1528,6 +1556,7 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
 }
 
 function TrendingFeed({
+  reviewHistory,
   enqueueDecision,
   failure,
   headerActionsRoot,
@@ -1538,6 +1567,7 @@ function TrendingFeed({
   userId,
   upgradeRequired,
 }: {
+  reviewHistory: TrendingReviewHistory;
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
@@ -1553,7 +1583,7 @@ function TrendingFeed({
   >({});
   const [hookComposition, setHookComposition] =
     useState<TrendingHookComposition | null>(null);
-  const postHistory = usePostReviewHistory<ReviewedTrendingCandidate>();
+  const postHistory = reviewHistory;
 
   const candidates = items.flatMap<TrendingCandidate>((item) => {
     if (item.format === "hook_video") {
@@ -2052,6 +2082,9 @@ export function TrendingDeck({
   );
   const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
   const activeReviewItemId = activeCandidate?.item.id;
+  // An owned slideshow can receive its first edit after it was skipped. History
+  // is a navigation state, not evidence that its source is no longer editable.
+  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && activeCandidate?.format !== "carousel");
 
   useLayoutEffect(() => {
     const frame = reviewFrameRef.current;
@@ -2473,7 +2506,7 @@ export function TrendingDeck({
     const { candidate, decision, direction, nextCandidateId } = params;
 
     advancePastActiveItem(direction, () => {
-      postHistory.remember({ id: candidate.item.id,
+      postHistory.remember({ id: candidate.item.id, position: candidate.item.position,
         value: { ...candidate, reviewedEdit: editByCreativeId[candidate.item.creativeId] ?? null },
         decision: decision === "accepted" ? "liked" : "skipped" });
       dismissCandidate(candidate);
@@ -2517,6 +2550,7 @@ export function TrendingDeck({
       setScheduleContext({
         assignmentId: candidate.item.assignmentId,
         contentType: "reaction",
+        requestKey: crypto.randomUUID(),
         coverUrl: candidate.item.creative.thumbnailUrl,
         returnTo: "trending",
         title: candidate.item.creative.title,
@@ -2530,7 +2564,7 @@ export function TrendingDeck({
         assignmentId: candidate.item.assignmentId,
         carouselId: candidate.carousel.carouselId,
         coverUrl: carouselLibraryItem.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${candidate.item.assignmentId}`,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: carouselLibraryItem.id,
         returnTo: "trending",
         title: getCarouselTitle(candidate.carousel),
@@ -2549,7 +2583,7 @@ export function TrendingDeck({
     if (
       !activeCandidate ||
       decisionLockRef.current ||
-      exitDirection || postHistory.browsing
+      reviewEditDisabled
     ) {
       return;
     }
@@ -2668,7 +2702,7 @@ export function TrendingDeck({
         carouselId: candidate.carousel.carouselId,
         coverUrl:
           result.item.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${candidate.item.assignmentId}`,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: result.item.id,
         returnTo: "trending",
         title: getCarouselTitle(candidate.carousel),
@@ -2773,7 +2807,7 @@ export function TrendingDeck({
       {activeCandidate && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
-              disabled={Boolean(exitDirection || postHistory.browsing)}
+              disabled={reviewEditDisabled}
               onEdit={handleEditActiveCandidate}
             />,
             headerActionsRoot,
@@ -2829,6 +2863,11 @@ export function TrendingDeck({
       ) : (
         <TrendingReadyEmptyState />
       )}
+      {postHistory.persistenceUnavailable ? <p role="status" className="mt-2 max-w-md text-center text-sm text-muted">
+        {postHistory.quotaScoped
+          ? "Browser storage is unavailable. Earlier posts will be loaded from this quota when you return."
+          : "Browser storage is unavailable. Previous posts can only be kept during this visit."}
+      </p> : null}
       {!activeCandidate && postHistory.canGoBack ? <Button
         className="mt-4" variant="secondary"
         disabled={Boolean(exitDirection || editorCandidate || scheduleContext || actionCandidate || wallTextCandidate)}
@@ -2933,6 +2972,7 @@ export function TrendingDeck({
 
               const schedule = await createPendingReactionSchedule({
                 candidate: pendingReactionScheduleCandidate,
+                requestKey: scheduleContext.requestKey,
                 selection: submission,
               });
 
@@ -4838,6 +4878,7 @@ async function createPendingWallTextSchedule(params: {
 
 async function createPendingReactionSchedule(params: {
   candidate: CompleteReaction;
+  requestKey: string;
   selection: CarouselScheduleSubmission;
 }) {
   const token = await getCurrentUserIdToken();
@@ -4849,6 +4890,7 @@ async function createPendingReactionSchedule(params: {
   const response = await fetch("/api/trending/reactions/schedules", {
     body: JSON.stringify(createReactionScheduleRequest({
       assignmentId: params.candidate.item.assignmentId,
+      requestKey: params.requestKey,
       caption: params.selection.caption,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,

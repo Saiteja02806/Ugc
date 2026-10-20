@@ -318,6 +318,19 @@ resource "google_cloud_run_v2_service" "ai_generation_worker" {
       }
 
       dynamic "env" {
+        for_each = var.reapi_api_key_secret_id == "" ? [] : [var.reapi_api_key_secret_id]
+        content {
+          name = "REAPI_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
         for_each = var.higgsfield_credentials_secret_id == "" ? [] : [var.higgsfield_credentials_secret_id]
         content {
           name = "HF_CREDENTIALS"
@@ -375,6 +388,14 @@ resource "google_cloud_run_v2_service_iam_member" "cloud_tasks_invoker" {
 }
 
 # Non-authoritative member binding: does not replace any existing secret IAM.
+resource "google_secret_manager_secret_iam_member" "reapi_worker_accessor" {
+  count     = var.enable_ai_generation_worker && var.reapi_api_key_secret_id != "" ? 1 : 0
+  project   = var.project_id
+  secret_id = var.reapi_api_key_secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.worker_service_account_email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "audio_worker_accessor" {
   count     = var.enable_ai_generation_worker && var.enable_audio_generation ? 1 : 0
   project   = var.project_id

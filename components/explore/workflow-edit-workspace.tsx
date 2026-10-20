@@ -23,13 +23,15 @@ import schedulePreview from "@/components/explore/talking-head-schedule-preview.
 import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 /** Shows only user-selected demo media, never a stock or pretend generated video. */
-export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, finishedVideo, demoFraming, demoPreview, openingPreview, demoSegmentPreview, rawComposition = false, onAddDemo, onEditSource, onEditDemo, editingBusy = false, compositionPreview }: {
+export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, sourcePreview, onChangeSource, sourceActions, demoSourceActions, finishedVideo, demoFraming, demoPreview, openingPreview, demoSegmentPreview, rawComposition = false, onAddDemo, onEditSource, onEditDemo, editingBusy = false, compositionPreview }: {
   kind: "hook" | "phone";
   demo: WorkflowAttachment;
   demoAudio: WorkflowAttachment;
   generatedVideo?: MediaAsset | null;
   sourcePreview?: LocalWorkflowMedia | null;
   onChangeSource?: () => void;
+  sourceActions?: ReactNode;
+  demoSourceActions?: ReactNode;
   finishedVideo?: MediaAsset | null;
   demoFraming?: DemoFraming | null;
   demoPreview?: LocalWorkflowMedia;
@@ -45,6 +47,7 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   const videoLabel = kind === "hook" ? "Hook video" : "Phone video";
   const sourceEditLabel = kind === "hook" ? "Edit hook video" : "Edit phone video";
   const hasDemo = Boolean(demo.asset || demoPreview);
+  const hasOpening = Boolean(openingPreview || sourcePreview || generatedVideo);
   const editedOpening = openingPreview && (generatedVideo
     ? openingPreview.segment.id === generatedVideo.id
     : sourcePreview && openingPreview.segment.url === sourcePreview.url) ? openingPreview : null;
@@ -54,7 +57,7 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
   if (finishedVideo && kind !== "hook") return <section aria-label="Saved finished video" className={creation.editWorkspace}><h2 className={creation.sectionTitle}>Your finished video</h2><WorkflowMediaPlayer asset={{ name: finishedVideo.title, url: finishedVideo.url, duration: finishedVideo.durationSeconds, width: finishedVideo.width, height: finishedVideo.height }} kind="video" label="Finished video preview" /><p className="text-xs text-muted">Saved to your Library. Review the rendered subtitles and audio before scheduling.</p>{onEditSource || onEditDemo ? <div className={creation.segmentActions}>{onEditSource ? <Button type="button" variant="outline" aria-label={sourceEditLabel} disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />{sourceEditLabel}</Button> : null}{onEditDemo ? <Button type="button" variant="outline" aria-label="Edit demo video" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit demo video</Button> : null}</div> : null}</section>;
   return <section aria-label="Video editing workspace" className={creation.editWorkspace}>
     <div>
-      <h2 className={creation.sectionTitle}>{kind === "hook" ? "Edit your videos" : hasDemo ? "Your video sequence" : "Your video"}</h2>
+      <h2 className={creation.sectionTitle}>{kind === "hook" ? "Your videos" : hasDemo ? "Your video sequence" : "Your video"}</h2>
       <p className={creation.sectionHelp}>{kind === "hook" ? "Your hook plays first. Add a demo after it, or continue with just the hook." : hasDemo ? `${videoLabel} first, then Demo.` : "Publish this video on its own, or add an optional demo."}</p>
       {kind !== "hook" && !hasDemo && onAddDemo ? <Button type="button" variant="outline" className="mt-3" disabled={editingBusy} onClick={onAddDemo}>Add optional demo</Button> : null}
     </div>
@@ -62,24 +65,26 @@ export function WorkflowEditWorkspace({ kind, demo, demoAudio, generatedVideo, s
       <section aria-label={`${videoLabel} segment`} className={creation.segment}>
         <div className={creation.segmentHeader}>
           <h3 className="text-sm font-medium">{videoLabel}</h3>
-          <div className={creation.segmentActions}>
-            {onChangeSource ? <Button type="button" variant="ghost" disabled={editingBusy} onClick={onChangeSource}>{kind === "hook" ? "Change hook" : "Change video"}</Button> : null}
-          </div>
         </div>
+        <div className={creation.segmentMedia}>
         {editedOpening ? <WorkflowSequencePreview segments={[editedOpening.segment]} backgroundAudio={editedOpening.referenceAudio} className={creation.editSequence} playbackDisabledReason={editedOpening.disabledReason} /> : sourcePreview ? <WorkflowMediaPlayer asset={sourcePreview} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} /> : generatedVideo ? <WorkflowMediaPlayer asset={{ name: generatedVideo.title, url: generatedVideo.url, duration: generatedVideo.durationSeconds, width: generatedVideo.width, height: generatedVideo.height }} kind="video" label={`${videoLabel} segment preview`} className={creation.demoPlayer} />
-          : <div data-workflow-empty-segment className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Your generated {videoLabel.toLowerCase()} will appear here.</p></div>}
-        {onEditSource ? <div className={creation.segmentActions}><Button type="button" variant="outline" disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />{sourceEditLabel}</Button></div> : null}
+          : <div data-workflow-empty-segment className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Upload, choose or generate your {videoLabel.toLowerCase()}.</p>{sourceActions ?? (onChangeSource ? <Button type="button" variant="outline" disabled={editingBusy} onClick={onChangeSource}>Add {videoLabel.toLowerCase()}</Button> : null)}</div>}
+        </div>
+        {hasOpening ? <p className="truncate text-center text-xs text-muted" title={generatedVideo?.title ?? sourcePreview?.name}>{generatedVideo?.title ?? sourcePreview?.name}</p> : null}
+        {hasOpening && (onEditSource || onChangeSource) ? <div className={creation.segmentActions}>{onEditSource ? <Button type="button" variant="outline" disabled={editingBusy} onClick={onEditSource}><Pencil className="size-3.5" aria-hidden="true" />{sourceEditLabel}</Button> : null}{sourceActions ?? (onChangeSource ? <Button type="button" variant="outline" aria-label={kind === "hook" ? "Change hook video" : "Change phone video"} disabled={editingBusy} onClick={onChangeSource}>Change</Button> : null)}</div> : null}
       </section>
       {hasDemo || kind === "hook" ? <><ArrowRight className={creation.sequenceArrow} aria-hidden="true" />
       <section aria-label="Demo segment" className={creation.segment}>
         <div className={creation.segmentHeader}>
-          <h3 className="text-sm font-medium">Demo video <span className="text-xs font-normal text-muted">Optional</span></h3>
-          {kind === "hook" && demo.asset ? <div className={creation.segmentActions}><WorkflowFilePicker attachment={demo} kind="video" label="Replace demo video" disabled={editingBusy} /><RemoveMediaButton label="demo" onClick={demo.remove} /></div> : null}
+          <h3 className="text-sm font-medium">Demo video</h3>
         </div>
-        {editedDemo ? <WorkflowSequencePreview segments={[{ ...editedDemo, framing: demoFraming }]} outputWidth={outputWidth} outputHeight={outputHeight} backgroundAudio={demoSegmentPreview?.referenceAudio} className={creation.editSequence} playbackDisabledReason={demoSegmentPreview?.disabledReason} /> : demo.asset ? <>{demoFraming ? <WorkflowDemoPreview key={`${(demoPreview ?? demo.asset).url}:${JSON.stringify(demoFraming)}`} asset={demoPreview ?? demo.asset} framing={demoFraming} /> : <WorkflowMediaPlayer asset={demoPreview ?? demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} />}<p className="truncate text-xs text-muted" title={demo.asset.name}>{demo.asset.name}</p></>
+        <div className={creation.segmentMedia}>
+        {editedDemo ? <WorkflowSequencePreview segments={[{ ...editedDemo, framing: demoFraming }]} outputWidth={outputWidth} outputHeight={outputHeight} backgroundAudio={demoSegmentPreview?.referenceAudio} className={creation.editSequence} playbackDisabledReason={demoSegmentPreview?.disabledReason} /> : demo.asset ? <>{demoFraming ? <WorkflowDemoPreview key={`${(demoPreview ?? demo.asset).url}:${JSON.stringify(demoFraming)}`} asset={demoPreview ?? demo.asset} framing={demoFraming} /> : <WorkflowMediaPlayer asset={demoPreview ?? demo.asset} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} />}</>
           : demoPreview ? <WorkflowMediaPlayer asset={demoPreview} kind="video" label="Video sequence demo preview" className={creation.demoPlayer} />
-          : <div data-workflow-empty-segment className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Show your product or app after the hook. You can skip this.</p><WorkflowFilePicker attachment={demo} kind="video" label="Upload demo video" disabled={editingBusy} /><p>Up to 120 seconds</p></div>}
-        {hasDemo && onEditDemo ? <div className={creation.segmentActions}><Button type="button" variant="outline" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit demo video</Button></div> : null}
+          : <div data-workflow-empty-segment className={creation.segmentEmpty}><Video className="size-5 text-muted" aria-hidden="true" /><p>Show your product or app after the hook.</p>{demoSourceActions ?? <WorkflowFilePicker attachment={demo} kind="video" label="Upload demo video" disabled={editingBusy} />}<p>{demoSourceActions ? "Upload or choose from your saved demos." : "Up to 120 seconds"}</p></div>}
+        </div>
+        {hasDemo ? <p className="truncate text-center text-xs text-muted" title={demo.asset?.name ?? demoPreview?.name}>{demo.asset?.name ?? demoPreview?.name}</p> : null}
+        {hasDemo ? <div className={creation.segmentActions}>{onEditDemo ? <Button type="button" variant="outline" disabled={editingBusy} onClick={onEditDemo}><Pencil className="size-3.5" aria-hidden="true" />Edit demo video</Button> : null}{demoSourceActions ?? <WorkflowFilePicker attachment={demo} kind="video" label="Replace demo video" buttonLabel="Change" disabled={editingBusy} />}{demo.asset && !editingBusy ? <RemoveMediaButton label="demo" onClick={demo.remove} /> : null}</div> : null}
         {demo.error ? <p role="alert" className="text-sm text-destructive">{demo.error}</p> : null}
       </section></> : null}
     </div>

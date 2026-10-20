@@ -1,5 +1,5 @@
 import { getGeneratedVideoHistoryMetadata } from "@/lib/ai-studio/generated-video-history-metadata";
-import { readSlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
 import {
@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     const rows = await listMediaAssets({
       collection,
       sourceTypes,
+      projectId: searchParams.get("projectId") || undefined,
       userId: user.uid,
     });
 
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
         )
         .map((job) => [
           job.id,
-          job.jobType === "generate_hook_video" ? getGeneratedVideoHistoryMetadata(job.input) : { slideshowGeneration: readSlideshowGenerationSlot(job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.slideshowGeneration : null) },
+          job.jobType === "generate_hook_video" ? getGeneratedVideoHistoryMetadata(job.input) : getGeneratedImageHistoryMetadata(job.input),
         ]),
     );
 

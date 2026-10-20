@@ -29,9 +29,9 @@ import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from 
 import { isStructure2ReaderScenario, type CarouselStructure2CopyPolicy } from "./carousel-structure-2-copy-policy.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v24-inter-medium-typography";
+  "llm-carousel-structure-2-writer-v26-flexible-body-copy";
 export const CAROUSEL_STRUCTURE_2_READER_SCENARIO_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v25-reader-scenario-v1";
+  "llm-carousel-structure-2-writer-v26-reader-scenario-flexible-body";
 
 // The OpenAI strict decoder cannot safely carry the whitespace word-count
 // regex. Keep the exact contract in the publisher validator and allow one

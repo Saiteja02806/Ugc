@@ -123,6 +123,20 @@ test('terminal provider errors are not retried and their diagnostics never escap
     assert.equal(h.dispatches.length,0);
   }
 });
+
+test('operation history retains collection and saved-request recovery codes without exposing private diagnostics',async()=>{
+  const h=harness();
+  for(const errorCode of ['PROVIDER_OUTPUT_COLLECTION_FAILED','provider_operation_pending']){
+    h.rows.set(id(1),{...h.row(1),job_type:'generate_hook_video',status:'failed',attempt_count:3,max_attempts:3,
+      error_code:errorCode,error_message:'private-secret https://file.deepytb.com/private-signed-url'});
+    const result=(await h.call('get_operation',{operation_id:id(1)})).structuredContent;
+    assert.equal(result.operation.error.code,errorCode);
+    assert.equal(result.operation.can_retry,false);
+    assert.match(result.operation.error.message,/existing (?:video|request)/);
+    assert.doesNotMatch(JSON.stringify(result),/private-secret|deepytb|private-signed-url|cause could not be identified/);
+    assert.deepEqual(result.output_asset_ids,[]);
+  }
+});
 test('lost retry response recovers its receipt, preserves funded dispatch failures and never retries a later failed revision',async()=>{
   const h=harness();h.rows.set(id(1),{...h.row(1),status:'failed',error_code:'OUTPUT_UPLOAD_FAILED'});h.deliveryFailed=true;
   const args={operation_id:id(1),request_id:id(99),expected_updated_at:h.row(1).updated_at};

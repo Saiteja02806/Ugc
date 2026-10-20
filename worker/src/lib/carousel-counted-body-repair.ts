@@ -21,22 +21,22 @@ export function getCountedBodyRepairSlides(slides: readonly PlannedCarouselSlide
 }
 
 export function buildCountedBodyRepairSchema(slideNumbers: readonly number[]) {
-  const wordBlock = { type: "array", minItems: 9, maxItems: 12,
+  const wordBlock = { type: "array", minItems: 1, maxItems: 30,
     // Constrain each token, rather than using the whole-body word-count regex
     // that previously stalled the structured decoder on gpt-4o-mini.
     items: { type: "string", minLength: 1, maxLength: 40, pattern: "^[A-Za-z0-9][A-Za-z0-9'’-]*[.!?,]?$", description: "Exactly one written word, with punctuation attached if needed. No whitespace, standalone punctuation, colons or semicolons." } } as const;
   return { type: "object", additionalProperties: false, properties: {
     bodiesBySlide: { type: "object", additionalProperties: false,
       properties: Object.fromEntries(slideNumbers.map((n) => [`slide${n}`, {
-        type: "object", additionalProperties: false, properties: { firstWords: wordBlock, secondWords: wordBlock }, required: ["firstWords", "secondWords"],
+        type: "object", additionalProperties: false, properties: { firstWords: wordBlock, secondWords: { ...wordBlock, minItems: 0 } }, required: ["firstWords", "secondWords"],
       }])), required: slideNumbers.map((n) => `slide${n}`),
     },
   }, required: ["bodiesBySlide"] } as const;
 }
 
 // Use the same counted representation for initial plans and full-item repairs.
-// Otherwise a non-body issue bypasses the body-only repair and reintroduces
-// short copy. Persisted plans still contain the original string body contract.
+// This keeps the same word limits across both repair paths. Persisted plans
+// still contain the original string body contract.
 export function withCountedPlanBodies<T>(schema: T): T {
   const result = structuredClone(schema);
   function visit(value: unknown) {
@@ -100,15 +100,15 @@ export function parseCountedBodyRepair(value: unknown, slideNumbers: readonly nu
   const replacements = new Map<number, string>();
   for (const n of slideNumbers) {
     const blocks = record(bodies[`slide${n}`], ["firstWords", "secondWords"]);
-    const text = [blocks.firstWords, blocks.secondWords].map((words) => {
-      if (!Array.isArray(words) || words.length < 9 || words.length > 12 || words.some((word) =>
+    const text = [blocks.firstWords, blocks.secondWords].map((words, index) => {
+      if (!Array.isArray(words) || words.length < (index === 0 ? 1 : 0) || words.length > 30 || words.some((word) =>
         typeof word !== "string" || word.length > 40 || /\s/u.test(word) || !/^[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*[.!?,]?$/u.test(word),
-      )) throw new Error("Counted repair needs 9-12 single words per block.");
+      )) throw new Error("Counted repair needs single words in one or two nonempty body blocks.");
       return words.join(" ");
-    }).join("\n\n");
+    }).filter(Boolean).join("\n\n");
     // Both word counters used by the legacy planner must still accept it.
     const count = text.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?/g)?.length ?? 0;
-    if (text.length > 300 || count < 18 || count > 30) throw new Error("Counted repair exceeds the existing body contract.");
+    if (text.length > 300 || count < 1 || count > 30) throw new Error("Counted repair exceeds the body copy limit.");
     replacements.set(n, text);
   }
   return replacements;

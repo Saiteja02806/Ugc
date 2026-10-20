@@ -20,6 +20,10 @@ export function getExplorePairedReference(id: unknown) {
   return typeof id === "string" ? getExplorePairedReferences().find(item => item.id === id) ?? null : null;
 }
 
+export function isSilentExploreReference(reference: unknown): boolean {
+  return !!reference && typeof reference === "object" && "audioPolicy" in reference && reference.audioPolicy === "silent";
+}
+
 export function getGenerationReferenceSoundtrack(input: Record<string, unknown>) {
   const reference = getExplorePairedReference(input.referenceId);
   if (!reference || input.referenceType !== reference.format || input.exploreFormat !== undefined && input.exploreFormat !== null && input.exploreFormat !== reference.format) return null;
@@ -33,6 +37,9 @@ export function getAssetReferenceSoundtrack(metadata: unknown): ExploreReference
   const raw = object(metadata), saved = object(object(raw.render).referenceSoundtrack);
   const reference = getExplorePairedReference(saved.referenceId ?? raw.exploreReferenceId);
   if (!reference) return null;
+  // New silent outputs have no soundtrack. Retain explicit historical receipts
+  // so already rendered media can still be edited using its original mapping.
+  if (!saved.referenceId && isSilentExploreReference(reference)) return null;
   if (saved.referenceId && (saved.version !== 1 || saved.audioSha256 !== reference.audioSha256)) throw new Error("The saved reference audio mapping could not be verified.");
   const volume = saved.volume === undefined ? .2 : saved.volume;
   if (typeof volume !== "number" || !Number.isFinite(volume) || volume < 0 || volume > 1) throw new Error("The saved reference audio volume is invalid.");

@@ -9,6 +9,16 @@ import type {
   ScheduledPostTarget,
 } from "@/lib/scheduling/types";
 
+test("server summaries use the viewer date boundary rather than server timezone", () => {
+  const target = makeTarget({ id: "late-utc", status: "published" });
+  target.publishedAt = "2026-08-07T20:00:00Z";
+  const summary = buildInstagramActivitySummary({
+    accountNames: new Map(), dateKeys: ["2026-08-08"], schedules: [makeSchedule("late", target)],
+    visibleConnectionIds: new Set([target.socialConnectionId]), offsetMinutes: -330,
+  });
+  assert.equal(summary.published, 1);
+});
+
 test("counts only active-account publishing and excludes cancelled history", () => {
   const summary = buildInstagramActivitySummary({
     accountNames: new Map([["active-instagram", "Mira"]]),

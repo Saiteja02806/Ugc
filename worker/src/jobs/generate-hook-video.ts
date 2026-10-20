@@ -1,5 +1,5 @@
 import { logger } from "../logger.js";
-import { getGenerationReferenceSoundtrack } from "../lib/explore-reference-soundtrack.js";
+import { getGenerationReferenceSoundtrack, isSilentExploreReference } from "../lib/explore-reference-soundtrack.js";
 import { applyGeneratedReferenceAudio } from "../lib/explore-generated-reference-audio.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import {
@@ -16,6 +16,7 @@ import { generateRunwaySeedanceVideoBuffer } from "../lib/runway-seedance-video.
 import { generateRunwayWanVideoBuffer } from "../lib/runway-wan-video.js";
 import { generateOpenRouterSeedanceVideoBuffer } from "../lib/openrouter-seedance-video.js";
 import { generateOpenRouterWanVideoBuffer } from "../lib/openrouter-wan-video.js";
+import { generateReapiVideoBuffer } from "../lib/reapi-video.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { generateKlingVideoBuffer } from "../lib/kling-video.js";
@@ -102,7 +103,7 @@ export async function runGenerateHookVideoJob(
         (persistedProvider === "gemini" ||
         persistedProvider === "runway" ||
         persistedProvider === "veo" ||
-        persistedProvider === "higgsfield" || persistedProvider === "openrouter"
+        persistedProvider === "higgsfield" || persistedProvider === "openrouter" || persistedProvider === "reapi"
           ? persistedProvider
           : undefined) ??
         input.provider ??
@@ -159,7 +160,7 @@ export async function runGenerateHookVideoJob(
     contentType: "video/mp4",
     key: outputKey,
   });
-  const completedOperation = provider === "openrouter"
+  const completedOperation = provider === "openrouter" || provider === "reapi"
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: generated.operationKey })
     : null;
   await context.store.markGenerationOutputPersisted({
@@ -200,11 +201,10 @@ async function generateWithFallback(
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
     : null;
   const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
-  if (input.model === "wan_3_0" && selectedProvider !== "runway" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
+  if (input.model === "wan_3_0" && selectedProvider !== "runway" && selectedProvider !== "reapi" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
     throw new ProviderRequestNotSubmittedError("This saved WAN 3.0 request cannot use audio or video references. Start a new generation with your references.");
   }
-
-  if (input.referenceAudioUrls.length && input.model !== "seedance_2_5" && !(input.model === "wan_3_0" && selectedProvider === "runway") && selectedProvider !== "higgsfield") {
+  if (input.referenceAudioUrls.length && input.model !== "seedance_2_5" && input.model !== "wan_3_0" && selectedProvider !== "higgsfield") {
     throw new ProviderRequestNotSubmittedError("Choose WAN 3.0 or Seedance 2.5 to use audio references.");
   }
 
@@ -212,8 +212,8 @@ async function generateWithFallback(
     return generateWithProvider(job, context, "higgsfield", "primary", input, prompt);
   }
 
-  if (selectedProvider === "openrouter") {
-    return generateWithProvider(job, context, "openrouter", "primary", input, prompt);
+  if (selectedProvider === "openrouter" || selectedProvider === "reapi") {
+    return generateWithProvider(job, context, selectedProvider, "primary", input, prompt);
   }
 
   if (input.referenceVideoMode === "edit") {
@@ -441,6 +441,10 @@ async function generateProviderBuffer(
   },
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
 ) {
+  if (provider === "reapi") {
+    if (params.model !== "seedance_2_5" && params.model !== "wan_3_0") throw new ProviderRequestNotSubmittedError("Choose Seedance 2.5 or WAN 3.0 for ReAPI.");
+    return generateReapiVideoBuffer({ ...params, model: params.model, onOperationSucceeded });
+  }
   if (provider === "openrouter") {
     if (params.model === "wan_3_0") return generateOpenRouterWanVideoBuffer({ ...params, onOperationSucceeded });
     return generateOpenRouterSeedanceVideoBuffer({ ...params, onOperationSucceeded });
@@ -497,7 +501,7 @@ function buildOutput(params: {
     resolution: params.input.resolution,
     url: params.uploaded.url,
     videoId: params.input.videoId,
-    ...(params.referenceSoundtrack ? { referenceSoundtrack: { version: 1, referenceId: params.referenceSoundtrack.id, audioSha256: params.referenceSoundtrack.audioSha256, volume: .2 } } : {}),
+    ...(params.referenceSoundtrack && !isSilentExploreReference(params.referenceSoundtrack) ? { referenceSoundtrack: { version: 1, referenceId: params.referenceSoundtrack.id, audioSha256: params.referenceSoundtrack.audioSha256, volume: .2 } } : {}),
   };
 }
 
@@ -535,7 +539,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     avatarImageUrl: getOptionalHttpsUrl(job.input_json.avatarImageUrl),
     referenceImageUrls: getReferenceImageUrls(job.input_json.referenceImageUrls, job.input_json.avatarImageUrl),
     referenceAudioUrls: getReferenceAudioUrls(job.input_json.referenceAudioUrls),
-    referenceAudioDurationSeconds: getReferenceAudioDurations(job.input_json.referenceAudioDurationSeconds),
+    referenceAudioDurationSeconds: getReferenceAudioDurations(job.input_json.referenceAudioDurationSeconds, model === "seedance_2_5" ? 30 : 15),
     durationSeconds: getGenerationDurationSeconds(job.input_json.durationSeconds, model),
     hookIdea,
     model,
@@ -577,8 +581,8 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 }
 
 function getOutputDurationSeconds(input: GenerateHookVideoInput, provider: HookVideoProvider) {
-  if (input.model === "wan_3_0" && (provider === "openrouter" || provider === "runway")) return input.durationSeconds;
-  if (input.model === "seedance_2_5" && (provider === "runway" || provider === "openrouter")) return input.durationSeconds;
+  if (input.model === "wan_3_0" && (provider === "openrouter" || provider === "runway" || provider === "reapi")) return input.durationSeconds;
+  if (input.model === "seedance_2_5" && (provider === "runway" || provider === "openrouter" || provider === "reapi")) return input.durationSeconds;
   return input.referenceVideoUrl
     ? input.referenceVideoDurationSeconds ?? input.durationSeconds
     : input.durationSeconds;
@@ -606,10 +610,10 @@ function getGenerationDurationSeconds(value: Json | undefined, model: GenerateHo
     : 4;
 }
 
-function getReferenceAudioDurations(value: Json | undefined): number[] {
+function getReferenceAudioDurations(value: Json | undefined, maxSeconds: number): number[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some(seconds => typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0 || seconds > 15)) {
-    throw new ProviderRequestNotSubmittedError("WAN 3.0 audio references must be 15 seconds or shorter.");
+  if (!Array.isArray(value) || value.some(seconds => typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0 || seconds > maxSeconds)) {
+    throw new ProviderRequestNotSubmittedError(`Audio references must be ${maxSeconds} seconds or shorter for this model.`);
   }
   return value as number[];
 }

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "mediaStatus": "published",
-  "release": "ec980f7d578350bba1be",
+  "release": "ec1d17715e95dba5519a",
   "items": [
     {
       "id": "explore-slideshow-fitness-2ac394bae86d6779",
@@ -2921,6 +2921,52 @@
           "file": "82f0f02c725e5307a1f53b676799bec25699cd53b1eb869fc3bfcc82bf7760ad.jpg",
           "width": 1080,
           "height": 1440
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-nota-f79553cb5f15c74e",
+      "format": "slideshow",
+      "title": "Focus 01",
+      "category": "focus",
+      "categoryLabel": "Focus",
+      "posterFile": "5baea1ab726961e9f523f6793f20819f70612aa72870a3d740506f6c17ac4b2d.jpg",
+      "slides": [
+        {
+          "id": "slide-1-5baea1ab7269",
+          "file": "5baea1ab726961e9f523f6793f20819f70612aa72870a3d740506f6c17ac4b2d.jpg",
+          "width": 1320,
+          "height": 1760
+        },
+        {
+          "id": "slide-2-74f2f837d96c",
+          "file": "74f2f837d96c8d878c5e630b5ca2fd8551b18bc9ddc4792b67b2ce928f9813f4.jpg",
+          "width": 1320,
+          "height": 1760
+        },
+        {
+          "id": "slide-3-eaf045962221",
+          "file": "eaf045962221f94808293e5c9ac8c33ede076cf61989d344393d0a5a58a4feec.jpg",
+          "width": 1320,
+          "height": 1760
+        },
+        {
+          "id": "slide-4-dcd2d3e605f9",
+          "file": "dcd2d3e605f9f71a1de9833abca3ff1eb0a4f904b870a4673011f39136c4e68e.jpg",
+          "width": 1320,
+          "height": 1760
+        },
+        {
+          "id": "slide-5-ed3a6942ecc5",
+          "file": "ed3a6942ecc59e043b745e1422ef83bb3cc39d742ed9f127e007542247783658.jpg",
+          "width": 1320,
+          "height": 1760
+        },
+        {
+          "id": "slide-6-9aba9a629ad6",
+          "file": "9aba9a629ad6fb3934b4ef7fa7aa708bb63bb14c65048e3be462edc04137d0d5.jpg",
+          "width": 1320,
+          "height": 1760
         }
       ]
     }

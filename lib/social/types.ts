@@ -19,6 +19,8 @@ export type SocialConnectionStatus =
   | "revoked";
 
 export type SocialConnection = {
+  authorizationRevision?: string;
+  profileNeedsRefresh?: boolean;
   connectedAt: string;
   expiresAt: string | null;
   id: string;

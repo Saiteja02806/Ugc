@@ -12,7 +12,8 @@ import { ToolFailure } from "./read-tools";
 
 const safeCodes = new Set(["CANCELLED", "INPUT_INVALID", "OUTPUT_UPLOAD_FAILED", "PROVIDER_TIMEOUT",
   "QUEUE_DELIVERY_FAILED", "WORKER_STALLED", "PROVIDER_REFERENCE_IMAGE_REJECTED", "PROVIDER_CONTENT_MODERATION",
-  "PROVIDER_INSUFFICIENT_CREDITS", "provider_submission_uncertain", "provider_operation_failed", "CONTENT_PREPARATION_UNAVAILABLE"]);
+  "PROVIDER_INSUFFICIENT_CREDITS", "provider_submission_uncertain", "provider_operation_failed", "provider_operation_pending",
+  "PROVIDER_OUTPUT_COLLECTION_FAILED", "CONTENT_PREPARATION_UNAVAILABLE"]);
 
 export async function getOperationForOwner(userId: string, jobId: string) {
   let job;

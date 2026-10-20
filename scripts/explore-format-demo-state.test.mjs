@@ -19,7 +19,7 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explor
 }).outputText, { exports: textFields, require: name => name === "@/lib/explore/wall-text-editor" ? wallTextEditor : ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const asset = (n, collection = "video") => ({ id: id(n), status: "ready", collection, durationSeconds: 8, width: 720, height: 1280,
+const asset = (n, collection = "video") => ({ id: id(n), status: "ready", sourceType: collection === "video" ? "demo_upload" : "upload", collection, durationSeconds: 8, width: 720, height: 1280,
   title: `Owned ${collection} ${n}`, url: `/owned-${n}.${collection === "audio" ? "mp3" : "mp4"}`, mimeType: collection === "audio" ? "audio/mpeg" : "video/mp4" });
 const output = n => ({ id: id(n), kind: "media_asset", url: asset(n).url, title: `Opening ${n}` });
 const draft = (demo = 2) => ({ version: 1, demoId: id(demo), audioId: id(4), editing: { ...defaultDemoEdit(8), trimStartMs: 500, trimEndMs: 6500, originalVolume: .35, musicVolume: .6 },
@@ -168,6 +168,29 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   };
 }
 
+test("Hook demo preview moves only its visible text block and saves/reopens its position", async () => {
+  const saved = { ...draft(), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0]] } };
+  const block = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 };
+  saved.editing.textOverlays = [block, { ...block, value: "Move this" }, { ...block, value: "Keep this", startMs: 1000 }];
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(saved)]]) }); h.render();
+  const overlay = h.find(n => n.type === "FormatVideoTextOverlay"); assert.ok(overlay);
+  assert.equal(overlay.props.text.value, "Move this", "Blank draft blocks do not shift the target index");
+  overlay.props.onChange({ ...overlay.props.text, x: .65, y: .4 }); h.render();
+  const updated = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.deepEqual(normalize(updated.editing.textOverlays[0]), block);
+  assert.equal(updated.editing.textOverlays[1].x, .65); assert.equal(updated.editing.textOverlays[1].y, .4);
+  assert.deepEqual(normalize(updated.editing.textOverlays[2]), saved.editing.textOverlays[2]);
+  assert.equal(Boolean(h.find(n => n.props?.role === "status" && /crop may cut off/.test(text(n)))), false, "An offset caption inside the full frame has no false crop warning");
+  assert.equal(h.dirty, 1); assert.equal(h.saveRun(), undefined, "Dragging never dispatches rendering");
+  await h.button("Save edits").props.onClick(); assert.equal(h.draftSaves.at(-1).editing.textOverlays[1].x, .65);
+  const reopened = harness({ storage: h.storage }); reopened.render();
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.text.x, .65);
+  reopened.render({ editActive: false, editPreviewActive: true });
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.onChange, undefined, "Overview is read-only");
+  reopened.render({ editActive: true, pendingSource: true });
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay")?.props.onChange, undefined);
+});
+
 test("Content Edit selects its requested demo over another browser draft and restores all saved settings without rendering", () => {
   const h = harness({ storage: new Map([[draftKey(), JSON.stringify(draft(3))]]) });
   h.render({ contentDemoId: id(2) });
@@ -219,11 +242,31 @@ test("Hook overview exposes replacement controls but has no separate demo audio 
   assert.equal(legacy.draftInputs.at(-1).content.backgroundAssetId, null, "Migrating an older opening-scoped draft must not add a demo-only track");
 });
 
+test("Demo Change opens its own asset chooser and cancels without changing the accepted draft", () => {
+  const stored = draft(2), storage = new Map([[draftKey(), JSON.stringify(stored)]]);
+  const h = harness({ storage }); h.render({ editActive: false, editPreviewActive: true });
+  const before = normalize(h.draftInputs.at(-1).content);
+  const change = h.find(n => n.type === "WorkflowClipSourceActions" && n.props.triggerLabel === "Change");
+  assert.equal(change.props.onGenerate, undefined, "A demo cannot start hook generation");
+  change.props.onChooseAssets(); h.render();
+  const picker = h.find(n => n.type === "WorkflowVideoAssetPicker");
+  assert.equal(picker.props.open, true); picker.props.onOpenChange(false); h.render();
+  assert.equal(picker.props.library, "content");
+  assert.equal(picker.props.onSelect({ ...asset(3), sourceType: "generated_video" }), false, "Ordinary Creative Assets cannot replace a demo");
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content), before);
+  assert.equal(h.props.editActive, false); assert.equal(h.dirty, 0);
+  change.props.onChooseAssets(); h.render();
+  h.find(n => n.type === "WorkflowVideoAssetPicker").props.onSelect(asset(3)); h.render();
+  assert.equal(h.draftInputs.at(-1).content.sourceAssetId, id(3));
+  assert.equal(h.props.editActive, false);
+  assert.equal(h.saveRun(), undefined, "Replacement never starts a paid render");
+});
+
 test("demo Edit and Change stay available while uploading, and pending trim survives confirmation", async () => {
   const h = harness(); h.render({ editActive: false, editPreviewActive: true });
   const pending = h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "slow.mp4" }); h.render();
   assert.equal(h.button("Edit demo video").props.disabled, false);
-  assert.equal(h.button("Change").props.disabled, false);
+  assert.equal(h.find(n => n.type === "WorkflowClipSourceActions" && n.props.triggerLabel === "Change").props.disabled, false);
   assert.equal(h.button("Schedule video").props.disabled, true);
   h.render({ editActive: true });
   assert.equal(h.button("Save edits").props.disabled, true);
@@ -283,14 +326,15 @@ test("Hook demo editor has only trim/text tools while audio and legacy framing r
 });
 
 for (const format of ["hook", "wall_text"]) {
-  test(`${format}: empty Demo card uploads and chooses Creative Assets without opening the side panel`, async () => {
+  test(`${format}: empty Demo card uploads and chooses saved demos without opening the side panel`, async () => {
     const h = harness(); h.render({ active: false, editActive: false, editPreviewActive: true });
     const sourceActions = () => h.find(n => n.type === "WorkflowClipSourceActions");
     assert.ok(sourceActions()); assert.equal(sourceActions().props.label, "demo video");
     sourceActions().props.onChooseAssets(); h.render();
     const library = h.find(n => n.type === "WorkflowVideoAssetPicker"); assert.equal(library.props.open, true);
-    assert.notEqual(library.props.library, "content");
-    assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "creative_assets");
+    assert.equal(library.props.library, "content");
+    assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "content");
+    assert.equal(sourceActions().props.library, "content");
     library.props.onOpenChange(false); h.render(); assert.equal(h.dirty, 0, "Cancelling the chooser does not change a draft");
     const pending = sourceActions().props.onUpload({ name: "demo.mp4" }); h.render();
     assert.equal(h.button("Edit demo video").props.disabled, false, "A pending upload must not trap editing");
@@ -340,7 +384,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).backgroundMusic, true);
     assert.equal(h.saveRun(), undefined); assert.equal(h.uploads.length, 0);
     h.select(); assert.equal(toggle().props["aria-checked"], true, "Choosing a demo keeps the soundtrack preference");
-    h.button("Remove").props.onClick(); h.render();
+    h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render();
     assert.equal(toggle().props["aria-checked"], true, "Music can accompany an opening without a demo");
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.equal(restored.input("Background audio").props["aria-checked"], true);
@@ -411,7 +455,7 @@ for (const format of ["hook", "wall_text"]) {
     h.button("Back to videos").props.onClick();
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
     assert.ok(h.button("Replace demo"), "Sidebar keeps the original replacement control");
-    assert.ok(h.button("Creative Assets"), "Sidebar keeps its separate asset-library control");
+    assert.ok(h.button("Saved demos"), "Sidebar keeps its separate asset-library control");
     assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined);
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.deepEqual(normalize(restored.find(n => n.type === textFields.FormatVideoTextFields).props.editing.text), overlay);
@@ -459,7 +503,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
     assert.ok(h.button("Upload demo"));
-    assert.ok(h.button("Creative Assets"));
+    assert.ok(h.button("Saved demos"));
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();
@@ -600,7 +644,7 @@ test("signed-in preview selection and removal preserve the real workflow draft a
   assert.equal(h.input("Selected demo video").props.src, "blob:local-demo");
   assert.equal(readFormatDemoDraft(storage.get(previewKey)).demoId, null);
   assert.equal(storage.get(realKey), realDraft);
-  h.button("Remove").props.onClick(); h.render();
+  h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render();
   assert.equal(h.find(node => node.props?.["aria-label"] === "Selected demo video"), undefined);
   assert.equal(storage.get(realKey), realDraft);
   assert.equal(storage.get(legacyKey), legacyDraft);
@@ -632,7 +676,7 @@ test("legacy opening drafts cannot overwrite a selected or explicitly removed wo
   for (const remove of [false, true]) {
     const storage = new Map([[legacyKey, JSON.stringify(draft())]]);
     const h = harness({ storage }); h.select(asset(3));
-    if (remove) { h.button("Remove").props.onClick(); h.render(); }
+    if (remove) { h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render(); }
     h.render({ videoId: id(1) });
     assert.equal(readFormatDemoDraft(storage.get(draftKey())).demoId, remove ? null : id(3));
     if (remove) {

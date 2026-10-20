@@ -11,7 +11,7 @@ function fixture(backgroundScheduling = false) {
     useState(value) { const index = cursor++; if (!(index in slots)) slots[index] = value; return [slots[index], next => { slots[index] = typeof next === "function" ? next(slots[index]) : next; }]; },
     useCallback(value) { cursor++; return value; }, useEffect(fn) { cursor++; effects.push(fn); } };
   const imports = { react, "react/jsx-runtime": jsx, "@/components/explore/format-video-editor": { FormatVideoEditor: "editor" },
-    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia() { throw new Error("Recovery must not upload"); } },
+    "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo() { throw new Error("Recovery must not upload"); } },
     "@/lib/explore/format-video-source": { formatVideoFromAsset: source => ({ ...source, mediaAssetId: source.id }) },
     "@/components/explore/workflow-section-layout.module.css": { default: {} } };
   const exports = {};
@@ -26,6 +26,8 @@ test("saved JSON clip drafts reach final composition independently of background
     const h = fixture(capability);
     assert.match(h.view().error, /Loading your saved clip edits/);
     const [opening, demo] = h.editors(); assert.ok(demo, "Restored owned demo mounts its draft without a file upload");
+    assert.equal(opening.props.fullDurationHookText, undefined, "Talking Head opening keeps independent timing despite using format=hook");
+    assert.equal(demo.props.fullDurationHookText, undefined, "Talking Head demo never opts into Hook-only timing");
     assert.equal(opening.props.showSoundControls, false, "Talking-head speech is already in the footage; audio setup stays in Demo");
     assert.equal(demo.props.showSoundControls, false, "The focused demo editor must not duplicate Demo audio setup");
     for (const [editor, source] of [[opening, h.props.source], [demo, h.props.demoSource]]) {
@@ -46,6 +48,37 @@ test("separate tasks editing the same media have independent opening/demo draft 
   assert.notEqual(a[0].props.draftScope,b[0].props.draftScope);
   assert.notEqual(a[1].props.draftScope,b[1].props.draftScope);
   assert.notEqual(a[0].props.draftScope,a[1].props.draftScope);
+});
+
+test("Demo sidebar sound uses the mounted demo draft while its focused editor remains closed", () => {
+  const h = fixture();
+  const target = { id: "demo-sound-sidebar" };
+  h.view().demoOriginalSound.props.ref(target);
+  const [opening, demo] = h.editors();
+  assert.equal(demo.props.originalSoundTarget, target);
+  assert.equal(demo.props.active, false);
+  assert.equal(opening.props.originalSoundTarget, undefined, "Demo volume never changes the opening's draft");
+  demo.props.onClipStateChange({ sourceId: h.props.demoSource.id, editing: { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 10000, originalVolume: .35, musicVolume: .2, text: null }, needsSaving: true, needsDraftSaving: true, busy: false, error: null });
+  assert.equal(h.view().demoState.editing.originalVolume, .35);
+  h.view().openDemo();
+  assert.equal(h.editors()[1].props.originalSoundTarget, target, "Opening the editor retains the same sidebar/draft owner");
+});
+
+test("Videos navigation closes either Talking Head clip editor and preserves its draft state", () => {
+  const h = fixture();
+  for (const target of ["opening", "demo"]) {
+    const view = h.view();
+    (target === "opening" ? view.openOpening : view.openDemo)();
+    const editors = h.editors();
+    const editor = editors[target === "opening" ? 0 : 1];
+    const state = { sourceId: target === "opening" ? h.props.source.id : h.props.demoSource.id, editing: { text: { value: "Keep my text" } }, needsDraftSaving: true, busy: false };
+    editor.props.onClipStateChange(state);
+    assert.equal(h.view().editing, true);
+    h.view().closeEditor();
+    assert.equal(h.view().editing, false);
+    assert.equal(h.view()[target === "opening" ? "openingState" : "demoState"], state);
+    assert.equal(h.editors()[target === "opening" ? 0 : 1].props.draftScope, editor.props.draftScope);
+  }
 });
 test("unsaved changes and missing current clip states block final preparation", () => {
   const h = fixture(); const [opening, demo] = h.editors();

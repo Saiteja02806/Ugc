@@ -16,7 +16,7 @@ export class ScheduleRequestError extends Error {
 export function isScheduleTimeRejected(error: unknown) {
   return error instanceof ScheduleRequestError && error.status === 409 && error.code === "schedule_time_too_soon";
 }
-export const SCHEDULE_TIME_REJECTED_MESSAGE = "The earlier request's time was rejected. Choose a future time, then click Schedule post.";
+export const SCHEDULE_TIME_REJECTED_MESSAGE = "Choose a future date and time, then click Schedule post.";
 
 export type ScheduleReceipt = { version: 1; owner: string; kind: "hook" | "phone"; input: ScheduleCreateInput; scheduleId?: string; timeRejected?: true };
 export function readScheduleReceipt(raw: string | null, owner: string, kind: "hook" | "phone", sourceKind: "media_asset" | "library_item" = "media_asset"): ScheduleReceipt | null {
@@ -46,8 +46,8 @@ export function verifySavedSchedule(value: unknown, saved: ScheduleReceipt): Sch
   return s;
 }
 export function scheduleReceiptMessage(schedule: ScheduledPost): string {
-  if (schedule.status === "scheduled") return "Your post is scheduled. Review it in Scheduling.";
+  if (schedule.status === "scheduled") return "Post scheduled";
   if (schedule.status === "published") return "Your post is published. Review it in Scheduling.";
   if (["failed", "partially_failed", "cancelled"].includes(schedule.status)) return "Your saved post needs review in Scheduling.";
-  return "Your schedule is saved. Check Scheduling for account actions or pending preparation.";
+  return "Post scheduled. Check Scheduling for account actions or pending preparation.";
 }

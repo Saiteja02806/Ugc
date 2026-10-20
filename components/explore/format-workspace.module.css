@@ -47,7 +47,12 @@
 .emptyControls .emptyIcon { width: 44px; height: 44px; border-radius: 10px; }
 .classicWorkspace:not([data-format="slideshow"]) .workflowControls[data-section="edit"] { align-self: start; }
 .clipStage { container: clip-editor / inline-size; gap: 20px; }
-.clipStage[data-editing="true"] { gap: 12px; }
+.clipStage[data-editing="true"] { gap: 12px; padding: 12px; }
+.clipStage[data-editing="true"] .clipStageHeader { gap: 8px 16px; }
+.clipStage[data-editing="true"] .clipActions { width: auto; min-width: 0; margin-left: auto; }
+.clipStage[data-editing="true"] .clipActions > div { justify-content: flex-end; }
+.clipStage[data-editing="true"] .clipTools { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.clipStage[data-editing="true"] [data-clip-tools-heading] { display: none; }
 .clipStageHeader { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--background); }
 .clipStageHeader button { min-height: 40px; }
 .clipStageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -139,14 +144,14 @@
 .backgroundAudioSwitch:disabled { opacity: .55; cursor: default; }
 .backgroundChoices { display: grid; gap: 10px; margin-top: 12px; }
 @container workflow-form (min-width: 350px) { .demoSourceActions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.clipEditorBody[data-editing="false"] .clipPreviews { display: flex; flex-wrap: wrap; align-items: start; justify-content: center; width: 100%; max-width: none; gap: 24px; }
-.clipEditorBody[data-editing="false"] .clipPreviewCard { width: min(100%, 420px); }
-.clipEditorBody[data-editing="false"] .clipPreviewCard:has([data-clip-orientation="portrait"]) { width: min(100%, 328px); }
-.clipEditorBody[data-editing="false"] .clipPreviewCard[data-clip-empty="true"] { width: min(100%, calc(clamp(360px, 100dvh - 300px, 560px) * 9 / 16 + 32px)); }
-.clipEditorBody[data-editing="false"] .emptyClip { display: flex; aspect-ratio: 9 / 16; min-height: 0; flex-direction: column; justify-content: center; gap: 16px; padding: 12px; text-align: center; }
+.clipEditorBody[data-editing="false"] .clipPreviews { --overview-height: clamp(260px, 100dvh - 380px, 520px); display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; width: 100%; max-width: none; gap: 20px; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard { flex: 1 1 280px; width: min(100%, 480px); max-width: 480px; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard[data-clip-empty="true"] { align-self: stretch; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard[data-clip-empty="true"] { display: flex; align-items: center; justify-content: center; }
+.clipEditorBody[data-editing="false"] .emptyClip { display: flex; width: min(100%, calc(var(--overview-height) * 9 / 16)); min-height: var(--overview-height); flex-direction: column; justify-content: center; gap: 16px; padding: 12px; text-align: center; }
 .clipEditorBody[data-editing="false"] .emptyClipTitle { justify-content: center; }
 .clipEditorBody[data-editing="false"] .emptyClipActions { max-width: 240px; }
-.clipEditorBody[data-editing="false"] .clipPreviewCard [data-clip-media] { max-width: min(100%, 420px, calc(clamp(180px, 100dvh - 440px, 360px) * var(--clip-aspect))); }
+.clipEditorBody[data-editing="false"] .clipPreviewCard [data-clip-media] { max-width: min(100%, 440px, calc(var(--overview-height) * var(--clip-aspect))); }
 @media (prefers-reduced-motion: reduce) { .backgroundAudioTrack, .backgroundAudioThumb { transition: none; } }
 .demoOptions { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
 .demoOptions summary { cursor: pointer; min-height: 24px; font-size: 13px; font-weight: 500; }
@@ -193,7 +198,7 @@
   .workspace.classicWorkspace .classicMain { min-height: 0; overflow: hidden; }
   .classicMain .referenceArea { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
   .classicMain .results, .classicMain .savedPreview { overflow-y: auto; }
-  /* The action row reserves space instead of floating over the editing fields. */
+  /* The compact header owns actions; the remaining height belongs to tools. */
   .classicMain .clipStage { overflow: hidden; }
   .clipScrollArea { flex: 1; overflow-y: auto; scrollbar-gutter: stable; scroll-padding-block: 12px; padding-bottom: 12px; }
 }

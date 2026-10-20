@@ -533,7 +533,10 @@ export function SchedulingWorkspace() {
 
     const timer = window.setTimeout(() => {
       void loadScheduleMedia();
-      void loadSchedules();
+      // Workflow mutations and background preparation may have changed the
+      // calendar while this route was inactive. Keep cached rows visible, but
+      // always reconcile the list when returning to Scheduling.
+      void loadSchedules({ force: true });
       void loadSocialConnections();
     }, 0);
     return () => window.clearTimeout(timer);
@@ -3340,13 +3343,16 @@ function getTargetStatusHelpText(
 
   if (target.status === "publishing") {
     if (target.nextRetryAt) {
-      return `Temporary platform issue. Retrying ${formatShortDateTime(
+      const prefix = Date.parse(target.nextRetryAt) <= Date.now()
+        ? "Retry pending since"
+        : "Retry scheduled for";
+      return `${prefix} ${formatShortDateTime(
         target.nextRetryAt,
         timezone,
       )}.`;
     }
 
-    return "The worker is posting this video now.";
+    return "The worker is publishing this post now.";
   }
 
   if (target.status === "scheduled") {

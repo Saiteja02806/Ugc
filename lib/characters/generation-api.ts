@@ -154,11 +154,14 @@ export function createCharacterGenerationHandlers(dependencies: CharacterApiDepe
             console.warn("Influencer usage delivery will retry.", { jobId: job.id });
           });
         }
+        const input = getCharacterJobInput(job);
         const result: CharacterJobStatusResponse = {
           ok: true,
           job: {
             id: job.id,
-            model: CharacterImageModelSchema.parse(getCharacterJobInput(job)?.model),
+            model: CharacterImageModelSchema.parse(input?.model),
+            prompt: input?.promptSource === "user" && typeof input.prompt === "string" ? input.prompt : null,
+            batchId: typeof input?.batchId === "string" ? input.batchId : null,
             status: job.status,
             isTerminal: TERMINAL_STATUSES.has(job.status),
             error: getPublicBackgroundJob(job).error?.message ?? null,

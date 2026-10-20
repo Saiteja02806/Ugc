@@ -22,8 +22,13 @@ async function handleMediaDownload(request: Request, assetId: string, kind: "vid
     const user = await requireFirebaseUser(request);
     if (!UUID.test(assetId)) return unavailable();
     const asset = await getMediaAssetForOwner({ assetId, userId: user.uid });
+    // Saving an image in My influencers promotes its collection in place.
+    // The owned image and its storage object remain the same download.
+    const matchesCollection = kind === "image"
+      ? asset?.collection === "image" || asset?.collection === "influencer"
+      : asset?.collection === "video";
     if (!asset || asset.user_id !== user.uid || asset.deleted_at !== null ||
-      asset.status !== "ready" || asset.collection !== kind) return unavailable();
+      asset.status !== "ready" || !matchesCollection) return unavailable();
 
     // Sign only the saved object in the app's media bucket, never a client URL/key.
     const key = asset.storage_key;

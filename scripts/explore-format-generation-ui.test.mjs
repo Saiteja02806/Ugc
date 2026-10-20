@@ -20,6 +20,7 @@ function load(file, imports = {}, globals = {}) {
     if (name in imports) return imports[name];
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
     if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
+    if (name === "@/lib/explore/slideshow-composer-draft") return load("lib/explore/slideshow-composer-draft.ts");
     if (name === "../../lib/explore/reference-video-prompts.ts") return referencePrompts;
     if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
@@ -30,10 +31,12 @@ function load(file, imports = {}, globals = {}) {
   }, ...globals });
   return exports;
 }
-function harness(format, { reference = true, referenceUrls, slideshowSlideCount, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
+function harness(format, { reference = true, referenceUrls, slideshowSlideCount, regenerationTarget, access = "pro", preview = false, captureRequests = false, completedJob = null, completedJobs = null, persistedJobId = completedJob?.id ?? null, wanEnabled = false, seedanceEnabled = false, initialStorage = [], recoveredBatch = null } = {}) {
   const events = [], controls = {}, results = {};
   const requests = [], states = [], errors = [];
-  const effects = [], readyVideos = [];
+  const effects = [], readyVideos = [], selectedVersions = [], autoVersions = [];
+  const jobs = completedJobs ?? (completedJob ? [completedJob] : []);
+  const fixtureUser = { uid: "test-owner" };
   let cursor = 0, refCursor = 0, effectCursor = 0;
   const refs = [], effectDependencies = [];
   let promptSet = false, rendering = false, stateChanged = false;
@@ -51,7 +54,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
           effectDependencies[index] = deps ?? [];
           // Submission-only fixtures still execute the actual account lifecycle.
           if (callback.toString().includes("activeUserIdRef.current =") || callback.toString().includes("activeGalleryVideoUrl.current =")) callback();
-          else if (completedJob) effects.push(callback);
+          else if (jobs.length) effects.push(callback);
         }
       }, useMemo: fn => fn(), useCallback: fn => fn,
     },
@@ -59,12 +62,12 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(captureRequests ? `refType=${format}&refId=${format}-fixture&exploreRecreate=1` : "") },
     "next/link": "Link",
-    "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },
+    "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: fixtureUser }) },
     "@/lib/billing/generation-credit-policy": { DEFAULT_VIDEO_GENERATION_CREDITS_PER_SECOND: 4 },
     "@/lib/ai-studio/generation-settings": load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: String(wanEnabled), NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: String(seedanceEnabled) } } }),
     "@/lib/ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": load("lib/ai-studio/generation-settings.ts") }),
-    "@/lib/ai-studio/media-client": completedJob ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
-      id, collection: "video", sourceType: "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
+    "@/lib/ai-studio/media-client": jobs.length ? { fetchAIStudioMediaAssets: async () => [], fetchAIStudioMediaAsset: async id => ({
+      id, collection: format === "slideshow" ? "image" : "video", sourceType: format === "slideshow" ? "generated_image" : "generated_video", status: "ready", title: "Generated hook", url: "/generated-hook.mp4", durationSeconds: 3, ratio: "9:16", createdAt: "2026-10-09T00:00:00Z", metadata: {},
     }) } : {},
     "@/lib/ai-studio/media-results": load("lib/ai-studio/media-results.ts"),
     "@/lib/ai-studio/image-history": load("lib/ai-studio/image-history.ts"),
@@ -72,12 +75,15 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     "@/lib/ai-studio/video-generation-state": load("lib/ai-studio/video-generation-state.ts"),
     "@/lib/ai-studio/generation-session": load("lib/ai-studio/generation-session.ts"),
     "@/lib/ai-studio/pending-generation": pendingGeneration,
+    "@/components/explore/slideshow-prompt-improver": { useSlideshowPromptImprover: options => ({ busy: false, action: { type: "button", props: { onClick: () => options.onChange("One improved prompt for the entire slideshow") } }, feedback: null }) },
+    // The real recovery hook is covered by slideshow-reliable-edits.browser.cjs.
+    "@/components/explore/use-slideshow-composer-draft": { useSlideshowComposerDraft: () => { const [prompt, setPrompt] = imports.react.useState("My requested changes"); const [images, setImages] = imports.react.useState([]); return { prompt, setPrompt, images, setImages, busy: false, error: null }; } },
     "@/components/generation/use-generation-discovery": { useGenerationDiscovery: args => ({ available: Boolean(recoveredBatch), checking: false, error: null, check: async () => { if (recoveredBatch) args.onRecovered(recoveredBatch.result, recoveredBatch.input); } }) },
     "@/lib/http/read-deadline": readDeadline,
     "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
     "@/lib/explore/format-generation-prompt": load("lib/explore/format-generation-prompt.ts", { "@/lib/ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts") }),
-    "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || completedJob ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
-    "@/lib/jobs/background-job-client": { useStoredBackgroundJobIds: () => [], useRecoverableWorkflowJobs: () => ({ queries: completedJob ? [{ data: completedJob }] : [], recovering: false, recoveryError: null }), useBackgroundJobs: () => completedJob ? [{ data: completedJob }] : [], usePersistedJobIdFromUrl: () => persistedJobId,
+    "@/lib/firebase/auth": { getCurrentUserIdToken: () => { events.push("waiting-for-auth"); return captureRequests || jobs.length ? Promise.resolve("fixture-token") : new Promise(() => {}); } },
+    "@/lib/jobs/background-job-client": { useStoredBackgroundJobIds: () => completedJobs ? jobs.map(job => job.id) : [], useRecoverableWorkflowJobs: () => ({ queries: jobs.map(data => ({ data })), recovering: false, recoveryError: null }), useBackgroundJobs: () => jobs.map(data => ({ data })), usePersistedJobIdFromUrl: () => persistedJobId,
       useCancelBackgroundJob: () => ({}), useRetryBackgroundJob: () => ({}) },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
@@ -95,7 +101,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     slideshowSlideCount,
     referenceImageAssetId: regenerationTarget,
     preview, referenceImageUrl: format === "slideshow" && reference ? "https://example.test/reference.png" : undefined, styleVideo: format !== "slideshow" && format !== "studio" && reference ? {url:"https://example.test/style.mp4",name:"Style video",duration:null} : undefined, emptyContent: "Empty",
-    workflow: format === "studio" ? undefined : { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video) },
+    workflow: format === "studio" ? undefined : { format, controlsTarget: controls, resultsTarget: results, onGenerationStart: () => events.push("show-results"), onGeneratedVideo: video => readyVideos.push(video), onSelectSlideshow: images => { selectedVersions.push(images); return true; }, onGeneratedSlideshow: images => { autoVersions.push(images); return true; } },
   } };
   props.recreateView.onClearReference = () => { props.recreateView.styleVideo = undefined; };
   function find(node, type) {
@@ -105,8 +111,54 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     return null;
   }
   const render = () => { let tree; do { stateChanged = false; rendering = true; cursor = 0; refCursor = 0; effectCursor = 0; tree = Panel(props); rendering = false; } while (stateChanged); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, readyVideos, stored, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  return { events, controls, results, requests, errors, readyVideos, selectedVersions, autoVersions, stored, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
+
+function resultNodes(tree) {
+  return Array.isArray(tree) ? tree.flatMap(resultNodes) : tree && typeof tree === "object" ? [tree, ...resultNodes(tree.props?.children)] : [];
+}
+
+test("slideshow sends the text-box rewrite through the existing generation request without per-slide plans", async () => {
+  for (const editAfterRewrite of [false, true]) {
+    const h = harness("slideshow", { referenceUrls: ["https://example.test/reference.png", "https://example.test/slide4.png"], slideshowSlideCount: 2, captureRequests: true });
+    let composer = h.render().composer;
+    composer.props.promptAction.props.onClick();
+    composer = h.render().composer;
+    assert.equal(composer.props.prompt, "One improved prompt for the entire slideshow");
+    if (editAfterRewrite) { composer.props.onPromptChange("My edited rewrite"); composer = h.render().composer; }
+    await composer.props.onSubmit({ preventDefault() {} });
+    await new Promise(resolve => setImmediate(resolve));
+    const sent = h.requests.find(request => request.url === "/api/ai-studio/images/generate");
+    assert.ok(sent);
+    assert.equal(sent.body.prompt, editAfterRewrite ? "My edited rewrite" : "One improved prompt for the entire slideshow");
+    assert.equal("slideshowPromptPlan" in sent.body, false);
+    assert.equal(sent.body.slideshowSlideCount, 2);
+    assert.deepEqual(Array.from(sent.body.referenceImageUrls), ["https://example.test/reference.png", "https://example.test/slide4.png"]);
+  }
+});
+
+for (const state of ["completed", "queued", "failed"]) test(`slideshow groups a ${state} neighboring slide without duplicate cards or automatic draft edits`, async () => {
+  const job = (index, status) => ({ id: `slide-${index}`, jobType: "image_generation", exploreFormat: "slideshow", status, createdAt: `2026-10-16T10:00:0${2 - index}Z`, updatedAt: "2026-10-16T10:01:00Z", slideshowGeneration: slideshowBatch.slideshowGenerationSlot("batch", 2, 1, index), output: status === "completed" ? { mediaAssetId: `asset-${index}`, url: `https://owned.test/${index}.png`, ratio: "4:5" } : null });
+  const jobs = [job(1, "processing"), job(0, "processing")];
+  const h = harness("slideshow", { completedJobs: jobs });
+  await h.flushEffects(); h.render();
+  Object.assign(jobs[0], job(1, state)); Object.assign(jobs[1], job(0, "completed"));
+  for (let i = 0; i < 3; i++) { await h.flushEffects(); h.render(); }
+  const nodes = resultNodes(h.render().output);
+  const versions = nodes.filter(node => node.type === "section" && node.props["aria-label"] === "Generated slideshow version 1");
+  assert.equal(versions.length, 1);
+  const cards = nodes.filter(node => node.type?.name === "ImageGenerationCard");
+  assert.equal(cards.length, state === "failed" ? 1 : 2);
+  assert.equal(cards[0].props.asset.id, "asset-0", "reference order wins over request/completion order");
+  assert.equal(cards[0].props.compact, true);
+  const edit = nodes.find(node => node.type === "Button" && /^Edit (these|this)/.test([node.props.children].flat().join("")));
+  assert.equal(edit.props.disabled, state === "queued");
+  assert.equal(h.autoVersions.length, 0, "completion must not populate the draft behind the user's back");
+  if (state !== "queued") {
+    await edit.props.onClick(); await new Promise(setImmediate);
+    assert.deepEqual(Array.from(h.selectedVersions[0], image => image.id), state === "completed" ? ["asset-0", "asset-1"] : ["asset-0"]);
+  }
+});
 
 test("slideshow pending cards restore prompt and ratio from the same owner/scope key used by admission", async () => {
   const jobId = "00000000-0000-4000-8000-000000000002";
@@ -163,6 +215,47 @@ test("earlier video discovery preserves newer hints and cannot select an old com
 });
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: Seedance keeps gallery guidance, output duration and audio without Omni edit mode`, async () => {
+    const h = harness(format, { seedanceEnabled: true, captureRequests: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 12);
+    setting("Video model").props.onChange("seedance_2_5");
+    setting("Video duration").props.onChange(17);
+    const audio = { kind: "audio", asset: { id: "seedance-audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 3, fileSizeBytes: 1000 } };
+    h.render().composer.props.referenceControls.props.onChange(audio, "audio");
+    const composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    assert.equal(composer.props.estimatedCredits, 68);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    const input = h.requests[0].body;
+    assert.equal(input.exploreFormat, format); assert.equal(input.model, "seedance_2_5");
+    assert.equal(input.useGalleryVideoReference, true); assert.equal(input.referenceVideoMode, undefined);
+    assert.equal(input.durationSeconds, 17); assert.deepEqual(input.referenceAudioUrls, [audio.asset.url]);
+    assert.deepEqual(input.referenceAudioAssetIds, [audio.asset.id]);
+  });
+  test(`${format}: Seedance 2.5 is selectable and submits its exact output settings`, async () => {
+    const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    const option = setting("Video model").props.options.find(option => option.value === "seedance_2_5");
+    assert.ok(option, "Explore must offer Seedance alongside Omni and WAN");
+    assert.equal(option.label, "Seedance 2.5");
+    assert.equal(option.disabled, false);
+    setting("Video model").props.onChange(option.value);
+    setting("Video duration").props.onChange(17);
+    setting("Video quality").props.onChange("480p");
+    const composer = h.render().composer;
+    assert.match(composer.props.settingsSummary, /Seedance 2\.5.*17s/);
+    assert.equal(composer.props.referenceControls.props.audioInputEnabled, true);
+    assert.equal(composer.props.referenceControls.props.videoInputEnabled, true);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].body.model, "seedance_2_5");
+    assert.equal(h.requests[0].body.durationSeconds, 17);
+    assert.equal(h.requests[0].body.resolution, "480p");
+    const disabled = harness(format).composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.options.find(option => option.value === "seedance_2_5");
+    assert.equal(disabled.disabled, true, "the provider kill switch remains respected");
+  });
   test(`${format}: local preview allows supported quality changes while generation remains locked`, () => {
     const h = harness(format, { preview: true, access: "signed_out", reference: false });
     const setting = (label) => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
@@ -325,6 +418,20 @@ for (const format of ["hook", "wall_text"]) {
     await h.render().composer.props.onSubmit({ preventDefault() {} });
     assert.deepEqual(h.requests[0].body.referenceImageUrls, [images[0].asset.url, images[2].asset.url]);
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
+    assert.equal(h.requests[0].body.imageReferencePurpose, "person");
+  });
+  for (const purpose of ["person", "general"]) test(`${format}: ${purpose} image roles and main selection survive request submission`, async () => {
+    const h = harness(format, { captureRequests: true, reference: false });
+    const images = ["main", "left", "right"].map(id => ({ kind: "image", asset: { id, url: `https://owned-media.test/${id}.png`, title: id } }));
+    const controls = () => h.render().composer.props.referenceControls.props;
+    controls().onImagesChange([images[2], images[0], images[1]]);
+    controls().onImagePurposeChange(purpose);
+    assert.equal(controls().imagePurpose, purpose);
+    await h.render().composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.avatarImageUrl, images[2].asset.url);
+    assert.deepEqual(h.requests[0].body.referenceImageUrls, [images[2].asset.url, images[0].asset.url, images[1].asset.url]);
+    assert.equal(h.requests[0].body.imageReferencePurpose, purpose);
+    assert.equal(h.requests[0].body.referenceVideoUrl, null, "Image-only generation must remain supported");
   });
   test(`${format}: custom video is sent as owned generation input in the real generation request`, async () => {
     const h = harness(format, { captureRequests: true });
@@ -407,7 +514,7 @@ for (const format of ["hook", "wall_text"]) {
     setting("Video model").props.onChange("wan_3_0");
     const image = { kind: "image", asset: { id: "image", url: "https://owned.test/person.png", title: "Person" } };
     const video = { kind: "video", asset: { id: "video", url: "https://owned.test/motion.mp4", title: "Motion", durationSeconds: 14, fileSizeBytes: 32 * 1024 ** 2 } };
-    const audio = { kind: "audio", asset: { id: "audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 15, fileSizeBytes: 25 * 1024 ** 2 } };
+    const audio = { kind: "audio", asset: { id: "audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 15, fileSizeBytes: 15 * 1024 ** 2 } };
     for (const ref of [image, video, audio]) h.render().composer.props.referenceControls.props.onChange(ref, ref.kind);
     setting("Video duration").props.onChange(3);
     setting("Video model").props.onChange("google_omni");

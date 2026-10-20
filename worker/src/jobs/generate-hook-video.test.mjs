@@ -32,6 +32,7 @@ for (const [file, name, provider] of [
   ["runway-wan-video", "generateRunwayWanVideoBuffer", "runway"],
   ["openrouter-seedance-video", "generateOpenRouterSeedanceVideoBuffer", "openrouter"],
   ["openrouter-wan-video", "generateOpenRouterWanVideoBuffer", "openrouter"],
+  ["reapi-video", "generateReapiVideoBuffer", "reapi"],
   ["kling-video", "generateKlingVideoBuffer", "kling"],
   ["gemini-omni-video", "generateGeminiOmniVideoBuffer", "gemini"],
   ["runway-video", "generateRunwayHookVideoBuffer", "runway"],
@@ -60,6 +61,7 @@ function fixture(input = {}, shouldSubmit = true) {
       videoId: "fixture-video", promptMode: "direct", ...input,
     } },
     context: { checkpoint: async () => {}, store: {
+      getGenerationProviderOperation: async () => null,
       reserveGenerationProviderOperation: async value => {
         events.push({ name: "reserve", ...value });
         return { shouldSubmit, operation: { status: "reserved", provider_operation_id: null } };
@@ -74,20 +76,20 @@ function fixture(input = {}, shouldSubmit = true) {
 }
 
 test("WAN multimodal worker dispatch retains every reference and the selected output duration", async () => {
-  const inputs = { model: "wan_3_0", provider: "runway", durationSeconds: 3,
+  const inputs = { model: "wan_3_0", provider: "reapi", durationSeconds: 3,
     referenceImageUrls: ["https://owned-media.example.test/image.png"],
     referenceAudioUrls: ["https://owned-media.example.test/audio.mp3"], referenceAudioDurationSeconds: [5],
     referenceVideoUrl: "https://owned-media.example.test/video.mp4", referenceVideoDurationSeconds: 15 };
   const f = fixture(inputs);
   const output = await runGenerateHookVideoJob(f.job, f.context);
-  assert.equal(received.at(-1).provider, "runway"); assert.equal(received.at(-1).model, "wan_3_0");
+  assert.equal(received.at(-1).provider, "reapi"); assert.equal(received.at(-1).model, "wan_3_0");
   assert.deepEqual(received.at(-1).referenceImageUrls, inputs.referenceImageUrls);
   assert.deepEqual(received.at(-1).referenceAudioUrls, inputs.referenceAudioUrls);
   assert.deepEqual(received.at(-1).referenceAudioDurationSeconds, [5]);
   assert.equal(received.at(-1).referenceVideoUrl, inputs.referenceVideoUrl);
   assert.equal(output.durationSeconds, 3, "Input video duration must not replace the chosen output duration");
   const reservation = f.events.find(event => event.name === "reserve");
-  assert.equal(reservation.operationKey, "primary-runway");
+  assert.equal(reservation.operationKey, "primary-reapi");
   const different = fixture({ ...inputs, referenceAudioDurationSeconds: [4] });
   await runGenerateHookVideoJob(different.job, different.context);
   assert.notEqual(different.events.find(event => event.name === "reserve").requestFingerprint, reservation.requestFingerprint);
@@ -107,7 +109,7 @@ test("both Explore formats apply their selected MP3 to the completed provider re
   }
 });
 
-test("each new eligible Hook reaches the generation soundtrack postprocessor with its exact registered MP3", async () => {
+test("each eligible Hook reaches audio postprocessing and silent references omit automatic soundtrack receipts", async () => {
   const { getHookReferenceGalleryItems } = await import("../../dist/lib/explore-hook-reference-release.js");
   const references = getHookReferenceGalleryItems(); assert.equal(references.length, 98);
   for (const reference of references) {
@@ -116,7 +118,11 @@ test("each new eligible Hook reaches the generation soundtrack postprocessor wit
     const output = await runGenerateHookVideoJob(f.job, f.context);
     assert.equal(referenceAudioCalls.length, before + 1);
     assert.equal(referenceAudioCalls.at(-1).reference.audioStorageKey, reference.audioStorageKey);
-    assert.deepEqual(output.referenceSoundtrack, { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 });
+    if (reference.audioPolicy === "silent") {
+      assert.ok(["explore-paired-hook-ef59f4b5e69bc9e125f8ada7", "explore-paired-hook-4f4ca22ed141ee115d1eb913", "explore-paired-hook-bfd6368d9fc52f44c6422a2b"].includes(reference.id));
+      assert.equal(referenceAudioCalls.at(-1).reference.audioPolicy, "silent");
+      assert.equal(output.referenceSoundtrack, undefined);
+    } else assert.deepEqual(output.referenceSoundtrack, { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 });
   }
 });
 

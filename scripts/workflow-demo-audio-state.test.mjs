@@ -73,6 +73,12 @@ function layout(kind) {
     removeUpload() {}, clearUploadError() {}, clearSelection() {},
   };
   const imports = {
+    "./use-talking-head-reference": { useTalkingHeadReference: () => ({
+      query: { data: [], isPending: false, isError: false, refetch() {} }, selectedId: null, instructions: "",
+      changeInstructions() {}, choose: async () => false, retry() {}, videoReference: attachments[mediaCursor++],
+    }) },
+    "./talking-head-references": { TalkingHeadReferences: "talking-head-references" },
+    "./talking-head-references.module.css": css,
     "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
     react: {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, (value) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
@@ -95,7 +101,8 @@ function layout(kind) {
       createWorkflowGenerationSettings: (duration, model) => ({ model: model ?? "seedance_2_5", duration, quantity: 1, resolution: "720p", aspectRatio: "9:16" }),
       normalizeWorkflowGenerationSettings: value => value,
     },
-    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => { throw new Error("Unexpected reference upload in a local workflow fixture"); } },
+    "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo: async () => { throw Error("Unexpected demo upload"); } },
+      "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => { throw new Error("Unexpected reference upload in a local workflow fixture"); } },
     "@/components/explore/hook-workflow-composer": { HookWorkflowComposer: "composer" },
     "@/components/explore/phone-workflow-composer": { PhoneWorkflowComposer: "composer", AppScreenPicker: "app-screen" },
     "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition" },
@@ -123,6 +130,8 @@ function layout(kind) {
     "@/components/explore/workflow-studio.module.css": css,
     "@/components/explore/workflow-creation.module.css": css,
     "@/components/explore/workflow-section-layout.module.css": css,
+    "@/components/explore/workflow-video-asset-picker": { WorkflowVideoAssetPicker: "WorkflowVideoAssetPicker" },
+    "@/components/explore/workflow-clip-source-actions": { WorkflowClipSourceActions: "WorkflowClipSourceActions" },
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
   };

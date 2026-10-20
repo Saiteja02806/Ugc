@@ -1994,9 +1994,26 @@ async function markAssignmentsShown(assignmentIds: string[]) {
   }
 }
 
+/** Hydrate existing quota assignments without marking them shown or preparing replacements. */
+export async function listReviewedTrendingCarousels(userId: string, assignmentIds: readonly string[]) {
+  if (!assignmentIds.length) return [];
+  const { data, error } = await getClient().from(USER_CAROUSEL_ASSIGNMENTS_TABLE)
+    .select("*").eq("user_id", userId).in("id", [...assignmentIds]);
+  if (error) throw new Error(`Could not load previous slideshows: ${error.message}`);
+  const assignments = (data ?? []).map(mapAssignment);
+  const statuses = await getCarouselGenerationStatusesByIds(assignments.map(item => item.carouselId));
+  const byId = new Map(statuses.map(status => [status.generation.id, status]));
+  return assignments.flatMap(assignment => {
+    const status = byId.get(assignment.carouselId);
+    if (!status || status.generation.userId !== userId || !isCompleteReadyCarouselForCurrentStorage(status)) return [];
+    return [toTrendingFeedCarousel({ assignment, generation: status.generation, slides: status.slides,
+      feedItem: { id: assignment.id, position: 0, source: "new" } })];
+  });
+}
+
 function toTrendingFeedCarousel(params: {
   assignment: UserCarouselAssignment;
-  feedItem: DailyCarouselFeedItemRow;
+  feedItem: Pick<DailyCarouselFeedItemRow, "id" | "position" | "source">;
   generation: CarouselGenerationRecord;
   slides: CarouselSlideRecord[];
 }): TrendingFeedCarousel {

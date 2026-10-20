@@ -198,7 +198,7 @@ test("both new slideshow categories use the existing production filters and cate
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   vm.runInNewContext(code, { module: loadedModule, exports: loadedModule.exports });
   const { referenceCategories, filterReferences, interleaveReferenceCategories } = loadedModule.exports;
-  for (const [id, label, count] of [["calory-tracking", "Calory Tracking", 6], ["pet-tracking", "Pet Tracking", 3]]) {
+  for (const [id, label, count] of [["calory-tracking", "Calory Tracking", 6], ["pet-tracking", "Pet Tracking", 3], ["focus", "Focus", 1]]) {
     const category = referenceCategories(references, "slideshow").find((item) => item.id === id);
     assert.equal(category.label, label);
     assert.equal(category.count, count);

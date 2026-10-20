@@ -27,7 +27,7 @@ function hooks() {
 function load(file, imports, globals = {}) {
   const exported = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText,
-    { exports: exported, require(name) { if (name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if (name === "@/lib/explore/workflow-visit-storage") return { workflowVisitStorage }; assert.ok(name in imports, name); return imports[name]; }, Error, AbortController, AbortSignal, ...globals });
+    { exports: exported, require(name) { if (name === "@/lib/explore/format-reference-images") return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if (name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if (name === "@/lib/explore/workflow-visit-storage") return { workflowVisitStorage }; assert.ok(name in imports, name); return imports[name]; }, Error, AbortController, AbortSignal, ...globals });
   return exported;
 }
 function sessionHarness({ owner = "owner-a", saved = null, lookup = async assetId => media(Number(assetId.slice(-1))), store = new Map(), token = async () => "temporary-owner-token", deadlineMs, draftEntry, locks } = {}) {
@@ -167,6 +167,7 @@ function demoSelectionHarness() {
       localDemo: { choose: () => demoMetadata.promise, remove() {} }, localDemoAudio: { choose: () => audioMetadata.promise, remove() {}, cancelPending() {} },
       updateSession(change) { Object.assign(session, change(session)); }, clearProblem() {}, setDemoAudioPlayback() {}, setDemoFraming() {},
       setDemoUpload(next) { state.demoUpload = typeof next === "function" ? next(state.demoUpload) : next; }, setAudioUpload(next) { state.audioUpload = typeof next === "function" ? next(state.audioUpload) : next; },
+      uploadHookVideoDemo(file) { const pending = deferred(); uploads.push({ file, kind:"video", ...pending }); return pending.promise.then(result => result.asset); },
       uploadAIStudioReferenceMedia(file, kind) { const pending = deferred(); uploads.push({ file, kind, ...pending }); return pending.promise; },
     });
   return { ...exported, uploads, acceptedAudio, demoMetadata, audioMetadata, session, assets, state };
@@ -193,5 +194,5 @@ test("a rejected demo replacement retains prior accepted demo/audio while cancel
   const h = demoSelectionHarness(); const audioChoice = h.chooseDemoAudio({ name: "audio-A" }); h.audioMetadata.resolve(true); await tick();
   const demoChoice = h.chooseDemo({ name: "invalid-demo-B" }); h.demoMetadata.resolve(false); assert.equal(await demoChoice, false);
   h.uploads.find(upload => upload.kind === "audio").resolve({ asset: { ...media(9), collection: "audio", mimeType: "audio/mpeg" } }); assert.equal(await audioChoice, false);
-  assert.equal(h.session.demoAssetId, id(1)); assert.equal(h.session.demoAudioAssetId, id(8)); assert.equal(h.acceptedAudio.length, 0); assert.equal(h.session.pendingDemoAudio, false);
+  assert.equal(h.session.demoAssetId, id(1)); assert.equal(h.session.demoAudioAssetId, id(8)); assert.equal(h.acceptedAudio.length, 0); assert.equal(h.session.pendingDemoAudio, false); assert.equal(h.session.pendingDemo, false);
 });

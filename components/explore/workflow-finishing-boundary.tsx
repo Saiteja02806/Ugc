@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DEFAULT_FINISHING_OPTIONS, useWorkflowFinishing, type FinishingOptions, type WorkflowAction } from "@/components/explore/use-workflow-finishing";
+import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { WorkflowScheduleDraft } from "@/components/explore/workflow-scheduling-panel";
 import { workflowScheduleTargets } from "@/lib/explore/workflow-scheduling-draft";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/scheduling/account-data-query";
 import type { MediaAsset } from "@/lib/media/types";
 import { readScheduleReceipt, verifySavedSchedule, scheduleReceiptMessage, isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE, type ScheduleReceipt } from "@/lib/explore/workflow-schedule-client";
 import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
@@ -18,7 +21,7 @@ import type { WorkflowCaptions } from "./workflow-caption-editor";
 import { useWorkflowBackgroundMusic, type WorkflowBackgroundMusic } from "./use-workflow-background-music";
 
 type WorkflowFinishingView = { edit: WorkflowAction; schedule: WorkflowAction; output: MediaAsset | null; options: FinishingOptions; setOptions: (value: FinishingOptions) => void; captions: WorkflowCaptions; music: WorkflowBackgroundMusic; pendingComposition?: ExploreScheduleComposition };
-const UNCONFIRMED_SCHEDULE_MESSAGE = "This scheduling request is unconfirmed. Resume the saved request to check or retry the same request without creating a duplicate.";
+const UNCONFIRMED_SCHEDULE_MESSAGE = "Scheduling was interrupted. Try again to finish scheduling your post.";
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
@@ -37,6 +40,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   scheduleTimezone?: string;
   composition?: ExploreClipComposition; backgroundScheduling?: boolean; demoAudioAssetId?: string | null;
 }) {
+  const queryClient = useQueryClient();
   const [options, setOptions] = useState(initialOptions ?? DEFAULT_FINISHING_OPTIONS);
   const music = useWorkflowBackgroundMusic({ ownerId, enabled, options, setOptions });
   const backgroundSource = options.backgroundMusic ? music.source : null;
@@ -74,7 +78,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   const pendingComposition = useTalkingHeadPendingComposition({ owner: ownerId, kind, source, demo, demoSource, demoAudio, playback,
     composition, demoAudioAssetId: demoAudioSource?.id ?? demoAudioAssetId, framing: demoFraming, options, backgroundSource, backgroundPlayback: music.playback, captionDraft: captionFinishing.captionDraft, captionsReady: Boolean(captions.transcript), selectionError });
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [message, setMessage] = useState("Apply edits before scheduling your finished video.");
-  const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [confirmedSource, setConfirmedSource] = useState<string | null>(null), [restored, setRestored] = useState(false);
+  const [receipt, setReceipt] = useState<ScheduleReceipt | null>(null), [restored, setRestored] = useState(false);
   const active = useRef(true), working = useRef(false), requestGeneration = useRef(0);
   const storageKey = `ugc-explore:schedule:v1:${encodeURIComponent(ownerId ?? "")}:${kind}${draftId ? `:${draftId}` : ""}`;
   const scheduledCallback = useRef(onScheduled);
@@ -87,13 +91,19 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }, [ownerId]);
   const accept = useCallback((saved: ScheduleReceipt, value: unknown) => {
     const schedule = verifySavedSchedule(value, saved);
+    const activeReceipt = ownerId
+      ? readScheduleReceipt(localStorage.getItem(storageKey), ownerId, kind)
+      : null;
+    if (activeReceipt?.input.idempotencyKey !== saved.input.idempotencyKey) return;
+    upsertAccountSchedule(queryClient, saved.owner, schedule);
+    void invalidateAccountSchedules(queryClient, saved.owner);
     const next = { ...saved, scheduleId: schedule.id, timeRejected: undefined };
-    setReceipt(next); setConfirmedSource(saved.input.source.id); setMessage(scheduleReceiptMessage(schedule));
+    setReceipt(next); setMessage(scheduleReceiptMessage(schedule));
     // A cache failure cannot undo a confirmed server schedule.
     try { localStorage.setItem(storageKey, JSON.stringify(next)); }
     catch { setError("Your post is saved on the server, but this browser could not store its recovery record. Review Scheduling."); }
     scheduledCallback.current?.();
-  }, [storageKey]);
+  }, [storageKey, queryClient, ownerId, kind]);
   const check = useCallback(async (saved: ScheduleReceipt, isCurrent: () => boolean) => {
     if (saved.scheduleId) {
       const value = await authorized(`/api/schedules/${encodeURIComponent(saved.scheduleId)}`);
@@ -136,12 +146,19 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
       if (isCurrent() && isScheduleTimeRejected(e) && !saved.scheduleId) {
         const rejected = { ...saved, timeRejected: true as const };
         localStorage.setItem(storageKey, JSON.stringify(rejected)); setReceipt(rejected); setMessage(SCHEDULE_TIME_REJECTED_MESSAGE);
+        throw e;
       } else if (isCurrent() && !saved.scheduleId) {
         // A server or transport failure cannot prove that creation was rejected.
         // Preserve the exact receipt while replacing help for an older time error.
         setMessage(UNCONFIRMED_SCHEDULE_MESSAGE);
       }
-      throw e;
+      try {
+        const value = await authorized("/api/schedules");
+        if (!isCurrent()) return;
+        const match = Array.isArray(value.schedules) && value.schedules.find((item: { idempotencyKey?: string }) => item.idempotencyKey === saved.input.idempotencyKey);
+        if (match) { accept(saved, { ok: true, schedule: match }); return; }
+      } catch { /* Preserve the original scheduling intent for Try again. */ }
+      throw new Error("Could not schedule your post. Try again.");
     }
   }
   async function locked(run: (saved: ScheduleReceipt | null) => Promise<void>) {
@@ -171,9 +188,16 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
     const isCurrent = () => active.current && requestGeneration.current === generation;
     try {
       await locked(async prior => {
+        if (!isCurrent()) return;
         setReceipt(prior);
         if (prior && !prior.scheduleId && !prior.timeRejected) { await send(prior, isCurrent); return; }
-        if (prior?.scheduleId && (prior.input.source.id === finishing.output?.id || !finishing.output)) { await check(prior, isCurrent); return; }
+        if (prior?.scheduleId && (prior.input.source.id === finishing.output?.id || !finishing.output)) {
+          if (receipt?.scheduleId !== prior.scheduleId) { await check(prior, isCurrent); return; }
+          archiveConfirmedSchedule(localStorage, storageKey, prior.input.idempotencyKey!, prior);
+          setReceipt(null); setMessage("Choose your accounts and time, then click Schedule post.");
+          return;
+        }
+        if (!prior && receipt?.scheduleId) { setReceipt(null); return; }
         if (prior?.timeRejected) {
           const value = await authorized("/api/schedules");
           if (!isCurrent()) return;
@@ -186,16 +210,16 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         if (!isCurrent() || currentIdentity.current !== identity) throw new Error("Your video or schedule changed. Check the current selections and click Schedule post again.");
         const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected && prior.input.source.id === finishing.output.id ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
         readScheduleReceipt(JSON.stringify(saved), ownerId, kind);
+        if (prior?.scheduleId) archiveConfirmedSchedule(localStorage, storageKey, prior.input.idempotencyKey!, prior);
         localStorage.setItem(storageKey, JSON.stringify(saved)); setReceipt(saved);
         setMessage("Confirming your scheduling request…");
         await send(saved, isCurrent);
       });
-    } catch (e) { if (isCurrent()) setError(e instanceof Error ? e.message : "Could not save scheduling. Resume the saved request."); }
+    } catch (e) { if (isCurrent()) setError(e instanceof Error ? e.message : "Could not schedule your post. Try again."); }
     finally { working.current = false; if (active.current) setBusy(false); }
   }
   const output = finishing.output;
-  const alreadySaved = confirmedSource !== null && (!output || confirmedSource === output.id);
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, disabled: !enabled || !ownerId || !restored || busy || alreadySaved || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, label: receipt?.scheduleId ? "Schedule another post" : resumeSaved && !receipt.timeRejected ? "Try again" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

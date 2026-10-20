@@ -234,6 +234,7 @@ async function requestTikTokPublicVideos(accessToken: string) {
   const response = await fetch(url, {
     body: JSON.stringify({ max_count: 20 }),
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",

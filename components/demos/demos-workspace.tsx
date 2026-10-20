@@ -25,6 +25,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 import { VideoPreview } from "@/components/media/video-preview";
 import { getVideoPreviewAspectRatio } from "@/lib/media/video-preview";
@@ -157,8 +161,7 @@ export function UploadedPostsTab({
 } = {}) {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const latestDemoLoadRequestIdRef = useRef(0);
-  const latestBlockingDemoLoadRequestIdRef = useRef(0);
+  const refreshQueue = useRefreshQueue(`demos:${user?.uid ?? "signed-out"}:${DEFAULT_PROJECT_ID}`);
 
   const existingCache =
     inMemoryDemoVideos && user && inMemoryDemoVideos.userId === user.uid
@@ -199,41 +202,42 @@ export function UploadedPostsTab({
     [demos],
   );
 
-  const loadDemos = useCallback(async (options?: { silent?: boolean }) => {
-    const requestId = latestDemoLoadRequestIdRef.current + 1;
-    latestDemoLoadRequestIdRef.current = requestId;
-
+  const loadDemos = useCallback((options?: { silent?: boolean; background?: boolean }) => refreshQueue.run(async signal => {
     if (!options?.silent) {
-      latestBlockingDemoLoadRequestIdRef.current = requestId;
       setIsLoading(true);
       setErrorMessage(null);
     }
 
     try {
-      const token = await getCurrentUserIdToken();
+      const data = await withReadDeadline(async bounded => {
+        const token = await getCurrentUserIdToken(user?.uid);
+        bounded.throwIfAborted();
 
-      if (!token) {
-        throw new Error("Sign in again to refresh your demo videos.");
-      }
+        if (!token) {
+          throw new Error("Sign in again to refresh your demo videos.");
+        }
 
-      const response = await fetch(
-        `/api/demo/list?projectId=${encodeURIComponent(DEFAULT_PROJECT_ID)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+        const response = await fetch(
+          `/api/demo/list?projectId=${encodeURIComponent(DEFAULT_PROJECT_ID)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal: bounded,
           },
-        },
-      );
-      const data = await readJsonResponse<
-        { demos: DemoVideo[]; ok: true; demoEditsUnavailable?: boolean } | ApiErrorResponse
-      >(response, loadErrorFallback);
+        );
+        const data = await readJsonResponse<
+          { demos: DemoVideo[]; ok: true; demoEditsUnavailable?: boolean } | ApiErrorResponse
+        >(response, loadErrorFallback);
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, loadErrorFallback));
-      }
+        if (!response.ok || data.ok !== true) {
+          throw new Error(getApiErrorMessage(data, loadErrorFallback));
+        }
 
-      if (latestDemoLoadRequestIdRef.current === requestId) {
-        setDemos(data.demos);
+        return data;
+      }, signal);
+      if (!signal.aborted) {
+        setDemos(current => replaceEqualDeep(current, data.demos));
         setErrorMessage(data.demoEditsUnavailable ? "Demos loaded, but saved demo edits could not be checked. Refresh before editing." : null);
         if (user) {
           inMemoryDemoVideos = {
@@ -245,18 +249,16 @@ export function UploadedPostsTab({
         }
       }
     } catch (error) {
-      if (latestDemoLoadRequestIdRef.current === requestId) {
+      if (!signal.aborted) {
         setErrorMessage(getErrorMessage(error, loadErrorFallback));
       }
+      throw error;
     } finally {
-      if (
-        !options?.silent &&
-        latestBlockingDemoLoadRequestIdRef.current === requestId
-      ) {
+      if (!signal.aborted) {
         setIsLoading(false);
       }
     }
-  }, [loadErrorFallback, user]);
+  }, { background: options?.background }).catch(() => {}), [loadErrorFallback, user, refreshQueue]);
 
   useEffect(() => {
     if (!user) {
@@ -272,41 +274,13 @@ export function UploadedPostsTab({
     return () => window.clearTimeout(timer);
   }, [loadDemos, user]);
 
-  useEffect(() => {
-    if (!activeDemoStatusSignature) {
-      return;
-    }
-
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-
-      if (attempts > MAX_ACTIVE_STATUS_POLL_ATTEMPTS) {
-        window.clearInterval(timer);
-        return;
-      }
-
-      void loadDemos({ silent: true });
-    }, 5_000);
-
-    return () => window.clearInterval(timer);
-  }, [activeDemoStatusSignature, loadDemos]);
-
-  useEffect(() => {
-    function refreshDemosWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void loadDemos({ silent: true });
-      }
-    }
-
-    window.addEventListener("focus", refreshDemosWhenVisible);
-    document.addEventListener("visibilitychange", refreshDemosWhenVisible);
-
-    return () => {
-      window.removeEventListener("focus", refreshDemosWhenVisible);
-      document.removeEventListener("visibilitychange", refreshDemosWhenVisible);
-    };
-  }, [loadDemos]);
+  useVisibleRefresh({
+    enabled: Boolean(user),
+    refresh: () => loadDemos({ silent: true, background: true }),
+    intervalMs: activeDemoStatusSignature ? 5_000 : false,
+    maxPolls: MAX_ACTIVE_STATUS_POLL_ATTEMPTS,
+    resetKey: activeDemoStatusSignature,
+  });
 
   function openFilePicker() {
     fileInputRef.current?.click();

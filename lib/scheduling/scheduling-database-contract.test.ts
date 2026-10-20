@@ -599,14 +599,15 @@ test("active account screens consume the shared connection and schedule queries"
     schedulingWorkspace,
     carouselScheduleModal,
     hookVideoScheduleDrawer,
-    instagramAnalyticsWorkspace,
     instagramAccountManager,
   ]) {
     assert.match(consumer, /loadAccountSocialConnections/);
   }
 
   assert.match(schedulingWorkspace, /loadAccountSchedules/);
-  assert.match(instagramAnalyticsWorkspace, /loadAccountSchedules/);
+  assert.match(instagramAnalyticsWorkspace, /getAccountSocialConnectionsQueryKey/);
+  assert.match(instagramAnalyticsWorkspace, /useQuery\(/);
+  assert.match(instagramAnalyticsWorkspace, /\/api\/analytics\/activity/);
   assert.match(carouselScheduleModal, /loadAccountScheduleConfig/);
   assert.match(hookVideoScheduleDrawer, /loadAccountScheduleConfig/);
   assert.doesNotMatch(instagramAnalyticsWorkspace, /fetch\("\/api\/schedules"/);

@@ -172,11 +172,13 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
       generationFlight.current = flight;
       return flight;
     },
-    onSuccess: (result) => {
+    onSuccess: (result, request) => {
       const current = client.getQueryData<CharacterClientSession>(sessionKey) ?? EMPTY_CHARACTER_SESSION;
+      const submitted = current.pendingRequest ?? request;
       result.jobs.forEach((job) => {
         if (!client.getQueryData(["character-job", userId, job.jobId])) client.setQueryData(["character-job", userId, job.jobId], {
           id: job.jobId, status: "queued", isTerminal: false, error: null, output: null, checkError: null,
+          prompt: submitted.prompt, batchId: result.jobs[0]?.jobId,
         });
       });
       rememberVisitJobs(result.jobs.map((job) => job.jobId));
@@ -220,6 +222,7 @@ export function useCharacterBuilder(userId: string | null, historyOpen = false, 
       || !jobs.data?.find((job) => job.id === receipt.jobId)?.isTerminal));
   const visibleStatuses = historyImage ? [{
     id: historyImage.jobId, model: historyImage.model, status: "completed" as const, isTerminal: true, error: null, checkError: null,
+    prompt: historyImage.prompt, batchId: historyImage.jobId,
     output: { url: historyImage.url, mediaAssetId: historyImage.mediaAssetId, generationId: historyImage.generationId, width: null, height: null, ratio: "9:16" },
   }] : jobs.data;
   const resetSelection = select.reset;

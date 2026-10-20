@@ -1,7 +1,7 @@
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { remixSourceFromJob } from "@/lib/explore/remix-source";
-import { readSlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
 import {
   getMediaAssetForOwner,
   serializeMediaAsset,
@@ -14,6 +14,7 @@ export const runtime = "nodejs";
 type UpdateAssetBody = {
   draft?: unknown;
   title?: unknown;
+  libraryArchived?: unknown;
 };
 
 export async function GET(
@@ -53,12 +54,17 @@ async function handleRequest(
 
     if (action === "get") {
       const serialized = serializeMediaAsset(asset);
+      const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
+        ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
+      if (asset.source_type === "generated_image" && job?.jobType === "generate_image") {
+        serialized.metadata = { ...serialized.metadata, ...getGeneratedImageHistoryMetadata(job.input) };
+      }
       if (new URL(request.url).searchParams.get("remixSource") === "1") {
         // Read provenance from this owner's original job, never browser state.
-        const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
-          ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
-        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : null,
-          ...(asset.source_type === "generated_image" ? { slideshowGeneration: readSlideshowGenerationSlot(job?.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.slideshowGeneration : null) } : {}) };
+        // Original reference imports already contain server-validated provenance.
+        // Unlike generated assets, they have no background generation job.
+        const importedOriginal = asset.source_type === "upload" && asset.project_id === "explore-catalog-reference";
+        serialized.metadata = { ...serialized.metadata, remixTextSource: job ? remixSourceFromJob(job.input) : importedOriginal ? serialized.metadata.remixTextSource ?? null : null };
       }
       return Response.json({ ok: true, asset: serialized });
     }
@@ -81,13 +87,18 @@ async function handleRequest(
       );
     }
 
-    if (!title) {
+    const archive = body && "libraryArchived" in body ? body.libraryArchived : undefined;
+    if (archive !== undefined && (typeof archive !== "boolean" || asset.collection !== "image")) {
+      return Response.json({ ok: false, error: "Choose a valid image library action." }, { status: 400 });
+    }
+    if (!title && archive === undefined) {
       return Response.json({ ok: false, error: "No media changes were provided." }, { status: 400 });
     }
 
     const updated = await updateMediaAssetForOwner({
       assetId,
       title,
+      ...(typeof archive === "boolean" ? { metadata: { imageLibraryArchived: archive } } : {}),
       userId: user.uid,
     });
 

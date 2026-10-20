@@ -48,11 +48,20 @@ test("the owned final hook/demo and wall-text jobs use the registered MP3 even w
   }
 });
 
-test("all 98 reviewed Hook + Demo jobs and re-edits retain their exact track and saved music volume", async () => {
+test("all 98 Hook + Demo jobs honor silence while historical paired tracks retain their saved volume", async () => {
   const { getHookReferenceGalleryItems } = await import("../worker/dist/lib/explore-hook-reference-release.js");
   const references = getHookReferenceGalleryItems(); assert.equal(references.length, 98);
   for (const reference of references) for (const clean of [false, true]) {
     const f = fixture({ reference, clean, custom: true }); await f.run();
+    if (reference.audioPolicy === "silent" && !clean) {
+      assert.equal(f.options().referenceAudioVolume, undefined);
+      assert.equal(f.details().metadata.referenceSoundtrack, undefined);
+      assert.equal(f.events.filter(event => event.key === reference.audioStorageKey).length, 0);
+      assert.ok(f.options().backgroundMusicPath, "Explicit user music remains available on a silent reference");
+      assert.ok(f.options().demoPath, "Silence on the opening does not remove the demo");
+      assert.ok(f.events.some(event => event.key === `owned/${f.receipt.draft.backgroundAssetId}`));
+      continue;
+    }
     assert.equal(f.options().referenceAudioVolume, clean ? .35 : .2);
     assert.equal(f.options().backgroundMusicPath, undefined, "generic music cannot replace the paired track");
     assert.ok(f.options().demoPath); assert.equal(f.options().demoOriginalVolume, undefined, "ordinary Demo speech is preserved");

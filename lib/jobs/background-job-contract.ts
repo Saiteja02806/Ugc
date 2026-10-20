@@ -225,6 +225,14 @@ function getSafeJobErrorMessage(
       return "The provider could not confirm this request. Contact support to check its status before starting another generation to avoid a duplicate charge.";
     case "provider_operation_failed":
       return "The model provider could not complete this generation. This request cannot be resumed. Start a new generation, or contact support if it fails again.";
+    case "PROVIDER_OUTPUT_COLLECTION_FAILED":
+      return retryable
+        ? "The provider finished your video, but we could not collect the result. Retry to recover the existing video."
+        : "The provider finished your video, but we could not collect the result. Contact support to recover the existing video.";
+    case "provider_operation_pending":
+      return retryable
+        ? "We could not recover the saved generation's result. Retry to check the existing request."
+        : "We could not recover the saved generation's result. Contact support to check the existing request.";
     case "CANCELLED":
       return "This job was cancelled.";
     case "INPUT_INVALID":

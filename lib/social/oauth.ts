@@ -539,13 +539,15 @@ export async function listSocialConnections(
     throw new Error("Could not load social connections.");
   }
 
-  const connections = await Promise.all(
-    (data ?? []).map((connection) =>
-      hydrateInstagramConnectionProfile(connection, trace),
-    ),
-  );
+  return (data ?? []).map(mapSocialConnection);
+}
 
-  return connections.map(mapSocialConnection);
+/** Owned background work; display reads deliberately never hydrate profiles. */
+export async function refreshSocialConnectionProfilesForOwner(userId: string) {
+  const { data, error } = await getClient().from("social_connections").select("*")
+    .eq("user_id", userId).is("revoked_at", null).eq("platform", "instagram");
+  if (error) throw new Error("Could not load account profiles for refresh.");
+  for (const connection of data ?? []) await hydrateInstagramConnectionProfile(connection);
 }
 
 async function getSocialOAuthReconnectTarget(params: {
@@ -1681,7 +1683,7 @@ async function fetchInstagramAccount(
     fallbackAccountIdPresent: Boolean(fallbackAccountId),
     profileRequestStarted: true,
   });
-  const response = await fetch(profileUrl);
+  const response = await fetch(profileUrl, { signal: AbortSignal.timeout(8_000) });
   const payload = (await response.json().catch(() => null)) as {
     account_type?: string;
     error?: unknown;
@@ -1854,7 +1856,7 @@ async function upsertSocialConnection(params: {
     access_token_ciphertext: encryptSecret(params.tokenSet.accessToken),
     expires_at: expiresAt,
     last_error_code: null,
-    metadata: params.account.metadata ?? {},
+    metadata: { ...(params.account.metadata ?? {}), authorizationRevision: randomUUID() },
     platform: params.platform,
     platform_account_name: params.account.name ?? null,
     platform_account_username: params.account.username ?? null,
@@ -2098,6 +2100,10 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
       : effectiveStatus;
 
   return {
+    authorizationRevision: getMetadataString(row.metadata, "authorizationRevision") ?? undefined,
+    profileNeedsRefresh: row.platform === "instagram" && row.revoked_at === null &&
+      !isInstagramProfileFresh(row.metadata) && !isInstagramProfileBackoffActive(row.metadata) &&
+      !requiresInstagramProfessionalAccount({ lastErrorCode: row.last_error_code, metadata: row.metadata }),
     connectedAt: row.connected_at,
     expiresAt: row.expires_at,
     id: row.id,
@@ -2142,7 +2148,7 @@ async function hydrateInstagramConnectionProfile(
     row.platform !== "instagram" ||
     professionalAccountRequirementRecorded ||
     (!storedAccountTypeRequiresProfessional &&
-      isInstagramProfileFresh(row.metadata))
+      (isInstagramProfileFresh(row.metadata) || isInstagramProfileBackoffActive(row.metadata)))
   ) {
     return row;
   }
@@ -2167,6 +2173,7 @@ async function hydrateInstagramConnectionProfile(
       ...account.metadata,
       professionalAccountRequired: false,
       profileLookupFailed: false,
+      profileLookupRetryAt: null,
     };
     const patch = {
       metadata,
@@ -2181,7 +2188,7 @@ async function hydrateInstagramConnectionProfile(
       .from("social_connections")
       .update(patch)
       .eq("id", row.id)
-      .eq("user_id", row.user_id);
+      .eq("user_id", row.user_id).filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at);
 
     if (error) {
       logSocialOAuthTrace(trace, "connected_accounts_api_response", {
@@ -2209,6 +2216,10 @@ async function hydrateInstagramConnectionProfile(
     });
 
     if (!professionalAccountRequired) {
+      // Failed provider lookups must not retry every navigation/job.
+      const metadata = { ...row.metadata, profileLookupRetryAt: new Date(Date.now() + 15 * 60_000).toISOString() };
+      await getClient().from("social_connections").update({ metadata })
+        .eq("id", row.id).eq("user_id", row.user_id).filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at);
       return row;
     }
 
@@ -2225,7 +2236,7 @@ async function hydrateInstagramConnectionProfile(
       .from("social_connections")
       .update(patch)
       .eq("id", row.id)
-      .eq("user_id", row.user_id);
+      .eq("user_id", row.user_id).filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at);
 
     if (saveError) {
       logSocialOAuthTrace(trace, "connected_accounts_api_response", {
@@ -2239,6 +2250,11 @@ async function hydrateInstagramConnectionProfile(
       ...patch,
     };
   }
+}
+
+function isInstagramProfileBackoffActive(metadata: Json) {
+  const retryAt = getMetadataString(metadata, "profileLookupRetryAt");
+  return retryAt !== null && Date.parse(retryAt) > Date.now();
 }
 
 function isInstagramProfileFresh(metadata: Json) {

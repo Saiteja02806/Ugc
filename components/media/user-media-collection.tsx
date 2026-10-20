@@ -24,6 +24,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 import { useAuth } from "@/contexts/auth-context";
 import { VideoPreview } from "@/components/media/video-preview";
@@ -125,6 +129,7 @@ export function UserMediaCollection({
   variant?: "default" | "dark";
 }) {
   const { loading: authLoading, user } = useAuth();
+  const editRefreshQueue = useRefreshQueue(`media-edits:${user?.uid ?? "signed-out"}:${collection}`);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
   const lastLoadedGroupIdRef = useRef<string | null>(null);
@@ -301,42 +306,53 @@ export function UserMediaCollection({
   }, [authLoading, groupMediaType, user]);
 
   const loadEditProjects = useCallback(
-    async (options?: { silent?: boolean }) => {
+    (options?: { silent?: boolean; background?: boolean }) => {
       if (authLoading || groupMediaType !== "video") {
-        return;
+        return Promise.resolve();
       }
 
-      if (!options?.silent) {
-        setEditProjectErrorMessage(null);
-      }
-
-      try {
-        if (!user) {
-          throw new Error("Sign in to load saved video edits.");
+      return editRefreshQueue.run(async signal => {
+        if (!options?.silent) {
+          setEditProjectErrorMessage(null);
         }
 
-        const token = await requireToken();
-        const response = await fetch("/api/edit/videos", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = (await response.json()) as EditableVideosResponse;
+        try {
+          if (!user) {
+            throw new Error("Sign in to load saved video edits.");
+          }
 
-        if (!response.ok || data.ok !== true) {
-          throw new Error(
-            getApiError(data, "Could not load saved video edit status."),
+          const data = await withReadDeadline(async bounded => {
+            const token = await getCurrentUserIdToken(user.uid);
+            if (!token) throw new Error("Sign in to load saved video edits.");
+            bounded.throwIfAborted();
+            const response = await fetch("/api/edit/videos", {
+              cache: "no-store",
+              headers: { Authorization: `Bearer ${token}` },
+              signal: bounded,
+            });
+            const data = (await response.json()) as EditableVideosResponse;
+
+            if (!response.ok || data.ok !== true) {
+              throw new Error(
+                getApiError(data, "Could not load saved video edit status."),
+              );
+            }
+
+            return data;
+          }, signal);
+          if (signal.aborted) return;
+          setEditProjects(current => replaceEqualDeep(current, data.videos));
+          setEditProjectErrorMessage(null);
+        } catch (error) {
+          if (signal.aborted) return;
+          setEditProjectErrorMessage(
+            getErrorMessage(error, "Could not load saved video edit status."),
           );
+          throw error;
         }
-
-        setEditProjects(data.videos);
-        setEditProjectErrorMessage(null);
-      } catch (error) {
-        setEditProjectErrorMessage(
-          getErrorMessage(error, "Could not load saved video edit status."),
-        );
-      }
+      }, { background: options?.background }).catch(() => {});
     },
-    [authLoading, groupMediaType, user],
+    [authLoading, groupMediaType, user, editRefreshQueue],
   );
 
   const loadGroupAssets = useCallback(
@@ -402,52 +418,11 @@ export function UserMediaCollection({
     return () => window.clearTimeout(timer);
   }, [loadGroupAssets, selectedGroupId]);
 
-  useEffect(() => {
-    if (
-      groupMediaType !== "video" ||
-      !renderingEditProjectIds ||
-      !hasRenderingEditProject
-    ) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      void loadEditProjects({ silent: true });
-    }, 4_000);
-
-    return () => window.clearInterval(timer);
-  }, [
-    groupMediaType,
-    hasRenderingEditProject,
-    loadEditProjects,
-    renderingEditProjectIds,
-  ]);
-
-  useEffect(() => {
-    if (groupMediaType !== "video") {
-      return;
-    }
-
-    function refreshEditProjectsWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void loadEditProjects({ silent: true });
-      }
-    }
-
-    window.addEventListener("focus", refreshEditProjectsWhenVisible);
-    document.addEventListener(
-      "visibilitychange",
-      refreshEditProjectsWhenVisible,
-    );
-
-    return () => {
-      window.removeEventListener("focus", refreshEditProjectsWhenVisible);
-      document.removeEventListener(
-        "visibilitychange",
-        refreshEditProjectsWhenVisible,
-      );
-    };
-  }, [groupMediaType, loadEditProjects]);
+  useVisibleRefresh({
+    enabled: !authLoading && Boolean(user) && groupMediaType === "video",
+    refresh: () => loadEditProjects({ silent: true, background: true }),
+    intervalMs: renderingEditProjectIds && hasRenderingEditProject ? 4_000 : false,
+  });
 
   const overallUploadProgress = useMemo(() => {
     if (uploadTasks.length === 0) return 0;

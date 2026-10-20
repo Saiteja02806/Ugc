@@ -60,8 +60,8 @@ test("schedule recovery retains the selected finished video, account, caption, t
 test("a success message requires the exact server schedule, finished output and single connected account", () => {
   const response = scheduleResponse();
   assert.equal(verifySavedSchedule(response, schedule).id, response.schedule.id);
-  assert.match(scheduleReceiptMessage(response.schedule), /is scheduled/);
-  assert.doesNotMatch(scheduleReceiptMessage({ ...response.schedule, status: "scheduling" }), /is scheduled/);
+  assert.equal(scheduleReceiptMessage(response.schedule), "Post scheduled");
+  assert.match(scheduleReceiptMessage({ ...response.schedule, status: "scheduling" }), /pending preparation/);
   assert.match(scheduleReceiptMessage({ ...response.schedule, status: "failed" }), /needs review/);
   for (const change of [{ mediaAssetId: randomUUID() }, { idempotencyKey: `explore:${randomUUID()}` }, { status: "made_up" }, { targets: [] }, { targets: [{ socialConnectionId: randomUUID(), platform: "instagram" }] }, { targets: [...response.schedule.targets, ...response.schedule.targets] }]) assert.throws(() => verifySavedSchedule({ ...response, schedule: { ...response.schedule, ...change } }, schedule));
   assert.throws(() => verifySavedSchedule(response, { ...schedule, scheduleId: randomUUID() }));

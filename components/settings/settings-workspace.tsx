@@ -39,6 +39,7 @@ import { InstagramAccountManager } from "@/components/settings/instagram-account
 import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-account-manager";
 import { YouTubeBetaAccountManager } from "@/components/settings/youtube-beta-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
+import { MediaLibraryPanel } from "@/components/media/media-library-dialog";
 import { BusinessContextSettings } from "@/components/settings/business-context-settings";
 import { PublishingPreferencesSettings } from "@/components/settings/publishing-preferences-settings";
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
@@ -66,6 +67,11 @@ const SETTINGS_SECTIONS = [
     icon: CreditCard,
     id: "subscription-billing",
     label: "Plan & billing",
+  },
+  {
+    icon: Images,
+    id: "media-library",
+    label: "Media library",
   },
   {
     icon: Images,
@@ -566,6 +572,11 @@ export function SettingsWorkspace() {
           </SettingsSection>
           ) : null}
 
+          {activeSection === "media-library" ? (
+          <SettingsSection id="media-library" description="Manage reusable images and background collections for your slideshows." icon={<Images className="size-5" aria-hidden="true" />} title="Media library">
+            <div className="p-5 sm:p-6"><MediaLibraryPanel /></div>
+          </SettingsSection>
+          ) : null}
           {activeSection === "app-screenshots" ? (
           <SettingsSection
             id="app-screenshots"

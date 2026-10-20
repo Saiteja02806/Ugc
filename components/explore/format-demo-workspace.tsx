@@ -81,7 +81,7 @@ export function FormatDemoWorkspace({ ownerId, enabled, localPreview, active, op
     demo.setMode("assets"); onDemoChange(true); return true;
   }
   const controls = <section className="space-y-4" aria-label="Demo controls">
-    <h2 className="text-sm font-medium">Demo <span className="ml-1 text-xs font-normal text-muted">Optional</span></h2>
+    <h2 className="text-sm font-medium">Demo upload</h2>
     <input ref={input} type="file" accept="video/mp4,video/quicktime,video/webm" aria-label="Upload demo video" hidden onChange={event => {
       const file = event.target.files?.[0]; if (file) void chooseUpload(file); event.target.value = "";
     }} />

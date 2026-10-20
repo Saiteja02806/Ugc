@@ -137,7 +137,11 @@ export async function assertEditableTrendingCreative(params: {
   format: TrendingCreativeEditFormat;
   userId: string;
 }) {
-  return assertTrendingCreativeAssignment(params, false);
+  if (params.format !== "carousel") return assertTrendingCreativeAssignment(params, false);
+  // Existing readable Carousel assignments retain their source slides even if
+  // no manual edit was saved before skipping. Saving must not change the
+  // assignment decision or any previously saved/scheduled snapshot.
+  return assertTrendingCreativeAssignment(params, true);
 }
 
 export async function assertReadableTrendingCreative(params: {
@@ -160,16 +164,16 @@ async function assertTrendingCreativeAssignment(params: {
     params.format === "carousel"
       ? await client
           .from("user_carousel_assignments")
-          .select("id")
+          .select("id,state")
           .eq("id", params.assignmentId)
           .eq("carousel_id", params.creativeId)
           .eq("user_id", params.userId)
-          .in("state", readOnly ? ["pending", "in_progress", "accepted", "completed_skipped"] : ["pending", "in_progress", "accepted"])
+          .in("state", readOnly ? ["pending", "in_progress", "accepted", "completed_skipped", "completed_saved", "completed_scheduled"] : ["pending", "in_progress", "accepted"])
           .maybeSingle()
       : params.format === "hook_video"
         ? await client
             .from("user_hook_video_assignments")
-            .select("id")
+            .select("id,state")
             .eq("id", params.assignmentId)
             .eq("hook_suggestion_id", params.creativeId)
             .eq("user_id", params.userId)
@@ -177,7 +181,7 @@ async function assertTrendingCreativeAssignment(params: {
             .maybeSingle()
         : await client
             .from("user_wall_text_assignments")
-            .select("id")
+            .select("id,state")
             .eq("id", params.assignmentId)
             .eq("wall_text_creative_id", params.creativeId)
             .eq("user_id", params.userId)
@@ -195,6 +199,7 @@ async function assertTrendingCreativeAssignment(params: {
       404,
     );
   }
+  return data;
 }
 
 export async function getTrendingCreativeEdit(params: {

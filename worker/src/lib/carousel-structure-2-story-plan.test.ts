@@ -167,7 +167,7 @@ test("Structure 2 prompt and schema describe the strict six-slide contract", () 
   assert.match(prompt, /First-person hooks are welcome/i);
   assert.match(prompt, /Save the explanation for Slide 2 onward/i);
   assert.doesNotMatch(prompt, /Do not begin with a complete personal-story/i);
-  assert.match(prompt, /aim for 16-22 body words/i);
+  assert.match(prompt, /shorter useful copy is valid/i);
   assert.match(prompt, /lowercase/i);
   assert.match(prompt, /Inter Medium at 500 weight/i);
   assert.match(prompt, /Slides 1-5 return ctaText: null/i);
@@ -293,7 +293,7 @@ test("Structure 2 sends writing-quality failures back through the repair path", 
   );
 
   assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"));
-  assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "word_count"));
+  assert.equal(partitioned.blockingIssues.some((issue) => issue.code === "word_count"), false);
 });
 
 test("Structure 2 targeted repair accepts replacements for every invalid slide only", () => {
@@ -366,7 +366,7 @@ test("Structure 2 treats close recent wording as advisory but blocks exact copy"
   );
 });
 
-test("hook and story word-count contracts block invalid output", () => {
+test("hook length remains enforced while useful short story bodies are accepted", () => {
   const plan = parseCarouselStructure2StoryPlan(makeRawStoryPlan(), {
     businessDescription,
     storyFormatId: "wrong_belief",
@@ -379,10 +379,11 @@ test("hook and story word-count contracts block invalid output", () => {
   );
 
   assert.ok(partitioned.blockingIssues.some((issue) => issue.code === "hook_length"));
-  assert.ok(
+  assert.equal(
     partitioned.blockingIssues.some(
       (issue) => issue.code === "word_count" && issue.slideNumber === 2,
     ),
+    false,
   );
   assert.deepEqual(partitioned.advisoryIssues, []);
 });
@@ -405,9 +406,9 @@ test("Structure 2 accepts a complete fourteen-word body without forcing a longer
   );
 });
 
-test("reference word counts, overflow, and unsupported claims remain blocking", () => {
+test("maximum word counts, overflow, and unsupported claims remain blocking", () => {
   const partitioned = partitionCarouselStructure2ValidationIssues([
-    { code: "word_count", slideNumber: 4, message: "13 words instead of the required 14" },
+    { code: "word_count", slideNumber: 4, message: "31 words exceeds the maximum 30" },
     { code: "render_fit", slideNumber: 1, message: "Cover overflows" },
     { code: "unsupported_claim", slideNumber: 5, message: "Unsupported result" },
   ]);

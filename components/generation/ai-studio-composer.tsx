@@ -56,6 +56,8 @@ export function AiStudioComposer({
   promptHelper,
   promptLabel,
   promptSupplement,
+  promptAction,
+  promptFeedback,
   settingsSummary,
   actionsTarget,
   referenceControls,
@@ -95,6 +97,8 @@ export function AiStudioComposer({
   promptHelper?: string;
   promptLabel?: string;
   promptSupplement?: ReactNode;
+  promptAction?: ReactNode;
+  promptFeedback?: ReactNode;
   settingsSummary?: string;
   actionsTarget?: HTMLElement | null;
   referenceControls?: ReactNode;
@@ -151,7 +155,7 @@ export function AiStudioComposer({
         {promptSupplement}
         <label htmlFor={promptId}>{promptLabel ?? "What should the creator say and do?"}</label>
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-destructive" : undefined}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
-        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)} aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(focused.prompt, promptAttachmentControl && creation.promptWithAttachments)} />{promptAttachmentControl}</div>
+        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)} aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(focused.prompt, (promptAttachmentControl || promptAction) && creation.promptWithAttachments)} />{promptAttachmentControl}</div>
       </div>
       <div role="group" aria-label={settingsLabel} className={focused.primarySettings}>{grouped ? [fields[0], fields[1], fields[4]] : fields}</div>
       {grouped ? <details className={focused.output}><summary>Output settings<span>{outputSummary}</span><ChevronDown aria-hidden="true" className="size-4" /></summary><div role="group" aria-label="Output settings" className={focused.outputFields}>{fields[2]}{fields[3]}</div></details> : null}
@@ -171,10 +175,12 @@ export function AiStudioComposer({
       <div className={creation.instructionsField}>
         {promptSupplement}
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
-        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
-          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && creation.promptWithAttachments)} />
-          {promptAttachmentControl}
+        <div data-prompt-editor className={cn("relative", promptAction && creation.promptWithAction)}><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, (promptAttachmentControl || promptAction) && creation.promptWithAttachments)} />
+          {promptAttachmentControl ? <div className={promptAction ? "[&>div]:right-14" : undefined}>{promptAttachmentControl}</div> : null}
+          {promptAction ? <div className="absolute right-3 bottom-3">{promptAction}</div> : null}
         </div>
+        {promptFeedback}
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
       <div role="group" aria-label={settingsLabel} className={cn(creation.settingsGrid, settingsClassName)}>{settings}</div>

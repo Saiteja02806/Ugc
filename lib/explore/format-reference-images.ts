@@ -1,6 +1,5 @@
 "use client";
 
-import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 
@@ -8,18 +7,17 @@ export const USER_REFERENCE_IMAGE_PROJECT = "explore-reference";
 export const CATALOG_REFERENCE_IMAGE_PROJECT = "explore-catalog-reference";
 
 const imageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
-const catalogFileNames = new Set(CREATOR_REFERENCES.map(reference => reference.fileName));
 
 export function isUserReferenceImage(asset: MediaAsset) {
   return asset.collection === "image" && asset.status === "ready" &&
     asset.sourceType === "upload" && imageTypes.has(asset.mimeType) &&
-    asset.projectId !== CATALOG_REFERENCE_IMAGE_PROJECT &&
-    // Older catalogue selections were copied into AI Studio's upload collection.
-    !(asset.projectId === "ai-studio" && asset.fileName && catalogFileNames.has(asset.fileName));
+    // Positive provenance: unrelated uploads and unclassified legacy files stay
+    // in the media library, but must not leak into Explore's reference picker.
+    asset.projectId === USER_REFERENCE_IMAGE_PROJECT;
 }
 
 export async function fetchFormatReferenceImages(ownerId: string, signal?: AbortSignal): Promise<MediaAsset[]> {
-  const response = await fetch("/api/media?collection=image&sourceTypes=upload", {
+  const response = await fetch("/api/media?collection=image&sourceTypes=upload&projectId=explore-reference", {
     cache: "no-store", signal, headers: await ownerHeaders(ownerId),
   });
   const body = await response.json() as { ok?: boolean; assets?: MediaAsset[]; error?: string };

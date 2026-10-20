@@ -46,6 +46,64 @@ function tonePower(buffer, frequency) {
   return (real ** 2 + imaginary ** 2) / count ** 2;
 }
 
+// Lossless audio keeps the fixture's start times independent of AAC priming.
+function timedVideo(dir, { videoStart = 0, audioStart = 0, name = "timed" } = {}) {
+  const base = join(dir, `${name}-base.mov`), output = join(dir, `${name}.mov`);
+  execFileSync(ffmpeg, ["-nostdin", "-v", "error", "-n", "-f", "lavfi", "-i", "color=c=blue:s=128x128:r=40:d=2,drawbox=color=red:t=fill:enable='lt(t,0.1)'",
+    "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+    "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-bf", "0", "-c:a", "pcm_s16le", base], { windowsHide: true, timeout: 30_000 });
+  execFileSync(ffmpeg, ["-nostdin", "-v", "error", "-n", "-itsoffset", String(videoStart), "-i", base, "-itsoffset", String(audioStart), "-i", base,
+    "-map", "0:v", "-map", "1:a", "-c", "copy", output], { windowsHide: true, timeout: 30_000 });
+  return output;
+}
+function pixel(path, seconds) {
+  return execFileSync(ffmpeg, ["-v", "error", "-ss", String(seconds), "-i", path, "-frames:v", "1", "-vf", "scale=1:1", "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1"], { windowsHide: true, timeout: 30_000 });
+}
+
+test("25ms delayed pictures export with their complete timeline and unchanged source", async t => {
+  const dir = await workspace(t), sourcePath = timedVideo(dir, { videoStart: .025 });
+  const before = digest(await readFile(sourcePath));
+  const result = await composeExploreVideo({ sourcePath, workDir: join(dir, "render"), tools, subtitleScope: { language: "en" } });
+  assert.equal(result.measuredDurationMs, 2025);
+  assert.ok(Math.abs(result.durationMs - 2025) < 34);
+  assert.ok(energy(samples(result.outputPath, .02, .02)) > 1e-5);
+  assert.equal(digest(await readFile(sourcePath)), before);
+});
+
+test("delayed picture events retain A/V timing in normal and framed exports", async t => {
+  const dir = await workspace(t), sourcePath = timedVideo(dir, { videoStart: .08 });
+  for (const framed of [false, true]) {
+    const result = await composeExploreVideo({ sourcePath, workDir: join(dir, `render-${framed}`), tools,
+      ...(framed ? { sourceFraming: { version: 1, width: 1, height: 1, points: [[0, 0, 0], [2000, 0, 0]] } } : {}) });
+    const red = pixel(result.outputPath, .133), blue = pixel(result.outputPath, .233);
+    assert.ok(red[0] > 200 && red[2] < 30, "The red-to-blue event must not shift 80ms early");
+    assert.ok(blue[2] > 200 && blue[0] < 30);
+    assert.ok(energy(samples(result.outputPath, .02, .02)) > 1e-5);
+    assert.equal(result.measuredDurationMs, 2080);
+  }
+});
+
+test("delayed original audio keeps leading silence and its tail in playback and caption audio", async t => {
+  const dir = await workspace(t), sourcePath = timedVideo(dir, { audioStart: .08 });
+  const result = await composeExploreVideo({ sourcePath, workDir: join(dir, "render"), tools, subtitleScope: { language: "en" } });
+  const speech = await composeExploreVideo({ sourcePath, workDir: join(dir, "speech"), tools, subtitleScope: { language: "en" }, audioOnly: true });
+  for (const path of [result.outputPath, result.subtitleAudioPath, speech.subtitleAudioPath]) {
+    assert.ok(energy(samples(path, .015, .025)) < 1e-8, "The original audio must not start early");
+    assert.ok(energy(samples(path, .13, .03)) > 1e-5);
+    assert.ok(energy(samples(path, 2.025, .02)) > 1e-5, "The delayed audio tail must not be cut off");
+  }
+  assert.equal(result.measuredDurationMs, 2080);
+  assert.equal(speech.measuredDurationMs, 2080);
+});
+
+test("a common short track origin normalizes together without adding duration or shifting events", async t => {
+  const dir = await workspace(t), sourcePath = timedVideo(dir, { videoStart: .05, audioStart: .05 });
+  const result = await composeExploreVideo({ sourcePath, workDir: join(dir, "render"), tools });
+  assert.equal(result.measuredDurationMs, 2000);
+  assert.ok(pixel(result.outputPath, .133)[2] > 200);
+  assert.ok(energy(samples(result.outputPath, .02, .02)) > 1e-5);
+});
+
 test("filter preserves opening/demo order and original audio; added background is demo-only and defaults to play once", () => {
   const parts = [{ width: 128, height: 192, durationMs: 15_000, videoIndex: 0, audioIndex: 1 }, { width: 192, height: 128, durationMs: 45_000, videoIndex: 0, audioIndex: 1 }];
   const filter = buildExploreCompositionFilter(parts, { audioIndex: 0, durationMs: 60_000 });

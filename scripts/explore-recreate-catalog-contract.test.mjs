@@ -87,9 +87,9 @@ test("the imported Explore catalogue preserves the supplied content structure", 
 
   assert.equal(catalog.version, 1);
   assert.equal(catalog.mediaStatus, "published");
-  assert.equal(slideshows.length, 58);
+  assert.equal(slideshows.length, 59);
   assert.equal(wallTextVideos.length, 28);
-  assert.equal(slideshows.reduce((total, item) => total + item.slides.length, 0), 326);
+  assert.equal(slideshows.reduce((total, item) => total + item.slides.length, 0), 332);
   assert.deepEqual(
     Object.fromEntries(
       [...new Set(slideshows.map((item) => item.category))]
@@ -102,6 +102,7 @@ test("the imported Explore catalogue preserves the supplied content structure", 
     {
       "calory-tracking": 6,
       fitness: 14,
+      focus: 1,
       "goal-tracker": 3,
       habit: 2,
       "interior-design": 3,
@@ -151,8 +152,8 @@ test("September 30 additions preserve every original item and ordered slide byte
 test("October 5 category additions preserve all 84 previously published references", () => {
   const originalHash = "694b3e0db7a22f17a978be8042da262298b2e8de8f23bdc5c94dcd1d8d4ed13c";
   assert.equal(createHash("sha256").update(JSON.stringify(catalog.items.slice(0, 84))).digest("hex"), originalHash);
-  assert.equal(catalog.items.length, 93);
-  const additions = catalog.items.slice(84);
+  assert.equal(catalog.items.length, 94);
+  const additions = catalog.items.slice(84, 93);
   assert.equal(additions.length, 9);
   assert.equal(additions.every((item) => item.format === "slideshow" && ["calory-tracking", "pet-tracking"].includes(item.category)), true);
   assert.deepEqual(additions.map((item) => item.slides.length), [6, 5, 6, 6, 6, 7, 6, 6, 6]);
@@ -166,6 +167,24 @@ test("October 5 category additions preserve all 84 previously published referenc
     assert.equal(item.slides.every((slide) => slide.width > 0 && slide.height > 0 && /^[a-f0-9]{64}\.jpg$/.test(slide.file)), true);
   }
   assert.equal(catalog.release, createHash("sha256").update(JSON.stringify(catalog.items)).digest("hex").slice(0, 20));
+});
+
+test("Focus adds one ordered six-slide reference with matching reviewed Remix text", () => {
+  const reviewText = JSON.parse(readFileSync(new URL("../lib/explore/reference-text-catalog.json", import.meta.url), "utf8"));
+  const previous = catalog.items.slice(0, 93);
+  assert.equal(createHash("sha256").update(JSON.stringify(previous)).digest("hex").slice(0, 20), "ec980f7d578350bba1be", "All previously published references stay unchanged");
+  const reference = catalog.items.at(-1);
+  assert.equal(reference.id, "explore-slideshow-nota-f79553cb5f15c74e");
+  assert.equal(reference.category, "focus"); assert.equal(reference.categoryLabel, "Focus"); assert.equal(reference.format, "slideshow");
+  assert.equal(reference.slides.length, 6); assert.equal(reference.posterFile, reference.slides[0].file);
+  const texts = reference.slides.map((slide, index) => {
+    assert.equal(slide.id, `slide-${index + 1}-${slide.file.slice(0, 12)}`);
+    assert.equal(slide.width, 1320); assert.equal(slide.height, 1760);
+    const item = reviewText.items.find(item => item.referenceId === reference.id && item.slideId === slide.id);
+    assert.equal(item.status, "ready"); assert.equal(item.sourceSha256, slide.file.slice(0, 64));
+    assert.equal(item.format, "slideshow"); return item.blocks[0].text;
+  });
+  assert.deepEqual(texts, ["Imagine you’re driving a car...", "Okay...", "You’re trying to find an\naddress, but the music is\nplaying loudly. What do you\ndo?", "I turn it down.", "Why?", "So I can focus."]);
 });
 
 test("every slideshow keeps its own ordered collection rather than flattening slides", () => {

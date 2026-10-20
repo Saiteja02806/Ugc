@@ -420,7 +420,7 @@ function toHookCopyJobCandidate(
   };
 }
 
-function toHookSourceRecord(
+export function toHookSourceRecord(
   idea: TrendingHookIdeaRecord,
   textPosition: HookVideoTextPosition | null,
 ): TrendingHookVideoSourceRecord {

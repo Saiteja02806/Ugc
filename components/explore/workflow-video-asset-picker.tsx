@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { Video } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -39,11 +40,37 @@ export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selected
       : <div className="grid gap-2">{visibleAssets.map(asset => {
         const problem = workflowSourceVideoError(asset);
         return <Button key={asset.id} type="button" variant="outline" aria-pressed={asset.id === selectedId} disabled={!!problem} title={problem ?? asset.title}
-          className="h-auto min-h-20 w-full justify-start gap-3 px-3 py-2 text-left" onClick={() => { if (onSelect(asset)) onOpenChange(false); }}>
-          {asset.thumbnailUrl ? <Image src={asset.thumbnailUrl} alt="" width={48} height={60} unoptimized className="h-14 w-12 shrink-0 rounded object-cover" /> : <Video className="size-6 shrink-0 text-muted" aria-hidden="true" />}
-          <span className="min-w-0"><span className="block truncate text-sm font-medium">{asset.title}</span><span className="block text-xs text-muted">{problem ?? (asset.durationSeconds !== null ? `${Math.round(asset.durationSeconds * 10) / 10} sec · ${asset.ratio}` : "Video")}</span></span>
+          className="h-auto min-h-24 w-full min-w-0 justify-start gap-3 overflow-hidden px-3 py-2 text-left whitespace-normal" onClick={() => { if (onSelect(asset)) onOpenChange(false); }}>
+          <VideoAssetThumbnail key={`${asset.id}:${asset.url}:${asset.thumbnailUrl}`} asset={asset} />
+          <span className="min-w-0 flex-1"><span className="block line-clamp-2 break-words text-sm font-medium">{asset.title}</span><span className="mt-1 block text-xs text-muted">{problem ?? (asset.durationSeconds !== null ? `${Math.round(asset.durationSeconds * 10) / 10} sec · ${asset.ratio}` : "Video")}</span></span>
         </Button>;
       })}</div>}
     {!previewAssets && ownerId && library.data ? <div className="space-y-2"><Button type="button" variant="ghost" size="sm" disabled={library.isFetching} onClick={() => void library.refetch()}>{library.isFetching ? "Refreshing videos…" : "Refresh library"}</Button>{library.isError ? <p role="alert" className="text-xs text-destructive">Could not refresh. Your previous videos are still shown.</p> : null}</div> : null}
   </DialogContent></Dialog>;
+}
+
+/** Only visible rows load footage; an absent poster should not hide identity. */
+function VideoAssetThumbnail({ asset }: { asset: MediaAsset }) {
+  const host = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false), [posterFailed, setPosterFailed] = useState(false), [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const element = host.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") {
+      const frame = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
+    }, { rootMargin: "80px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return <span ref={host} data-video-asset-thumbnail className="relative flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30" aria-hidden="true">
+    <Video className="absolute size-5 text-muted" />
+    {visible && asset.thumbnailUrl && !posterFailed ? <Image src={asset.thumbnailUrl} alt="" width={56} height={80} unoptimized onError={() => setPosterFailed(true)} className="relative size-full object-cover" />
+      : visible && !failed ? <video src={asset.url} muted playsInline preload="metadata" tabIndex={-1} disablePictureInPicture disableRemotePlayback onContextMenu={event => event.preventDefault()}
+        onLoadedMetadata={event => { const player = event.currentTarget; if (Number.isFinite(player.duration) && player.duration > 0) player.currentTime = Math.min(.01, player.duration / 2); }}
+        onError={() => setFailed(true)} className="relative size-full object-cover" /> : null}
+  </span>;
 }

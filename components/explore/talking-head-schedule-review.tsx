@@ -39,9 +39,10 @@ export function TalkingHeadScheduleActions({ action, preparation, enabled, onBac
       <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button>
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{enabled && current ? current.message : "Preview · scheduling disabled"}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Checking…" : action?.message.includes("interrupted schedule") || action?.message.includes("Resume the saved") ? "Resume saved request" : action?.message.includes("is scheduled") || action?.message.includes("schedule is saved") ? "Schedule saved" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Scheduling…" : action?.label ?? (action?.error ? "Try again" : "Schedule post")}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
-    {current && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{needsPreparation && current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}
+    {action?.label === "Schedule another post" ? <a href="/scheduling" className="text-sm text-primary underline">View in Scheduling</a> : null}
+    {current && needsPreparation && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}
   </div>;
 }

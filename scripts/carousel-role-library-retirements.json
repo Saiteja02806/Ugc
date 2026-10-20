@@ -66,7 +66,7 @@
     },
     {
       "retiredAt": "2026-10-20",
-      "reason": "User rejected the low-resolution woman-at-laptop hook source identified by the creating fresh content slide. Exclude this image and exact copies from new selection/import; preserve existing history.",
+      "reason": "User rejected the low-resolution woman-at-laptop hook source identified by the creating fresh content slide. Permanently removed at user request, including historical image files; prohibit reimport of this image and exact copies.",
       "exactSourcePaths": [
         "produtivity_hook_part3/This contains an image of_ gen z ceo vibes ✨️.jpg"
       ],
@@ -77,7 +77,7 @@
     },
     {
       "retiredAt": "2026-10-20",
-      "reason": "User rejected the woman resting on a laptop background identified by the drained trying to keep up with trends slide. Exclude this source and exact copies from future selection/import; preserve existing history.",
+      "reason": "User rejected the woman resting on a laptop background identified by the drained trying to keep up with trends slide. Permanently removed at user request, including historical image files; prohibit reimport of this source and exact copies.",
       "exactSourcePaths": [
         "productivity-human/Pinterest_2026-08-16 (74)/pinterest_002.jpg"
       ],

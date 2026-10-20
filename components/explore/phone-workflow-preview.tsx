@@ -20,6 +20,7 @@ import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source
 import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-source-section";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { useLocalWorkflowImages } from "@/components/explore/use-local-workflow-images";
+import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
 import { useWorkflowGenerationSettings } from "@/components/explore/use-workflow-generation-settings";
 import { WorkflowAccountBoundary, WorkflowGenerationBoundary } from "@/components/explore/workflow-generation-boundary";
 import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishing-boundary";
@@ -47,7 +48,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
   const appScreen = useLocalAppScreen();
   const videoReference = useLocalWorkflowMedia("video");
   const creatorAudio = useLocalWorkflowMedia("audio");
-  const creator = useLocalWorkflowImages(Math.max(0, (generation.settings.model === "kling_3_0" ? 2 : 6) - Number(Boolean(appScreen.asset)) - Number(Boolean(videoReference.asset)) - Number(Boolean(creatorAudio.asset))));
+  const creator = useLocalWorkflowImages(Math.max(0, getVideoReferencePolicy(generation.settings.model).maxImages - Number(appScreen.asset?.kind === "image")));
   const demo = useLocalWorkflowMedia("video");
   const demoAudio = useLocalWorkflowMedia("audio");
   const [demoAudioPlayback, setDemoAudioPlayback] = useState<ExploreBackgroundPlayback>("once");

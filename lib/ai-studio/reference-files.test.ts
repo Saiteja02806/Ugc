@@ -25,3 +25,17 @@ test("rejects a second audio reference within a batch or across uploads", () => 
   assert.match(validateReferenceFileBatch(["audio/mpeg", "audio/wav"], [], ["image", "video", "audio"], 6) ?? "", /one audio/);
   assert.match(validateReferenceFileBatch(["audio/mpeg"], ["audio"], ["image", "video", "audio"], 6) ?? "", /Remove the current audio/);
 });
+
+test("image capacity is independent of the one video and audio reference", () => {
+  for (const maxImages of [10, 30]) {
+    assert.equal(validateReferenceFileBatch(Array(maxImages).fill("image/jpeg"), ["video", "audio"], ["image", "video", "audio"], maxImages + 2, maxImages), null);
+    assert.match(validateReferenceFileBatch(Array(maxImages + 1).fill("image/jpeg"), [], ["image", "video", "audio"], maxImages + 2, maxImages)!, new RegExp(`up to ${maxImages} reference images`));
+  }
+});
+
+test("switching to a smaller model rejects excess references without changing the selection", () => {
+  const selected = Array(10).fill("image") as ("image" | "video" | "audio")[];
+  const snapshot = [...selected];
+  assert.match(validateReferenceFileBatch([], selected, ["image"], 6, 6)!, /up to 6/);
+  assert.deepEqual(selected, snapshot);
+});

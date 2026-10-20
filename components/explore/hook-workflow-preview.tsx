@@ -36,6 +36,7 @@ import { WorkflowNavigationButton } from "@/components/layout/workflow-navigatio
 import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { useLocalWorkflowImages } from "@/components/explore/use-local-workflow-images";
+import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
 import { WorkflowAccountBoundary, WorkflowGenerationBoundary } from "@/components/explore/workflow-generation-boundary";
 import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishing-boundary";
 import { TalkingHeadClipEditing } from "@/components/explore/talking-head-clip-editing";
@@ -96,7 +97,7 @@ function RestoredHookWorkflowLayout({ generationEnabled, ownerId, demoFramingEna
   const [showGenerationResults, setShowGenerationResults] = useState(Boolean(searchParams.get("hookJob") && !recovery.session.generatedAssetId));
   const overviewActive = section === "edit" || section === "create" && createView === "videos" && !showGenerationResults;
   const hookAudio = useLocalWorkflowMedia("audio");
-  const creator = useLocalWorkflowImages(Math.max(0, (generation.settings.model === "kling_3_0" ? 2 : 6) - Number(Boolean(videoReference.asset)) - Number(Boolean(hookAudio.asset))));
+  const creator = useLocalWorkflowImages(getVideoReferencePolicy(generation.settings.model).maxImages);
   const [referenceReview, setReferenceReview] = useState(recovery.session.localReferences);
   const hasLocalReferences = Boolean(creator.asset || videoReference.asset && !references.selectedId || hookAudio.asset);
   useEffect(() => {

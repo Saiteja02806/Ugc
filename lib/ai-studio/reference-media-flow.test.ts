@@ -89,7 +89,7 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
 });
 
 test("AI Studio video generation sends the user's prompt without a UGC template", () => {
-  assert.match(videoApi, /hookIdea:[^\n]*prompt,[\s\S]*?promptMode: "direct"/);
+  assert.match(videoApi, /hookIdea:[^\n]*generationPrompt,[\s\S]*?promptMode: "direct"/);
   assert.doesNotMatch(videoApi, /productName: "UGCPilot"/);
   assert.doesNotMatch(videoApi, /productDescription: "Short-form creator content\."/);
   assert.doesNotMatch(videoApi, /cameraStyle: "iphone_selfie"/);

@@ -163,3 +163,33 @@ test("ReAPI credit and moderation rejections are terminal without provider fallb
     mock.restoreAll();
   }
 });
+
+test("collection-only recovery fails closed without a verified completed saved task, before any provider request", async () => {
+  for (const operation of [null, { provider: "reapi", status: "submitted", provider_operation_id: "saved" },
+    { provider: "reapi", status: "provider_succeeded", provider_operation_id: null },
+    { provider: "openrouter", status: "provider_succeeded", provider_operation_id: "saved" }]) {
+    const ctx = context();
+    ctx.store.getGenerationProviderOperation = async () => operation;
+    ctx.store.reserveGenerationProviderOperation = async () => assert.fail("must not reserve a new operation");
+    mock.method(globalThis, "fetch", async () => assert.fail("must not contact a provider"));
+    await assert.rejects(runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json,
+      providerOutputRecovery: "collection-only-v1" } }, ctx), /saved completed provider task/);
+    mock.restoreAll();
+  }
+});
+
+test("collection-only recovery downloads the existing paid task without a POST or changed fingerprint", async () => {
+  const ctx = context(); let posts = 0;
+  mock.method(globalThis, "fetch", async (url, init) => {
+    if (init?.method === "POST") { posts++; return json({ id: "saved-paid-task" }, 202); }
+    if (String(url).includes("/tasks/")) return json({ status: "completed", output: { video_urls: ["https://reapiflexible.b-cdn.net/result.mp4"] } });
+    return new Response(video, { headers: { "content-type": "video/mp4" } });
+  });
+  await runGenerateHookVideoJob(job, ctx);
+  const fingerprint = ctx.operation().request_fingerprint;
+  ctx.operation().status = "provider_succeeded";
+  const result = await runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json,
+    providerOutputRecovery: "collection-only-v1" } }, ctx);
+  assert.equal(result.videoId, job.input_json.videoId);
+  assert.equal(posts, 1); assert.equal(ctx.operation().request_fingerprint, fingerprint);
+});

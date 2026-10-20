@@ -497,7 +497,7 @@ export function VideoGenerationStudioPanel({
   const hasVideoReference = Boolean(uploadedReferenceVideo || galleryVideoReference);
   const referencePolicyOptions = { allowOmniVideo: Boolean(workflow), hasTimedReferences: hasVideoReference || audioReferences.length > 0 };
   const referencePolicy = getVideoReferencePolicy(model, referencePolicyOptions);
-  const workflowImageLimit = Math.max(0, referencePolicy.maxFiles - Number(hasVideoReference) - audioReferences.length);
+  const workflowImageLimit = referencePolicy.maxImages;
   const referenceLimitError = referenceImages.length > workflowImageLimit ? `Use up to ${workflowImageLimit} image references with these inputs. Remove an image before generating.` : null;
   const referenceTypeError = getVideoReferenceTypeError(model, hasVideoReference, audioReferences.length > 0, referencePolicyOptions);
   const timedReferenceError = referenceTypeError ?? (audioReferences.length > 1 ? "Use one audio reference. Remove an audio before generating." : null)
@@ -1442,6 +1442,7 @@ export function VideoGenerationStudioPanel({
               disabled={generationLocked || isGenerating || creatorReferenceUploadPending}
               expectedUserId={user?.uid}
               maxFiles={referencePolicy.maxFiles}
+              maxImages={referencePolicy.maxImages}
               maxImageBytes={referencePolicy.maxImageBytes}
               maxTimedImageBytes={getVideoReferencePolicy(model, { ...referencePolicyOptions, hasTimedReferences: true }).maxImageBytes}
               maxVideoDurationSeconds={referencePolicy.maxVideoDuration}
@@ -1524,7 +1525,7 @@ export function VideoGenerationStudioPanel({
               iconOnly
               disabled={
                 generationLocked || isGenerating || creatorReferenceUploadPending || referenceFilesPending ||
-                (!uploadedReference && referenceFiles.length >= (model === "kling_3_0" ? 2 : 6))
+                (!uploadedReference && referenceImages.length >= referencePolicy.maxImages)
               }
               selection={uploadedReference}
               selectedCreatorId={selectedCreatorReferenceId}

@@ -86,6 +86,17 @@ export async function runGenerateHookVideoJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
+  const recoveryInput = isJsonObject(job.input_json) ? job.input_json : undefined;
+  const collectionOnly = recoveryInput?.providerOutputRecovery !== undefined;
+  if (collectionOnly) {
+    const operation = await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-reapi" });
+    if (recoveryInput?.providerOutputRecovery !== "collection-only-v1" || input.provider !== "reapi" ||
+        !["seedance_2_5", "wan_3_0"].includes(input.model ?? "") ||
+        operation?.provider !== "reapi" || !operation.provider_operation_id ||
+        !["provider_succeeded", "output_persisted"].includes(operation.status)) {
+      throw new ProviderOperationTerminalError("The saved completed provider task could not be verified. No new generation was submitted.");
+    }
+  }
   const prompt = buildVideoGenerationPrompt(input);
   const referenceSoundtrack = getGenerationReferenceSoundtrack(isJsonObject(job.input_json) ? job.input_json : {});
   const outputKey = `videos/hooks/${input.userId}/${input.projectId}/${input.videoId}.mp4`;
@@ -338,6 +349,11 @@ async function generateWithProvider(
     requestFingerprint,
   });
   const action = assertProviderOperationCanContinue(reservation);
+  if (isJsonObject(job.input_json) && job.input_json.providerOutputRecovery !== undefined &&
+      (provider !== "reapi" || action !== "resume" ||
+        !["provider_succeeded", "output_persisted"].includes(reservation.operation.status))) {
+    throw new ProviderOperationTerminalError("Collection recovery cannot submit a new provider generation.");
+  }
   let operationSubmitted = action === "resume";
   const providerOperationId =
     action === "resume"

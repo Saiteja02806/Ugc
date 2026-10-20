@@ -18,6 +18,7 @@ export function validateReferenceFileBatch(
   existingKinds: AIStudioReferenceKind[],
   allowedKinds: AIStudioReferenceKind[],
   maxFiles: number,
+  maxImages = maxFiles,
 ) {
   const kinds = types.map(getReferenceFileKind);
   if (kinds.some((kind) => !kind)) return "Use JPG, PNG, WebP, MP4, MOV, WebM, MP3, or WAV files.";
@@ -27,6 +28,7 @@ export function validateReferenceFileBatch(
       : "This model does not accept that reference type.";
   }
   if (existingKinds.length + kinds.length > maxFiles) return `You can attach up to ${maxFiles} reference files in UGC Pilot.`;
+  if ([...existingKinds, ...kinds].filter((kind) => kind === "image").length > maxImages) return `This model accepts up to ${maxImages} reference images. Remove an image or choose another model.`;
   if ([...existingKinds, ...kinds].filter((kind) => kind === "video").length > 1) return "Attach one reference video. Remove the current video to replace it.";
   if ([...existingKinds, ...kinds].filter((kind) => kind === "audio").length > 1) return "Attach one audio reference. Remove the current audio to replace it.";
   return null;

@@ -8,6 +8,7 @@ import {
   markBackgroundJobFailed,
   requestBackgroundJobCancellation,
   retryBackgroundJob,
+  recoverCompletedProviderOutput,
   type BackgroundJobRecord,
   type BackgroundJobType,
   type CreateBackgroundJobInput,
@@ -68,14 +69,17 @@ export async function createAndDispatchReservedMcpGenerationJob(params: {
 export async function retryAndDispatchBackgroundJob(params: {
   jobId: string;
   userId: string;
+  collectCompletedOutput?: boolean;
 }) {
-  const job = await retryBackgroundJob(params);
+  const job = params.collectCompletedOutput
+    ? await recoverCompletedProviderOutput(params)
+    : await retryBackgroundJob(params);
 
   if (!job) {
     return null;
   }
 
-  return dispatchBackgroundJob(job);
+  return params.collectCompletedOutput ? dispatchQueuedBackgroundJobForRecovery(job) : dispatchBackgroundJob(job);
 }
 
 /**

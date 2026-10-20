@@ -183,21 +183,21 @@ test("the ordered image collection is authoritative and every selected image rea
 test("image limits include the phone screenshot and block before any upload or authentication", async () => {
   const images = count => Array.from({ length: count }, (_, index) => ({ name: `image-${index}.png`, url: `blob:image-${index}` }));
   for (const input of [
-    draft({ referenceImages: images(7) }),
+    draft({ referenceImages: images(31) }),
     draft({ referenceImages: images(3), settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0" }) }),
-    draft({ kind: "phone", referenceImages: images(6), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
-    draft({ referenceImages: images(6), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
-    draft({ referenceImages: images(5), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
+    draft({ kind: "phone", referenceImages: images(30), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
+    draft({ referenceImages: images(31), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
+    draft({ referenceImages: images(31), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
     draft({ referenceImages: [{ name: "invalid.svg", url: "blob:invalid", file: { type: "image/svg+xml", size: 200 } }] }),
   ]) {
     const actual = harness();
     await assert.rejects(actual.client.generate(input));
     assert.equal(actual.uploads.length + actual.calls.length + actual.tokens.length, 0);
   }
-  for (const model of ["kling_3_0", "google_omni", "seedance_2_5"]) {
+  for (const [model, limit] of [["kling_3_0", 2], ["google_omni", 6], ["seedance_2_5", 30], ["wan_3_0", 10]]) {
     const actual = harness();
-    await actual.client.generate(draft({ referenceImages: images(model === "kling_3_0" ? 2 : 6), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
-    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, model === "kling_3_0" ? 2 : 6);
+    await actual.client.generate(draft({ referenceImages: images(limit), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
+    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, limit);
   }
 });
 

@@ -229,6 +229,10 @@ type BackgroundJobsDatabase = {
         Args: { p_job_id: string; p_user_id: string };
         Returns: BackgroundJobRow[];
       };
+      recover_completed_provider_output: {
+        Args: { p_job_id: string; p_user_id: string };
+        Returns: BackgroundJobRow[];
+      };
       transition_background_job: {
         Args: {
           p_claim_token: string | null;
@@ -740,6 +744,14 @@ export async function retryBackgroundJob(params: {
     throw new Error(`Could not retry background job: ${error.message}`);
   }
 
+  return data?.[0] ? mapBackgroundJob(data[0]) : null;
+}
+
+/** Collection only: the RPC never reserves or charges credits or creates a task. */
+export async function recoverCompletedProviderOutput(params: { jobId: string; userId: string }) {
+  const { data, error } = await getSupabaseServerClient().rpc("recover_completed_provider_output",
+    { p_job_id: params.jobId, p_user_id: params.userId });
+  if (error) throw new Error("The completed provider output could not be recovered safely.");
   return data?.[0] ? mapBackgroundJob(data[0]) : null;
 }
 

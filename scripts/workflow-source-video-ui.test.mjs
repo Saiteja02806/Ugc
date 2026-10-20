@@ -131,6 +131,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "./talking-head-references": { TalkingHeadReferences: "talking-references" },
       "./talking-head-references.module.css": css,
       "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null, remove() {}, clearError() {} }) },
+      "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: () => ({ maxImages: 6 }) },
       "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => localMedia },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
       "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },

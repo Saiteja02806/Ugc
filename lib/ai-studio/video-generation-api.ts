@@ -323,8 +323,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (body?.exploreFormat && referenceAudioUrls.length && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
   }
-  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS || referenceImageUrls.length > 5)) {
-    return NextResponse.json({ error: "Use up to five images with a reference video up to 10 seconds.", ok: false }, { status: 400 });
+  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS)) {
+    return NextResponse.json({ error: "Use a reference video up to 10 seconds.", ok: false }, { status: 400 });
   }
   if (isFormatVideoReference && !referenceVideoMode && (referenceImageUrls.length || !referenceVideoDurationSeconds || referenceVideoDurationSeconds > 3)) {
     return NextResponse.json({ error: "Choose one optional image or a video reference up to 3 seconds.", ok: false }, { status: 400 });
@@ -339,6 +339,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Use one audio reference in UGC Pilot.", ok: false }, { status: 400 });
   }
   const maxReferences = referencePolicy.maxFiles;
+  if (referenceImageUrls.length > referencePolicy.maxImages) {
+    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${referencePolicy.maxImages} reference images in UGC Pilot. Remove an image or choose another model.`, ok: false }, { status: 400 });
+  }
   if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
     return NextResponse.json(
       { error: `This model accepts up to ${maxReferences} reference files in UGC Pilot.`, ok: false },

@@ -67,8 +67,7 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   }
   const images = selectedWorkflowImages(draft);
   const policy = getVideoReferencePolicy(draft.settings.model, { hasTimedReferences: videos.length > 0 || Boolean(draft.audioReference) });
-  const referenceLimit = policy.maxFiles;
-  const imageLimit = referenceLimit - videos.length - Number(Boolean(draft.audioReference));
+  const imageLimit = policy.maxImages;
   if (images.length > imageLimit) return `This model accepts up to ${imageLimit} image references. Remove an image or choose another model.`;
   for (const image of images) {
     if (image?.file && (!["image/png", "image/jpeg", "image/webp"].includes(image.file.type) || !Number.isFinite(image.file.size) || image.file.size <= 0 || image.file.size > policy.maxImageBytes)) {

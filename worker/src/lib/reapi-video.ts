@@ -48,8 +48,11 @@ export function buildReapiVideoRequest(input: ReapiVideoInput) {
   const images = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
   const audio = input.referenceAudioUrls ?? [];
   const media = [...images, ...audio, ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : [])];
-  if (media.length > 6 || audio.length > 1 || new Set(media).size !== media.length || media.some(url => !isHttpsUrl(url))) {
-    throw new ProviderRequestNotSubmittedError("Use up to six distinct HTTPS references, including one audio and one video reference.");
+  const maxImages = seedance ? 30 : 10;
+  // ReAPI counts image references separately from timed references. The app
+  // currently exposes one audio and one video slot; neither consumes an image.
+  if (images.length > maxImages || audio.length > 1 || new Set(media).size !== media.length || media.some(url => !isHttpsUrl(url))) {
+    throw new ProviderRequestNotSubmittedError(`Use up to ${maxImages} distinct HTTPS images, plus one audio and one video reference.`);
   }
   const minReferenceDuration = seedance ? 2 : 1;
   const maxReferenceDuration = seedance ? 30 : 15;

@@ -1,5 +1,23 @@
 # Explore context and UI decision record
 
+## 2026-10-20 Seedance delivery recurrence and independent image limits
+
+- Two completed ReAPI Seedance tasks remain failed in app result collection.
+  The exact isolated-CDN allowlist fix is on merged main `dc73f0d1`, but read-only
+  production inspection still routes AI generation to
+  `ugc-ai-generation-worker-hookfix2-fac61da3`. Website readiness does not prove
+  worker rollout. Exhausted jobs need bounded collection recovery of their saved
+  task; never generate again or reserve more credits to recover completed output.
+- Replace the shared six-total-files policy with separate image capacity:
+  Seedance/ReAPI 30; WAN/ReAPI 10 in reference mode; Omni six application-supported
+  images; Kling/Runway two first/last keyframes. The existing one-video/one-audio
+  controls do not consume image capacity. Preserve all image ordering and block
+  excess before charging when switching to a smaller-capacity model.
+- More reference capacity is not facial-fidelity acceptance. The photo guide and
+  main/supporting roles remain; do not advertise all models as ten-image capable.
+  See `docs/seedance-delivery-and-reference-limits-2026-10-20.md` for evidence,
+  provider documentation and the distinction between local fixes and live recovery.
+
 ## 2026-10-20 Complete removal of two rejected source images
 
 - User explicitly superseded historical preservation for source assets

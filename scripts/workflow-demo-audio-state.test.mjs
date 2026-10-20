@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
+import { getVideoReferencePolicy } from "../lib/ai-studio/video-reference-policy.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const element = (type, props) => typeof type === "function" ? type(props) : ({ type, props });
@@ -121,6 +122,7 @@ function layout(kind) {
     "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
     "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => attachments[0] },
+    "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy },
     "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: (initialDuration, initialModel) => {
       generationInputs.push({ initialDuration, initialModel });
       return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };

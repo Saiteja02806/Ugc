@@ -131,6 +131,7 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  if (isProviderOutputRecoveryCandidate(job)) return true;
   const errorCode = getPublicJobErrorCode(job);
   // A provider's terminal failure needs a new, explicitly requested generation.
   // Replaying this job cannot revive its saved provider operation.
@@ -149,6 +150,17 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
     (job.status === "failed" || job.status === "stalled") &&
     job.attemptCount < job.maxAttempts
   );
+}
+
+/** The database verifies the saved completed operation before granting this once. */
+export function isProviderOutputRecoveryCandidate(job: BackgroundJobRecord) {
+  const input = job.input;
+  return job.jobType === "generate_hook_video" && job.status === "failed" &&
+    Number.isInteger(job.attemptCount) && job.attemptCount >= 0 && job.attemptCount < 20 &&
+    job.errorCode === "PROVIDER_OUTPUT_COLLECTION_FAILED" &&
+    Boolean(input && typeof input === "object" && !Array.isArray(input) &&
+      input.provider === "reapi" && ["seedance_2_5", "wan_3_0"].includes(String(input.model)) &&
+      input.providerOutputRecovery === undefined);
 }
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {

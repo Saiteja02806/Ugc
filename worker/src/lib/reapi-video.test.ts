@@ -45,6 +45,19 @@ test("text, image, audio, video and combined guidance are all preserved independ
   }
 });
 
+test("model-specific image limits preserve every ordered image independently of timed references", () => {
+  for (const [model, limit] of [["seedance_2_5", 30], ["wan_3_0", 10]] as const) {
+    const images = Array.from({ length: limit }, (_, index) => `https://storage.example.com/face-${index}.png`);
+    const request = buildReapiVideoRequest({ ...input, ...references, model, referenceImageUrls: images });
+    assert.deepEqual(request.image_urls, images);
+    assert.deepEqual(request.video_urls, [references.referenceVideoUrl]);
+    assert.deepEqual(request.audio_urls, references.referenceAudioUrls);
+    assert.throws(() => buildReapiVideoRequest({ ...input, ...references, model,
+      referenceImageUrls: [...images, "https://storage.example.com/excess.png"],
+    }), ProviderRequestNotSubmittedError);
+  }
+});
+
 test("invalid ReAPI settings and timed references fail before any paid submission", async () => {
   for (const patch of [{ durationSeconds: 3 }, { referenceAudioUrls: references.referenceAudioUrls },
     { referenceAudioUrls: references.referenceAudioUrls, referenceAudioDurationSeconds: [1] },

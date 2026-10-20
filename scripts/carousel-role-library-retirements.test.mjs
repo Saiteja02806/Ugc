@@ -46,6 +46,15 @@ test("the rejected low-resolution laptop hook and renamed byte-identical copies 
   assert.equal(getCarouselRoleSourceRetirement({ relativePath: "produtivity_hook_part3/another.jpg", sourceFileSha256: allowedHash }), null);
 });
 
+test("the rejected exhausted-at-laptop body source and renamed identical copies stay excluded", () => {
+  const sourcePath = "productivity-human/Pinterest_2026-08-16 (74)/pinterest_002.jpg";
+  const hash = "3046ddbc7ac7584172f6b98ec839e18f7aaed7e0684f9337ddb4f3de27aed2a9";
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath })?.retiredAt, "2026-10-20");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "another-batch/renamed.jpg", sourceFileSha256: hash })?.matchedBy, "sha256");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath.replace("002.jpg", "003.jpg"), sourceFileSha256: allowedHash }), null);
+});
+
+
 test("specific retired source path is excluded after Windows path normalization", () => {
   const result = getCarouselRoleSourceRetirement({
     relativePath: `./${rejectedPath.replaceAll("/", "\\").toUpperCase()}`,

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "removedAt": "2026-10-20",
+  "assetIds": [
+    "c8b4cefd-4905-433e-aa2f-e71e258fc3de",
+    "6e07f2d4-3d18-413a-be31-0e29604671e2"
+  ],
+  "storageKeys": [
+    "carousels/rendered/2akwxigaylmxcaewexrlbpwp91x2/default-project/6a0809e7-4813-41c9-aca7-1bdba135f3b5/story-native-centered-inter-tight-no-gradient-v10/slide-03-4x5-56c966d545d70a74.webp",
+    "carousels/rendered/2akwxigaylmxcaewexrlbpwp91x2/default-project/de63cd69-d9cd-4cb2-a816-0313bfb2dd15/story-native-centered-inter-tight-no-gradient-v10/slide-05-4x5-1c447ccbdb0be4f4.webp",
+    "carousels/rendered/4te7qaxgaqttlcbutssuzhfp9xw2/default-project/33a186b8-a595-4e5d-8410-5db42cb70f6b/story-native-full-frame-product-inter-medium-v14/slide-05-4x5-9456f5f5ad8e463d.webp",
+    "carousels/rendered/4te7qaxgaqttlcbutssuzhfp9xw2/default-project/533be8d5-759c-4de4-a796-3945d09bf787/social-single-statement-hook-inter-medium-v27/slide-01-4x5-818b787f3206dc39.webp",
+    "carousels/rendered/4te7qaxgaqttlcbutssuzhfp9xw2/default-project/8c574a2d-f302-4895-a9f6-217c7a220724/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-c712f50c3a049eb6.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/031ee4ee-62d5-4a0c-998e-d85b196a3a93/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-7a8a15b0738f64f0.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/09bd63af-92b5-4377-b4e2-ffc42695cb25/story-native-full-frame-product-inter-medium-v14/slide-05-4x5-1b192bcdc8f42771.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/0a671944-c005-429c-be3a-123089d4dd2e/story-native-renderer-v6-outline-4/slide-02-4x5-3993ed6c7960fc31.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/2d3ef38c-f327-4dff-adf4-26a3a5fb75b0/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-8a4be64754f592dd.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/4b7c163f-9505-4502-b08e-a696b7aa4a79/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-a3eb8afee38db7ce.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/4b7c163f-9505-4502-b08e-a696b7aa4a79/story-native-full-frame-product-inter-medium-v14/slide-02-4x5-93473800428f3d15.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/5951805f-1fa1-47f1-80c2-5606fe3dc30c/social-single-statement-hook-inter-medium-v27/slide-04-4x5-16ddaba8c411469e.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/6761a855-7bcf-45bc-9f18-a8a2b3124b01/social-single-statement-hook-inter-medium-v27/slide-01-4x5-e51d0582936d545a.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/692e4878-e4c9-497f-9837-14394d3e8a3e/social-single-statement-hook-inter-medium-v27/slide-01-4x5-5b461adc3c661cf4.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/7692dca5-32a2-4e18-9cab-dbdc882c6de7/social-single-statement-hook-inter-medium-v27/slide-01-4x5-2cf6d0fa9fb69bf5.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/77157216-4f1f-453e-aa6e-0895e7bcb1ae/story-native-centered-inter-tight-no-gradient-v10/slide-04-4x5-a02d7325007c80fe.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/b4d28ed7-408d-417d-aec0-b7abb99f0e2e/story-native-full-frame-product-inter-tight-v13/slide-01-4x5-1fa4fadb57c9ae51.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/cbfa5df3-9812-4fd9-92ef-760607ffe041/story-native-full-frame-product-inter-medium-v14/slide-04-4x5-4df1cfe9bb0ef54f.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/d7c0ce2f-c4c2-4379-90d3-947945c9508a/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-f02b74f8353231c8.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/de31018c-9c35-4ca8-a7c0-633ab2bf04cd/social-single-statement-hook-inter-medium-v27/slide-01-4x5-8e05d4e68c9abb0b.webp",
+    "carousels/rendered/opqhlloyhkqfcysj4cznv2dv8v02/default-project/fa798633-1d25-46e9-9670-5dbcdb6cddc5/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-8365e15c73964659.webp",
+    "carousels/rendered/yhvhknhixded9asfuq6dgulzm9g1/default-project/0221e4a1-46d3-4218-ba44-3db9742e76f1/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-32250f4ce856cebe.webp",
+    "carousels/rendered/yhvhknhixded9asfuq6dgulzm9g1/default-project/1a9423b0-21e7-487b-ba7f-c655b42ed0aa/story-native-renderer-v3-fixed-connected-white/slide-03-4x5-68036a40de71694b.webp",
+    "carousels/rendered/yhvhknhixded9asfuq6dgulzm9g1/default-project/36f6eeec-7934-4bb3-8fde-0f18044b2dc6/social-single-statement-hook-inter-medium-v27/slide-03-4x5-fbbfe77bc271f097.webp",
+    "carousels/rendered/yhvhknhixded9asfuq6dgulzm9g1/default-project/7bf0d2c8-3756-4ba0-8e32-41f895cad89c/story-native-full-frame-product-inter-medium-v14/slide-01-4x5-26fe14bfab11cf06.webp",
+    "category-library/v2/productivity/hook/productivity_hook_872cd8ed19388833cd06/base-1080x1350.webp",
+    "category-library/v2/productivity/hook/productivity_hook_872cd8ed19388833cd06/original.jpg",
+    "category-library/v2/productivity/hook/productivity_hook_872cd8ed19388833cd06/thumb-320x400.webp",
+    "category-library/v2/productivity/human/productivity_human_3046ddbc7ac7584172f6/base-1080x1350.webp",
+    "category-library/v2/productivity/human/productivity_human_3046ddbc7ac7584172f6/original.jpg",
+    "category-library/v2/productivity/human/productivity_human_3046ddbc7ac7584172f6/thumb-320x400.webp"
+  ]
+}

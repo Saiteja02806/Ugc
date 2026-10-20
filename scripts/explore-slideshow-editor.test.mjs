@@ -18,6 +18,7 @@ function load(file, imports = {}, globals = {}) {
   vm.runInNewContext(code, { exports, require: name => {
     if (name === "server-only") return {};
     if (name === "../../worker/src/lib/explore-inline-symbols.ts") return load("worker/src/lib/explore-inline-symbols.ts");
+
     if (name === "@/components/media/image-library-picker") return { ImageLibraryPicker: "ImageLibraryPicker" };
     if (name === "@/lib/media/image-library") return { sameBackgroundTargets };
       if (name === "./slideshow-editable-draft.ts" || name === "./slideshow-editable-draft" || name === "@/lib/explore/slideshow-editable-draft") return { readSlideshowEditableDraft };

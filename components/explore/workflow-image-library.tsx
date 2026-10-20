@@ -21,6 +21,7 @@ export function WorkflowImageLibrary({ ownerId, open, disabled, selectedIds, onS
   const revision = useRef(0);
   useEffect(() => { const requests = revision; return () => { requests.current++; }; }, [ownerId]);
   const images = useQuery({ queryKey: ["explore-reference-images", ownerId ?? "signed-out", "explore-only-v2"],
+
     queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal), enabled: open && Boolean(ownerId), staleTime: REFERENCE_IMAGE_STALE_MS });
   async function choose(id: string) {
     if (!ownerId || disabled || pending) return;

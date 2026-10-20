@@ -16,6 +16,7 @@ function load(file, imports = {}, globals = {}) {
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
     if (name in imports) return imports[name];
     if (name === "./person-reference.ts") return load("lib/explore/person-reference.ts");
+
     if (name === "@/components/explore/slideshow-prompt-improver") return { useSlideshowPromptImprover: () => ({busy:false,action:null,feedback:null}) };
     if (name === "@/lib/explore/slideshow-composer-draft") return load("lib/explore/slideshow-composer-draft.ts");
     if (name === "@/components/explore/use-slideshow-composer-draft") return { useSlideshowComposerDraft: () => { const [prompt,setPrompt]=imports.react.useState(""); const [images,setImages]=imports.react.useState([]); return {prompt,setPrompt,images,setImages,busy:false,error:null}; } };

@@ -54,6 +54,7 @@ test("the rejected exhausted-at-laptop body source and renamed identical copies 
   assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath.replace("002.jpg", "003.jpg"), sourceFileSha256: allowedHash }), null);
 });
 
+
 test("specific retired source path is excluded after Windows path normalization", () => {
   const result = getCarouselRoleSourceRetirement({
     relativePath: `./${rejectedPath.replaceAll("/", "\\").toUpperCase()}`,

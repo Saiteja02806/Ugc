@@ -9,6 +9,7 @@
 - Receipt: `outputs/trending-quota-history-release-verification-2026-10-19.json`.
 
 
+
 ## Implementation follow-up (local; not deployed)
 
 The correction below is now implemented locally. The original diagnosis is
@@ -41,15 +42,14 @@ Validation:
   arriving while a historical card is selected, reload, navigation away/back,
   a different quota, empty unread feed, network retry, and denied storage.
   Decision/save/schedule write count remained zero.
-- A final browser rerun after loading-state cleanup, stale-feed deduplication,
-  timeout and storage-status copy changes was blocked: automatic approval
-  review reported an account usage limit. The earlier browser pass does not
-  constitute a pass of that exact final revision.
-- Read-only production SQL confirmed eight reviewed Carousel slots in the
-  affected 19 October quota, positions 1–8 (daily limit 50). This verifies the
-  retained data, not the new deployed endpoint. A local attempt to run the new
-  service directly against production failed at the first network read
-  (`TypeError: fetch failed`); no production writes were performed.
+- The final quota browser rerun passed on the isolated release checkout,
+  including loading-state cleanup, stale-feed deduplication and timeouts.
+- The new service ran read-only against the affected production quota:
+  all eight reviewed Carousel slots recovered in positions 1–8 with six
+  slides each and no unavailable previews. A different owner was denied;
+  the quota was unchanged. This checks actual data and service behavior,
+  not the deployed HTTP endpoint or signed-in production browser.
+
 
 Run `npm run test:trending-history`, `npm run test:trending-interaction`, and
 `node scripts/trending-history-recovery.browser.cjs --quota-only` to reproduce.

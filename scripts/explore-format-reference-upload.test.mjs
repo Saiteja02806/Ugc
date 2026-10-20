@@ -5,6 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as imagePicker from "../lib/media/image-picker.ts";
 import * as personReference from "../lib/explore/person-reference.ts";
+
 import * as imageBatch from "../lib/explore/reference-image-batch.ts";
 
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
@@ -17,6 +18,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "@/lib/media/image-picker": imagePicker,
     "@/lib/explore/person-reference": personReference,
     "@/components/explore/person-photo-guide": { PersonPhotoGuide: "PersonPhotoGuide" },
+
     "@/lib/explore/reference-image-batch": imageBatch,
     react: { useState: initial => { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = typeof value === "function" ? value(states[index]) : value; }]; },
       useRef: initial => { const index = cursor++; return refs[index] ??= { current: initial }; }, useEffect: effect => { effects.push(effect); } },
@@ -66,6 +68,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
   return { calls, changes, selectionChanges, pending, errors, queries, savedReads, imageCache, cancellations, render, all, cleanup: () => cleanups.forEach(cleanup => cleanup()),
     button(label) { return all(render(), node => node.type === "Button" && node.props["aria-label"] === label)[0]; },
     openImage() { all(render(), node => node.type === "Dialog")[0].props.onOpenChange(true); return render(); },
+
     choose(kind) { all(tree, node => node.type === "input" && node.props["aria-label"] === `Choose optional ${kind} reference`)[0].props.onChange({ currentTarget: { files: [new File(["reference"], kind === "image" ? "reference.png" : "reference.mp4", {type: kind === "image" ? "image/png" : "video/mp4"})], value: "selected" } }); },
   };
 }
@@ -308,6 +311,7 @@ test("image picker keeps multiple saved/catalogue selections open with toggles a
   const button = label => h.all(render(), node => node.type === "Button" && node.props["aria-label"] === label)[0];
   const popover = () => h.all(render(), node => node.type === "Dialog")[0];
   const count = () => h.all(render(), node => node.props?.role === "status").find(node => typeof node.props.children === "string" && node.props.children.endsWith(" images selected"));
+
   popover().props.onOpenChange(true);
   assert.ok(h.all(button("Use your image one.png"), node => node.type === "span" && node.props.className?.includes("border-2")).length, "Every thumbnail has a visible checkbox");
   button("Use your image one.png").props.onClick(); await flush();
@@ -321,6 +325,7 @@ test("image picker keeps multiple saved/catalogue selections open with toggles a
   assert.equal(button("Use your image two.png").props.disabled, true);
   assert.equal(button("Use your image one.png").props.disabled, false);
   assert.equal(count().props.children, "2 of 2 images selected");
+
   button("Use creator 1").props.onClick(); await flush();
   assert.deepEqual(Array.from(selected, image => image.asset.id), ["one"]);
   assert.equal(button("Use creator 1").props["aria-pressed"], false);

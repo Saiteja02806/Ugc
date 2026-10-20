@@ -14,6 +14,7 @@ function load(file, imports = {}, globals = {}) {
 }
 const textFonts = load("worker/src/lib/explore-text-fonts.ts", { "./explore-text-font-metrics.json": { default: JSON.parse(readFileSync(new URL("../worker/src/lib/explore-text-font-metrics.json", import.meta.url), "utf8")) } });
 const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": load("worker/src/lib/explore-inline-symbols.ts"), "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"), "./explore-text-fonts.ts": textFonts });
+
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });

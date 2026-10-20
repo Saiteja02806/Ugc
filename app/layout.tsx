@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
-import { Suspense } from "react";
-import { SiteAnalytics } from "@/components/marketing/site-analytics";
 
 import { GoogleAuthRedirectHandler } from "@/components/auth/google-auth-redirect-handler";
 import { AuthProvider } from "@/contexts/auth-context";
@@ -97,7 +95,7 @@ export const metadata: Metadata = {
     template: "%s | UGC Pilot",
   },
   description:
-    `Create video-first content and approved publishing workflows for ${visibleSocialPlatformList} in one focused workspace.`,
+    `Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset for ${visibleSocialPlatformList}.`,
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [
@@ -166,7 +164,6 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <Suspense fallback={null}><SiteAnalytics /></Suspense>
           <AuthProvider>
             <GoogleAuthRedirectHandler />
             <JobQueryProvider>

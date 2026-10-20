@@ -46,3 +46,4 @@ The prior desktop assertion was a fixture coordinate error: the portrait media e
 This is automated Chromium acceptance, not physical iOS/Safari/Android acceptance. Production deployment and signed-in acceptance are recorded separately after rollout.
 
 Deployment acceptance — 19 October 2026: source 426b37fd is live on getugcpilot.com/dashboard as dpl_H6LcLwBrPVFyaB1igR1bVsSZvGsn, READY. PR #73 is merged as d2f698a7; the main file tree exactly matches the tested source. Contract CI passed. In the real signed-in production browser, a mouse drag advanced to the next post, the reverse drag returned to the exact original post, and reload restored that historical selection. One initial skip was recorded; no save, scheduling, publication or paid generation was performed. Native touch remains automated local Chromium acceptance, distinct from physical-phone verification. Evidence: outputs/trending-touch-release-verification-2026-10-19.json.
+

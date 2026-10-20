@@ -2,6 +2,7 @@ import { estimateEditOverlayLineWidth } from "./edit-overlay-render-spec.ts";
 import { exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, isExploreTextWeight, type ExploreTextFont, type ExploreTextWeight } from "./explore-text-fonts.ts";
 import { formatInlineRuns, formatInlineSymbolSvg, formatTextGraphemes, measureFormatInlineText } from "./explore-inline-symbols.ts";
 export { formatInlineSymbolPaths } from "./explore-inline-symbols.ts";
+
 export { EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily } from "./explore-text-fonts.ts";
 export type { ExploreTextFont, ExploreTextWeight } from "./explore-text-fonts.ts";
 
@@ -50,6 +51,7 @@ export function formatTextLayout(text: ExploreFormatText, width: number, height:
   const maxWidth = width * text.width;
   const fontWeight = text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700);
   const measure = (value: string) => measureFormatInlineText(value, fontSize, part => text.font ? exploreTextLineWidth(part, text.font, fontWeight, fontSize, estimateEditOverlayLineWidth) : estimateEditOverlayLineWidth(part, fontSize));
+
   const lines: string[] = [];
   for (const paragraph of text.value.split("\n")) {
     if (!paragraph.trim()) { lines.push(""); continue; }
@@ -112,4 +114,5 @@ export function createFormatTextSvg(text: ExploreFormatText, width: number, heig
     return formatTextLineRuns(line, text, layout).map(run => run.symbol ? formatInlineSymbolSvg(run.symbol, run.x, y - layout.fontSize, layout.fontSize) : `<text x="${run.x}" y="${y}" text-anchor="start">${escapeXml(run.value)}</text>`).join("");
   }).join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${background ? `<rect x="0" y="${background.y}" width="${width}" height="${background.height}" fill="#000000" fill-opacity="${background.opacity}"/>` : ""}<g fill="${escapeXml(text.color)}" font-family="${escapeXml(layout.fontFamily)}" font-weight="${layout.fontWeight}" font-size="${layout.fontSize}"${text.font ? ' style="font-kerning:none;font-variant-ligatures:none"' : ""} text-anchor="middle"${background ? "" : ` stroke="black" stroke-width="${width / 540}" paint-order="stroke"`}>${lines}</g></svg>`;
+
 }

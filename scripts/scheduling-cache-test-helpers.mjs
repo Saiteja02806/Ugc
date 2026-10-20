@@ -4,6 +4,8 @@ import vm from "node:vm";
 import ts from "typescript";
 import { QueryClient } from "@tanstack/react-query";
 import * as keys from "../lib/scheduling/account-data-query-cache.ts";
+import * as connectionRevision from "../lib/social/connection-revision.ts";
+import * as connectionEvents from "../lib/social/connection-cache-events.ts";
 
 // Exercise the real account cache and loaders; only authentication/HTTP are isolated.
 export function createScheduleCacheFixture(owner, fetch = async () => { throw new Error("Unexpected cache HTTP request"); }) {
@@ -14,6 +16,8 @@ export function createScheduleCacheFixture(owner, fetch = async () => { throw ne
   vm.runInNewContext(code, { exports, fetch, Error, Date,
     require(name) {
       if (name === "./account-data-query-cache") return keys;
+      if (name === "../social/connection-revision") return connectionRevision;
+      if (name === "../social/connection-cache-events") return connectionEvents;
       assert.equal(name, "../firebase/auth");
       return { getCurrentUserIdToken: async () => "fixture-owner-token" };
     },

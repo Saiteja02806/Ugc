@@ -13,6 +13,7 @@ function load(file, imports = {}, globals = {}) {
   return exports;
 }
 const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": load("worker/src/lib/explore-inline-symbols.ts"), "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"), "./explore-text-fonts.ts": fonts });
+
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.js": load("worker/src/subtitles/styles.ts"), "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.js": subtitleContracts, "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });

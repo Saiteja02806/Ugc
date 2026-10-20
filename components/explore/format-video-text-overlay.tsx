@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatTextLayout, formatTextLineRuns, formatInlineSymbolPaths, positionFormatText, type ExploreFormatText } from "@/worker/src/lib/explore-format-edit";
+
 import "./explore-text-fonts.css";
 
 export function FormatVideoTextOverlay({ text, width, height, label, onChange, onMoveStart }: {
@@ -35,6 +36,7 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
           : <text key={i} x={run.x} y={y} textAnchor="start">{run.value}</text>)}</g>
           : <text key={index} x={layout.x} y={y}>{line}</text>;
       })}
+
     </g>
     {onChange && text.value.trim() ? <rect data-text-handle role="button" tabIndex={0} aria-label={`Move ${label}`} aria-roledescription="draggable text"
       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"

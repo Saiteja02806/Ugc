@@ -6,6 +6,7 @@ const API_ROOT = "https://reapi.ai/api/v1";
 // Exact hosts verified in authenticated completed tasks: public CDN, WAN
 // storage, and Seedance Less Restriction's isolated CDN. No CDN wildcards.
 const OUTPUT_HOSTS = new Set(["cdn.reapi.ai", "file.deepytb.com", "reapiflexible.b-cdn.net"]);
+
 export const REAPI_SEEDANCE_MODEL = "doubao-seedance-2.5-face";
 export const REAPI_WAN_MODEL = "wan3.0-video";
 

@@ -10,20 +10,20 @@ const content = seoPageContent.carousel;
 export const metadata: Metadata = {
   title: "Instagram Carousel Maker",
   description:
-    "Turn your business context into a complete Instagram carousel, review it, and schedule it for a connected Instagram account with UGCPilot.",
+    "Create Instagram carousel posts from your business context. Plan the slides, review the complete post, and schedule it with UGC Pilot.",
   alternates: { canonical: content.canonicalPath },
   openGraph: {
-    title: "Instagram Carousel Maker | UGCPilot",
+    title: "Instagram Carousel Maker | UGC Pilot",
     description:
-      "Create, review, and schedule Instagram carousels from your business context.",
+      "Create Instagram carousel posts from your business context, then review and schedule the complete post.",
     url: content.canonicalPath,
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "Instagram Carousel Maker | UGCPilot",
+    title: "Instagram Carousel Maker | UGC Pilot",
     description:
-      "Create, review, and schedule Instagram carousels from your business context.",
+      "Create Instagram carousel posts from your business context, then review and schedule the complete post.",
   },
 };
 

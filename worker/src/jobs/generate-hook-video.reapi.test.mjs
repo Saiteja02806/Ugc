@@ -153,6 +153,7 @@ test("Seedance collection recovery persists the isolated CDN result and original
   assert.equal(ctx.operation().metadata.providerCostUsd, 1.281);
 });
 
+
 test("ReAPI credit and moderation rejections are terminal without provider fallback", async () => {
   for (const [status, errorCode, expectedCode] of [[402, 20001, "PROVIDER_INSUFFICIENT_CREDITS"], [400, 80006, "PROVIDER_CONTENT_MODERATION"]]) {
     const ctx = context(); let posts = 0;

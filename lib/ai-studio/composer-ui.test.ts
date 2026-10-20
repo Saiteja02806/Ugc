@@ -88,7 +88,7 @@ test("the unified toolbar keeps settings and Generate inside the same form", () 
   assert.match(composer, /layout === "unified" && "px-3 pb-2 sm:px-4 sm:pb-3"/);
   assert.match(imageWorkspace, /AiStudioRatioPicker/);
   assert.match(imageWorkspace, /ariaLabel="Number of images"/);
-  assert.match(imageWorkspace, /generateLabel=\{pendingSubmission \? "Recover saved request" : "Generate image"\}/);
+  assert.match(imageWorkspace, /generateLabel=\{pendingSubmission \? "Recover saved request" : slideshowSlideCount \? `Generate \$\{outputCount\} slides` : "Generate image"\}/);
   assert.match(videoWorkspace, /layout=\{workflow \? "workflow" : "unified"\}/);
 });
 
@@ -232,7 +232,7 @@ test("video references start empty and offer optional creator references", () =>
   );
   assert.match(
     videoWorkspace,
-    /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!prompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
+    /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!combinedPrompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
   );
   assert.doesNotMatch(
     videoWorkspace,
@@ -262,7 +262,7 @@ test("AI Studio keeps direct image and video references optional outside Explore
   assert.match(videoWorkspace, /referenceVideoDurationSeconds:/);
   assert.match(
     videoWorkspace,
-    /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!prompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
+    /generateDisabled=\{[\s\S]*?generationLocked \|\|[\s\S]*?hasInsufficientCredits \|\|[\s\S]*?!combinedPrompt\.trim\(\) \|\|[\s\S]*?isGenerating[\s\S]*?\}/,
   );
 });
 

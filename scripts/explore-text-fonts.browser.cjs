@@ -84,6 +84,7 @@ async function main() {
       await page.screenshot({path:path.join(out,`symbols-${viewport.width}.png`),fullPage:true});
     }
     console.log('PASS: preview cross/right-arrow red, checks green, face emoji retained and exact Unicode survives save/reopen on laptop/mobile.');
+
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
     await checkPresetSwitch(true);
     await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");

@@ -532,6 +532,7 @@
   production soak or proof the deployed app is fixed. See
   `docs/idle-tab-refresh-fix-2026-10-19.md` for scope, commands and acceptance limits.
 
+
 ### Trending same-quota older-post recovery — 19 October 2026, local correction
 
 - Recovery scope is the same quota/delivered feed, including posts viewed hours
@@ -555,9 +556,11 @@
   read-only; normal feed preparation and decision writes are unchanged.
 - Local regression and browser checks passed for empty-cache +2h recovery,
   pagination, reload/navigation, quota isolation, empty feed, retry and blocked
-  storage. Final browser rerun after small follow-up changes was blocked by
-  automatic approval review's usage limit. No deployment or authenticated
-  production acceptance of this new recovery feature is claimed.
+  storage. The final quota browser rerun passed on the isolated release.
+  Read-only production-service verification recovered all eight reviewed
+  slideshows, denied a different owner, and left quota unchanged.
+  Authenticated deployed-browser acceptance remains pending.
+
   Diagnostic evidence and limits, including the
   different Comet/in-app browser contexts, are in
   `docs/trending-older-history-investigation-2026-10-19.md`.
@@ -604,6 +607,7 @@
   folder replacement. The existing completed plan can resume idempotently.
   Preparing a fresh old-source plan after installation intentionally fails if
   the import bytes no longer match the original reviewed source.
+
 
 ### Hook audit approval and manual audio collection — 19 October 2026
 

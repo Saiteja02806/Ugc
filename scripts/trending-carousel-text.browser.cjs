@@ -23,6 +23,7 @@ async function main() {
   const patches=[],errors=[],requests=[]; let failSave=false;
   const mediaId=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const libraryImages=[1,2,3,4,5,6].map(n=>({id:mediaId(n),collection:'image',sourceType:'upload',status:'ready',createdAt:'2026-10-19T00:00:00Z',updatedAt:'2026-10-19T00:00:00Z',url:'https://owned.test/'+n+'.png',thumbnailUrl:null,ratio:'4:5',width:1080,height:1350,mimeType:'image/png',title:'Nature '+n,fileName:'nature-'+n+'.png',projectId:'image-library',metadata:{}}));
+
   await new Promise((resolve,reject)=>{const c=webpack({mode:'development',plugins:[clientEnv],devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],extensionAlias:{'.js':['.js','.ts','.tsx']},alias:{'next/font/local':path.join(out,'font.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/contexts/auth-context':path.join(out,'auth.ts'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.module\.css$/,use:path.join(out,'module-css.cjs')},{test:/\.css$/,exclude:/\.module\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/media";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const server=http.createServer(async(req,res)=>{try {
@@ -175,6 +176,7 @@ async function main() {
     assert.deepEqual(record.content.slides.map(s=>s.backgroundAssetId),Array.from({length:6},(_,i)=>'image-'+(i+1)),'Cancel leaves the saved six-slide creative unchanged');
     record=priorRecord;
     console.log('PASS six-slide body-only library preview: all six selected images, hook and five distinct body texts visible before and after Use; Cancel preserves saved draft');
+
     const coverBefore=structuredClone(record.content.slides[0]);
     record={...record,renderOutput:null,content:{...record.content,slides:[coverBefore,baseSlide(2),{...baseSlide(3),headline:'Different heading',subtext:'Keep this different copy on slide three.'},{...baseSlide(4),headline:'Last thought',subtext:'A longer body that wraps independently while sharing the same styling.'}]}};
     await open();await page.getByRole('button',{name:'Next slide',exact:true}).click();

@@ -6,6 +6,7 @@ import { runMediaCommand, type SubtitleTools } from "../subtitles/media.js";
 import { createOutlinedFormatTextSvg } from "./explore-text-outlines.js";
 import { formatInlineRuns, formatTextGraphemes, needsFormatEmojiFallback } from "./explore-inline-symbols.js";
 
+
 /** Shared by standalone edits and composition. User text remains in local
  * files rather than being interpolated into an FFmpeg filter graph. */
 export async function prepareExploreFormatEditFilter(input: { width: number; height: number; durationMs: number; editing: ExploreFormatEdit; workDir: string; tools: SubtitleTools; sourceVideo?: string; sourceAudio?: string; firstImageInputIndex?: number }) {
@@ -24,6 +25,7 @@ export async function prepareExploreFormatEditFilter(input: { width: number; hei
     if (text.preset === "snapchat-classic" || text.font || text.fontWeight !== undefined || colorSymbols) {
       const file = `format-caption-${overlayIndex}.png`;
       const svg = text.font || text.fontWeight !== undefined || colorSymbols ? await createOutlinedFormatTextSvg(text, input.width, input.height, input.tools.fontsDir) : createFormatTextSvg(text, input.width, input.height);
+
       await sharp(Buffer.from(svg)).png().toFile(join(input.workDir, file));
       captionImages.push(file);
       textLayers.push({ inputIndex: (input.firstImageInputIndex ?? 1) + captionImages.length - 1, filter: `overlay=x=0:y=0:shortest=1:enable='gte(t,${text.startMs / 1000})*lt(t,${text.endMs / 1000})'` });

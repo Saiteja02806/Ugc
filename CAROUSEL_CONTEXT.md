@@ -135,6 +135,7 @@
   Production rollout and authenticated acceptance remain pending.
 
 
+
 ## 2026-10-19 Same-quota older-post recovery (local correction; production pending)
 
 - User subsequently clarified the required scope: previously viewed posts from
@@ -170,12 +171,15 @@
   and scoped lint. The actual Gallery/Deck browser fixture passed empty-cache
   +2h recovery, slow pagination, refresh, leave/return, quota isolation, empty
   quota, retry and blocked storage, with zero decision/save/schedule writes.
-  A final browser rerun after the last small loading/deduplication changes was
-  blocked by automatic approval review's usage limit. Production acceptance
-  remains pending; see the investigation document for exact evidence/limits.
+  The final quota browser rerun passed on the isolated release checkout.
+  The new service also recovered all eight reviewed production-quota
+  slideshows (six slides each), denied a different owner, and left quota
+  unchanged. Authenticated deployed-browser acceptance remains pending.
+
 - Earlier immediate swipe/reload acceptance remains valid within its tested
   scope; it does not prove older account-history recovery. No production writes
   were made during this investigation.
+
 
 ## 2026-10-19 Same-visit finger swipe-back correction (local)
 
@@ -8113,3 +8117,8 @@ The records below are retained from the deployed branch during release reconcili
 
 - Source 426b37fd is deployed to the real production dashboard; PR #73 merged as d2f698a7 with an identical source tree. All 86 interaction tests, application TypeScript/lint, the combined actual-gallery browser gate, contract CI and Vercel production build passed.
 - Real signed-in production mouse advance/reversal restored the exact prior post; reload preserved that selection. One initial skip was recorded, with no save/schedule/publish/generation. Phone/tablet native touch is covered by local Chromium tests; physical device acceptance remains separate. Receipt: outputs/trending-touch-release-verification-2026-10-19.json.
+
+## Trending library backgrounds retain body copy — 19 October 2026 release preparation
+
+- Include the completed worker correction in render-trending-carousel-edit.ts: body-only/single-statement copy resolves submitted subtext then headline, so replacing backgrounds cannot interpret the legacy headline column as deletion. Advance the renderer cache signature to normalized-edit-v4-body-copy. Six-slide render and editor browser regressions passed in the originating task. Production rollout is tracked in the combined Hook/Seedance release receipt.
+

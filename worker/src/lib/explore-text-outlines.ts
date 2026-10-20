@@ -6,6 +6,7 @@ import { formatTextLayout, type ExploreFormatText } from "./explore-format-edit.
 import { serializeGlyphPath } from "./svg-glyph-path.js";
 import { formatInlineSymbol, formatInlineSymbolSvg, formatTextGraphemes, needsFormatEmojiFallback, type FormatInlineSymbol } from "./explore-inline-symbols.js";
 
+
 const fonts = new Map<string, Promise<opentype.Font>>();
 const escapeXml = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 async function readFont(file: string) {
@@ -34,6 +35,7 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
     }
     const advance = (value: string) => Array.from(value).reduce((sum, character) => sum + (font.charToGlyph(character).advanceWidth ?? font.unitsPerEm) * layout.fontSize / font.unitsPerEm, 0);
     const advances = runs.map(run => run.symbol || run.emoji ? layout.fontSize : run.supported ? advance(run.text) : estimateEditOverlayLineWidth(run.text, layout.fontSize));
+
     let x = layout.x - advances.reduce((sum, advance) => sum + advance, 0) / 2;
     const y = layout.y + i * layout.lineHeight + layout.fontSize;
     return runs.map((run, index) => {
@@ -45,6 +47,7 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
       }).join("") : "";
       const markup = run.symbol ? formatInlineSymbolSvg(run.symbol, x, y - layout.fontSize, layout.fontSize) : run.supported ? paths
         : `<text x="${x}" y="${y}" font-family="${run.emoji ? "Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif" : "Arial, Helvetica, sans-serif"}" font-size="${layout.fontSize}" font-weight="${layout.fontWeight}"${run.emoji ? ' stroke="none"' : ""}>${escapeXml(run.text)}</text>`;
+
       x += advances[index];
       return markup;
     }).join("");

@@ -15,6 +15,7 @@ import { imagePickerThumbnailUrl, REFERENCE_IMAGE_PAGE_SIZE, REFERENCE_IMAGE_STA
 import { prepareReferenceImageBatch, validateReferenceImageFiles } from "@/lib/explore/reference-image-batch";
 import { makeMainReference, type ExploreImagePurpose } from "@/lib/explore/person-reference";
 import { PersonPhotoGuide } from "@/components/explore/person-photo-guide";
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
@@ -253,6 +254,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
         const inputEnabled = kind === "image" || kind === "video" && videoInputEnabled || kind === "audio" && audioInputEnabled;
         const uploadActions = <div className="flex flex-wrap items-center gap-2">{inputEnabled ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || kind === "image" && imageLimitReached} onClick={() => input.current?.click()} className={kind === "image" ? "h-8 gap-1.5 rounded-xl px-3 text-xs" : "h-9 rounded-lg text-sm"}>{kind === "image" ? <><Plus className="size-3.5" aria-hidden="true" />{onImagesChange ? "Add images" : "Add image"}</> : isStyle ? "Upload video reference" : asset ? `Replace ${kind}` : `Attach ${kind}`}</Button> : null}
           {asset && kind !== "image" ? <Button type="button" variant="ghost" aria-label={isStyle ? "Remove gallery video reference" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? removeStyleVideo : () => remove(kind)} className="h-9 rounded-lg text-sm">{`Remove ${kind}`}</Button> : null}
+
           {kind === "image" && activeImageTab === "user" && !preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" title="Refresh your images" disabled={Boolean(pending) || imagesQuery.isFetching} onClick={() => void imagesQuery.refetch()}><RefreshCw className={cn("size-3.5", imagesQuery.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" /></Button> : null}
         </div>;
         const Picker = kind === "image" ? Dialog : Popover;
@@ -315,6 +317,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
                   <div className={picker.libraryHeading}><h3>Image library</h3>{uploadActions}</div>
               <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog") setImageTab(value); }} className={picker.tabs}>
                 <Tabs.List aria-label="Image sources" className={picker.sourceTabs}>
+
                   <Tabs.Tab value="user" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:bg-card-muted data-[active]:text-foreground-strong">Your images</Tabs.Tab>
                   <Tabs.Tab value="catalog" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:bg-card-muted data-[active]:text-foreground-strong">UGC Pilot images</Tabs.Tab>
                 </Tabs.List>
@@ -325,6 +328,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
                     : imagesQuery.isPending ? <p role="status" className="text-xs text-muted">Loading your images…</p>
                     : imagesQuery.isError ? <p role="alert" className="text-xs text-destructive">Could not load your images. Use Refresh to try again.</p>
                     : imagesQuery.data?.length ? <div className={picker.libraryGrid}>{imagesQuery.data.slice(0, imagePages * REFERENCE_IMAGE_PAGE_SIZE).map(saved => <Button key={saved.id} type="button" variant="ghost" aria-label={`Use your image ${saved.fileName ?? saved.title}`} title={saved.fileName ?? saved.title} aria-pressed={selectedImages.some(image => image.asset.id === saved.id)} disabled={disabled || Boolean(pending) || imageLimitReached && !selectedImages.some(image => image.asset.id === saved.id)} className={picker.libraryPhoto} onClick={() => void chooseSavedImage(saved)}>
+
                       <ReferenceCreatorImage url={activeImageTab === "user" ? saved.thumbnailUrl ?? saved.url : undefined} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", selectedImages.some(image => image.asset.id === saved.id) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{selectedImages.some(image => image.asset.id === saved.id) ? <Check className="size-3.5" /> : null}</span>
                     </Button>)}</div> : <p className="text-xs leading-5 text-muted">Upload an image to keep it here for next time.</p>}
                   {imagesQuery.data && imagesQuery.data.length > imagePages * REFERENCE_IMAGE_PAGE_SIZE ? <Button type="button" variant="outline" size="sm" onClick={() => setImagePages(value => value + 1)}>Load more images</Button> : null}
@@ -332,6 +336,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
                 <Tabs.Panel value="catalog" keepMounted aria-label="UGC Pilot images" className={picker.libraryPanel}>
                   {personPhotos ? <p className={picker.libraryHint}>Choose photos of the same person for a consistent reference.</p> : null}
                   <div className={picker.libraryGrid}>{CREATOR_REFERENCES.map((reference, index) => <Button key={reference.id} type="button" variant="ghost" aria-label={`Use creator ${index + 1}`} aria-pressed={catalogSelections.includes(reference.fileName)} disabled={disabled || Boolean(pending) || imageLimitReached && !catalogSelections.includes(reference.fileName)} className={picker.libraryPhoto} onClick={() => { const existing = catalogImages.find(image => image.asset.fileName === reference.fileName); if (existing) { if (onImagesChange) removeImage(existing); return; } void choose("image", async () => {
+
                 const response = await fetch(reference.src); if (!response.ok) throw new Error("Could not load this creator image.");
                 const blob = await response.blob(); return new File([blob], reference.fileName, { type: blob.type || "image/png" });
               }, () => { if (!onImagesChange) setOpenKind(null); }, "catalog"); }}><ReferenceCreatorImage url={activeImageTab === "catalog" ? reference.src : undefined} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", catalogSelections.includes(reference.fileName) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{catalogSelections.includes(reference.fileName) ? <Check className="size-3.5" /> : null}</span></Button>)}</div>

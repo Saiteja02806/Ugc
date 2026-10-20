@@ -43,6 +43,7 @@ Screenshots and montage: `outputs/carousel-body-copy-before-2026-10-20.png`,
 `outputs/carousel-body-copy-after-2026-10-20.png`,
 `outputs/carousel-repair-all-six-2026-10-20.png`.
 
+
 ## Confirmed cause
 
 The affected owned edit `d41581a9-a0e2-42f6-8058-fa96eaf179ef` has six changed

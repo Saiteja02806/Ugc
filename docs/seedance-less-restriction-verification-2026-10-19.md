@@ -6,6 +6,7 @@ missed the Explore request admission guard. Hook/Wall requests carrying
 [the admission investigation](seedance-explore-admission-fix-2026-10-19.md).
 Provider configuration alone does not establish that a user can submit a request.
 
+
 **Current production configuration: yes, new Seedance requests use the ReAPI
 key and request the intended Less Restriction route. Historical failed Hook
 requests did not use that route. Successful live Seedance output on the new

@@ -50,6 +50,7 @@ test("preview uses colored artwork for cross/arrow/check while retaining emoji a
   assert.equal(text.value, "Features ❌\nMarketing ✅ → ✔️ 😂"); h.unmount();
 });
 
+
 test("preview text drags in both axes at display scale, clamps, and stops on release or cancellation", () => {
   const h = harness("format-video-text-overlay");
   let text = { value: "Move me", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 2000 };

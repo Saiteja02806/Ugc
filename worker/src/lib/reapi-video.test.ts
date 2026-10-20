@@ -132,6 +132,7 @@ test("rejects missing and untrusted outputs without fetching them, retaining saf
     "http://reapiflexible.b-cdn.net/video.mp4", "https://reapiflexible.b-cdn.net.evil.example/video.mp4",
     "https://untrusted.b-cdn.net/video.mp4", "https://reapiflexible.b-cdn.net@evil.example/video.mp4",
     "https://private@reapiflexible.b-cdn.net/video.mp4", "https://reapiflexible.b-cdn.net:8443/video.mp4"]) {
+
     let completed = 0;
     await assert.rejects(generateReapiVideoBuffer({ ...input, ...callbacks, providerOperationId: "saved",
       onOperationSucceeded: async (id, url, usage) => { completed++; assert.equal(id, "saved"); assert.equal(url, undefined); assert.equal(usage?.costUsd, .495); },

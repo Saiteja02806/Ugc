@@ -1,5 +1,23 @@
 # Carousel System Context
 
+## 2026-10-20 Complete removal of two rejected source images
+
+- User explicitly superseded historical preservation for source assets
+  `6e07f2d4-3d18-413a-be31-0e29604671e2` and
+  `c8b4cefd-4905-433e-aa2f-e71e258fc3de`. Production tombstones now have
+  rejected review status, permanent-removal reason and preservation disabled.
+- Removed 25 historical slide previews across 24 generations, archived two
+  saved Library entries, and removed the matching image from one saved edit.
+  Quota/decision records remain unchanged. The two associated social posts
+  were already published; this action does not delete social-platform posts.
+- Deleted and verified absent 31 exact GCS objects (originals, base images,
+  thumbnails and rendered slide variants). Retain only metadata tombstones
+  and exact hash/path denylisting to prevent reimport.
+- Cached Trending history rejects these exact asset IDs or deleted object
+  keys, including saved-edit snapshots, without clearing unrelated history.
+  Cache-code rollout is recorded separately from completed data removal.
+
+
 ## 2026-10-20 Second rejected source: exhausted-at-laptop body slide
 
 - Traced “I felt drained trying to keep up with trends. The constant pressure
@@ -8121,4 +8139,3 @@ The records below are retained from the deployed branch during release reconcili
 ## Trending library backgrounds retain body copy — 19 October 2026 release preparation
 
 - Include the completed worker correction in render-trending-carousel-edit.ts: body-only/single-statement copy resolves submitted subtext then headline, so replacing backgrounds cannot interpret the legacy headline column as deletion. Advance the renderer cache signature to normalized-edit-v4-body-copy. Six-slide render and editor browser regressions passed in the originating task. Production rollout is tracked in the combined Hook/Seedance release receipt.
-

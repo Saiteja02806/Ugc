@@ -63,6 +63,17 @@
       "sourceFileSha256s": [
         "11287eed773aa99be929566759cf3d29bbc1635d1fc6912775557e81b9c0ca8f"
       ]
+    },
+    {
+      "retiredAt": "2026-10-20",
+      "reason": "User rejected the low-resolution woman-at-laptop hook source identified by the creating fresh content slide. Exclude this image and exact copies from new selection/import; preserve existing history.",
+      "exactSourcePaths": [
+        "produtivity_hook_part3/This contains an image of_ gen z ceo vibes ✨️.jpg"
+      ],
+      "sourcePathPrefixes": [],
+      "sourceFileSha256s": [
+        "872cd8ed19388833cd067d4f9bbdb3df733ac21407f220c09b5fbb7bebcd963c"
+      ]
     }
   ]
 }

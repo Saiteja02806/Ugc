@@ -138,14 +138,10 @@ export async function assertEditableTrendingCreative(params: {
   userId: string;
 }) {
   if (params.format !== "carousel") return assertTrendingCreativeAssignment(params, false);
-  const assignment = await assertTrendingCreativeAssignment(params, true);
-  if (["completed_skipped", "completed_saved", "completed_scheduled"].includes(assignment.state)) {
-    const edit = await getTrendingCreativeEdit(params);
-    if (!edit || edit.assignment_id !== params.assignmentId) {
-      throw new TrendingCreativeEditAccessError("This slideshow has no saved edit to reopen.", 404);
-    }
-  }
-  return assignment;
+  // Existing readable Carousel assignments retain their source slides even if
+  // no manual edit was saved before skipping. Saving must not change the
+  // assignment decision or any previously saved/scheduled snapshot.
+  return assertTrendingCreativeAssignment(params, true);
 }
 
 export async function assertReadableTrendingCreative(params: {

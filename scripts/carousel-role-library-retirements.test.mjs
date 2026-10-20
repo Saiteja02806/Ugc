@@ -38,6 +38,14 @@ test("the user-rejected BOSS collage and exact copies cannot enter a fresh manif
   ]), /retired Carousel source/);
 });
 
+test("the rejected low-resolution laptop hook and renamed byte-identical copies stay excluded", () => {
+  const sourcePath = "produtivity_hook_part3/This contains an image of_ gen z ceo vibes ✨️.jpg";
+  const hash = "872cd8ed19388833cd067d4f9bbdb3df733ac21407f220c09b5fbb7bebcd963c";
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath })?.retiredAt, "2026-10-20");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "new-batch/renamed.jpg", sourceFileSha256: hash })?.matchedBy, "sha256");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "produtivity_hook_part3/another.jpg", sourceFileSha256: allowedHash }), null);
+});
+
 test("specific retired source path is excluded after Windows path normalization", () => {
   const result = getCarouselRoleSourceRetirement({
     relativePath: `./${rejectedPath.replaceAll("/", "\\").toUpperCase()}`,

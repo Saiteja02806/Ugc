@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
+import { assertBusinessContextCandidateReady } from "@/lib/business-profiles/business-context-candidate";
 
 import { isBusinessProfileOnboardingComplete } from "./onboarding-access";
 import type { BusinessLogoAsset } from "./logo";
@@ -32,6 +33,10 @@ export type BusinessProfileOnboardingStep = 1 | 2 | 3;
 
 type BusinessProfileRow = {
   analysis_id: string | null;
+  business_context_draft_base_version: number | null;
+  business_context_draft_json: WebsiteBusinessAnalysis | null;
+  business_context_draft_source: string | null;
+  business_context_draft_updated_at: string | null;
   content_hash: string;
   context_json: WebsiteBusinessAnalysis;
   created_at: string;
@@ -64,7 +69,18 @@ type BusinessProfileRow = {
 
 type BusinessProfileDatabase = {
   public: {
-    Functions: Record<string, never>;
+    Functions: {
+      apply_business_context_v1: {
+        Args: {
+          p_content_hash: string;
+          p_context_json: WebsiteBusinessAnalysis;
+          p_expected_draft_updated_at: string | null;
+          p_expected_profile_version: number;
+          p_user_id: string;
+        };
+        Returns: BusinessProfileRow[];
+      };
+    };
     Tables: {
       business_profiles: {
         Insert: Partial<BusinessProfileRow> & Pick<BusinessProfileRow, "context_json" | "intake_type" | "user_id" | "content_hash">;
@@ -79,6 +95,10 @@ type BusinessProfileDatabase = {
 
 export type BusinessProfileRecord = {
   analysisId: string | null;
+  businessContextDraftBaseVersion: number | null;
+  businessContextDraftContext: WebsiteBusinessAnalysis | null;
+  businessContextDraftSource: string | null;
+  businessContextDraftUpdatedAt: string | null;
   context: WebsiteBusinessAnalysis;
   id: string;
   intakeType: BusinessProfileIntakeType;
@@ -99,6 +119,7 @@ export type BusinessProfileRecord = {
   primaryGoals: PrimaryGoals;
   profileVersion: number;
   projectId: string;
+  sourceUrl: string | null;
   trendingTimezone: string | null;
   trendingWalkthroughCompletedAt: string | null;
   userId: string;
@@ -233,6 +254,72 @@ export async function saveBusinessProfile(input: {
     .single();
   if (error) throw new Error(`Could not save business profile: ${error.message}`);
   return { changed: true, profile: mapProfile(data) };
+}
+
+/** Saves a Settings draft only. It never changes the active profile version. */
+export async function saveBusinessContextDraft(params: {
+  context: WebsiteBusinessAnalysis;
+  expectedDraftUpdatedAt: string | null;
+  profile: BusinessProfileRecord;
+  source?: string | null;
+}) {
+  const updatedAt = new Date().toISOString();
+  let query = getClient()
+    .from(BUSINESS_PROFILES_TABLE)
+    .update({
+      business_context_draft_base_version: params.profile.profileVersion,
+      business_context_draft_json: params.context,
+      business_context_draft_source: params.source?.trim().slice(0, 4_000) || null,
+      business_context_draft_updated_at: updatedAt,
+      updated_at: updatedAt,
+    })
+    .eq("id", params.profile.id)
+    .eq("user_id", params.profile.userId)
+    .eq("profile_version", params.profile.profileVersion);
+
+  query = params.expectedDraftUpdatedAt
+    ? query.eq("business_context_draft_updated_at", params.expectedDraftUpdatedAt)
+    : query.is("business_context_draft_updated_at", null);
+
+  const { data, error } = await query.select("*").maybeSingle();
+
+  if (error) throw new Error(`Could not save business-context draft: ${error.message}`);
+  if (!data) throw new Error("business_context_draft_conflict");
+  return mapProfile(data);
+}
+
+/**
+ * Atomically promotes the owner-visible Business Context to a new active
+ * version. The draft revision remains a concurrency fence, while the next
+ * local-day Trending pack uses the new version and the current pack remains
+ * tied to its previous immutable profile version.
+ */
+export async function applyBusinessContext(params: {
+  context: WebsiteBusinessAnalysis;
+  expectedDraftUpdatedAt: string | null;
+  expectedProfileVersion: number;
+  profile: BusinessProfileRecord;
+}) {
+  if (params.profile.profileVersion !== params.expectedProfileVersion) {
+    throw new Error("business_context_profile_conflict");
+  }
+
+  // A saved draft is useful for a generated description, but a person can
+  // also apply the fields they are editing directly. Either path must have a
+  // fact before it becomes the active source for grounded formats.
+  assertBusinessContextCandidateReady(params.context);
+
+  const { data, error } = await getClient().rpc("apply_business_context_v1", {
+    p_content_hash: hashAnalysis(params.context, params.profile.intakeType),
+    p_context_json: params.context,
+    p_expected_draft_updated_at: params.expectedDraftUpdatedAt,
+    p_expected_profile_version: params.expectedProfileVersion,
+    p_user_id: params.profile.userId,
+  });
+
+  if (error) throw new Error(`Could not apply Business Context: ${error.message}`);
+  if (!data?.[0]) throw new Error("business_context_draft_conflict");
+  return mapProfile(data[0]);
 }
 
 export async function completeTrendingWalkthroughForUser(userId: string) {
@@ -511,6 +598,10 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
 
   return {
     analysisId: row.analysis_id,
+    businessContextDraftBaseVersion: row.business_context_draft_base_version ?? null,
+    businessContextDraftContext: row.business_context_draft_json ?? null,
+    businessContextDraftSource: row.business_context_draft_source ?? null,
+    businessContextDraftUpdatedAt: row.business_context_draft_updated_at ?? null,
     context: row.context_json,
     id: row.id,
     intakeType: row.intake_type,
@@ -531,6 +622,7 @@ function mapProfile(row: BusinessProfileRow): BusinessProfileRecord {
     primaryGoals,
     profileVersion: row.profile_version,
     projectId: row.project_id,
+    sourceUrl: row.source_url ?? null,
     trendingTimezone: row.trending_timezone,
     trendingWalkthroughCompletedAt:
       row.trending_walkthrough_completed_at ?? null,

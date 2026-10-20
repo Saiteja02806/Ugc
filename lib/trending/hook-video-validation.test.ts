@@ -71,6 +71,21 @@ test("requires exact connected accounts and time for Hook scheduling", () => {
   };
 
   assert.equal(HookVideoScheduleRequestSchema.safeParse(schedule).success, true);
+  const captionResult = HookVideoScheduleRequestSchema.safeParse({
+    ...schedule,
+    caption: "  Fresh drop this week.  ",
+  });
+  assert.equal(captionResult.success, true);
+  if (captionResult.success) {
+    assert.equal(captionResult.data.caption, "Fresh drop this week.");
+  }
+  assert.equal(
+    HookVideoScheduleRequestSchema.safeParse({
+      ...schedule,
+      caption: "a".repeat(5001),
+    }).success,
+    false,
+  );
   assert.equal(
     HookVideoScheduleRequestSchema.safeParse({ ...schedule, targets: [] }).success,
     false,

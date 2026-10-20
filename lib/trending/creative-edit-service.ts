@@ -1,9 +1,13 @@
 import "server-only";
+import { createCarouselManualLayout, parseCarouselManualTextStyle } from "@/lib/carousel/manual-text";
+import { hasCarouselSemanticHeading } from "@/lib/carousel/text-presentation";
+import { getOwnedCarouselSlideImages } from "@/lib/trending/carousel-slide-images";
 
 import {
   getCarouselEditBackgrounds,
   getCarouselGenerationStatus,
   getCarouselProductAssetsByIds,
+  listActiveCarouselCategoryHooks,
 } from "@/lib/carousel/db";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import {
@@ -25,6 +29,7 @@ import {
   type TrendingCreativeEditContent,
   type TrendingCreativeEditFormat,
   type TrendingCreativeEditRecord,
+  type TrendingCarouselEditStatus,
   type TrendingCreativeEditSaveInput,
   type TrendingCreativeEditSource,
   type TrendingHookEditContent,
@@ -33,7 +38,9 @@ import {
 import { chooseLibraryAsset } from "@/lib/trending/creative-edit-source-selection";
 import {
   assertEditableTrendingCreative,
+  assertReadableTrendingCreative,
   getTrendingCreativeEdit,
+  getTrendingCarouselEditStatus,
   TrendingCreativeEditAccessError,
   upsertTrendingCreativeEdit,
   type TrendingCreativeEditRow,
@@ -46,6 +53,7 @@ import {
   HOOK_TEXT_LAYOUT_VERSION,
   HookTextLayoutError,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
 } from "@/lib/trending/hook-text-layout";
 import {
   getHookVideoTextPosition,
@@ -56,14 +64,14 @@ import {
   resolveTrendingTextColor,
 } from "@/lib/trending/text-color";
 import { isTrendingSourceVideoAsset } from "@/lib/trending/video-source-selection";
-import { getEditableWallTextDraft } from "@/lib/trending/wall-text-db";
-import { createAuthoritativeWallTextContent } from "@/lib/trending/wall-layout-engine";
+import { getEditableWallTextDraft, getWallTextPreviewDraft } from "@/lib/trending/wall-text-db";
+import { createAuthoritativeWallTextEdit } from "@/lib/trending/wall-layout-engine";
+import { WALL_TEXT_EDIT_MAX_WIDTH, WALL_TEXT_EDIT_MIN_WIDTH } from "@/lib/trending/wall-text-editor-layout";
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { classifyWallTextEdit } from "@/lib/trending/wall-text-edit-attribution";
 import {
   applyWallTextRenderFit,
   WALL_TEXT_RENDER_HEIGHT,
-  WALL_TEXT_RENDER_WIDTH,
   validateWallTextRenderFit,
 } from "@/lib/trending/wall-text-render-validation";
 import { validateWallTextContent } from "@/lib/trending/wall-text-text-logic";
@@ -75,6 +83,43 @@ export async function loadTrendingCreativeEditor(params: {
   userId: string;
 }): Promise<TrendingCreativeEditRecord> {
   await assertEditableTrendingCreative(params);
+
+  return loadTrendingCreativeRecord(params);
+}
+
+export async function loadTrendingCreativeReadView(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}): Promise<TrendingCreativeEditRecord> {
+  if (params.format === "wall_text") return loadTrendingWallTextPreview(params);
+  await assertReadableTrendingCreative(params);
+  return loadTrendingCreativeRecord({ ...params, readOnly: true });
+}
+
+export async function loadTrendingCarouselEditStatus(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<TrendingCarouselEditStatus> {
+  await assertReadableTrendingCreative({ ...params, format: "carousel" });
+  const row = await getTrendingCarouselEditStatus(params);
+  return {
+    assignmentId: params.assignmentId, creativeId: params.creativeId, format: "carousel",
+    id: row?.id ?? null, revision: row?.revision ?? 0,
+    renderState: row?.render_status ?? "draft", renderError: row?.render_error ?? null,
+    updatedAt: row?.updated_at ?? null,
+  };
+}
+
+async function loadTrendingCreativeRecord(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+  readOnly?: boolean;
+}): Promise<TrendingCreativeEditRecord> {
 
   const [defaultContent, row] = await Promise.all([
     buildDefaultContent(params),
@@ -95,6 +140,26 @@ export async function loadTrendingCreativeEditor(params: {
     row,
     source,
   });
+}
+
+/** Wall history preview stays read-only. Carousel separately permits reopening
+ * an existing owned edit from history; Hook/Wall editor gates stay unchanged. */
+export async function loadTrendingWallTextPreview(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<TrendingCreativeEditRecord> {
+  const draft = await getWallTextPreviewDraft(params);
+  if (!draft) {
+    throw new TrendingCreativeEditAccessError("This text preview is no longer available.", 404);
+  }
+  const row = await getTrendingCreativeEdit({ ...params, format: "wall_text" });
+  const defaults: TrendingWallTextEditContent = {
+    content: draft.text, format: "wall_text", layout: draft.layout,
+    textColor: DEFAULT_TRENDING_TEXT_COLOR, version: TRENDING_CREATIVE_EDIT_VERSION,
+  };
+  return serializeRecord({ ...params, format: "wall_text", row, source: null,
+    content: row ? mergeStoredContentWithOwnerDefaults(defaults, row) : defaults });
 }
 
 export async function loadSavedTrendingCreativeEditForDownstream(params: {
@@ -179,6 +244,7 @@ export async function saveTrendingCreativeEditor(params: {
     userId: params.userId,
   });
   const content = await validateAndNormalizeSubmittedContent({
+    previousContent: existing ? mergeStoredContentWithOwnerDefaults(defaultContent, existing) : defaultContent,
     assignmentId: params.input.assignmentId,
     content: submittedContent,
     creativeId: params.creativeId,
@@ -199,6 +265,7 @@ export async function saveTrendingCreativeEditor(params: {
     assignmentId: params.input.assignmentId,
     content,
     creativeId: params.creativeId,
+    expectedRevision: params.input.expectedRevision,
     format: params.format,
     positions: getPositionPayload(content),
     resolvedMediaAssetId: source?.resolvedAssetId ?? null,
@@ -224,6 +291,7 @@ async function buildDefaultContent(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditContent> {
   if (params.format === "carousel") {
     const status = await getCarouselGenerationStatus(params.creativeId);
@@ -263,8 +331,12 @@ async function buildDefaultContent(params: {
           backgroundUrl,
           ctaText: slide.ctaText ?? "",
           headline: slide.headline,
+          hasHeading: hasCarouselSemanticHeading(status.generation.contentPlanNormalized, slide.slideNumber, slide.structureId, Boolean(slide.subtext)),
           originalBackgroundAssetId: slide.categoryImageAssetId,
           originalBackgroundUrl: backgroundUrl,
+          originalHeadline: slide.headline,
+          originalSubtext: slide.subtext ?? "",
+          sourceRendererVersion: status.generation.rendererVersion,
           originalVisualRole: slide.visualRole,
           productVisualEligibility: slide.productVisualEligibility,
           renderFormat: status.generation.format,
@@ -288,6 +360,7 @@ async function buildDefaultContent(params: {
       assignmentId: params.assignmentId,
       suggestionId: params.creativeId,
       userId: params.userId,
+      readOnly: params.readOnly,
     });
 
     if (!idea) {
@@ -355,6 +428,10 @@ function mergeSubmittedContent(
   submitted: TrendingCreativeEditSaveInput["content"],
 ): TrendingCreativeEditContent {
   if (defaults.format === "carousel" && submitted.format === "carousel") {
+    for (const slide of submitted.slides) {
+      const original = defaults.slides.find(entry => entry.slideId === slide.slideId);
+      if (original && slide.textStyle && !createCarouselManualLayout({ ...original, ...slide }).fits) throw new TrendingCreativeEditAccessError(`Slide ${slide.slideNumber}: reduce the font size or shorten the text to fit.`, 400);
+    }
     const submittedById = new Map(
       submitted.slides.map((slide) => [slide.slideId, slide]),
     );
@@ -384,6 +461,7 @@ function mergeSubmittedContent(
           headline: edited.headline.trim(),
           subtext: edited.subtext.trim(),
           textPosition: clampNormalizedTextPosition(edited.textPosition),
+          textStyle: parseCarouselManualTextStyle(edited.textStyle),
         };
       }),
     };
@@ -420,6 +498,7 @@ function mergeSubmittedContent(
 }
 
 async function validateAndNormalizeSubmittedContent(params: {
+  previousContent: TrendingCreativeEditContent;
   assignmentId: string;
   content: TrendingCreativeEditContent;
   creativeId: string;
@@ -457,9 +536,16 @@ async function validateAndNormalizeSubmittedContent(params: {
         return asset ? [[assetId, asset] as const] : [];
       }),
     );
-    const changedProductAssetIds = changedBackgroundAssetIds.filter(
-      (assetId) => !hyperHookAssetsById.has(assetId),
+    const categoryHookAssets = await listActiveCarouselCategoryHooks(
+      resolveCarouselImageLibraryCategory({ categorySlug: status.generation.categorySlug }),
+      changedBackgroundAssetIds.filter(assetId => !hyperHookAssetsById.has(assetId)),
     );
+    const categoryHooksById = new Map(categoryHookAssets.map(asset => [asset.id, asset]));
+    const nonHookAssetIds = changedBackgroundAssetIds.filter(
+      (assetId) => !hyperHookAssetsById.has(assetId) && !categoryHooksById.has(assetId),
+    );
+    const uploadedImagesById = await getOwnedCarouselSlideImages(nonHookAssetIds, params.userId);
+    const changedProductAssetIds = nonHookAssetIds.filter(assetId => !uploadedImagesById.has(assetId));
     let productAssetsById = new Map<
       string,
       Awaited<ReturnType<typeof getCarouselProductAssetsByIds>>[number]
@@ -520,8 +606,28 @@ async function validateAndNormalizeSubmittedContent(params: {
           ...slide,
           backgroundAssetId: sourceSlide.categoryImageAssetId,
           backgroundUrl: slide.originalBackgroundUrl,
+          backgroundCrop: undefined,
           visualRole: slide.originalVisualRole,
         };
+      }
+
+      const uploadedImage = slide.backgroundAssetId ? uploadedImagesById.get(slide.backgroundAssetId) : null;
+      if (uploadedImage) {
+        return {
+          ...slide,
+          backgroundUrl: uploadedImage.url,
+          backgroundCrop: "centre" as const,
+          visualRole: slide.originalVisualRole,
+        };
+      }
+
+      const categoryHookAsset = slide.backgroundAssetId
+        ? categoryHooksById.get(slide.backgroundAssetId) : null;
+      if (categoryHookAsset) {
+        if (slide.slideNumber !== 1) {
+          throw new TrendingCreativeEditAccessError("Category hooks can replace only the Slide 1 background.", 400);
+        }
+        return { ...slide, backgroundUrl: categoryHookAsset.url, backgroundCrop: undefined, visualRole: "hook" as const };
       }
 
       const hyperHookAsset = slide.backgroundAssetId
@@ -539,6 +645,7 @@ async function validateAndNormalizeSubmittedContent(params: {
         return {
           ...slide,
           backgroundUrl: getCarouselHyperHookAssetUrl(hyperHookAsset),
+          backgroundCrop: undefined,
           visualRole: "hook" as const,
         };
       }
@@ -567,6 +674,7 @@ async function validateAndNormalizeSubmittedContent(params: {
       return {
         ...slide,
         backgroundUrl: productAsset.url,
+        backgroundCrop: undefined,
         visualRole: "product_asset" as const,
       };
     });
@@ -626,12 +734,10 @@ async function validateAndNormalizeSubmittedContent(params: {
     const durationSeconds =
       params.source?.resolvedAssetDurationSeconds ?? draft.durationSeconds;
     const currentContent = params.content.content;
-    const sourceContent = {
-      kind: "text" as const,
-      text: currentContent.fullText,
-    };
-    const relaid = await createAuthoritativeWallTextContent({
-      content: sourceContent,
+    const relaid = await createAuthoritativeWallTextEdit({
+      fullText: currentContent.fullText,
+      previousContent: params.previousContent.format === "wall_text"
+        ? params.previousContent.content : draft.text,
       formatId: getBackfillWallTextFormatId(
         currentContent.formatId ?? draft.text.formatId ?? "niche_insight",
       ),
@@ -675,8 +781,8 @@ function validateWallTextPlacement(params: {
     textBox.x,
     textBox.y,
   ];
-  const minimumWidth = 620 / WALL_TEXT_RENDER_WIDTH;
-  const maximumWidth = 780 / WALL_TEXT_RENDER_WIDTH;
+  const minimumWidth = WALL_TEXT_EDIT_MIN_WIDTH;
+  const maximumWidth = WALL_TEXT_EDIT_MAX_WIDTH;
 
   if (
     validNumbers.some(
@@ -723,10 +829,12 @@ function mergeStoredContentWithOwnerDefaults(
                 typeof edited.backgroundUrl === "string"
                   ? edited.backgroundUrl
                   : slide.backgroundUrl,
+              backgroundCrop: edited.backgroundCrop === "centre" ? "centre" : undefined,
               ctaText: edited.ctaText,
               headline: edited.headline,
               subtext: edited.subtext,
               textPosition: clampNormalizedTextPosition(edited.textPosition),
+              textStyle: parseCarouselManualTextStyle(edited.textStyle),
               visualRole:
                 edited.visualRole === "product_asset"
                   ? "product_asset"
@@ -752,6 +860,7 @@ function mergeStoredContentWithOwnerDefaults(
     try {
       const storedLayoutVersion =
         stored.layoutVersion === HOOK_TEXT_LAYOUT_VERSION ||
+        stored.layoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION ||
         stored.layoutVersion === LEGACY_HOOK_TEXT_LAYOUT_VERSION
           ? stored.layoutVersion
           : null;

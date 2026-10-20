@@ -34,7 +34,7 @@ const CURRENT_V4_CONTENT = {
   kind: "wall_text" as const,
   layoutVersion: "wall-text-overlay-v8" as const,
   pattern: "freeform" as const,
-  renderSafetyVersion: "wall-text-inner-safe-v2" as const,
+  renderSafetyVersion: "wall-text-inner-safe-v3" as const,
   renderFontSize: 48 as const,
   segments: [
     { lines: ["I logged every meal but"], role: "lead" as const },

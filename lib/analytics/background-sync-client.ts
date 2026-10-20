@@ -9,6 +9,7 @@ type StartJobResponse =
       jobId?: string;
       ok: true;
       refreshing?: boolean;
+      warning?: string;
     }
   | { message?: string; ok?: false };
 
@@ -26,6 +27,8 @@ export async function runAnalyticsBackgroundSync(params: {
   idempotencyKey?: string;
   onBackgroundError?: (error: Error) => void;
   onBackgroundOutput?: (output: unknown) => void;
+  onRefreshingChange?: (refreshing: boolean) => void;
+  pollIntervalMs?: number;
   signal?: AbortSignal;
   token: string;
   timeoutMs?: number;
@@ -60,13 +63,16 @@ export async function runAnalyticsBackgroundSync(params: {
   }
 
   if (data.data !== undefined) {
+    if (data.warning) params.onBackgroundError?.(new Error(data.warning));
     if (
       data.job &&
       data.jobId &&
       !["cancelled", "completed", "failed"].includes(data.job.status)
     ) {
+      params.onRefreshingChange?.(true);
       void waitForAnalyticsJob({
         initialJob: data.job,
+        pollIntervalMs: params.pollIntervalMs,
         jobId: data.jobId,
         signal: params.signal,
         timeoutMs: params.timeoutMs,
@@ -83,7 +89,7 @@ export async function runAnalyticsBackgroundSync(params: {
               ? error
               : new Error("Analytics background refresh failed."),
           );
-        });
+        }).finally(() => params.onRefreshingChange?.(false));
     } else if (
       data.job?.status === "completed" &&
       data.job.output !== null
@@ -102,6 +108,7 @@ export async function runAnalyticsBackgroundSync(params: {
 
   return waitForAnalyticsJob({
     initialJob: data.job,
+    pollIntervalMs: params.pollIntervalMs,
     jobId: data.jobId,
     signal: params.signal,
     timeoutMs: params.timeoutMs,
@@ -111,6 +118,7 @@ export async function runAnalyticsBackgroundSync(params: {
 
 async function waitForAnalyticsJob(params: {
   initialJob: PublicBackgroundJob;
+  pollIntervalMs?: number;
   jobId: string;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -136,7 +144,7 @@ async function waitForAnalyticsJob(params: {
     let job = params.initialJob;
 
     while (!["cancelled", "completed", "failed"].includes(job.status)) {
-      await waitForNextPoll(requestController.signal);
+      await waitForNextPoll(requestController.signal, params.pollIntervalMs);
       const pollResponse = await fetch(
         `/api/jobs/${encodeURIComponent(params.jobId)}`,
         {
@@ -175,7 +183,7 @@ async function waitForAnalyticsJob(params: {
   }
 }
 
-function waitForNextPoll(signal?: AbortSignal) {
+function waitForNextPoll(signal?: AbortSignal, intervalMs = ANALYTICS_SYNC_POLL_INTERVAL_MS) {
   return new Promise<void>((resolve, reject) => {
     if (signal?.aborted) {
       reject(new DOMException("The request was aborted.", "AbortError"));
@@ -189,7 +197,7 @@ function waitForNextPoll(signal?: AbortSignal) {
     const timeout = globalThis.setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
       resolve();
-    }, ANALYTICS_SYNC_POLL_INTERVAL_MS);
+    }, Math.max(1, intervalMs));
 
     signal?.addEventListener("abort", onAbort, { once: true });
   });

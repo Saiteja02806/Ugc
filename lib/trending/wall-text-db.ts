@@ -11,6 +11,7 @@ import type {
   WallTextNormalizedBox,
   WallTextPlacementAnalysis,
   WallTextPlacementZone,
+  WallTextGroundingMetadata,
 } from "@/lib/trending/wall-text-types";
 import {
   WALL_TEXT_GENERATOR_VERSION,
@@ -34,6 +35,7 @@ import {
   type ResolvedWallTextAudioSelection,
 } from "@/lib/trending/wall-audio-db";
 import type { WallTextDuplicateSignature } from "@/lib/trending/wall-text-duplicate-logic";
+import type { WallTextFailureDiagnosticDetails } from "@/lib/trending/wall-text-generation-failure";
 import {
   LEGACY_WALL_TEXT_ARIAL_BOLD_FONT_WEIGHT,
   LEGACY_WALL_TEXT_FONT_WEIGHT,
@@ -150,6 +152,7 @@ type WallTextGenerationAssignmentRow = {
   creative_candidate_index: number;
   duration_seconds: number;
   format_version: number;
+  focus_json: Json;
   id: string;
   instagram_reel_template_id: string | null;
   instagram_reel_template_version: number | null;
@@ -209,6 +212,7 @@ export type WallTextPrivateCreativeContext = {
     creativeSeed: string;
     emotionalTension: string;
     humanMoment: string;
+    selectedFactId?: string;
     supportedAngle: string;
   };
 };
@@ -357,6 +361,15 @@ type WallTextDatabase = {
         Args: { p_chunk_id: string; p_user_id: string };
         Returns: string | null;
       };
+      set_wall_text_generation_assignment_grounding_v1: {
+        Args: {
+          p_assignment_id: string;
+          p_batch_id: string;
+          p_focus_json: Json;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
       record_wall_text_generation_chunk_failure_v1: {
         Args: {
           p_chunk_id: string;
@@ -367,6 +380,22 @@ type WallTextDatabase = {
           p_user_id: string;
         };
         Returns: undefined;
+      };
+      record_wall_text_failure_diagnostic_v1: {
+        Args: {
+          p_background_job_id: string | null;
+          p_content_plan_id: string | null;
+          p_details: Json;
+          p_error_code: string;
+          p_error_message: string;
+          p_generation_batch_id: string | null;
+          p_generation_chunk_id: string | null;
+          p_request_key: string | null;
+          p_retryable: boolean;
+          p_stage: string;
+          p_user_id: string;
+        };
+        Returns: string;
       };
       reserve_wall_text_generation_batch_v1: {
         Args: {
@@ -945,9 +974,9 @@ export async function listUsedWallTextBackgroundAssetIds(params: {
 
 /**
  * Background selection happens before the reservation transaction. Exclude
- * work that has already been reserved by another live batch so a retry can
- * choose a different background instead of retrying a write that the
- * profile/asset uniqueness constraint must reject.
+ * work that has already been reserved by another live batch. A completed
+ * background can be recycled once the fresh pool is exhausted, but it must
+ * never be generated concurrently by two live batches.
  */
 export async function listReservedWallTextBackgroundAssetIds(params: {
   businessProfileId: string;
@@ -1155,6 +1184,29 @@ export async function claimWallTextGenerationChunk(params: {
     throw new Error(`Could not claim Wall-of-text generation chunk: ${error.message}`);
   }
   return data;
+}
+
+export async function updateWallTextGenerationAssignmentGrounding(params: {
+  assignmentId: string;
+  batchId: string;
+  focus: Json;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "set_wall_text_generation_assignment_grounding_v1",
+    {
+      p_assignment_id: params.assignmentId,
+      p_batch_id: params.batchId,
+      p_focus_json: params.focus,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(`Could not save Wall-of-text selected fact: ${error.message}`);
+  }
+  if (data !== params.assignmentId) {
+    throw new Error("Wall-of-text generation assignment is no longer available.");
+  }
 }
 
 export async function recordWallTextGenerationChunkFailure(params: {
@@ -1386,6 +1438,58 @@ export function areTrendingWallTextCreativesCurrent(
   );
 }
 
+/**
+ * Stores diagnostic evidence in a service-role-only table. This never feeds a
+ * browser response or a user-visible background-job error.
+ */
+export async function recordWallTextFailureDiagnostic(params: {
+  backgroundJobId?: string | null;
+  contentPlanId?: string | null;
+  details: WallTextFailureDiagnosticDetails;
+  errorCode: string;
+  errorMessage: string;
+  generationBatchId?: string | null;
+  generationChunkId?: string | null;
+  requestKey?: string | null;
+  retryable: boolean;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "record_wall_text_failure_diagnostic_v1",
+    {
+      p_background_job_id: params.backgroundJobId ?? null,
+      p_content_plan_id: params.contentPlanId ?? null,
+      p_details: {
+        candidateRejections: params.details.candidateRejections.map(
+          (rejection) => ({
+            candidateIndex: rejection.candidateIndex,
+            ...(rejection.detail ? { detail: rejection.detail.slice(0, 300) } : {}),
+            reason: rejection.reason.slice(0, 120),
+          }),
+        ),
+        errorName: params.details.errorName.slice(0, 120),
+        finishReason: params.details.finishReason?.slice(0, 120) ?? null,
+        providerErrorCode: params.details.providerErrorCode?.slice(0, 120) ?? null,
+        providerErrorType: params.details.providerErrorType?.slice(0, 120) ?? null,
+        providerRequestId: params.details.providerRequestId?.slice(0, 300) ?? null,
+        providerStatus: params.details.providerStatus,
+      },
+      p_error_code: params.errorCode.slice(0, 120),
+      p_error_message: params.errorMessage.slice(0, 4_000),
+      p_generation_batch_id: params.generationBatchId ?? null,
+      p_generation_chunk_id: params.generationChunkId ?? null,
+      p_request_key: params.requestKey?.slice(0, 200) ?? null,
+      p_retryable: params.retryable,
+      p_stage: params.details.stage,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(`Could not record private Wall-of-text diagnostic: ${error.message}`);
+  }
+  return data;
+}
+
 export function isTrendingWallTextCreativeCurrent(
   creative: WallTextCreativeRow,
 ) {
@@ -1537,7 +1641,11 @@ export async function replaceTrendingWallTextCreativeCopy(params: {
   });
 }
 
-async function prepareWallTextForPersistence(params: {
+// The layout engine intentionally reconstructs content from its visible copy.
+// Keep the backend-owned grounding receipt when that happens: it is not display
+// text, and the database trigger uses it to prove the saved creative still
+// belongs to the assignment's immutable business fact.
+export async function prepareWallTextForPersistence(params: {
   layout: TrendingWallTextLayout;
   text: TrendingWallTextContent;
 }) {
@@ -1550,17 +1658,24 @@ async function prepareWallTextForPersistence(params: {
 
   return {
     layout: authoritative.layout,
-    text: applyWallTextRenderFit(authoritative.content, render),
+    text: {
+      ...applyWallTextRenderFit(authoritative.content, render),
+      ...(params.text.grounding
+        ? { grounding: params.text.grounding }
+        : {}),
+    },
   };
 }
 
 export async function listTrendingWallTextCreatives(params: {
   backgroundAssetIds?: string[] | null;
+  creativeIds?: readonly string[];
   businessProfileId: string;
   businessProfileVersion: number;
   userId: string;
 }) {
-  if (params.backgroundAssetIds && params.backgroundAssetIds.length === 0) {
+  if ((params.backgroundAssetIds && params.backgroundAssetIds.length === 0) ||
+      params.creativeIds?.length === 0) {
     return [];
   }
 
@@ -1571,6 +1686,10 @@ export async function listTrendingWallTextCreatives(params: {
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
     .eq("status", "preview_ready");
+
+  if (params.creativeIds) {
+    query = query.in("id", [...params.creativeIds]);
+  }
 
   if (params.backgroundAssetIds) {
     query = query.in(
@@ -1598,6 +1717,19 @@ export async function ensureTrendingWallTextAssignments(params: {
   creatives: WallTextCreativeRow[];
   userId: string;
 }) {
+  await publishTrendingWallTextAssignments(params);
+  return listActiveTrendingWallTextIdeas(params);
+}
+
+// Publication is independent of the active deck: a user may decide a card
+// while its generation batch is still running. Existing decisions survive.
+export async function publishTrendingWallTextAssignments(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  creatives: WallTextCreativeRow[];
+  userId: string;
+}) {
+  if (params.creatives.length === 0) return;
   const instagramTemplateIds = params.creatives.flatMap((creative) =>
     creative.instagram_reel_template_id
       ? [creative.instagram_reel_template_id]
@@ -1662,7 +1794,27 @@ export async function ensureTrendingWallTextAssignments(params: {
     }
   }
 
-  return listActiveTrendingWallTextIdeas(params);
+}
+
+export async function listUnassignedWallTextCreatives(params: {
+  businessProfileId: string;
+  businessProfileVersion: number;
+  creatives: WallTextCreativeRow[];
+  userId: string;
+}) {
+  const creatives = params.creatives.filter(isTrendingWallTextCreativeCurrent);
+  if (creatives.length === 0) return [];
+  // Include every decision state. A rejected or saved card must never be
+  // mistaken for an orphan simply because it no longer appears in the deck.
+  const { data: assignments, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .select("wall_text_creative_id")
+    .eq("user_id", params.userId)
+    .eq("business_profile_id", params.businessProfileId)
+    .eq("business_profile_version", params.businessProfileVersion);
+  if (error) throw new Error(`Could not reconcile Wall-of-text assignments: ${error.message}`);
+  const assignedIds = new Set(assignments.map((entry) => entry.wall_text_creative_id));
+  return creatives.filter((creative) => !assignedIds.has(creative.id));
 }
 
 export async function listActiveTrendingWallTextIdeas(params: {
@@ -1671,6 +1823,8 @@ export async function listActiveTrendingWallTextIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   pinnedAssignmentIds?: readonly string[];
+  /** Exact owned assignments from a delivered quota; read-only history. */
+  reviewedAssignmentIds?: readonly string[];
   userId: string;
 }): Promise<TrendingWallTextIdeaRecord[]> {
   const pinnedAssignmentIds = new Set(params.pinnedAssignmentIds ?? []);
@@ -1686,14 +1840,18 @@ export async function listActiveTrendingWallTextIdeas(params: {
     return [];
   }
 
-  const { data: assignments, error: assignmentError } = await getClient()
+  if (params.reviewedAssignmentIds?.length === 0) return [];
+  let assignmentQuery = getClient()
     .from("user_wall_text_assignments")
     .select("*")
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
-    .eq("state", "active")
     .order("position", { ascending: true });
+  assignmentQuery = params.reviewedAssignmentIds
+    ? assignmentQuery.in("id", [...params.reviewedAssignmentIds])
+    : assignmentQuery.eq("state", "active");
+  const { data: assignments, error: assignmentError } = await assignmentQuery;
 
   if (assignmentError) {
     throw new Error(
@@ -1872,8 +2030,28 @@ export async function getSavedWallTextDraft(params: {
   return (await hydrateSavedWallTextDrafts([assignment], params.userId))[0] ?? null;
 }
 
+/** Resolve the owned creative before an explicit schedule confirmation selects
+ * it. This also permits a previously skipped post to be reconsidered safely. */
+export async function getWallTextSchedulingAssignment(params: {
+  assignmentId: string;
+  userId: string;
+}) {
+  const { data: assignment, error } = await getClient()
+    .from("user_wall_text_assignments")
+    .select("id,wall_text_creative_id")
+    .eq("id", params.assignmentId)
+    .eq("user_id", params.userId)
+    .in("state", ["active", "selected", "completed_skipped"])
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not verify this Wall-of-text selection: ${error.message}`);
+  return assignment
+    ? { assignmentId: assignment.id, creativeId: assignment.wall_text_creative_id }
+    : null;
+}
+
 /**
- * Loads a reviewed Wall-of-text assignment for internal rendering or
+ * Loads a selected Wall-of-text assignment for internal rendering or
  * scheduling. Selection removes it from the daily feed; it does not mean the
  * user saved it to Creative Assets.
  */
@@ -1930,13 +2108,30 @@ export async function getEditableWallTextDraft(params: {
   creativeId: string;
   userId: string;
 }): Promise<SavedWallTextDraft | null> {
+  return loadWallTextAssignmentDraft(params, ["active", "selected"]);
+}
+
+/** Viewing a previously skipped post must not select it or grant editing access. */
+export async function getWallTextPreviewDraft(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}): Promise<SavedWallTextDraft | null> {
+  return loadWallTextAssignmentDraft(params, ["active", "selected", "completed_skipped"]);
+}
+
+async function loadWallTextAssignmentDraft(params: {
+  assignmentId: string;
+  creativeId: string;
+  userId: string;
+}, states: UserWallTextAssignmentRow["state"][]): Promise<SavedWallTextDraft | null> {
   const { data: assignment, error } = await getClient()
     .from("user_wall_text_assignments")
     .select("*")
     .eq("id", params.assignmentId)
     .eq("wall_text_creative_id", params.creativeId)
     .eq("user_id", params.userId)
-    .in("state", ["active", "selected"])
+    .in("state", states)
     .maybeSingle();
 
   if (error) {
@@ -2349,6 +2544,13 @@ function parseCurrentWallTextContent(
   }
 
   const sourceContent = value.sourceContent;
+  const grounding =
+    value.grounding === undefined
+      ? null
+      : parseWallTextGroundingMetadata(value.grounding);
+  if (value.grounding !== undefined && !grounding) {
+    return null;
+  }
   const parsedSource =
     sourceContent.kind === "text" &&
     typeof sourceContent.text === "string" &&
@@ -2427,7 +2629,7 @@ function parseCurrentWallTextContent(
           ![400, 600, LEGACY_WALL_TEXT_FONT_WEIGHT].includes(
             Number(finalLayout.fontWeight),
           )) ||
-    (isArialBoldV13 && Number(finalLayout.fontSizePx) !== 52) ||
+    (isArialBoldV13 && ![50, 52].includes(Number(finalLayout.fontSizePx))) ||
     ![36, 38, 40, 42, 44, 46, 48, 50, 52].includes(Number(finalLayout.fontSizePx)) ||
     typeof finalLayout.lineHeightPx !== "number" ||
     finalLayout.lineHeightPx <= 0 ||
@@ -2589,9 +2791,41 @@ function parseCurrentWallTextContent(
     ...(value.renderSafetyVersion === WALL_TEXT_RENDER_SAFETY_VERSION
       ? { renderSafetyVersion: WALL_TEXT_RENDER_SAFETY_VERSION }
       : {}),
+    ...(grounding ? { grounding } : {}),
     renderFontSize: normalizeCurrentWallTextFontSize(Number(finalLayout.fontSizePx)),
     segments,
     sourceContent: parsedSource,
+  };
+}
+
+function parseWallTextGroundingMetadata(
+  value: Json | undefined,
+): WallTextGroundingMetadata | null {
+  if (
+    !isJsonObject(value) ||
+    value.version !== "wall-text-grounding-v2" ||
+    value.factSnapshotVersion !== "business-facts-v1" ||
+    typeof value.anchorId !== "string" ||
+    !value.anchorId.trim() ||
+    typeof value.factText !== "string" ||
+    !value.factText.trim() ||
+    ![
+      "audience",
+      "capability",
+      "differentiator",
+      "outcome",
+      "pain",
+    ].includes(String(value.factType))
+  ) {
+    return null;
+  }
+
+  return {
+    anchorId: value.anchorId.trim().slice(0, 120),
+    factSnapshotVersion: "business-facts-v1",
+    factText: value.factText.trim().replace(/\s+/gu, " ").slice(0, 360),
+    factType: value.factType as WallTextGroundingMetadata["factType"],
+    version: "wall-text-grounding-v2",
   };
 }
 
@@ -2872,6 +3106,7 @@ function parseWallTextItemPrivateContext(
   const supportedAngle = getRequiredWallTextPrivateContextString(
     privateContext.supportedAngle,
   );
+  const selectedFactId = privateContext.selectedFactId;
 
   if (
     !audienceContext ||
@@ -2879,6 +3114,8 @@ function parseWallTextItemPrivateContext(
     !emotionalTension ||
     !humanMoment ||
     !supportedAngle ||
+    (selectedFactId !== undefined &&
+      (typeof selectedFactId !== "string" || !selectedFactId.trim())) ||
     (privateContext.conceptLane !== undefined &&
       typeof privateContext.conceptLane !== "string")
   ) {
@@ -2893,6 +3130,9 @@ function parseWallTextItemPrivateContext(
     creativeSeed,
     emotionalTension,
     humanMoment,
+    ...(typeof selectedFactId === "string"
+      ? { selectedFactId: selectedFactId.trim().slice(0, 120) }
+      : {}),
     supportedAngle,
   };
 }

@@ -45,6 +45,7 @@ test("renders and asks the server to finalize a planned schedule", async () => {
           audioAssetId: "hook_audio_029",
           audioUrl: "https://cdn.example.com/EWW.mp3",
           durationSeconds: 14.08,
+          fitMode: "trim",
           selectionSource: "video_locked",
         });
         assert.equal(payload.hookTrimStart, 0.5);
@@ -110,11 +111,21 @@ test("stores an explicit library save on the Hook draft without touching schedul
     },
     async markHookVideoLibraryRenderCompleted(params: {
       draftId: string;
+      durationSeconds: number;
+      fileName: string;
+      fileSizeBytes: number;
+      height: number;
       mediaAssetId: string;
+      width: number;
     }) {
       events.push("hook-render-completed");
       assert.equal(params.draftId, HOOK_VIDEO_DRAFT_ID);
+      assert.equal(params.durationSeconds, 7.25);
+      assert.equal(params.fileName, "final.mp4");
+      assert.equal(params.fileSizeBytes, 2_048);
+      assert.equal(params.height, 1920);
       assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
+      assert.equal(params.width, 1080);
     },
     async markHookVideoLibraryRenderFailed() {
       events.push("hook-render-failed");
@@ -192,11 +203,11 @@ test("rejects a non-fixed font size for the current Hook layout", async () => {
   const fixture = createStore();
   const job = createJob(false);
   (job.input_json as Record<string, unknown>).hookTextLayoutVersion =
-    "hook-overlay-layout-v2-fixed";
+    "hook-overlay-layout-v3-56px";
 
   await assert.rejects(
     runRenderScheduleCombinationJob(job, { store: fixture.store }),
-    /Current Hook text must use the fixed 52px font size/,
+    /Current Hook text must use the fixed 56px font size/,
   );
   assert.deepEqual(fixture.events, []);
 });
@@ -268,14 +279,81 @@ test("rejects an invalid Locked Hook audio contract before rendering", async () 
     audioAssetId: "hook_audio_029",
     audioUrl: "https://cdn.example.com/EWW.mp3",
     durationSeconds: 14.08,
+    fitMode: "trim",
     selectionSource: "preferred",
   };
 
   await assert.rejects(
     runRenderScheduleCombinationJob(job, { store: fixture.store }),
-    /hookAudio.selectionSource must be video_locked/,
+    /hookAudio.selectionSource must be video_locked, format_preferred, or dynamic/,
   );
   assert.deepEqual(fixture.events, []);
+});
+
+test("accepts a dynamically matched Hook audio contract", async () => {
+  const fixture = createStore();
+  const job = createJob(false);
+  (job.input_json as Record<string, unknown>).hookAudio = {
+    audioAssetId: "hook_audio_029",
+    audioUrl: "https://cdn.example.com/dynamic.mp3",
+    durationSeconds: 14.08,
+    fitMode: "loop",
+    selectionSource: "dynamic",
+  };
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        fixture.events.push("render");
+        assert.equal(payload.hookAudio?.selectionSource, "dynamic");
+        return createRenderOutput(payload);
+      },
+    },
+    store: fixture.store,
+  });
+
+  assert.deepEqual(fixture.events, [
+    "render-started",
+    "render",
+    "render-completed",
+  ]);
+});
+
+test("ignores a legacy Hook-only soundtrack instead of risking Demo truncation", async () => {
+  const events: string[] = [];
+  const job = createJob(false);
+  const legacyAudio = (job.input_json as Record<string, unknown>)
+    .hookAudio as Record<string, unknown>;
+  delete legacyAudio.fitMode;
+  const store = {
+    async markScheduleCombinationRenderCompleted(params: {
+      hookAudioAssetId: string | null;
+    }) {
+      events.push("render-completed");
+      assert.equal(params.hookAudioAssetId, null);
+    },
+    async markScheduleCombinationRenderFailed() {
+      events.push("render-failed");
+    },
+    async markScheduleCombinationRenderStarted() {
+      events.push("render-started");
+    },
+  } as unknown as SupabaseJobStore;
+
+  await runRenderScheduleCombinationJob(job, {
+    dependencies: {
+      createMediaAssetId: () => MEDIA_ASSET_ID,
+      async renderScheduleCombinationToStorage(payload) {
+        events.push("render");
+        assert.equal(payload.hookAudio, null);
+        return createRenderOutput(payload);
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(events, ["render-started", "render", "render-completed"]);
 });
 
 test("keeps the completed video available when server finalization fails", async () => {
@@ -348,14 +426,24 @@ function createStore() {
       events.push("finalization-failed");
     },
     async markScheduleCombinationRenderCompleted(params: {
+      durationSeconds: number;
+      fileName: string;
+      fileSizeBytes: number;
+      height: number;
       hookAudioAssetId: string | null;
       mediaAssetId: string;
       renderId: string;
+      width: number;
     }) {
       events.push("render-completed");
+      assert.equal(params.durationSeconds, 7.25);
+      assert.equal(params.fileName, "final.mp4");
+      assert.equal(params.fileSizeBytes, 2_048);
+      assert.equal(params.height, 1920);
       assert.equal(params.hookAudioAssetId, "hook_audio_029");
       assert.equal(params.mediaAssetId, MEDIA_ASSET_ID);
       assert.equal(params.renderId, RENDER_ID);
+      assert.equal(params.width, 1080);
     },
     async markScheduleCombinationRenderFailed() {
       events.push("render-failed");
@@ -378,13 +466,17 @@ function createRenderOutput(payload: {
   scheduleId: string;
 }) {
   return {
+    byteLength: 2_048,
     demoVideoId: payload.demoVideoId,
+    durationSeconds: 7.25,
+    height: 1920,
     hookVideoId: payload.hookVideoId,
     key: "schedules/final.mp4",
     ok: true as const,
     renderId: payload.renderId,
     scheduleId: payload.scheduleId,
     url: "https://cdn.example.com/schedules/final.mp4",
+    width: 1080,
   };
 }
 
@@ -416,6 +508,7 @@ function createJob(autoFinalize: boolean): BackgroundJobRow {
         audioAssetId: "hook_audio_029",
         audioUrl: "https://cdn.example.com/EWW.mp3",
         durationSeconds: 14.08,
+        fitMode: "trim",
         selectionSource: "video_locked",
       },
       hookTrimEnd: 4.5,

@@ -79,7 +79,19 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service. Reaction generation performs its final MP4 composition here."
   type        = string
-  default     = "render_edit_video,render_create_content_video,render_schedule_combination,render_wall_text_video,reaction_generation,final_render"
+  default     = "render_demo_video,render_edit_video,render_create_content_video,render_schedule_combination,render_wall_text_video,reaction_generation,final_render"
+}
+
+variable "explore_subtitle_transcription_enabled" {
+  description = "Enable approved Scribe v2 English/60-second transcription only after release checks."
+  type        = bool
+  default     = false
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  description = "Existing Secret Manager secret ID for Scribe. Required only when Explore transcription is enabled. No plaintext key."
+  type        = string
+  default     = ""
 }
 
 variable "worker_visibility_timeout_seconds" {
@@ -89,9 +101,15 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum compatibility HTTP receiver instances. Use 0: long renders run in the one-shot Cloud Run Job and exit when complete."
+  description = "Service-wide minimum HTTP receiver instances. Use 1 for a warm production receiver or 0 for idle scale-down; revision minimums stay zero."
   type        = number
   default     = 0
+}
+
+variable "enable_interactive_explore_finishing" {
+  description = "Use the existing authenticated HTTP service for Explore captions/finishing only. Scale-down follows min_instance_count; zero accepts a cold first request. Set the app's GCP_EXPLORE_FINISH_TASK_URL to this service's /tasks/jobs endpoint. Heavy render jobs retain the launcher."
+  type        = bool
+  default     = false
 }
 
 variable "max_instance_count" {
@@ -101,7 +119,7 @@ variable "max_instance_count" {
 }
 
 variable "request_timeout_seconds" {
-  description = "Cloud Run request timeout for health checks and incidental requests."
+  description = "Cloud Run request timeout. Optional interactive Explore mode uses at least 900 seconds, within the Cloud Tasks dispatch deadline."
   type        = number
   default     = 300
 }

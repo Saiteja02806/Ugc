@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "wall-text-video-manifest-v1",
+  "sourceBatch": "wall-text-real-2026-09-30",
+  "reviewedAt": "2026-09-30",
+  "playback": {
+    "mode": "once",
+    "textVisibility": "full-duration"
+  },
+  "visualGroups": {
+    "car_selfie": "Influencer filmed inside a car in a selfie-style composition.",
+    "indoor_closeup": "Indoor influencer framed primarily as a close-up.",
+    "indoor_medium": "Indoor influencer framed as a medium or seated shot.",
+    "outdoor_static_selfie": "Outdoor influencer in a mostly static selfie composition.",
+    "outdoor_walking_selfie": "Outdoor influencer walking while filming in selfie style."
+  },
+  "sourceFolder": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\content-import-2026-09-30\\wall-active",
+  "originalSourceFolder": "C:/Users/chund/OneDrive/Desktop/WOT_real/notbeen/notbeen",
+  "preparation": "Audio removed by stream copy; video packets, dimensions, frame rate and natural playback retained. Originals preserved.",
+  "assets": [
+    {
+      "catalogName": "indoor-medium-20260930-01",
+      "fileName": "Face_swap_and_video_editing_20260918235257 (2).mp4",
+      "sha256": "3a48303670320e955b2b25c3aba0e598190ca8574c4acacc25a79260ec1b9d5c",
+      "visualGroup": "indoor_medium",
+      "originalSha256": "376739954a5a4a65253739fba3ef62455fbe4e3ea1d0476185498161bc8c4b33",
+      "originalDurationSeconds": 7.85,
+      "preparedDurationSeconds": 7.834,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "indoor-closeup-20260930-02",
+      "fileName": "Perform_face_swap_and_edit_202608212149-Vmake.mp4",
+      "sha256": "7c76e9654bee8e5f31257c1ff06389a7159051feb9e459c5db26ef7808f7d129",
+      "visualGroup": "indoor_closeup",
+      "originalSha256": "0c15250cc6a40e678961ba3dbe3e51013aeccaf2be97d2d93fe4f715afd411e7",
+      "originalDurationSeconds": 7.85,
+      "preparedDurationSeconds": 7.834,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "indoor-medium-20260930-03",
+      "fileName": "Perform_face_swap_and_edit_20260919000153 (2).mp4",
+      "sha256": "51017524b3ec999b86a17097e1a0100f4cb0d26ba403985420359ebda62ddf9a",
+      "visualGroup": "indoor_medium",
+      "originalSha256": "ac0ebe2fabb2592f814675cdc911c8ab0dce7c2b1a387f3250688d1cbb6782f7",
+      "originalDurationSeconds": 7.509,
+      "preparedDurationSeconds": 7.5,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "outdoor-walking-selfie-20260930-04",
+      "fileName": "Perform_face_swap_in_video_20260925161944-Vmake.mp4",
+      "sha256": "c3104e2cf41cc6042a25e3d67cc0c7fcb4265ccbd3f47d88c7003e2a30d31e61",
+      "visualGroup": "outdoor_walking_selfie",
+      "originalSha256": "ae2a454e0386494a632fb00048c2f90f9e31df7c250e04a960b96adbaf445c66",
+      "originalDurationSeconds": 6.848,
+      "preparedDurationSeconds": 6.834,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "indoor-closeup-20260930-07",
+      "fileName": "Perform_video_face_swap_and_20260925161936-Vmake.mp4",
+      "sha256": "4407db700f08852dfa630805628bef964ed312aa7194c9cffe7602e92cdaa6e9",
+      "visualGroup": "indoor_closeup",
+      "originalSha256": "605beef686b21ffb0bb5edfa88123fe682d1e7aae8921a05e87f7cef47ea7895",
+      "originalDurationSeconds": 8,
+      "preparedDurationSeconds": 8,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "outdoor-static-selfie-20260930-09",
+      "fileName": "Swap_face_and_edit_video_20260918235536 (3).mp4",
+      "sha256": "804d5a3a3b337790bab0d52a1b7318ef2512a30381e2f41ede08e5928fd52765",
+      "visualGroup": "outdoor_static_selfie",
+      "originalSha256": "07d40884aa73b0483a39a2cf1946d89288864df1bae66520ca2924948499b695",
+      "originalDurationSeconds": 10.005,
+      "preparedDurationSeconds": 10,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "indoor-medium-20260930-11",
+      "fileName": "Swap_face_in_video_20260925161523-Vmake.mp4",
+      "sha256": "4fdfdff2a1c56a7b9b985a5f3ce723379790d8b078f2a535271e8a6341b95cbb",
+      "visualGroup": "indoor_medium",
+      "originalSha256": "c51a2722e123383f6a984e444edaa0adccbe3d762b524ad6b14e24e801fd685f",
+      "originalDurationSeconds": 8,
+      "preparedDurationSeconds": 8,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "indoor-closeup-20260930-15",
+      "fileName": "Video_face_swap_and_edit_20260925161940-Vmake.mp4",
+      "sha256": "e33a83f7e80eb9ed269c4340098d8019fefe5d66c6c87180f96ac1b4607e1de1",
+      "visualGroup": "indoor_closeup",
+      "originalSha256": "553404d0b8126ed8f38ee0b6efc162ffd9c49b582603fce827354e6b68c3748a",
+      "originalDurationSeconds": 8,
+      "preparedDurationSeconds": 8,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    },
+    {
+      "catalogName": "indoor-medium-20260930-17",
+      "fileName": "Video_face_swap_and_editing_20260925161906-Vmake.mp4",
+      "sha256": "700e090d02e6e0ecf44bad048174e7c859881469744fdb2247a178aac4450004",
+      "visualGroup": "indoor_medium",
+      "originalSha256": "a2e9681f9c3adc8daffd8cff6eddede91d2fc472678976d7946f504605dd09f7",
+      "originalDurationSeconds": 6.016,
+      "preparedDurationSeconds": 6.016,
+      "approvedPlacementZone": "lower-middle",
+      "placementReviewMethod": "manual-multiframe-eight-line-proof",
+      "placementReviewedAt": "2026-09-30"
+    }
+  ],
+  "rejectedDuplicates": [],
+  "policy": {
+    "review": "User approved all content. Only technically eligible, placement-reviewed Wall backgrounds are selectable.",
+    "heldAssetsManifest": "scripts/data/wall-text-videos-held-2026-09-30.json",
+    "replay": "This active-only manifest intentionally excludes two stored inactive placement holds, preventing their reactivation by the existing importer."
+  }
+}

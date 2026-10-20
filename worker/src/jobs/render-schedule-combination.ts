@@ -12,6 +12,8 @@ import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
   parseTextColor,
 } from "../lib/edit-overlay-render-spec.js";
 import type { BackgroundJobRow, Json } from "../types.js";
@@ -91,6 +93,10 @@ export async function runRenderScheduleCombinationJob(
         compositionFingerprint: payload.compositionFingerprint,
         demoVideoId: payload.demoVideoId,
         draftId: payload.hookVideoDraftId,
+        durationSeconds: result.durationSeconds,
+        fileName: fileNameFromStorageKey(result.key),
+        fileSizeBytes: result.byteLength,
+        height: result.height,
         hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
         hookVideoId: payload.hookVideoId,
         key: result.key,
@@ -101,12 +107,17 @@ export async function runRenderScheduleCombinationJob(
         title: payload.title,
         url: result.url,
         userId: payload.userId,
+        width: result.width,
       });
     } else {
       await context.store.markScheduleCombinationRenderCompleted({
         autoFinalize: payload.autoFinalize,
         compositionFingerprint: payload.compositionFingerprint,
         demoVideoId: payload.demoVideoId,
+        durationSeconds: result.durationSeconds,
+        fileName: fileNameFromStorageKey(result.key),
+        fileSizeBytes: result.byteLength,
+        height: result.height,
         hookAudioAssetId: payload.hookAudio?.audioAssetId ?? null,
         hookVideoId: payload.hookVideoId,
         key: result.key,
@@ -118,6 +129,7 @@ export async function runRenderScheduleCombinationJob(
         title: payload.title,
         url: result.url,
         userId: payload.userId,
+        width: result.width,
       });
     }
 
@@ -225,6 +237,16 @@ export async function runRenderScheduleCombinationJob(
   }
 }
 
+function fileNameFromStorageKey(key: string) {
+  const fileName = key.split("/").at(-1)?.trim();
+
+  if (!fileName) {
+    throw new Error("Combined render storage key is missing its file name.");
+  }
+
+  return fileName;
+}
+
 function parseRenderScheduleCombinationPayload(
   value: Json,
 ): ParsedCombinationRenderPayload {
@@ -279,6 +301,15 @@ function parseRenderScheduleCombinationPayload(
     (hookTextFontSize === null || hookTextLines === null)
   ) {
     throw new Error("The authoritative Hook text layout is incomplete.");
+  }
+
+  if (
+    hookTextLayoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION &&
+    (hookTextFontSize === null ||
+      hookTextLines === null ||
+      hookTextFontSize !== PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE)
+  ) {
+    throw new Error("The previous fixed Hook text layout is incomplete.");
   }
 
   if (
@@ -367,13 +398,25 @@ function getOptionalHookAudio(value: Json | undefined) {
   }
 
   const audio = getJsonRecord(value, "hookAudio");
+  // Legacy jobs used Hook-only audio without an explicit composition fit. Do
+  // not risk truncating their Demo portion; they safely render without the
+  // replacement soundtrack instead.
+  if (audio.fitMode === undefined || audio.fitMode === null) {
+    return null;
+  }
   const selectionSource = getRequiredString(
     audio.selectionSource,
     "hookAudio.selectionSource",
   );
 
-  if (selectionSource !== "video_locked") {
-    throw new Error("hookAudio.selectionSource must be video_locked.");
+  if (
+    selectionSource !== "video_locked" &&
+    selectionSource !== "format_preferred" &&
+    selectionSource !== "dynamic"
+  ) {
+    throw new Error(
+      "hookAudio.selectionSource must be video_locked, format_preferred, or dynamic.",
+    );
   }
 
   const durationSeconds = getOptionalNullablePositiveNumber(
@@ -385,6 +428,11 @@ function getOptionalHookAudio(value: Json | undefined) {
     throw new Error("hookAudio.durationSeconds must be a positive number.");
   }
 
+  const fitMode = getRequiredString(audio.fitMode, "hookAudio.fitMode");
+  if (fitMode !== "loop" && fitMode !== "trim") {
+    throw new Error("hookAudio.fitMode must be loop or trim.");
+  }
+
   return {
     audioAssetId: getRequiredString(
       audio.audioAssetId,
@@ -392,7 +440,11 @@ function getOptionalHookAudio(value: Json | undefined) {
     ),
     audioUrl: getHttpUrl(audio.audioUrl, "hookAudio.audioUrl"),
     durationSeconds,
-    selectionSource: "video_locked" as const,
+    fitMode: fitMode as "loop" | "trim",
+    selectionSource: selectionSource as
+      | "dynamic"
+      | "format_preferred"
+      | "video_locked",
   };
 }
 
@@ -421,6 +473,7 @@ function getOptionalHookTextLayoutVersion(value: Json | undefined) {
 
   if (
     value === HOOK_TEXT_LAYOUT_VERSION ||
+    value === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION ||
     value === LEGACY_HOOK_TEXT_LAYOUT_VERSION
   ) {
     return value;

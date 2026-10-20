@@ -50,7 +50,9 @@ test("shows generation progress instead of caught-up while daily slots remain pe
     workspace,
     /\) : pendingSlotCount > 0 \? \([\s\S]*TrendingPreparingEmptyState[\s\S]*TrendingReadyEmptyState/,
   );
-  assert.match(workspace, /<EmptyTitle>Generating for you<\/EmptyTitle>/);
+  assert.match(workspace, /getTrendingPreparationCopy\(useContext\(TrendingPreparationContext\)\)/);
+  assert.match(workspace, /preparationState: data\.feed\.preparationState/);
+  assert.match(workspace, /<EmptyTitle>\{copy\.title\}<\/EmptyTitle>/);
   assert.match(
     workspace,
     /remainingCount > 0[\s\S]*TrendingIncompleteEmptyState/,
@@ -62,6 +64,17 @@ test("shows generation progress instead of caught-up while daily slots remain pe
   assert.match(
     workspace,
     /data\.feed\.remainingCount - pendingLocalDecisionCount/,
+  );
+});
+
+test("offers a user-initiated retry when only part of the visible feed failed", () => {
+  assert.match(
+    workspace,
+    /retryFailedFeedRef\.current = Boolean\(trendingFeedFailure\)/,
+  );
+  assert.match(
+    workspace,
+    /aria-label="Retry missing Trending content"[\s\S]*Retry missing/,
   );
 });
 

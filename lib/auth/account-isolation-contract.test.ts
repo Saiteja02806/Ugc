@@ -100,6 +100,11 @@ test("the persistent workspace shell preserves the existing route access matrix"
     activeKey: "explore",
     defaultSidebarCollapsed: false,
   });
+  assert.deepEqual(getWorkspaceRouteConfig("/analytics"), {
+    access: "profile",
+    activeKey: "analytics",
+    defaultSidebarCollapsed: false,
+  });
   assert.deepEqual(getWorkspaceRouteConfig("/avatars"), {
     access: "none",
     activeKey: "avatars",
@@ -151,7 +156,7 @@ test("AI Studio access is cached only inside the active Firebase account", () =>
   );
   assert.match(aiStudioAccess, /enabled: !loading && Boolean\(user\)/);
   assert.match(aiStudioAccess, /AI_STUDIO_ACCESS_STALE_TIME_MS/);
-  assert.match(aiStudioAccess, /refetchOnWindowFocus: false/);
+  assert.match(aiStudioAccess, /refetchOnWindowFocus: "always"/);
   assert.doesNotMatch(aiStudioAccess, /useEffect|useState/);
 });
 

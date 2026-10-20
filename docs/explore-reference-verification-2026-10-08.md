@@ -1,0 +1,9 @@
+# Explore reference verification — 8 October 2026
+
+The reported mismatch was confirmed: selecting a gallery video had populated the optional image tile with its poster. This release removes that implicit image attachment and shows the actual gallery clip in a playable Style video tile. The separate Choose image tile remains available.
+
+Gallery selection is visual style guidance and retained request context, not a promise that the entire clip is submitted to the provider. Instructions describe the desired style. An explicit video upload becomes generation input after owner-bound validation; it includes the media asset ID, URL and duration. Optional image and video inputs are mutually exclusive. Video input supports up to three seconds in 9:16 or 16:9; existing editor footage supports 1–120 seconds through Upload and Creative Assets. Failed replacement preserves the previous valid selection. Removing an uploaded attachment retains the selected style example; Clear example removes gallery selection.
+
+Hook and Wall of text use the older talking-head/phone workflow frames, square reference tiles and instruction field. Settings now follow the old order: Model and Duration, then Quality, Videos and Ratio. Voice references and subtitle controls are absent in these new video workflows. The generation action stays in the shared footer; generation opens Your Video immediately.
+
+Verification: the production build passes; 40 focused ownership/request/reference regressions pass; the full Explore suite passed 443 checks before this final correction. Browser checks cover actual sidebar video playback, upload failure preservation, desktop/mobile bounds, source selection, editing and scheduling drafts. No paid provider generation or publishing was performed for these checks. Final hosted acceptance is recorded in the complete-release report.

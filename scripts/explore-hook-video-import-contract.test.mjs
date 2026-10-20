@@ -65,18 +65,19 @@ test("the Wall-of-Text import keeps direct source audio while preserving the Hoo
   assert.match(importer, /Wall-of-Text catalog retains supplied audio/u);
 });
 
-test("the Wall-of-Text catalog exposes all supplied references from its own immutable prefix", () => {
+test("the Wall-of-Text catalog exposes retained references from its own immutable prefix", () => {
   assert.match(
     wallTextLibrary,
     /STORAGE_PREFIX = "explore\/wall-text-videos\/2026-09-03"/u,
   );
   assert.equal(
     [...wallTextLibrary.matchAll(/id: "explore-wall-text-\d{2}"/gu)].length,
-    63,
+    62,
   );
   assert.match(wallTextLibrary, /getExploreWallTextVideos/u);
   assert.match(wallTextLibrary, /isExploreWallTextVideoId/u);
   assert.match(wallTextLibrary, /posterUrl/u);
+  assert.doesNotMatch(wallTextLibrary, /id: "explore-wall-text-01"/u);
   assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*trending/i);
   assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*viral/i);
 });

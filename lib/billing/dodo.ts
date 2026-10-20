@@ -211,6 +211,8 @@ export function unwrapDodoWebhook(params: {
   });
 }
 
+export class DodoUsageRejectedError extends Error {}
+
 export async function ingestDodoUsageEvent(params: {
   customerId: string;
   eventId: string;
@@ -218,17 +220,54 @@ export async function ingestDodoUsageEvent(params: {
   metadata: Record<string, boolean | number | string>;
   timestamp: string;
 }) {
-  return getDodoClient().usageEvents.ingest({
-    events: [
-      {
+  const client = getDodoClient();
+  const options = { maxRetries: 0, timeout: 10_000 };
+  const timestamp = Date.parse(params.timestamp);
+  const age = Date.now() - timestamp;
+  const isMatchingEvent = async () => {
+    const event = await client.usageEvents.retrieve(params.eventId, options);
+    return event.customer_id === params.customerId &&
+      event.event_name === params.eventName &&
+      Date.parse(event.timestamp) === timestamp &&
+      event.metadata?.job_id === params.metadata.job_id;
+  };
+
+  // Never re-date historical usage into a different billing period.
+  if (!Number.isFinite(timestamp) || age >= 60 * 60 * 1000 || age < -5 * 60 * 1000) {
+    if (Number.isFinite(timestamp)) {
+      try {
+        if (await isMatchingEvent()) return;
+      } catch (error) {
+        if (!(error instanceof DodoPayments.APIError) || error.status !== 404) throw error;
+      }
+    }
+    throw new DodoUsageRejectedError("Usage timestamp is outside Dodo's ingestion window; retained for reconciliation.");
+  }
+
+  try {
+    // Test-mode access may coexist with live billing. Only report customers
+    // that exist in the configured Dodo environment.
+    await client.customers.retrieve(params.customerId, options);
+    const response = await client.usageEvents.ingest({
+      events: [{
         customer_id: params.customerId,
         event_id: params.eventId,
         event_name: params.eventName,
         metadata: params.metadata,
         timestamp: params.timestamp,
-      },
-    ],
-  });
+      }],
+    }, options);
+
+    if (response.ingested_count === 1) return;
+    if (response.ingested_count === 0 && await isMatchingEvent()) return;
+    throw new Error("Dodo did not acknowledge this usage event.");
+  } catch (error) {
+    if (error instanceof DodoPayments.APIError &&
+        [400, 404, 422].includes(error.status ?? 0)) {
+      throw new DodoUsageRejectedError(`Dodo rejected usage in ${getDodoEnvironment()}: ${error.message.slice(0, 800)}`);
+    }
+    throw error;
+  }
 }
 
 function getProductEnvironmentVariable(

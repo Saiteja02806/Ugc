@@ -57,27 +57,27 @@ async function capture() {
     const targets = [
       {
         url: "http://localhost:3333/e2e/onboarding-preview?step=1",
-        out: join(artifactDir, "onboarding-v4-step1-desktop.png"),
+        out: join(artifactDir, "onboarding-v5-source-desktop.png"),
         windowSize: "1400,980"
       },
       {
         url: "http://localhost:3333/e2e/onboarding-preview?step=2",
-        out: join(artifactDir, "onboarding-v4-step2-desktop.png"),
+        out: join(artifactDir, "onboarding-v5-progress-scanning-desktop.png"),
         windowSize: "1400,980"
       },
       {
-        url: "http://localhost:3333/e2e/onboarding-preview?step=3",
-        out: join(artifactDir, "onboarding-v4-step3-desktop-unselected.png"),
+        url: "http://localhost:3333/e2e/onboarding-preview?step=2-ready",
+        out: join(artifactDir, "onboarding-v5-progress-generating-desktop.png"),
         windowSize: "1400,980"
       },
       {
-        url: "http://localhost:3333/e2e/onboarding-preview?step=3-selected",
-        out: join(artifactDir, "onboarding-v4-step3-desktop-selected.png"),
+        url: "http://localhost:3333/e2e/onboarding-preview?step=2-error",
+        out: join(artifactDir, "onboarding-v5-progress-error-desktop.png"),
         windowSize: "1400,980"
       },
       {
-        url: "http://localhost:3333/e2e/onboarding-preview?step=3-selected",
-        out: join(artifactDir, "onboarding-v4-step3-mobile-selected.png"),
+        url: "http://localhost:3333/e2e/onboarding-preview?step=1",
+        out: join(artifactDir, "onboarding-v5-source-mobile.png"),
         windowSize: "400,900"
       }
     ];

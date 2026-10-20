@@ -1,0 +1,92 @@
+[
+  {
+    "file": "plugin-mcp-final-logs-20261008.jsonl",
+    "rows": 50,
+    "from_utc": "2026-10-08T06:05:17.0720000+00:00",
+    "to_utc": "2026-10-08T06:15:37.8880000+00:00",
+    "statuses": [
+      {
+        "count": 32,
+        "status": "200"
+      },
+      {
+        "count": 2,
+        "status": "202"
+      },
+      {
+        "count": 3,
+        "status": "400"
+      },
+      {
+        "count": 7,
+        "status": "401"
+      },
+      {
+        "count": 4,
+        "status": "403"
+      },
+      {
+        "count": 2,
+        "status": "404"
+      }
+    ],
+    "error_levels": 0,
+    "error_events": 0,
+    "trace_events": 33,
+    "rejected_paths": [
+      {
+        "path_and_status": "/mcp, 401",
+        "count": 7
+      },
+      {
+        "path_and_status": "/mcp, 403",
+        "count": 4
+      },
+      {
+        "path_and_status": "/oauth/register, 400",
+        "count": 1
+      },
+      {
+        "path_and_status": "/oauth/token, 400",
+        "count": 2
+      },
+      {
+        "path_and_status": "/pricing, 404",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "file": "plugin-website-final-logs-20261008.jsonl",
+    "rows": 20,
+    "from_utc": "2026-10-08T06:10:29.4810000+00:00",
+    "to_utc": "2026-10-08T06:15:46.8030000+00:00",
+    "statuses": [
+      {
+        "count": 17,
+        "status": "200"
+      },
+      {
+        "count": 2,
+        "status": "401"
+      },
+      {
+        "count": 1,
+        "status": "404"
+      }
+    ],
+    "error_levels": 0,
+    "error_events": 0,
+    "trace_events": 0,
+    "rejected_paths": [
+      {
+        "path_and_status": "/api/internal/carousels/replenish, 401",
+        "count": 2
+      },
+      {
+        "path_and_status": "/mcp, 404",
+        "count": 1
+      }
+    ]
+  }
+]

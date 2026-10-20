@@ -10,7 +10,7 @@ function creative(): ReactionCreativeRow {
     background_asset_id: "original-background", clip_asset_id: "original-clip", caption: "Original caption",
     content_json: { caption: "Original caption", userTextEdit: { revision: 2, status: "queued", lines: ["Me realizing", "the deadline was yesterday"] } },
     render_plan_json: { foreground: { anchor: "bottom_right", heightPercent: 0.55 }, text: { treatment: "outlined_text", lines: ["Original caption"] } },
-    duration_seconds: 6, render_status: "preview_ready", rendered_media_asset_id: "original-media",
+    duration_seconds: 6, generation_origin: "business_generation", render_status: "preview_ready", rendered_media_asset_id: "original-media",
     preview_url: "https://example.com/original.mp4", render_error: null, render_job_id: "render-job",
     thumbnail_url: null, title: "Reaction",
   };

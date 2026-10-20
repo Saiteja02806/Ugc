@@ -14,9 +14,12 @@ import {
   ScanText,
   SlidersHorizontal,
   Sparkles,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -28,9 +31,12 @@ import type {
 } from "react";
 import {
   forwardRef,
+  createContext,
+  useContext,
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,7 +45,11 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/auth-context";
+import { CarouselEditRenderStatus } from "@/components/trending/carousel-edit-render-status";
+import { getLatestTrendingEdit, shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
+import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refresh";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
+import { getTrendingPreparationCopy, type TrendingPreparationState } from "@/lib/trending/preparation-status";
 import {
   type BillingSubscription,
   useBillingSubscription,
@@ -54,15 +64,24 @@ import type {
   SchedulePlatformContext,
 } from "@/components/social/platform-selection-modal";
 import { HookVideoCard } from "@/components/trending/hook-video-card";
+import { HookVideoComposer } from "@/components/trending/hook-video-composer";
 import type { HookPreviewAudio } from "@/components/trending/hook-audio-preview";
+import { PostInteractionFeed } from "@/components/trending/post-interaction-feed";
+import { usePostReviewHistory } from "@/components/trending/use-post-review-history";
+import { useQuotaReviewRecovery } from "@/components/trending/use-quota-review-recovery";
+import { isRecoverableTrendingReview, type ReviewedTrendingCandidate } from "@/lib/trending/reviewed-feed-candidate";
+import { POST_LIKE_FEEDBACK_MS } from "@/lib/trending/post-interaction";
+import { TrendingSwipeGuide } from "@/components/trending/trending-swipe-guide";
 import type { WallTextDetailActionState } from "@/components/trending/wall-text-detail-view";
 import { WallTextOverlay } from "@/components/trending/wall-text-overlay";
+import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
 import { WallTextAudioPreview } from "@/components/trending/wall-text-audio-preview";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   createAndPublishCarouselSchedule,
+  createCarouselScheduleIdempotencyKey,
   type CarouselScheduleSubmission,
 } from "@/lib/scheduling/carousel-scheduling-client";
 import { createWallTextScheduleRequest } from "@/lib/trending/wall-text-scheduling-contract";
@@ -101,10 +120,12 @@ import type {
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
 } from "@/lib/trending/hook-video-types";
-import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
+import type { TrendingCarouselEditStatus, TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
+import { filterTrendingItemsForRuntime } from "@/lib/trending/format-policy";
 
 import skeletonStyles from "./trending-post-skeleton.module.css";
+import reviewLayout from "./trending-review-layout.module.css";
 
 const TrendingCreativeEditor = dynamic(
   () =>
@@ -127,22 +148,6 @@ const TrendingContentMixDialog = dynamic(
   { loading: TrendingContentMixDialogLoading },
 );
 
-const TrendingFirstVisitWalkthrough = dynamic(
-  () =>
-    import("@/components/trending/trending-first-visit-walkthrough").then(
-      (module) => module.TrendingFirstVisitWalkthrough,
-    ),
-  { ssr: false },
-);
-
-const HookVideoComposer = dynamic(
-  () =>
-    import("@/components/trending/hook-video-composer").then(
-      (module) => module.HookVideoComposer,
-    ),
-  { loading: HookVideoComposerLoading },
-);
-
 const PlatformSelectionModal = dynamic(
   () =>
     import("@/components/social/platform-selection-modal").then(
@@ -160,10 +165,14 @@ type TrendingDailyFeedState =
   | "ready";
 
 type TrendingFeedProgress = {
+  feedId?: string;
+  preparationState?: TrendingPreparationState | null;
   completedCount: number;
   pendingSlotCount: number;
   remainingCount: number;
 };
+
+const TrendingPreparationContext = createContext<TrendingPreparationState>("preparing");
 
 type TrendingFeedFailure = {
   code: "hook_generation_restart_required" | "hook_source_unavailable" | "content_generation_failed";
@@ -204,6 +213,8 @@ type TrendingCandidate =
   | CompleteWallText
   | CompleteReaction;
 
+type TrendingReviewHistory = ReturnType<typeof usePostReviewHistory<ReviewedTrendingCandidate>>;
+
 type TrendingHookComposition = {
   edit: TrendingCreativeEditRecord | null;
   item: TrendingHookVideoFeedItem;
@@ -218,7 +229,7 @@ type TrendingDeckSlot = {
   depth: DeckDepth;
 };
 
-type TrendingDeckPresentation = "centered" | "video_peek";
+type TrendingDeckPresentation = "centered" | "video_peek" | "feed";
 
 type CarouselProfileFeed = {
   error?: string | null;
@@ -242,6 +253,7 @@ type CarouselHistoryResponse =
         id: string;
         localDate: string;
         pendingSlotCount: number;
+        preparationState?: TrendingPreparationState | null;
         remainingCount: number;
         state: TrendingDailyFeedState;
         timezone: string;
@@ -403,16 +415,24 @@ const decisionOutboxMemoryFallback = new Map<
   TrendingDecisionOutboxEntry[]
 >();
 const SWIPE_THRESHOLD_PX = 90;
-const SWIPE_EXIT_DURATION_MS = 220;
 const MAX_ROTATION_DEGREES = 5;
+// Review frame sizing is scoped in the layout stylesheet so every desktop
+// format grows monotonically with the usable viewport and still preserves room
+// for its format label, decisions, and remaining-content text.
 const CAROUSEL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(78vw,300px,calc((100dvh-348px)*0.8))]";
+  "w-[min(78vw,300px,calc((100dvh-348px)*0.8))] min-[1024px]:max-[1536px]:w-[min(78vw,clamp(300px,calc(902.12px-39.2vw),380px),max(320px,calc((100dvh-300px)*0.8)))]";
 const VERTICAL_REVIEW_CARD_WIDTH_CLASS =
-  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))]";
+  "w-[min(76vw,230px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(76vw,clamp(260px,calc(440.5px-11.75vw),280px),calc((100dvh-252px)*0.5625))] min-[1024px]:max-[1536px]:w-[min(76vw,clamp(260px,calc(802.12px-35.294vw),320px),max(280px,calc((100dvh-200px)*0.5625)))]";
+// Keep the 277px desktop reference, but enlarge Wall text and media together
+// on compact laptops so the saved line layout remains readable and intact.
+const WALL_TEXT_REVIEW_CARD_WIDTH_CLASS =
+  "w-[min(76vw,277px,calc((100dvh-348px)*0.5625))] min-[1024px]:w-[min(277px,calc((100dvh-252px)*0.5625))] min-[1024px]:max-[1536px]:w-[min(76vw,clamp(277px,calc(665.52px-25.294vw),320px),max(280px,calc((100dvh-200px)*0.5625)))]";
 const CAROUSEL_REVIEW_CARD_FRAME_CLASS =
   `${CAROUSEL_REVIEW_CARD_WIDTH_CLASS} aspect-[4/5]`;
 const VERTICAL_REVIEW_CARD_FRAME_CLASS =
   `${VERTICAL_REVIEW_CARD_WIDTH_CLASS} aspect-[9/16]`;
+const WALL_TEXT_REVIEW_CARD_FRAME_CLASS =
+  `${WALL_TEXT_REVIEW_CARD_WIDTH_CLASS} aspect-[9/16]`;
 const DECK_CARD_STYLES: Record<
   DeckDepth,
   { opacity: number; scale: number; translateY: number; zIndex: number }
@@ -480,6 +500,8 @@ function getTrendingDeckCardPresentation({
   isDragging: boolean;
   presentation?: TrendingDeckPresentation;
 }): CSSProperties {
+  if (presentation === "feed") return { opacity: 1, touchAction: "pan-y", transform: "none" };
+
   const isActive = depth === 0;
   const deckStyles =
     presentation === "video_peek" ? VIDEO_PEEK_CARD_STYLES : DECK_CARD_STYLES;
@@ -575,24 +597,6 @@ function TrendingContentMixDialogLoading() {
           aria-hidden="true"
         />
         Opening Adjust…
-      </div>
-    </div>
-  );
-}
-
-function HookVideoComposerLoading() {
-  return (
-    <div
-      aria-live="polite"
-      className="flex min-h-[540px] items-center justify-center px-5 py-8"
-      role="status"
-    >
-      <div className="flex items-center gap-3 rounded-[var(--radius-panel)] border border-border bg-card px-5 py-4 text-sm font-semibold text-foreground shadow-card">
-        <Loader2
-          className="size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
-          aria-hidden="true"
-        />
-        Opening Hook composer…
       </div>
     </div>
   );
@@ -754,7 +758,7 @@ export function TrendingWorkspace() {
       const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
         user.uid,
       );
-      return existingMemoryCache.items.filter(
+      return filterTrendingItemsForRuntime(existingMemoryCache.items).filter(
         (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
       );
     }
@@ -769,7 +773,7 @@ export function TrendingWorkspace() {
       const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
         user.uid,
       );
-      return existingMemoryCache.items.some(
+      return filterTrendingItemsForRuntime(existingMemoryCache.items).some(
         (item) => !pendingDecisionAssignmentIds.has(item.assignmentId),
       )
         ? `${user.uid}:${currentBrowserLocalDate}`
@@ -855,7 +859,7 @@ export function TrendingWorkspace() {
   );
   const visibleCarouselHistoryError = user ? carouselHistoryError : null;
   const orderedTrendingItems = useMemo(
-    () => [...visibleTrendingItems].sort(compareTrendingFeedItems),
+    () => filterTrendingItemsForRuntime(visibleTrendingItems).sort(compareTrendingFeedItems),
     [visibleTrendingItems],
   );
   const carouselFeedProfile: CarouselProfileFeed | null = user
@@ -985,9 +989,10 @@ export function TrendingWorkspace() {
           return;
         }
 
-        const receivedItems =
+        const receivedItems = filterTrendingItemsForRuntime(
           data.items ??
-          createCarouselTrendingFeedProvider(data.carousels).items;
+          createCarouselTrendingFeedProvider(data.carousels).items,
+        );
         const pendingDecisionAssignmentIds = getPendingDecisionAssignmentIds(
           userId,
         );
@@ -1009,6 +1014,8 @@ export function TrendingWorkspace() {
         setTrendingUpgradeRequired(Boolean(data.upgradeRequired));
         const nextFeedProgress = data.feed
           ? {
+              feedId: data.feed.id,
+              preparationState: data.feed.preparationState,
               completedCount:
                 data.feed.completedCount + pendingLocalDecisionCount,
               pendingSlotCount: data.feed.pendingSlotCount,
@@ -1185,9 +1192,10 @@ export function TrendingWorkspace() {
   }
 
   return (
-    <section className="min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10">
-      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]">
-        <header className="flex items-start justify-between gap-4">
+    <TrendingPreparationContext value={trendingFeedProgress?.preparationState ?? "preparing"}>
+    <section className={cn("min-h-dvh flex-1 bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8 lg:py-5 xl:px-10", reviewLayout.workspace)}>
+      <div className={cn("mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1360px] flex-col lg:min-h-[calc(100dvh-2.5rem)]", reviewLayout.workspaceContent)}>
+        <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="text-balance text-[30px] font-semibold leading-9 text-foreground-strong sm:text-[32px] sm:leading-10">
@@ -1203,12 +1211,12 @@ export function TrendingWorkspace() {
                 </Link>
               ) : null}
             </div>
-            <p className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
-              Explore Carousel, Hook, Wall-of-text, and Reaction Reel content
-              made from your business profile.
+            <p data-trending-intro className="mt-1 max-w-2xl text-[14px] leading-[20px] text-muted sm:text-[15px] sm:leading-[22px]">
+              Explore slideshows made from your business profile.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <MediaLibraryButton label="Manage library" variant="creative-edit" className="rounded-full" disabled={authLoading || !user} />
             <Button
               data-trending-adjust-control
               type="button"
@@ -1230,14 +1238,15 @@ export function TrendingWorkspace() {
           </div>
         </header>
 
-        <section className="mt-3 flex min-h-0 flex-1 sm:mt-4">
+        <section className={cn("mt-3 flex min-h-0 flex-1 sm:mt-4", reviewLayout.contentSection)}>
           <div
-            className="relative flex min-h-0 w-full flex-1 items-center py-2 sm:py-3"
+            className={cn("relative flex min-h-0 w-full flex-1 items-center py-2 sm:py-3", reviewLayout.feedTransition)}
             data-trending-feed-transition
           >
-            <div className="min-w-0 flex-1">
+            <div className={cn("min-w-0 flex-1", reviewLayout.feedLayer)}>
               <TrendingFeedGallery
                 key={trendingFeedSessionKey}
+                feedId={trendingFeedProgress?.feedId}
                 enqueueDecision={enqueueDecision}
                 failure={trendingFeedFailure}
                 headerActionsRoot={headerActionsRoot}
@@ -1249,21 +1258,16 @@ export function TrendingWorkspace() {
                 preparing={trendingFeedState === "preparing"}
                 remainingCount={trendingFeedProgress?.remainingCount ?? 0}
                 profile={carouselFeedProfile}
+                userId={user?.uid ?? null}
                 upgradeRequired={trendingUpgradeRequired}
                 onCompleteProfile={openBusinessProfile}
                 onRetryHistory={() => {
-                  retryFailedFeedRef.current = trendingFeedState === "failed";
+                  retryFailedFeedRef.current = Boolean(trendingFeedFailure);
                   setCarouselHistoryState("loading");
                   setCarouselHistoryRefreshKey((current) => current + 1);
                 }}
               />
             </div>
-            {user?.uid ? (
-              <TrendingFirstVisitWalkthrough
-                key={user.uid}
-                userId={user.uid}
-              />
-            ) : null}
           </div>
         </section>
         {contentMixOpen ? (
@@ -1279,10 +1283,12 @@ export function TrendingWorkspace() {
         ) : null}
       </div>
     </section>
+    </TrendingPreparationContext>
   );
 }
 
-function TrendingFeedGallery({
+export function TrendingFeedGallery({
+  feedId,
   enqueueDecision,
   error,
   failure,
@@ -1296,8 +1302,10 @@ function TrendingFeedGallery({
   onCompleteProfile,
   onRetryHistory,
   profile,
+  userId,
   upgradeRequired,
 }: {
+  feedId?: string;
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   error: string | null;
   failure: TrendingFeedFailure | null;
@@ -1311,17 +1319,33 @@ function TrendingFeedGallery({
   onCompleteProfile: () => void;
   onRetryHistory: () => void;
   profile: CarouselProfileFeed | null;
+  userId: string | null;
   upgradeRequired: boolean;
 }) {
-  const showSkeleton = loading;
+  const postHistory = usePostReviewHistory<ReviewedTrendingCandidate>(userId
+    ? { ownerId: userId, scopeId: feedId, isValue: isRecoverableTrendingReview }
+    : undefined);
+  const quotaHistory = useQuotaReviewRecovery(userId, feedId, postHistory.recover);
+  const showSkeleton = loading || !postHistory.ready ||
+    (quotaHistory.loading && items.length === 0 && postHistory.entries.length === 0);
+  const historyNotice = quotaHistory.loading || quotaHistory.error || quotaHistory.unavailable > 0 ? (
+    <div role="status" className="flex flex-wrap items-center justify-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+      {quotaHistory.loading ? "Loading earlier posts from this quota…" : quotaHistory.error
+        ? "Earlier posts could not be loaded." : "Some earlier posts are no longer available."}
+      {quotaHistory.error ? <Button variant="outline" size="sm" onClick={quotaHistory.retry}>Retry earlier posts</Button> : null}
+    </div>
+  ) : null;
   // A right swipe records the decision and removes its card immediately. Keep
   // the already-presented review shell alive for this user/day so the accepted
   // Carousel or Wall action dialog can paint even when that was the final
   // ready card.
-  const retainingReviewShell = hasPresentedFeed && items.length === 0;
-  const shouldRenderFeed = items.length > 0 || hasPresentedFeed;
+  const hasReviewShell = hasPresentedFeed || postHistory.entries.length > 0;
+  const retainingReviewShell = hasReviewShell && items.length === 0;
+  const shouldRenderFeed = items.length > 0 || hasReviewShell;
 
-  if (!retainingReviewShell && !loading && error && items.length === 0) {
+  if (!showSkeleton && !shouldRenderFeed && historyNotice) return historyNotice;
+
+  if (!retainingReviewShell && !showSkeleton && error && items.length === 0) {
     return (
       <TrendingFeedFailureState
         failure={failure}
@@ -1331,7 +1355,7 @@ function TrendingFeedGallery({
     );
   }
 
-  if (!retainingReviewShell && !loading && profile?.state === "missing") {
+  if (!retainingReviewShell && !showSkeleton && profile?.state === "missing") {
     return <CarouselProfilePrompt onAction={onCompleteProfile} />;
   }
 
@@ -1362,11 +1386,15 @@ function TrendingFeedGallery({
   }
 
   return (
-    <div data-trending-feed-transition className="relative grid w-full">
+    <>
+    {historyNotice}
+    <div data-trending-feed-transition className={cn("relative grid w-full", reviewLayout.feedGallery)}>
       <div
         aria-hidden={showSkeleton ? undefined : "true"}
         className={cn(
           "col-start-1 row-start-1 transition-opacity duration-200 ease-linear motion-reduce:transition-none",
+          reviewLayout.feedLayer,
+          reviewLayout.skeletonLayer,
           showSkeleton ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       >
@@ -1377,23 +1405,27 @@ function TrendingFeedGallery({
         inert={showSkeleton ? true : undefined}
         className={cn(
           "col-start-1 row-start-1 transition-opacity duration-200 ease-linear motion-reduce:transition-none",
+          reviewLayout.feedLayer,
           showSkeleton ? "pointer-events-none opacity-0" : "opacity-100",
         )}
       >
         {shouldRenderFeed ? (
           <TrendingFeed
+            reviewHistory={postHistory}
             enqueueDecision={enqueueDecision}
             failure={failure}
             headerActionsRoot={headerActionsRoot}
-            items={items}
+            items={items.filter(item => !postHistory.entries.some(entry => entry.value.item.assignmentId === item.assignmentId))}
             pendingSlotCount={pendingSlotCount}
             remainingCount={remainingCount}
             onRetry={onRetryHistory}
+            userId={userId}
             upgradeRequired={upgradeRequired}
           />
         ) : null}
       </div>
     </div>
+    </>
   );
 }
 
@@ -1464,6 +1496,9 @@ function TrendingPreparingEmptyState({
 }: {
   pendingSlotCount: number;
 }) {
+  const preparationState = useContext(TrendingPreparationContext);
+  const copy = getTrendingPreparationCopy(preparationState);
+  const StatusIcon = preparationState === "failed" ? CircleAlert : Loader2;
   const remainingLabel =
     pendingSlotCount > 0
       ? `${pendingSlotCount} ${pendingSlotCount === 1 ? "piece" : "pieces"} of content ${pendingSlotCount === 1 ? "is" : "are"}`
@@ -1472,14 +1507,13 @@ function TrendingPreparingEmptyState({
   return (
     <Empty role="status" className="min-h-[360px] text-foreground">
       <EmptyHeader>
-        <Loader2
+        <StatusIcon
           aria-hidden="true"
-          className="mx-auto size-5 animate-spin text-primary motion-reduce:animate-none"
+          className={cn("mx-auto size-5 text-primary", preparationState !== "failed" && "animate-spin motion-reduce:animate-none")}
         />
-        <EmptyTitle>Generating for you</EmptyTitle>
+        <EmptyTitle>{copy.title}</EmptyTitle>
         <EmptyDescription>
-          {remainingLabel} being prepared. New content will appear here
-          automatically.
+          {remainingLabel} still pending. {copy.description}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -1492,7 +1526,7 @@ function TrendingReadyEmptyState() {
       <EmptyHeader>
         <EmptyTitle>You&apos;re all caught up</EmptyTitle>
         <EmptyDescription>
-          Check back tomorrow for fresh daily hooks and carousel content.
+          Check back tomorrow for fresh daily slideshows.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -1522,6 +1556,7 @@ function CarouselProfilePrompt({ onAction }: { onAction: () => void }) {
 }
 
 function TrendingFeed({
+  reviewHistory,
   enqueueDecision,
   failure,
   headerActionsRoot,
@@ -1529,8 +1564,10 @@ function TrendingFeed({
   pendingSlotCount,
   remainingCount,
   onRetry,
+  userId,
   upgradeRequired,
 }: {
+  reviewHistory: TrendingReviewHistory;
   enqueueDecision: (entry: TrendingDecisionOutboxEntry) => void;
   failure: TrendingFeedFailure | null;
   headerActionsRoot: HTMLDivElement | null;
@@ -1538,6 +1575,7 @@ function TrendingFeed({
   pendingSlotCount: number;
   remainingCount: number;
   onRetry: () => void;
+  userId: string | null;
   upgradeRequired: boolean;
 }) {
   const [activeSlideByCarouselId, setActiveSlideByCarouselId] = useState<
@@ -1545,6 +1583,7 @@ function TrendingFeed({
   >({});
   const [hookComposition, setHookComposition] =
     useState<TrendingHookComposition | null>(null);
+  const postHistory = reviewHistory;
 
   const candidates = items.flatMap<TrendingCandidate>((item) => {
     if (item.format === "hook_video") {
@@ -1611,8 +1650,25 @@ function TrendingFeed({
   }
 
   return (
-    <div className="flex w-full flex-col gap-10">
+    <div className={cn("flex w-full flex-col gap-10", reviewLayout.feedLayer)}>
+      {failure && headerActionsRoot
+        ? createPortal(
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Retry missing Trending content"
+              title="Retry missing content"
+              onClick={onRetry}
+            >
+              <RefreshCw data-icon="inline-start" aria-hidden="true" />
+              Retry missing
+            </Button>,
+            headerActionsRoot,
+          )
+        : null}
       <TrendingDeck
+        reviewHistory={postHistory}
         activeSlideByCarouselId={activeSlideByCarouselId}
         candidates={candidates}
         enqueueDecision={enqueueDecision}
@@ -1621,6 +1677,7 @@ function TrendingFeed({
         pendingSlotCount={pendingSlotCount}
         remainingCount={remainingCount}
         onRetry={onRetry}
+        userId={userId}
         upgradeRequired={upgradeRequired}
         onActiveSlideChange={setActiveSlide}
         onActiveSlideMove={moveActiveSlide}
@@ -1841,7 +1898,7 @@ function TrendingHookComposer({
   );
 }
 
-function TrendingDeck({
+export function TrendingDeck({
   activeSlideByCarouselId,
   candidates,
   enqueueDecision,
@@ -1853,7 +1910,9 @@ function TrendingDeck({
   onRetry,
   pendingSlotCount,
   remainingCount,
+  userId,
   upgradeRequired,
+  reviewHistory,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidates: TrendingCandidate[];
@@ -1873,17 +1932,20 @@ function TrendingDeck({
   onRetry: () => void;
   pendingSlotCount: number;
   remainingCount: number;
+  userId: string | null;
   upgradeRequired: boolean;
+  reviewHistory?: TrendingReviewHistory;
 }) {
   const swipeTimerRef = useRef<number | null>(null);
   const swipeCompletionRef = useRef<(() => void) | null>(null);
   const actionNoticeTimerRef = useRef<number | null>(null);
   const decisionLockRef = useRef(false);
-  const dragStartXRef = useRef<number | null>(null);
-  const dragXRef = useRef(0);
+  const reviewFrameRef = useRef<HTMLDivElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [optimisticallyDismissedItemIds, setOptimisticallyDismissedItemIds] =
     useState<Set<string>>(() => new Set());
+  const localPostHistory = usePostReviewHistory<ReviewedTrendingCandidate>();
+  const postHistory = reviewHistory ?? localPostHistory;
   const [actionCandidate, setActionCandidate] =
     useState<CompleteCarousel | null>(null);
   const [wallTextCandidate, setWallTextCandidate] =
@@ -1900,6 +1962,10 @@ function TrendingDeck({
   const [editByCreativeId, setEditByCreativeId] = useState<
     Record<string, TrendingCreativeEditRecord>
   >({});
+  const latestEditsRef = useRef(editByCreativeId);
+  useEffect(() => { latestEditsRef.current = editByCreativeId; }, [editByCreativeId]);
+  const hasPendingCarouselEdits = Object.values(editByCreativeId).some(entry =>
+    entry.format === "carousel" && (entry.renderState === "queued" || entry.renderState === "rendering"));
   const [actionNotice, setActionNotice] = useState<CarouselActionNotice | null>(
     null,
   );
@@ -1911,13 +1977,81 @@ function TrendingDeck({
   const [pendingScheduleCandidate, setPendingScheduleCandidate] =
     useState<CompleteCarousel | null>(null);
 
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const [hookPreviewStatusByCreativeId, setHookPreviewStatusByCreativeId] =
     useState<Record<string, HookPreviewStatus>>({});
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
     null,
   );
+  const [swipeGuideState, setSwipeGuideState] = useState<
+    "checking" | "hidden" | "visible"
+  >(userId ? "checking" : "hidden");
+  const swipeGuideCompletionRef = useRef(false);
+
+  useEffect(() => {
+    if (!userId) {
+      swipeGuideCompletionRef.current = false;
+      return;
+    }
+
+    const controller = new AbortController();
+    let live = true;
+    swipeGuideCompletionRef.current = false;
+
+    async function loadSwipeGuide() {
+      try {
+        const token = await getCurrentUserIdToken();
+        if (!token) throw new Error("No signed-in user is available.");
+
+        const response = await fetch("/api/trending/walkthrough", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        const body = (await response.json().catch(() => null)) as
+          | { completed: boolean; ok: true }
+          | null;
+
+        if (live && !controller.signal.aborted) {
+          setSwipeGuideState(
+            response.ok && body?.ok && !body.completed ? "visible" : "hidden",
+          );
+        }
+      } catch {
+        if (live && !controller.signal.aborted) setSwipeGuideState("hidden");
+      }
+    }
+
+    void loadSwipeGuide();
+    return () => {
+      live = false;
+      controller.abort();
+    };
+  }, [userId]);
+
+  const dismissSwipeGuide = useCallback(() => {
+    if (swipeGuideState !== "visible") return false;
+
+    setSwipeGuideState("hidden");
+    if (swipeGuideCompletionRef.current) return true;
+    swipeGuideCompletionRef.current = true;
+
+    void (async () => {
+      try {
+        const token = await getCurrentUserIdToken();
+        if (!token) return;
+
+        await fetch("/api/trending/walkthrough", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+        });
+      } catch {
+        // The guide remains dismissed for this visit and retries on a later one.
+      }
+    })();
+
+    return true;
+  }, [swipeGuideState]);
   const visibleCandidates = useMemo<TrendingCandidate[]>(
     () =>
       excludeDismissedTrendingFeedItems(
@@ -1946,7 +2080,39 @@ function TrendingDeck({
     activeItemId,
     (candidate) => candidate.item.id,
   );
-  const activeCandidate = visibleCandidates[activeItemIndex] ?? null;
+  const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
+  const activeReviewItemId = activeCandidate?.item.id;
+  // An owned slideshow can receive its first edit after it was skipped. History
+  // is a navigation state, not evidence that its source is no longer editable.
+  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && activeCandidate?.format !== "carousel");
+
+  useLayoutEffect(() => {
+    const frame = reviewFrameRef.current;
+    const feed = frame?.querySelector<HTMLElement>("[data-post-interaction-feed]");
+    const post = feed?.querySelector<HTMLElement>("[data-post-feed-active=true] [data-trending-feed-card]");
+    const decisions = frame?.querySelector<HTMLElement>("[aria-label='Creative decisions']");
+    if (!frame || !feed || !post || !decisions) return;
+
+    const updateDecisionSpacing = () => {
+      // Each post is centered in the snap window. Use heights, not scroll
+      // position, so browsing history and dragging cannot move the controls.
+      const spaceBelowPost = Math.max(0, (feed.clientHeight - post.getBoundingClientRect().height) / 2);
+      const actionMargin = Number.parseFloat(getComputedStyle(decisions).marginTop) || 0;
+      const lift = Math.max(0, spaceBelowPost + actionMargin - 12);
+      frame.style.setProperty("--trending-decision-lift", `${lift}px`);
+    };
+
+    const observer = new ResizeObserver(updateDecisionSpacing);
+    observer.observe(feed);
+    observer.observe(post);
+    observer.observe(decisions);
+    updateDecisionSpacing();
+    return () => {
+      observer.disconnect();
+      frame.style.removeProperty("--trending-decision-lift");
+    };
+  }, [activeReviewItemId]);
+
   const activeReactionCreativeId = activeCandidate?.format === "reaction" ? activeCandidate.item.creativeId : null;
   const activeReactionAssignmentId = activeCandidate?.format === "reaction" ? activeCandidate.item.assignmentId : null;
   const activeReactionState = activeCandidate?.format === "reaction" ? activeCandidate.item.creative.textEditState : undefined;
@@ -1979,17 +2145,10 @@ function TrendingDeck({
     ? getTrendingCandidateTitle(activeCandidate)
     : null;
   const deckSlots = getTrendingDeckSlots(
-    visibleCandidates,
-    activeItemIndex,
-    activeCandidate?.format ?? "carousel",
+    postHistory.active ? [postHistory.active.value, ...postHistory.following.map((entry) => entry.value),
+      ...visibleCandidates.slice(activeItemIndex)] : visibleCandidates,
+    postHistory.browsing ? 0 : activeItemIndex,
   );
-  const deckPresentation: TrendingDeckPresentation =
-    activeCandidate?.format === "carousel" ? "centered" : "video_peek";
-  const hasVerticalNextCard =
-    activeCandidate?.format === "carousel" &&
-    deckSlots.some(
-      (slot) => slot.depth === 1 && slot.candidate.format !== "carousel",
-    );
   const handleHookPreviewStatusChange = useCallback(
     (creativeId: string, status: HookPreviewStatus) => {
       setHookPreviewStatusByCreativeId((current) =>
@@ -2036,23 +2195,17 @@ function TrendingDeck({
   ]);
 
   useEffect(() => {
-    const pendingEdits = Object.values(editByCreativeId).filter(
-      (entry) =>
-        entry.format === "carousel" &&
-        (entry.renderState === "queued" || entry.renderState === "rendering"),
-    );
-
-    if (pendingEdits.length === 0) {
-      return;
-    }
-
+    if (!hasPendingCarouselEdits) return;
     let stopped = false;
+    const controller = new AbortController();
 
     async function refreshPendingEdits() {
+      const pendingEdits = Object.values(latestEditsRef.current).filter(entry =>
+        entry.format === "carousel" && (entry.renderState === "queued" || entry.renderState === "rendering"));
       const refreshed = await Promise.all(
-        pendingEdits.map((entry) =>
-          loadTrendingCreativeEdit(entry).catch(() => null),
-        ),
+        pendingEdits.map(entry => refreshTrendingCarouselEdit(entry,
+          () => loadTrendingCarouselStatus(entry, controller.signal),
+          () => loadTrendingCreativeEditScope(entry, controller.signal))),
       );
 
       if (stopped) {
@@ -2066,11 +2219,13 @@ function TrendingDeck({
         refreshed.forEach((entry) => {
           if (!entry) return;
           const previous = current[entry.creativeId];
+          if (!shouldApplyCarouselEditRefresh(previous, entry)) return;
           if (
             !previous ||
             previous.revision !== entry.revision ||
             previous.renderState !== entry.renderState ||
-            previous.updatedAt !== entry.updatedAt
+            previous.updatedAt !== entry.updatedAt ||
+            previous.refreshError !== entry.refreshError
           ) {
             next[entry.creativeId] = entry;
             changed = true;
@@ -2081,14 +2236,21 @@ function TrendingDeck({
       });
     }
 
-    const timer = window.setInterval(() => void refreshPendingEdits(), 2_500);
-    void refreshPendingEdits();
+    let inFlight = false;
+    const timer = window.setInterval(async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try { await refreshPendingEdits(); } finally { inFlight = false; }
+    }, 1_000);
+    inFlight = true;
+    void refreshPendingEdits().finally(() => { inFlight = false; });
 
     return () => {
       stopped = true;
+      controller.abort();
       window.clearInterval(timer);
     };
-  }, [editByCreativeId]);
+  }, [hasPendingCarouselEdits]);
 
   useEffect(() => {
     if (
@@ -2147,14 +2309,6 @@ function TrendingDeck({
     }, notice.actionHref || notice.onAction ? 6200 : 2400);
   }
 
-  function resetDrag() {
-    dragStartXRef.current = null;
-    dragXRef.current = 0;
-    setDragX(0);
-    setIsDragging(false);
-    setExitDirection(null);
-  }
-
   function dismissCandidate(candidate: TrendingCandidate) {
     setOptimisticallyDismissedItemIds((current) => {
       if (current.has(candidate.item.id)) {
@@ -2171,17 +2325,12 @@ function TrendingDeck({
     direction: "left" | "right",
     onTransitionComplete: () => void,
   ) {
-    dragStartXRef.current = null;
-    setIsDragging(false);
     swipeCompletionRef.current = onTransitionComplete;
     setExitDirection(direction);
 
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
     swipeTimerRef.current = window.setTimeout(
       settleSwipeExit,
-      reduceMotion ? 0 : SWIPE_EXIT_DURATION_MS + 120,
+      direction === "left" ? 0 : POST_LIKE_FEEDBACK_MS,
     );
   }
 
@@ -2199,46 +2348,35 @@ function TrendingDeck({
       swipeTimerRef.current = null;
     }
 
-    // React batches the item advance and drag cleanup, so the retained outgoing
-    // card is removed without ever receiving a transition back to the origin.
+    // Keep the liked post visible for its heart feedback, then advance once.
     completion();
-    resetDrag();
-  }
-
-  function handleExitTransitionEnd(
-    event: ReactTransitionEvent<HTMLElement>,
-  ) {
-    if (
-      event.target === event.currentTarget &&
-      event.propertyName === "transform" &&
-      exitDirection
-    ) {
-      settleSwipeExit();
-    }
+    setExitDirection(null);
   }
 
   function completeCandidateSwipe(direction: "left" | "right") {
-    const started = requestCreativeDecision(
-      direction === "left" ? "rejected" : "accepted",
-    );
-
-    if (!started) {
-      resetDrag();
-    }
+    return requestCreativeDecision(direction === "left" ? "rejected" : "accepted");
   }
 
   function requestCreativeDecision(
     decision: "accepted" | "rejected",
   ) {
+    if (dismissSwipeGuide()) {
+      return false;
+    }
+
     if (
       !activeCandidate ||
       decisionLockRef.current ||
-      exitDirection
+      exitDirection || editorCandidate || scheduleContext || actionCandidate || wallTextCandidate
     ) {
       return false;
     }
 
-    const activeEdit = editByCreativeId[activeCandidate.item.creativeId];
+    if (postHistory.browsing) {
+      if (decision === "rejected") return postHistory.next();
+    }
+
+    const activeEdit = editByCreativeId[activeCandidate.item.creativeId] ?? activeCandidate.reviewedEdit;
 
     if (decision === "accepted" && activeCandidate.format === "reaction" &&
         activeCandidate.item.creative.textEditState && activeCandidate.item.creative.textEditState !== "ready") {
@@ -2294,18 +2432,43 @@ function TrendingDeck({
     const direction = decision === "accepted" ? "right" : "left";
 
     decisionLockRef.current = true;
+    setExitDirection(direction);
+    if (postHistory.browsing) {
+      const wasSkipped = postHistory.active?.decision === "skipped";
+      // Persist the explicit reconsideration before opening a composer or
+      // scheduler that requires a selected assignment. Do not retire this
+      // daily slot, append history, or decrement the remaining count again.
+      // A liked entry records opening scheduling, not successfully saving it.
+      // Reopen it after cancellation/failure without replaying that decision.
+      void (wasSkipped ? reconsiderSkippedCandidate(candidate, userId) : Promise.resolve())
+        .then(async () => candidate.format === "carousel" ? await saveCarouselToLibrary(candidate) : null)
+        .then((result) => {
+          advancePastActiveItem("right", () => {
+            if (wasSkipped) postHistory.markLiked(candidate.item.id);
+            postHistory.next();
+            decisionLockRef.current = false;
+            openAcceptedCandidate(candidate, result?.item);
+          });
+        })
+        .catch((error) => {
+          decisionLockRef.current = false;
+          setExitDirection(null);
+          showActionNotice({ message: getErrorMessage(error, "Could not select this skipped post. Try again.") });
+        });
+      return true;
+    }
     if (decision === "accepted" && candidate.format === "carousel") {
-      // A right swipe promises that this content is kept. Create the
+      // Liking a post promises that this content is kept. Create the
       // owner-scoped Library hand-off before retiring the daily card, so an
       // account connection, cancelled scheduling flow, or later navigation
       // can never make the accepted Carousel disappear.
-      resetDrag();
       showActionNotice({ message: "Saving accepted carousel…" });
 
       void saveCarouselToLibrary(candidate)
-        .then(() => {
+        .then((result) => {
           completeCreativeDecision({
             candidate,
+            carouselLibraryItem: result.item,
             decision,
             direction,
             nextCandidateId,
@@ -2313,6 +2476,7 @@ function TrendingDeck({
         })
         .catch((error) => {
           decisionLockRef.current = false;
+          setExitDirection(null);
           showActionNotice({
             message: getErrorMessage(
               error,
@@ -2334,6 +2498,7 @@ function TrendingDeck({
 
   function completeCreativeDecision(params: {
     candidate: TrendingCandidate;
+    carouselLibraryItem?: { id: string; coverUrl: string | null };
     decision: "accepted" | "rejected";
     direction: "left" | "right";
     nextCandidateId: string | null;
@@ -2341,6 +2506,9 @@ function TrendingDeck({
     const { candidate, decision, direction, nextCandidateId } = params;
 
     advancePastActiveItem(direction, () => {
+      postHistory.remember({ id: candidate.item.id, position: candidate.item.position,
+        value: { ...candidate, reviewedEdit: editByCreativeId[candidate.item.creativeId] ?? null },
+        decision: decision === "accepted" ? "liked" : "skipped" });
       dismissCandidate(candidate);
       setActiveItemId(nextCandidateId);
       decisionLockRef.current = false;
@@ -2352,27 +2520,28 @@ function TrendingDeck({
         queuedAt: new Date().toISOString(),
       });
       showActionNotice({
-        message: decision === "accepted" ? "Accepted." : "Rejected.",
+        message: decision === "accepted" ? "Opening scheduling…" : "Skipped.",
       });
 
       if (decision === "accepted") {
-        openAcceptedCandidate(candidate);
+        openAcceptedCandidate(candidate, params.carouselLibraryItem);
       }
     });
   }
 
-  function openAcceptedCandidate(candidate: TrendingCandidate) {
+  function openAcceptedCandidate(candidate: ReviewedTrendingCandidate, carouselLibraryItem?: { id: string; coverUrl: string | null }) {
     if (candidate.format === "hook_video") {
       onHookCompose(
         candidate.item,
-        editByCreativeId[candidate.item.creativeId] ?? null,
+        editByCreativeId[candidate.item.creativeId] ?? candidate.reviewedEdit ?? null,
       );
       return;
     }
 
     if (candidate.format === "wall_text") {
-      setWallTextActionState({ status: "idle" });
-      setWallTextCandidate(candidate);
+      setPendingWallTextScheduleCandidate(candidate);
+      setScheduleContext({ assignmentId: candidate.item.assignmentId, contentType: "wall_text",
+        coverUrl: candidate.item.creative.thumbnailUrl, returnTo: "accounts", title: candidate.item.creative.title });
       return;
     }
 
@@ -2381,6 +2550,7 @@ function TrendingDeck({
       setScheduleContext({
         assignmentId: candidate.item.assignmentId,
         contentType: "reaction",
+        requestKey: crypto.randomUUID(),
         coverUrl: candidate.item.creative.thumbnailUrl,
         returnTo: "trending",
         title: candidate.item.creative.title,
@@ -2388,78 +2558,37 @@ function TrendingDeck({
       return;
     }
 
-    setActionState({ status: "idle" });
-    setActionCandidate(candidate);
+    if (carouselLibraryItem) {
+      setPendingScheduleCandidate(candidate);
+      setScheduleContext({
+        assignmentId: candidate.item.assignmentId,
+        carouselId: candidate.carousel.carouselId,
+        coverUrl: carouselLibraryItem.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
+        libraryItemId: carouselLibraryItem.id,
+        returnTo: "trending",
+        title: getCarouselTitle(candidate.carousel),
+      });
+    } else {
+      setActionCandidate(candidate);
+      setActionState({ status: "error", message: "Open scheduling again to retry." });
+    }
   }
 
   function handleEditActiveCandidate() {
+    if (dismissSwipeGuide()) {
+      return;
+    }
+
     if (
       !activeCandidate ||
       decisionLockRef.current ||
-      exitDirection
+      reviewEditDisabled
     ) {
       return;
     }
 
     setEditorCandidate(activeCandidate);
-  }
-
-  function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
-    const target = event.target as HTMLElement;
-
-    if (
-      exitDirection ||
-      (event.pointerType === "mouse" && event.button !== 0) ||
-      target.closest("[data-deck-control]")
-    ) {
-      return;
-    }
-
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragStartXRef.current = event.clientX;
-    dragXRef.current = 0;
-    setDragX(0);
-    setIsDragging(true);
-  }
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLElement>) {
-    if (!isDragging || dragStartXRef.current === null) {
-      return;
-    }
-
-    const nextDragX = event.clientX - dragStartXRef.current;
-    dragXRef.current = nextDragX;
-    setDragX(nextDragX);
-  }
-
-  function finishPointerInteraction(event: ReactPointerEvent<HTMLElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    if (!isDragging) {
-      return;
-    }
-
-    if (dragXRef.current <= -SWIPE_THRESHOLD_PX) {
-      completeCandidateSwipe("left");
-      return;
-    }
-
-    if (dragXRef.current >= SWIPE_THRESHOLD_PX) {
-      completeCandidateSwipe("right");
-      return;
-    }
-
-    resetDrag();
-  }
-
-  function cancelPointerInteraction(event: ReactPointerEvent<HTMLElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    resetDrag();
   }
 
   function handleDeckKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
@@ -2494,6 +2623,9 @@ function TrendingDeck({
         editorCandidate ||
         actionCandidate ||
         wallTextCandidate ||
+        scheduleContext ||
+        event.defaultPrevented || event.repeat ||
+        activeElement?.closest("button, a, select, [role=dialog]") ||
         decisionLockRef.current ||
         exitDirection ||
         !activeCandidate
@@ -2505,10 +2637,13 @@ function TrendingDeck({
         return;
       }
 
-      if (event.key === "ArrowLeft") {
+      if (event.key === "ArrowUp" || event.key === "PageUp") {
+        event.preventDefault();
+        postHistory.previous();
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
         event.preventDefault();
         completeCandidateSwipe("left");
-      } else if (event.key === "ArrowRight") {
+      } else if (event.key === "ArrowRight" || event.key === "Enter") {
         event.preventDefault();
         completeCandidateSwipe("right");
       } else if (event.key === "e" || event.key === "E") {
@@ -2550,29 +2685,30 @@ function TrendingDeck({
     }
   }
 
-  async function handleSchedulePost() {
-    if (!actionCandidate) {
+  async function handleSchedulePost(candidate: CompleteCarousel | null = actionCandidate) {
+    if (!candidate) {
       return;
     }
 
     setActionState({ status: "scheduling" });
 
     try {
-      const result = await saveCarouselToLibrary(actionCandidate);
-      setPendingScheduleCandidate(actionCandidate);
+      const result = await saveCarouselToLibrary(candidate);
+      setPendingScheduleCandidate(candidate);
       setActionCandidate(null);
       setActionState({ status: "idle" });
       setScheduleContext({
-        assignmentId: actionCandidate.item.assignmentId,
-        carouselId: actionCandidate.carousel.carouselId,
+        assignmentId: candidate.item.assignmentId,
+        carouselId: candidate.carousel.carouselId,
         coverUrl:
-          result.item.coverUrl ?? actionCandidate.slides[0]?.renderedUrl ?? null,
-        idempotencyKey: `trending-carousel-schedule:${actionCandidate.item.assignmentId}`,
+          result.item.coverUrl ?? candidate.slides[0]?.renderedUrl ?? null,
+        idempotencyKey: createCarouselScheduleIdempotencyKey("trending", candidate.item.assignmentId),
         libraryItemId: result.item.id,
         returnTo: "trending",
-        title: getCarouselTitle(actionCandidate.carousel),
+        title: getCarouselTitle(candidate.carousel),
       });
     } catch (error) {
+      setActionCandidate(candidate);
       setActionState({
         message: getErrorMessage(error, "Could not prepare this carousel for scheduling."),
         status: "error",
@@ -2638,15 +2774,40 @@ function TrendingDeck({
     }
   }
 
+  function renderFeedCandidate(candidate: ReviewedTrendingCandidate, depth: DeckDepth, itemIndex: number) {
+    const reviewedIndex = postHistory.entries.findIndex((entry) => entry.id === candidate.item.id);
+    return <div data-trending-feed-card className="relative flex w-full items-center justify-center pt-10">
+      <TrendingDeckCard
+        key={candidate.item.id}
+        activeSlideByCarouselId={activeSlideByCarouselId}
+        candidate={candidate}
+        depth={depth}
+        edit={getLatestTrendingEdit(editByCreativeId[candidate.item.creativeId], candidate.reviewedEdit)}
+        dragX={0} exitDirection={null} isDragging={false} presentation="feed"
+        itemCount={reviewedIndex >= 0 ? postHistory.entries.length : visibleCandidates.length}
+        itemIndex={reviewedIndex >= 0 ? reviewedIndex : itemIndex}
+        onActiveSlideChange={onActiveSlideChange} onActiveSlideMove={onActiveSlideMove}
+        onHookPreviewStatusChange={handleHookPreviewStatusChange}
+        onPointerDown={ignorePostPointer} onPointerMove={ignorePostPointer} onPointerUp={ignorePostPointer}
+        onPointerCancel={ignorePostPointer} onExitTransitionEnd={ignorePostPointer}
+      />
+      {depth === 0 && !postHistory.browsing && swipeGuideState === "visible" ? <TrendingSwipeGuide /> : null}
+    </div>;
+  }
+
   return (
     <section
       aria-label="Trending content"
-      className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-[107px] pt-[94px]"
+      data-review-format={activeCandidate?.format === "carousel" ? "carousel" : "video"}
+      className={cn(
+        "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip pb-3",
+        reviewLayout.stage,
+      )}
     >
       {activeCandidate && headerActionsRoot
         ? createPortal(
             <CreativeEditAction
-              disabled={Boolean(exitDirection)}
+              disabled={reviewEditDisabled}
               onEdit={handleEditActiveCandidate}
             />,
             headerActionsRoot,
@@ -2654,110 +2815,38 @@ function TrendingDeck({
         : null}
       {activeCandidate ? (
         <>
-          <div
-            data-trending-review-frame
-            role="group"
-            aria-roledescription="Trending content deck"
-            aria-busy={Boolean(exitDirection)}
-            tabIndex={0}
-            aria-label={`Trending content deck. Showing ready content ${activeItemIndex + 1} of ${visibleCandidates.length}. ${deckProgressLabel}. Press left arrow to reject or right arrow to accept this creative.`}
-            onKeyDown={handleDeckKeyDown}
-            className={cn(
-              "relative isolate mx-auto flex items-center justify-center overflow-visible rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              getTrendingReviewCardFrameClass(activeCandidate.format),
-              getTrendingReviewDeckPositionClass(activeCandidate.format),
-            )}
-          >
-            {activeCandidate.format === "carousel" ? (
-              <TrendingFormatPill
-                candidate={activeCandidate}
-                format={activeCandidate.format}
-                positionClassName={getTrendingFormatPillPositionClass(
-                  hasVerticalNextCard,
-                )}
-              />
-            ) : null}
-            <div className="relative flex size-full items-center justify-center">
-              {[...deckSlots].reverse().map((slot) => (
-                <TrendingDeckCard
-                  key={slot.candidate.item.id}
-                  activeSlideByCarouselId={activeSlideByCarouselId}
-                  candidate={slot.candidate}
-                  depth={slot.depth}
-                  edit={editByCreativeId[slot.candidate.item.creativeId] ?? null}
-                  dragX={dragX}
-                  exitDirection={slot.depth === 0 ? exitDirection : null}
-                  isDragging={isDragging}
-                  presentation={deckPresentation}
-                  itemCount={visibleCandidates.length}
-                  itemIndex={slot.itemIndex}
-                  onActiveSlideChange={onActiveSlideChange}
-                  onActiveSlideMove={onActiveSlideMove}
-                  onHookPreviewStatusChange={handleHookPreviewStatusChange}
-                  onPointerCancel={cancelPointerInteraction}
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={finishPointerInteraction}
-                  onExitTransitionEnd={handleExitTransitionEnd}
-                />
-              ))}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-20"
-              >
-                <div
-                  className="absolute left-3 top-3 rounded-full border border-success/70 bg-success/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-success-foreground"
-                  style={{
-                    opacity: Math.min(
-                      Math.max(dragX / SWIPE_THRESHOLD_PX, 0),
-                      1,
-                    ),
-                  }}
-                >
-                  Accept
-                </div>
-                <div
-                  className="absolute right-3 top-3 rounded-full border border-error/70 bg-error/90 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-error-foreground"
-                  style={{
-                    opacity: Math.min(
-                      Math.max(-dragX / SWIPE_THRESHOLD_PX, 0),
-                      1,
-                    ),
-                  }}
-                >
-                  Reject
-                </div>
-              </div>
-            </div>
-            <div
-              className={cn(
-                "absolute left-1/2 z-40 flex w-max -translate-x-1/2 flex-col items-center",
-                getTrendingDecisionControlsPositionClass(
-                  activeCandidate.format,
-                  hasVerticalNextCard,
-                ),
-              )}
-            >
-              <CreativeDecisionActions
-                acceptDisabled={
-                  activeHookPreviewStatus !== null &&
-                  activeHookPreviewStatus !== "ready"
-                }
-                disabled={Boolean(exitDirection)}
-                onAccept={() => requestCreativeDecision("accepted")}
-                onReject={() => requestCreativeDecision("rejected")}
-              />
-              <p
-                data-trending-deck-progress
-                className="mt-2 whitespace-nowrap text-center text-xs text-muted"
-              >
-                {deckProgressLabel}
-              </p>
-            </div>
+          <div ref={reviewFrameRef} data-trending-review-frame className={cn("flex w-full flex-col items-center", reviewLayout.reviewFrame)} onKeyDown={handleDeckKeyDown}>
+            <PostInteractionFeed
+              label={`Trending posts. ${deckProgressLabel}. Double-tap to schedule, scroll to skip or scroll back to revisit.`}
+              className={cn("w-full max-w-[460px]", reviewLayout.reviewFeed)}
+              disabled={Boolean(exitDirection || scheduleContext || editorCandidate || actionCandidate || wallTextCandidate)}
+              liked={exitDirection === "right"}
+              onStart={dismissSwipeGuide}
+              onLike={() => requestCreativeDecision("accepted")}
+              onSkip={() => requestCreativeDecision("rejected")}
+              onPrevious={postHistory.previous}
+              previousItem={postHistory.preceding ? {
+                id: postHistory.preceding.id,
+                content: renderFeedCandidate(postHistory.preceding.value, 1, 0),
+              } : null}
+              items={deckSlots.map((slot) => ({
+                id: slot.candidate.item.id,
+                content: renderFeedCandidate(slot.candidate, slot.depth, slot.itemIndex),
+              }))}
+            />
+            <CreativeDecisionActions
+              interaction="post"
+              acceptDisabled={activeHookPreviewStatus !== null && activeHookPreviewStatus !== "ready"}
+              disabled={Boolean(exitDirection || scheduleContext || editorCandidate || actionCandidate || wallTextCandidate)}
+              onAccept={() => requestCreativeDecision("accepted")}
+              onReject={() => requestCreativeDecision("rejected")}
+            />
+            <p data-trending-deck-progress className="mt-1 text-center text-xs text-muted">{deckProgressLabel}</p>
           </div>
           <span className="sr-only" aria-live="polite">
-            Showing {title}, ready content {activeItemIndex + 1} of{" "}
-            {visibleCandidates.length}. {deckProgressLabel}.
+            Showing {title}. {postHistory.active
+              ? `Previously ${postHistory.active.decision}. Scroll to browse.`
+              : `Ready content ${activeItemIndex + 1} of ${visibleCandidates.length}. ${deckProgressLabel}.`}
           </span>
         </>
       ) : upgradeRequired ? (
@@ -2774,6 +2863,16 @@ function TrendingDeck({
       ) : (
         <TrendingReadyEmptyState />
       )}
+      {postHistory.persistenceUnavailable ? <p role="status" className="mt-2 max-w-md text-center text-sm text-muted">
+        {postHistory.quotaScoped
+          ? "Browser storage is unavailable. Earlier posts will be loaded from this quota when you return."
+          : "Browser storage is unavailable. Previous posts can only be kept during this visit."}
+      </p> : null}
+      {!activeCandidate && postHistory.canGoBack ? <Button
+        className="mt-4" variant="secondary"
+        disabled={Boolean(exitDirection || editorCandidate || scheduleContext || actionCandidate || wallTextCandidate)}
+        onClick={postHistory.previous}
+      >View previous posts</Button> : null}
       {actionCandidate ? (
         <CarouselActionDialog
           actionState={actionState}
@@ -2783,7 +2882,7 @@ function TrendingDeck({
             setActionCandidate(null);
           }}
           onSaveToLibrary={handleSaveToLibrary}
-          onSchedulePost={handleSchedulePost}
+          onSchedulePost={() => handleSchedulePost()}
         />
       ) : null}
       {wallTextCandidate ? (
@@ -2873,6 +2972,7 @@ function TrendingDeck({
 
               const schedule = await createPendingReactionSchedule({
                 candidate: pendingReactionScheduleCandidate,
+                requestKey: scheduleContext.requestKey,
                 selection: submission,
               });
 
@@ -3220,6 +3320,7 @@ function TrendingFormatPill({
 
   return (
     <div
+      data-trending-format-label
       className={cn(
         "pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start",
         positionClassName,
@@ -3259,49 +3360,7 @@ function getTrendingDeckProgressLabel({
   return `${safeRemainingCount} content ${safeRemainingCount === 1 ? "piece" : "pieces"} remaining`;
 }
 
-function getTrendingReviewCardFrameClass(
-  format: TrendingCandidate["format"],
-) {
-  return format === "carousel"
-    ? CAROUSEL_REVIEW_CARD_FRAME_CLASS
-    : VERTICAL_REVIEW_CARD_FRAME_CLASS;
-}
-
-function getTrendingFormatPillPositionClass(hasVerticalNextCard: boolean) {
-  // A standard Slideshow uses the same rhythm as Hook and Wall-of-Text pills.
-  // Only the taller 9:16 next-card layer needs additional external clearance.
-  return hasVerticalNextCard
-    ? "bottom-[calc(100%+72px)] min-[1024px]:bottom-[calc(100%+96px)]"
-    : "bottom-[calc(100%+24px)]";
-}
-
-function getTrendingReviewDeckPositionClass(
-  format: TrendingCandidate["format"],
-) {
-  // Keep the enlarged Slideshow stack clear of the page header as its pill
-  // moves up to avoid a taller next card.
-  return format === "carousel" ? "min-[1024px]:translate-y-3" : "";
-}
-
-function getTrendingDecisionControlsPositionClass(
-  format: TrendingCandidate["format"],
-  hasVerticalNextCard: boolean,
-) {
-  if (format !== "carousel") {
-    return "top-full";
-  }
-
-  if (hasVerticalNextCard) {
-    // During a Carousel swipe the vertical next card grows from its preview
-    // size to its full 9:16 height. Reserve that promoted height so it cannot
-    // run into the decision controls before it becomes the active card.
-    return "top-full min-[1024px]:top-[calc(100%+clamp(44px,calc((100dvh-600px)*0.5),80px))]";
-  }
-
-  // Keep the existing Carousel-only decision-row position when every visible
-  // card uses the Carousel's 4:5 frame.
-  return "top-full min-[1024px]:top-[calc(100%+clamp(24px,calc((100dvh-680px)*0.72),52px))]";
-}
+function ignorePostPointer() {}
 
 type TrendingDeckCardProps = {
   activeSlideByCarouselId: Record<string, number>;
@@ -3640,13 +3699,14 @@ function TrendingHookDeckCard({
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
-        isActive
+        isActive || presentation === "feed"
           ? "relative"
           : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-post-like-target
         data-trending-video-peek={
           presentation === "video_peek" ? "true" : undefined
         }
@@ -3655,9 +3715,10 @@ function TrendingHookDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.responsiveVerticalFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
-            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            ? "pointer-events-auto"
             : "pointer-events-none",
         )}
         onPointerCancel={isActive ? onPointerCancel : undefined}
@@ -3792,6 +3853,13 @@ function TrendingWallTextDeckCard({
   const previewUrl = edit?.source?.resolvedAssetUrl ?? creative.previewUrl;
   const thumbnailUrl =
     edit?.source?.resolvedThumbnailUrl ?? creative.thumbnailUrl;
+  const WALL_VIDEO_LOAD_TIMEOUT_MS = 12_000;
+  const [videoReadyUrl, setVideoReadyUrl] = useState<string | null>(null);
+  const [videoErrorUrl, setVideoErrorUrl] = useState<string | null>(null);
+  const [videoRetryKey, setVideoRetryKey] = useState(0);
+  const videoLoadKey = `${previewUrl}:${videoRetryKey}`;
+  const isVideoReady = videoReadyUrl === videoLoadKey;
+  const isVideoError = videoErrorUrl === videoLoadKey;
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
     depth,
@@ -3800,6 +3868,33 @@ function TrendingWallTextDeckCard({
     isDragging,
     presentation,
   });
+
+  const markVideoReady = useCallback(
+    (video: HTMLVideoElement) => {
+      if (video.videoWidth > 0 && video.readyState >= 2) {
+        setVideoReadyUrl(videoLoadKey);
+        setVideoErrorUrl(null);
+      }
+    },
+    [videoLoadKey],
+  );
+
+  useEffect(() => {
+    if (
+      !isActive ||
+      isVideoReady ||
+      isVideoError
+    ) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setVideoErrorUrl(videoLoadKey);
+    }, WALL_VIDEO_LOAD_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [isActive, isVideoError, isVideoReady, videoLoadKey]);
+
   useEffect(() => {
     const video = videoRef.current;
 
@@ -3814,7 +3909,7 @@ function TrendingWallTextDeckCard({
 
     video.currentTime = 0;
     void video.play().catch(() => undefined);
-  }, [isActive, previewUrl]);
+  }, [isActive, videoLoadKey]);
 
   return (
     <div
@@ -3822,13 +3917,14 @@ function TrendingWallTextDeckCard({
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
-        isActive
+        isActive || presentation === "feed"
           ? "relative"
           : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-post-like-target
         data-trending-video-peek={
           presentation === "video_peek" ? "true" : undefined
         }
@@ -3836,10 +3932,11 @@ function TrendingWallTextDeckCard({
         aria-label={`${creative.title}, Wall-of-text content ${itemIndex + 1} of ${itemCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
-          VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          WALL_TEXT_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.responsiveWallTextFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
-            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            ? "pointer-events-auto"
             : "pointer-events-none",
         )}
         onPointerCancel={isActive ? onPointerCancel : undefined}
@@ -3866,21 +3963,64 @@ function TrendingWallTextDeckCard({
         ) : null}
         <div className="relative size-full overflow-hidden rounded-[20px] bg-[#171717] ring-1 ring-white/10">
           <video
+            key={videoLoadKey}
             ref={videoRef}
             src={previewUrl}
             poster={thumbnailUrl ?? undefined}
+            onCanPlay={(event) => markVideoReady(event.currentTarget)}
+            onLoadedData={(event) => markVideoReady(event.currentTarget)}
+            onError={() => setVideoErrorUrl(videoLoadKey)}
             autoPlay={isActive}
             muted
             playsInline
-            preload={depth <= 1 ? "auto" : "metadata"}
+            preload="auto"
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
-          <WallTextOverlay
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" ? <WallTextSavedImage
+            assignmentId={candidate.item.assignmentId}
+            creativeId={candidate.item.creativeId}
+            revision={edit?.revision ?? 0}
+            text={editedContent?.content.fullText ?? creative.text.fullText}
+          /> : <WallTextOverlay
             content={editedContent?.content ?? creative.text}
             layout={editedContent?.layout ?? creative.layout}
+            scaleMode="proportional"
             textColor={editedContent?.textColor}
-          />
+          />}
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" &&
+          !isVideoError &&
+          !isVideoReady ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute inset-x-4 bottom-4 z-30 flex justify-center"
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-xs text-white">
+                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                Loading video…
+              </span>
+            </div>
+          ) : null}
+          {process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" &&
+          isVideoError ? (
+            <div
+              role="alert"
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/70 p-4 text-center text-sm text-white"
+            >
+              <span>Video could not load.</span>
+              <button
+                type="button"
+                className="rounded border px-3 py-1"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  setVideoRetryKey((current) => current + 1);
+                }}
+              >
+                Retry video
+              </button>
+            </div>
+          ) : null}
           {!edit ? (
             <WallTextAudioPreview
               active={isActive}
@@ -3926,6 +4066,18 @@ function TrendingReactionDeckCard({
   const isActive = depth === 0;
   const videoRef = useRef<HTMLVideoElement>(null);
   const creative = candidate.item.creative;
+  const [soundState, setSoundState] = useState({
+    previewUrl: creative.previewUrl,
+    active: isActive,
+    enabled: false,
+  });
+  const soundEnabled = soundState.enabled;
+  if (soundState.previewUrl !== creative.previewUrl || soundState.active !== isActive) {
+    setSoundState({ previewUrl: creative.previewUrl, active: isActive, enabled: false });
+  }
+  function setSoundEnabled(enabled: boolean) {
+    setSoundState({ previewUrl: creative.previewUrl, active: isActive, enabled });
+  }
   const deckStyle = DECK_CARD_STYLES[depth];
   const cardStyle = getTrendingDeckCardPresentation({
     depth,
@@ -3946,6 +4098,11 @@ function TrendingReactionDeckCard({
 
     video.currentTime = 0;
     void video.play().catch(() => undefined);
+  }, [creative.previewUrl, isActive]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) video.muted = true;
   }, [creative.previewUrl, isActive]);
 
   useEffect(() => {
@@ -3976,19 +4133,47 @@ function TrendingReactionDeckCard({
     };
   }, [candidate.item.assignmentId, creative.clipAssetId, isActive]);
 
+  function stopDeckControlPointer(event: ReactPointerEvent<HTMLElement>) {
+    event.stopPropagation();
+  }
+
+  async function toggleSound() {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const nextSoundEnabled = !soundEnabled;
+    // Sound must be enabled from a user gesture: browsers otherwise reject
+    // autoplay with audio. The actual Reaction MP4 remains the sole source.
+    video.muted = !nextSoundEnabled;
+
+    if (!nextSoundEnabled) {
+      setSoundEnabled(false);
+      return;
+    }
+
+    try {
+      await video.play();
+      setSoundEnabled(true);
+    } catch {
+      video.muted = true;
+      setSoundEnabled(false);
+    }
+  }
+
   return (
     <div
       data-trending-card-state={getTrendingDeckCardState(depth)}
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
-        isActive
+        isActive || presentation === "feed"
           ? "relative"
           : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-post-like-target
         data-trending-video-peek={
           presentation === "video_peek" ? "true" : undefined
         }
@@ -3997,9 +4182,10 @@ function TrendingReactionDeckCard({
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           VERTICAL_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.responsiveVerticalFrame,
           "relative origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
-            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            ? "pointer-events-auto"
             : "pointer-events-none",
         )}
         onPointerCancel={isActive ? onPointerCancel : undefined}
@@ -4021,12 +4207,35 @@ function TrendingReactionDeckCard({
             src={creative.previewUrl}
             poster={creative.thumbnailUrl ?? undefined}
             autoPlay={isActive}
-            muted
+            muted={!soundEnabled}
             playsInline
             preload={depth <= 1 ? "auto" : "metadata"}
             aria-hidden="true"
             className="pointer-events-none size-full object-cover"
           />
+          {isActive ? (
+            <button
+              type="button"
+              data-deck-control
+              aria-label={soundEnabled ? "Mute Reaction audio" : "Play Reaction audio"}
+              title={soundEnabled ? "Mute audio" : "Play original Reaction audio"}
+              onPointerCancel={stopDeckControlPointer}
+              onPointerDown={stopDeckControlPointer}
+              onPointerMove={stopDeckControlPointer}
+              onPointerUp={stopDeckControlPointer}
+              onClick={(event) => {
+                event.stopPropagation();
+                void toggleSound();
+              }}
+              className="absolute bottom-2 left-2 z-30 inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/90 transition-colors hover:bg-black/75 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              {soundEnabled ? (
+                <Volume2 className="size-3.5" aria-hidden="true" />
+              ) : (
+                <VolumeX className="size-3.5" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
           {creative.textEditState === "preparing" || creative.textEditState === "failed" ? (
             <div role="status" className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 text-center text-sm text-white">
               {creative.textEditState === "preparing" ? "Preparing video" : "Video preparation failed. Open Edit to retry."}
@@ -4055,12 +4264,14 @@ function CarouselDeckCard({
   onPointerMove,
   onPointerUp,
   onExitTransitionEnd,
+  presentation,
 }: {
   activeSlideByCarouselId: Record<string, number>;
   candidate: CompleteCarousel;
   carouselCount: number;
   carouselIndex: number;
   depth: DeckDepth;
+  presentation: TrendingDeckPresentation;
   dragX: number;
   edit: TrendingCreativeEditRecord | null;
   exitDirection: "left" | "right" | null;
@@ -4098,6 +4309,7 @@ function CarouselDeckCard({
     dragX,
     exitDirection,
     isDragging,
+    presentation,
   });
 
   function moveSlide(direction: -1 | 1) {
@@ -4123,20 +4335,22 @@ function CarouselDeckCard({
       inert={isActive ? undefined : true}
       className={cn(
         "flex items-center justify-center",
-        isActive
+        isActive || presentation === "feed"
           ? "relative"
           : "pointer-events-none absolute inset-0 overflow-visible",
       )}
       style={{ zIndex: deckStyle.zIndex }}
     >
       <article
+        data-post-like-target
         aria-label={`${title}, content ${carouselIndex + 1} of ${carouselCount}`}
         aria-hidden={isActive ? undefined : "true"}
         className={cn(
           CAROUSEL_REVIEW_CARD_FRAME_CLASS,
+          reviewLayout.responsiveCarouselFrame,
           "origin-center select-none overflow-visible transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none",
           isActive
-            ? "pointer-events-auto cursor-grab active:cursor-grabbing"
+            ? "pointer-events-auto"
             : "pointer-events-none",
         )}
         onPointerCancel={isActive ? onPointerCancel : undefined}
@@ -4146,24 +4360,18 @@ function CarouselDeckCard({
         onTransitionEnd={isActive ? onExitTransitionEnd : undefined}
         style={cardStyle}
       >
-        {edit ? (
-          <div
-            data-trending-edited-badge
-            className="pointer-events-none absolute right-2.5 top-2.5 z-30 inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-card/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500"
-          >
-            <Check className="size-2.5 stroke-[3]" aria-hidden="true" />
-            <span>Edited</span>
-          </div>
-        ) : null}
+        {isActive ? <TrendingFormatPill candidate={candidate} format="carousel" positionClassName="bottom-[calc(100%+24px)]" /> : null}
+        <CarouselEditRenderStatus edit={edit ?? null} active={isActive} />
         <div className="relative size-full overflow-hidden rounded-[20px] bg-card ring-1 ring-black/5">
           {/* Rendered Carousel slides are immutable Cloud Storage creative assets. */}
+          {/* Preserve their full composition when a source has a different ratio. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={editedRenderedUrl ?? activeSlide.renderedUrl}
             alt={isActive ? `${title}, slide ${activeSlide.slideNumber}` : ""}
             aria-hidden={isActive ? undefined : "true"}
             draggable={false}
-            className="size-full pointer-events-none object-cover"
+            className="size-full pointer-events-none object-contain"
           />
 
           {isActive && candidate.slides.length > 1 ? (
@@ -4235,29 +4443,11 @@ function CarouselDeckCard({
 function getTrendingDeckSlots(
   candidates: TrendingCandidate[],
   activeItemIndex: number,
-  activeFormat: TrendingCandidate["format"],
 ): TrendingDeckSlot[] {
   const activeCandidate = candidates[activeItemIndex];
 
   if (!activeCandidate) {
     return [];
-  }
-
-  if (activeFormat !== "carousel") {
-    const nextCandidate = candidates[activeItemIndex + 1];
-
-    return [
-      { candidate: activeCandidate, itemIndex: activeItemIndex, depth: 0 },
-      ...(nextCandidate && nextCandidate.format !== "carousel"
-        ? [
-            {
-              candidate: nextCandidate,
-              itemIndex: activeItemIndex + 1,
-              depth: 1 as const,
-            },
-          ]
-        : []),
-    ];
   }
 
   return ([0, 1, 2] as DeckDepth[]).flatMap((depth) => {
@@ -4328,7 +4518,7 @@ function CarouselFeedState({
   );
 }
 
-function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
+export function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
   return (
     <div
       role="status"
@@ -4342,6 +4532,7 @@ function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
       <div className="flex w-full items-center justify-center px-2">
         <div
           aria-hidden="true"
+          data-trending-skeleton-frame
           className={cn(
             VERTICAL_REVIEW_CARD_WIDTH_CLASS,
             skeletonStyles.base,
@@ -4362,6 +4553,22 @@ function TrendingPostSkeleton({ active = true }: { active?: boolean }) {
       />
     </div>
   );
+}
+
+async function reconsiderSkippedCandidate(candidate: TrendingCandidate, userId: string | null) {
+  const token = await getCurrentUserIdToken();
+  if (!token) throw new Error("Sign in before selecting a skipped post.");
+  const response = await fetch("/api/trending/feed/reconsider", {
+    method: "POST",
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ assignmentId: candidate.item.assignmentId, creativeId: candidate.item.creativeId, format: candidate.format }),
+  });
+  const data = await response.json().catch(() => null) as { ok: boolean; error?: string } | null;
+  if (!response.ok || data?.ok !== true) throw new Error(data?.error || "Could not select this skipped post. Try again.");
+  if (userId) {
+    writePendingDecisionEntries(userId, removeTrendingDecisionOutboxEntry(readPendingDecisionEntries(userId), candidate.item.assignmentId));
+  }
 }
 
 async function saveCarouselToLibrary(candidate: CompleteCarousel) {
@@ -4525,14 +4732,16 @@ function writePendingDecisionEntries(
   }
 }
 
-async function loadTrendingCreativeEdit(
-  edit: TrendingCreativeEditRecord,
-) {
-  return loadTrendingCreativeEditScope({
-    assignmentId: edit.assignmentId,
-    creativeId: edit.creativeId,
-    format: edit.format,
+async function loadTrendingCarouselStatus(edit: TrendingCreativeEditRecord, signal: AbortSignal) {
+  const token = await getCurrentUserIdToken();
+  if (!token) throw new Error("Sign in before checking this Trending edit.");
+  const response = await fetch(`/api/trending/creatives/carousel/${encodeURIComponent(edit.creativeId)}/edit?assignmentId=${encodeURIComponent(edit.assignmentId)}&view=status`, {
+    cache: "no-store", headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
   });
+  const data = await response.json().catch(() => null) as { ok?: boolean; status?: TrendingCarouselEditStatus } | null;
+  if (!response.ok || !data?.ok || !data.status) throw new Error("Could not check this Trending update.");
+  return data.status;
 }
 
 async function loadTrendingCreativeEditForItem(item: TrendingFeedItem) {
@@ -4551,7 +4760,7 @@ async function loadTrendingCreativeEditScope(scope: {
   assignmentId: string;
   creativeId: string;
   format: TrendingCreativeEditRecord["format"];
-}) {
+}, signal?: AbortSignal) {
   const token = await getCurrentUserIdToken();
 
   if (!token) {
@@ -4565,10 +4774,11 @@ async function loadTrendingCreativeEditScope(scope: {
     "edit",
   ].join("/");
   const response = await fetch(
-    `${endpoint}?assignmentId=${encodeURIComponent(scope.assignmentId)}`,
+    `${endpoint}?assignmentId=${encodeURIComponent(scope.assignmentId)}&view=history`,
     {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
     },
   );
   const data = (await response.json().catch(() => null)) as
@@ -4668,6 +4878,7 @@ async function createPendingWallTextSchedule(params: {
 
 async function createPendingReactionSchedule(params: {
   candidate: CompleteReaction;
+  requestKey: string;
   selection: CarouselScheduleSubmission;
 }) {
   const token = await getCurrentUserIdToken();
@@ -4679,6 +4890,7 @@ async function createPendingReactionSchedule(params: {
   const response = await fetch("/api/trending/reactions/schedules", {
     body: JSON.stringify(createReactionScheduleRequest({
       assignmentId: params.candidate.item.assignmentId,
+      requestKey: params.requestKey,
       caption: params.selection.caption,
       scheduledDate: params.selection.scheduledDate,
       scheduledTime: params.selection.scheduledTime,

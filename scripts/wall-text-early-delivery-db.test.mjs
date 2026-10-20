@@ -112,6 +112,84 @@ test('an explicit retry or later generator version has a new intent after the ol
   assert.notEqual((await admit(f,f.count,'writer-test-v2')).jobId,upgrade.jobId);
 });
 
+test('a completed short daily result is reopened with a new retry key and keeps its history', async () => {
+  const f = await fixture();
+  await publish(f);
+  const admitted = await admit(f);
+  await db.query(
+    `update background_jobs
+       set status = 'completed', output_json = jsonb_build_object('ideaCount', 1)
+     where id = $1`,
+    [admitted.jobId],
+  );
+
+  const recoveryMigration = await readFile(
+    new URL(
+      '../supabase/migrations/20260912103553_repair_wall_text_daily_delivery_shortfalls.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  await db.exec(recoveryMigration);
+
+  const recoveredFeed = await one(
+    'select status, wall_text_retry_key from daily_trending_feeds where id = $1',
+    [f.feed.id],
+  );
+  const originalIntent = await one(
+    'select retry_key from wall_text_daily_delivery_intents where job_id = $1',
+    [admitted.jobId],
+  );
+  const settledJob = await one(
+    'select status from background_jobs where id = $1',
+    [admitted.jobId],
+  );
+
+  assert.equal(recoveredFeed.status, 'preparing');
+  assert.ok(recoveredFeed.wall_text_retry_key);
+  assert.notEqual(recoveredFeed.wall_text_retry_key, originalIntent.retry_key);
+  assert.equal(settledJob.status, 'completed');
+});
+
+test('a terminal Wall writer rotates its daily intent before reconciliation without duplicating the live job', async () => {
+  const f = await fixture();
+  await publish(f);
+  const admitted = await admit(f);
+  const originalRetryKey = f.feed.wall_text_retry_key ?? f.feed.id;
+
+  await db.query(
+    "update background_jobs set status='waiting_external_service' where id=$1",
+    [admitted.jobId],
+  );
+  const rotated = await one(
+    'select request_wall_text_daily_terminal_replacement_v1($1,$2,$3,$4) as retry_key',
+    [f.user, f.feed.id, admitted.jobId, originalRetryKey],
+  );
+  assert.ok(rotated.retry_key);
+
+  const afterRotation = await one(
+    'select status,wall_text_retry_key from daily_trending_feeds where id=$1',
+    [f.feed.id],
+  );
+  assert.equal(afterRotation.status, 'preparing');
+  assert.notEqual(afterRotation.wall_text_retry_key, f.feed.wall_text_retry_key);
+  assert.equal(
+    (await one('select request_wall_text_daily_terminal_replacement_v1($1,$2,$3,$4) as retry_key',
+      [f.user, f.feed.id, admitted.jobId, originalRetryKey])).retry_key,
+    null,
+    'an older duplicate delivery cannot rotate the next retry',
+  );
+  assert.equal(
+    (await one('select count(*)::int as n from wall_text_daily_delivery_intents where feed_id=$1', [f.feed.id])).n,
+    1,
+    'the terminal handoff leaves the current worker as the only live intent',
+  );
+
+  await db.query("update background_jobs set status='completed' where id=$1", [admitted.jobId]);
+  const replacement = await admit(f);
+  assert.notEqual(replacement.jobId, admitted.jobId);
+});
+
 test('rejects stale claims, cancelled jobs, out-of-order chunks and duplicate saves atomically', async () => {
   const f = await fixture();
   await assert.rejects(publish({...f,job:{...f.job,claim_token:randomUUID()}}),/wall_text_planner_claim_lost/);
@@ -228,6 +306,51 @@ test('reservation cannot recycle consumed prefix items while planning is incompl
   await db.query(`update wall_text_content_plan_items set status='consumed' where plan_id=$1 and sequence_index=1`,[f.plan.id]);
   await assert.rejects(reserve(f,admitted.jobId),/wall_text_content_plan_inventory_pending/);
   assert.equal((await one('select count(*)::int as n from wall_text_generation_batches where user_id=$1',[f.user])).n,0);
+});
+
+test('Wall reservation uses the plan local date across midnight and session timezones', async () => {
+  const signature = 'public.reserve_wall_text_generation_batch_v1(text,uuid,integer,text,text,text,text,text,text,jsonb)';
+  const { definition } = await one('select pg_get_functiondef($1::regprocedure) as definition', [signature]);
+  // Freeze only this function's clock so the regression does not depend on
+  // the time at which CI runs. Exercise the real reservation, not a copy of it.
+  const cases = [
+    ['Asia/Calcutta', '2026-09-10 03:30:28+00', '2026-09-10'],
+    ['Asia/Calcutta', '2026-09-09 19:00:00+00', '2026-09-10'],
+    ['America/Los_Angeles', '2026-09-10 02:00:00+00', '2026-09-09'],
+    ['America/New_York', '2026-11-01 05:30:00+00', '2026-11-01'],
+    ['America/New_York', '2026-11-01 06:30:00+00', '2026-11-01'],
+  ];
+  try {
+    for (const sessionZone of ['UTC', 'Asia/Calcutta', 'America/Los_Angeles']) {
+      await db.query("select set_config('TimeZone',$1,false)", [sessionZone]);
+      for (const [zone, instant, localDate] of cases) {
+        const f = await fixture();
+        await publish(f);
+        const admitted = await admit(f);
+        await db.query(`update wall_text_content_plans set timezone=$2,
+          period_start_date=$3::date,period_end_date=$3::date+29 where id=$1`,
+          [f.plan.id,zone,localDate]);
+        await db.exec(definition.replace(/\bnow\(\)/g, `timestamptz '${instant}'`));
+        const batch = await reserve(f,admitted.jobId);
+        assert.equal(batch.requested_count,3,`${zone}, ${instant}, session ${sessionZone}`);
+        await db.exec(definition);
+      }
+    }
+  } finally {
+    await db.exec(definition);
+    await db.exec("set timezone='UTC'");
+  }
+});
+
+test('Wall reservation still rejects future and expired plans', async () => {
+  for (const offset of [1, -30]) {
+    const f = await fixture(); await publish(f); const admitted = await admit(f);
+    await db.query(`update wall_text_content_plans set
+      period_start_date=current_date+$2::int,period_end_date=current_date+$2::int+29 where id=$1`,
+      [f.plan.id,offset]);
+    await assert.rejects(reserve(f,admitted.jobId),/wall_text_content_plan_pending/);
+    assert.equal((await one('select count(*)::int as n from wall_text_generation_batches where user_id=$1',[f.user])).n,0);
+  }
 });
 
 test('only a full 200-item plan activates, preserving reserved items and existing reservations', async () => {

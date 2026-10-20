@@ -19,6 +19,8 @@ export type SocialConnectionStatus =
   | "revoked";
 
 export type SocialConnection = {
+  authorizationRevision?: string;
+  profileNeedsRefresh?: boolean;
   connectedAt: string;
   expiresAt: string | null;
   id: string;
@@ -29,6 +31,7 @@ export type SocialConnection = {
   profilePictureUrl: string | null;
   provider: SocialProvider;
   refreshExpiresAt: string | null;
+  requiresInstagramProfessionalAccount?: boolean;
   scopes: string[];
   status: SocialConnectionStatus;
   supportsBackgroundRefresh: boolean;

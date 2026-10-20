@@ -49,7 +49,7 @@ test("attribution is a separate durable job after the content snapshot", () => {
   assert.match(internalWorker, /operation: "instagram_attribution"/);
   assert.match(
     internalWorker,
-    /return json\(\{ accounts, days, ok: true, operation: input\.operation \}\)/,
+    /return json\(\{ accounts: await persist\(accounts, "instagram_content", days as InstagramInsightsRangeDays\), days, ok: true, operation: input\.operation \}\)/,
   );
 });
 

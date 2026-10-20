@@ -23,6 +23,11 @@ output "media_bucket_name" {
   description = "Cloud Storage media bucket."
 }
 
+output "private_audio_bucket_name" {
+  value       = try(google_storage_bucket.private_audio[0].name, null)
+  description = "Separate private Audio bucket, or null when Audio storage is not enabled."
+}
+
 output "media_cdn_enabled" {
   value       = var.enable_media_cdn
   description = "Whether the optional media CDN load balancer is enabled."

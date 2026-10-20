@@ -4,11 +4,15 @@ import test from "node:test";
 import {
   DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES,
   getEarliestScheduleTimestamp,
+  getRenderFinalizationDeadline,
   getZonedDateTimeParts,
   parseSchedulingTaskCreationBufferSeconds,
+  parseRenderFinalizationGraceMinutes,
   parseSocialSchedulingMinimumLeadMinutes,
   resolveZonedDateTime,
+  resolveRenderFinalizationScheduleTime,
   ScheduleTimeError,
   validateScheduleLeadTime,
   validateSchedulingTaskCreationBuffer,
@@ -23,6 +27,29 @@ test("converts an India wall-clock time to UTC", () => {
     }),
     "2026-07-20T09:33:00.000Z",
   );
+});
+
+test("04:18 is valid at 04:08 in both India timezone aliases", () => {
+  for (const timeZone of ["Asia/Calcutta", "Asia/Kolkata"]) {
+    const now = Date.parse(resolveZonedDateTime({ date: "2026-10-14", time: "04:08", timeZone })) + 45_000;
+    const scheduledFor = resolveZonedDateTime({ date: "2026-10-14", time: "04:18", timeZone });
+    assert.equal(scheduledFor, "2026-10-13T22:48:00.000Z");
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor }).valid, true);
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor: resolveZonedDateTime({ date: "2026-10-14", time: "04:10", timeZone }) }).valid, false);
+  }
+});
+
+test("the second screenshot's 15:04 slot is valid at 14:57 IST and expires only at its elapsed lead boundary", () => {
+  for (const timeZone of ["Asia/Calcutta", "Asia/Kolkata"]) {
+    const scheduledFor = resolveZonedDateTime({ date: "2026-10-14", time: "15:04", timeZone });
+    const now = Date.parse(resolveZonedDateTime({ date: "2026-10-14", time: "14:57", timeZone })) + 59_000;
+    assert.equal(scheduledFor, "2026-10-14T09:34:00.000Z");
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor }).valid, true);
+    assert.deepEqual(getZonedDateTimeParts(getEarliestScheduleTimestamp({ minimumLeadMinutes: 5, now }), timeZone), { date: "2026-10-14", time: "15:03" });
+    const boundary = Date.parse(scheduledFor) - 5 * 60_000;
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now: boundary, scheduledFor }).valid, true);
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now: boundary + 1, scheduledFor }).valid, false);
+  }
 });
 
 test("uses the selected timezone instead of the device timezone", () => {
@@ -177,5 +204,49 @@ test("uses safe configurable scheduling defaults", () => {
   assert.equal(
     parseSchedulingTaskCreationBufferSeconds("not-a-number"),
     DEFAULT_SCHEDULING_TASK_CREATION_BUFFER_SECONDS,
+  );
+  assert.equal(parseRenderFinalizationGraceMinutes("10"), 10);
+  assert.equal(
+    parseRenderFinalizationGraceMinutes("0"),
+    DEFAULT_RENDER_FINALIZATION_GRACE_MINUTES,
+  );
+});
+
+test("keeps a rendered post inside its saved ten-minute grace window", () => {
+  const preferredScheduledFor = "2026-07-20T20:45:00.000Z";
+  const deadlineAt = getRenderFinalizationDeadline({
+    graceMinutes: 10,
+    preferredScheduledFor,
+  });
+
+  assert.equal(deadlineAt, "2026-07-20T20:55:00.000Z");
+  assert.deepEqual(
+    resolveRenderFinalizationScheduleTime({
+      deadlineAt,
+      minimumTaskCreationBufferSeconds: 30,
+      now: Date.UTC(2026, 6, 20, 20, 45, 14),
+      preferredScheduledFor,
+    }),
+    {
+      action: "schedule",
+      deadlineAt,
+      scheduledFor: "2026-07-20T20:46:14.000Z",
+      usedGraceWindow: true,
+    },
+  );
+});
+
+test("does not schedule after the saved render-finalization deadline", () => {
+  assert.deepEqual(
+    resolveRenderFinalizationScheduleTime({
+      deadlineAt: "2026-07-20T20:55:00.000Z",
+      minimumTaskCreationBufferSeconds: 30,
+      now: Date.UTC(2026, 6, 20, 20, 54, 1),
+      preferredScheduledFor: "2026-07-20T20:45:00.000Z",
+    }),
+    {
+      action: "expired",
+      deadlineAt: "2026-07-20T20:55:00.000Z",
+    },
   );
 });

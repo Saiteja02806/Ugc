@@ -14,10 +14,10 @@ const CONTENT_TYPE_BY_EXTENSION = {
 type DemoContentType =
   (typeof CONTENT_TYPE_BY_EXTENSION)[keyof typeof CONTENT_TYPE_BY_EXTENSION];
 
-export async function uploadHookVideoDemo(file: File) {
+export async function uploadHookVideoDemo(file: File, ownerId?: string) {
   const contentType = getSupportedContentType(file);
   const metadata = await readVideoMetadata(file);
-  const token = await getCurrentUserIdToken();
+  const token = await getCurrentUserIdToken(ownerId);
 
   if (!token) {
     throw new Error("Sign in before uploading a product demo.");
@@ -57,6 +57,7 @@ export async function uploadHookVideoDemo(file: File) {
     throw new Error(prepared?.error || "Could not prepare this demo upload.");
   }
 
+  let completionAttempted = false;
   try {
     const uploadResponse = await fetch(prepared.uploadUrl, {
       body: file,
@@ -71,6 +72,7 @@ export async function uploadHookVideoDemo(file: File) {
       throw new Error("The product demo could not be uploaded.");
     }
 
+    completionAttempted = true;
     const completedResponse = await fetch("/api/demo/complete-upload", {
       body: JSON.stringify({
         demoId: prepared.demoId,
@@ -98,7 +100,8 @@ export async function uploadHookVideoDemo(file: File) {
     if (
       !completedResponse.ok ||
       !completed?.ok ||
-      !completed.mediaAsset
+      !completed.mediaAsset || completed.mediaAsset.id !== prepared.demoId ||
+      completed.mediaAsset.sourceType !== "demo_upload" || completed.mediaAsset.status !== "ready"
     ) {
       throw new Error(
         completed?.error || "Could not finish this demo upload.",
@@ -107,6 +110,15 @@ export async function uploadHookVideoDemo(file: File) {
 
     return completed.mediaAsset;
   } catch (error) {
+    // A lost completion response may already have saved a reusable Content demo.
+    // Read the same owned asset before reporting failure; never delete it blindly.
+    if (completionAttempted) {
+      const recovered = await fetch(`/api/media/${encodeURIComponent(prepared.demoId)}`, {
+        cache: "no-store", headers: { Authorization: `Bearer ${token}` },
+      }).then(async response => response.ok ? response.json() : null).catch(() => null);
+      if (recovered?.ok && recovered.asset?.id === prepared.demoId && recovered.asset.sourceType === "demo_upload" && recovered.asset.status === "ready") return recovered.asset as MediaAsset;
+      throw error;
+    }
     await fetch("/api/demo/delete", {
       body: JSON.stringify({
         demoId: prepared.demoId,
@@ -129,12 +141,16 @@ async function readVideoMetadata(file: File) {
   try {
     const video = document.createElement("video");
     video.preload = "metadata";
-    video.src = objectUrl;
-
     await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () =>
-        reject(new Error("Could not read this product demo."));
+      const finish = (error?: Error) => {
+        clearTimeout(timer);
+        video.onloadedmetadata = null; video.onerror = null;
+        if (error) reject(error); else resolve();
+      };
+      const timer = setTimeout(() => finish(new Error("Reading this demo took too long. Choose the video again.")), 15_000);
+      video.onloadedmetadata = () => finish();
+      video.onerror = () => finish(new Error("Could not read this product demo."));
+      video.src = objectUrl;
     });
 
     if (

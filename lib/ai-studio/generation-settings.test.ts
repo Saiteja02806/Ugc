@@ -2,14 +2,33 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DEFAULT_SLIDESHOW_IMAGE_MODEL,
+  SLIDESHOW_IMAGE_MODELS,
+  getAIStudioImageModelLabel,
+  getAIStudioVideoResolutions,
+  getAIStudioVideoDurations,
+  getAIStudioVideoModelLabel,
+  isAIStudioVideoModelAvailable,
+
   getAIStudioRatioLabel,
+  isAIStudioVideoResolutionSupported,
   parseAIStudioGenerationQuantity,
   parseAIStudioImageAspectRatio,
   parseAIStudioImageModel,
   parseAIStudioVideoAspectRatio,
   parseAIStudioVideoDuration,
   parseAIStudioVideoModel,
+  parseAIStudioVideoResolution,
 } from "./generation-settings.ts";
+
+test("slideshows default to Flare and preserve the existing Sunburst model identity", () => {
+  assert.equal(DEFAULT_SLIDESHOW_IMAGE_MODEL, "gpt_image_2_5_flare");
+  assert.deepEqual(SLIDESHOW_IMAGE_MODELS, ["gpt_image_2_5_flare", "gpt_image_2_5", "nano_banana_2"]);
+  assert.equal(parseAIStudioImageModel("gpt_image_2_5_flare"), "gpt_image_2_5_flare");
+  assert.equal(parseAIStudioImageModel("gpt_image_2_5"), "gpt_image_2_5");
+  assert.equal(getAIStudioImageModelLabel("gpt_image_2_5_flare"), "GPT Image 2.5 Flare");
+  assert.equal(getAIStudioImageModelLabel("gpt_image_2_5"), "GPT Image 2.5 Sunburst");
+});
 
 test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioImageAspectRatio("1:1"), "1:1");
@@ -17,16 +36,64 @@ test("accepts only supported AI Studio settings", () => {
   assert.equal(parseAIStudioVideoAspectRatio("16:9"), "16:9");
   assert.equal(parseAIStudioVideoAspectRatio("4:5"), "9:16");
   assert.equal(parseAIStudioGenerationQuantity(4), 4);
-  assert.equal(parseAIStudioGenerationQuantity(3), 1);
+  assert.equal(parseAIStudioGenerationQuantity(3), 3);
+  assert.equal(parseAIStudioImageModel("seedream_5_pro"), "seedream_5_pro");
   assert.equal(parseAIStudioImageModel("nano_banana_2"), "nano_banana_2");
-  assert.equal(parseAIStudioImageModel("unknown"), "gpt_image");
+  assert.equal(parseAIStudioImageModel("unknown"), "nano_banana_2");
+
   assert.equal(parseAIStudioVideoModel("google_omni"), "google_omni");
-  assert.equal(parseAIStudioVideoModel("unknown"), "google_omni");
+  assert.equal(parseAIStudioVideoModel("kling_3_0"), "kling_3_0");
+  assert.equal(parseAIStudioVideoModel("unknown"), "kling_3_0");
   assert.equal(parseAIStudioVideoDuration(10), 10);
-  assert.equal(parseAIStudioVideoDuration(11), 4);
+  assert.equal(parseAIStudioVideoDuration(30), 30);
+  assert.equal(parseAIStudioVideoDuration(11), 11);
+  assert.equal(parseAIStudioVideoDuration(31), 5);
+  assert.equal(parseAIStudioVideoResolution("1080p"), "1080p");
+  assert.equal(parseAIStudioVideoResolution("4k"), "720p");
+});
+
+test("Seedance uses its own capabilities and is gated until the provider is ready", () => {
+  assert.equal(parseAIStudioVideoModel("seedance_2_5"), "seedance_2_5");
+  assert.equal(getAIStudioVideoModelLabel("seedance_2_5"), "Seedance 2.5");
+  assert.deepEqual(getAIStudioVideoResolutions("seedance_2_5"), ["480p", "720p"]);
+  assert.equal(isAIStudioVideoResolutionSupported("seedance_2_5", "1080p"), false);
+  assert.deepEqual(getAIStudioVideoDurations("seedance_2_5"), Array.from({ length: 27 }, (_, i) => i + 4));
+  assert.deepEqual(getAIStudioVideoDurations("kling_3_0"), Array.from({ length: 13 }, (_, i) => i + 3));
+  assert.ok(getAIStudioVideoDurations("google_omni").every((seconds) => seconds <= 10));
+  assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false), false);
+  assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", true), true);
+  assert.equal(isAIStudioVideoModelAvailable("kling_3_0", false), true);
+  assert.equal(isAIStudioVideoModelAvailable("google_omni", false), true);
+});
+
+test("limits video quality choices to each provider's supported resolutions", () => {
+  assert.deepEqual(getAIStudioVideoResolutions("kling_3_0"), ["720p"]);
+  assert.deepEqual(getAIStudioVideoResolutions("google_omni"), ["720p", "1080p"]);
+  assert.equal(
+    isAIStudioVideoResolutionSupported("kling_3_0", "1080p"),
+    false,
+  );
+  assert.equal(
+    isAIStudioVideoResolutionSupported("google_omni", "1080p"),
+    true,
+  );
 });
 
 test("provides clear labels for supported ratios", () => {
   assert.equal(getAIStudioRatioLabel("4:5"), "4:5 portrait");
   assert.equal(getAIStudioRatioLabel("9:16"), "9:16 vertical");
+});
+
+test("WAN capabilities support three-second hooks independently of Seedance's rollout", () => {
+  assert.equal(parseAIStudioVideoModel("wan_3_0"), "wan_3_0");
+  assert.equal(getAIStudioVideoModelLabel("wan_3_0"), "WAN 3.0");
+  assert.equal(parseAIStudioVideoDuration(2), 2);
+  assert.deepEqual(getAIStudioVideoDurations("wan_3_0"), Array.from({ length: 29 }, (_, i) => i + 2));
+  assert.deepEqual(getAIStudioVideoResolutions("wan_3_0"), ["480p", "720p", "1080p"]);
+  assert.equal(isAIStudioVideoModelAvailable("wan_3_0", false, true), true);
+  assert.equal(isAIStudioVideoModelAvailable("wan_3_0", true, false), false);
+  assert.equal(isAIStudioVideoModelAvailable("seedance_2_5", false, true), false);
+  assert.ok(!getAIStudioVideoDurations("google_omni").includes(2));
+  assert.ok(!getAIStudioVideoDurations("kling_3_0").includes(2));
+  assert.ok(!getAIStudioVideoDurations("seedance_2_5").includes(3));
 });

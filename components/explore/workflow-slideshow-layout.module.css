@@ -1,0 +1,23 @@
+/* Slideshow shares the workflow shell, with room for its slide-specific tools. */
+.workspace.workspace[data-stage="create"] .layout { grid-template-columns: clamp(378px, 26.25cqw, 462px) minmax(0, 1fr); }
+.workspace.workspace[data-format="slideshow"][data-stage="edit"] .layout { max-width: none; grid-template-columns: minmax(0, 1fr) clamp(380px, 38cqw, 540px); align-items: stretch; }
+.workspace.workspace[data-format="slideshow"][data-stage="edit"] aside { grid-column: 2; grid-row: 1; align-self: stretch; }
+.workspace.workspace[data-format="slideshow"][data-stage="edit"] [aria-label="Workflow preview"] { grid-column: 1; grid-row: 1; background: var(--background); }
+.workspace.workspace[data-stage="edit"] aside > div { padding: 22px; }
+.workspace.workspace[data-stage="edit"] aside > footer { padding: 16px 22px; }
+.workspace.workspace[data-stage="edit"] [aria-label="Slideshow edit preview"] { min-height: 100%; }
+.workspace.workspace[data-format="slideshow"][data-stage="schedule"] [aria-label="Workflow preview"] { padding: 20px; }
+.workspace.workspace[data-format="slideshow"][data-stage="schedule"] .layout [aria-label="Saved slideshow preview"] { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+.workspace [aria-label="Saved slideshow preview"]:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; border-radius: 8px; }
+@container workflow-video (max-width: 1023px) {
+  .workspace.workspace[data-stage] .layout { grid-template-columns: minmax(0, 1fr); }
+  .workspace.workspace[data-format="slideshow"][data-stage="edit"] .layout { grid-template-columns: minmax(0, 1fr); }
+  .workspace.workspace[data-format="slideshow"][data-stage="edit"] > nav { display: none; }
+  .workspace.workspace[data-format="slideshow"][data-stage="edit"] aside { display: flex; grid-column: 1; grid-row: 2; }
+  .workspace.workspace[data-format="slideshow"][data-stage="edit"] [aria-label="Workflow preview"] { display: flex; grid-column: 1; grid-row: 1; position: sticky; top: 64px; z-index: 5; min-height: 0; height: auto; background: var(--card); }
+  .workspace.workspace[data-format="slideshow"][data-stage="edit"] [aria-label="Slideshow edit preview"] { min-height: 0; }
+  .workspace.workspace[data-format="slideshow"][data-stage="edit"] [aria-label="Workflow preview"] > div { padding: 12px; }
+}
+@media (min-width: 1024px) and (max-height: 520px) {
+  .workspace.workspace[data-stage="edit"] .layout { align-items: start; }
+}

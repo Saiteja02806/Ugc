@@ -1,0 +1,48 @@
+.split { display: flex; min-height: 0; min-width: 0; flex: 1; flex-direction: column; }
+.editor { display: flex; min-height: 0; min-width: 0; flex-direction: column; }
+.divider { display: none; }
+.galleryGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.split .editor :global(form[data-layout]) { border-radius: 16px; box-shadow: none; }
+/* Keep the compact inset, but let the composer follow the draggable editor width. */
+.split .editor :global(form[data-compact]) { width: calc(100% - 16px); max-width: none; }
+.editor :global(form[data-compact] [data-slot="field"]) { gap: 4px; padding: 10px 12px 4px; }
+.editor :global(form[data-compact] [data-slot="field-description"]) { padding-bottom: 0; }
+.editor :global([data-slot="composer-actions"]) {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 12px 8px;
+}
+.editor :global([data-slot="composer-actions"] button) { height: 28px; min-height: 28px; }
+.editor :global([data-slot="composer-actions"] button[data-slot="popover-trigger"]) { height: 24px; min-height: 24px; gap: 4px; padding-inline: 8px; font-size: 11px; }
+.editor :global([data-slot="composer-actions"] button[type="submit"]) { gap: 4px; padding-inline: 10px; font-size: 11px; }
+.editor :global([data-slot="composer-actions"] button[aria-label^="Add reference"]) { width: 28px; min-width: 28px; border-radius: 8px; }
+
+@media (min-width: 1024px) {
+  .split { display: grid; grid-template-columns: var(--recreate-editor-width, clamp(336px, 33.6%, 441px)) 16px minmax(0, 1fr); }
+  .editor { container: recreate-editor / inline-size; overflow-y: auto; overscroll-behavior: contain; }
+  .divider {
+    position: relative; display: flex; min-height: 0; align-items: center; justify-content: center;
+    cursor: col-resize; touch-action: none; color: var(--muted-subtle); outline: none;
+  }
+  .grip { position: relative; width: 16px; height: 32px; padding-block: 6px; border-radius: 6px; background: var(--background); }
+  .divider:hover, .divider:focus-visible, .split[data-resizing] .divider { color: var(--primary); }
+  .divider:focus-visible .grip { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .split[data-resizing] { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+  .galleryGrid { gap: 16px; }
+}
+
+@container workflow-gallery (min-width: 660px) {
+  .galleryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container recreate-editor (max-width: 300px) {
+  .panelHeader { padding-inline: 8px; }
+  .panelBody { padding-inline: 8px; }
+  .emptyState { padding-inline: 0; }
+  .emptyState > span { margin-bottom: 12px; }
+  .emptyState > h2 { font-size: 14px; line-height: 20px; }
+  .emptyState > p { font-size: 13px; line-height: 20px; }
+  .split .editor :global(form[data-compact]) { width: 100%; }
+  .editor :global(form[data-compact] [data-slot="field"]) { padding: 8px 10px 2px; }
+  .editor :global([data-slot="composer-actions"]) { grid-template-columns: minmax(0, 1fr); gap: 4px; padding-inline: 8px; }
+  .editor :global([data-slot="composer-actions"] button[data-slot="popover-trigger"]) { max-width: 160px; }
+  .editor :global(form[data-compact] button[type="submit"]) { gap: 6px; padding-inline: 10px; }
+}

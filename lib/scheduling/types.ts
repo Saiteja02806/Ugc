@@ -184,6 +184,7 @@ export type ScheduleDraft = {
   mediaMode?: "single_video" | "combined_video" | "carousel";
   mediaUrl?: string;
   plannedConnectionIds?: string[];
+  plannedPlatformsByConnectionId?: Record<string, SchedulePlatform>;
   plannedScheduledFor?: string;
   platforms: SchedulePlatform[];
   scheduledDate?: string;
@@ -213,6 +214,7 @@ export type ScheduleDraftInput = {
   mediaMode?: "single_video" | "combined_video" | "carousel";
   mediaUrl?: string;
   plannedConnectionIds?: string[];
+  plannedPlatformsByConnectionId?: Record<string, SchedulePlatform>;
   plannedScheduledFor?: string;
   platforms?: SchedulePlatform[];
   scheduledDate?: string;

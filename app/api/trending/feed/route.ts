@@ -12,6 +12,7 @@ import {
 } from "@/lib/firebase/server-auth";
 import {
   getMissingTrendingFeedEnvVars,
+  getDailyCarouselPreparationState,
 } from "@/lib/trending/daily-feed";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import {
@@ -118,7 +119,7 @@ export async function GET(request: Request) {
     const failedFeed = dailyFeed.feed;
     if (
       requestUrl.searchParams.get("retryFailed") === "1" &&
-      failedFeed?.state === "failed" &&
+      failedFeed?.failure &&
       failedFeed.id
     ) {
       const retryKey = await restartFailedDailyTrendingFeedSlots({
@@ -131,6 +132,13 @@ export async function GET(request: Request) {
       }
     }
     const { requiresPreparation, ...publicDailyFeed } = dailyFeed;
+    const preparationState = publicDailyFeed.feed.pendingSlotCount > 0
+      ? await getDailyCarouselPreparationState({ profile, userId, localDate: publicDailyFeed.feed.localDate })
+          .catch((error) => {
+            console.error("Could not read slideshow preparation status:", error);
+            return "preparing" as const;
+          })
+      : null;
 
     if (requiresPreparation) {
       after(() =>
@@ -150,6 +158,7 @@ export async function GET(request: Request) {
             : "ready";
     return jsonResponse({
       ...publicDailyFeed,
+      feed: { ...publicDailyFeed.feed, preparationState },
       ok: true,
       profile: {
         error: profile.preparationError,

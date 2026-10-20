@@ -40,6 +40,9 @@ const instagramRenewalMigration = readProjectFile(
 const carouselPublishRetryMigration = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717183000_support_carousel_publish_retry.sql",
 );
+const terminalInstagramRetryMigration = readProjectFile(
+  "supabase/migrations/20260915144500_reset_terminal_instagram_container_on_manual_retry.sql",
+);
 const hookVideoScheduleMigration = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260717190000_link_hook_video_schedules.sql",
 );
@@ -56,6 +59,7 @@ const schedulingDb = readProjectFile("lib/scheduling/db.ts");
 const schedulingWorkspace = readProjectFile(
   "components/scheduling/scheduling-workspace.tsx",
 );
+const scheduleRefreshPolicy = readProjectFile("lib/scheduling/schedule-refresh-policy.ts");
 const scheduleEditor = readProjectFile(
   "components/scheduling/schedule-editor.tsx",
 );
@@ -83,6 +87,19 @@ const hookVideoLibrary = readProjectFile(
 const scheduleTime = readProjectFile("lib/scheduling/schedule-time.ts");
 const schedulingService = readProjectFile("lib/scheduling/service.ts");
 const schedulesRoute = readProjectFile("app/api/schedules/route.ts");
+const scheduleUpdateRoute = readProjectFile(
+  "app/api/schedules/[scheduleId]/route.ts",
+);
+const schedulePublishRoute = readProjectFile(
+  "app/api/schedules/[scheduleId]/publish/route.ts",
+);
+const scheduleRetryRoute = readProjectFile(
+  "app/api/schedules/[scheduleId]/targets/[targetId]/retry/route.ts",
+);
+const socialOAuthStartRoute = readProjectFile("app/api/social/oauth/start/route.ts");
+const youtubeBetaAccountManager = readProjectFile(
+  "components/settings/youtube-beta-account-manager.tsx",
+);
 const carouselScheduleClient = readProjectFile(
   "lib/scheduling/carousel-scheduling-client.ts",
 );
@@ -351,6 +368,33 @@ test("publish retry repairs provider success and fails closed for unsafe inputs"
   );
 });
 
+test("manual retry replaces only an inactive terminal Instagram container", () => {
+  assert.match(
+    terminalInstagramRetryMigration,
+    /create or replace function public\.reset_terminal_instagram_container_on_manual_retry\(\)/i,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /OLD\.status IS DISTINCT FROM 'failed'[\s\S]*OLD\.last_error_code IS DISTINCT FROM 'instagram_media_processing_failed'[\s\S]*NEW\.platform IS DISTINCT FROM 'instagram'[\s\S]*NEW\.status IS DISTINCT FROM 'scheduled'[\s\S]*NEW\.publish_job_id IS NOT DISTINCT FROM OLD\.publish_job_id/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /job\.job_type = 'publish_social_post'[\s\S]*job\.status = 'queued'[\s\S]*job\.input_json ->> 'targetId' = NEW\.id::text/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /operation\.platform_post_id IS NULL[\s\S]*operation\.published_at IS NULL[\s\S]*operation\.active_job_id IS NULL[\s\S]*operation\.active_claim_token IS NULL/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /provider_operation_id = NULL,[\s\S]*provider_operation_kind = NULL,[\s\S]*status = 'pending'/,
+  );
+  assert.match(
+    terminalInstagramRetryMigration,
+    /CREATE TRIGGER reset_terminal_instagram_container_on_manual_retry[\s\S]*BEFORE UPDATE OF status, publish_job_id/,
+  );
+});
+
 test("draft edits and render queueing both use optimistic status and version checks", () => {
   const editFunction = getSection(
     schedulingDb,
@@ -555,14 +599,15 @@ test("active account screens consume the shared connection and schedule queries"
     schedulingWorkspace,
     carouselScheduleModal,
     hookVideoScheduleDrawer,
-    instagramAnalyticsWorkspace,
     instagramAccountManager,
   ]) {
     assert.match(consumer, /loadAccountSocialConnections/);
   }
 
   assert.match(schedulingWorkspace, /loadAccountSchedules/);
-  assert.match(instagramAnalyticsWorkspace, /loadAccountSchedules/);
+  assert.match(instagramAnalyticsWorkspace, /getAccountSocialConnectionsQueryKey/);
+  assert.match(instagramAnalyticsWorkspace, /useQuery\(/);
+  assert.match(instagramAnalyticsWorkspace, /\/api\/analytics\/activity/);
   assert.match(carouselScheduleModal, /loadAccountScheduleConfig/);
   assert.match(hookVideoScheduleDrawer, /loadAccountScheduleConfig/);
   assert.doesNotMatch(instagramAnalyticsWorkspace, /fetch\("\/api\/schedules"/);
@@ -666,10 +711,16 @@ test("user actions open the editor using cached scheduling catalogs while refres
     "useEffect(() => {",
   );
 
-  assert.match(newScheduleFlow, /loadSocialConnections\(\)/);
+  assert.match(
+    newScheduleFlow,
+    /loadSocialConnections\(\{ force: true \}\)/,
+  );
   assert.match(newScheduleFlow, /loadScheduleMedia\(\)/);
   assert.match(editScheduleFlow, /loadScheduleMedia\(\)/);
-  assert.match(editScheduleFlow, /loadSocialConnections\(\)/);
+  assert.match(
+    editScheduleFlow,
+    /loadSocialConnections\(\{ force: true \}\)/,
+  );
   assert.match(
     schedulingWorkspace,
     /onRefreshMedia=\{\(\) => loadScheduleMedia\(\{ force: true \}\)\}/,
@@ -689,15 +740,15 @@ test("schedule refreshes share in-flight reads while polling still forces fresh 
   );
   assert.doesNotMatch(scheduleLoad, /fetch\("\/api\/schedules"/);
   assert.match(
-    schedulingWorkspace,
+    scheduleRefreshPolicy,
     /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000/,
   );
   assert.match(
     schedulingWorkspace,
-    /window\.setInterval\(\(\) => \{[\s\S]*?loadSchedules\(\{ force: true \}\)/,
+    /window\.setTimeout[\s\S]*?loadSchedules\(\{ force: true \}\)/,
   );
   assert.match(
-    schedulingWorkspace,
+    scheduleRefreshPolicy,
     /target\.status === "publishing" \|\| target\.status === "scheduling"[\s\S]*?target\.updatedAt[\s\S]*?ACTIVE_JOB_TIMEOUT_MS/,
   );
 });
@@ -732,15 +783,12 @@ test("a deep-linked carousel draft opens the scheduling editor without switching
   );
 });
 
-test("new schedules preselect available hook and secondary clips", () => {
+test("new schedules preselect one video and keep legacy saved selection support", () => {
   assert.match(
     scheduleEditor,
-    /editingSchedule \|\|[\s\S]*selectedDemoMediaId \|\|[\s\S]*demoMediaOptions\.length === 0[\s\S]*setSelectedDemoMediaId\(demoMediaOptions\[0\]!\.id\)/,
+    /editingSchedule \|\|[\s\S]*videoOptions\.length === 0[\s\S]*if \(!selectedDemoMediaId\)[\s\S]*setSelectedDemoMediaId\(videoOptions\[0\]!\.id\)/,
   );
-  assert.match(
-    scheduleEditor,
-    /editingSchedule \|\|[\s\S]*selectedHookMediaId \|\|[\s\S]*localHookMediaOptions\.length === 0[\s\S]*setSelectedHookMediaId\(localHookMediaOptions\[0\]!\.id\)/,
-  );
+  assert.doesNotMatch(scheduleEditor, /setSelectedHookMediaId/);
   assert.match(scheduleEditor, /function getInitialClipSelection/);
   assert.match(schedulingWorkspace, /clipSelection: submission\.clipSelection/);
   assert.match(
@@ -768,7 +816,7 @@ test("carousel captions remain optional and are never replaced with the carousel
   assert.match(scheduleEditor, /Caption optional\./);
   assert.match(
     scheduleEditor,
-    /Confirm the carousel, choose your Instagram account, and set the publish time\./,
+    /Confirm the carousel, choose your \$\{publishingAccountLabel\} account, and set the publish time\./,
   );
 });
 
@@ -869,18 +917,23 @@ test("Hook drawers and the shared Trending post scheduler load only from an open
   );
 });
 
-test("the inline carousel modal implements exact-account content and time steps", () => {
+test("the inline carousel modal implements publishing-account content and time steps", () => {
   assert.match(carouselScheduleModal, /Step \{currentStep\.number\} of 4/);
-  assert.match(carouselScheduleModal, /title: "Select Instagram account"/);
+  assert.match(
+    carouselScheduleModal,
+    /const accountLabel = hasMultiplePlatforms \? "publishing account" : "Instagram account"/,
+  );
+  assert.match(carouselScheduleModal, /const hasMultiplePlatforms = visiblePlatforms\.length > 1/);
+  assert.match(carouselScheduleModal, /title: `Select \$\{accountLabel\}`/);
   assert.match(carouselScheduleModal, /title: "Post details"/);
   assert.match(carouselScheduleModal, /title: "Schedule"/);
   assert.match(
     carouselScheduleModal,
-    /const visiblePlatforms = platforms\.filter\([\s\S]*definition\.platform === "instagram"/,
+    /const visiblePlatforms = useMemo\([\s\S]*definition\.platform === "instagram"[\s\S]*tiktokBetaEnabled && definition\.platform === "tiktok"/,
   );
   assert.match(
     carouselScheduleModal,
-    /connections\.filter\([\s\S]*connection\.platform === "instagram"/,
+    /connections\.filter\([\s\S]*visiblePlatforms\.some\([\s\S]*definition\.platform === connection\.platform/,
   );
   assert.match(carouselScheduleModal, /\{visiblePlatforms\.map\(/);
   assert.match(carouselScheduleModal, /label: "TikTok"[\s\S]*platform: "tiktok"/);
@@ -891,7 +944,7 @@ test("the inline carousel modal implements exact-account content and time steps"
   );
   assert.match(
     carouselScheduleModal,
-    /connection\.platform === "youtube"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
+    /connection\.platform === "youtube" && contentKind === "carousel"[\s\S]*YouTube accepts video uploads, not carousel posts\./,
   );
   assert.match(carouselScheduleModal, /Publishing account/);
   assert.match(carouselScheduleModal, /\{carouselConnections\.map\(/);
@@ -909,7 +962,7 @@ test("the inline carousel modal implements exact-account content and time steps"
   assert.match(carouselScheduleModal, /label="Schedule for later"/);
   assert.match(carouselScheduleModal, /type="date"/);
   assert.match(carouselScheduleModal, /type="time"/);
-  assert.match(carouselScheduleModal, /Choose who can view the TikTok post\./);
+  assert.match(carouselScheduleModal, /getScheduleTargetSettingsError as getPublishingSettingsError/);
   assert.doesNotMatch(carouselScheduleModal, /Connect Instagram or TikTok above/);
   assert.doesNotMatch(carouselScheduleModal, /Also show the Reel/);
 });
@@ -981,9 +1034,13 @@ test("scheduling requires a selected account before any draft is stored", () => 
   assert.match(schedulingWorkspace, /Connect Instagram first/);
   assert.match(
     schedulingWorkspace,
-    /SocialPlatformIcon\s+className="size-6 text-white"\s+platform="instagram"/,
+    /SocialPlatformIcon[\s\S]*?className="size-6 text-white"[\s\S]*?youtubeBetaEnabled[\s\S]*?"youtube"[\s\S]*?tiktokBetaEnabled[\s\S]*?"tiktok"[\s\S]*?"instagram"/,
   );
   assert.match(schedulingWorkspace, /target\.platform === "instagram"/);
+  assert.match(
+    schedulingWorkspace,
+    /youtubeBetaEnabled && target\.platform === "youtube"/,
+  );
   assert.doesNotMatch(
     schedulingWorkspace,
     /save a video draft without publishing/i,
@@ -1004,7 +1061,11 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
   );
   assert.match(
     schedulingService,
-    /assertMinimumLead: assertTaskCreationBuffer/,
+    /assertMinimumLead: params\.recoverAccepted \? \(\) => undefined : assertTaskCreationBuffer/,
+  );
+  assert.match(
+    schedulingService,
+    /leadPolicy === "render_finalization"[\s\S]*?\? assertTaskCreationBuffer[\s\S]*?: assertMinimumScheduleLead/,
   );
   assert.match(
     schedulingService,
@@ -1030,31 +1091,26 @@ test("social scheduling uses one five-minute rule without quarter-hour rounding"
 
   assert.doesNotMatch(carouselScheduleModal, /minimumLeadMinutes \+ 2/);
   assert.match(
-    schedulingWorkspace,
+    scheduleRefreshPolicy,
     /ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000/,
   );
 });
 
-test("the main scheduler uses compact role-based clip and time controls", () => {
-  assert.match(
-    schedulingWorkspace,
-    /demoMediaOptions: videoAssets[\s\S]*filter\(isScheduledVideoMediaAsset\)/,
-  );
-  assert.match(scheduleEditor, /Hook clip/);
-  assert.match(scheduleEditor, /title="Secondary clip"/);
-  assert.match(scheduleEditor, /Choose a secondary clip/);
-  assert.match(
-    scheduleEditor,
-    /Content videos appear here\. Selecting a clip closes this list\./,
-  );
-  assert.match(
-    scheduleEditor,
-    /flex snap-x snap-mandatory gap-3 overflow-x-auto/,
-  );
+test("the main scheduler uses one video picker with direct uploads and existing media", () => {
+  assert.match(schedulingWorkspace, /const scheduledVideoAssets = videoAssets\.filter\(isScheduledVideoMediaAsset\)/);
+  assert.match(schedulingWorkspace, /demoMediaOptions: scheduledVideoAssets[\s\S]*map\(mapMediaAssetToScheduleMediaOption\)/);
+  assert.match(scheduleEditor, /function ScheduleVideoPicker/);
+  assert.doesNotMatch(scheduleEditor, /ScheduleOpeningClipControl|ScheduleRoleMediaPicker|title="Secondary clip"/);
+  assert.match(scheduleEditor, /Video clip/);
+  assert.match(scheduleEditor, /Choose a video/);
+  assert.match(scheduleEditor, /Upload video/);
+  assert.match(schedulingWorkspace, /onUploadVideo=\{async/);
+  assert.match(scheduleEditor, /Demo and Creative Assets videos appear here/);
+  assert.match(scheduleEditor, /flex snap-x snap-mandatory gap-3 overflow-x-auto/);
   assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
   assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
   assert.match(scheduleEditor, /setFailedThumbnailUrl/);
-  assert.match(scheduleEditor, /24-hour time with 1-minute precision\./);
+  assert.match(scheduleEditor, /Choose AM or PM\. Times use the selected timezone\./);
   assert.match(scheduleEditor, /function ScheduleTimeRail/);
   assert.match(
     scheduleEditor,
@@ -1078,6 +1134,36 @@ test("the main scheduler uses compact role-based clip and time controls", () => 
     /\[\s*"catalog_influencer",\s*"influencer_upload",\s*"upload",\s*"generated_video",\s*\]/,
   );
   assert.match(schedulingService, /directScheduledVideoCollections/);
+});
+
+test("YouTube availability is checked consistently across every scheduling boundary", () => {
+  for (const route of [
+    schedulesRoute,
+    scheduleUpdateRoute,
+    schedulePublishRoute,
+    scheduleRetryRoute,
+    hookVideoScheduleRoute,
+  ]) {
+    assert.match(route, /allowYouTubeTargets: hasYouTubeBetaAccess\(/);
+  }
+
+  assert.match(
+    socialOAuthStartRoute,
+    /platform === "youtube" && !hasYouTubeBetaAccess\(user\)[\s\S]*?youtube_beta_access_required/,
+  );
+  assert.match(
+    schedulingService,
+    /allowYouTubeTargets[\s\S]*?connection\.platform === "youtube"[\s\S]*?youtube_beta_access_required/,
+  );
+  assert.match(schedulingWorkspace, /hasYouTubeBetaAccess\(user\)/);
+  assert.match(scheduleEditor, /youtubeBetaEnabled/);
+  assert.match(hookVideoScheduleDrawer, /hasYouTubeBetaAccess\(user\)/);
+  assert.match(youtubeBetaAccountManager, /platform: YOUTUBE_PLATFORM/);
+  assert.match(youtubeBetaAccountManager, /Connect YouTube/);
+  assert.match(
+    scheduleEditor,
+    /function supportsCarouselPublishing[\s\S]*?platform === "instagram" \|\| platform === "tiktok"/,
+  );
 });
 
 test("every calendar date opens the dedicated day view", () => {
@@ -1104,6 +1190,38 @@ test("every calendar date opens the dedicated day view", () => {
   assert.match(schedulingWorkspace, /<DayScheduleWorkspace/);
 });
 
+test("day schedules separate the exported file from verified social post links", () => {
+  const targetStatusList = getSection(
+    schedulingWorkspace,
+    "function ScheduleTargetStatusList({",
+    "function CalendarPlanner({",
+  );
+  const dayScheduleItem = getSection(
+    schedulingWorkspace,
+    "function SelectedDayDraftCard({",
+    "type CalendarDay",
+  );
+
+  assert.match(targetStatusList, /getPublishedPostLink\(target\)/);
+  assert.match(targetStatusList, /href=\{publishedPostLink\.href\}/);
+  assert.match(targetStatusList, /Post link unavailable/);
+  assert.match(dayScheduleItem, /shouldShowExportPreview\(draft\.targets\)/);
+  assert.match(dayScheduleItem, /Preview video file/);
+  assert.doesNotMatch(dayScheduleItem, /View exported MP4/);
+});
+
+test("pending scheduled accounts use their saved platform icon", () => {
+  const targetStatusList = getSection(
+    schedulingWorkspace,
+    "function ScheduleTargetStatusList({",
+    "function CalendarPlanner({",
+  );
+
+  assert.match(targetStatusList, /plannedPlatformsByConnectionId/);
+  assert.match(targetStatusList, /platform=\{account\.platform\}/);
+  assert.doesNotMatch(targetStatusList, /platform="instagram"/);
+});
+
 test("List view opens a compact, date-selectable daily agenda", () => {
   const listExperience = getSection(
     schedulingWorkspace,
@@ -1123,7 +1241,7 @@ test("List view opens a compact, date-selectable daily agenda", () => {
   assert.match(listExperience, /getScheduleDayListStatusVariant\(draft\.status\)/);
   assert.doesNotMatch(listExperience, /ScheduleDraftMediaThumb/);
 });
-test("calendar and Day view include all posts, with upcoming posts first", () => {
+test("calendar and Day view show the newest post first across platforms", () => {
   const calendarSelection = getSection(
     schedulingWorkspace,
     "const visibleDrafts = useMemo(",
@@ -1145,15 +1263,16 @@ test("calendar and Day view include all posts, with upcoming posts first", () =>
   assert.match(scheduleContent, /calendarDrafts: ScheduleDraft\[\]/);
   assert.match(scheduleContent, /drafts=\{calendarDrafts\}/);
   assert.match(scheduleContent, /<ScheduleDayList/);
-  assert.match(dateGrouping, /function getCalendarDayDraftSortRank/);
   assert.match(
     dateGrouping,
-    /if \(isUpcomingDraft\(draft\)\) \{\s*return 0/,
+    /second\.scheduledTime \?\? ""\)\.localeCompare\([\s\S]*first\.scheduledTime \?\? ""/,
   );
   assert.match(
     dateGrouping,
-    /if \(draft\.status === "published"\) \{\s*return 1/,
+    /second\.createdAt\.localeCompare\(first\.createdAt\)/,
   );
+  assert.doesNotMatch(dateGrouping, /getCalendarDayDraftSortRank/);
+  assert.match(schedulingWorkspace, /Latest posts appear first/);
 });
 
 test("Calendar starts at the fixed rollout boundary and hides historical posts", () => {

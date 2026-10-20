@@ -60,6 +60,12 @@ variable "media_bucket_name" {
   default     = "ugcsaas-media"
 }
 
+variable "private_audio_bucket_name" {
+  description = "Optional globally unique private audio bucket. Leave empty until deploying Audio; never reuse the media bucket."
+  type        = string
+  default     = ""
+}
+
 variable "media_bucket_location" {
   description = "Cloud Storage bucket location for app media."
   type        = string

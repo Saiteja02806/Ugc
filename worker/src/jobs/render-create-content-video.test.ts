@@ -178,8 +178,8 @@ function createJob() {
       overlay: {
         format: "hook_text",
         hook: {
-          fontSize: 52,
-          layoutVersion: "hook-overlay-layout-v2-fixed",
+          fontSize: 56,
+          layoutVersion: "hook-overlay-layout-v3-56px",
           lines: ["A concise first line"],
         },
         position: { x: 0.5, y: 0.5 },

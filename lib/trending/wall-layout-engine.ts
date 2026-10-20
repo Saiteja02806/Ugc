@@ -4,10 +4,12 @@ import sharp from "sharp";
 
 import { getVerifiedWallTextArialBoldFontPath } from "./wall-text-font";
 import {
+  getWallTextGenerationWordBudget,
   WALL_TEXT_GENERATION_WORD_RANGE,
-  WALL_TEXT_TARGET_WORDS,
 } from "./wall-text-copy-policy";
 import { WallTextLayoutFitError } from "./wall-text-generation-failure";
+import { getWallTextManualBlocks, normalizeWallTextManualCopy, validateWallTextManualCopy } from "./wall-text-manual-copy";
+import { getWallTextEditSafeArea } from "./wall-text-editor-layout";
 
 import {
   WALL_TEXT_CONTENT_LAYOUT_VERSION,
@@ -36,9 +38,11 @@ const ABSOLUTE_MAXIMUM_WORDS = WALL_TEXT_GENERATION_WORD_RANGE.maximum;
 const MINIMUM_WORDS = 10;
 const INTERNAL_LINE_WIDTH_RATIO = 0.55;
 const MINIMUM_BALANCE_IMPROVEMENT = 0.04;
+const MANUAL_VERTICAL_PADDING = 12;
 const measurementCache = new Map<string, number>();
 
 export async function deriveWallTextSpatialBudget(params: {
+  durationSeconds?: number;
   layout: TrendingWallTextLayout;
 }) {
   const lineHeight = WALL_TEXT_FIXED_FONT_SIZE * WALL_TEXT_LINE_HEIGHT_FACTOR;
@@ -53,45 +57,52 @@ export async function deriveWallTextSpatialBudget(params: {
     780,
   );
   const widthPx = getWallTextSafeLineWidth(textBoxWidth);
-  const sampleWords = "people notice the quiet details";
+  // Estimate the upper budget from a six-word ordinary sentence fragment.
+  // The final measured layout below remains the authority for every response,
+  // so long words or uneven phrasing receive a smaller repair budget.
+  const sampleWords = "I can see what I need";
   const sampleWidth = (await measureText(sampleWords, WALL_TEXT_FIXED_FONT_SIZE)) +
     WALL_TEXT_OUTLINE_WIDTH * 2;
   const wordsPerLine = clamp(
-    Math.floor((5 * widthPx * 0.9) / sampleWidth),
+    (5 * widthPx * 0.9) / sampleWidth,
     3,
     7,
   );
   const spatialMaximum = clamp(
-    availableLines * wordsPerLine,
+    // Round the total estimate once; rounding each row loses usable capacity.
+    // The final measured layout remains the authority for the actual copy.
+    Math.floor(availableLines * wordsPerLine),
     MINIMUM_WORDS,
     ABSOLUTE_MAXIMUM_WORDS,
   );
-  const maxWords = Math.min(ABSOLUTE_MAXIMUM_WORDS, spatialMaximum);
-  if (maxWords < WALL_TEXT_GENERATION_WORD_RANGE.minimum) {
+  const wordBudget = getWallTextGenerationWordBudget({
+    spatialMaximum,
+  });
+  if (wordBudget.maximum < WALL_TEXT_GENERATION_WORD_RANGE.minimum) {
     throw new WallTextLayoutFitError(
       `Wall-of-text placement cannot support the current ${WALL_TEXT_GENERATION_WORD_RANGE.minimum}-${WALL_TEXT_GENERATION_WORD_RANGE.maximum}-word contract.`,
     );
   }
-  const targetWords = clamp(
-    WALL_TEXT_TARGET_WORDS,
-    WALL_TEXT_GENERATION_WORD_RANGE.minimum,
-    maxWords,
-  );
 
   return {
-    maxWords,
+    maxWords: wordBudget.maximum,
+    minWords: wordBudget.minimum,
     spatialMaximum,
-    targetWords,
   };
 }
 
 export async function createAuthoritativeWallTextContent(params: {
+  textMode?: "manual";
   content: WallTextSourceContent;
   formatId: WallTextPattern;
   layout: TrendingWallTextLayout;
 }) {
-  const sourceContent = normalizeSourceContent(params.content);
+  const sourceContent = params.textMode === "manual" && params.content.kind === "text"
+    ? { kind: "text" as const, text: normalizeWallTextManualCopy(params.content.text) }
+    : normalizeSourceContent(params.content);
+  if (params.textMode === "manual") validateWallTextManualCopy(getFullText(sourceContent));
   const finalLayout = await createWallTextFinalLayout({
+    textMode: params.textMode,
     content: sourceContent,
     layout: params.layout,
   });
@@ -117,12 +128,52 @@ export async function createAuthoritativeWallTextContent(params: {
   };
 }
 
+export async function createAuthoritativeWallTextEdit(params: {
+  fullText: string;
+  previousContent: TrendingWallTextContent;
+  formatId: WallTextPattern;
+  layout: TrendingWallTextLayout;
+}) {
+  validateWallTextManualCopy(params.fullText);
+  const previous = params.previousContent;
+  const widthChanged = previous.finalLayout &&
+    Math.abs(previous.finalLayout.textBox.width - params.layout.textBox.width) >= 0.000001;
+  const layout = widthChanged || previous.finalLayout?.textMode === "manual"
+    ? { ...params.layout, safeArea: getWallTextEditSafeArea(params.layout.safeArea) }
+    : params.layout;
+  if (
+    previous.finalLayout &&
+    normalizeWallTextManualCopy(params.fullText) === previous.fullText &&
+    Math.abs(previous.finalLayout.textBox.width - params.layout.textBox.width) < 0.000001
+  ) {
+    // Color and position edits retain the saved rows and typography. Only
+    // changed copy (or width) needs a new manual layout.
+    return {
+      content: {
+        ...previous,
+        finalLayout: { ...previous.finalLayout, textBox: layout.textBox },
+      },
+      layout,
+    };
+  }
+  return createAuthoritativeWallTextContent({
+    content: { kind: "text", text: params.fullText },
+    formatId: params.formatId,
+    layout: { ...layout, safeArea: getWallTextEditSafeArea(layout.safeArea) },
+    textMode: "manual",
+  });
+}
+
 export async function createWallTextFinalLayout(params: {
+  textMode?: "manual";
   content: WallTextSourceContent;
   layout: TrendingWallTextLayout;
 }): Promise<WallTextFinalLayout> {
+  const manualBlocks = params.textMode === "manual" && params.content.kind === "text"
+    ? getWallTextManualBlocks(params.content.text) : null;
   const sourceBlocks = toSourceBlocks(params.content);
-  const maximumHeight = params.layout.textBox.height * VIDEO_HEIGHT;
+  let textBox = params.layout.textBox;
+  let maximumHeight = textBox.height * VIDEO_HEIGHT;
   const textBoxWidth = Math.round(params.layout.textBox.width * VIDEO_WIDTH);
   const maximumWidth = getWallTextSafeLineWidth(textBoxWidth);
 
@@ -135,42 +186,68 @@ export async function createWallTextFinalLayout(params: {
   const fontSize = WALL_TEXT_FIXED_FONT_SIZE;
   const blocks: WallTextLayoutBlock[] = [];
   let failed = false;
-  for (const block of sourceBlocks) {
-    const lines =
-      block.role === "text"
-        ? await wrapPlainWallText(
-            block.text,
-            maximumWidth,
-            fontSize,
-          )
-        : await wrapMeasuredText(block.text, maximumWidth, fontSize);
-    if (!lines) {
-      failed = true;
-      break;
+  if (manualBlocks) {
+    for (const block of manualBlocks) {
+      const lines: string[] = [];
+      for (const line of block.lines) {
+        lines.push(...await wrapMeasuredText(line, maximumWidth, fontSize, false));
+      }
+      blocks.push({ ...block, lines });
     }
-    blocks.push({ lines, role: block.role });
+  } else {
+    for (const block of sourceBlocks) {
+      const lines =
+        block.role === "text"
+          ? await wrapPlainWallText(block.text, maximumWidth, fontSize)
+          : await wrapMeasuredText(block.text, maximumWidth, fontSize);
+      if (!lines) {
+        failed = true;
+        break;
+      }
+      blocks.push({ lines, role: block.role });
+    }
   }
 
   const lineHeightPx = Math.round(fontSize * WALL_TEXT_LINE_HEIGHT_FACTOR * 100) / 100;
   const lineCount = blocks.reduce((total, block) => total + block.lines.length, 0);
   const blockHeight =
     lineCount * lineHeightPx +
-    Math.max(0, blocks.length - 1) * WALL_TEXT_SECTION_GAP;
+    blocks.slice(0, -1).reduce((sum, block) => sum + (block.gapAfterPx ?? WALL_TEXT_SECTION_GAP), 0);
 
-  if (!failed && blockHeight <= maximumHeight) {
+  // Leave vertical room for glyph ascent, outline, and the raster fence even
+  // when a manual edit needs a taller placement rectangle.
+  const requiredHeight = blockHeight + (manualBlocks ? MANUAL_VERTICAL_PADDING * 2 : 0);
+  if (manualBlocks && requiredHeight > maximumHeight) {
+    const height = Math.ceil(requiredHeight) / VIDEO_HEIGHT;
+    const { safeArea } = params.layout;
+    if (height <= 1 - safeArea.top - safeArea.bottom) {
+      const centerY = textBox.y + textBox.height / 2;
+      textBox = {
+        ...textBox,
+        height,
+        y: clamp(centerY - height / 2, safeArea.top, 1 - safeArea.bottom - height),
+      };
+      maximumHeight = height * VIDEO_HEIGHT;
+    }
+  }
+
+  if (!failed && requiredHeight <= maximumHeight) {
     return {
+      ...(manualBlocks ? { textMode: "manual" as const } : {}),
       blocks,
       fontFamily: "Arial",
       fontSizePx: fontSize,
       fontWeight: WALL_TEXT_FONT_WEIGHT,
       lineHeightPx,
-      textBox: params.layout.textBox,
+      textBox,
       version: WALL_TEXT_FINAL_LAYOUT_VERSION,
     };
   }
 
   throw new WallTextLayoutFitError(
-    params.content.kind === "text"
+    manualBlocks
+      ? `Wall-of-text copy does not fit the text area at the fixed ${fontSize}px font size. Shorten the copy or remove extra blank lines.`
+      : params.content.kind === "text"
       ? `Wall-of-text copy cannot fit five to eight balanced lines at the fixed ${fontSize}px font size. Shorten the copy or widen the text box.`
       : `Wall-of-text copy does not fit the publishing safe area at the fixed ${fontSize}px font size.`,
   );
@@ -353,6 +430,7 @@ async function wrapMeasuredText(
   value: string,
   maximumWidth: number,
   fontSize: WallTextFontSize,
+  balance = true,
 ) {
   const words = value.split(/\s+/u).filter(Boolean);
   const lines: string[] = [];
@@ -364,8 +442,12 @@ async function wrapMeasuredText(
       (await measureText(candidate, fontSize)) +
       WALL_TEXT_OUTLINE_WIDTH * 2;
 
+    if ((await measureText(word, fontSize)) + WALL_TEXT_OUTLINE_WIDTH * 2 >= maximumWidth) {
+      throw new WallTextLayoutFitError("Wall-of-text contains a word that cannot fit the publishing text box.");
+    }
+
     if (!current && candidateWidth >= maximumWidth) {
-      throw new Error(
+      throw new WallTextLayoutFitError(
         "Wall-of-text contains a word that cannot fit the publishing text box.",
       );
     }
@@ -378,6 +460,7 @@ async function wrapMeasuredText(
     }
   }
   if (current) lines.push(current);
+  if (!balance) return lines;
 
   const internallyBalanced = await rebalanceInternalLines(
     lines,

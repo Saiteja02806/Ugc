@@ -1,0 +1,1 @@
+export default function Loading() { return <section className="p-8" aria-busy="true" aria-label="Loading audio generation"><div className="h-8 w-56 animate-pulse rounded bg-card-muted motion-reduce:animate-none" /><div className="mt-8 h-80 animate-pulse rounded-2xl bg-card-muted motion-reduce:animate-none" /></section>; }

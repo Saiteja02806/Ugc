@@ -1,0 +1,65 @@
+{
+  "version": 3,
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 288,
+  "duration": 12,
+  "source": "ai-character-v3-master-final.mp4",
+  "video": "ai-character-v3.mp4",
+  "project": "../../Explore AI Character — Identity in Motion v3.aep",
+  "poster": "ai-character-v3.webp",
+  "bytes": 801511,
+  "sha256": "965c46e3541877e83f485859db907323916a857fffa0a048e8cf6be19d3f597c",
+  "silent": true,
+  "fastStart": true,
+  "fullDecodeVerified": true,
+  "chapters": [
+    {
+      "start": 0,
+      "end": 3,
+      "text": "Create your own character"
+    },
+    {
+      "start": 3,
+      "end": 6.55,
+      "text": "One character. More possibilities"
+    },
+    {
+      "start": 6.55,
+      "end": 9.82,
+      "text": "Make your content recognizable"
+    },
+    {
+      "start": 9.82,
+      "end": 12,
+      "text": "Fold back into the original identity"
+    }
+  ],
+  "reviewTimes": [
+    0,
+    0.3,
+    0.65,
+    1.4,
+    2.6,
+    2.85,
+    3,
+    3.2,
+    3.65,
+    4.1,
+    4.45,
+    5.3,
+    6.35,
+    6.65,
+    7.15,
+    7.6,
+    8.2,
+    9.2,
+    9.7,
+    10,
+    10.35,
+    10.7,
+    11.5,
+    11.958333333333334
+  ]
+}

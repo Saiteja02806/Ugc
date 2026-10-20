@@ -5,6 +5,10 @@
  */
 export const HOOK_INLINE_SYMBOLS = ["cross", "check"] as const;
 
+// Keep this value aligned with the browser preview. It is the stroke width
+// inside the 24x24 Lucide icon viewBox, before the group is scaled.
+export const HOOK_INLINE_SYMBOL_STROKE_WIDTH = 2.8;
+
 export type HookInlineSymbol = (typeof HOOK_INLINE_SYMBOLS)[number];
 
 export type HookInlineToken =
@@ -86,7 +90,7 @@ export function buildHookInlineSymbolSvg(params: {
   y: number;
 }) {
   const color = params.name === "check" ? "#86efac" : "#fda4af";
-  const strokeWidth = Math.max(1.8, params.size * 0.115);
+  const strokeWidth = HOOK_INLINE_SYMBOL_STROKE_WIDTH;
   const scale = params.size / 24;
   const common = [
     'fill="none"',

@@ -221,27 +221,44 @@ function expandSixSlideFormat(
     {
       ...cover,
       instruction:
-        "Reader-first cover: state a specific benefit, tension, mistake, contrast, or curiosity gap that gives the viewer a reason to swipe. Do not begin with a complete personal-story opener such as 'I thought...' or 'I used to...' unless the same line states the viewer payoff.",
-      maximumWords: Math.min(cover.maximumWords, 18),
-      minimumWords: 4,
+        "Social slideshow cover: one statement about a specific benefit, tension, changed belief, mistake, contrast, or curiosity gap. A short first-person open loop such as 'I thought...' or 'I used to...' is welcome. Save the explanation for Slides 2-6.",
+      maximumWords: 14,
+      minimumWords: 5,
       perspective: "reader_first",
     },
-    problem,
-    realization,
-    mechanism,
+    {
+      ...problem,
+      ctaPolicy: "none",
+      maximumWords: 30,
+      minimumWords: 1,
+    },
+    {
+      ...realization,
+      ctaPolicy: "none",
+      maximumWords: 30,
+      minimumWords: 1,
+    },
+    {
+      ...mechanism,
+      ctaPolicy: "none",
+      maximumWords: 30,
+      minimumWords: 1,
+    },
     {
       ...proof,
       ctaPolicy: "none",
       instruction:
         "Give a modest, supportable proof or result that follows from the mechanism. Do not add a CTA or invent metrics, customers, guarantees, or outcomes.",
+      maximumWords: 30,
+      minimumWords: 1,
       perspective: "first_person",
     },
     {
       ctaPolicy: "native_experiment",
       instruction:
-        "Close with one useful takeaway or a natural, low-pressure CTA. It should help the reader act on the lesson and may invite them to see the product only when that invitation follows the story.",
-      maximumWords: 36,
-      minimumWords: 5,
+        "Close with useful value. An optional soft CTA may accompany this final slide, but must not replace a promised tip or move to an earlier slide.",
+      maximumWords: 30,
+      minimumWords: 1,
       perspective: "first_person_then_viewer",
       productMention: "optional",
       slideNumber: 6,

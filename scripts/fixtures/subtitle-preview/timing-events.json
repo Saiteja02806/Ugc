@@ -1,0 +1,767 @@
+[
+  {
+    "type": "samplerate",
+    "text_position": 0,
+    "word_length": 0,
+    "audio_position": 0
+  },
+  {
+    "type": "mark",
+    "text_position": 18,
+    "word_length": 0,
+    "audio_position": 0,
+    "id": "s0"
+  },
+  {
+    "type": "sentence",
+    "text_position": 18,
+    "word_length": 0,
+    "audio_position": 0,
+    "id": 1
+  },
+  {
+    "type": "word",
+    "text_position": 18,
+    "word_length": 4,
+    "audio_position": 0,
+    "id": 1
+  },
+  {
+    "type": "phoneme",
+    "text_position": 18,
+    "word_length": 0,
+    "audio_position": 0,
+    "id": "m"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 18,
+    "word_length": 0,
+    "audio_position": 72,
+    "id": "ˌeɪ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 18,
+    "word_length": 0,
+    "audio_position": 187,
+    "id": "k"
+  },
+  {
+    "type": "mark",
+    "text_position": 57,
+    "word_length": 0,
+    "audio_position": 232,
+    "id": "e0"
+  },
+  {
+    "type": "mark",
+    "text_position": 57,
+    "word_length": 0,
+    "audio_position": 232,
+    "id": "s1"
+  },
+  {
+    "type": "word",
+    "text_position": 57,
+    "word_length": 5,
+    "audio_position": 232,
+    "id": 2
+  },
+  {
+    "type": "phoneme",
+    "text_position": 57,
+    "word_length": 0,
+    "audio_position": 232,
+    "id": "ˈɛ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 57,
+    "word_length": 0,
+    "audio_position": 353,
+    "id": "v"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 57,
+    "word_length": 0,
+    "audio_position": 438,
+    "id": "ɹ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 57,
+    "word_length": 0,
+    "audio_position": 493,
+    "id": "i"
+  },
+  {
+    "type": "mark",
+    "text_position": 97,
+    "word_length": 0,
+    "audio_position": 534,
+    "id": "e1"
+  },
+  {
+    "type": "mark",
+    "text_position": 97,
+    "word_length": 0,
+    "audio_position": 534,
+    "id": "s2"
+  },
+  {
+    "type": "word",
+    "text_position": 97,
+    "word_length": 4,
+    "audio_position": 534,
+    "id": 3
+  },
+  {
+    "type": "phoneme",
+    "text_position": 97,
+    "word_length": 0,
+    "audio_position": 543,
+    "id": "w"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 97,
+    "word_length": 0,
+    "audio_position": 642,
+    "id": "ˈɜː"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 97,
+    "word_length": 0,
+    "audio_position": 732,
+    "id": "d"
+  },
+  {
+    "type": "mark",
+    "text_position": 136,
+    "word_length": 0,
+    "audio_position": 812,
+    "id": "e2"
+  },
+  {
+    "type": "mark",
+    "text_position": 136,
+    "word_length": 0,
+    "audio_position": 812,
+    "id": "s3"
+  },
+  {
+    "type": "word",
+    "text_position": 136,
+    "word_length": 5,
+    "audio_position": 812,
+    "id": 4
+  },
+  {
+    "type": "phoneme",
+    "text_position": 136,
+    "word_length": 0,
+    "audio_position": 860,
+    "id": "k"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 136,
+    "word_length": 0,
+    "audio_position": 904,
+    "id": "ˈaʊ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 136,
+    "word_length": 0,
+    "audio_position": 1021,
+    "id": "n"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 136,
+    "word_length": 0,
+    "audio_position": 1133,
+    "id": "t"
+  },
+  {
+    "type": "mark",
+    "text_position": 62,
+    "word_length": 0,
+    "audio_position": 1177,
+    "id": "e3"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 62,
+    "word_length": 0,
+    "audio_position": 1177,
+    "id": ""
+  },
+  {
+    "type": "phoneme",
+    "text_position": 62,
+    "word_length": 0,
+    "audio_position": 1823,
+    "id": ""
+  },
+  {
+    "type": "end",
+    "text_position": 179,
+    "word_length": 0,
+    "audio_position": 1823
+  },
+  {
+    "type": "mark",
+    "text_position": 198,
+    "word_length": 0,
+    "audio_position": 1823,
+    "id": "s4"
+  },
+  {
+    "type": "word",
+    "text_position": 198,
+    "word_length": 4,
+    "audio_position": 1823,
+    "id": 5
+  },
+  {
+    "type": "phoneme",
+    "text_position": 198,
+    "word_length": 0,
+    "audio_position": 1871,
+    "id": "k"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 198,
+    "word_length": 0,
+    "audio_position": 1925,
+    "id": "ˈiː"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 198,
+    "word_length": 0,
+    "audio_position": 2067,
+    "id": "p"
+  },
+  {
+    "type": "mark",
+    "text_position": 237,
+    "word_length": 0,
+    "audio_position": 2142,
+    "id": "e4"
+  },
+  {
+    "type": "mark",
+    "text_position": 237,
+    "word_length": 0,
+    "audio_position": 2142,
+    "id": "s5"
+  },
+  {
+    "type": "word",
+    "text_position": 237,
+    "word_length": 4,
+    "audio_position": 2142,
+    "id": 6
+  },
+  {
+    "type": "phoneme",
+    "text_position": 237,
+    "word_length": 0,
+    "audio_position": 2142,
+    "id": "j"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 237,
+    "word_length": 0,
+    "audio_position": 2223,
+    "id": "ʊɹ"
+  },
+  {
+    "type": "mark",
+    "text_position": 212,
+    "word_length": 0,
+    "audio_position": 2318,
+    "id": "e5"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 212,
+    "word_length": 0,
+    "audio_position": 2318,
+    "id": ""
+  },
+  {
+    "type": "phoneme",
+    "text_position": 212,
+    "word_length": 0,
+    "audio_position": 2495,
+    "id": ""
+  },
+  {
+    "type": "end",
+    "text_position": 278,
+    "word_length": 0,
+    "audio_position": 2495
+  },
+  {
+    "type": "mark",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2495,
+    "id": "s6"
+  },
+  {
+    "type": "word",
+    "text_position": 297,
+    "word_length": 8,
+    "audio_position": 2495,
+    "id": 7
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2543,
+    "id": "k"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2588,
+    "id": "ˈæ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2721,
+    "id": "p"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2797,
+    "id": "ʃ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2887,
+    "id": "ə"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 2939,
+    "id": "n"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 297,
+    "word_length": 0,
+    "audio_position": 3003,
+    "id": "z"
+  },
+  {
+    "type": "mark",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3107,
+    "id": "e6"
+  },
+  {
+    "type": "mark",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3107,
+    "id": "s7"
+  },
+  {
+    "type": "word",
+    "text_position": 340,
+    "word_length": 11,
+    "audio_position": 3107,
+    "id": 8
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3139,
+    "id": "b"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3170,
+    "id": "j"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3234,
+    "id": "ˈuː"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3292,
+    "id": "ɾ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3333,
+    "id": "ɪ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3393,
+    "id": "f"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3467,
+    "id": "ə"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3513,
+    "id": "l"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 340,
+    "word_length": 0,
+    "audio_position": 3563,
+    "id": "i"
+  },
+  {
+    "type": "mark",
+    "text_position": 386,
+    "word_length": 0,
+    "audio_position": 3607,
+    "id": "e7"
+  },
+  {
+    "type": "mark",
+    "text_position": 386,
+    "word_length": 0,
+    "audio_position": 3607,
+    "id": "s8"
+  },
+  {
+    "type": "word",
+    "text_position": 386,
+    "word_length": 5,
+    "audio_position": 3607,
+    "id": 9
+  },
+  {
+    "type": "phoneme",
+    "text_position": 386,
+    "word_length": 0,
+    "audio_position": 3655,
+    "id": "k"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 386,
+    "word_length": 0,
+    "audio_position": 3713,
+    "id": "l"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 386,
+    "word_length": 0,
+    "audio_position": 3820,
+    "id": "ˈɪɹ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 331,
+    "word_length": 0,
+    "audio_position": 4061,
+    "id": ""
+  },
+  {
+    "type": "phoneme",
+    "text_position": 331,
+    "word_length": 0,
+    "audio_position": 4203,
+    "id": ""
+  },
+  {
+    "type": "end",
+    "text_position": 391,
+    "word_length": 0,
+    "audio_position": 4203
+  },
+  {
+    "type": "mark",
+    "text_position": 427,
+    "word_length": 0,
+    "audio_position": 4203,
+    "id": "e8"
+  },
+  {
+    "type": "mark",
+    "text_position": 427,
+    "word_length": 0,
+    "audio_position": 4203,
+    "id": "s9"
+  },
+  {
+    "type": "word",
+    "text_position": 427,
+    "word_length": 3,
+    "audio_position": 4203,
+    "id": 10
+  },
+  {
+    "type": "phoneme",
+    "text_position": 427,
+    "word_length": 0,
+    "audio_position": 4203,
+    "id": "æ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 427,
+    "word_length": 0,
+    "audio_position": 4279,
+    "id": "n"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 427,
+    "word_length": 0,
+    "audio_position": 4357,
+    "id": "d"
+  },
+  {
+    "type": "mark",
+    "text_position": 466,
+    "word_length": 0,
+    "audio_position": 4392,
+    "id": "e9"
+  },
+  {
+    "type": "mark",
+    "text_position": 466,
+    "word_length": 0,
+    "audio_position": 4392,
+    "id": "s10"
+  },
+  {
+    "type": "word",
+    "text_position": 466,
+    "word_length": 3,
+    "audio_position": 4392,
+    "id": 11
+  },
+  {
+    "type": "phoneme",
+    "text_position": 466,
+    "word_length": 0,
+    "audio_position": 4392,
+    "id": "l"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 466,
+    "word_length": 0,
+    "audio_position": 4458,
+    "id": "ˈɛ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 466,
+    "word_length": 0,
+    "audio_position": 4574,
+    "id": "t"
+  },
+  {
+    "type": "mark",
+    "text_position": 506,
+    "word_length": 0,
+    "audio_position": 4618,
+    "id": "e10"
+  },
+  {
+    "type": "mark",
+    "text_position": 506,
+    "word_length": 0,
+    "audio_position": 4618,
+    "id": "s11"
+  },
+  {
+    "type": "word",
+    "text_position": 506,
+    "word_length": 4,
+    "audio_position": 4618,
+    "id": 12
+  },
+  {
+    "type": "phoneme",
+    "text_position": 506,
+    "word_length": 0,
+    "audio_position": 4618,
+    "id": "j"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 506,
+    "word_length": 0,
+    "audio_position": 4697,
+    "id": "ʊɹ"
+  },
+  {
+    "type": "mark",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 4757,
+    "id": "e11"
+  },
+  {
+    "type": "mark",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 4757,
+    "id": "s12"
+  },
+  {
+    "type": "word",
+    "text_position": 547,
+    "word_length": 5,
+    "audio_position": 4757,
+    "id": 13
+  },
+  {
+    "type": "phoneme",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 4769,
+    "id": "s"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 4852,
+    "id": "t"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 4891,
+    "id": "ˈɔː"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 5028,
+    "id": "ɹ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 547,
+    "word_length": 0,
+    "audio_position": 5083,
+    "id": "i"
+  },
+  {
+    "type": "mark",
+    "text_position": 589,
+    "word_length": 0,
+    "audio_position": 5127,
+    "id": "e12"
+  },
+  {
+    "type": "mark",
+    "text_position": 589,
+    "word_length": 0,
+    "audio_position": 5127,
+    "id": "s13"
+  },
+  {
+    "type": "word",
+    "text_position": 589,
+    "word_length": 6,
+    "audio_position": 5127,
+    "id": 14
+  },
+  {
+    "type": "phoneme",
+    "text_position": 589,
+    "word_length": 0,
+    "audio_position": 5139,
+    "id": "ʃ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 589,
+    "word_length": 0,
+    "audio_position": 5229,
+    "id": "ˈaɪ"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 589,
+    "word_length": 0,
+    "audio_position": 5467,
+    "id": "n"
+  },
+  {
+    "type": "mark",
+    "text_position": 474,
+    "word_length": 0,
+    "audio_position": 5566,
+    "id": "e13"
+  },
+  {
+    "type": "phoneme",
+    "text_position": 474,
+    "word_length": 0,
+    "audio_position": 5566,
+    "id": ""
+  },
+  {
+    "type": "phoneme",
+    "text_position": 474,
+    "word_length": 0,
+    "audio_position": 5573,
+    "id": ""
+  },
+  {
+    "type": "end",
+    "text_position": 612,
+    "word_length": 0,
+    "audio_position": 5573
+  }
+]

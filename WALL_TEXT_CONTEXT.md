@@ -1,6 +1,307 @@
 # Wall-of-text Context
 
-Last updated: 2026-09-08
+Last updated: 2026-10-09
+
+## 2026-10-09 Revisiting and scheduling Wall posts (local fix)
+
+- A liked review-history entry records opening scheduling, so the user can
+  return to it and double-tap or press Schedule again after cancellation or
+  a failed save. That retry does not review the post or consume its slot again.
+- The schedule endpoint verifies the owner's assignment and resolves its
+  creative on the server, then confirms acceptance before requiring a selected
+  draft. A recorded skip is recovered only through the existing explicit
+  reconsideration RPC; delayed outbox skips cannot reverse that selection.
+- Rendering still starts after the schedule is saved. Explicit Creative Assets
+  saving, source generation, copy/layout, card sizing and publishing identity
+  retain their existing behavior. This local repair requires an app release;
+  no database migration or worker release is needed. Authenticated production
+  acceptance is pending. See `docs/trending-revisited-scheduling-2026-10-09.md`.
+
+## 2026-10-08 Explore manual Wall video workflow (local implementation)
+
+- Explore Wall of text is a separate video workflow. Create requests a moving
+  background without generated lettering. Edit video adds a manual text layer
+  with authored line breaks and blank paragraphs, size, width, color, position
+  and timing relative to the trimmed video. It offers no subtitles or ASR.
+- This editor uses a separate, bounded `ExploreFormatEdit` renderer, a
+  600-character manual limit and conservative text-fit validation. It does not
+  alter Trending's V13/V9 typography, generation rules, stored layouts or
+  publication safe-area decisions. Text already baked into source footage
+  remains part of that footage and requires regeneration to change.
+- Trimming applies to video and mixed audio together. Saving creates a new
+  owned final media asset; scheduling references that exact saved output.
+  New edits need the matching worker and the format-editing release switch.
+- See `docs/explore-format-workflows-2026-10-08.md`. Deployment and authenticated
+  production acceptance remain pending.
+
+## 2026-10-05 Manual edit formatting and validation (local implementation)
+
+- The Trending Wall editor now keeps authored lines and blank-line spacing.
+  Manual save and optional shared PNG preview use a measured greedy wrap for
+  each explicit line rather than the generated-copy paragraph balancer.
+- Short entries such as “Graphite - code review” stay on one row when they fit.
+  Long lines wrap within their paragraph. Saved V13/V9 layouts mark
+  `textMode: manual` and retain per-block `gapAfterPx` through worker parsing,
+  SVG generation, and raster checks. The browser uses proportional scaling
+  for manual copy so its available width matches export.
+- Manual edits accept phrases and lists without the AI-only sentence-ending,
+  24–48-word, 5–8-row, promotional, or CTA restrictions. Nonempty copy,
+  the 600-character limit, exact content, fixed typography, measured fit,
+  and publishing safe-area checks remain mandatory. The manual box can expand
+  around its existing center, within that safe area, to retain paragraph spacing.
+- Generation and historical saved layouts keep their existing behavior.
+  Changing only color or position preserves their saved rows and typography.
+  Application and render worker deployment must accompany one another; no
+  database migration is needed. Authenticated production acceptance remains
+  pending. See `docs/wall-text-manual-edit-formatting-2026-10-05.md`.
+- Wall Edit has draggable left/right width handles plus a 40–94% width slider.
+  Manual layouts retain at least 3% horizontal edge padding; their existing
+  vertical publishing margins remain. Resizing rewraps authored lines without
+  changing the font or merging list entries. Width and position persist in the
+  creative edit JSON and exported overlay. Keyboard arrows work for movement
+  and width, Shift makes larger steps, and Escape cancels an active gesture.
+  Local browser checks at 196px, 277px, and 391px confirm the supplied heading
+  changes from three lines to two at 94%, while the five tools remain one row each.
+
+## 2026-10-02 Four specific writing corrections (local implementation)
+
+- Planner V19 and Writer V30 retain the concrete examples and explicitly
+  replace posting cadence with posting regularly or a regular posting schedule,
+  preserving whether the source describes a problem.
+- Both prompts remove empty openings and endings. A simple fact gets one
+  sentence; a second sentence is for a different supported detail or condition,
+  not a scene followed by the same point again.
+- Possible editing stays possible. When the source also requires approval
+  before publication, both conditions must remain explicit, even when an older
+  private plan omits approval. If the source actually requires editing, that
+  requirement is retained instead; approval is not invented when absent.
+- Multiple-account support does not establish publishing, simultaneous
+  publishing, bulk posting, a shared post, or a single click. Only capabilities
+  supported by the selected fact may be stated. Explicitly supported
+  simultaneous publishing remains valid.
+- These are instructions and examples inside the existing planner/writer
+  calls. No new AI reviewer, fact-approval UI, normalization stage, database
+  schema, or posting-approval workflow was added. Existing facts, fact IDs,
+  snapshots, 200-item target, chunking, word limits, typography, and layout
+  checks are unchanged by this correction.
+- Final focused testing generated 40 new planning ideas and accepted 38 of 38
+  written cards: 17 saved account inputs, 12 fresh-plan samples, and nine
+  targeted meaning probes. The four specified failures were absent in the final
+  sample; positive controls retained genuine editing and simultaneous-publishing
+  capabilities. All 196 regression checks passed on the final successful runs.
+  See `docs/wall-text-four-copy-fixes-test-2026-10-02.md` for intermediate
+  failures, examples, limits, and the test-process failure that passed on rerun.
+- This is a local test result, not a production deployment, full 200-item V19
+  generation, user-comprehension study, or guarantee that all AI slop is gone.
+
+## 2026-10-02 Concrete writing examples (local implementation)
+
+- Planner V18 and Writer V29 teach clear wording with paired weak/preferred
+  examples: irregular posting without an invented cause, explicit human
+  approval, and draft limits with their qualifications. The writer also
+  demonstrates appointment requests versus confirmed bookings.
+- Examples are style guidance, never additional evidence. Approved facts
+  control meaning, not verbatim wording. Both prompts silently edit their
+  output in the same request; no additional model stage was introduced.
+- Private plan wording is a draft. The writer must repair vague language or
+  unsupported explanations against the assigned fact. Instructions about
+  writing or claims must not leak into posts; real factual conditions remain.
+- The writer's higher-priority system message no longer asks for a literal
+  visible business anchor. It explicitly separates approved fact meaning,
+  restrictive qualification context, fallible private plans, and style examples.
+- Both initial planning and targeted plan repair receive the examples. Fact
+  IDs, snapshots, JSON schemas, the 200-item target, ten-item chunks, final
+  word limits, typography, layout, and reviewer routing are unchanged.
+- This is not a production deployment or a historical plan rewrite. Saved
+  older plans retain their wording; the updated writer can repair that wording
+  only within their approved fact snapshot. Live tests and editorial review
+  are required before claiming a measured clarity improvement.
+- Local evaluation completed a fresh 200-item account plan and 60 fixture
+  ideas. Final writing accepted 63 of 72 cards; nine exhausted on existing
+  safety-check false positives. Editorial review found some clearer wording
+  but also remaining filler, jargon, and inconsistent conditions. See
+  `docs/wall-text-concrete-examples-test-2026-10-02.md`; this is not an
+  unconditional production go-ahead or proof that AI slop is eliminated.
+
+## 2026-09-26 Complete planning ideas and condition handoff (local implementation)
+
+- Planner V17 permits one or two useful sentences per contentIdea, with a
+  60-word ceiling and the existing 400-character storage limit. It no longer
+  requires 8–14 words. A second sentence must add supported detail or a needed
+  condition, not filler. Initial generation, validation, and targeted repair
+  use the same contract. The 200-item target and ten-item chunks are unchanged.
+- Shared extraction instructions explicitly collect applicable conditions
+  from across source sentences and retain them in every standalone claim.
+- Writer V28 receives the immutable approved fact snapshot as
+  qualificationContext alongside its unchanged assignedBusinessFact. The
+  extra context can only restrict that selected claim, never authorize
+  another capability or benefit. Conditions still have to exist in the
+  approved snapshot; this does not recover absent source evidence.
+- Final Wall word limits, typography, layout, reviewer routing, fact IDs,
+  database schema, and existing saved content are unchanged. Prompt adherence
+  is not a deterministic semantic guarantee; live output review remains
+  necessary. These changes are local, not a deployment record.
+
+## 2026-09-25 Plain-language prompts (local implementation)
+
+- Website, typed-description, and mobile-app AI context extraction share a
+  system-level fact-writing contract. Factual descriptions use complete,
+  everyday sentences; categories, reader labels, and search phrases retain
+  their appropriate short forms. Rewrites preserve conditions and approval
+  requirements, omit unsupported meaning, and self-check in the same request.
+- Planner V16 retains one selected fact per idea and the existing JSON and
+  8–14-word idea contract. Clarity and supported meaning take priority over
+  optional situation focuses, concept lanes, and variety targets. Neutral
+  practical observations are valid; emotional conflict is not mandatory.
+  Initial generation and single-item repair share the clarity instructions.
+- Writer V27 asks for text understandable without the private plan, preserves
+  fact qualifications, and permits neutral observations. Repair instructions
+  address the reported issue; shortening is specific to measured layout fit.
+- This is a prompt-only generation change: no fact-rejection UI, normalization
+  pass, new database fields, reviewer-routing changes, or historical rewrites.
+  The fact snapshot, selected-fact safety checks, word range, 50px typography,
+  measured layout, and existing manual Business Context editing remain intact.
+- Existing contexts and 200-item plans retain their saved wording. New prompt
+  versions apply when the relevant generation is run; they do not establish
+  production deployment or measured improvement in reader comprehension.
+
+## 2026-09-25 Wall reference typography and range-only writing
+
+- New automatic Wall cards use the packaged **Arial Bold 700** face at a fixed
+  **50px** size, with the existing 1.10 line-height, 4px black outline, normal
+  tracking, and no shadow. The type size changed from 52px to 50px; the
+  line-height was intentionally not tightened.
+- The Writer receives only each candidate's inclusive 24–48 word range (or a
+  smaller measured maximum on a constrained layout). It has no preferred or
+  target word count, so it may write naturally anywhere inside that range.
+  Repairs reduce the maximum by four words when a measured fit fails.
+- `wall_text_generation_assignments.target_words` remains required by the
+  reservation RPC and historical rows. New reservations store their maximum
+  there solely as compatibility metadata; it is never sent to the Writer or
+  used to steer its copy length.
+- Existing V13 52px cards remain readable and valid without reflow. The new
+  persistence migration admits the 50px V13 layout alongside that legacy size.
+
+## 2026-09-14 Fact-grounded Wall V2
+
+- A new Wall reservation creates one immutable approved-business-fact snapshot
+  and assigns exactly one stable fact ID to each content slot. The snapshot and
+  assignment are saved in the server-owned assignment `focus_json`; candidate
+  indices cycle the available facts, so a request never needs a hard minimum
+  number of facts.
+- The V2 writer receives the snapshot and its selected fact, with the explicit
+  instruction: “Do not hallucinate. Generate based only on the information
+  available.” Private plan context may provide a human situation or tone, but
+  cannot add a product claim.
+- Deterministic validation requires a visible natural anchor from the assigned
+  fact, rejects owner-prohibited claims and unsupported high-risk automation,
+  precision, guarantee, or instant-result language, plus the existing grammar,
+  duplicate, CTA, and measured-layout checks. A compact anchor record is saved
+  with the rendered creative for auditability.
+- Eligible V2 fact-grounded cards do **not** make a separate AI Reviewer call.
+  A single approved fact can safely cycle across any number of new cards; a
+  new request with zero facts returns a clear Business Context-needed result
+  before it reserves work or calls a model. Pre-release/legacy reservations
+  retain their existing Reviewer path, so the rollout does not invalidate
+  in-flight work. Database triggers verify the saved fact snapshot and creative
+  anchor match the current immutable Business Profile version.
+
+## 2026-09-13 Active trial final-pack recovery
+
+The final trial pack consumes the last content-day allowance at reservation.
+Its generation and feed attachment can continue while the trial is active,
+using the existing owner-scoped feed ID and saved daily limit. Both unified
+feed reads/recovery and Wall plan publications pass this context. A new pack,
+another user's pack, or a pack outside the current trial cannot use this
+exception; expired trials still stop preparation. No extra quota is granted.
+
+## 2026-09-13 Wall copy range increased to 24-48 words
+
+- New automated Wall-of-Text copy uses an inclusive 24-48-word generation range
+  with a fixed 36-word target whenever the measured layout can support it. Video
+  duration still does not impose a separate word limit or reading-time gate.
+- Writer prompt V21, layout budgeting, deterministic validation, and repair
+  candidates all read the same range from `wall-text-copy-policy.ts`. The
+  fixed 52px typography and measured 5-8-line fit remain the authority when a
+  particular background has less available space.
+- This policy applies to newly generated or repaired copy. Existing saved
+  creatives retain their persisted text and layout until an explicit
+  regeneration or edit reflows them under the current contract.
+
+## 2026-09-13 Wall preview loading recovery
+
+- The three mounted Trending Wall cards preload their MP4 background data. A
+  card is ready after either `loadeddata` or `canplay` confirms current video
+  data and dimensions; a ready element detected after mount is accepted too.
+- The shared PNG remains independent from video readiness. Normal buffering
+  leaves the poster and text visible with a compact nonblocking status. A
+  full retry state appears only for a media error or after a 12-second active
+  preview timeout, and retry remounts the media element.
+
+## 2026-09-12 Copy length is independent of video duration
+
+- Product decision: six-second videos have no special word cap or reading-time
+  deadline. All supported durations use the same general generation range,
+  subject to actual layout fit. The source-video duration eligibility
+  rules are separate and unchanged.
+- Writer prompt V20 used the former 18–36-word range (raised from 12–26),
+  with a default target of 27 words where layout space permits. The same shared
+  range governed the editor save gate before the 2026-09-13 increase.
+- Writer prompt V19 and reviewer schema V9 removed duration from the copy and
+  review inputs. The reviewer checks clarity, one central thought and supported
+  natural language, without requiring reading to finish within one play.
+- Generation and legacy content validation no longer reject copy based on
+  estimated reading seconds. Older reservations are re-budgeted from the saved
+  layout, so old 15/16-word caps do not survive on retries. Fixed typography,
+  measured 5–8 lines, general length and quality checks remain enforced.
+- Regression coverage includes identical budgets at six and sixty seconds and
+  48-word, two-sentence copy completing the actual generator/layout pipeline on
+  a six-second job whose saved reservation previously allowed only 16 words.
+
+## 2026-09-12 Wall generation delivery repairs
+
+- Accepted candidates receive audio and user feed assignments immediately,
+  independently of later candidate rejection. Saving/publication settles for
+  every accepted sibling before a chunk failure releases its claim.
+- Replays recover completed-but-unpublished candidates before requesting more
+  copy. Trending reconciliation also publishes current, saved creatives with
+  missing user assignments, including survivors of older failed batches.
+  Existing saved/rejected decisions are preserved by idempotent upserts.
+- Failed generation assignments are detected before reading reserved-only plan
+  contexts. A retired idea takes terminal replacement instead of becoming a
+  retryable stale-context infrastructure error.
+- A generation result counts only its reservation's completed, published
+  creatives, including cards already decided while the writer was running.
+  Historical active cards neither inflate nor satisfy a daily delivery count.
+  Daily requests bypass the historical-library shortcut even without an early
+  plan hint. The app and worker retain the exact daily-count guard.
+- The initial sentence-pause budget repair was superseded by the product
+  decision above: there is no duration-based copy cap or reading-time gate.
+- `npm run test:wall-text` also runs behavioral regressions covering partial
+  publication, terminal replay, committed-save timeouts, delivery attribution,
+  preserved decisions, isolated publication failures and actual writer/layout
+  validation with mocked model responses. These are local implementation
+  changes; production acceptance requires deploying the app and checking the
+  authenticated Trending flow on the production domain.
+
+## 2026-09-11 Luna scene-card, writer, and reviewer pipeline
+
+- New Wall-of-Text planning defaults to **GPT-5.6 Luna / low reasoning**.
+  A five-pair evaluation found the scene-card contract tied at 50/50 compliant
+  ideas for low and medium, while low used materially fewer reasoning tokens.
+- Writing defaults to **GPT-5.6 Luna / medium reasoning**, followed by an
+  independent **GPT-5.6 Luna / medium reasoning** reviewer. The reviewer
+  checks for one concrete daily action, one central thought, natural spoken
+  language, and supported claims. Its original native-clip reading-time check
+  was removed by the 2026-09-12 product decision above.
+- The writer receives a layout-based 24–48-word budget, uses one or two
+  sentences, and rejects
+  semicolon-linked mini-stories. The fixed measured 5-8-row renderer remains
+  the visual source of truth; it does not insert line breaks into model copy.
+- Configure the six explicit `OPENAI_WALL_TEXT_*` variables in `.env.example`
+  in every app and AI-generation-worker deployment. A repair retry uses medium
+  reasoning by default and can be independently overridden with
+  `OPENAI_WALL_TEXT_WRITER_REPAIR_REASONING_EFFORT`.
 
 ## 2026-09-08 V12 compact reference typography
 

@@ -49,7 +49,7 @@ test("renders direct Explore videos with the Recreate action", () => {
   assert.match(workspace, /<video/);
   assert.match(workspace, /object-cover/);
   assert.match(workspace, />\s*Recreate\s*</);
-  assert.match(workspace, /exploreRecreate: "1"/);
+  assert.match(readFileSync(new URL("../explore/video-generation-link.ts", import.meta.url), "utf8"), /exploreRecreate: "1"/);
   assert.match(workspace, /sourceUrl: item\.videoUrl/);
   assert.doesNotMatch(
     workspace,

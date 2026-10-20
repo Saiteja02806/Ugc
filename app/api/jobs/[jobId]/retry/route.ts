@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { BillingAccessError } from "@/lib/billing/subscription-db";
 
 import { requireFirebaseUser } from "@/lib/firebase/server-auth";
-import { getPublicBackgroundJob } from "@/lib/jobs/background-job-contract";
+import { getPublicBackgroundJob, isRetryableBackgroundJob } from "@/lib/jobs/background-job-contract";
 import {
   assertBackgroundJobOwner,
   retryAndDispatchBackgroundJob,
@@ -28,6 +29,14 @@ export async function POST(
       return json({ ok: false, error: "Job was not found." }, 404);
     }
 
+    if (!isRetryableBackgroundJob(existing)) {
+      return json({
+        ok: false,
+        error: getPublicBackgroundJob(existing).error?.message ||
+          "This job cannot be retried. Start a new generation instead.",
+      }, 409);
+    }
+
     const missing = getMissingBackgroundJobCloudTasksEnvVars([
       existing.jobType,
     ]);
@@ -47,6 +56,9 @@ export async function POST(
 
     return json({ ok: true, job: getPublicBackgroundJob(job) }, 202);
   } catch (error) {
+    if (error instanceof BillingAccessError) {
+      return json({ ok: false, error: error.message }, error.status);
+    }
     const status = getAuthStatus(error);
 
     if (status) {

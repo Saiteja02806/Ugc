@@ -1,4 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { resolveStructure2HookTemplate } from "../../worker/src/lib/carousel-structure-2-hook-templates.ts";
+import { getCarouselHookTemplateMode } from "./hook-template-runtime";
+import {
+  canReadPreservedRetiredCarouselSlide,
+  isPreservedRetiredCarouselSource,
+} from "./historical-source-retirement.ts";
 
 import type { CarouselBusinessVisualProfileId } from "@/lib/carousel/business-visual-profile";
 import {
@@ -7,6 +13,11 @@ import {
   type CarouselContentFormatId,
   type CarouselHookFamilyId,
 } from "@/lib/carousel/content-grammar";
+import {
+  isCarouselHookTemplateId,
+  resolveCarouselStructure1CombinedFormat,
+  type CarouselHookTemplateId,
+} from "@/lib/carousel/hook-templates";
 import type {
   CarouselContentAssignment,
   CarouselPerformanceSelectionMode,
@@ -227,6 +238,8 @@ type CarouselGenerationRow = {
   generation_source: "auto_generated" | "manual";
   goal: string | null;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   id: string;
   origin_daily_feed_id: string | null;
   project_id: string;
@@ -279,6 +292,8 @@ type CarouselGenerationInsert = {
   generation_source?: "auto_generated" | "manual";
   goal?: string | null;
   hook_family_id?: string | null;
+  hook_template_id?: string | null;
+  hook_template_version?: number | null;
   origin_daily_feed_id?: string | null;
   project_id: string;
   renderer_version?: string | null;
@@ -370,6 +385,7 @@ export type CarouselSlideInsert = {
 };
 
 type CarouselExperimentBatchRow = {
+  hook_template_mode_snapshot?: "off" | "shadow" | "enabled" | null;
   batch_sequence: number;
   business_profile_id: string;
   business_profile_version: number;
@@ -407,6 +423,8 @@ type CarouselExperimentAssignmentRow = {
   format_selection_multiplier: number;
   format_version: number;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   hook_selection_mode: CarouselPerformanceSelectionMode | null;
   hook_selection_multiplier: number | null;
   id: string;
@@ -447,6 +465,8 @@ type CarouselExperimentAssignmentInsert = Partial<
     | "format_selection_multiplier"
     | "format_version"
     | "hook_family_id"
+    | "hook_template_id"
+    | "hook_template_version"
     | "hook_selection_mode"
     | "hook_selection_multiplier"
     | "rotation_candidate_format_id"
@@ -456,6 +476,10 @@ type CarouselExperimentAssignmentInsert = Partial<
 type CarouselDatabase = {
   public: {
     Functions: {
+      snapshot_carousel_hook_template_mode: {
+        Args: { p_batch_id: string; p_mode: string };
+        Returns: "off" | "shadow" | "enabled";
+      };
       fail_unqueued_carousel_preparation: {
         Args: {
           p_error_message: string;
@@ -477,6 +501,7 @@ type CarouselDatabase = {
           p_business_profile_id: string;
           p_business_profile_version: number;
           p_generation_batch_id: string;
+          p_requested_structures?: string[];
         };
         Returns: CarouselExperimentBatchRow[];
       };
@@ -696,6 +721,8 @@ export type CarouselGenerationRecord = {
   generationSource: "auto_generated" | "manual";
   goal: string | null;
   hookFamilyId: CarouselHookFamilyId | null;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   id: string;
   originDailyFeedId: string | null;
   projectId: string;
@@ -782,7 +809,7 @@ export class CarouselProductAssetConflictError extends Error {
 
 function isRuntimeSafeCategoryImageAsset(
   asset: CategoryImageAssetRow,
-): asset is CategoryImageAssetRow {
+): boolean {
   return (
     asset.status === "ready" &&
     asset.subject_review_status === "approved" &&
@@ -836,6 +863,27 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     throw new Error("Carousel generation has an invalid structure id.");
   }
 
+  const contentAssignedFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.content_assigned_format_id,
+  );
+  const contentFormatId = parseStructureFormatId(
+    row.structure_id,
+    row.content_format_id,
+  );
+  const hookFamilyId =
+    row.structure_id === "structure_1" &&
+    isCarouselHookFamilyId(row.hook_family_id)
+      ? row.hook_family_id
+      : null;
+  const hookOverlay = resolveStoredStructure1HookOverlay({
+    contentFormatId,
+    hookFamilyId,
+    hookTemplateId: row.hook_template_id,
+    hookTemplateVersion: row.hook_template_version,
+    structureId: row.structure_id,
+  });
+
   return {
     availableOnLocalDate: row.available_on_local_date,
     businessProfileId: row.business_profile_id,
@@ -846,15 +894,9 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     carouselExperimentBatchId: row.carousel_experiment_batch_id,
     categorySlug: row.category_slug,
     contentAngle: row.content_angle,
-    contentAssignedFormatId: parseStructureFormatId(
-      row.structure_id,
-      row.content_assigned_format_id,
-    ),
+    contentAssignedFormatId,
     contentAudienceId: row.content_audience_id,
-    contentFormatId: parseStructureFormatId(
-      row.structure_id,
-      row.content_format_id,
-    ),
+    contentFormatId,
     contentFormatVersion: row.content_format_version,
     contentGoalId: row.content_goal_id,
     contentGrammarVersion: row.content_grammar_version,
@@ -873,11 +915,9 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     generationBatchId: row.generation_batch_id,
     generationSource: row.generation_source,
     goal: row.goal,
-    hookFamilyId:
-      row.structure_id === "structure_1" &&
-      isCarouselHookFamilyId(row.hook_family_id)
-      ? row.hook_family_id
-      : null,
+    hookFamilyId,
+    hookTemplateId: hookOverlay?.id ?? null,
+    hookTemplateVersion: hookOverlay?.version ?? null,
     id: row.id,
     originDailyFeedId: row.origin_daily_feed_id,
     projectId: row.project_id,
@@ -892,6 +932,37 @@ function mapGeneration(row: CarouselGenerationRow): CarouselGenerationRecord {
     userId: row.user_id,
     websiteAnalysisId: row.website_analysis_id,
   };
+}
+
+function resolveStoredStructure1HookOverlay(params: {
+  contentFormatId: CarouselStructureFormatId | null;
+  hookFamilyId: CarouselHookFamilyId | null;
+  hookTemplateId: string | null;
+  hookTemplateVersion: number | null;
+  structureId: CarouselStructureId;
+}) {
+  if (params.structureId === "structure_2" && isCarouselStructure2FormatId(params.contentFormatId)) {
+    return resolveStructure2HookTemplate({ storyFormatId: params.contentFormatId,
+      hookTemplateId: params.hookTemplateId, hookTemplateVersion: params.hookTemplateVersion }).template;
+  }
+  if (
+    params.structureId !== "structure_1" ||
+    !isCarouselContentFormatId(params.contentFormatId) ||
+    !params.hookFamilyId
+  ) {
+    return null;
+  }
+
+  try {
+    return resolveCarouselStructure1CombinedFormat({
+      contentFormatId: params.contentFormatId,
+      hookFamilyId: params.hookFamilyId,
+      hookTemplateId: params.hookTemplateId,
+      hookTemplateVersion: params.hookTemplateVersion,
+    }).hookTemplate;
+  } catch {
+    return null;
+  }
 }
 
 function mapSlide(row: CarouselSlideRow): CarouselSlideRecord {
@@ -921,11 +992,11 @@ function mapSlide(row: CarouselSlideRow): CarouselSlideRecord {
   };
 }
 
-async function getRuntimeSafeCategoryImageAssetIds(assetIds: string[]) {
+async function getCarouselSlideSourceAssets(assetIds: string[]) {
   const uniqueAssetIds = Array.from(new Set(assetIds.filter(Boolean)));
 
   if (uniqueAssetIds.length === 0) {
-    return new Set<string>();
+    return new Map<string, CategoryImageAssetRow>();
   }
 
   const { data, error } = await getSupabaseServerClient()
@@ -937,26 +1008,40 @@ async function getRuntimeSafeCategoryImageAssetIds(assetIds: string[]) {
     throw new Error(`Could not verify carousel image safety: ${error.message}`);
   }
 
-  return new Set(
-    (data ?? [])
-      .filter(isRuntimeSafeCategoryImageAsset)
-      .map((asset) => asset.id),
-  );
+  return new Map((data ?? []).map((asset) => [asset.id, asset]));
 }
 
-async function mapRuntimeSafeSlides(rows: CarouselSlideRow[]) {
-  const safeAssetIds = await getRuntimeSafeCategoryImageAssetIds(
+async function mapRuntimeSafeSlides(
+  rows: CarouselSlideRow[],
+  completedCarouselIds: ReadonlySet<string>,
+) {
+  const assetsById = await getCarouselSlideSourceAssets(
     rows
       .map((row) => row.category_image_asset_id)
       .filter((assetId): assetId is string => Boolean(assetId)),
   );
 
   return rows
-    .filter(
-      (row) =>
-        Boolean(row.category_image_asset_id) &&
-        safeAssetIds.has(row.category_image_asset_id as string),
-    )
+    .filter((row) => {
+      const asset = row.category_image_asset_id
+        ? assetsById.get(row.category_image_asset_id)
+        : null;
+      return Boolean(
+        asset &&
+          (isRuntimeSafeCategoryImageAsset(asset) ||
+            (asset.library_asset_id !== null &&
+              asset.asset_role !== null &&
+              canReadPreservedRetiredCarouselSlide({
+                asset,
+                generationStatus: completedCarouselIds.has(
+                  row.carousel_generation_id,
+                )
+                  ? "completed"
+                  : "uncompleted",
+                slide: row,
+              }))),
+      );
+    })
     .map(mapSlide);
 }
 
@@ -1295,6 +1380,8 @@ export async function createCarouselGeneration(input: {
       generation_source: input.generationSource,
       goal: input.goal ?? null,
       hook_family_id: assignment.hookFamilyId,
+      hook_template_id: assignment.hookTemplateId,
+      hook_template_version: assignment.hookTemplateVersion,
       origin_daily_feed_id: input.originDailyFeedId ?? null,
       project_id: input.projectId,
       selected_angle: input.selectedAngle ?? null,
@@ -1344,11 +1431,44 @@ export async function failUnqueuedCarouselPreparation(params: {
   };
 }
 
+export async function listActiveCarouselCategoryHooks(categorySlug: string, assetIds?: string[]) {
+  if (!["gym", "food", "productivity", "dating", "travel", "skin"].includes(categorySlug)) {
+    throw new Error("Unsupported Carousel image category.");
+  }
+  const ids = assetIds ? Array.from(new Set(assetIds.filter(Boolean))) : undefined;
+  if (ids?.length === 0) return [];
+  let query = getSupabaseServerClient()
+    .from(CATEGORY_IMAGE_ASSETS_TABLE)
+    .select("id,base_url,width,height,source_filename,source_file_sha256")
+    .or(`category_slug.eq.${categorySlug},source_metadata->reviewedRoleCategories.cs.["${categorySlug}"]`)
+    .eq("asset_role", "hook")
+    .is("owner_business_profile_id", null)
+    .not("library_asset_id", "is", null)
+    .eq("is_active", true).eq("status", "ready").eq("subject_review_status", "approved")
+    .is("runtime_exclusion_reason", null)
+    .order("id");
+  if (ids) query = query.in("id", ids);
+  const { data, error } = await query;
+  if (error) throw new Error(`Could not load Carousel category hooks: ${error.message}`);
+  return (data ?? []).flatMap(asset => {
+    if (!asset.width || !asset.height || asset.width <= 0 || asset.height <= 0) return [];
+    return [{
+      id: asset.id, url: asset.base_url, name: asset.source_filename || "Hook background",
+      width: asset.width, height: asset.height, sha256: asset.source_file_sha256,
+    }];
+  });
+}
+
 export async function countActiveCarouselRoleAssets(categorySlug: string) {
+  if (!["gym", "food", "productivity", "dating", "travel", "skin"].includes(categorySlug)) {
+    throw new Error("Unsupported Carousel image category.");
+  }
   const { data, error } = await getSupabaseServerClient()
     .from(CATEGORY_IMAGE_ASSETS_TABLE)
     .select("asset_role")
-    .eq("category_slug", categorySlug)
+    .or(`category_slug.eq.${categorySlug},source_metadata->reviewedRoleCategories.cs.["${categorySlug}"]`)
+    .is("owner_business_profile_id", null)
+    .not("library_asset_id", "is", null)
     .eq("is_active", true)
     .eq("status", "ready")
     .eq("subject_review_status", "approved")
@@ -1422,6 +1542,7 @@ export async function reserveCarouselRoleAssets(params: {
 }
 
 export type CarouselExperimentBatchRecord = {
+  hookTemplateModeSnapshot?: "off" | "shadow" | "enabled" | null;
   batchSequence: number;
   businessProfileId: string;
   businessProfileVersion: number;
@@ -1457,6 +1578,8 @@ export type CarouselExperimentAssignmentRecord = {
   hookFamilyId: CarouselHookFamilyId | null;
   hookSelectionMode: CarouselPerformanceSelectionMode | null;
   hookSelectionMultiplier: number | null;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   id: string;
   rotationCandidateFormatId: CarouselStructureFormatId;
   slotIndex: number;
@@ -1470,19 +1593,46 @@ export async function reserveCarouselExperimentBatches(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   generationBatchId: string;
+  requestedStructureIds?: readonly CarouselStructureId[];
 }) {
-  const { data, error } = await getSupabaseServerClient().rpc(
-    "reserve_carousel_experiment_batches",
-    {
+  const reservationArgs = {
       p_batch_count: params.batchCount,
       p_business_profile_id: params.businessProfileId,
       p_business_profile_version: params.businessProfileVersion,
       p_generation_batch_id: params.generationBatchId,
-    },
+      ...(params.requestedStructureIds
+        ? { p_requested_structures: [...params.requestedStructureIds] }
+        : {}),
+  };
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "reserve_carousel_experiment_batches",
+    reservationArgs,
   );
 
   if (error) {
     throw new Error(`Could not reserve Carousel experiment batches: ${error.message}`);
+  }
+
+  return Promise.all((data ?? []).map(async (row) => {
+    const { data: mode, error: modeError } = await getSupabaseServerClient().rpc(
+      "snapshot_carousel_hook_template_mode", { p_batch_id: row.id, p_mode: getCarouselHookTemplateMode() },
+    );
+    if (modeError) throw new Error(`Could not snapshot Carousel hook mode: ${modeError.message}`);
+    return { ...mapExperimentBatch(row), hookTemplateModeSnapshot: mode };
+  }));
+}
+
+export async function listCarouselExperimentBatchesByGenerationBatchId(
+  generationBatchId: string,
+) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(CAROUSEL_EXPERIMENT_BATCHES_TABLE)
+    .select("*")
+    .eq("generation_batch_id", generationBatchId)
+    .order("batch_sequence", { ascending: true });
+
+  if (error) {
+    throw new Error(`Could not load Carousel experiment batches: ${error.message}`);
   }
 
   return (data ?? []).map(mapExperimentBatch);
@@ -1513,6 +1663,8 @@ export async function upsertCarouselExperimentAssignments(params: {
       hook_family_id: normalized.hookFamilyId,
       hook_selection_mode: normalized.hookSelectionMode,
       hook_selection_multiplier: normalized.hookSelectionMultiplier,
+      hook_template_id: normalized.hookTemplateId,
+      hook_template_version: normalized.hookTemplateVersion,
       rotation_candidate_format_id: normalized.rotationCandidateFormatId,
       slot_index: slotIndex,
       status: "reserved" as const,
@@ -1605,6 +1757,7 @@ function mapExperimentBatch(
   }
 
   return {
+    hookTemplateModeSnapshot: row.hook_template_mode_snapshot ?? null,
     batchSequence: row.batch_sequence,
     businessProfileId: row.business_profile_id,
     businessProfileVersion: row.business_profile_version,
@@ -1653,6 +1806,34 @@ function mapExperimentAssignment(
       : row.hook_family_id === null &&
         row.hook_selection_mode === null &&
         row.hook_selection_multiplier === null;
+  const effectiveFormatId = actualFormatId ?? assignedFormatId;
+  let combinedFormat: ReturnType<
+    typeof resolveCarouselStructure1CombinedFormat
+  > | null = null;
+
+  if (
+    row.structure_id === "structure_1" &&
+    isCarouselContentFormatId(effectiveFormatId) &&
+    isCarouselHookFamilyId(row.hook_family_id)
+  ) {
+    try {
+      combinedFormat = resolveCarouselStructure1CombinedFormat({
+        contentFormatId: effectiveFormatId,
+        hookFamilyId: row.hook_family_id,
+        hookTemplateId: row.hook_template_id,
+        hookTemplateVersion: row.hook_template_version,
+      });
+    } catch {
+      combinedFormat = null;
+    }
+  }
+  const structure2Template = row.structure_id === "structure_2" && isCarouselStructure2FormatId(effectiveFormatId)
+    ? resolveStructure2HookTemplate({ storyFormatId: effectiveFormatId, hookTemplateId: row.hook_template_id, hookTemplateVersion: row.hook_template_version }).template
+    : null;
+  const hookTemplateFieldsAreValid =
+    row.structure_id === "structure_1"
+      ? combinedFormat !== null
+      : true; // Optional unknown/stale templates degrade to native guidance.
 
   if (
     assignedFormatId === null ||
@@ -1660,7 +1841,8 @@ function mapExperimentAssignment(
     rotationCandidateFormatId === null ||
     !isCarouselPerformanceSelectionMode(row.format_selection_mode) ||
     !isCarouselStructureId(row.structure_id) ||
-    !hookFieldsAreValid
+    !hookFieldsAreValid ||
+    !hookTemplateFieldsAreValid
   ) {
     throw new Error("Carousel experiment assignment has an invalid grammar id.");
   }
@@ -1678,6 +1860,8 @@ function mapExperimentAssignment(
       : null,
     hookSelectionMode: row.hook_selection_mode,
     hookSelectionMultiplier: row.hook_selection_multiplier,
+    hookTemplateId: (combinedFormat?.hookTemplate ?? structure2Template)?.id ?? null,
+    hookTemplateVersion: (combinedFormat?.hookTemplate ?? structure2Template)?.version ?? null,
     id: row.id,
     rotationCandidateFormatId,
     slotIndex: row.slot_index,
@@ -1708,6 +1892,8 @@ type NormalizedStructureContentAssignment = {
   hookFamilyId: CarouselHookFamilyId | null;
   hookSelectionMode: CarouselPerformanceSelectionMode | null;
   hookSelectionMultiplier: number | null;
+  hookTemplateId: CarouselHookTemplateId | null;
+  hookTemplateVersion: number | null;
   rotationCandidateFormatId: CarouselStructureFormatId;
   selectorVersion: string;
 };
@@ -1721,6 +1907,13 @@ function normalizeStructureContentAssignment(params: {
       throw new Error("Structure 1 requires a Structure 1 content assignment.");
     }
 
+    const combinedFormat = resolveCarouselStructure1CombinedFormat({
+      contentFormatId: params.assignment.contentFormatId,
+      hookFamilyId: params.assignment.hookFamilyId,
+      hookTemplateId: params.assignment.hookTemplateId,
+      hookTemplateVersion: params.assignment.hookTemplateVersion,
+    });
+
     return {
       actualFormatId: params.assignment.contentFormatId,
       assignedFormatId: params.assignment.assignedContentFormatId,
@@ -1732,6 +1925,8 @@ function normalizeStructureContentAssignment(params: {
       hookFamilyId: params.assignment.hookFamilyId,
       hookSelectionMode: params.assignment.hookSelectionMode,
       hookSelectionMultiplier: params.assignment.hookSelectionMultiplier,
+      hookTemplateId: combinedFormat.hookTemplate?.id ?? null,
+      hookTemplateVersion: combinedFormat.hookTemplate?.version ?? null,
       rotationCandidateFormatId:
         params.assignment.rotationCandidateContentFormatId,
       selectorVersion: params.assignment.selectorVersion,
@@ -1753,6 +1948,8 @@ function normalizeStructureContentAssignment(params: {
     hookFamilyId: null,
     hookSelectionMode: null,
     hookSelectionMultiplier: null,
+    hookTemplateId: null,
+    hookTemplateVersion: null,
     rotationCandidateFormatId:
       params.assignment.rotationCandidateStoryFormatId,
     selectorVersion: params.assignment.selectorVersion,
@@ -1855,7 +2052,10 @@ export async function getCarouselGenerationStatus(carouselId: string) {
 
   return {
     generation,
-    slides: await mapRuntimeSafeSlides(data ?? []),
+    slides: await mapRuntimeSafeSlides(
+      data ?? [],
+      new Set(generation.status === "completed" ? [generation.id] : []),
+    ),
   };
 }
 
@@ -1875,6 +2075,8 @@ export async function reserveCarouselContentAssignment(params: {
         params.assignment.historySnapshot as unknown as Json,
       content_selector_version: params.assignment.selectorVersion,
       hook_family_id: params.assignment.hookFamilyId,
+      hook_template_id: params.assignment.hookTemplateId,
+      hook_template_version: params.assignment.hookTemplateVersion,
       updated_at: getNowIso(),
     })
     .eq("id", params.carouselId)
@@ -1886,6 +2088,7 @@ export async function reserveCarouselContentAssignment(params: {
   }
 }
 
+/** Resolve only IDs from an owned, readable existing Carousel's source slides. */
 export async function getCarouselEditBackgrounds(assetIds: string[]) {
   const ids = Array.from(new Set(assetIds.filter(Boolean)));
 
@@ -1895,7 +2098,9 @@ export async function getCarouselEditBackgrounds(assetIds: string[]) {
 
   const { data, error } = await getSupabaseServerClient()
     .from(CATEGORY_IMAGE_ASSETS_TABLE)
-    .select("id,base_url,is_active,runtime_exclusion_reason,status,subject_review_status")
+    .select(
+      "id,base_url,is_active,runtime_exclusion_reason,source_metadata,status,subject_review_status",
+    )
     .in("id", ids);
 
   if (error) {
@@ -1903,10 +2108,11 @@ export async function getCarouselEditBackgrounds(assetIds: string[]) {
   }
 
   return (data ?? []).flatMap((asset) =>
-    asset.is_active &&
-    asset.status === "ready" &&
-    asset.subject_review_status === "approved" &&
-    asset.runtime_exclusion_reason === null
+    (asset.is_active &&
+      asset.status === "ready" &&
+      asset.subject_review_status === "approved" &&
+      asset.runtime_exclusion_reason === null) ||
+    isPreservedRetiredCarouselSource(asset)
       ? [{ id: asset.id, url: asset.base_url }]
       : [],
   ) satisfies CarouselEditBackground[];
@@ -2194,7 +2400,14 @@ async function getCarouselGenerationStatusesForRows(
     throw new Error(`Could not load carousel batch slides: ${slideError.message}`);
   }
 
-  const safeSlides = await mapRuntimeSafeSlides(slideRows ?? []);
+  const safeSlides = await mapRuntimeSafeSlides(
+    slideRows ?? [],
+    new Set(
+      generations
+        .filter((generation) => generation.status === "completed")
+        .map((generation) => generation.id),
+    ),
+  );
   const slidesByCarouselId = new Map<string, CarouselSlideRecord[]>();
 
   for (const slide of safeSlides) {
@@ -2369,6 +2582,7 @@ export async function getAutoCarouselGenerationStatusPageForUser(params: {
   businessProfileVersion: number;
   cursor?: AutoCarouselGenerationStatusPageCursor | null;
   limit: number;
+  originDailyFeedId?: string;
   projectId: string;
   statuses: readonly CarouselGenerationStatus[];
   userId: string;
@@ -2395,6 +2609,10 @@ export async function getAutoCarouselGenerationStatusPageForUser(params: {
     .or(
       `available_on_local_date.is.null,available_on_local_date.lte.${params.availableOnOrBeforeLocalDate}`,
     );
+
+  if (params.originDailyFeedId) {
+    query = query.eq("origin_daily_feed_id", params.originDailyFeedId);
+  }
 
   if (params.cursor) {
     query = query.or(
@@ -2653,6 +2871,9 @@ function mapRecentContentSummary(
       : isCarouselHookFamilyId(strategy?.hookFamilyId)
         ? strategy.hookFamilyId
         : null,
+    hookTemplateId: isCarouselHookTemplateId(row.hook_template_id)
+      ? row.hook_template_id
+      : null,
     topic:
       row.content_topic ??
       getJsonString(strategy?.topic) ??

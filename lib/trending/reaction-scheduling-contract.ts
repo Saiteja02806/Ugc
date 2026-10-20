@@ -8,6 +8,7 @@ import { z } from "zod";
 export const ReactionScheduleRequestSchema = z
   .object({
     assignmentId: z.string().uuid(),
+    requestKey: z.string().uuid().optional(),
     caption: z.string().trim().max(5000).optional(),
     scheduledDate: z.string().trim().max(32).optional(),
     scheduledTime: z.string().trim().max(32).optional(),
@@ -34,6 +35,7 @@ export type ReactionScheduleRequest = z.infer<
 
 export type ReactionScheduleRequestInput = {
   assignmentId: string;
+  requestKey?: string;
   caption?: string;
   scheduledDate?: string;
   scheduledTime?: string;
@@ -51,6 +53,7 @@ export function createReactionScheduleRequest(
 ): ReactionScheduleRequest {
   return ReactionScheduleRequestSchema.parse({
     assignmentId: input.assignmentId,
+    ...(input.requestKey ? { requestKey: input.requestKey } : {}),
     caption: input.caption ?? "",
     scheduledDate: input.scheduledDate,
     scheduledTime: input.scheduledTime,

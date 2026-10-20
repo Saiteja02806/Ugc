@@ -1,0 +1,342 @@
+/* Shared frame and controls for the classic Explore workflows. */
+.shell { background: var(--background); color: var(--foreground); }
+
+/* Inherit the app theme so Explore and its workflows use the same surfaces. */
+
+.header { min-height: 64px; }
+.layout { display: grid; min-width: 0; flex: 1; gap: 12px; padding: 0 16px 16px; }
+
+/* Normal page flow, not a fixed-height pane with a second scrollbar. */
+.controls {
+  display: flex;
+  min-width: 0;
+  align-self: start;
+  flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  border-radius: 16px;
+  background: var(--card);
+}
+.controlContent { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 14px 16px; }
+.sectionTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent); }
+.fourSectionTabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.sectionTab { position: relative; min-width: 0; padding: 12px 4px; border: 0; border-radius: 6px 6px 0 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
+.sectionTab:hover { color: var(--foreground); background: var(--card-muted); }
+.sectionTab[data-active] { color: var(--foreground-strong); }
+.sectionTab[data-active]::after { position: absolute; content: ""; inset: auto 8px 0; height: 2px; background: var(--primary); border-radius: 2px; }
+.sectionTab:focus-visible, .sectionPanel:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.sectionPanel { min-width: 0; }
+.sectionPanel[hidden], .sectionPanel[data-ending-style] { display: none; }
+.sectionPanel:not([hidden]) { animation: section-reveal 160ms ease-out; }
+.sectionHelp { margin: 0; font-size: 12px; line-height: 20px; color: var(--muted); }
+/* Buttons retain the shared component's corners, hover and focus treatment. */
+.scheduleDateTime input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; box-shadow: none; }
+.actionFooter { flex-shrink: 0; margin-top: auto; border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent); padding: 10px 16px 14px; }
+.actionFooter p { margin: 0 0 8px; line-height: 18px; }
+.actionFooter :global(.sr-only) { margin: 0; }
+.primaryAction { width: 100%; height: 44px; font-size: 14px; font-weight: 600; border-radius: 12px; }
+
+.composer { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.generationFields { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.generationFields[hidden] { display: none; }
+.sourceSection { display: flex; min-width: 0; flex: none; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.sourceModes { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card-muted); }
+.sourceModes > button { min-width: 0; min-height: 36px; height: auto; padding: 6px 4px; font-size: 12px; white-space: normal; border-radius: 8px; }
+.sourceModes > button[aria-pressed="true"] { background: var(--card); color: var(--foreground-strong); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent); }
+.sourceSection[data-source-presentation="focused"] .sourceModes { width: fit-content; max-width: 100%; grid-template-columns: repeat(2, minmax(96px, auto)); padding: 3px; border: 1px solid var(--border); border-radius: 12px; background: transparent; }
+.sourceSection[data-source-presentation="focused"] .sourceModes > button { min-height: 36px; padding-inline: 12px; font-size: 13px; border-radius: 8px; }
+.sourceSection[data-source-presentation="focused"] .sourceModes > button[aria-pressed="true"] { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 65%, transparent); }
+.existingSources { display: flex; flex-wrap: wrap; gap: 8px; }
+.existingSources > button { min-height: 36px; font-size: 12px; padding-inline: 12px; border-radius: 10px; }
+.existingSources > button[aria-pressed="true"] { background: var(--card-muted); color: var(--foreground-strong); }
+.sourceUpload { width: 100%; min-height: 120px; height: auto; flex-direction: column; gap: 8px; padding: 16px 8px; white-space: normal; background: var(--card-muted); border-radius: 12px; }
+.fourSectionTabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.videoStartActions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.videoStartActions > button, .demoSourceActions > button { display: flex; min-width: 0; min-height: 104px; height: auto; flex-direction: column; gap: 12px; padding: 16px 8px; background: var(--card-muted); font-size: 12px; white-space: normal; text-align: center; border-radius: 14px; }
+.demoSourceActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.demoSequence { width: 100%; max-width: 960px; margin-inline: auto; padding: 28px; }
+.demoPreviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+.sequencePlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 55dvh; align-self: center; border: 1px solid var(--border); border-radius: 12px; object-fit: contain; }
+.sequencePlaceholder { display: flex; width: 100%; min-height: 180px; height: auto; aspect-ratio: 16 / 9; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px dashed var(--border); border-radius: 12px; padding: 16px; font-size: 13px; color: var(--muted); }
+.sequencePlaceholder .videoStartActions > button { min-height: 88px; }
+@media (max-width: 767px) {
+  .demoSequence { padding: 20px 16px; }
+  .demoPreviewGrid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}
+.sourceSummary { display: flex; min-width: 0; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--card-muted); }
+.sourceSummary > button { flex-shrink: 0; }
+.sourcePreview { display: flex; min-width: 0; width: 100%; max-width: 640px; margin-inline: auto; flex-direction: column; align-items: center; gap: 12px; }
+.sourcePreview > p { max-width: 100%; }
+.sourcePlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 60dvh; object-fit: contain; border-radius: 8px; background: transparent; }
+.instructionsField { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.composer .referencePromptSection { min-width: 0; }
+.composer .referencePromptSection > div > span { font-size: 13px; line-height: 20px; }
+.composer .referencePromptSection .referencePromptAction { width: auto; min-height: 32px; padding: 4px 6px; font-size: 12px; line-height: 18px; font-weight: 400; }
+.composer .referencePromptSection textarea { font-size: 13px; line-height: 20px; }
+@media (pointer: coarse) { .composer .referencePromptSection .referencePromptAction { min-height: 44px; } }
+.composer :global(.sr-only), .composition :global(.sr-only) { margin: 0; }
+.sectionTitle { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.02em; }
+
+.prompt {
+  display: block;
+  width: 100%;
+  height: 72px;
+  resize: none;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 8px;
+  background: var(--card-muted);
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--foreground);
+  scrollbar-width: thin;
+}
+.prompt::placeholder { color: var(--muted); }
+/* Example hints are desktop-only in both workflows; typed instructions stay unchanged. */
+.composer .prompt::placeholder { font-size: 0; opacity: 0; }
+.prompt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.composer .instructionsField .promptWithAttachments { min-height: 144px; height: 160px; padding-bottom: 72px; }
+
+/* One prompt field, with a reserved footer for attachments and the rewrite action. */
+.promptWithAction {
+  padding-bottom: 64px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 8px;
+  background: var(--card-muted);
+}
+.promptWithAction:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.composer .instructionsField .promptWithAction .prompt {
+  height: 160px;
+  min-height: 144px;
+  border: 0;
+  padding-bottom: 10px;
+  background: transparent;
+}
+.promptWithAction .prompt:focus-visible { outline: none; }
+
+/* First row: Model + Duration. Second row: Quality + Videos + Ratio. */
+.settingsGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px 10px; }
+.settingField { display: flex; min-width: 0; flex-direction: column; gap: 4px; grid-column: span 2; }
+.settingField:nth-child(-n+2) { grid-column: span 3; }
+.settingsGrid.imageSettings > .settingField { grid-column: span 3; }
+.settingsGrid.imageSettings > .settingField:first-child { grid-column: 1 / -1; }
+.settingField > span { font-size: 12px; line-height: 16px; }
+.settingField > button, .settingField > .referenceDuration {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  justify-content: space-between;
+  border-radius: 10px;
+  padding-inline: 8px;
+  font-size: 14px;
+  background: var(--card-muted);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 45%, transparent);
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+.settingField > .referenceDuration { display: flex; align-items: center; justify-content: flex-start; gap: 6px; }
+.referenceTimingHint { color: var(--muted); font-size: 11px; line-height: 16px; }
+.settingField > button:hover { box-shadow: inset 0 0 0 1px var(--muted); }
+.settingField > button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.settingField > button > svg { flex-shrink: 0; width: 12px; }
+
+.referenceGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.classicReferences { display: grid; gap: 8px; margin-bottom: 4px; }
+.classicReferences h3 { color: var(--muted); font-size: 13px; font-weight: 400; }
+.classicReference { min-width: 0; }
+.classicReference > div { margin-top: 0; }
+.classicReference button:is([data-state="empty"], [data-state="available"]) { width: 100%; min-height: 104px; height: auto; aspect-ratio: 1; flex-direction: column; gap: 10px; background: var(--card-muted); }
+.classicReference button:is([data-state="empty"], [data-state="available"]) > svg:first-child { width: 22px; height: 22px; }
+.classicReference button:is([data-state="empty"], [data-state="available"]) > svg:last-child { display: none; }
+.classicReference button:is([data-state="empty"], [data-state="available"]) > span { font-size: 12px; line-height: 18px; }
+.primaryAction[data-compact="true"] { width: auto; min-width: 128px; min-height: 36px; height: 36px; padding: 0 14px; font-size: 13px; }
+@media (pointer: coarse) { .primaryAction[data-compact="true"] { min-height: 44px; height: 44px; } }
+.referenceButton {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 12px;
+  padding: 8px;
+  background: var(--card-muted);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.referenceButton:hover, .editUploadButton:not(:disabled):hover { border-color: var(--muted); background: color-mix(in srgb, var(--foreground) 3%, var(--card-muted)); }
+.referenceButton[data-state="selected"], .uploadCard[data-selected="true"] .editUploadButton { border-color: var(--primary); }
+.referenceButton[data-state="selected"] > svg:first-child { color: var(--primary); }
+.referenceButton[data-state="error"] { border-color: var(--destructive); }
+.referenceButton[data-state="loading"] { cursor: progress; }
+.referenceLabel { position: relative; max-width: 100%; white-space: normal; text-align: center; font-size: 12px; line-height: 16px; font-weight: 500; }
+.referenceMedia, .referenceAvailable { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.referenceAvailable { filter: blur(2px); opacity: 0.35; }
+.referenceButton:has(.referenceAvailable) .referenceLabel { color: var(--foreground-strong); text-shadow: 0 1px 3px #000; }
+.referenceButton:has(.referenceMedia) .referenceLabel { position: absolute; inset: auto 0 0; padding: 6px 4px; background: #000b; color: #fff; }
+.referenceCheck { position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; border-radius: 4px; background: var(--primary); color: var(--primary-foreground); padding: 2px; }
+.floating { max-height: calc(100dvh - 4rem); width: min(22rem, calc(100vw - 2rem)); overflow-y: auto; overscroll-behavior: contain; border-radius: 12px; padding: 16px; }
+/* Studio's portaled-menu rule is shared with Recreate; override only these routes. */
+:global(body):has(.shell) :global([data-slot="popover-content"][data-slot]) { border-radius: 12px; }
+
+.composition, .scheduling { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+.editMediaGrid { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+.uploadCard { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.uploadCard[hidden] { display: none; }
+.uploadCard > .finishRow { min-height: 24px; gap: 4px; }
+.uploadCard h3 { min-width: 0; }
+.uploadCard p { margin: 0; }
+.editUploadButton { position: relative; width: 100%; height: 160px; min-height: 144px; min-width: 0; flex-direction: column; gap: 10px; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 14px; background: var(--card-muted); padding: 12px 6px; font-size: 13px; font-weight: 500; white-space: normal; transition: border-color 160ms ease, background-color 160ms ease; }
+.editUploadButton.editAudioButton { width: fit-content; height: auto; min-height: 34px; flex: none; flex-direction: row; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 20px; }
+.demoPreviewAction { width: fit-content; height: auto; min-height: 34px; flex: none; flex-direction: row; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 20px; }
+.editAudioButton > svg { width: 16px; height: 16px; }
+.demoSourceCards { display: flex; flex-wrap: wrap; gap: 12px; }
+.demoSourceCards > .editUploadButton { width: 128px; height: 128px; min-height: 128px; aspect-ratio: 1; border-radius: 14px; }
+.iconWell { display: flex; width: 36px; height: 36px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 50%; background: var(--card); color: var(--foreground); }
+.demoAudioDetails { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.helpButton { width: 36px; height: 36px; flex-shrink: 0; color: var(--muted); }
+.helpButton:hover { color: var(--foreground); }
+.editGroup { display: flex; min-width: 0; flex-direction: column; gap: 8px; border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent); padding-top: 14px; }
+.composition > .editGroup { padding-top: 12px; }
+.scheduleField { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+.scheduleField > button { width: 100%; justify-content: space-between; background: var(--card-muted); }
+.platformGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.platformButton { position: relative; min-width: 0; height: 68px; flex-direction: column; gap: 6px; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 12px; background: var(--card-muted); color: var(--foreground); font-size: 12px; transition: border-color 160ms ease, background-color 160ms ease; }
+.platformButton:hover { border-color: var(--muted); }
+.platformButton[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card-muted)); }
+.platformButton[data-platform="tiktok"] > svg:first-child { fill: var(--foreground); }
+.scheduleDateTime { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.scheduleDateTime input { min-width: 0; height: 36px; background: var(--card-muted); padding-inline: 6px; font-size: 12px; }
+:global(.dark) .scheduleDateTime input { color-scheme: dark; }
+.scheduling .prompt { height: 104px; }
+.finishRow { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; }
+.subtitleChoices { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.subtitleChoice { display: flex; min-width: 0; min-height: 72px; flex-direction: column; justify-content: space-between; gap: 6px; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 8px; padding: 6px 10px; background: var(--card-muted); color: var(--foreground); cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease; }
+.subtitleChoice:hover { border-color: var(--muted); }
+.subtitleChoice[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--card-muted)); }
+.subtitleChoiceLabel { display: flex; width: 100%; min-width: 0; align-items: center; justify-content: space-between; gap: 4px; font-size: 11px; line-height: 16px; font-weight: 500; }
+.subtitleChoiceLabel svg { flex-shrink: 0; color: var(--primary); }
+/* Illustrations follow the standalone renderer's visual roles, not video timing. */
+.subtitleSample { display: flex; min-height: 30px; width: 100%; align-items: center; justify-content: center; color: #fff; font-family: Arial, sans-serif; font-size: 14px; line-height: 18px; }
+.subtitleSampleText { text-align: center; text-shadow: 0 1px 2px #000, 1px 0 1px #000, -1px 0 1px #000; }
+.subtitleChoice[data-style="bold-box"] .subtitleSampleText { padding: 3px 5px; background: #000b; font-weight: 700; text-shadow: none; }
+.subtitleChoice[data-style="active-word"] .subtitleSampleText { font-weight: 700; }
+.subtitleChoice[data-style="active-word"] .subtitleSampleWord { color: #ffdd59; }
+.subtitleChoice[data-style="editorial"] .subtitleSample { flex-direction: column; align-items: flex-start; padding-left: 6px; color: #fcf8f4; font-family: Georgia, serif; font-style: italic; text-shadow: 0 1px 1px #171d25; }
+.editorialLead { font-size: 10px; line-height: 12px; }
+.editorialHero { color: #85d0e8; font-size: 22px; line-height: 24px; font-weight: 900; }
+
+.main { display: flex; min-width: 0; min-height: 460px; flex-direction: column; align-self: start; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 16px; }
+.editWorkspace { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 24px; padding: 24px; }
+.editWorkspace > div:first-child .sectionHelp { margin-top: 6px; }
+.sequenceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: stretch; gap: 12px; }
+.sequenceGrid[data-demo-selected="false"]:not([data-kind="hook"]) { grid-template-columns: minmax(0, 1fr); }
+.editSequence { min-height: 280px; height: min(60dvh, 620px); flex: none; }
+.segment { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; }
+/* Result choices sit below their own preview. Keep this specific control compact
+   even though a column flex container stretches unclassified direct children. */
+.segment > :global(button[aria-pressed]) { width: fit-content; max-width: 100%; min-height: 40px; height: auto; align-self: center; padding-inline: 18px; white-space: normal; }
+.segmentActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.segmentHeader { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.segmentHeader { min-height: 24px; }
+.sequenceGrid[data-kind="hook"] { --segment-preview-height: clamp(280px, 100dvh - 380px, 540px); }
+.sequenceGrid[data-kind="hook"] .segmentMedia { display: flex; min-width: 0; height: var(--segment-preview-height); flex: none; align-items: center; justify-content: center; }
+.sequenceGrid[data-kind="hook"] .segmentMedia > .editSequence { width: 100%; height: 100%; min-height: 0; }
+.sequenceGrid[data-kind="hook"] .segmentMedia > .demoPlayer { max-height: 100%; }
+.segmentActions > button { width: auto; max-width: 100%; min-height: 34px; height: auto; white-space: normal; padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+.segment > .segmentActions { margin-top: auto; padding-top: 4px; }
+.segment:has([data-workflow-empty-segment]) { border-style: dashed; }
+.captionPosition { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-top: 12px; }
+.captionPositionChoices { display: inline-flex; flex: none; max-width: 100%; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); }
+.captionPositionChoices > button { min-width: 52px; min-height: 32px; height: auto; padding: 5px 9px; border-radius: 5px; font-size: 12px; }
+.captionPositionChoices > button[aria-pressed="true"] { background: color-mix(in srgb, var(--primary) 14%, var(--card)); color: var(--primary); font-weight: 600; }
+@media (pointer: coarse) { .segmentActions > button, .captionPositionChoices > button, .editUploadButton.editAudioButton, .demoPreviewAction { min-height: 44px; } }
+.previewAction { width: fit-content; max-width: 100%; min-height: 40px; align-self: center; padding-inline: 24px; }
+.segmentEmpty { display: flex; min-height: 220px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; text-align: center; }
+.segmentEmpty p { max-width: 240px; margin: 0; font-size: 13px; line-height: 22px; color: var(--muted); }
+.sequenceGrid[data-kind="hook"] { justify-content: center; grid-template-columns: minmax(0, 480px) 20px minmax(0, 480px); }
+.sequenceGrid[data-kind="hook"] .segmentEmpty { width: min(100%, calc(var(--segment-preview-height) * 9 / 16)); height: 100%; aspect-ratio: 9 / 16; min-height: 0; flex: none; margin-inline: auto; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-muted); }
+.sequenceArrow { width: 20px; height: 20px; align-self: center; color: var(--muted); }
+.demoPlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: min(60dvh, 620px); align-self: center; border-radius: 6px; background: transparent; }
+.audioSummary { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: var(--card); }
+.postEmpty { display: flex; min-height: 240px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+.captionPreview { min-width: 0; padding: 16px; border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent); }
+.captionPreview p { margin-top: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 24px; color: var(--muted); }
+@keyframes section-reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 639px) {
+  .editWorkspace { padding: 20px 16px; }
+  .sequenceGrid { grid-template-columns: minmax(0, 1fr); }
+  .sequenceGrid[data-kind="hook"] { grid-template-columns: minmax(0, 420px); }
+  .sequenceArrow { justify-self: center; transform: rotate(90deg); }
+  .segmentEmpty { min-height: 140px; }
+}
+.preview { position: relative; display: flex; min-height: 360px; flex: 1; align-items: center; padding: 72px 28px 48px; }
+.previewLabel { position: absolute; top: 20px; left: 24px; margin: 0; font-size: 14px; font-weight: 500; color: var(--muted); }
+.emptyCopy { width: 100%; max-width: 640px; margin-inline: auto; }
+.emptyCopy h3 { margin: 0; max-width: 560px; font-size: clamp(28px, 3vw, 36px); line-height: 1.2; font-weight: 600; letter-spacing: -0.03em; }
+.emptyCopy p { max-width: 500px; margin: 16px 0 0; font-size: 16px; line-height: 26px; color: var(--muted); }
+.canvasFooter { display: flex; justify-content: flex-end; flex-shrink: 0; padding: 16px 24px; }
+.libraryShortcut { border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: var(--muted); transition: color 160ms ease, background-color 160ms ease; }
+.libraryShortcut:hover { background: var(--card-muted); color: var(--foreground); }
+.libraryShortcut:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@media (max-width: 1023px) {
+  .sourceModes > button, .sourceSummary > button { min-width: 44px; min-height: 44px; }
+  .settingField > button, .settingField > .referenceDuration, .scheduleDateTime input { height: 44px; }
+  .helpButton { width: 44px; height: 44px; }
+}
+
+@media (max-width: 359px) {
+  .layout { padding-inline: 10px; }
+  .controlContent { padding: 12px; }
+  .referenceGrid { gap: 8px; }
+  .settingsGrid { gap: 8px 6px; }
+  .settingField > button { padding-inline: 6px; font-size: 12px; }
+  .subtitleChoice { padding-inline: 8px; }
+  .subtitleSample { font-size: 13px; }
+}
+@media (min-width: 1024px) {
+  .composer .prompt::placeholder { font-size: inherit; opacity: 1; }
+  .layout { grid-template-columns: 360px minmax(0, 1fr); align-items: stretch; padding-inline: 20px; }
+  /* A single shared grid row keeps both frames aligned, including expanded content. */
+  .controls, .main { align-self: stretch; }
+  /* Allocate spare Create-panel space to the user's writing area, not a blank gap. */
+  .controls[data-section="create"] .controlContent,
+  .controls[data-section="create"] .sectionPanel:not([hidden]):not([data-ending-style]),
+  .controls[data-section="create"] .composer,
+  .controls[data-section="create"] .instructionsField { flex: 1; }
+  .controls[data-section="create"] .sectionPanel:not([hidden]):not([data-ending-style]) { display: flex; flex-direction: column; }
+  .instructionsField .prompt { flex: 1; height: auto; min-height: 72px; }
+  /* Fill spare Edit space with the demo area, without fixing or clipping the pane. */
+  .controls[data-section="edit"] .controlContent,
+  .controls[data-section="edit"] .sectionPanel:not([hidden]):not([data-ending-style]),
+  .controls[data-section="edit"] .composition,
+  .controls[data-section="edit"] .editMediaGrid,
+  .controls[data-section="edit"] .uploadCard:first-child { flex: 1; }
+  .controls[data-section="edit"] .sectionPanel:not([hidden]):not([data-ending-style]) { display: flex; flex-direction: column; }
+  .controls[data-section="edit"] .uploadCard:first-child .editUploadButton { flex: 1; height: auto; }
+  .main { min-height: max(460px, calc(100dvh - 80px)); }
+  .preview { padding-inline: clamp(32px, 4vw, 72px); }
+}
+@media (min-width: 1024px) and (max-height: 850px) {
+  .controlContent { gap: 10px; padding-block: 12px; }
+  .composer { gap: 6px; }
+  .composition { gap: 10px; }
+  .editMediaGrid { gap: 12px; }
+  .editUploadButton { min-height: 144px; }
+  .scheduling { gap: 10px; }
+  .scheduling .prompt { height: 80px; }
+  .actionFooter { padding-block: 8px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sectionPanel:not([hidden]) { animation: none; }
+  .sectionTab, .settingField > button, .referenceButton, .editUploadButton, .subtitleChoice, .platformButton, .libraryShortcut { transition: none; }
+}
+
+.connectedAccounts { display: grid; min-width: 0; gap: 6px; }
+.connectedAccount { display: flex; width: 100%; min-width: 0; min-height: 44px; height: auto; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; text-align: left; white-space: normal; }
+.connectedAccount[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card-muted)); }
+.connectedAccountLabel { min-width: 0; overflow-wrap: anywhere; }

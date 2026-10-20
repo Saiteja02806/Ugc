@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   assertRunwayDailyCreditBudget,
   estimateRunwayVideoCredits,
+  estimateRunwaySeedanceCredits,
   getRunwayUtcCreditWindow,
   resolveRunwayDailyCreditLimit,
 } from "./runway-credit-budget.js";
@@ -31,6 +32,13 @@ test("uses one UTC calendar day for credit accounting", () => {
       startDate: "2026-08-01",
     },
   );
+});
+
+test("counts Seedance quality, output length, and rounded reference video seconds", () => {
+  assert.equal(estimateRunwaySeedanceCredits("480p", 4), 80);
+  assert.equal(estimateRunwaySeedanceCredits("720p", 5), 150);
+  assert.equal(estimateRunwaySeedanceCredits("720p", 5, 3.1), 210);
+  assert.equal(estimateRunwaySeedanceCredits("480p", 30, 30), 900);
 });
 
 test("allows a generation that reaches exactly 100 credits", async () => {
@@ -87,4 +95,15 @@ test("uses immediate generation counters when detailed credit usage lags", async
   assert.equal(result.estimatedCreditsFromDailyGenerations, 20);
   assert.equal(result.usedCredits, 20);
   assert.equal(result.remainingCreditsAfterGeneration, 60);
+});
+
+test("counts Seedream images alongside existing videos when detailed usage lags", async () => {
+  const reader = {
+    retrieve: async () => ({ usage: { models: { gen4_turbo: { dailyGenerations: 1 }, seedream5_pro: { dailyGenerations: 15 } } } }),
+    retrieveUsage: async () => ({ results: [{ usedCredits: [] }] }),
+  };
+  const result = await assertRunwayDailyCreditBudget(reader, 5, { configuredLimit: "100" });
+  assert.equal(result.usedCredits, 95);
+  assert.equal(result.remainingCreditsAfterGeneration, 0);
+  await assert.rejects(assertRunwayDailyCreditBudget(reader, 20, { configuredLimit: "100" }), /100 credits per UTC day/);
 });

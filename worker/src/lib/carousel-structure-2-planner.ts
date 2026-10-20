@@ -1,16 +1,21 @@
 import OpenAI from "openai";
+import { resolveStructure2HookTemplate } from "./carousel-structure-2-hook-templates.js";
+import { getCarouselStructure2MeasuredCopyIssues } from "./carousel-structure-2-measured-copy-fit.js";
 
 import {
   assertCarouselStructure2StoryAssignments,
   buildCarouselStructure2BatchMessages,
   buildCarouselStructure2RepairMessages,
+  buildCarouselStructure2StoryTextRepairMessages,
   buildCarouselStructure2StoryBatchSchema,
   buildCarouselStructure2StoryPlanSchema,
+  buildCarouselStructure2StoryTextRepairSchema,
   createCarouselStructure2InvalidPlanIssue,
   dedupeCarouselStructure2ValidationIssues,
   formatCarouselStructure2ValidationIssues,
-  parseCarouselStructure2StoryBatch,
+  parseCarouselStructure2StoryBatchResponse,
   parseCarouselStructure2StoryPlan,
+  parseCarouselStructure2StoryTextRepair,
   partitionCarouselStructure2ValidationIssues,
   validateCarouselStructure2StoryPlan,
   type CarouselStructure2RecentHistoryInput,
@@ -21,13 +26,40 @@ import {
 import type { CarouselStructure2FormatId } from "./carousel-structure-2-formats.js";
 import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CONTENT_PLAN_OPENAI_MAX_RETRIES, CONTENT_PLAN_OPENAI_TIMEOUT_MS } from "./content-plan-provider-retry.js";
+import { isStructure2ReaderScenario, type CarouselStructure2CopyPolicy } from "./carousel-structure-2-copy-policy.js";
 
 export const CAROUSEL_STRUCTURE_2_PLANNER_VERSION =
-  "llm-carousel-structure-2-writer-v10-isolated-failures";
+  "llm-carousel-structure-2-writer-v26-flexible-body-copy";
+export const CAROUSEL_STRUCTURE_2_READER_SCENARIO_PLANNER_VERSION =
+  "llm-carousel-structure-2-writer-v26-reader-scenario-flexible-body";
+
+// The OpenAI strict decoder cannot safely carry the whitespace word-count
+// regex. Keep the exact contract in the publisher validator and allow one
+// additional, tightly scoped repair only when that validator says the model is
+// close on word count or copy uniqueness. This is deliberately not a general
+// retry loop: every other defect keeps the single-repair failure behavior.
+const MAX_TARGETED_REPAIR_ATTEMPTS = 2;
+const TARGETED_COPY_REPAIR_ISSUE_CODES = new Set<
+  CarouselStructure2StoryValidationIssue["code"]
+>([
+  "generic_copy",
+  "hook_incomplete",
+  "hook_length",
+  "hook_structure",
+  "hook_template_placeholder",
+  "perspective",
+  "product_timing",
+  "render_fit",
+  "story_repetition",
+  "unsupported_claim",
+  "word_count",
+]);
 
 let openaiClient: OpenAI | null = null;
 
 export type CarouselStructure2StoryPlanResult = {
+  hookTemplateId?: string | null;
+  hookTemplateVersion?: number | null;
   assignedStoryFormatId: CarouselStructure2FormatId;
   fallbackReason: string | null;
   model: string | null;
@@ -40,6 +72,8 @@ export type CarouselStructure2StoryPlanResult = {
   slotIndex: number;
   source: "llm";
   validationResult: {
+    copyPolicyVersion?: string;
+    hookTemplateResolutionReason?: string | null;
     advisoryIssues: CarouselStructure2StoryValidationIssue[];
     fallbackUsed: boolean;
     finalIssues: CarouselStructure2StoryValidationIssue[];
@@ -47,12 +81,37 @@ export type CarouselStructure2StoryPlanResult = {
     ok: boolean;
     repairAttempted: boolean;
     repaired: boolean;
+    providerEnvelopeRepaired: boolean;
   };
 };
+
+export type CarouselStructure2ProviderResponseDiagnostic = {
+  completionId: string | null;
+  completionTokens: number | null;
+  finishReason: string | null;
+  promptTokens: number | null;
+  refusal: string | null;
+  requestId: string | null;
+  responseCharacterCount: number;
+  totalTokens: number | null;
+};
+
+export class CarouselStructure2EmptyProviderResponseError extends Error {
+  readonly diagnostic: CarouselStructure2ProviderResponseDiagnostic;
+
+  constructor(diagnostic: CarouselStructure2ProviderResponseDiagnostic) {
+    super(
+      `OpenAI returned no Structure 2 story batch content (finish_reason=${diagnostic.finishReason ?? "unknown"}, response_chars=${diagnostic.responseCharacterCount}, request_id=${diagnostic.requestId ?? "unknown"}).`,
+    );
+    this.name = "CarouselStructure2EmptyProviderResponseError";
+    this.diagnostic = diagnostic;
+  }
+}
 
 export type CarouselStructure2StoryBatchInput = {
   assignments: CarouselStructure2StoryAssignment[];
   businessDescription: string;
+  copyPolicy?: CarouselStructure2CopyPolicy;
   recentHistory?: CarouselStructure2RecentHistoryInput[];
   onPlanFailure?: (failure: CarouselStructure2PlanFailure) => Promise<void>;
 };
@@ -67,6 +126,7 @@ export type CarouselStructure2PlanFailure = {
 export async function buildCarouselStructure2StoryPlanBatch(
   input: CarouselStructure2StoryBatchInput,
 ): Promise<CarouselStructure2StoryPlanResult[]> {
+  isStructure2ReaderScenario(input.copyPolicy); // Reject unknown policies before provider work.
   assertCarouselStructure2StoryAssignments(input.assignments);
   const assignments = [...input.assignments].sort(
     (left, right) => left.slotIndex - right.slotIndex,
@@ -76,6 +136,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
   let initialBatchResponse: string | null = null;
   let rawPlans = new Map<number, unknown>();
   let batchFailure: CarouselStructure2StoryValidationIssue | null = null;
+  let providerEnvelopeRepaired = false;
 
   try {
     const completion = await getOpenAIClient().chat.completions.create({
@@ -95,13 +156,17 @@ export async function buildCarouselStructure2StoryPlanBatch(
     initialBatchResponse = completion.choices[0]?.message.content ?? null;
 
     if (!initialBatchResponse) {
-      throw new Error("OpenAI returned no Structure 2 story batch content.");
+      throw new CarouselStructure2EmptyProviderResponseError(
+        summarizeProviderResponse(completion),
+      );
     }
 
-    rawPlans = parseCarouselStructure2StoryBatch(
-      JSON.parse(initialBatchResponse),
+    const parsedBatch = parseCarouselStructure2StoryBatchResponse(
+      initialBatchResponse,
       assignments,
     );
+    rawPlans = parsedBatch.plans;
+    providerEnvelopeRepaired = parsedBatch.envelopeClosingBraces > 0;
   } catch (error) {
     // Provider outages and empty responses contain no candidate copy to repair.
     // Do not amplify one failed request into five more provider requests.
@@ -131,9 +196,13 @@ export async function buildCarouselStructure2StoryPlanBatch(
         const validation = partitionCarouselStructure2ValidationIssues(
           validateCarouselStructure2StoryPlan(parsedPlan, {
             businessDescription: input.businessDescription,
+            copyPolicy: input.copyPolicy,
             recentHistory: acceptedHistory,
           }),
         );
+        if (validation.blockingIssues.length === 0) {
+          validation.blockingIssues.push(...await getCarouselStructure2MeasuredCopyIssues(parsedPlan));
+        }
         initialIssues = validation.blockingIssues;
         advisoryIssues = validation.advisoryIssues;
       } catch (error) {
@@ -143,6 +212,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
 
     if (parsedPlan && initialIssues.length === 0) {
       const result = createLlmResult({
+        copyPolicy: input.copyPolicy,
         advisoryIssues,
         assignment,
         initialBatchResponse,
@@ -152,6 +222,7 @@ export async function buildCarouselStructure2StoryPlanBatch(
         repairResponse: null,
         repaired: false,
       });
+      result.validationResult.providerEnvelopeRepaired = providerEnvelopeRepaired;
       results.push(result);
       acceptedHistory.push(toRecentHistory(parsedPlan, assignment.slotIndex));
       continue;
@@ -159,17 +230,20 @@ export async function buildCarouselStructure2StoryPlanBatch(
 
     const diagnostics = { repair: null as string | null };
     const repaired = await attemptIsolatedRepair({
+      copyPolicy: input.copyPolicy,
       assignment,
       businessDescription: input.businessDescription,
       initialBatchResponse,
       initialIssues,
       model,
+      parsedPlan,
       rawPlan,
       recentHistory: acceptedHistory,
       diagnostics,
     });
 
     if (repaired) {
+      repaired.validationResult.providerEnvelopeRepaired = providerEnvelopeRepaired;
       results.push(repaired);
       acceptedHistory.push(
         toRecentHistory(repaired.plan, assignment.slotIndex),
@@ -205,98 +279,243 @@ export async function buildCarouselStructure2StoryPlanBatch(
 }
 
 async function attemptIsolatedRepair(params: {
+  copyPolicy?: CarouselStructure2CopyPolicy;
   assignment: CarouselStructure2StoryAssignment;
   businessDescription: string;
   initialBatchResponse: string | null;
   initialIssues: CarouselStructure2StoryValidationIssue[];
   model: string;
+  parsedPlan: CarouselStructure2StoryPlan | null;
   rawPlan: unknown;
   recentHistory: CarouselStructure2RecentHistoryInput[];
   diagnostics: { repair: string | null };
 }) {
-  let repairResponse: string | null = null;
+  let currentIssues = [...params.initialIssues];
+  let currentRawPlan = params.rawPlan;
+  let currentPlan = params.parsedPlan;
+  const repairResponses: string[] = [];
 
-  try {
-    const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 1_800,
-      messages: buildCarouselStructure2RepairMessages({
-        assignment: params.assignment,
-        businessDescription: params.businessDescription,
-        issues: params.initialIssues,
-        rawPlan: params.rawPlan,
-        recentHistory: params.recentHistory,
-      }),
-      model: params.model,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: `carousel_structure_2_story_repair_${params.assignment.slotIndex}`,
-          schema: buildCarouselStructure2StoryPlanSchema(),
-          strict: true,
+  for (
+    let attempt = 1;
+    attempt <= MAX_TARGETED_REPAIR_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const targetedIssues = getTargetedCopyRepairIssues(
+        currentPlan,
+        currentIssues,
+      );
+      const usesTargetedCopyRepair = targetedIssues !== null;
+      const targetedSlideNumbers = usesTargetedCopyRepair
+        ? [...new Set(targetedIssues!.map((issue) => issue.slideNumber!))]
+        : [];
+      const completion = await getOpenAIClient().chat.completions.create({
+        max_completion_tokens: 1_800,
+        messages: usesTargetedCopyRepair
+          ? buildCarouselStructure2StoryTextRepairMessages({
+              copyPolicy: params.copyPolicy,
+              assignment: params.assignment,
+              businessDescription: params.businessDescription,
+              issues: targetedIssues!,
+              plan: currentPlan!,
+              recentHistory: params.recentHistory,
+              repairAttempt: attempt,
+              repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
+            })
+          : buildCarouselStructure2RepairMessages({
+              copyPolicy: params.copyPolicy,
+              assignment: params.assignment,
+              businessDescription: params.businessDescription,
+              issues: currentIssues,
+              rawPlan: currentRawPlan,
+              recentHistory: params.recentHistory,
+              repairAttempt: attempt,
+              repairAttemptLimit: MAX_TARGETED_REPAIR_ATTEMPTS,
+            }),
+        model: params.model,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: usesTargetedCopyRepair
+              ? `carousel_structure_2_story_text_repair_${params.assignment.slotIndex}_${attempt}`
+              : `carousel_structure_2_story_repair_${params.assignment.slotIndex}_${attempt}`,
+            schema: usesTargetedCopyRepair
+              ? buildCarouselStructure2StoryTextRepairSchema(targetedSlideNumbers, params.copyPolicy)
+              : buildCarouselStructure2StoryPlanSchema(params.copyPolicy),
+            strict: true,
+          },
         },
-      },
-      temperature: 0.15,
-    });
-    repairResponse = completion.choices[0]?.message.content ?? null;
-    params.diagnostics.repair = repairResponse;
+        temperature: 0.15,
+      });
+      const repairResponse = completion.choices[0]?.message.content ?? null;
 
-    if (!repairResponse) {
-      throw new Error("OpenAI returned no repaired Structure 2 story plan.");
-    }
+      if (!repairResponse) {
+        throw new Error("OpenAI returned no repaired Structure 2 story plan.");
+      }
 
-    const repairedPlan = parseCarouselStructure2StoryPlan(
-      JSON.parse(repairResponse),
-      {
-        businessDescription: params.businessDescription,
-        storyFormatId: params.assignment.storyFormatId,
-      },
-    );
-    const validation = partitionCarouselStructure2ValidationIssues(
-      validateCarouselStructure2StoryPlan(repairedPlan, {
-        businessDescription: params.businessDescription,
-        recentHistory: params.recentHistory,
-      }),
-    );
-    const finalIssues = validation.blockingIssues;
+      repairResponses.push(repairResponse);
+      params.diagnostics.repair = repairResponses.join(
+        "\n\n--- Structure 2 repair attempt ---\n\n",
+      );
 
-    if (finalIssues.length > 0) {
-      const combinedIssues = dedupeCarouselStructure2ValidationIssues([
-        ...params.initialIssues,
-        ...finalIssues,
-      ]);
-      params.initialIssues.splice(
-        0,
-        params.initialIssues.length,
-        ...combinedIssues,
+      const rawRepair = JSON.parse(repairResponse);
+      const repairedPlan = usesTargetedCopyRepair
+        ? replaceStoryTexts(
+            currentPlan!,
+            parseCarouselStructure2StoryTextRepair(
+              rawRepair,
+              targetedSlideNumbers,
+            ),
+          )
+        : parseCarouselStructure2StoryPlan(rawRepair, {
+            businessDescription: params.businessDescription,
+            storyFormatId: params.assignment.storyFormatId,
+          });
+      const validation = partitionCarouselStructure2ValidationIssues(
+        validateCarouselStructure2StoryPlan(repairedPlan, {
+          businessDescription: params.businessDescription,
+          copyPolicy: params.copyPolicy,
+          recentHistory: params.recentHistory,
+        }),
+      );
+      const finalIssues = validation.blockingIssues;
+      if (finalIssues.length === 0) {
+        finalIssues.push(...await getCarouselStructure2MeasuredCopyIssues(repairedPlan));
+      }
+
+      if (finalIssues.length === 0) {
+        return createLlmResult({
+          copyPolicy: params.copyPolicy,
+          advisoryIssues: validation.advisoryIssues,
+          assignment: params.assignment,
+          initialBatchResponse: params.initialBatchResponse,
+          initialIssues: params.initialIssues,
+          model: params.model,
+          plan: repairedPlan,
+          repairResponse: params.diagnostics.repair,
+          repaired: true,
+        });
+      }
+
+      const canUseTargetedSecondRepair =
+        attempt < MAX_TARGETED_REPAIR_ATTEMPTS &&
+        hasOnlyTargetedSecondRepairIssues(finalIssues);
+
+      if (!canUseTargetedSecondRepair) {
+        // One cover-only escape hatch after normal repairs, never a bypass for
+        // claims, grounding, body copy or any other publishing failure.
+        if (attempt === MAX_TARGETED_REPAIR_ATTEMPTS &&
+          resolveStructure2HookTemplate(params.assignment).template &&
+          finalIssues.every((issue) => issue.slideNumber === 1 && issue.code === "render_fit")) {
+          const nativeAssignment = { ...params.assignment, hookTemplateId: null, hookTemplateVersion: null };
+          const completion = await getOpenAIClient().chat.completions.create({
+            model: params.model, temperature: 0.15, max_completion_tokens: 300,
+            messages: buildCarouselStructure2StoryTextRepairMessages({
+              copyPolicy: params.copyPolicy,
+              assignment: nativeAssignment, businessDescription: params.businessDescription,
+              issues: finalIssues, plan: repairedPlan, recentHistory: params.recentHistory,
+              repairAttempt: 1, repairAttemptLimit: 1,
+            }),
+            response_format: { type: "json_schema", json_schema: {
+              name: `carousel_structure_2_native_cover_${params.assignment.slotIndex}`,
+              schema: buildCarouselStructure2StoryTextRepairSchema([1], params.copyPolicy), strict: true,
+            } },
+          });
+          const response = completion.choices[0]?.message.content;
+          if (!response) throw new Error("No native Structure 2 cover repair returned.");
+          repairResponses.push(response);
+          params.diagnostics.repair = repairResponses.join("\n\n--- Structure 2 repair attempt ---\n\n");
+          const nativePlan = replaceStoryTexts(repairedPlan, parseCarouselStructure2StoryTextRepair(JSON.parse(response), [1]));
+          const nativeValidation = partitionCarouselStructure2ValidationIssues(validateCarouselStructure2StoryPlan(nativePlan, {
+            copyPolicy: params.copyPolicy,
+            businessDescription: params.businessDescription, recentHistory: params.recentHistory,
+          }));
+          if (nativeValidation.blockingIssues.length === 0) {
+            nativeValidation.blockingIssues.push(...await getCarouselStructure2MeasuredCopyIssues(nativePlan));
+          }
+          if (!nativeValidation.blockingIssues.length) {
+            const result = createLlmResult({ copyPolicy: params.copyPolicy, assignment: nativeAssignment, plan: nativePlan,
+              advisoryIssues: nativeValidation.advisoryIssues, initialBatchResponse: params.initialBatchResponse,
+              initialIssues: params.initialIssues, model: params.model, repairResponse: params.diagnostics.repair, repaired: true });
+            result.fallbackReason = "hook_template_cover_render_fit";
+            result.validationResult.hookTemplateResolutionReason = "cover_render_fit";
+            result.validationResult.fallbackUsed = true;
+            return result;
+          }
+          replaceIssues(params.initialIssues, nativeValidation.blockingIssues);
+          return null;
+        }
+        replaceIssues(params.initialIssues, finalIssues);
+        return null;
+      }
+
+      currentIssues = finalIssues;
+      currentRawPlan = rawRepair;
+      currentPlan = repairedPlan;
+    } catch (error) {
+      replaceIssues(
+        params.initialIssues,
+        dedupeCarouselStructure2ValidationIssues([
+          ...currentIssues,
+          createCarouselStructure2InvalidPlanIssue(error),
+        ]),
       );
       return null;
     }
+  }
 
-    return createLlmResult({
-      advisoryIssues: validation.advisoryIssues,
-      assignment: params.assignment,
-      initialBatchResponse: params.initialBatchResponse,
-      initialIssues: params.initialIssues,
-      model: params.model,
-      plan: repairedPlan,
-      repairResponse,
-      repaired: true,
-    });
-  } catch (error) {
-    const combinedIssues = dedupeCarouselStructure2ValidationIssues([
-      ...params.initialIssues,
-      createCarouselStructure2InvalidPlanIssue(error),
-    ]);
-    params.initialIssues.splice(
-      0,
-      params.initialIssues.length,
-      ...combinedIssues,
-    );
+  return null;
+}
+
+function hasOnlyTargetedSecondRepairIssues(
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  return (
+    issues.length > 0 &&
+    issues.every((issue) => TARGETED_COPY_REPAIR_ISSUE_CODES.has(issue.code))
+  );
+}
+
+function getTargetedCopyRepairIssues(
+  plan: CarouselStructure2StoryPlan | null,
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  if (!plan || issues.length === 0) return null;
+  if (
+    !issues.every(
+      (issue) =>
+        issue.slideNumber !== null &&
+        TARGETED_COPY_REPAIR_ISSUE_CODES.has(issue.code),
+    )
+  ) {
     return null;
   }
+  return [...issues];
+}
+
+function replaceStoryTexts(
+  plan: CarouselStructure2StoryPlan,
+  storyTextBySlide: ReadonlyMap<number, string>,
+): CarouselStructure2StoryPlan {
+  return {
+    ...plan,
+    slides: plan.slides.map((slide) =>
+      storyTextBySlide.has(slide.slideNumber)
+        ? { ...slide, storyText: storyTextBySlide.get(slide.slideNumber)! }
+        : slide,
+    ),
+  };
+}
+
+function replaceIssues(
+  target: CarouselStructure2StoryValidationIssue[],
+  issues: readonly CarouselStructure2StoryValidationIssue[],
+) {
+  target.splice(0, target.length, ...issues);
 }
 
 function createLlmResult(params: {
+  copyPolicy?: CarouselStructure2CopyPolicy;
   advisoryIssues: CarouselStructure2StoryValidationIssue[];
   assignment: CarouselStructure2StoryAssignment;
   initialBatchResponse: string | null;
@@ -306,12 +525,17 @@ function createLlmResult(params: {
   repairResponse: string | null;
   repaired: boolean;
 }): CarouselStructure2StoryPlanResult {
+  const { template, reason } = resolveStructure2HookTemplate(params.assignment);
   return {
+    hookTemplateId: template?.id ?? null,
+    hookTemplateVersion: template?.version ?? null,
     assignedStoryFormatId: params.assignment.storyFormatId,
     fallbackReason: null,
     model: params.model,
     plan: params.plan,
-    plannerVersion: CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
+    plannerVersion: isStructure2ReaderScenario(params.copyPolicy)
+      ? CAROUSEL_STRUCTURE_2_READER_SCENARIO_PLANNER_VERSION
+      : CAROUSEL_STRUCTURE_2_PLANNER_VERSION,
     rawLlmResponse: {
       initialBatch: params.initialBatchResponse,
       repair: params.repairResponse,
@@ -319,6 +543,8 @@ function createLlmResult(params: {
     slotIndex: params.assignment.slotIndex,
     source: "llm",
     validationResult: {
+      ...(params.copyPolicy ? { copyPolicyVersion: params.copyPolicy.version } : {}),
+      hookTemplateResolutionReason: reason,
       advisoryIssues: params.advisoryIssues,
       fallbackUsed: false,
       finalIssues: [],
@@ -326,6 +552,7 @@ function createLlmResult(params: {
       ok: true,
       repairAttempted: params.repaired,
       repaired: params.repaired,
+      providerEnvelopeRepaired: false,
     },
   };
 }
@@ -363,4 +590,29 @@ function getOpenAIClient() {
     timeout: CONTENT_PLAN_OPENAI_TIMEOUT_MS,
   });
   return openaiClient;
+}
+
+function summarizeProviderResponse(
+  completion: OpenAI.Chat.Completions.ChatCompletion,
+): CarouselStructure2ProviderResponseDiagnostic {
+  const choice = completion.choices[0];
+  const response = choice?.message.content ?? "";
+  const responseWithRequestId = completion as typeof completion & {
+    _request_id?: string;
+    request_id?: string;
+  };
+
+  return {
+    completionId: completion.id ?? null,
+    completionTokens: completion.usage?.completion_tokens ?? null,
+    finishReason: choice?.finish_reason ?? null,
+    promptTokens: completion.usage?.prompt_tokens ?? null,
+    refusal: choice?.message.refusal ?? null,
+    requestId:
+      responseWithRequestId._request_id ??
+      responseWithRequestId.request_id ??
+      null,
+    responseCharacterCount: response.length,
+    totalTokens: completion.usage?.total_tokens ?? null,
+  };
 }

@@ -1,4 +1,5 @@
 import {
+  getReactionCatalogAvailability,
   planReactionGeneration,
   REACTION_GENERATION_PROMPT_VERSION,
   type ReactionCatalogBackground,
@@ -12,6 +13,7 @@ import {
   enqueueReactionRenderTask as defaultEnqueueReactionRenderTask,
 } from "../lib/reaction-render-task-dispatch.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { DeferredJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow, Json } from "../types.js";
 import type { WorkerJobContext } from "./index.js";
 
@@ -58,6 +60,10 @@ export async function runGenerateReactionJob(
   ]);
   const clips = catalog.clips.map(toReactionCatalogClip);
   const backgrounds = catalog.backgrounds.map(toReactionCatalogBackground);
+  const generationContext = parseGenerationContext(run.generation_context);
+  if (!generationContext) {
+    throw new Error("Persisted Reaction generation context is invalid.");
+  }
 
   if (run.brief_payload) {
     await context.store.persistReactionGenerationPlan({
@@ -71,11 +77,44 @@ export async function runGenerateReactionJob(
         userId: input.userId,
       });
   } else {
+    const availability = getReactionCatalogAvailability({
+      backgrounds,
+      clips,
+      historyByClipId,
+      reservedClipIds,
+    });
+    if (availability.availableClipCount === 0 || availability.renderableBackgroundCount === 0) {
+      // This is not a provider failure. A missing renderable asset means no
+      // safe Reel can be built, so end the durable run without paying for a
+      // model response. Catalog repetition handles active-card exhaustion.
+      const completion = await context.store.completeReactionGenerationRun({
+        generationJobId: job.id,
+        runId: run.id,
+        userId: input.userId,
+      });
+      const shortfallReason = "reaction_catalog_unavailable";
+      await context.checkpoint({
+        progress: null,
+        stage: shortfallReason,
+        status: "processing",
+      });
+      return {
+        availableClipCount: availability.availableClipCount,
+        failedCount: completion.failed_count,
+        generationRunId: run.id,
+        readyCount: completion.ready_count,
+        requestedCount: input.requestedCount,
+        shortfallCount: input.requestedCount,
+        shortfallReason,
+        status: "partial",
+      } satisfies Record<string, Json>;
+    }
     await createAndPersistPlan({
         backgrounds,
         clips,
         context,
         historyByClipId,
+        generationContext,
         input,
         job,
         planReactionGeneration: dependencies.planReactionGeneration,
@@ -123,6 +162,7 @@ async function createAndPersistPlan(params: {
   clips: readonly ReactionCatalogClip[];
   context: WorkerJobContext;
   historyByClipId: ReadonlyMap<string, { lastShownAt: string | null; shownCount: number }>;
+  generationContext: ReactionGenerationContext;
   input: ReturnType<typeof parseInput>;
   job: BackgroundJobRow;
   planReactionGeneration: typeof planReactionGeneration;
@@ -137,7 +177,7 @@ async function createAndPersistPlan(params: {
   const plan = await params.planReactionGeneration({
     backgrounds: params.backgrounds,
     clips: params.clips,
-    context: params.input.generationContext,
+    context: params.generationContext,
     historyByClipId: params.historyByClipId,
     jobId: params.job.id,
     requestedCount: params.input.requestedCount,
@@ -149,23 +189,47 @@ async function createAndPersistPlan(params: {
     stage: "persisting_reaction_plan",
     status: "processing",
   });
-  return params.context.store.persistReactionGenerationPlan({
-    briefPayload: plan.briefPayload as Json,
-    generationJobId: params.job.id,
-    items: plan.items.map((item) => ({
-      background_asset_id: item.backgroundAssetId,
-      caption: item.caption,
-      clip_asset_id: item.clipAssetId,
-      content_json: item.content as unknown as Json,
-      duration_seconds: item.durationSeconds,
-      primary_reaction: item.primaryReaction,
-      render_plan_json: item.renderPlan as Json,
-      slot_index: item.slotIndex,
-      title: item.title,
-    })) as unknown as Json,
-    runId: params.runId,
-    userId: params.input.userId,
-  });
+  try {
+    return await params.context.store.persistReactionGenerationPlan({
+      briefPayload: plan.briefPayload as unknown as Json,
+      generationJobId: params.job.id,
+      items: plan.items.map((item) => ({
+        background_asset_id: item.backgroundAssetId,
+        caption: item.caption,
+        clip_asset_id: item.clipAssetId,
+        content_json: item.content as unknown as Json,
+        duration_seconds: item.durationSeconds,
+        primary_reaction: item.primaryReaction,
+        render_plan_json: item.renderPlan as Json,
+        slot_index: item.slotIndex,
+        title: item.title,
+      })) as unknown as Json,
+      runId: params.runId,
+      userId: params.input.userId,
+    });
+  } catch (error) {
+    // The database transaction deliberately rejects a clip that a competing
+    // planner committed after this job read its reservation snapshot. No part
+    // of this plan was saved, so a short durable wait lets the next execution
+    // load the current reservations and select a different clip. Do not relax
+    // the database constraint or spend one of the job's provider attempts.
+    if (isReactionPlanClipReservationConflict(error)) {
+      throw new DeferredJobError(
+        "Another Reaction planner reserved a clip first. Refreshing the catalog before planning again.",
+        {
+          code: "reaction_generation_plan_clip_reserved",
+          retryAfterSeconds: 10,
+        },
+      );
+    }
+
+    throw error;
+  }
+}
+
+function isReactionPlanClipReservationConflict(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\breaction_generation_plan_clip_reserved\b/u.test(message);
 }
 
 export function buildReactionRenderPayload(params: {
@@ -242,15 +306,16 @@ function parseInput(job: BackgroundJobRow) {
   const businessProfileVersion = input?.businessProfileVersion;
   const requestedCount = input?.requestedCount;
   const generationContext = parseGenerationContext(input?.generationContext);
+  const generationOrigin = typeof input?.generationOrigin === "string" ? input.generationOrigin : null;
   if (
-    !job.user_id || job.user_id !== userId || !businessProfileId || !projectId || !requestKey ||
+    !job.user_id || job.user_id !== userId || !job.project_id || job.project_id !== projectId || !businessProfileId || !projectId || !requestKey ||
     !Number.isInteger(businessProfileVersion) || typeof businessProfileVersion !== "number" || businessProfileVersion < 1 ||
     !Number.isInteger(requestedCount) || typeof requestedCount !== "number" || requestedCount < 1 || requestedCount > 12 ||
-    !generationContext
+    !generationContext || (generationOrigin !== null && generationOrigin !== "business_generation")
   ) {
     throw new Error("reaction_generation input is invalid.");
   }
-  return { businessProfileId, businessProfileVersion, generationContext, projectId, requestKey, requestedCount, userId };
+  return { businessProfileId, businessProfileVersion, generationContext, generationOrigin, projectId, requestKey, requestedCount, userId };
 }
 
 function parseGenerationContext(value: Json | undefined): ReactionGenerationContext | null {
@@ -261,13 +326,20 @@ function parseGenerationContext(value: Json | undefined): ReactionGenerationCont
   const commonSituations = stringArray(input.commonSituations);
   const desiredOutcomes = stringArray(input.desiredOutcomes);
   if (!audience || !pains || !commonSituations || !desiredOutcomes) return null;
-  return {
+  const legacyContext = {
     audience,
     commonSituations,
     desiredOutcomes,
     pains,
-    productName: typeof input.productName === "string" ? input.productName.trim().slice(0, 160) || null : null,
+    productName: typeof input.productName === "string" ? truncateByCodePoint(input.productName.trim(), 160) || null : null,
   };
+
+  if (input.contextVersion === undefined) return legacyContext;
+  if (input.contextVersion !== "reaction-grounding-v2") return null;
+
+  const factSnapshot = parseFactSnapshot(input.factSnapshot);
+  if (!factSnapshot) return null;
+  return { ...legacyContext, contextVersion: "reaction-grounding-v2", factSnapshot };
 }
 
 function record(value: Json | undefined): Record<string, Json | undefined> | null {
@@ -275,5 +347,24 @@ function record(value: Json | undefined): Record<string, Json | undefined> | nul
 }
 function stringValue(value: Json | undefined) { return typeof value === "string" ? value.trim() : ""; }
 function stringArray(value: Json | undefined) { return Array.isArray(value) && value.length <= 12 && value.every((item) => typeof item === "string") ? value.map((item) => item.trim()).filter(Boolean).slice(0, 12) : null; }
+function truncateByCodePoint(value: string, limit: number) { return Array.from(value).slice(0, limit).join(""); }
+function parseFactSnapshot(value: Json | undefined) {
+  const snapshot = record(value);
+  if (!snapshot || snapshot.version !== "business-facts-v1") return null;
+  const claimsToAvoid = stringArray(snapshot.claimsToAvoid);
+  if (!claimsToAvoid || !Array.isArray(snapshot.facts) || snapshot.facts.length > 12) return null;
+  const facts = snapshot.facts.map((value) => {
+    const fact = record(value);
+    const id = stringValue(fact?.id);
+    const text = truncateByCodePoint(stringValue(fact?.text), 360);
+    const type = fact?.type;
+    return id && text &&
+      (type === "audience" || type === "capability" || type === "differentiator" || type === "outcome" || type === "pain")
+      ? { id, text, type }
+      : null;
+  });
+  if (facts.some((fact) => !fact) || new Set(facts.map((fact) => fact?.id)).size !== facts.length) return null;
+  return { claimsToAvoid, facts: facts as { id: string; text: string; type: "audience" | "capability" | "differentiator" | "outcome" | "pain" }[], version: "business-facts-v1" as const };
+}
 function isTreatment(value: Json | undefined): value is "caption_with_labels" | "outlined_text" | "white_card" { return value === "caption_with_labels" || value === "outlined_text" || value === "white_card"; }
 function isAnchor(value: Json | undefined): value is "bottom_center" | "bottom_left" | "bottom_right" | "center" { return value === "bottom_center" || value === "bottom_left" || value === "bottom_right" || value === "center"; }

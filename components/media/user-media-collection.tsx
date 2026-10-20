@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Loader2,
   Pencil,
+  Pause,
   Play,
   Plus,
   RefreshCw,
@@ -23,8 +24,13 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 import { useAuth } from "@/contexts/auth-context";
+import { VideoPreview } from "@/components/media/video-preview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,6 +65,7 @@ import type {
   MediaSourceType,
 } from "@/lib/media/types";
 import { cn } from "@/lib/utils";
+import { getVideoPreviewAspectRatio } from "@/lib/media/video-preview";
 
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
@@ -122,6 +129,7 @@ export function UserMediaCollection({
   variant?: "default" | "dark";
 }) {
   const { loading: authLoading, user } = useAuth();
+  const editRefreshQueue = useRefreshQueue(`media-edits:${user?.uid ?? "signed-out"}:${collection}`);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
   const lastLoadedGroupIdRef = useRef<string | null>(null);
@@ -131,7 +139,7 @@ export function UserMediaCollection({
   const [groups, setGroups] = useState<CreativeAssetGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [aspectRatioMode, setAspectRatioMode] = useState<AspectRatioMode>(
-    collection === "video" ? "9:16" : "adaptive",
+    "adaptive",
   );
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -298,42 +306,53 @@ export function UserMediaCollection({
   }, [authLoading, groupMediaType, user]);
 
   const loadEditProjects = useCallback(
-    async (options?: { silent?: boolean }) => {
+    (options?: { silent?: boolean; background?: boolean }) => {
       if (authLoading || groupMediaType !== "video") {
-        return;
+        return Promise.resolve();
       }
 
-      if (!options?.silent) {
-        setEditProjectErrorMessage(null);
-      }
-
-      try {
-        if (!user) {
-          throw new Error("Sign in to load saved video edits.");
+      return editRefreshQueue.run(async signal => {
+        if (!options?.silent) {
+          setEditProjectErrorMessage(null);
         }
 
-        const token = await requireToken();
-        const response = await fetch("/api/edit/videos", {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = (await response.json()) as EditableVideosResponse;
+        try {
+          if (!user) {
+            throw new Error("Sign in to load saved video edits.");
+          }
 
-        if (!response.ok || data.ok !== true) {
-          throw new Error(
-            getApiError(data, "Could not load saved video edit status."),
+          const data = await withReadDeadline(async bounded => {
+            const token = await getCurrentUserIdToken(user.uid);
+            if (!token) throw new Error("Sign in to load saved video edits.");
+            bounded.throwIfAborted();
+            const response = await fetch("/api/edit/videos", {
+              cache: "no-store",
+              headers: { Authorization: `Bearer ${token}` },
+              signal: bounded,
+            });
+            const data = (await response.json()) as EditableVideosResponse;
+
+            if (!response.ok || data.ok !== true) {
+              throw new Error(
+                getApiError(data, "Could not load saved video edit status."),
+              );
+            }
+
+            return data;
+          }, signal);
+          if (signal.aborted) return;
+          setEditProjects(current => replaceEqualDeep(current, data.videos));
+          setEditProjectErrorMessage(null);
+        } catch (error) {
+          if (signal.aborted) return;
+          setEditProjectErrorMessage(
+            getErrorMessage(error, "Could not load saved video edit status."),
           );
+          throw error;
         }
-
-        setEditProjects(data.videos);
-        setEditProjectErrorMessage(null);
-      } catch (error) {
-        setEditProjectErrorMessage(
-          getErrorMessage(error, "Could not load saved video edit status."),
-        );
-      }
+      }, { background: options?.background }).catch(() => {});
     },
-    [authLoading, groupMediaType, user],
+    [authLoading, groupMediaType, user, editRefreshQueue],
   );
 
   const loadGroupAssets = useCallback(
@@ -399,52 +418,11 @@ export function UserMediaCollection({
     return () => window.clearTimeout(timer);
   }, [loadGroupAssets, selectedGroupId]);
 
-  useEffect(() => {
-    if (
-      groupMediaType !== "video" ||
-      !renderingEditProjectIds ||
-      !hasRenderingEditProject
-    ) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      void loadEditProjects({ silent: true });
-    }, 4_000);
-
-    return () => window.clearInterval(timer);
-  }, [
-    groupMediaType,
-    hasRenderingEditProject,
-    loadEditProjects,
-    renderingEditProjectIds,
-  ]);
-
-  useEffect(() => {
-    if (groupMediaType !== "video") {
-      return;
-    }
-
-    function refreshEditProjectsWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void loadEditProjects({ silent: true });
-      }
-    }
-
-    window.addEventListener("focus", refreshEditProjectsWhenVisible);
-    document.addEventListener(
-      "visibilitychange",
-      refreshEditProjectsWhenVisible,
-    );
-
-    return () => {
-      window.removeEventListener("focus", refreshEditProjectsWhenVisible);
-      document.removeEventListener(
-        "visibilitychange",
-        refreshEditProjectsWhenVisible,
-      );
-    };
-  }, [groupMediaType, loadEditProjects]);
+  useVisibleRefresh({
+    enabled: !authLoading && Boolean(user) && groupMediaType === "video",
+    refresh: () => loadEditProjects({ silent: true, background: true }),
+    intervalMs: renderingEditProjectIds && hasRenderingEditProject ? 4_000 : false,
+  });
 
   const overallUploadProgress = useMemo(() => {
     if (uploadTasks.length === 0) return 0;
@@ -939,12 +917,12 @@ export function UserMediaCollection({
       aspectRatioMode === "9:16" ||
       (aspectRatioMode === "adaptive" && collection === "video")
     ) {
-      return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5";
+      return "grid grid-cols-2 items-start sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5";
     }
     if (aspectRatioMode === "1:1") {
-      return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3.5";
+      return "grid grid-cols-2 items-start sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3.5";
     }
-    return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5";
+    return "grid grid-cols-1 items-start sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5";
   }, [aspectRatioMode, collection]);
 
   return (
@@ -1737,6 +1715,16 @@ function MediaAssetCard({
   const statusVariant = getCreativeAssetCardStatusVariant(editProject);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const [previewAspect, setPreviewAspect] = useState<{ src: string; value: string } | null>(null);
+  const aspectRatio = previewAspect?.src === displayState.playbackUrl
+    ? previewAspect.value
+    : getVideoPreviewAspectRatio(asset);
+
+  function togglePlayback() {
+    if (!isPlaying) setHasPlayed(true);
+    setIsPlaying((current) => !current);
+  }
 
   const cardAspectClass = useMemo(() => {
     if (aspectRatioMode === "9:16") return "aspect-[9/16]";
@@ -1758,6 +1746,9 @@ function MediaAssetCard({
           isDarkVariant ? "bg-[#090b10]" : "bg-[#090b10]",
           cardAspectClass,
         )}
+        style={aspectRatioMode === "adaptive" && !isImage
+          ? { aspectRatio }
+          : undefined}
       >
         {isImage ? (
           <Image
@@ -1768,56 +1759,31 @@ function MediaAssetCard({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             sizes="(max-width: 640px) 100vw, 25vw"
           />
-        ) : isPlaying ? (
-          <video
-            key={displayState.playbackUrl}
-            src={displayState.playbackUrl}
-            poster={asset.thumbnailUrl || undefined}
-            preload="auto"
-            autoPlay
-            controls
-            playsInline
-            className="size-full object-cover"
-            onEnded={() => setIsPlaying(false)}
-          />
         ) : (
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label={`Play ${asset.title}`}
-            onClick={() => setIsPlaying(true)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setIsPlaying(true);
-              }
-            }}
-            className="relative size-full cursor-pointer"
-          >
-            {asset.thumbnailUrl ? (
-              <Image
-                src={asset.thumbnailUrl}
-                alt={asset.title}
-                fill
-                unoptimized
-                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                sizes="(max-width: 640px) 100vw, 25vw"
-              />
-            ) : (
-              <video
-                src={displayState.playbackUrl}
-                preload="none"
-                muted
-                playsInline
-                className="size-full object-cover"
-              />
-            )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
-              <span className="flex size-10 items-center justify-center rounded-full border border-white/40 bg-white/95 text-slate-950 shadow-md backdrop-blur-md transition-all group-hover:scale-105 active:scale-95">
-                <Play className="ml-0.5 size-4 fill-current text-current" aria-hidden="true" />
-              </span>
-            </div>
-          </div>
+          <>
+            <VideoPreview
+              src={displayState.playbackUrl}
+              poster={displayState.playbackUrl === asset.url ? asset.thumbnailUrl : null}
+              title={asset.title}
+              onAspectRatioChange={(value) => setPreviewAspect({ src: displayState.playbackUrl, value })}
+              playing={isPlaying}
+              controls={isPlaying}
+              muted={false}
+              onPlaybackStateChange={setIsPlaying}
+            />
+            {!isPlaying ? (
+              <button
+                type="button"
+                aria-label={`Play ${asset.title} preview`}
+                onClick={togglePlayback}
+                className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+              >
+                <span className="flex size-10 items-center justify-center rounded-full bg-white/95 text-slate-950 shadow-md">
+                  <Play className="ml-0.5 size-4 fill-current text-current" aria-hidden="true" />
+                </span>
+              </button>
+            ) : null}
+          </>
         )}
 
         {/* Ratio & Duration Badges Overlay */}
@@ -1859,7 +1825,18 @@ function MediaAssetCard({
             </Badge>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_32px] gap-2">
+          {!isImage ? (
+            <button
+              type="button"
+              onClick={togglePlayback}
+              aria-label={`${isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play"} ${asset.title}`}
+              className="col-span-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              {isPlaying ? <Pause className="size-3.5" aria-hidden="true" /> : <Play className="size-3.5 fill-current" aria-hidden="true" />}
+              {isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play"}
+            </button>
+          ) : null}
           {!isImage ? (
             <Link
               href={getCreativeAssetEditorHref(asset.id)}

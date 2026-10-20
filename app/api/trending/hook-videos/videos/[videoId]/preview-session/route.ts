@@ -9,7 +9,7 @@ import {
   hasHookVideoPreviewSecret,
   HOOK_VIDEO_PREVIEW_TTL_SECONDS,
 } from "@/lib/trending/hook-video-preview-session";
-import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
+import { resolveHookAudioForPreview } from "@/lib/trending/hook-audio-db";
 import { resolveHookVideoSource } from "@/lib/trending/hook-video-sources";
 import { isHookVideoSourceKind } from "@/lib/trending/hook-video-types";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
@@ -61,7 +61,10 @@ export async function POST(
     });
     const hookAudio =
       body.sourceKind === "catalog"
-        ? await getLockedHookAudioForVideo({ hookVideoId: videoId })
+        ? await resolveHookAudioForPreview({
+            hookVideoId: videoId,
+            userId: auth.user.uid,
+          })
         : null;
 
     if (hookAudio && !isTrustedStorageUrl(hookAudio.audioUrl)) {

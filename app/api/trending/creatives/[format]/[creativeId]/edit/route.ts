@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { parseCarouselManualTextStyle } from "@/lib/carousel/manual-text";
 
 import {
   FirebaseAuthRequestError,
@@ -21,6 +22,8 @@ import {
 } from "@/lib/trending/hook-text-layout";
 import {
   loadTrendingCreativeEditor,
+  loadTrendingCreativeReadView,
+  loadTrendingCarouselEditStatus,
   saveTrendingCreativeEditor,
 } from "@/lib/trending/creative-edit-service";
 import {
@@ -29,10 +32,7 @@ import {
   markTrendingCreativeEditRenderFailed,
   TrendingCreativeEditAccessError,
 } from "@/lib/trending/creative-edits";
-import {
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
-} from "@/lib/trending/wall-text-text-logic";
+import { WALL_TEXT_MANUAL_MAX_CHARACTERS } from "@/lib/trending/wall-text-manual-copy";
 import {
   DEFAULT_TRENDING_TEXT_COLOR,
   TRENDING_TEXT_COLOR_VALUES,
@@ -74,6 +74,10 @@ const CAROUSEL_PATCH_SCHEMA = z
             slideNumber: z.number().int().min(1).max(20),
             subtext: z.string().max(360),
             textPosition: POSITION_SCHEMA,
+            textStyle: z.unknown().optional().transform((value, context) => {
+              try { return parseCarouselManualTextStyle(value); }
+              catch { context.addIssue({ code: "custom", message: "Choose a valid slideshow font, size and color." }); return z.NEVER; }
+            }),
           })
           .strip(),
       )
@@ -109,14 +113,8 @@ const WALL_PATCH_SCHEMA = z
     fullText: z
       .string()
       .trim()
-      .max(600)
-      .refine((value) => {
-        const wordCount = value.split(/\s+/u).filter(Boolean).length;
-        return (
-          wordCount >= MIN_CURRENT_GENERATION_WALL_TEXT_WORDS &&
-          wordCount <= MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
-        );
-      }),
+      .min(1)
+      .max(WALL_TEXT_MANUAL_MAX_CHARACTERS),
     source: SOURCE_SCHEMA.nullable().optional(),
     textColor: TEXT_COLOR_SCHEMA,
     textBox: z
@@ -162,7 +160,20 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   try {
-    const edit = await loadTrendingCreativeEditor({
+    if (new URL(request.url).searchParams.get("view") === "status") {
+      if (scope.value.format !== "carousel") {
+        return json({ ok: false, error: "Status checks are only available for slideshows." }, 400);
+      }
+      const status = await loadTrendingCarouselEditStatus({
+        assignmentId: scope.value.assignmentId,
+        creativeId: scope.value.creativeId,
+        userId: auth.userId,
+      });
+      return json({ status, ok: true });
+    }
+    const load = new URL(request.url).searchParams.get("view") === "history"
+      ? loadTrendingCreativeReadView : loadTrendingCreativeEditor;
+    const edit = await load({
       assignmentId: scope.value.assignmentId,
       creativeId: scope.value.creativeId,
       format: scope.value.format,

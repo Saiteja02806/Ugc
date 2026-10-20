@@ -6,6 +6,8 @@ import {
   HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_LAYOUT_VERSION,
   LEGACY_HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
   type HookTextLayoutVersion,
 } from "@/lib/trending/hook-text-layout";
 
@@ -326,18 +328,24 @@ export async function listActiveTrendingHookIdeas(params: {
   businessProfileId: string;
   businessProfileVersion: number;
   pinnedAssignmentIds?: readonly string[];
+  /** Exact owned assignments from a delivered quota; read-only history. */
+  reviewedAssignmentIds?: readonly string[];
   promptVersion?: string;
   userId: string;
 }): Promise<TrendingHookIdeaRecord[]> {
   const pinnedAssignmentIds = new Set(params.pinnedAssignmentIds ?? []);
-  const { data: assignments, error: assignmentError } = await getClient()
+  if (params.reviewedAssignmentIds?.length === 0) return [];
+  let assignmentQuery = getClient()
     .from("user_hook_video_assignments")
     .select("*")
     .eq("user_id", params.userId)
     .eq("business_profile_id", params.businessProfileId)
     .eq("business_profile_version", params.businessProfileVersion)
-    .eq("state", "active")
     .order("position", { ascending: true });
+  assignmentQuery = params.reviewedAssignmentIds
+    ? assignmentQuery.in("id", [...params.reviewedAssignmentIds])
+    : assignmentQuery.eq("state", "active");
+  const { data: assignments, error: assignmentError } = await assignmentQuery;
 
   if (assignmentError) {
     throw new Error(
@@ -502,6 +510,7 @@ export async function getEditableTrendingHookIdea(params: {
   assignmentId: string;
   suggestionId: string;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingHookIdeaRecord | null> {
   const [{ data: assignment, error: assignmentError }, suggestion] =
     await Promise.all([
@@ -511,7 +520,7 @@ export async function getEditableTrendingHookIdea(params: {
         .eq("id", params.assignmentId)
         .eq("hook_suggestion_id", params.suggestionId)
         .eq("user_id", params.userId)
-        .in("state", ["active", "selected"])
+        .in("state", params.readOnly ? ["active", "selected", "completed_skipped"] : ["active", "selected"])
         .maybeSingle(),
       getHookVideoSuggestionForUser({
         suggestionId: params.suggestionId,
@@ -915,10 +924,13 @@ export function parseHookSuggestionRenderLayout(params: {
       ? params.visualFit.overlayVersion
       : null;
   const layoutVersion =
-    overlayVersion === "hook-overlay-v4-fixed-type" &&
+    overlayVersion === "hook-overlay-v5-56px" &&
     fontSize === HOOK_TEXT_FIXED_FONT_SIZE
       ? HOOK_TEXT_LAYOUT_VERSION
-      : LEGACY_HOOK_TEXT_LAYOUT_VERSION;
+      : overlayVersion === "hook-overlay-v4-fixed-type" &&
+          fontSize === PREVIOUS_HOOK_TEXT_FIXED_FONT_SIZE
+        ? PREVIOUS_HOOK_TEXT_LAYOUT_VERSION
+        : LEGACY_HOOK_TEXT_LAYOUT_VERSION;
 
   return { fontSize, layoutVersion, lines };
 }

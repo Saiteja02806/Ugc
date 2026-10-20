@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "width": 960,
+  "height": 540,
+  "duration": 12,
+  "muted": true,
+  "loop": true,
+  "controls": false,
+  "paused": false,
+  "error": null,
+  "loopWrapVerified": true,
+  "responsiveWidths": [
+    1000,
+    400,
+    360
+  ],
+  "errors": []
+}

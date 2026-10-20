@@ -44,7 +44,7 @@ export function createCarouselStructure2SlideInserts(params: {
       carousel_generation_id: params.carouselGenerationId,
       category_image_asset_id: spec.assetId,
       cta_text: spec.ctaText,
-      headline: spec.storyText,
+      headline: spec.slideNumber === 1 || spec.headline === undefined ? spec.storyText : spec.headline ?? "",
       image_direction: spec.visualContext,
       layout_preset: spec.layoutVariant,
       product_visual_eligibility: spec.productVisualEligibility,
@@ -59,7 +59,7 @@ export function createCarouselStructure2SlideInserts(params: {
       story_text_treatment: spec.textTreatment,
       structure_id: "structure_2",
       structure_version: params.structureVersion,
-      subtext: null,
+      subtext: spec.slideNumber === 1 || spec.headline === undefined ? null : spec.storyText,
       text_position: spec.textPosition,
       visual_role: spec.visualRole,
     } satisfies CarouselSlideInsert;

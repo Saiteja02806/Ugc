@@ -16,10 +16,12 @@ import {
 import {
   createHookTextLayout,
   getDefaultHookTextPosition,
+  HOOK_TEXT_FIXED_FONT_SIZE,
   HOOK_TEXT_MAXIMUM_CHARACTERS,
   HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
 } from "./hook-text-layout.ts";
-import { validateWallTextContent } from "./wall-text-text-logic.ts";
+
 import type { TrendingWallTextContent } from "./wall-text-types.ts";
 import { getWallTextEditorTypography } from "./wall-text-visual-style.ts";
 import {
@@ -63,42 +65,28 @@ test("keeps the editor and worker on one safe color palette", () => {
   }
 });
 
-test("wall edits remain a renderable two-to-three segment payload", () => {
-  const content = createWallTextEditContent(
-    "This used to take all afternoon. Now one clear workflow keeps every handoff moving. The team gets its focus back.",
-    currentContent,
+test("Carousel edit preview cannot restore a CTA layer or readability gradient", () => {
+  const editor = readFileSync(
+    new URL(
+      "../../components/trending/trending-creative-editor.tsx",
+      import.meta.url,
+    ),
+    "utf8",
   );
 
-  assert.equal(content.fullText.includes("afternoon"), true);
-  assert.equal(content.segments.length >= 2 && content.segments.length <= 3, true);
-  assert.equal(
-    content.segments.every(
-      (segment) => segment.lines.length >= 1 && segment.lines.length <= 4,
-    ),
-    true,
-  );
-  assert.equal(content.segments[0]?.role, "lead");
-  assert.equal(content.segments.at(-1)?.role, "closing");
-  assert.equal("renderFontSize" in content, false);
-  const lineCount = content.segments.reduce(
-    (total, segment) => total + segment.lines.length,
-    0,
-  );
-  assert.equal(lineCount >= 5 && lineCount <= 8, true);
-  assert.equal(
-    content.segments.every((segment) =>
-      segment.lines.every((line) => {
-        const wordCount = line.split(/\s+/u).filter(Boolean).length;
-        return wordCount >= 2 && wordCount <= 6;
-      }),
-    ),
-    true,
-  );
-  assert.doesNotThrow(() => validateWallTextContent(content, 6));
-  assert.throws(
-    () => validateWallTextContent(content, 4),
-    /16–16 words for a 4\.0-second clip/,
-  );
+  assert.equal(editor.includes("function Structure2CtaText"), false);
+  assert.equal(editor.includes("getStructure2ReadabilityBackground"), false);
+  assert.equal(editor.includes("supportingText={slide.headline.trim()"), false);
+  assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : slide\.hasHeading === false && !slide\.subtext \? "Text" : "Headline \(optional\)"/);
+});
+
+test("manual Wall drafts preserve explicit lines and paragraph gaps", () => {
+  const text = "5 tools I’d keep if I were building a SaaS from zero today:\n\nGraphite - code review\n\nVercel - deployment\n\nDatafast - analytics\n\nUGCpilot - marketing\n\nSentry - finding what breaks";
+  const content = createWallTextEditContent(text, currentContent);
+  assert.equal(content.fullText, text);
+  assert.equal(content.finalLayout, undefined);
+  assert.equal(content.renderFontSize, undefined);
+  assert.deepEqual(content.segments.flatMap(segment => segment.lines), text.split("\n").filter(Boolean));
 });
 
 test("Wall typing adopts the current Arial Bold treatment when measured metadata is invalidated", () => {
@@ -136,7 +124,7 @@ test("Wall typing adopts the current Arial Bold treatment when measured metadata
     fontFamily:
       "var(--font-wall-text-arial-bold), Arial, 'Helvetica Neue', sans-serif",
     fontWeight: 700,
-    fontSize: 52,
+    fontSize: 50,
     outlineWidth: 4,
     shadowOpacity: 0,
   };
@@ -176,26 +164,15 @@ test("Wall typing adopts the current Arial Bold treatment when measured metadata
   assert.match(historicalTypography.fontFamily, /Arial/);
 });
 
-test("compact Wall edit patterns use the five-line minimum", () => {
-  const content = createWallTextEditContent(
-    "Reviewing weekly progress shows where effort actually went. The next choice feels less like a guess.",
-    {
-      ...currentContent,
-      pattern: "action_benefit",
-    },
-  );
-  const lineCount = content.segments.reduce(
-    (total, segment) => total + segment.lines.length,
-    0,
-  );
-
-  assert.equal(lineCount, 5);
-  assert.doesNotThrow(() => validateWallTextContent(content, 6));
+test("short manual Wall text is not padded to five lines", () => {
+  const content = createWallTextEditContent("Graphite - code review", currentContent);
+  assert.equal(content.fullText, "Graphite - code review");
+  assert.deepEqual(content.segments, [{ role: "lead", lines: ["Graphite - code review"] }]);
 });
 
 test("Hook edits recalculate their final lines, font, and safe position", () => {
   const current = {
-    fontSize: 52,
+    fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
     format: "hook_video" as const,
     hookText: "Old Hook copy",
     lines: ["Old Hook copy"],
@@ -213,7 +190,7 @@ test("Hook edits recalculate their final lines, font, and safe position", () => 
   });
 
   assert.equal(edited.lines.length, 2);
-  assert.equal(edited.fontSize, 52);
+  assert.equal(edited.fontSize, HOOK_TEXT_FIXED_FONT_SIZE);
   assert.equal(edited.fontSize, layout.fontSize);
   assert.equal(layout.version, HOOK_TEXT_LAYOUT_VERSION);
   assert.equal(edited.textColor, "#ffffff");
@@ -242,13 +219,24 @@ test("Hook edits preserve three intentional lines and a trailing emoji", () => {
     "shouldn't interrupt",
     "your whole day 😩",
   ]);
-  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.fontSize, HOOK_TEXT_FIXED_FONT_SIZE);
   assert.equal(layout.wordCount, 8);
+});
+
+test("keeps the previous fixed Hook layout renderable for saved drafts", () => {
+  const layout = createHookTextLayout("Meal logging\nshouldn't interrupt", {
+    fontSize: 52,
+    layoutVersion: PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
+    lines: ["Meal logging", "shouldn't interrupt"],
+  });
+
+  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.version, PREVIOUS_HOOK_TEXT_LAYOUT_VERSION);
 });
 
 test("Hook editor changes preserve user-controlled line breaks", () => {
   const current = {
-    fontSize: 52,
+    fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
     format: "hook_video" as const,
     hookText: "Old Hook copy",
     lines: ["Old Hook copy"],
@@ -282,13 +270,13 @@ test("Hook layouts fail closed when saved lines or font metadata change", () => 
         fontSize: 55,
         lines: ["The original Hook copy"],
       }),
-    /fixed 52px font size/,
+    /fixed 56px font size/,
   );
 });
 
 test("invalid in-progress Hook edits are preserved instead of sliced", () => {
   const current = {
-    fontSize: 52,
+    fontSize: HOOK_TEXT_FIXED_FONT_SIZE,
     format: "hook_video" as const,
     hookText: "Old Hook copy",
     lines: ["Old Hook copy"],

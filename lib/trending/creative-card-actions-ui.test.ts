@@ -33,6 +33,9 @@ const firstVisitGuide = readProjectFile(
 const firstVisitPreview = readProjectFile(
   "app/e2e/trending-walkthrough-preview/page.tsx",
 );
+const swipeGuide = readProjectFile(
+  "components/trending/trending-swipe-guide.tsx",
+);
 const existingWalkthroughBackfill = readProjectFile(
   "supabase/migration_archive/pre_baseline_20260829/canonical_history/20260828113000_backfill_existing_trending_walkthroughs.sql",
 );
@@ -43,16 +46,16 @@ const hookDraftRoute = readProjectFile(
   "app/api/trending/hook-videos/drafts/route.ts",
 );
 
-test("places Edit in the page header and keeps circular decisions below the card", () => {
+test("places Edit in the page header and retains accessible circular decisions", () => {
   assert.match(actions, /export function CreativeDecisionActions/);
   assert.match(actions, /variant="creative-reject"/);
-  assert.match(actions, /rejectAriaLabel = "Reject this creative"/);
+  assert.match(actions, /rejectAriaLabel = interaction === "post" \? "Skip to the next post"/);
   assert.match(actions, /aria-label=\{rejectAriaLabel\}/);
-  assert.match(actions, /rejectTitle = "Reject"/);
+  assert.match(actions, /rejectTitle = interaction === "post" \? "Skip to the next post"/);
   assert.match(actions, /title=\{rejectTitle\}/);
-  assert.match(actions, /acceptAriaLabel = "Accept this creative"/);
+  assert.match(actions, /acceptAriaLabel = interaction === "post" \? "Like and schedule this post"/);
   assert.match(actions, /aria-label=\{acceptAriaLabel\}/);
-  assert.match(actions, /acceptTitle = "Accept"/);
+  assert.match(actions, /acceptTitle = interaction === "post" \? "Like and schedule"/);
   assert.match(actions, /title=\{acceptTitle\}/);
   assert.match(actions, /export function CreativeEditAction/);
   assert.match(actions, /variant="creative-edit"/);
@@ -63,14 +66,35 @@ test("places Edit in the page header and keeps circular decisions below the card
   assert.match(workspace, /ref=\{setHeaderActionsRoot\}/);
 });
 
+test("keeps Hook video decisions with the shared review frame", () => {
+  assert.match(workspace, /<PostInteractionFeed[\s\S]*<CreativeDecisionActions/);
+  assert.match(workspace, /reviewLayout\.reviewFeed/);
+  assert.doesNotMatch(workspace, /<p data-post-review-status/);
+});
+
 test("Reaction Reels expose text-only editing and show preparation instead of accepting an old preview", () => {
-  const editAction = workspace.slice(workspace.indexOf("function handleEditActiveCandidate()"), workspace.indexOf("function handlePointerDown("));
+  const editAction = workspace.slice(workspace.indexOf("function handleEditActiveCandidate()"), workspace.indexOf("function handleDeckKeyDown("));
   assert.doesNotMatch(editAction, /format === "reaction"/);
   assert.match(workspace, /activeCandidate && headerActionsRoot/);
   assert.match(workspace, /editorCandidate\?\.format === "reaction"[\s\S]*<ReactionTextEditor/);
   assert.match(workspace, /import\("@\/components\/trending\/reaction-text-editor"\)/);
   assert.match(workspace, /creative\.textEditState === "preparing" \? "Preparing video"/);
   assert.match(workspace, /activeCandidate\.item\.creative\.textEditState !== "ready"[\s\S]*return false/);
+});
+
+test("keeps original Reaction Reel audio playable in Trending", () => {
+  const reactionCard = workspace.slice(
+    workspace.indexOf("function TrendingReactionDeckCard("),
+    workspace.indexOf("function CarouselDeckCard("),
+  );
+
+  assert.match(reactionCard, /muted=\{!soundEnabled\}/);
+  assert.match(
+    reactionCard,
+    /aria-label=\{soundEnabled \? "Mute Reaction audio" : "Play Reaction audio"\}/,
+  );
+  assert.match(reactionCard, /video\.muted = !nextSoundEnabled/);
+  assert.match(reactionCard, /data-deck-control/);
 });
 
 test("uses two accessible circular decision targets and a compact Edit pill", () => {
@@ -80,6 +104,8 @@ test("uses two accessible circular decision targets and a compact Edit pill", ()
     actions,
     /min-\[1024px\]:size-\[clamp\(3\.5rem,calc\(\(100dvh-252px\)\*0\.155\),clamp\(4\.75rem,calc\(124\.5px-3\.25vw\),5rem\)\)\]/,
   );
+  assert.match(actions, /reviewLayout\.compactHeightDecisionButton/);
+  assert.match(actions, /reviewLayout\.compactHeightDecisionGroup/);
   assert.equal((actions.match(/size="creative-icon"/g) ?? []).length, 2);
   assert.equal((actions.match(/size="creative-edit"/g) ?? []).length, 1);
   assert.match(buttons, /"creative-icon":\s*\n\s*"size-14[^"]*sm:size-16/);
@@ -145,7 +171,7 @@ test("restores Adjust as the global content-mix action beside item-level Edit", 
   );
 });
 
-test("teaches new Trending users the difference between editing one post and adjusting future content", () => {
+test("keeps the retired walkthrough assets available only for development previews", () => {
   assert.match(actions, /data-trending-edit-control/);
   assert.match(firstVisitGuide, /type WalkthroughPhase = "preview" \| "controls"/);
   assert.match(firstVisitGuide, /selector: "\[data-trending-edit-control\]"/);
@@ -221,10 +247,9 @@ test("teaches new Trending users the difference between editing one post and adj
     firstVisitPreview,
     /4 content pieces are being prepared\. New content will appear/,
   );
-  assert.match(
-    workspace,
-    /<div className="min-w-0 flex-1">[\s\S]*<TrendingFeedGallery[\s\S]*<TrendingFirstVisitWalkthrough/,
-  );
+  assert.doesNotMatch(workspace, /TrendingFirstVisitWalkthrough/);
+  assert.doesNotMatch(workspace, /TrendingApplicationDemo/);
+  assert.doesNotMatch(workspace, /SHOW_TRENDING_FIRST_VISIT_WALKTHROUGH/);
   assert.match(
     firstVisitGuide,
     /data-walkthrough-format-label[\s\S]*data-walkthrough-media-frame/,
@@ -235,6 +260,17 @@ test("teaches new Trending users the difference between editing one post and adj
   assert.match(firstVisitGuide, /data-walkthrough-step=\{step\.kind\}/);
   assert.match(nextConfig, /allowedDevOrigins: \["127\.0\.0\.1"\]/);
   assert.match(firstVisitGuide, /method: "POST"/);
+});
+
+test("shows new Trending accounts a safe first-post interaction guide", () => {
+  assert.match(swipeGuide, /data-trending-swipe-guide/);
+  assert.match(swipeGuide, /Double-tap to schedule/);
+  assert.match(swipeGuide, /Scroll to skip/);
+  assert.match(swipeGuide, /Tap once to start/);
+  assert.match(swipeGuide, /data-trending-guide-heart/);
+  assert.match(workspace, /onStart=\{dismissSwipeGuide\}/);
+  assert.match(workspace, /fetch\("\/api\/trending\/walkthrough"/);
+  assert.match(workspace, /function requestCreativeDecision[\s\S]*if \(dismissSwipeGuide\(\)\) \{\s*return false;/);
 });
 
 test("keeps review cards, audio controls, and creative actions flat", () => {
@@ -326,7 +362,7 @@ test("keeps only explicitly saved Hook videos in Creative Assets", () => {
   assert.match(wallLibrary, /\{preparing \? "Preparing" : "Prepare"\}/);
 });
 
-test("keeps the accepted Carousel and Wall action chooser mounted after the final ready card", () => {
+test("keeps scheduling and recovery controls mounted after the final ready post", () => {
   const gallery = workspace.slice(
     workspace.indexOf("function TrendingFeedGallery("),
     workspace.indexOf("function TrendingIncompleteEmptyState("),
@@ -366,103 +402,93 @@ test("keeps the accepted Carousel and Wall action chooser mounted after the fina
   );
   assert.match(
     gallery,
-    /const retainingReviewShell = hasPresentedFeed && items\.length === 0;/,
+    /const retainingReviewShell = hasReviewShell && items\.length === 0;/,
   );
   assert.match(
     gallery,
-    /const shouldRenderFeed = items\.length > 0 \|\| hasPresentedFeed;/,
+    /const shouldRenderFeed = items\.length > 0 \|\| hasReviewShell;/,
   );
+  assert.match(gallery, /const hasReviewShell = hasPresentedFeed \|\| postHistory\.entries\.length > 0;/);
   assert.match(gallery, /\{shouldRenderFeed \? \(\s*<TrendingFeed/);
   assert.match(feed, /<TrendingDeck[\s\S]*candidates=\{candidates\}/);
   assert.doesNotMatch(feed, /\{candidates\.length > 0 \? \(/);
   assert.match(
     workspace,
-    /candidate\.format === "wall_text"[\s\S]*setWallTextCandidate\(candidate\)/,
+    /candidate\.format === "wall_text"[\s\S]*setPendingWallTextScheduleCandidate\(candidate\)/,
   );
   assert.match(workspace, /setActionCandidate\(candidate\)/);
 });
 
-test("keeps the Slideshow label compact and aligned unless a tall next card needs clearance", () => {
-  assert.match(
-    workspace,
-    /function getTrendingFormatPillPositionClass\(hasVerticalNextCard: boolean\)[\s\S]*hasVerticalNextCard[\s\S]*bottom-\[calc\(100%\+72px\)\] min-\[1024px\]:bottom-\[calc\(100%\+96px\)\][\s\S]*bottom-\[calc\(100%\+24px\)\]/,
+test("keeps the Slideshow label above its post in the scrolling feed", () => {
+  assert.match(workspace, /format="carousel" positionClassName="bottom-\[calc\(100%\+24px\)\]"/);
+  assert.match(workspace, /function renderFeedCandidate[\s\S]*return <div[^>]*className="relative flex w-full items-center justify-center pt-10"/);
+  assert.match(workspace, /content: renderFeedCandidate\(slot.candidate, slot.depth, slot.itemIndex\)/);
+});
+
+test("shows real upcoming posts without enabling their controls or autoplay", () => {
+  assert.match(workspace, /presentation="feed"/);
+  assert.match(workspace, /isActive \|\| presentation === "feed"/);
+  assert.match(workspace, /inert=\{isActive \? undefined : true\}/);
+  assert.match(workspace, /aria-hidden=\{isActive \? undefined : "true"\}/);
+  assert.match(workspace, /onPointerDown=\{ignorePostPointer\}/);
+});
+
+test("grows every review format across practical laptop viewport profiles", () => {
+  const clamp = (minimum: number, value: number, maximum: number) =>
+    Math.min(Math.max(value, minimum), maximum);
+  const carouselWidth = (width: number, height: number) =>
+    Math.min(
+      clamp(312, width * 0.08333 + 232, 392),
+      clamp(312, height * 0.41667 - 8, 392),
+    );
+  const verticalWidth = (width: number, height: number) =>
+    Math.min(
+      clamp(270, width * 0.07292 + 200, 340),
+      clamp(270, height * 0.36458 - 10, 340),
+    );
+  const wallTextWidth = (width: number, height: number) =>
+    Math.min(
+      clamp(280, width * 0.07292 + 210, 350),
+      clamp(280, height * 0.36458, 350),
+    );
+  const viewports = [
+    [1366, 768],
+    [1440, 900],
+    [1536, 864],
+    [1920, 1080],
+  ] as const;
+
+  for (const getWidth of [carouselWidth, verticalWidth, wallTextWidth]) {
+    const sizes = viewports.map(([width, height]) => getWidth(width, height));
+
+    assert.ok(sizes[1] >= sizes[0]);
+    assert.ok(sizes[2] >= sizes[0]);
+    assert.ok(sizes[3] >= sizes[1]);
+    assert.ok(sizes[3] >= sizes[2]);
+  }
+
+  assert.deepEqual(
+    viewports.map(([width, height]) => Math.round(carouselWidth(width, height))),
+    [312, 352, 352, 392],
   );
-  assert.match(
-    workspace,
-    /positionClassName=\{getTrendingFormatPillPositionClass\(\s*hasVerticalNextCard,\s*\)\}/,
+  assert.deepEqual(
+    viewports.map(([width, height]) => Math.round(verticalWidth(width, height))),
+    [270, 305, 305, 340],
   );
-  assert.match(workspace, /: "Slideshow";/);
-  assert.doesNotMatch(workspace, /Slideshow · \$\{slideCount\} Slides/);
-  assert.equal(
-    (
-      workspace.match(
-        /positionClassName="left-0 bottom-\[calc\(100%\+24px\)\]"/g,
-      ) ?? []
-    ).length,
-    3,
+  assert.deepEqual(
+    viewports.map(([width, height]) => Math.round(wallTextWidth(width, height))),
+    [280, 315, 315, 350],
   );
 });
 
-test("centers a card-sized review frame over visible inert next-card layers", () => {
+test("shows the complete rendered slide without cropping its headline", () => {
   assert.match(
     workspace,
-    /CAROUSEL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(78vw,300px,calc\(\(100dvh-348px\)\*0\.8\)\)\]"/,
-  );
-  assert.match(
-    workspace,
-    /VERTICAL_REVIEW_CARD_WIDTH_CLASS\s*=\s*\n\s*"w-\[min\(76vw,230px,calc\(\(100dvh-348px\)\*0\.5625\)\)\] min-\[1024px\]:w-\[min\(76vw,clamp\(260px,calc\(440\.5px-11\.75vw\),280px\),calc\(\(100dvh-252px\)\*0\.5625\)\)\]"/,
-  );
-  assert.match(
-    workspace,
-    /className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-x-clip overflow-y-visible pb-\[107px\] pt-\[94px\]"/,
-  );
-  assert.match(workspace, /data-trending-review-frame/);
-  assert.match(workspace, /getTrendingReviewCardFrameClass\(activeCandidate\.format\)/);
-  assert.doesNotMatch(workspace, /w-full max-w-3xl flex-col items-center/);
-  assert.match(
-    workspace,
-    /data-trending-card-state=\{getTrendingDeckCardState\(depth\)\}/,
-  );
-  assert.match(
-    workspace,
-    /pointer-events-none absolute inset-0 overflow-visible/,
-  );
-  assert.match(
-    workspace,
-    /getTrendingDecisionControlsPositionClass\(\s*activeCandidate\.format,\s*hasVerticalNextCard,\s*\)/,
-  );
-  assert.match(
-    workspace,
-    /const hasVerticalNextCard\s*=\s*activeCandidate\?\.format === "carousel"[\s\S]*slot\.depth === 1 && slot\.candidate\.format !== "carousel"/,
-  );
-  assert.match(
-    workspace,
-    /function getTrendingDecisionControlsPositionClass[\s\S]*hasVerticalNextCard: boolean[\s\S]*if \(hasVerticalNextCard\)[\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(44px,calc\(\(100dvh-600px\)\*0\.5\),80px\)\)\][\s\S]*top-full min-\[1024px\]:top-\[calc\(100%\+clamp\(24px,calc\(\(100dvh-680px\)\*0\.72\),52px\)\)\]/,
-  );
-  assert.equal(
-    (workspace.match(/data-trending-card-state=/g) ?? []).length,
-    4,
-  );
-  assert.equal(
-    (workspace.match(/inert=\{isActive \? undefined : true\}/g) ?? []).length,
-    4,
-  );
-  assert.match(workspace, /function getTrendingDeckSlots/);
-  assert.match(workspace, /depth === 1 \? "next" : "preload"/);
-  assert.match(workspace, /Math\.abs\(dragX\) \/ SWIPE_THRESHOLD_PX/);
-  assert.match(workspace, /dragX=\{dragX\}/);
-  assert.match(workspace, /isDragging=\{isDragging\}/);
-  assert.doesNotMatch(workspace, /size-px overflow-hidden opacity-0/);
-});
-
-test("fills the fixed slideshow frame without side gutters", () => {
-  assert.match(
-    workspace,
-    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-cover"/,
+    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-contain"/,
   );
   assert.doesNotMatch(
     workspace,
-    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-contain"/,
+    /function CarouselDeckCard[\s\S]*className="size-full pointer-events-none object-cover"/,
   );
 });
 
@@ -480,7 +506,7 @@ test("keeps actual upcoming media ready behind either swipe direction", () => {
 test("uses the shared post scheduler after accepting a Wall-of-Text Reel", () => {
   assert.match(
     workspace,
-    /candidate\.format === "wall_text"[\s\S]*setWallTextCandidate\(candidate\)/,
+    /candidate\.format === "wall_text"[\s\S]*setPendingWallTextScheduleCandidate\(candidate\)/,
   );
   assert.match(
     workspace,
@@ -505,61 +531,27 @@ test("uses the shared post scheduler after accepting a Wall-of-Text Reel", () =>
   assert.doesNotMatch(workspace, /HookVideoScheduleDrawer/);
 });
 
-test("keeps the Carousel format pill above its centered media stack", () => {
-  assert.match(
-    workspace,
-    /pointer-events-none absolute left-0 z-40 flex w-full items-center justify-start/,
-  );
-  assert.match(workspace, /bottom-\[calc\(100%\+24px\)\]/);
-  assert.doesNotMatch(workspace, /bottom-\[calc\(100%\+116px\)\]/);
-  assert.doesNotMatch(workspace, /hasTallerVerticalBackground/);
-  assert.match(workspace, /pb-\[107px\] pt-\[94px\]/);
-  assert.match(
-    workspace,
-    /inline-flex h-\[22px\][^\"]*border-border\/60 bg-card\/80[^\"]*text-\[10px\] font-medium/,
-  );
-  assert.match(workspace, /const iconColor = isHook/);
-  assert.match(workspace, /className=\{cn\("size-3 shrink-0", iconColor\)\}/);
-  assert.doesNotMatch(
-    workspace,
-    /data-trending-format-pill[\s\S]{0,400}(?:shadow-|drop-shadow|backdrop-blur|ring-)/,
-  );
-  assert.doesNotMatch(actions, /shadow-(?:none|xs|sm)/);
+test("keeps the Carousel format pill attached to its scrolling post", () => {
+  assert.match(workspace, /if \(presentation === "feed"\) return \{ opacity: 1/);
+  assert.match(workspace, /isActive \? <TrendingFormatPill candidate=\{candidate\} format="carousel"/);
 });
 
-test("keeps Hook and Wall-of-Text pills close above their video frame", () => {
-  assert.match(workspace, /type TrendingDeckPresentation = "centered" \| "video_peek"/);
-  assert.match(workspace, /VIDEO_PEEK_CARD_STYLES/);
-  assert.match(workspace, /translateX: 12/);
-  assert.doesNotMatch(workspace, /translateX: 178/);
-  assert.match(
-    workspace,
-    /interpolateDeckValue\(\s*inactiveTranslateX,\s*promotedTranslateX,\s*revealProgress,\s*\)/,
-  );
-  assert.match(workspace, /presentation === "video_peek" && !isActive/);
-  assert.match(workspace, /activeFormat !== "carousel"/);
-  assert.match(workspace, /nextCandidate && nextCandidate\.format !== "carousel"/);
-  assert.equal(
-    (
-      workspace.match(
-        /positionClassName="left-0 bottom-\[calc\(100%\+24px\)\]"/g,
-      ) ?? []
-    ).length,
-    3,
-  );
-  assert.doesNotMatch(workspace, /positionClassName="left-2\.5 top-2\.5 w-auto"/);
-  assert.match(workspace, /data-trending-video-peek=\{[\s\S]*presentation === "video_peek"/);
-  assert.match(workspace, /activeCandidate\.format === "carousel" \? \(/);
-  assert.match(
-    workspace,
-    /function getTrendingReviewDeckPositionClass[\s\S]*format === "carousel" \? "min-\[1024px\]:translate-y-3" : ""/,
-  );
+test("preserves format labels and the ordered mix of upcoming posts", () => {
+  assert.match(workspace, /presentation="feed"/);
+  assert.match(workspace, /positionClassName="bottom-\[calc\(100%\+24px\)\]"/);
+  const slots = workspace.slice(workspace.indexOf("function getTrendingDeckSlots("), workspace.indexOf("function CarouselFeedState("));
+  assert.doesNotMatch(slots, /nextCandidate.format/);
+  assert.match(slots, /\[0, 1, 2\]/);
 });
 
-test("locks Hook, Wall-of-Text, and Reaction Reels to the same responsive 9:16 frame", () => {
+test("preserves separate responsive 9:16 frames for Wall-of-Text and video cards", () => {
   assert.match(
     workspace,
-    /VERTICAL_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{VERTICAL_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,
+    /WALL_TEXT_REVIEW_CARD_FRAME_CLASS\s*=\s*\n\s*`\$\{WALL_TEXT_REVIEW_CARD_WIDTH_CLASS\} aspect-\[9\/16\]`/,
+  );
+  assert.match(
+    workspace,
+    /function TrendingWallTextDeckCard\([\s\S]*WALL_TEXT_REVIEW_CARD_FRAME_CLASS,[\s\S]*reviewLayout\.responsiveWallTextFrame/,
   );
   assert.equal(
     (workspace.match(/data-trending-vertical-frame/g) ?? []).length,
@@ -567,7 +559,11 @@ test("locks Hook, Wall-of-Text, and Reaction Reels to the same responsive 9:16 f
   );
   assert.equal(
     (workspace.match(/VERTICAL_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
-    3,
+    2,
+  );
+  assert.equal(
+    (workspace.match(/WALL_TEXT_REVIEW_CARD_FRAME_CLASS,/g) ?? []).length,
+    1,
   );
   assert.match(
     workspace,
@@ -588,20 +584,11 @@ test("opens the shared scheduler directly after accepting a rendered Reaction Re
   assert.match(workspace, /data-trending-vertical-frame/);
 });
 
-test("keeps the outgoing card mounted until its transform transition finishes", () => {
-  assert.match(workspace, /onTransitionEnd=\{isActive \? onExitTransitionEnd/);
-  assert.match(
-    workspace,
-    /event\.propertyName === "transform"[\s\S]*settleSwipeExit\(\)/,
-  );
-  assert.match(
-    workspace,
-    /completion\(\);[\s\S]*resetDrag\(\);/,
-  );
-  assert.doesNotMatch(
-    workspace,
-    /key=\{candidates\.map\(\(candidate\) => candidate\.item\.id\)\.join\("\|"\)\}/,
-  );
+test("keeps liked posts visible for heart feedback before advancing once", () => {
+  assert.match(workspace, /direction === "left" \? 0 : POST_LIKE_FEEDBACK_MS/);
+  assert.match(workspace, /liked=\{exitDirection === "right"\}/);
+  assert.match(workspace, /completion\(\);[\s\S]*setExitDirection\(null\)/);
+  assert.doesNotMatch(workspace, /setPointerCapture/);
 });
 
 test("advances locally and sends decisions through a durable background outbox", () => {
@@ -631,7 +618,8 @@ test("advances locally and sends decisions through a durable background outbox",
     /\/api\/trending\/(hook-videos|wall-text)\/feed\/prepare/,
   );
   assert.doesNotMatch(workspace, /setActiveItemIndex\(/);
-  assert.match(workspace, /disabled=\{Boolean\(exitDirection\)\}/);
+  assert.match(workspace, /disabled=\{reviewEditDisabled\}/);
+  assert.match(workspace, /const reviewEditDisabled = Boolean\(exitDirection \|\| postHistory\.browsing && activeCandidate\?\.format !== "carousel"\)/);
 });
 
 test("distinguishes ready cards from the complete remaining daily pack", () => {
@@ -646,7 +634,7 @@ test("distinguishes ready cards from the complete remaining daily pack", () => {
   assert.match(workspace, /data-trending-deck-progress/);
   assert.match(
     workspace,
-    /Showing ready content \$\{activeItemIndex \+ 1\} of \$\{visibleCandidates\.length\}/,
+    /Trending posts\. \$\{deckProgressLabel\}/,
   );
 });
 
@@ -679,15 +667,14 @@ test("defers the large Trending editor until Edit is opened", () => {
   assert.match(workspace, /function TrendingCreativeEditorLoading\(\)/);
 });
 
-test("defers the Trending Hook composer until an accepted Hook opens it", () => {
-  assert.match(workspace, /const HookVideoComposer = dynamic\(/);
+test("keeps the Trending Hook composer available before an accepted Hook opens it", () => {
   assert.match(
     workspace,
-    /import\("@\/components\/trending\/hook-video-composer"\)/,
+    /import \{ HookVideoComposer \} from "@\/components\/trending\/hook-video-composer"/,
   );
   assert.doesNotMatch(
     workspace,
-    /import \{ HookVideoComposer \} from "@\/components\/trending\/hook-video-composer"/,
+    /const HookVideoComposer = dynamic\(/,
   );
   assert.match(
     workspace,
@@ -697,32 +684,40 @@ test("defers the Trending Hook composer until an accepted Hook opens it", () => 
     workspace,
     /function TrendingHookComposer[\s\S]*useState<HookVideoFlowState>[\s\S]*<HookVideoComposer/,
   );
-  assert.match(workspace, /function HookVideoComposerLoading\(\)/);
+  assert.doesNotMatch(workspace, /function HookVideoComposerLoading\(\)/);
 });
 
-test("Carousel editing previews the heading-only white background treatment", () => {
+test("Carousel editing keeps content headings and shared Slide 1 typography", () => {
   assert.match(editor, /data-carousel-editor-preview=\{/);
   assert.match(editor, /showExactRender \? "exact-render" : "live-render"/);
   assert.match(editor, /function getExactCarouselPreviewUrl/);
-  assert.match(editor, /function Structure2StoryText/);
-  assert.match(editor, /color: "#ffffff"/);
-  assert.match(editor, /fontWeight: 600/);
-  assert.match(editor, /WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/);
+  assert.match(editor, /getCarouselBodyBlocks\(supportingText \|\| \(!hasHeading \? slide\.headline : ""\)\)/);
+  assert.match(editor, /kind === "headline" \? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE/);
+  assert.match(editor, /WebkitTextStroke: `\$\{CAROUSEL_TEXT_OUTLINE_WIDTH \/ 10\.8\}cqw rgba\(0, 0, 0, 0\.72\)`/);
   assert.match(editor, /function CarouselEditorBackground/);
-  assert.match(editor, /story_product_reveal/);
+  assert.match(editor, /App screenshots use the same full-frame centre crop/);
   assert.match(editor, /function CarouselOutlinedText/);
+  assert.match(editor, /function CarouselCoverText/);
+  assert.match(editor, /fontSize: `\$\{fontSize \/ 10\.8\}cqw`/);
+  assert.match(editor, /fontSize=\{getCarouselEditHookFontSize\(slide\)\}/);
+  assert.match(editor, /fontWeight: CAROUSEL_COVER_FONT_WEIGHT/);
+  assert.match(editor, /lineHeight: CAROUSEL_HOOK_LINE_HEIGHT/);
+  assert.match(editor, /primaryText=\{slide\.headline\.trim\(\) \|\| supportingText\}/);
+  assert.match(editor, /const isCover = slide\.slideNumber === 1/);
+  assert.match(editor, /fontSize: isCover \? getCarouselEditHookFontSize\(slide\) : CAROUSEL_FIXED_EDITOR_FONT_SIZE/);
+  assert.match(editor, /slide\.slideNumber === 1 \? "Hook" : slide\.hasHeading === false && !slide\.subtext \? "Text" : "Headline \(optional\)"/);
   assert.match(
     editor,
     /kind === "headline" \? \(\s*<span className="box-decoration-clone rounded-\[1\.8cqw\] bg-white/,
   );
   assert.match(
     editor,
-    /kind === "body"\s*\? \{\s*paintOrder: "stroke fill",\s*WebkitTextStroke: "0\.370cqw rgba\(0, 0, 0, 0\.72\)"/,
+    /kind !== "headline"\s*\? \{\s*paintOrder: "stroke fill",\s*WebkitTextStroke: `\$\{CAROUSEL_TEXT_OUTLINE_WIDTH \/ 10\.8\}cqw rgba\(0, 0, 0, 0\.72\)`/,
   );
   assert.doesNotMatch(editor, /function CarouselBubbleText/);
   assert.doesNotMatch(editor, /fill="#ffffff"/);
   assert.doesNotMatch(editor, /<feDropShadow/);
-  assert.match(editor, /Rendered as the bottom action label\./);
+  assert.doesNotMatch(editor, /Rendered as the bottom action label\./);
 });
 
 test("moves the real edited Carousel slide from the latest state instead of a stale closure", () => {
@@ -795,7 +790,7 @@ test("shows ready ideas while other daily slots are still preparing or failed", 
   );
   assert.match(
     workspace,
-    /if \(!retainingReviewShell && !loading && error && items\.length === 0\)/,
+    /if \(!retainingReviewShell && !showSkeleton && error && items\.length === 0\)/,
   );
   assert.match(
     workspace,

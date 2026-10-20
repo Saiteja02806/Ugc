@@ -1,12 +1,256 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import sharp from "sharp";
 
 import type { SupabaseJobStore } from "../lib/supabase.js";
 import type { BackgroundJobRow } from "../types.js";
+import { CAROUSEL_RENDERER_VERSION } from "../lib/carousel-render-slide.js";
+import { CAROUSEL_STRUCTURE_2_RENDERER_VERSION } from "../lib/carousel-structure-2-render-slide.js";
 import { runRenderTrendingCarouselEditJob } from "./render-trending-carousel-edit.js";
+import type { renderCarouselSlideWithDiagnostics } from "../lib/carousel-render-slide.js";
+import type { renderCarouselStructure2SlideWithDiagnostics } from "../lib/carousel-structure-2-render-slide.js";
+import { defaultCarouselManualTextStyle } from "../lib/carousel-manual-text.js";
+import { renderCarouselSlideWithDiagnostics as renderActualCarouselSlide } from "../lib/carousel-render-slide.js";
+
+test("six library backgrounds retain visible body-only copy through the real saved-image renderer", async () => {
+  const background = await sharp({ create: { width: 1080, height: 1350, channels: 3, background: "#26464d" } }).png().toBuffer();
+  const copies = ["Small steps make better work", "Plan one useful post today.", "Keep your next task simple.", "Review what your audience needs.", "Leave room for small changes.", "Choose one idea to try today."];
+  const originals = copies.map((headline, i) => ({ id: `slide-${i + 1}`, slide_number: i + 1,
+    category_image_asset_id: `original-${i + 1}`, headline, subtext: "", cta_text: "",
+    text_position: "center", visual_role: i === 0 ? "hook" : "human" }));
+  const edited = originals.map(slide => ({ slideId: slide.id, slideNumber: slide.slide_number, headline: slide.headline,
+    subtext: "", ctaText: "", backgroundAssetId: `library-${slide.slide_number}`, backgroundUrl: `https://owned.test/library-${slide.slide_number}.png`,
+    backgroundCrop: "centre", visualRole: slide.visual_role, textPosition: { x: .5, y: .5 } }));
+  // Current copy, including edits, wins over the original normalized plan.
+  edited[2]!.headline = "Write your next useful post.";
+  edited[3]!.headline = "";
+  edited[3]!.subtext = "Keep this updated body copy.";
+  edited[5]!.ctaText = "Start with one small step.";
+  const plan = originals.map(slide => ({ slideNumber: slide.slide_number, slideType: slide.slide_number === 1 ? "hook" : "solution",
+    textMode: slide.slide_number === 1 ? "single_statement" : slide.slide_number === 6 ? "cta_takeaway" : "body_only",
+    headline: slide.slide_number === 1 ? slide.headline : null, body: slide.slide_number === 1 ? null : slide.headline,
+    subtext: slide.slide_number === 1 ? null : slide.headline, listItems: [], ctaText: null,
+    imageDirection: "", layoutPreset: "middle-statement", textPosition: "center" }));
+  const rendered: number[] = [];
+  let output: unknown;
+  const store = {
+    getTrendingCarouselEdit: async () => ({ creative_id: "carousel", render_job_id: "job", render_status: "queued", content_json: { format: "carousel", slides: edited } }),
+    getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5", structure_id: "structure_1", slide_count: 6, content_plan_normalized: { slides: plan } }),
+    listCarouselSlides: async () => originals,
+    markTrendingCarouselEditRendering: async () => undefined,
+    markTrendingCarouselEditReady: async (params: { output: unknown }) => { output = params.output; },
+  } as unknown as SupabaseJobStore;
+  await runRenderTrendingCarouselEditJob({ id: "job", input_json: { carouselId: "carousel", editId: "edit", revision: 2, userId: "owner" } } as unknown as BackgroundJobRow, {
+    store, checkpoint: async () => undefined, dependencies: {
+      renderCarouselSlide: async input => {
+        const source = edited[input.slide.slideNumber - 1]!;
+        assert.equal(input.slide.slideNumber === 1 ? input.slide.headline : input.slide.body, source.subtext || source.headline);
+        assert.equal(input.slide.ctaText, source.ctaText || null);
+        return renderActualCarouselSlide({ ...input, assetUrl: `data:image/png;base64,${background.toString("base64")}` });
+      },
+      uploadRenderedCarouselSlide: async ({ buffer, slideNumber }) => {
+        const { data, info } = await sharp(buffer).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+        let textPixels = 0;
+        for (let i = 0; i < data.length; i += info.channels) if (data[i]! > 200 && data[i + 1]! > 200 && data[i + 2]! > 200) textPixels++;
+        assert.ok(textPixels > 500, `Saved slide ${slideNumber} must contain visible text pixels, not just its background`);
+        rendered.push(slideNumber);
+        return { key: `saved-${slideNumber}.webp`, url: `https://owned.test/saved-${slideNumber}.webp` };
+      },
+    },
+  });
+  assert.deepEqual(rendered, [1, 2, 3, 4, 5, 6]);
+  assert.equal((output as { slides: unknown[] }).slides.length, 6);
+});
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  test(`${structureId} persists manual typography output, reuses its matching fingerprint, and rerenders changed styles`, async () => {
+    let prior: unknown = null, ready: unknown, calls = 0;
+    const textStyle = { ...defaultCarouselManualTextStyle(), fontSize: 40, color: "#00ff88" };
+    const edited = { slideId: "slide-1", slideNumber: 1, headline: "Build useful things", subtext: "", ctaText: "", backgroundAssetId: "image-1", backgroundUrl: "https://owned.test/bg.webp", textPosition: { x: .3, y: .7 }, textStyle };
+    const original = { id: "slide-1", slide_number: 1, category_image_asset_id: "image-1", headline: edited.headline, subtext: "", cta_text: "", text_position: "center", visual_role: "hook", rendered_url: "https://owned.test/original.webp" };
+    const store = { getTrendingCarouselEdit: async () => ({ creative_id: "carousel", render_job_id: "job", render_output_json: prior, render_status: "queued", content_json: { format: "carousel", slides: [edited] } }),
+      getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5", structure_id: structureId, slide_count: 1 }), listCarouselSlides: async () => [original],
+      markTrendingCarouselEditRendering: async () => undefined, markTrendingCarouselEditReady: async (p: { output: unknown }) => { ready = p.output; }, markTrendingCarouselEditFailed: async () => undefined } as unknown as SupabaseJobStore;
+    const run = () => runRenderTrendingCarouselEditJob({ id: "job", input_json: { carouselId: "carousel", editId: "edit", revision: 1, userId: "owner" } } as unknown as BackgroundJobRow, { store, checkpoint: async () => undefined, dependencies: {
+      renderCarouselSlide: async () => { throw Error("Must not use generation typography"); }, renderCarouselStructure2Slide: async () => { throw Error("Must not use generation typography"); },
+      renderCarouselManualSlide: async input => { calls++; assert.deepEqual(input.slide.textStyle, edited.textStyle); assert.equal(input.slide.renderFormat, "4:5"); assert.deepEqual(input.slide.textPosition, edited.textPosition); return { buffer: Buffer.from("manual"), diagnostics: { manualTextStyle: edited.textStyle, position: edited.textPosition, fontSize: 40, headingSize: 72 } }; },
+      uploadRenderedCarouselSlide: async () => ({ key: "manual.webp", url: "https://owned.test/manual.webp" }) } });
+    await run(); assert.equal(calls, 1); prior = ready;
+    await run(); assert.equal(calls, 1, "An unchanged manual slide is reused");
+    edited.textStyle = { ...edited.textStyle, headingColor: "#ff0088" };
+    await run(); assert.equal(calls, 2, "Appearance changes invalidate the exact slide fingerprint");
+  });
+}
+
+function withoutFingerprints(value: unknown) {
+  const output = value as { slides: Array<{ renderFingerprint: string }> };
+  assert.ok(output.slides.every((slide) => /^[a-f0-9]{64}$/.test(slide.renderFingerprint)));
+  return { ...output, slides: output.slides.map(({ renderFingerprint: _fingerprint, ...slide }) => slide) };
+}
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  test(`${structureId} reuses a previously edited body slide on a later hook change, but invalidates changed inputs`, async () => {
+    const originals = [1, 2].map(number => ({ id: `slide-${number}`, slide_number: number,
+      category_image_asset_id: `original-${number}`, headline: "Original copy", subtext: "", cta_text: "",
+      visual_role: number === 1 ? "hook" : "human", text_position: "center", story_format_id: "wrong_belief",
+      story_role: number === 1 ? "recognition" : "failure_scene", story_layout_variant: "story_overlay_only",
+      product_visual_eligibility: "forbidden", rendered_url: `https://storage.test/original-${number}.webp`, rendered_s3_key: `original-${number}.webp` }));
+    const edited = originals.map(slide => ({ slideId: slide.id, slideNumber: slide.slide_number, headline: slide.headline,
+      subtext: "", ctaText: "", backgroundAssetId: `upload-${slide.slide_number}`, backgroundUrl: `https://storage.test/upload-${slide.slide_number}.png`,
+      backgroundCrop: "centre", visualRole: slide.visual_role, textPosition: { x: .5, y: .5 } }));
+    let output: unknown = null;
+    let revision = 1;
+    const rendered: number[] = [];
+    const store = {
+      getTrendingCarouselEdit: async () => ({ id: "edit", creative_id: "carousel", render_job_id: "job", render_status: "queued",
+        render_output_json: output, content_json: { format: "carousel", slides: edited } }),
+      getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5", structure_id: structureId, slide_count: 2, content_plan_normalized: null }),
+      listCarouselSlides: async () => originals,
+      markTrendingCarouselEditRendering: async () => undefined,
+      markTrendingCarouselEditReady: async (params: { output: unknown }) => { output = params.output; },
+    } as unknown as SupabaseJobStore;
+    const run = () => runRenderTrendingCarouselEditJob({ id: "job", job_type: "render_trending_carousel_edit",
+      input_json: { userId: "owner", carouselId: "carousel", editId: "edit", revision } } as unknown as BackgroundJobRow, {
+      store, checkpoint: async () => undefined, dependencies: {
+        renderCarouselSlide: async input => { rendered.push(input.slide.slideNumber); return { buffer: Buffer.from("image"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselSlideWithDiagnostics>>; },
+        renderCarouselStructure2Slide: async input => { rendered.push(input.spec.slideNumber); return { buffer: Buffer.from("image"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselStructure2SlideWithDiagnostics>>; },
+        uploadRenderedCarouselSlide: async ({ slideNumber }) => ({ key: `revision-${revision}-${slideNumber}.webp`, url: `https://storage.test/revision-${revision}-${slideNumber}.webp` }),
+      },
+    });
+    await run();
+    assert.deepEqual(rendered, [1, 2]);
+    rendered.length = 0; revision++;
+    edited[0]!.backgroundUrl = "https://storage.test/another-hook.png";
+    await run();
+    assert.deepEqual(rendered, [1]);
+    const afterHook = output as { slides: Array<{ renderedUrl: string }> };
+    assert.equal(afterHook.slides[1]!.renderedUrl, "https://storage.test/revision-1-2.webp");
+    rendered.length = 0; revision++;
+    edited[1]!.textPosition.y = .7;
+    await run();
+    assert.deepEqual(rendered, [2]);
+  });
+}
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  for (const replaceAll of [false, true]) {
+    test(`${structureId} renders ${replaceAll ? "all six independent uploads" : "a body-slide upload and reuses the other five source images"}`, async () => {
+      const originals = Array.from({ length: 6 }, (_, index) => ({ id: `slide-${index + 1}`, slide_number: index + 1,
+        category_image_asset_id: `original-${index + 1}`, headline: "Original text", subtext: "", cta_text: "",
+        visual_role: index === 0 ? "hook" : "human", text_position: "center", story_format_id: "wrong_belief",
+        story_role: index === 0 ? "recognition" : "failure_scene", story_layout_variant: "story_overlay_only",
+        product_visual_eligibility: "forbidden", rendered_url: `https://storage.test/original-${index + 1}.webp`, rendered_s3_key: `original-${index + 1}.webp` }));
+      const edited = originals.map((slide, index) => {
+        const replaced = replaceAll || index === 2;
+        return { slideId: slide.id, slideNumber: slide.slide_number, headline: slide.headline, subtext: "", ctaText: "",
+          backgroundAssetId: replaced ? `upload-${index + 1}` : slide.category_image_asset_id,
+          backgroundUrl: `https://storage.test/${replaced ? "upload" : "original"}-${index + 1}.png`,
+          backgroundCrop: replaced ? "centre" : undefined, textPosition: { x: .5, y: .5 }, visualRole: slide.visual_role };
+      });
+      const received: Array<{ number: number; url: string; crop?: string }> = [];
+      let readyOutput: unknown;
+      const store = {
+        getTrendingCarouselEdit: async () => ({ id: "edit", creative_id: "carousel", render_job_id: "job", render_status: "queued",
+          content_json: { format: "carousel", slides: edited } }),
+        getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5", structure_id: structureId, slide_count: 6,
+          // Match production: the normalized plan carries body copy, while the
+          // saved slide/editor transport carries it in headline with no subtext.
+          content_plan_normalized: { slides: originals.map(slide => ({
+            slideNumber: slide.slide_number, slideType: slide.slide_number === 1 ? "hook" : slide.slide_number === 6 ? "cta" : "solution",
+            textMode: slide.slide_number === 1 ? "single_statement" : slide.slide_number === 6 ? "cta_takeaway" : "body_only",
+            headline: slide.slide_number === 1 ? slide.headline : null,
+            body: slide.slide_number === 1 ? null : slide.headline,
+            subtext: slide.slide_number === 1 ? null : slide.headline,
+            listItems: [], ctaText: null, imageDirection: "", layoutPreset: "middle-statement", textPosition: "center",
+          })) } }),
+        listCarouselSlides: async () => originals,
+        markTrendingCarouselEditRendering: async () => undefined,
+        markTrendingCarouselEditReady: async (params: { output: unknown }) => { readyOutput = params.output; },
+      } as unknown as SupabaseJobStore;
+      await runRenderTrendingCarouselEditJob({ id: "job", job_type: "render_trending_carousel_edit",
+        input_json: { userId: "owner", carouselId: "carousel", editId: "edit", revision: 1 } } as unknown as BackgroundJobRow, {
+        store, checkpoint: async () => undefined,
+        dependencies: {
+          renderCarouselSlide: async input => {
+            assert.equal(structureId, "structure_1"); received.push({ number: input.slide.slideNumber, url: input.assetUrl });
+            if (input.slide.slideNumber === 1) assert.equal(input.slide.headline, "Original text");
+            else {
+              assert.equal(input.slide.headline, null, "Body-only slides must not acquire a heading");
+              assert.equal(input.slide.body, "Original text", "Replacing a background must preserve body-only copy");
+            }
+            return { buffer: Buffer.from("rendered"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselSlideWithDiagnostics>>;
+          },
+          renderCarouselStructure2Slide: async input => {
+            assert.equal(structureId, "structure_2"); received.push({ number: input.spec.slideNumber, url: input.assetUrl, crop: input.spec.backgroundCrop });
+            assert.equal(input.spec.storyText, "Original text", "Every slide retains its text on library backgrounds");
+            assert.equal(input.spec.productVisualEligibility, "forbidden");
+            assert.equal(input.spec.backgroundCrop, "centre");
+            return { buffer: Buffer.from("rendered"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselStructure2SlideWithDiagnostics>>;
+          },
+          uploadRenderedCarouselSlide: async ({ slideNumber }) => ({ key: `edited-${slideNumber}.webp`, url: `https://storage.test/edited-${slideNumber}.webp` }),
+        },
+      });
+      assert.deepEqual(received.map(slide => slide.number), replaceAll ? [1, 2, 3, 4, 5, 6] : [3]);
+      assert.deepEqual(received.map(slide => slide.url), (replaceAll ? [1, 2, 3, 4, 5, 6] : [3]).map(number => `https://storage.test/upload-${number}.png`));
+      const output = readyOutput as { slides: Array<{ slideNumber: number; renderedUrl: string }> };
+      assert.equal(output.slides.length, 6);
+      assert.deepEqual(output.slides.map(slide => slide.renderedUrl), originals.map((_, index) => `https://storage.test/${replaceAll || index === 2 ? "edited" : "original"}-${index + 1}.webp`));
+    });
+  }
+}
+
+for (const structureId of ["structure_1", "structure_2"] as const) {
+  for (const changesCopy of [false, true]) {
+    test(`${structureId} image replacement ${changesCopy ? "uses current typography for changed copy" : "uses current typography for unchanged copy"}`, async () => {
+      const originalCopy = "Why being always available keeps draining you";
+      let fontSize: number | undefined;
+      let ready = false;
+      const store = {
+        getTrendingCarouselEdit: async () => ({ id: "edit", creative_id: "carousel", render_job_id: "job",
+          render_status: "queued", content_json: { format: "carousel", slides: [{
+            backgroundAssetId: "new-image", backgroundUrl: "https://example.test/new.webp",
+            ctaText: "", headline: changesCopy ? "Why your daily plan keeps falling apart" : originalCopy,
+            subtext: "", slideId: "slide", slideNumber: 1, visualRole: "hook",
+            textPosition: { x: .5, y: .5 },
+            // Deliberately invalid client metadata: the worker must derive it from the source rows.
+            sourceRendererVersion: "unknown", originalHeadline: "tampered", originalSubtext: "tampered",
+          }] } }),
+        getCarouselGeneration: async () => ({ user_id: "owner", status: "completed", format: "4:5",
+          structure_id: structureId, slide_count: 1, content_plan_normalized: null,
+          renderer_version: structureId === "structure_2" ? "story-native-tiktok-text-blocks-inter-tight-v11" : "social-tiktok-text-blocks-inter-tight-v25" }),
+        listCarouselSlides: async () => [{ id: "slide", slide_number: 1, category_image_asset_id: "old-image",
+          headline: originalCopy, subtext: "", cta_text: "", visual_role: "hook", text_position: "center",
+          story_format_id: "wrong_belief", story_role: "recognition", story_layout_variant: "story_overlay_only",
+          rendered_url: "https://example.test/original.webp", rendered_s3_key: "original.webp" }],
+        markTrendingCarouselEditRendering: async () => undefined,
+        markTrendingCarouselEditReady: async () => { ready = true; },
+      } as unknown as SupabaseJobStore;
+      await runRenderTrendingCarouselEditJob({ id: "job", job_type: "render_trending_carousel_edit",
+        input_json: { userId: "owner", carouselId: "carousel", editId: "edit", revision: 1 } } as unknown as BackgroundJobRow, {
+        store, checkpoint: async () => undefined,
+        dependencies: {
+          renderCarouselSlide: async (input) => {
+            fontSize = input.coverFontSize;
+            return { buffer: Buffer.from("image"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselSlideWithDiagnostics>>;
+          },
+          renderCarouselStructure2Slide: async (input) => {
+            fontSize = input.spec.coverFontSize;
+            return { buffer: Buffer.from("image"), diagnostics: {} } as Awaited<ReturnType<typeof renderCarouselStructure2SlideWithDiagnostics>>;
+          },
+          uploadRenderedCarouselSlide: async () => ({ key: "edited.webp", url: "https://example.test/edited.webp" }),
+        },
+      });
+      assert.equal(fontSize, 72);
+      assert.equal(ready, true);
+    });
+  }
+}
 
 test("renders and persists a normalized immutable Carousel edit", async () => {
   let receivedPosition: { x: number; y: number } | undefined;
+  let receivedSlide:
+    | { body: string | null; headline: string | null; subtext: string | null }
+    | undefined;
   let receivedTextStyle: string | undefined;
   let readyOutput: unknown;
   const store = {
@@ -80,12 +324,13 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
     dependencies: {
       renderCarouselSlide: async (input) => {
         receivedPosition = input.normalizedTextPosition;
+        receivedSlide = input.slide;
         receivedTextStyle = input.textStyle;
         return {
           buffer: Buffer.from("rendered"),
           diagnostics: {
             bubbleShapeStrategy: "heading-white-svg-background",
-            fontFamily: "Geist",
+            fontFamily: "Inter, Arial, Helvetica, sans-serif",
             maxTextWidth: 700,
             whiteBackgroundGroupCount: 1,
           },
@@ -100,10 +345,22 @@ test("renders and persists a normalized immutable Carousel edit", async () => {
   });
 
   assert.deepEqual(receivedPosition, { x: 0.27, y: 0.73 });
+  assert.deepEqual(receivedSlide, {
+    body: null,
+    ctaText: null,
+    headline: "Edited headline",
+    imageDirection: "",
+    layoutPreset: "middle-statement",
+    listItems: [],
+    slideNumber: 1,
+    slideType: "hook",
+    subtext: null,
+    textMode: "single_statement",
+    textPosition: "center",
+  });
   assert.equal(receivedTextStyle, "plain");
-  assert.deepEqual(readyOutput, {
-    rendererVersion:
-      "social-heading-rounded-shoulder-svg-renderer-v20-outline-4-normalized-edit-v1",
+  assert.deepEqual(withoutFingerprints(readyOutput), {
+    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v4-body-copy`,
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide.webp",
@@ -222,7 +479,7 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
           buffer: Buffer.from("rendered"),
           diagnostics: {
             bubbleShapeStrategy: "heading-white-svg-background",
-            fontFamily: "Geist",
+            fontFamily: "Inter, Arial, Helvetica, sans-serif",
             maxTextWidth: 700,
             whiteBackgroundGroupCount: 1,
           },
@@ -241,9 +498,8 @@ test("reuses immutable output for unchanged Carousel slides", async () => {
 
   assert.deepEqual(renderedSlideNumbers, [2]);
   assert.deepEqual(uploadedSlideNumbers, [2]);
-  assert.deepEqual(readyOutput, {
-    rendererVersion:
-      "social-heading-rounded-shoulder-svg-renderer-v20-outline-4-normalized-edit-v1",
+  assert.deepEqual(withoutFingerprints(readyOutput), {
+    rendererVersion: `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v4-body-copy`,
     slides: [
       {
         renderedS3Key: "carousels/original/slide-1.webp",
@@ -347,15 +603,15 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
         return {
           buffer: Buffer.from("story-rendered"),
           diagnostics: {
-            bubbleShapeStrategy: "plain-white-text-with-shadow",
+            bubbleShapeStrategy: "plain-white-text-with-outline",
             ctaBounds: null,
             ctaFontSize: null,
             ctaLineCount: 0,
             layoutVariant: input.spec.layoutVariant,
-            rendererVersion: "story-native-renderer-v6-outline-4",
+            rendererVersion: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
             safeAreaContained: true,
             storyBounds: { height: 100, width: 700, x: 100, y: 100 },
-            storyFontSize: 44,
+            storyFontSize: 60,
             storyLineCount: 2,
             textTreatment: input.spec.textTreatment,
             visualRole: input.spec.visualRole,
@@ -374,13 +630,13 @@ test("renders Structure 2 screenshot edits with the story-native renderer", asyn
   const receivedSpec = receivedSpecs[0];
   assert.ok(receivedSpec);
   assert.equal(receivedSpec.assetId, "product-asset-1");
+  assert.equal(receivedSpec.ctaText, "Try it");
   assert.equal(receivedSpec.layoutVariant, "story_product_reveal");
   assert.equal(receivedSpec.textTreatment, "overlay");
   assert.equal(receivedSpec.textPosition, "upper");
   assert.equal(receivedSpec.visualRole, "product_asset");
-  assert.deepEqual(readyOutput, {
-    rendererVersion:
-      "story-native-renderer-v6-outline-4-normalized-edit-v1",
+  assert.deepEqual(withoutFingerprints(readyOutput), {
+    rendererVersion: `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v4`,
     slides: [
       {
         renderedS3Key: "carousels/rendered/user/edit/slide-4.webp",

@@ -25,13 +25,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
+import { VideoPreview } from "@/components/media/video-preview";
+import { getVideoPreviewAspectRatio } from "@/lib/media/video-preview";
 import {
   getDemoPlaybackUrl,
   isActiveDemoStatus,
   type DemoDisplayStatus,
 } from "@/lib/demo/demo-display";
-import { getContentDemoEditorHref } from "@/lib/edit/routes";
+import { getContentDemoEditorHref, getContentExploreDemoEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -65,12 +71,15 @@ const demoIconActionClassName =
   "inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card text-muted shadow-xs transition-all hover:border-border hover:bg-card-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 const demoMetricChipClassName =
   "inline-flex h-8 items-center rounded-full border border-border/70 bg-card-muted/80 px-3.5 text-xs font-mono font-medium text-muted";
+const demoLibraryGridClassName =
+  "grid grid-cols-2 items-start gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
 
 type DemoContentType = "video/mp4" | "video/quicktime" | "video/webm";
 type DemoRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
 type DemoStatus = DemoDisplayStatus;
 
 type DemoVideo = {
+  explore_edit?: { scope: "hook:demo"; revision: number; updatedAt: string } | null;
   created_at: string;
   deleted_at: string | null;
   draft_json: Record<string, unknown>;
@@ -152,8 +161,7 @@ export function UploadedPostsTab({
 } = {}) {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const latestDemoLoadRequestIdRef = useRef(0);
-  const latestBlockingDemoLoadRequestIdRef = useRef(0);
+  const refreshQueue = useRefreshQueue(`demos:${user?.uid ?? "signed-out"}:${DEFAULT_PROJECT_ID}`);
 
   const existingCache =
     inMemoryDemoVideos && user && inMemoryDemoVideos.userId === user.uid
@@ -194,42 +202,43 @@ export function UploadedPostsTab({
     [demos],
   );
 
-  const loadDemos = useCallback(async (options?: { silent?: boolean }) => {
-    const requestId = latestDemoLoadRequestIdRef.current + 1;
-    latestDemoLoadRequestIdRef.current = requestId;
-
+  const loadDemos = useCallback((options?: { silent?: boolean; background?: boolean }) => refreshQueue.run(async signal => {
     if (!options?.silent) {
-      latestBlockingDemoLoadRequestIdRef.current = requestId;
       setIsLoading(true);
       setErrorMessage(null);
     }
 
     try {
-      const token = await getCurrentUserIdToken();
+      const data = await withReadDeadline(async bounded => {
+        const token = await getCurrentUserIdToken(user?.uid);
+        bounded.throwIfAborted();
 
-      if (!token) {
-        throw new Error("Sign in again to refresh your demo videos.");
-      }
+        if (!token) {
+          throw new Error("Sign in again to refresh your demo videos.");
+        }
 
-      const response = await fetch(
-        `/api/demo/list?projectId=${encodeURIComponent(DEFAULT_PROJECT_ID)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+        const response = await fetch(
+          `/api/demo/list?projectId=${encodeURIComponent(DEFAULT_PROJECT_ID)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal: bounded,
           },
-        },
-      );
-      const data = await readJsonResponse<
-        { demos: DemoVideo[]; ok: true } | ApiErrorResponse
-      >(response, loadErrorFallback);
+        );
+        const data = await readJsonResponse<
+          { demos: DemoVideo[]; ok: true; demoEditsUnavailable?: boolean } | ApiErrorResponse
+        >(response, loadErrorFallback);
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, loadErrorFallback));
-      }
+        if (!response.ok || data.ok !== true) {
+          throw new Error(getApiErrorMessage(data, loadErrorFallback));
+        }
 
-      if (latestDemoLoadRequestIdRef.current === requestId) {
-        setDemos(data.demos);
-        setErrorMessage(null);
+        return data;
+      }, signal);
+      if (!signal.aborted) {
+        setDemos(current => replaceEqualDeep(current, data.demos));
+        setErrorMessage(data.demoEditsUnavailable ? "Demos loaded, but saved demo edits could not be checked. Refresh before editing." : null);
         if (user) {
           inMemoryDemoVideos = {
             cachedAt: Date.now(),
@@ -240,18 +249,16 @@ export function UploadedPostsTab({
         }
       }
     } catch (error) {
-      if (latestDemoLoadRequestIdRef.current === requestId) {
+      if (!signal.aborted) {
         setErrorMessage(getErrorMessage(error, loadErrorFallback));
       }
+      throw error;
     } finally {
-      if (
-        !options?.silent &&
-        latestBlockingDemoLoadRequestIdRef.current === requestId
-      ) {
+      if (!signal.aborted) {
         setIsLoading(false);
       }
     }
-  }, [loadErrorFallback, user]);
+  }, { background: options?.background }).catch(() => {}), [loadErrorFallback, user, refreshQueue]);
 
   useEffect(() => {
     if (!user) {
@@ -267,41 +274,13 @@ export function UploadedPostsTab({
     return () => window.clearTimeout(timer);
   }, [loadDemos, user]);
 
-  useEffect(() => {
-    if (!activeDemoStatusSignature) {
-      return;
-    }
-
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-
-      if (attempts > MAX_ACTIVE_STATUS_POLL_ATTEMPTS) {
-        window.clearInterval(timer);
-        return;
-      }
-
-      void loadDemos({ silent: true });
-    }, 5_000);
-
-    return () => window.clearInterval(timer);
-  }, [activeDemoStatusSignature, loadDemos]);
-
-  useEffect(() => {
-    function refreshDemosWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void loadDemos({ silent: true });
-      }
-    }
-
-    window.addEventListener("focus", refreshDemosWhenVisible);
-    document.addEventListener("visibilitychange", refreshDemosWhenVisible);
-
-    return () => {
-      window.removeEventListener("focus", refreshDemosWhenVisible);
-      document.removeEventListener("visibilitychange", refreshDemosWhenVisible);
-    };
-  }, [loadDemos]);
+  useVisibleRefresh({
+    enabled: Boolean(user),
+    refresh: () => loadDemos({ silent: true, background: true }),
+    intervalMs: activeDemoStatusSignature ? 5_000 : false,
+    maxPolls: MAX_ACTIVE_STATUS_POLL_ATTEMPTS,
+    resetKey: activeDemoStatusSignature,
+  });
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -851,7 +830,7 @@ export function UploadedPostsTab({
           <DialogHeader>
             <DialogTitle>Delete {selectedDemoIds.size} demos?</DialogTitle>
             <DialogDescription>
-              This will permanently delete the {selectedDemoIds.size} selected demo videos from your Content Library. This action cannot be undone.
+              This will permanently delete the {selectedDemoIds.size} selected demo videos from your Demo screen. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-between">
@@ -1035,7 +1014,7 @@ function EmbeddedDemoWorkspace({
 
         {isLoading && demos.length === 0 ? (
           <div
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+            className={demoLibraryGridClassName}
             aria-label="Loading demos"
           >
             {Array.from({ length: 4 }, (_, index) => (
@@ -1043,7 +1022,7 @@ function EmbeddedDemoWorkspace({
                 key={index}
                 className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs"
               >
-                <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
+                <div className="aspect-[9/16] animate-pulse bg-card-muted motion-reduce:animate-none" />
                 <div className="space-y-3 p-4">
                   <div className="h-4 w-3/4 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
                   <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle motion-reduce:animate-none" />
@@ -1052,7 +1031,7 @@ function EmbeddedDemoWorkspace({
             ))}
           </div>
         ) : demos.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className={demoLibraryGridClassName}>
             {demos.map((demo) => (
               <DemoCard
                 key={demo.id}
@@ -1524,10 +1503,10 @@ export function DemoLibrary({
       </div>
 
       {isLoading && demos.length === 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading demos">
+        <div className={demoLibraryGridClassName} aria-label="Loading demos">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="overflow-hidden rounded-card border border-border bg-card">
-              <div className="aspect-[4/5] animate-pulse bg-card-muted motion-reduce:animate-none" />
+              <div className="aspect-[9/16] animate-pulse bg-card-muted motion-reduce:animate-none" />
               <div className="space-y-3 p-4">
                 <div className="h-4 w-3/4 animate-pulse rounded bg-card-muted motion-reduce:animate-none" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-surface-subtle motion-reduce:animate-none" />
@@ -1536,7 +1515,7 @@ export function DemoLibrary({
           ))}
         </div>
       ) : demos.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className={demoLibraryGridClassName}>
           {demos.map((demo) => (
             <DemoCard
               key={demo.id}
@@ -1603,6 +1582,12 @@ export function DemoCard({
   const playbackUrl = getDemoPlaybackUrl(demo);
   const playable = Boolean(playbackUrl);
   const tags = getDemoTags(demo);
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const [previewAspect, setPreviewAspect] = useState<{ src: string | null; value: string } | null>(null);
+  const playbackLabel = isPlaying ? "Pause" : hasPlayed ? "Resume" : "Play";
+  const aspectRatio = previewAspect?.src === playbackUrl
+    ? previewAspect.value
+    : getVideoPreviewAspectRatio(demo);
 
   return (
     <article
@@ -1613,7 +1598,10 @@ export function DemoCard({
           : "border-border/80 hover:border-border-strong hover:shadow-md hover:-translate-y-0.5",
       )}
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-[#17181b] text-white">
+      <div
+        className="relative w-full overflow-hidden bg-[#17181b] text-white"
+        style={{ aspectRatio }}
+      >
         {/* Multi-select checkbox overlay */}
         <div className="absolute left-2.5 top-2.5 z-20">
           <div
@@ -1648,10 +1636,11 @@ export function DemoCard({
           <Maximize2 className="size-3.5" />
         </button>
 
-        <DemoMediaPreview
-          key={demo.id}
-          demo={demo}
-          playbackUrl={playbackUrl}
+        <VideoPreview
+          src={playbackUrl}
+          poster={demo.thumbnail_url}
+          title={demo.title}
+          onAspectRatioChange={(value) => setPreviewAspect({ src: playbackUrl, value })}
           playing={isPlaying}
           onPlaybackStateChange={onPlaybackStateChange}
         />
@@ -1659,17 +1648,21 @@ export function DemoCard({
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-linear-to-t from-black/70 via-black/20 to-transparent p-3 z-10">
           <button
             type="button"
-            onClick={onPlay}
+            onClick={() => {
+              setHasPlayed(true);
+              onPlay();
+            }}
             disabled={!playable}
-            aria-label={`${isPlaying ? "Pause" : "Play"} ${demo.title}`}
-            title={isPlaying ? "Pause preview" : "Play preview"}
-            className="inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={`${playbackLabel} ${demo.title}`}
+            title={`${playbackLabel} preview`}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-white/95 px-2.5 text-xs font-semibold text-slate-950 shadow-md transition-all hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPlaying ? (
               <Pause className="size-4" strokeWidth={2.5} aria-hidden="true" />
             ) : (
               <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
             )}
+            {playbackLabel}
           </button>
           <StatusBadge status={demo.status} />
         </div>
@@ -1725,8 +1718,9 @@ export function DemoCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
-          <div className="min-w-0">
+        <div className="space-y-2 border-t border-border pt-2.5">
+          {demo.explore_edit ? <p className="text-xs text-muted">Saved demo edits · open Edit to preview or continue.</p> : null}
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <p className="truncate text-xs font-semibold text-foreground">
               {getFileTypeLabel(demo.file_type)}
             </p>
@@ -1734,17 +1728,18 @@ export function DemoCard({
               {formatDate(demo.updated_at)}
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={onOpenPreview}
-              className="inline-flex min-h-9 items-center justify-center rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted"
+              className="inline-flex min-h-9 items-center justify-center rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               title="Preview & controls"
             >
               Preview
             </button>
+            {demo.explore_edit ? <Link href={getContentDemoEditorHref(demo.id)} className="inline-flex min-h-9 items-center justify-center rounded-control border border-border px-3 text-xs font-semibold text-muted hover:bg-card-muted">Edit original</Link> : null}
             <Link
-              href={getContentDemoEditorHref(demo.id)}
+              href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
               className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
             >
               <Pencil className="size-3" aria-hidden="true" />
@@ -2334,7 +2329,7 @@ function DemoVideoPreviewModal({
           </div>
 
           <Link
-            href={getContentDemoEditorHref(demo.id)}
+            href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
           >
             <Pencil className="size-3.5" />
@@ -2424,144 +2419,6 @@ function getDemoTags(demo: DemoVideo): string[] {
       .map((t) => (t.startsWith("#") ? t : `#${t}`));
   }
   return [];
-}
-
-function DemoMediaPreview({
-  demo,
-  playbackUrl,
-  playing,
-  onPlaybackStateChange,
-}: {
-  demo: DemoVideo;
-  playbackUrl: string | null;
-  playing: boolean;
-  onPlaybackStateChange: (isPlaying: boolean) => void;
-}) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">(
-    demo.thumbnail_url ? "ready" : "loading",
-  );
-  const [previewKey, setPreviewKey] = useState(0);
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const [hasStartedPreview, setHasStartedPreview] = useState(false);
-  const playable = Boolean(playbackUrl);
-
-  useEffect(() => {
-    const videoElement = videoRef.current;
-
-    if (!videoElement || !playable) {
-      return;
-    }
-
-    if (playing) {
-      void videoElement.play().catch(() => setPreviewState("error"));
-    } else {
-      videoElement.pause();
-    }
-  }, [playable, playing, previewKey]);
-
-  useEffect(() => {
-    if ((demo.thumbnail_url && !thumbnailFailed) || previewState !== "loading") {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setPreviewState("error"), 8000);
-    return () => window.clearTimeout(timer);
-  }, [demo.thumbnail_url, previewKey, previewState, thumbnailFailed]);
-
-  if (
-    demo.thumbnail_url &&
-    !thumbnailFailed &&
-    !playing &&
-    !hasStartedPreview
-  ) {
-    return (
-      // Demo thumbnails are already delivered from the configured media CDN.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={demo.thumbnail_url}
-        alt={`Preview of ${demo.title}`}
-        className="size-full object-contain"
-        onError={() => {
-          setThumbnailFailed(true);
-          setPreviewState("loading");
-        }}
-      />
-    );
-  }
-
-  if (!playable || previewState === "error") {
-    return (
-      <div className="flex size-full flex-col items-center justify-center gap-2 px-5 text-center">
-        <FileVideo className="size-6 text-white/65" aria-hidden="true" />
-        <p className="text-xs font-semibold text-white/80">
-          {playable ? "Preview could not load" : "Video unavailable"}
-        </p>
-        {playable ? (
-          <button
-            type="button"
-            onClick={() => {
-              setPreviewState("loading");
-              setPreviewKey((current) => current + 1);
-            }}
-            className="rounded-control border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-card-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            Retry preview
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {previewState === "loading" ? (
-        <div className="absolute inset-0 bg-[#17181b]">
-          <div className="flex size-full items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-white/40 motion-reduce:animate-none" aria-hidden="true" />
-            <span className="sr-only">Loading video preview</span>
-          </div>
-        </div>
-      ) : null}
-      <video
-        key={previewKey}
-        ref={videoRef}
-        src={playbackUrl ?? undefined}
-        poster={demo.thumbnail_url ?? undefined}
-        aria-label={`Preview of ${demo.title}`}
-        className={cn(
-          "size-full object-contain transition-opacity duration-200",
-          previewState === "ready" ? "opacity-100" : "opacity-0",
-        )}
-        controls={playing}
-        muted
-        playsInline
-        preload="metadata"
-        onLoadedData={() => setPreviewState("ready")}
-        onLoadedMetadata={(event) => {
-          const element = event.currentTarget;
-          const previewTime = Math.min(0.15, Math.max(0, element.duration / 20));
-
-          if (previewTime > 0) {
-            element.currentTime = previewTime;
-          } else {
-            setPreviewState("ready");
-          }
-        }}
-        onSeeked={() => setPreviewState("ready")}
-        onPlay={() => {
-          setHasStartedPreview(true);
-          onPlaybackStateChange(true);
-        }}
-        onPause={() => onPlaybackStateChange(false)}
-        onEnded={() => onPlaybackStateChange(false)}
-        onError={() => {
-          setPreviewState("error");
-          onPlaybackStateChange(false);
-        }}
-      />
-    </>
-  );
 }
 
 function StatusBadge({ status }: { status: DemoStatus }) {

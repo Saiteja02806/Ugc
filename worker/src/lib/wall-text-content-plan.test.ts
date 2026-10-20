@@ -5,27 +5,51 @@ import {
   EmptyWallTextContentPlanResponseError,
   WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE,
   createWallTextContentIdeaFingerprint,
-  getWallTextPromptPreviousItems,
+  generateWallTextContentPlanChunk,
   isExactWallTextReplacementDuplicate,
   parseWallTextContentPlanChunk,
   validateWallTextContentPlanChunk,
 } from "./wall-text-content-plan.js";
+import { getWallTextBriefSituationFocuses } from "./wall-text-situation-focuses.js";
 
-test("uses compact Wall Text chunks and only sends a bounded recent history to the model", () => {
-  const previousItems = Array.from({ length: 55 }, (_, index) => ({
-    content_idea: `A distinct previous content idea ${index + 1}`,
-    feeling: "curiosity",
-  }));
-
+test("uses compact ten-idea Wall Text planning chunks", () => {
   assert.equal(WALL_TEXT_CONTENT_PLAN_CHUNK_SIZE, 10);
-  assert.equal(getWallTextPromptPreviousItems(previousItems).length, 40);
-  assert.equal(
-    getWallTextPromptPreviousItems(previousItems)[0]?.content_idea,
-    "A distinct previous content idea 16",
-  );
 });
 
-test("still rejects an exact duplicate from older history outside the model prompt window", () => {
+test("accepts two useful planning sentences without the old fourteen-word ceiling", () => {
+  const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
+  parsed.items[0]!.contentIdea = "Customers order bread by 4 pm for next-day pickup. Pickup is available Tuesday through Saturday from 8 am to noon.";
+  assert.deepEqual(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }), []);
+});
+
+test("allows a complete short planning point without forcing a second sentence", () => {
+  const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
+  parsed.items[0]!.contentIdea = "Every post requires approval before publication.";
+  assert.deepEqual(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }), []);
+});
+
+test("rejects three planning sentences and overlong ideas with repairable feedback", () => {
+  const parsed = parseWallTextContentPlanChunk({ briefs: [oneBrief()] }, 1);
+  parsed.items[0]!.contentIdea = "Customers order online. Orders close at 4 pm. Pickup is tomorrow.";
+  assert.match(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }).join(" "), /at most two sentences/);
+  parsed.items[0]!.contentIdea = Array.from({ length: 61 }, () => "word").join(" ") + ".";
+  assert.match(validateWallTextContentPlanChunk({ existingItems: [], items: parsed.items }).join(" "), /at most 60 words/);
+});
+
+test("assigns a distinct situation focus to each parent brief in a 200-item plan", () => {
+  const focuses = getWallTextBriefSituationFocuses(1, 40);
+
+  assert.equal(focuses.length, 40);
+  assert.equal(new Set(focuses.map((focus) => focus.key)).size, 40);
+  assert.deepEqual(focuses[0], {
+    briefSlotIndex: 0,
+    key: "first_signal",
+    direction: "the first small sign that a routine needs attention",
+  });
+  assert.equal(focuses[39]?.key, "routine_reflection");
+});
+
+test("still rejects an exact duplicate from historical plan items", () => {
   const previousItems = Array.from({ length: 55 }, (_, index) => ({
     content_idea: `A distinct previous content idea ${index + 1}`,
     feeling: "curiosity",
@@ -58,6 +82,65 @@ test("identifies a blank Wall Text model response with its finish reason", () =>
 
   assert.equal(error.finishReason, "length");
   assert.match(error.message, /finish reason: length/);
+});
+
+test("regenerates the compact chunk when targeted duplicate repair is exhausted", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  const duplicateChunk = { briefs: [oneBrief()] };
+  const recoveredChunk = structuredClone(duplicateChunk);
+  recoveredChunk.briefs[0]!.items[0]!.contentIdea =
+    "A quiet dinner decision gets harder after a long workday";
+  const repeatedReplacement = {
+    audienceContext: "People managing changing priorities",
+    contentIdea: "The afternoon plan that vanishes after one unexpected meeting",
+    emotionalTension: "Frustration mixed with self-blame",
+    feeling: "frustration",
+    humanMoment: "An unexpected meeting moves every important task into the afternoon",
+    privateCreativeSeed: "The plan starts to feel heavier than the work itself",
+    supportedAngle: "A planning method that accounts for real capacity",
+  };
+  const responses = [
+    duplicateChunk,
+    repeatedReplacement,
+    repeatedReplacement,
+    repeatedReplacement,
+    recoveredChunk,
+  ];
+  let calls = 0;
+  process.env.OPENAI_API_KEY = "test-key-no-network";
+  globalThis.fetch = async () => {
+    const payload = responses[calls++];
+    if (!payload) throw new Error("Unexpected extra planner request.");
+    return new Response(
+      JSON.stringify({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify(payload) } }],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  try {
+    const result = await generateWallTextContentPlanChunk({
+      businessDescription: "An example business",
+      count: 5,
+      existingItems: [{
+        content_idea: "The afternoon plan that vanishes after one unexpected meeting",
+        feeling: "frustration",
+      }],
+      planningContext: {},
+    });
+
+    assert.equal(calls, 5);
+    assert.equal(
+      result.items[0]?.contentIdea,
+      "A quiet dinner decision gets harder after a long workday",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+  }
 });
 
 function oneBrief(overrides: Record<string, unknown> = {}) {
@@ -142,6 +225,34 @@ test("parses one five-field private Wall brief with five contentIdea and feeling
   );
 });
 
+test("requires every new plan idea to select one ID from the approved fact snapshot", () => {
+  const approvedFactIds = new Set(["capability-1", "pain-1"]);
+  const response = { briefs: [oneBrief()] };
+  for (const [index, item] of response.briefs[0]!.items.entries()) {
+    Object.assign(item, {
+      selectedFactId: index % 2 === 0 ? "capability-1" : "pain-1",
+    });
+  }
+
+  const parsed = parseWallTextContentPlanChunk(
+    response,
+    1,
+    1,
+    approvedFactIds,
+  );
+  assert.deepEqual(
+    parsed.items.map((item) => item.planningBrief.selectedFactId),
+    ["capability-1", "pain-1", "capability-1", "pain-1", "capability-1"],
+  );
+
+  (response.briefs[0]!.items[0]! as Record<string, unknown>).selectedFactId =
+    "unknown-fact";
+  assert.throws(
+    () => parseWallTextContentPlanChunk(response, 1, 1, approvedFactIds),
+    /not present in the approved fact snapshot/i,
+  );
+});
+
 test("rejects exact ideas, permits wording variations, and rejects prewritten video structure", () => {
   const issues = validateWallTextContentPlanChunk({
     existingItems: [
@@ -210,7 +321,7 @@ test("rejects exact ideas, permits wording variations, and rejects prewritten vi
   assert.ok(!mildRelatedIssues.some((issue) => issue.includes("repeats")));
 });
 
-test("permits repeated private human situations when the ideas differ", () => {
+test("permits related but distinct private human situations when the ideas differ", () => {
   const issues = validateWallTextContentPlanChunk({
     existingItems: [],
     items: [
@@ -228,13 +339,42 @@ test("permits repeated private human situations when the ideas differ", () => {
         itemSlotIndex: 1,
         planningBrief: {
           ...planningBrief(1),
-          humanMoment: "A distinct real-life planning moment 1",
+          humanMoment: "A related planning moment where the afternoon changes after a surprise meeting",
         },
       },
     ],
   });
 
   assert.ok(!issues.some((issue) => issue.includes("private human moment")));
+});
+
+test("rejects an exact private human moment even when the idea wording differs", () => {
+  const sharedMoment = "A tired person reopens the fridge after another long workday";
+  const issues = validateWallTextContentPlanChunk({
+    existingItems: [],
+    items: [
+      {
+        briefSlotIndex: 0,
+        contentIdea: "The late dinner decision that follows another long workday",
+        feeling: "fatigue",
+        itemSlotIndex: 0,
+        planningBrief: { ...planningBrief(0), humanMoment: sharedMoment },
+      },
+      {
+        briefSlotIndex: 0,
+        contentIdea: "Reopening the fridge can make dinner feel unexpectedly defeating",
+        feeling: "frustration",
+        itemSlotIndex: 1,
+        planningBrief: { ...planningBrief(1), humanMoment: sharedMoment },
+      },
+    ],
+  });
+
+  assert.ok(
+    issues.some((issue) =>
+      issue.startsWith("Brief 0 idea 1 repeats an existing human moment"),
+    ),
+  );
 });
 
 test("rejects a replacement that would copy a later Wall-of-Text idea", () => {

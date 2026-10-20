@@ -1,17 +1,18 @@
 import type { TrendingFeedFormat } from "@/lib/trending/feed-items";
+import { resolveTrendingContentMixForRuntime } from "./format-policy.ts";
 
 export const DEFAULT_TRENDING_CONTENT_MIX = {
-  carousel: 20,
-  hook_video: 30,
-  reaction: 20,
-  wall_text: 30,
+  carousel: 100,
+  hook_video: 0,
+  reaction: 0,
+  wall_text: 0,
 } as const satisfies TrendingContentMix;
 
 export const FREE_TRENDING_CONTENT_MIX = {
-  carousel: 20,
-  hook_video: 30,
-  reaction: 20,
-  wall_text: 30,
+  carousel: 100,
+  hook_video: 0,
+  reaction: 0,
+  wall_text: 0,
 } as const satisfies TrendingContentMix;
 
 export const TRENDING_CONTENT_MIX_LIMITS = {
@@ -65,20 +66,22 @@ export function validateTrendingContentMix(mix: TrendingContentMix) {
   );
 }
 
-export function resolveTrendingContentMixPreference(params: {
+export function resolveTrendingContentMixPreference<
+  TPreference extends TrendingContentMixPreference,
+>(params: {
   planKey: string;
-  preference: TrendingContentMixPreference;
-}): TrendingContentMixPreference {
+  preference: TPreference;
+}): TPreference & { mix: TrendingContentMix } {
   if (params.planKey === "free" && params.preference.updatedAt === null) {
     return {
       ...params.preference,
-      mix: { ...FREE_TRENDING_CONTENT_MIX },
+      mix: resolveTrendingContentMixForRuntime(FREE_TRENDING_CONTENT_MIX),
     };
   }
 
   return {
     ...params.preference,
-    mix: { ...params.preference.mix },
+    mix: resolveTrendingContentMixForRuntime(params.preference.mix),
   };
 }
 

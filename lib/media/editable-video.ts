@@ -21,7 +21,7 @@ const editableMediaSourceTypeSet = new Set<MediaSourceType>(
 
 export function isEditableMediaAsset(asset: MediaAsset) {
   return (
-    asset.collection !== "image" &&
+    (asset.collection === "video" || asset.collection === "influencer") &&
     editableMediaSourceTypeSet.has(asset.sourceType)
   );
 }

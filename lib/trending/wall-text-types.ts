@@ -35,10 +35,10 @@ export const OLDEST_WALL_TEXT_FINAL_LAYOUT_VERSION =
 export const WALL_TEXT_GENERATOR_VERSION =
   "business-profile-wall-text-v9" as const;
 // Version the measured inner text boundary separately from the generator.
-// This lets the feed recognize older V9 rows that were saved before the
-// boundary was enforced and send them through the existing backfill path.
+// This lets the feed recognize V9 rows saved before the raster edge guard and
+// send them through the existing measured backfill path.
 export const WALL_TEXT_RENDER_SAFETY_VERSION =
-  "wall-text-inner-safe-v2" as const;
+  "wall-text-inner-safe-v3" as const;
 // Freeform is the current Wall writing mode. It is deliberately separate from
 // the dormant 30-format registry so new copy is never mislabeled as a format
 // it was not asked to follow.
@@ -145,7 +145,7 @@ export type WallTextPattern = (typeof WALL_TEXT_PATTERNS)[number];
 export type WallTextSegmentRole = (typeof WALL_TEXT_SEGMENT_ROLES)[number];
 export type WallTextPlacementZone = (typeof WALL_TEXT_PLACEMENT_ZONES)[number];
 // Existing 36-42px layouts remain readable without reflow. The current layout
-// engine emits fixed 52px layouts; earlier saved sizes remain readable.
+// engine emits fixed 50px layouts; earlier saved sizes remain readable.
 export type WallTextFontSize = 36 | 38 | 40 | 42 | 44 | 46 | 48 | 50 | 52;
 export type WallTextNormalizedBox = {
   height: number;
@@ -174,11 +174,23 @@ export type WallTextSourceContent =
   | WallTextPlainContent
   | WallTextProseContent
   | WallTextListContent;
+// Grounding is optional only so historical Wall cards remain readable. New
+// fact-grounded reservations persist this compact audit record alongside the
+// rendered copy; the complete immutable snapshot lives on the assignment.
+export type WallTextGroundingMetadata = {
+  anchorId: string;
+  factSnapshotVersion: "business-facts-v1";
+  factText: string;
+  factType: "audience" | "capability" | "differentiator" | "outcome" | "pain";
+  version: "wall-text-grounding-v2";
+};
 export type WallTextLayoutBlock = {
+  gapAfterPx?: number;
   lines: string[];
   role: "item" | "prose" | "text" | "title";
 };
 type WallTextFinalLayoutBase = {
+  textMode?: "manual";
   blocks: WallTextLayoutBlock[];
   fontSizePx: WallTextFontSize;
   lineHeightPx: number;
@@ -240,6 +252,7 @@ export type TrendingWallTextContent = {
   finalLayout?: WallTextFinalLayout;
   formatId?: WallTextPattern;
   fullText: string;
+  grounding?: WallTextGroundingMetadata;
   kind: "wall_text";
   layoutVersion:
     | typeof WALL_TEXT_CONTENT_LAYOUT_VERSION
@@ -273,7 +286,7 @@ export type TrendingWallTextLayout = {
   version: typeof WALL_TEXT_LAYOUT_VERSION;
 };
 
-export function getWallTextRenderBlocks(content: TrendingWallTextContent) {
+export function getWallTextRenderBlocks(content: TrendingWallTextContent): WallTextLayoutBlock[] {
   return (
     content.finalLayout?.blocks ??
     content.segments.map((segment) => ({

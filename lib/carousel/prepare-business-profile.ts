@@ -7,7 +7,10 @@ import {
   updateBusinessProfilePreparation,
   type BusinessProfileRecord,
 } from "@/lib/business-profiles/db";
-import { enqueueCarouselExperimentBatchJob } from "@/lib/carousel/generation-jobs";
+import {
+  assertCarouselGenerationRuntimeConfigured,
+  enqueueCarouselExperimentBatchJob,
+} from "@/lib/carousel/generation-jobs";
 import {
   AUTOMATIC_CAROUSEL_CANDIDATE_COUNT,
   AUTOMATIC_CAROUSEL_SLIDE_COUNT,
@@ -26,6 +29,9 @@ import {
   type CarouselContentAssignment,
 } from "@/lib/carousel/content-selector";
 import {
+  resolveCarouselStructure1CombinedFormat,
+} from "@/lib/carousel/hook-templates";
+import {
   getCarouselPerformanceSignals,
   getCarouselStructure2PerformanceSignals,
 } from "@/lib/carousel/performance";
@@ -37,6 +43,7 @@ import {
   getCarouselGenerationsByBatchId,
   getWebsiteAnalysisForCarousel,
   linkCarouselExperimentAssignment,
+  listCarouselExperimentBatchesByGenerationBatchId,
   listAutoCarouselGenerationsForBusinessProfile,
   listRecentCarouselContentHistory,
   listRecentCarouselStructure2History,
@@ -49,13 +56,25 @@ import {
 } from "@/lib/carousel/db";
 import { resolveCarouselImageLibraryCategory } from "@/lib/carousel/image-library-category";
 import { DEFAULT_CAROUSEL_RENDER_STYLE } from "@/lib/carousel/render-style";
-import { assertCarouselStructureRuntimeReady } from "@/lib/carousel/structure";
-import { isCarouselContentFormatId } from "@/lib/carousel/content-grammar";
+import {
+  assertCarouselStructureRuntimeReady,
+  type CarouselStructureId,
+} from "@/lib/carousel/structure";
+import {
+  isCarouselContentFormatId,
+  isCarouselHookFamilyId,
+} from "@/lib/carousel/content-grammar";
 import { isCarouselStructure2FormatId } from "@/lib/carousel/structure-2-formats";
 import {
   selectCarouselStructure2ExperimentBatch,
   type CarouselStructure2FormatAssignment,
 } from "@/lib/carousel/structure-2-selector";
+import {
+  buildTrendingSlideshowStyleBatchPlan,
+  buildTrendingSlideshowStructureBatchPlan,
+  getCarouselStructureForTrendingSlideshowStyle,
+  type TrendingSlideshowStyleMix,
+} from "@/lib/trending/slideshow-style-mix";
 
 export async function prepareBusinessProfileCarousels(profile: BusinessProfileRecord) {
   const contentPlan = await ensureCarouselContentPlanGeneration({
@@ -141,6 +160,8 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   localDate: string;
   originDailyFeedId: string;
   profile: BusinessProfileRecord;
+  requiredStructureIds?: readonly CarouselStructureId[];
+  slideshowStyleMix?: TrendingSlideshowStyleMix;
   targetCandidateCount: number;
   timezone: string;
 }) {
@@ -174,6 +195,10 @@ export async function prepareDailyBusinessProfileCarousels(params: {
   const existingBatch = await getCarouselGenerationsByBatchId(
     params.generationBatchId,
   );
+  const existingExperimentBatches =
+    await listCarouselExperimentBatchesByGenerationBatchId(
+      params.generationBatchId,
+    );
 
   assertDailyBatchOwnership({
     existingBatch,
@@ -190,6 +215,23 @@ export async function prepareDailyBusinessProfileCarousels(params: {
     generationBatchId: params.generationBatchId,
     originDailyFeedId: params.originDailyFeedId,
     profile: params.profile,
+    requestedStructureIds: params.requiredStructureIds
+      ? buildTrendingSlideshowStructureBatchPlan({
+          existingBatchStructureIds: existingExperimentBatches.map(
+            (batch) => batch.requestedStructureId,
+          ),
+          requestedCandidateCount,
+          requestedStructureIds: params.requiredStructureIds,
+        })
+      : params.slideshowStyleMix
+        ? buildTrendingSlideshowStyleBatchPlan({
+            carouselCount: Math.ceil(
+              requestedCandidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
+            ) * CAROUSEL_EXPERIMENT_BATCH_SIZE,
+            localDate: params.localDate,
+            mix: params.slideshowStyleMix,
+          }).map(getCarouselStructureForTrendingSlideshowStyle)
+        : undefined,
   });
 
   assertDailyBatchOwnership({
@@ -214,17 +256,35 @@ async function prepareControlledGenerationBatch(params: {
   generationBatchId: string;
   originDailyFeedId?: string | null;
   profile: BusinessProfileRecord;
+  requestedStructureIds?: readonly CarouselStructureId[];
 }) {
+  // This must happen before reserving experiment batches or plan items. A
+  // missing Cloud Tasks configuration is an application deployment error, not
+  // a failed customer Carousel or a consumed daily-content slot.
+  assertCarouselGenerationRuntimeConfigured();
+
   const candidateCount = Math.min(
     Math.ceil(params.candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE) *
       CAROUSEL_EXPERIMENT_BATCH_SIZE,
     50,
   );
+  const requestedStructureIds = params.requestedStructureIds;
+
+  if (
+    requestedStructureIds &&
+    requestedStructureIds.length !==
+      candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE
+  ) {
+    throw new Error(
+      "The requested slideshow structures must match the complete planning batch count.",
+    );
+  }
   const experimentBatches = await reserveCarouselExperimentBatches({
     batchCount: candidateCount / CAROUSEL_EXPERIMENT_BATCH_SIZE,
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
     generationBatchId: params.generationBatchId,
+    requestedStructureIds,
   });
   const contentPlanItemsByExperimentBatch = new Map<
     string,
@@ -286,6 +346,7 @@ async function prepareControlledGenerationBatch(params: {
   const topicOptionCount = buildCarouselBusinessContentContext(
     params.businessContext,
   ).topics.length;
+  const hookTemplateContext = JSON.stringify(params.businessContext);
   const [structure1Performance, structure2Performance] = await Promise.all([
     hasStructure1
       ? getCarouselPerformanceSignals({
@@ -303,6 +364,7 @@ async function prepareControlledGenerationBatch(params: {
   ]);
 
   for (const [batchOffset, experimentBatch] of experimentBatches.entries()) {
+    const hookTemplateMode = experimentBatch.hookTemplateModeSnapshot ?? "off";
     const assignments =
       experimentBatch.structureId === "structure_2"
         ? selectCarouselStructure2ExperimentBatch({
@@ -311,13 +373,25 @@ async function prepareControlledGenerationBatch(params: {
             performanceSignals: structure2Performance,
             selectionKey: params.profile.id,
           })
-        : selectCarouselExperimentBatch({
-            batchSequence: experimentBatch.structureBatchSequence,
-            history: structure1History,
-            performanceSignals: structure1Performance,
-            selectionKey: params.profile.id,
-            topicOptionCount,
-          });
+        : (() => {
+            const selectedAssignments = selectCarouselExperimentBatch({
+              batchSequence: experimentBatch.structureBatchSequence,
+              history: structure1History,
+              performanceSignals: structure1Performance,
+              selectionKey: params.profile.id,
+              hookTemplateContext,
+              hookTemplatesEnabled: hookTemplateMode !== "off",
+              topicOptionCount,
+            });
+
+            return hookTemplateMode === "enabled"
+              ? selectedAssignments
+              : disableStructure1HookTemplates({
+                  assignments: selectedAssignments,
+                  experimentBatchId: experimentBatch.id,
+                  mode: hookTemplateMode,
+                });
+          })();
     const persistedAssignments = await upsertCarouselExperimentAssignments({
       assignments,
       experimentBatchId: experimentBatch.id,
@@ -487,12 +561,19 @@ function buildPersistedStructure1Assignment(params: {
     !isCarouselContentFormatId(assignedFormatId) ||
     !isCarouselContentFormatId(actualFormatId) ||
     !isCarouselContentFormatId(rotationCandidateFormatId) ||
-    !params.persistedAssignment.hookFamilyId ||
+    !isCarouselHookFamilyId(params.persistedAssignment.hookFamilyId) ||
     !params.persistedAssignment.hookSelectionMode ||
     params.persistedAssignment.hookSelectionMultiplier === null
   ) {
     throw new Error("Persisted Structure 1 assignment is invalid.");
   }
+
+  const combinedFormat = resolveCarouselStructure1CombinedFormat({
+    contentFormatId: actualFormatId,
+    hookFamilyId: params.persistedAssignment.hookFamilyId,
+    hookTemplateId: params.persistedAssignment.hookTemplateId,
+    hookTemplateVersion: params.persistedAssignment.hookTemplateVersion,
+  });
 
   return {
     ...params.assignment,
@@ -506,9 +587,46 @@ function buildPersistedStructure1Assignment(params: {
     hookSelectionMode: params.persistedAssignment.hookSelectionMode,
     hookSelectionMultiplier:
       params.persistedAssignment.hookSelectionMultiplier,
+    hookTemplateId: combinedFormat.hookTemplate?.id ?? null,
+    hookTemplateVersion: combinedFormat.hookTemplate?.version ?? null,
     rotationCandidateContentFormatId:
       rotationCandidateFormatId,
   };
+}
+
+function disableStructure1HookTemplates(params: {
+  assignments: CarouselContentAssignment[];
+  experimentBatchId: string;
+  mode: "off" | "shadow";
+}) {
+  if (params.mode === "shadow") {
+    console.info("Carousel hook templates shadow selection", {
+      experimentBatchId: params.experimentBatchId,
+      selections: params.assignments.map((assignment) => {
+        const combinedFormat = resolveCarouselStructure1CombinedFormat({
+          contentFormatId: assignment.contentFormatId,
+          hookFamilyId: assignment.hookFamilyId,
+          hookTemplateId: assignment.hookTemplateId,
+          hookTemplateVersion: assignment.hookTemplateVersion,
+        });
+
+        return {
+          combinedFormatId: combinedFormat.combinedFormatId,
+          contentFormatId: assignment.contentFormatId,
+          hookFamilyId: assignment.hookFamilyId,
+          hookTemplateFit: combinedFormat.hookTemplateFit,
+          hookTemplateId: combinedFormat.hookTemplate?.id ?? null,
+          source: combinedFormat.hookTemplate ? "template" : "format_native",
+        };
+      }),
+    });
+  }
+
+  return params.assignments.map((assignment) => ({
+    ...assignment,
+    hookTemplateId: null,
+    hookTemplateVersion: null,
+  }));
 }
 
 function buildPersistedStructure2Assignment(params: {

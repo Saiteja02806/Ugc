@@ -6,36 +6,34 @@ import {
   buildLockedHookAudioSelection,
   type LockedHookAudioSelection,
 } from "@/lib/trending/hook-video-audio-lock-logic";
+import {
+  createHookAudioContentFingerprint,
+  getDefaultHookAudioIntent,
+  HOOK_AUDIO_MATCHING_VERSION,
+  parseHookAudioIntent,
+  selectHookAudio,
+  type HookAudioAsset,
+  type HookAudioEnergy,
+  type HookAudioMood,
+  type HookAudioSelection,
+  type HookAudioType,
+} from "@/lib/trending/hook-audio-matcher";
 
-export type HookAudioMood =
-  | "calm"
-  | "curious"
-  | "playful"
-  | "serious"
-  | "uplifting"
-  | "urgent";
+export type {
+  HookAudioAsset,
+  HookAudioEnergy,
+  HookAudioIntent,
+  HookAudioMood,
+  HookAudioType,
+} from "@/lib/trending/hook-audio-matcher";
 
-export type HookAudioType =
-  | "authority"
-  | "benefit"
-  | "curiosity"
-  | "problem"
-  | "story"
-  | "transformation"
-  | "warning";
-
-export type HookAudioEnergy = "high" | "low" | "medium";
-
-export type HookAudioAsset = {
-  audioUrl: string;
-  durationSeconds: number;
-  energy: HookAudioEnergy;
-  hookTypes: HookAudioType[];
-  id: string;
-  impactAtSeconds: number | null;
-  loopable: false;
-  moods: HookAudioMood[];
-};
+type Json =
+  | boolean
+  | null
+  | number
+  | string
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 type HookAudioAssetRow = {
   audio_url: string;
@@ -69,6 +67,47 @@ type HookVideoAudioLockRow = {
   updated_at: string;
 };
 
+type HookAudioSelectionRow = {
+  audio_asset_id: string;
+  audio_intent: Json;
+  content_fingerprint: string;
+  hook_format_id: string;
+  hook_video_draft_id: string | null;
+  hook_video_id: string;
+  hook_video_source: "catalog" | "user";
+  hook_video_suggestion_id: string;
+  id: string;
+  match_score: number | null;
+  matching_version: string;
+  metadata: Json;
+  selection_source: "video_locked" | "format_preferred" | "dynamic";
+  updated_at: string;
+  user_id: string;
+};
+
+type HookFormatRow = {
+  audio_mode: "dynamic" | "preferred";
+  id: string;
+  status: "active" | "inactive";
+};
+
+type HookFormatAudioPreferenceRow = {
+  audio_asset_id: string;
+  hook_format_id: string;
+  priority: number;
+  status: "active" | "inactive";
+};
+
+type HookVideoSuggestionAudioRow = {
+  audio_intent: Json | null;
+  created_at: string;
+  hook_text_format_id: string | null;
+  id: string;
+  influencer_video_id: string;
+  suggestion_context: "composition" | "trending";
+  user_id: string;
+};
+
 type HookAudioDatabase = {
   public: {
     Functions: Record<string, never>;
@@ -95,12 +134,42 @@ type HookAudioDatabase = {
         Row: HookVideoAudioLockRow;
         Update: Partial<HookVideoAudioLockRow>;
       };
+      hook_audio_selections: {
+        Insert: Partial<HookAudioSelectionRow>;
+        Relationships: [];
+        Row: HookAudioSelectionRow;
+        Update: Partial<HookAudioSelectionRow>;
+      };
+      hook_formats: {
+        Insert: Partial<HookFormatRow>;
+        Relationships: [];
+        Row: HookFormatRow;
+        Update: Partial<HookFormatRow>;
+      };
+      hook_format_audio_preferences: {
+        Insert: Partial<HookFormatAudioPreferenceRow>;
+        Relationships: [];
+        Row: HookFormatAudioPreferenceRow;
+        Update: Partial<HookFormatAudioPreferenceRow>;
+      };
+      hook_video_suggestions: {
+        Insert: Partial<HookVideoSuggestionAudioRow>;
+        Relationships: [];
+        Row: HookVideoSuggestionAudioRow;
+        Update: Partial<HookVideoSuggestionAudioRow>;
+      };
     };
     Views: Record<string, never>;
   };
 };
 
 let client: SupabaseClient<HookAudioDatabase> | null = null;
+
+export type ResolvedHookAudioSelection =
+  | LockedHookAudioSelection
+  | (HookAudioSelection & {
+      hookVideoId: string;
+    });
 
 /**
  * Returns only human-approved, explicitly activated Hook audio. Pending imports
@@ -128,6 +197,13 @@ export async function listActiveHookAudioAssets(): Promise<HookAudioAsset[]> {
  * Resolves the human-approved per-video override before dynamic matching runs.
  * A stale or unsafe lock fails closed instead of silently using bad audio.
  */
+export async function getApprovedHookAudioAsset(id: string): Promise<HookAudioAsset | null> {
+  const { data, error } = await getClient().from("hook_audio_assets").select("*")
+    .eq("id", requireIdentifier(id, "Audio ID")).eq("status", "active").eq("review_status", "approved").maybeSingle();
+  if (error) throw new Error("Could not load the approved music track.");
+  return data ? parseActiveAsset(data) : null;
+}
+
 export async function getLockedHookAudioForVideo(params: {
   hookVideoId: string;
 }): Promise<LockedHookAudioSelection | null> {
@@ -147,6 +223,254 @@ export async function getLockedHookAudioForVideo(params: {
     audioAssetId: lock.audio_asset_id,
     hookVideoId: lock.hook_video_id,
   });
+}
+
+/**
+ * Resolves a catalog Hook's soundtrack in the same order as the product
+ * contract: a sufficiently long human video lock wins, then a reviewed
+ * format preference, then the deterministic semantic matcher. When there is
+ * no approved fit, the caller receives `null` and can render without a
+ * soundtrack instead of failing the video.
+ */
+export async function resolveHookAudioForVideo(params: {
+  /**
+   * A final Hook + Demo render replaces segment audio with one approved
+   * soundtrack, even when the catalog Hook has its own source audio. Preview
+   * callers keep the historic behavior and leave source audio untouched.
+   */
+  allowSourceAudioReplacement?: boolean;
+  draftId?: string | null;
+  hookVideoId: string;
+  suggestionId?: string | null;
+  userId: string;
+  videoDurationSeconds?: number | null;
+}): Promise<ResolvedHookAudioSelection | null> {
+  const hookVideoId = requireIdentifier(params.hookVideoId, "Hook video ID");
+
+  const [videoResult, suggestionResult] = await Promise.all([
+    getClient()
+      .from("avatar_assets")
+      .select("*")
+      .eq("id", hookVideoId)
+      .maybeSingle(),
+    loadHookSuggestionForAudio({
+      hookVideoId,
+      suggestionId: params.suggestionId,
+      userId: params.userId,
+    }),
+  ]);
+
+  if (videoResult.error) {
+    throw new Error(`Could not load Hook video: ${videoResult.error.message}`);
+  }
+  if (!videoResult.data) {
+    throw new Error("The selected Hook video was not found.");
+  }
+
+  const video = videoResult.data;
+  if (video.has_audio !== false && !params.allowSourceAudioReplacement) {
+    // Preview-only callers keep catalog source audio. A final composition
+    // explicitly opts in below, so its soundtrack spans both Hook and Demo.
+    return null;
+  }
+  if (
+    video.avatar_type !== "global" ||
+    video.status !== "ready" ||
+    video.deleted_at !== null ||
+    !video.hook_format_id ||
+    !Number.isFinite(Number(video.duration_seconds)) ||
+    Number(video.duration_seconds) <= 0 ||
+    !video.source_video_url.startsWith("https://")
+  ) {
+    throw new Error("The selected Hook video is not available for audio.");
+  }
+
+  const suggestion = suggestionResult;
+  const intent =
+    parseHookAudioIntent(suggestion?.audio_intent) ??
+    getDefaultHookAudioIntent(suggestion?.hook_text_format_id);
+  const contentFingerprint = createHookAudioContentFingerprint({
+    hookTextFormatId: suggestion?.hook_text_format_id ?? null,
+    hookVideoId,
+    intent,
+  });
+  const videoDurationSeconds = getHookAudioDuration({
+    fallback: Number(video.duration_seconds),
+    requested: params.videoDurationSeconds,
+  });
+  const locked = await getLockedHookAudioForVideo({ hookVideoId });
+
+  // Locks remain deliberately non-looping. A lock that covers the Hook but
+  // not the complete composition cannot be stretched or padded with silence;
+  // semantic selection below gets a chance to find a longer approved track.
+  if (locked && locked.durationSeconds >= videoDurationSeconds) {
+    return locked;
+  }
+
+  const [assets, formatResult, preferencesResult] = await Promise.all([
+    listActiveHookAudioAssets(),
+    getClient()
+      .from("hook_formats")
+      .select("*")
+      .eq("id", video.hook_format_id)
+      .maybeSingle(),
+    getClient()
+      .from("hook_format_audio_preferences")
+      .select("*")
+      .eq("hook_format_id", video.hook_format_id)
+      .eq("status", "active")
+      .order("priority", { ascending: true })
+      .order("audio_asset_id", { ascending: true }),
+  ]);
+
+  if (formatResult.error) {
+    throw new Error(`Could not load Hook format: ${formatResult.error.message}`);
+  }
+  if (preferencesResult.error) {
+    throw new Error(
+      `Could not load Hook audio preferences: ${preferencesResult.error.message}`,
+    );
+  }
+
+  const preferredAssetIds =
+    formatResult.data?.status === "active" &&
+    formatResult.data.audio_mode === "preferred"
+      ? preferencesResult.data.map((preference) => preference.audio_asset_id)
+      : [];
+  const selection = selectHookAudio({
+    assets,
+    intent,
+    preferredAssetIds,
+    videoDurationSeconds,
+  });
+
+  if (!selection) return null;
+
+  // A preview can be opened on a catalog video before a Hook suggestion has
+  // been assigned. The audio is still safe to preview, but there is no valid
+  // foreign key with which to persist that preview-only choice.
+  if (!suggestion) {
+    return { ...selection, hookVideoId };
+  }
+
+  const { error: saveError } = await getClient()
+    .from("hook_audio_selections")
+    .upsert(
+      {
+        audio_asset_id: selection.audioAssetId,
+        audio_intent: selection.intent,
+        content_fingerprint: contentFingerprint,
+        hook_format_id: video.hook_format_id,
+        hook_video_draft_id: params.draftId ?? null,
+        hook_video_id: hookVideoId,
+        hook_video_source: "catalog",
+        hook_video_suggestion_id: suggestion.id,
+        match_score: selection.matchScore,
+        matching_version: HOOK_AUDIO_MATCHING_VERSION,
+        metadata: {
+          fitMode: selection.fitMode,
+          resolver: "hook-audio-db",
+          videoDurationSeconds,
+        },
+        selection_source: selection.selectionSource,
+        user_id: params.userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,hook_video_suggestion_id" },
+    );
+
+  if (saveError) {
+    throw new Error(`Could not save Hook audio selection: ${saveError.message}`);
+  }
+
+  return { ...selection, hookVideoId };
+}
+
+/**
+ * Resolves a single soundtrack for the whole Hook + Demo timeline. A normal
+ * track must cover the composition; only a separately reviewed loopable asset
+ * may be returned with `fitMode: "loop"`.
+ */
+export async function resolveHookAudioForComposition(params: {
+  compositionDurationSeconds: number;
+  draftId?: string | null;
+  hookVideoId: string;
+  suggestionId?: string | null;
+  userId: string;
+}) {
+  if (
+    !Number.isFinite(params.compositionDurationSeconds) ||
+    params.compositionDurationSeconds <= 0
+  ) {
+    return null;
+  }
+
+  return resolveHookAudioForVideo({
+    allowSourceAudioReplacement: true,
+    draftId: params.draftId,
+    hookVideoId: params.hookVideoId,
+    suggestionId: params.suggestionId,
+    userId: params.userId,
+    videoDurationSeconds: params.compositionDurationSeconds,
+  });
+}
+
+export async function resolveHookAudioForPreview(params: {
+  hookVideoId: string;
+  userId: string;
+  videoDurationSeconds?: number | null;
+}) {
+  return resolveHookAudioForVideo(params);
+}
+
+async function loadHookSuggestionForAudio(params: {
+  hookVideoId: string;
+  suggestionId?: string | null;
+  userId: string;
+}) {
+  const suggestionId = params.suggestionId?.trim();
+  let query = getClient()
+    .from("hook_video_suggestions")
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("suggestion_context", "trending");
+
+  if (suggestionId) {
+    query = query.eq("id", suggestionId);
+  } else {
+    query = query.eq("influencer_video_id", params.hookVideoId);
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load Hook suggestion audio intent: ${error.message}`);
+  }
+  if (suggestionId && !data) {
+    throw new Error("The selected Hook suggestion was not found.");
+  }
+  if (suggestionId && data?.influencer_video_id !== params.hookVideoId) {
+    throw new Error("The selected Hook suggestion belongs to a different video.");
+  }
+  return data;
+}
+
+function getHookAudioDuration(params: {
+  fallback: number;
+  requested?: number | null;
+}) {
+  if (
+    params.requested !== null &&
+    params.requested !== undefined &&
+    Number.isFinite(params.requested) &&
+    params.requested > 0
+  ) {
+    return params.requested;
+  }
+  return params.fallback;
 }
 
 /**
@@ -278,7 +602,7 @@ function parseActiveAsset(row: HookAudioAssetRow): HookAudioAsset | null {
   if (
     row.status !== "active" ||
     row.review_status !== "approved" ||
-    row.loopable !== false ||
+    typeof row.loopable !== "boolean" ||
     !row.audio_url.startsWith("https://") ||
     !Number.isFinite(Number(row.duration_seconds)) ||
     Number(row.duration_seconds) <= 0 ||
@@ -303,7 +627,7 @@ function parseActiveAsset(row: HookAudioAssetRow): HookAudioAsset | null {
       row.impact_at_seconds === null
         ? null
         : Number(row.impact_at_seconds),
-    loopable: false,
+    loopable: row.loopable,
     moods: row.moods,
   };
 }

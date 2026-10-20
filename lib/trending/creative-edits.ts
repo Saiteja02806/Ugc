@@ -137,33 +137,55 @@ export async function assertEditableTrendingCreative(params: {
   format: TrendingCreativeEditFormat;
   userId: string;
 }) {
+  if (params.format !== "carousel") return assertTrendingCreativeAssignment(params, false);
+  // Existing readable Carousel assignments retain their source slides even if
+  // no manual edit was saved before skipping. Saving must not change the
+  // assignment decision or any previously saved/scheduled snapshot.
+  return assertTrendingCreativeAssignment(params, true);
+}
+
+export async function assertReadableTrendingCreative(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}) {
+  return assertTrendingCreativeAssignment(params, true);
+}
+
+async function assertTrendingCreativeAssignment(params: {
+  assignmentId: string;
+  creativeId: string;
+  format: TrendingCreativeEditFormat;
+  userId: string;
+}, readOnly: boolean) {
   const client = getClient();
   const result =
     params.format === "carousel"
       ? await client
           .from("user_carousel_assignments")
-          .select("id")
+          .select("id,state")
           .eq("id", params.assignmentId)
           .eq("carousel_id", params.creativeId)
           .eq("user_id", params.userId)
-          .in("state", ["pending", "in_progress", "accepted"])
+          .in("state", readOnly ? ["pending", "in_progress", "accepted", "completed_skipped", "completed_saved", "completed_scheduled"] : ["pending", "in_progress", "accepted"])
           .maybeSingle()
       : params.format === "hook_video"
         ? await client
             .from("user_hook_video_assignments")
-            .select("id")
+            .select("id,state")
             .eq("id", params.assignmentId)
             .eq("hook_suggestion_id", params.creativeId)
             .eq("user_id", params.userId)
-            .in("state", ["active", "selected"])
+            .in("state", readOnly ? ["active", "selected", "completed_skipped"] : ["active", "selected"])
             .maybeSingle()
         : await client
             .from("user_wall_text_assignments")
-            .select("id")
+            .select("id,state")
             .eq("id", params.assignmentId)
             .eq("wall_text_creative_id", params.creativeId)
             .eq("user_id", params.userId)
-            .in("state", ["active", "selected"])
+            .in("state", readOnly ? ["active", "selected", "completed_skipped"] : ["active", "selected"])
             .maybeSingle();
   const { data, error } = result;
 
@@ -177,6 +199,7 @@ export async function assertEditableTrendingCreative(params: {
       404,
     );
   }
+  return data;
 }
 
 export async function getTrendingCreativeEdit(params: {
@@ -199,10 +222,27 @@ export async function getTrendingCreativeEdit(params: {
   return data;
 }
 
+/** Status polling must not fetch large content or rendered slide payloads. */
+export async function getTrendingCarouselEditStatus(params: {
+  creativeId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient()
+    .from(TRENDING_CREATIVE_EDITS_TABLE)
+    .select("id,revision,render_status,render_error,updated_at")
+    .eq("user_id", params.userId)
+    .eq("format", "carousel")
+    .eq("creative_id", params.creativeId)
+    .maybeSingle();
+  if (error) throw new Error(`Could not check this Trending update: ${error.message}`);
+  return data;
+}
+
 export async function upsertTrendingCreativeEdit(params: {
   assignmentId: string;
   content: TrendingCreativeEditContent;
   creativeId: string;
+  expectedRevision: number;
   format: TrendingCreativeEditFormat;
   positions: Json;
   resolvedMediaAssetId?: string | null;
@@ -213,6 +253,14 @@ export async function upsertTrendingCreativeEdit(params: {
   wallTextAttribution?: ReturnType<typeof classifyWallTextEdit>;
 }) {
   const existing = await getTrendingCreativeEdit(params);
+  // Image verification can outlast a save in another tab. Fence this second
+  // read with the submitted revision as well as the guarded write below.
+  if ((existing?.revision ?? 0) !== params.expectedRevision) {
+    throw new TrendingCreativeEditAccessError(
+      "This Trending edit changed in another tab. Reload it and try again.",
+      409,
+    );
+  }
   const now = new Date().toISOString();
   if (params.format === "wall_text") {
     if (!params.wallTextAttribution) {
@@ -262,7 +310,9 @@ export async function upsertTrendingCreativeEdit(params: {
     position_json: params.positions,
     render_error: null,
     render_job_id: null,
-    render_output_json: null,
+    // A server-written ready output carries per-slide fingerprints for reuse.
+    // Pending/failed status never makes this previous output scheduleable.
+    render_output_json: params.format === "carousel" ? existing?.render_output_json ?? null : null,
     render_status: "draft" as const,
     resolved_media_asset_id: params.resolvedMediaAssetId ?? null,
     revision: (existing?.revision ?? 0) + 1,

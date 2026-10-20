@@ -16,7 +16,9 @@ import {
 } from "./carousel-render-style.js";
 import {
   buildCarouselContentPlanBatch,
+  CarouselPartialBatchPlanningError,
   buildCarouselContentPlan,
+  CAROUSEL_CONTENT_PLANNER_VERSION,
   type CarouselBatchContentPlanItem,
   type CarouselContentPlan,
 } from "./carousel-llm-slide-plan.js";
@@ -27,6 +29,7 @@ import { resolveCarouselImageLibraryCategory } from "./carousel-image-library-ca
 import { buildCarouselSlideImagePlan } from "./carousel-image-library-relevance.js";
 import { assertCarouselStructureRuntimeReady } from "./carousel-structure.js";
 import { generateCarouselStructure2Batch } from "./carousel-structure-2-generate.js";
+import { CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
 
 type GenerateCarouselInput = {
   candidateIndex?: number;
@@ -157,12 +160,15 @@ export async function generateCarouselBatch(params: {
   const plannerInput = {
     analysis: businessAnalysis,
     businessDescription,
+    bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION } as const,
     items: rows.map((generation, slotIndex) => ({
       candidateIndex: generation.candidate_index,
       contentFormatId: generation.content_format_id ?? "",
       creativeSeed: creativeBriefs[slotIndex]!.creativeSeed,
       emotion: creativeBriefs[slotIndex]!.emotion,
       hookFamilyId: generation.hook_family_id ?? "",
+      hookTemplateId: generation.hook_template_id,
+      hookTemplateVersion: generation.hook_template_version,
       planningBrief: creativeBriefs[slotIndex]!.planningBrief,
       slotIndex,
     })),
@@ -181,6 +187,41 @@ export async function generateCarouselBatch(params: {
       });
     } catch (error) {
       planningFailure = error instanceof Error ? error : new Error(String(error));
+      if (error instanceof CarouselPartialBatchPlanningError) {
+        // Persist each failed slot before the job-level aggregate can replace
+        // its cause. Completed siblings remain eligible for rendering below.
+        for (const failure of error.failures) {
+          const generation = rows[failure.slotIndex];
+          if (!generation) throw new Error("Carousel planning failure has an invalid slot.");
+          await params.store.updateCarouselGeneration(generation.id, {
+            status: "failed",
+            error_message: failure.message.slice(0, 900),
+            content_planner_version: CAROUSEL_CONTENT_PLANNER_VERSION,
+            content_plan_raw_response: failure.rawLlmResponse as unknown as Json,
+            content_plan_validation: { ok: false, stage: "planning_repair", slotIndex: failure.slotIndex,
+              initialIssues: failure.initialIssues, finalIssues: failure.finalIssues } as unknown as Json,
+          });
+          if (generation.carousel_experiment_assignment_id) {
+            await params.store.updateCarouselExperimentAssignment(generation.carousel_experiment_assignment_id, { status: "failed" });
+          }
+          logger.warn("Carousel candidate planning failed", {
+            carouselId: generation.id, experimentBatchId: params.experimentBatchId,
+            slotIndex: failure.slotIndex, stage: "planning_repair",
+            issueCodes: failure.finalIssues.map(issue => issue.code),
+            slideNumbers: failure.finalIssues.map(issue => issue.slideNumber),
+          });
+        }
+        // Keep independently validated siblings. The missing candidates fail
+        // through the existing job settlement and slot-preserving refill path.
+        // One initial request plus at most two repairs per slot replaces the
+        // old two complete batch passes (11 calls maximum instead of 12).
+        planningAttemptCount = 2;
+        plannedItems = error.completedItems.length > 0 ? error.completedItems : null;
+        await params.store.updateCarouselExperimentBatch(params.experimentBatchId, {
+          structure_planning_attempt_count: planningAttemptCount,
+        });
+        break;
+      }
       logger.warn("Carousel Structure 1 batch planning attempt failed", {
         experimentBatchId: params.experimentBatchId,
         planningAttemptCount,
@@ -258,7 +299,9 @@ export async function generateCarouselBatch(params: {
     });
   }
   const results: Array<Awaited<ReturnType<typeof generateCarousel>>> = [];
-  const failures: Error[] = [];
+  const failures: Error[] = plannedItems.length < rows.length
+    ? [planningFailure ?? new Error("Some Carousel plans failed validation.")]
+    : [];
 
   for (const plannedItem of plannedItems) {
     const generation = rows[plannedItem.slotIndex];
@@ -308,7 +351,7 @@ export async function generateCarouselBatch(params: {
           : "partial",
   });
   if (failures.length > 0) {
-    throw new AggregateError(failures, "One or more Carousels failed in the batch.");
+    throw new AggregateError(failures, `Carousel batch partially failed: ${results.length}/${rows.length} completed. See each failed candidate's persisted planning or rendering diagnostics.`);
   }
 
   return {
@@ -336,11 +379,15 @@ async function persistActualBatchAssignment(params: {
     content_format_id: params.plannedItem.actualContentFormatId,
     content_format_version: format.version,
     hook_family_id: params.plannedItem.actualHookFamilyId,
+    hook_template_id: params.plannedItem.actualHookTemplateId,
+    hook_template_version: params.plannedItem.actualHookTemplateVersion,
   });
   await params.store.updateCarouselExperimentAssignment(assignmentId, {
     actual_format_id: params.plannedItem.actualContentFormatId,
     format_version: format.version,
     hook_family_id: params.plannedItem.actualHookFamilyId,
+    hook_template_id: params.plannedItem.actualHookTemplateId,
+    hook_template_version: params.plannedItem.actualHookTemplateVersion,
     replacement_for_format_id: params.plannedItem.replacementForFormatId,
     status: "processing",
   });
@@ -485,12 +532,16 @@ export async function generateCarousel({
         emotion: creativeBrief.emotion,
         goal: generation.goal,
         hookFamilyId: generation.hook_family_id,
+        hookTemplateId: generation.hook_template_id,
+        hookTemplateVersion: generation.hook_template_version,
         planningBrief: creativeBrief.planningBrief,
         recentHistory,
         selectedAngle: generation.selected_angle,
         slideCount: generation.slide_count,
       }));
     const plannedSlides = contentPlan.slides;
+    const abandonedHookTemplate =
+      contentPlan.validationResult.hookTemplateFallbackUsed;
 
     logger.info("Carousel content planning completed", {
       broadSituations: contentPlan.broadSituations,
@@ -517,8 +568,26 @@ export async function generateCarousel({
       content_problem_id: contentPlan.contentStrategy?.problemId ?? null,
       content_topic: contentPlan.contentStrategy?.topic ?? null,
       content_topic_id: contentPlan.contentStrategy?.topicId ?? null,
+      hook_template_id: abandonedHookTemplate
+        ? null
+        : generation.hook_template_id,
+      hook_template_version: abandonedHookTemplate
+        ? null
+        : generation.hook_template_version,
       renderer_version: CAROUSEL_RENDERER_VERSION,
     });
+    if (
+      abandonedHookTemplate &&
+      generation.carousel_experiment_assignment_id
+    ) {
+      await store.updateCarouselExperimentAssignment(
+        generation.carousel_experiment_assignment_id,
+        {
+          hook_template_id: null,
+          hook_template_version: null,
+        },
+      );
+    }
     await assertBusinessProfileVersionIsCurrent({ generation, store });
     const slideImagePlan = buildCarouselSlideImagePlan({
       carouselId,

@@ -6,7 +6,6 @@ import {
   createWallTextCreativeBriefFingerprint,
   generateWallTextContentPlanChunk,
 } from "../lib/wall-text-content-plan.js";
-import { toContentPlanProviderRetry } from "../lib/content-plan-provider-retry.js";
 import { RetryableJobError } from "../retryable-job-error.js";
 import { logger } from "../logger.js";
 import { enqueueWallTextPlanPublicationTask } from "../lib/wall-text-plan-publication-dispatch.js";
@@ -53,6 +52,7 @@ export async function runGenerateWallTextContentPlanJob(
     throw new Error(`Wall-of-Text content plan cannot run from status ${plan.status}.`);
   }
 
+  let failureDiagnosticRecorded = false;
   try {
     let items = await context.store.listWallTextContentPlanItems({
       planId: plan.id,
@@ -87,6 +87,13 @@ export async function runGenerateWallTextContentPlanJob(
           planningContext: plan.planning_context,
         });
       } catch (error) {
+        failureDiagnosticRecorded = await recordPlannerFailureDiagnostic({
+          context,
+          error,
+          job,
+          planId: plan.id,
+          userId: plan.user_id,
+        });
         throw toWallTextContentPlanRetry(error);
       }
       const sequenceStart = items.length + 1;
@@ -188,25 +195,138 @@ export async function runGenerateWallTextContentPlanJob(
       status: activated.status,
     };
   } catch (error) {
+    if (!failureDiagnosticRecorded) {
+      await recordPlannerFailureDiagnostic({
+        context,
+        error,
+        job,
+        planId: plan.id,
+        userId: plan.user_id,
+      });
+    }
     throw error;
   }
 }
 
-export function toWallTextContentPlanRetry(error: unknown) {
+async function recordPlannerFailureDiagnostic(params: {
+  context: WorkerJobContext;
+  error: unknown;
+  job: BackgroundJobRow;
+  planId: string;
+  userId: string;
+}) {
+  const diagnostic = describePlannerFailure(params.error);
+  try {
+    await params.context.store.recordWallTextFailureDiagnostic({
+      backgroundJobId: params.job.id,
+      contentPlanId: params.planId,
+      details: diagnostic.details,
+      errorCode: diagnostic.errorCode,
+      errorMessage: getErrorMessage(params.error),
+      retryable: diagnostic.retryable,
+      stage: diagnostic.stage,
+      userId: params.userId,
+    });
+    return true;
+  } catch (recordError) {
+    logger.warn("Could not record private Wall planner diagnostic", {
+      error: getErrorMessage(recordError),
+      jobId: params.job.id,
+      planId: params.planId,
+    });
+    return false;
+  }
+}
+
+function describePlannerFailure(error: unknown) {
+  const record = asRecord(error);
+  const status = getNumber(record?.status) ?? getNumber(record?.statusCode);
+  const providerCode = getString(record?.code) ?? getString(record?.error_code);
+  const providerType = getString(record?.type) ?? getString(record?.error_type);
+  const message = getErrorMessage(error);
+  const name = error instanceof Error ? error.name : typeof error;
+  const normalizedMessage = message.toLowerCase();
+  const billingCode = providerCode?.toLowerCase();
+
+  let errorCode = "wall_text_planner_failed";
+  let retryable = false;
+  let stage = "planner";
   if (error instanceof EmptyWallTextContentPlanResponseError) {
-    const finishReason = error.finishReason
-      ? ` (finish reason: ${error.finishReason})`
-      : "";
+    errorCode = "model_output_empty";
+    retryable = true;
+    stage = "parser";
+  } else if (/model refused the request/i.test(message)) {
+    errorCode = "model_output_refusal";
+    stage = "parser";
+  } else if (status === 400) {
+    errorCode = "wall_text_provider_invalid_request";
+  } else if (status === 401 || status === 403) {
+    errorCode = "wall_text_provider_authentication_failed";
+  } else if (status === 429 && [
+    "credit_balance_exhausted",
+    "organization_spend_limit_exceeded",
+    "project_spend_limit_exceeded",
+    "organization_usage_limit_exceeded",
+  ].includes(billingCode ?? "")) {
+    errorCode = "wall_text_provider_billing_limit";
+  } else if (status === 429 || name === "RateLimitError") {
+    errorCode = "wall_text_provider_rate_limited";
+    retryable = true;
+  } else if (
+    status === 408 ||
+    (status !== null && status >= 500) ||
+    ["APIConnectionError", "APIConnectionTimeoutError", "APITimeoutError", "InternalServerError", "AbortError"].includes(name) ||
+    /request timed out|network error|connection reset/i.test(message)
+  ) {
+    errorCode = "wall_text_provider_transient";
+    retryable = true;
+  } else if (
+    /content-plan response|json|schema|briefs?\.|ideas?\./i.test(normalizedMessage)
+  ) {
+    errorCode = "model_output_schema_invalid";
+    retryable = true;
+    stage = "parser";
+  } else if (/persist|claim|constraint|column .* does not exist/i.test(normalizedMessage)) {
+    errorCode = "wall_text_persistence_rejected";
+    stage = "persistence";
+  }
+
+  return {
+    details: {
+      candidateRejections: [],
+      errorName: name.slice(0, 120),
+      finishReason: error instanceof EmptyWallTextContentPlanResponseError
+        ? error.finishReason
+        : null,
+      providerErrorCode: providerCode,
+      providerErrorType: providerType,
+      providerRequestId: getString(record?.request_id) ?? getString(record?._request_id),
+      providerStatus: status,
+    },
+    errorCode,
+    retryable,
+    stage,
+  };
+}
+
+export function toWallTextContentPlanRetry(error: unknown) {
+  if (error instanceof RetryableJobError) return error;
+
+  const diagnostic = describePlannerFailure(error);
+  if (diagnostic.retryable) {
     return new RetryableJobError(
-      `The Wall-of-Text content-plan model returned no content${finishReason} and will resume from its last saved chunk.`,
+      "The Wall-of-Text content-plan request will resume from its last saved chunk.",
       {
-        code: "wall_text_content_plan_empty_response",
+        code: diagnostic.errorCode,
         retryAfterSeconds: 45,
       },
     );
   }
 
-  return toContentPlanProviderRetry(error);
+  const terminal = error instanceof Error
+    ? error
+    : new Error(getErrorMessage(error));
+  return Object.assign(terminal, { code: diagnostic.errorCode });
 }
 
 function parseInput(job: BackgroundJobRow): ContentPlanJobInput {
@@ -237,4 +357,22 @@ function assertContiguousItems(sequenceIndexes: number[]) {
       throw new Error("Wall-of-Text content-plan items are not contiguous.");
     }
   }
+}
+
+function asRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function getString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

@@ -34,9 +34,12 @@ test("opens Explore without changing the separate Trending dashboard", () => {
   );
 });
 
-test("shows Explore after Analytics to every signed-in workspace user", () => {
-  assert.match(sidebar, /label: "Analytics"[\s\S]*label: "Explore"/);
-  assert.match(sidebar, /\.\.\.primaryNavigationItems(?:\.filter\([\s\S]*?\))?,[\s\S]*exploreNavigationItem/);
+test("shows Explore and standalone Audio in the primary navigation", () => {
+  assert.match(sidebar, /key: "explore",\s*label: "Explore",\s*href: "\/explore"/);
+  assert.match(sidebar, /key: "audio-generation",\s*label: "Audio generation",\s*href: "\/audio-generation"/);
+  assert.match(sidebar, /visiblePrimaryNavigationItems\.map/);
+  assert.doesNotMatch(sidebar, /primaryNavigationItems\.filter\(item => item\.key !== "audio-generation"\)/);
+  assert.doesNotMatch(sidebar, /isExploreScreenEnabled|isCreateContentScreenEnabled|exploreNavigationItem/);
   assert.doesNotMatch(sidebar, /useViralReviewerAccess/);
 });
 
@@ -51,14 +54,14 @@ test("renders direct Hook and Wall of Text libraries without Instagram embeds", 
   assert.match(viralWorkspace, />\s*Recreate\s*</);
   assert.doesNotMatch(viralWorkspace, /Use This Hook/);
   assert.match(viralWorkspace, /sourceUrl: item\.videoUrl/);
-  assert.match(viralWorkspace, /exploreRecreate: "1"/);
+  assert.match(readProjectFile("lib/explore/video-generation-link.ts"), /exploreRecreate: "1"/);
   assert.match(viralWorkspace, /referenceType: "hook"/);
   assert.match(viralWorkspace, /referenceType: "wall_text"/);
   assert.match(viralWorkspace, /useBillingSubscription\(\)/);
   assert.match(viralWorkspace, /Upgrade to Pro/);
   assert.match(viralWorkspace, /This Hook performed well on Instagram/);
   assert.match(viralWorkspace, /checkingPlan/);
-  assert.match(viralWorkspace, /href=\{getExploreStudioHref\(item, section\)\}/);
+  assert.match(viralWorkspace, /href=\{getExploreStudioHref\(item, section, model\)\}/);
   assert.match(viralWorkspace, /href="\/pricing"/);
   assert.match(viralWorkspace, /autoPlay=\{autoPlay\}/);
   assert.match(
@@ -126,7 +129,7 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(
     videoWorkspace,
-    /allowedKinds=\{isExploreRecreate \? \["image"\] : \["image", "video"\]\}/,
+    /allowedKinds=\{\["image"\]\}/,
   );
   assert.match(videoWorkspace, /Explore Recreate/);
   assert.match(videoWorkspace, /Image required/);
@@ -136,7 +139,7 @@ test("requires an image for Hook and Wall of Text Explore recreations", () => {
   );
   assert.match(videoGenerationApi, /isExploreHookVideoId\(body\?\.referenceId\)/);
   assert.match(videoGenerationApi, /isExploreWallTextVideoId\(body\?\.referenceId\)/);
-  assert.match(videoGenerationApi, /isExploreRecreate && !avatarImageUrl/);
+  assert.match(videoGenerationApi, /isExploreRecreate && !body\?\.exploreFormat && referenceImageUrls\.length === 0/);
   assert.match(videoGenerationApi, /image-reference-only for better results/);
   assert.doesNotMatch(
     videoGenerationApi,

@@ -1,0 +1,569 @@
+{
+  "base": "f1b51640033856f055aca1bd2448c900dfd9b793",
+  "reviewedAt": "2026-10-05T13:53:58.351Z",
+  "scope": "All current intentional changes, preserving the previous complete release",
+  "sourceChanges": [
+    {
+      "source": "desktop",
+      "path": "components/characters/character-workspace.module.css",
+      "targetPath": "components/characters/character-workspace.module.css",
+      "before": "766085be670330d7dd68e2bdb8a3f07c86a3f51c",
+      "after": "646cf14b6b6eeef69e1ebb742be3b8ad31eb094e",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "components/characters/character-workspace.tsx",
+      "targetPath": "components/characters/character-workspace.tsx",
+      "before": "4338c00febf36c975a32b201a403dbdb4f16ca14",
+      "after": "94742f0770d784c1864b60c13f6cf3cee786d080",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "components/characters/use-character-builder.test.mjs",
+      "targetPath": "components/characters/use-character-builder.test.mjs",
+      "before": "1d3107fa0f3f60c9c086f811b0e3314423133837",
+      "after": "64d584a83d19e2e98d723ae6770a8171943d0990",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "docs/ai-character-builder.md",
+      "targetPath": "docs/ai-character-builder.md",
+      "before": "b092455e4d5ec8405c852a8d7b094eab2ba08419",
+      "after": "11d017c3a6137f8d5079f6f6a08715560d445e49",
+      "resolution": "updated active contract; preserved deployed baseline note"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/access-policy.test.ts",
+      "targetPath": "lib/characters/access-policy.test.ts",
+      "before": "77988832c50fb01b8ea0176f30ff9730c1ed34d7",
+      "after": "2b8b79e8d86f88168e64885d7f0f5f8ffca8e81e",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/client-session.test.ts",
+      "targetPath": "lib/characters/client-session.test.ts",
+      "before": "597a6b033beae649b488078ac5fb39e08c8595f3",
+      "after": "d48f647cb2deb25ed526ebce5ae05db43ce73ba5",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/client-session.ts",
+      "targetPath": "lib/characters/client-session.ts",
+      "before": "d3f9730428e47e18b981baa28ea25f0b51aa478e",
+      "after": "298a54236ad1be1ec513d56f67ca8576fdee37db",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/generation-api.ts",
+      "targetPath": "lib/characters/generation-api.ts",
+      "before": "db2cdc3fc3f1d9c154cefaedf1d7f62f4dd183b0",
+      "after": "ec316a1ceb83d94508facec479e5a32d467abc40",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/generation-service.ts",
+      "targetPath": "lib/characters/generation-service.ts",
+      "before": "b3217fa854a4ca2a3371efffcf61b15dee59d9d7",
+      "after": "ed44c00df96d8b207ba72ac018ffbaa97e66fb6c",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/generation.test.mjs",
+      "targetPath": "lib/characters/generation.test.mjs",
+      "before": "1bd35176a2d5d91c21cca0378456a27e42248fe9",
+      "after": "84e60df9667a3589b34c23e8b71d75de21f7ec30",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/identity-service.ts",
+      "targetPath": "lib/characters/identity-service.ts",
+      "before": "5985366778375b1245144138fd3dbec29eede342",
+      "after": "c37b167700b6ee3ecbf8170e6a091d47923ded59",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/identity.test.ts",
+      "targetPath": "lib/characters/identity.test.ts",
+      "before": "98c386461f62f1d4a82ff0b348da49c2735862c2",
+      "after": "325d0233c841b3b5c4244b4211888279357f3a55",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/schema.ts",
+      "targetPath": "lib/characters/schema.ts",
+      "before": "cb719b5e1b9ba7a2ae7f1bb766ff6cf381ae2a83",
+      "after": "f39beb716e888da6fc3e2df9cd467a734dd1c859",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/types.ts",
+      "targetPath": "lib/characters/types.ts",
+      "before": "46f0637270b0440307e586d8a719a1380b1cc922",
+      "after": "b86052648f7068e873deb13cfcb7e4431ec65c25",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "scripts/character-prompt-driven-db.test.mjs",
+      "targetPath": "scripts/character-prompt-driven-db.test.mjs",
+      "before": null,
+      "after": "f5e1cde33be36828f18940b322ffc0220bd29f2d",
+      "resolution": "included"
+    },
+    {
+      "source": "desktop",
+      "path": "scripts/character-shared-credits-db.test.mjs",
+      "targetPath": "scripts/character-shared-credits-db.test.mjs",
+      "before": "1dd2c91c8fafd72804340d8615461bd560181130",
+      "after": "59f688e8013c5f0a27a1445e66e62c3c4f63a6c4",
+      "resolution": "merged"
+    },
+    {
+      "source": "desktop",
+      "path": "supabase/migrations/20261005140000_character_prompt_driven_generation.sql",
+      "targetPath": "supabase/migrations/20261005140000_character_prompt_driven_generation.sql",
+      "before": null,
+      "after": "d7f05a2447948953690b9af06b85f7ab9e8a5f5e",
+      "resolution": "included"
+    },
+    {
+      "source": "desktop",
+      "path": "worker/src/jobs/generate-image.test.mjs",
+      "targetPath": "worker/src/jobs/generate-character-image.test.mjs",
+      "before": null,
+      "after": "04edca0787f8c8fc30ea47aa5d7b00d4d518e587",
+      "resolution": "added separate character-provider tests; preserved existing worker recovery tests"
+    },
+    {
+      "source": "desktop",
+      "path": "worker/src/jobs/generate-image.ts",
+      "targetPath": "worker/src/jobs/generate-image.ts",
+      "before": "9ec8a050308cf7ba48691333b7fc3736f9808ad1",
+      "after": "9e8bb69d72c488f9bd6b277d3b79ecde18ace12c",
+      "resolution": "preserved deployed unlimited legacy prompts; bounded v2 character input"
+    },
+    {
+      "source": "desktop",
+      "path": "lib/characters/planner.ts",
+      "before": "b02113396840c4bde97cce6fc6c39ec2eb7359a3",
+      "after": null,
+      "resolution": "deleted"
+    }
+  ],
+  "releaseChanges": [
+    "components/explore/workflow-audio-reference.tsx",
+    "components/explore/workflow-saved-audio-choices.tsx",
+    "lib/audio/voice-sample.test.mjs",
+    "lib/audio/voice-sample.ts",
+    "scripts/hook-workflow-preview.test.mjs",
+    "scripts/phone-workflow-preview.test.mjs",
+    "scripts/workflow-composition-panel.test.mjs",
+    "scripts/workflow-creation-form.test.mjs",
+    "scripts/workflow-bookmarked-audio.test.mjs"
+  ],
+  "priorExcludedOrPreserved": [
+    {
+      "path": "app/api/internal/gcp-cutover/audit/route.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "app/api/jobs/[jobId]/retry/route.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "app/mcp/route.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "app/oauth/authorize/oauth-consent.tsx",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "app/oauth/authorize/page.tsx",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "app/oauth/revoke/route.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "docs/higgsfield-seedance-setup.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-live-image-validation.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase2.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase3.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase4.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-phase5-audit.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-v1-contracts.md",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "docs/ugc-pilot-cloud-mcp-v1-tool-schemas.json",
+      "resolution": "retained-main",
+      "reason": "Preserved historical research/product notes; compared overlapping newer-main documentation and retained its security contracts. Current Scribe/canonical migration status distinguished from old warnings."
+    },
+    {
+      "path": "index.ts",
+      "resolution": "excluded-local-artifact",
+      "reason": "Obsolete paid Higgsfield example excluded. User-approved new generation uses OpenRouter; retain historical recovery."
+    },
+    {
+      "path": "lib/ai-studio/access-policy.test.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/generation-settings.test.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/generation-settings.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/image-history.test.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/ai-studio/image-history.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/internal/gcp-cutover-audit-canary.test.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/internal/gcp-cutover-audit-canary.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/jobs/background-job-schema-contract.test.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "lib/mcp/authorization.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/client-validation.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/clients.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/config.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/mutation-tools.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "lib/mcp/oauth-validation.test.ts",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "package-lock.json",
+      "resolution": "retained-main",
+      "reason": "Retain newer main dependency/provider/security fixes; old source is not restored wholesale. Combined app/worker builds and regression suites pass."
+    },
+    {
+      "path": "scripts/test-mcp-generation-migration.mjs",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "scripts/test-mcp-oauth-migration.mjs",
+      "resolution": "retained-main",
+      "reason": "Source removes newer MCP consent/callback, Node pinned-DNS, atomic revocation, tool-auth metadata, upload quotas/size/create-only signing and canonical migration protection. Kept main security/compatibility fixes; complete MCP offline command passed."
+    },
+    {
+      "path": "worker/package-lock.json",
+      "resolution": "retained-main",
+      "reason": "Retain newer main dependency/provider/security fixes; old source is not restored wholesale. Combined app/worker builds and regression suites pass."
+    },
+    {
+      "path": "worker/package.json",
+      "resolution": "retained-main",
+      "reason": "Retain newer main dependency/provider/security fixes; old source is not restored wholesale. Combined app/worker builds and regression suites pass."
+    },
+    {
+      "path": "worker/src/jobs/generate-hook-video.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/jobs/generate-image.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/lib/gemini-image.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/lib/higgsfield-video.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    },
+    {
+      "path": "worker/src/lib/ugc-video-prompt.ts",
+      "resolution": "retained-main",
+      "reason": "Source would remove newer model/resolution, retry, owner/credit or bounded reference-download safeguards. Retained current main implementation; AI Studio/provider and job/canary regression checks passed."
+    }
+  ],
+  "priorAudit": "release-review-2026-10-05.json",
+  "priorExpandedAudit": "release-expanded-review-2026-10-05.json",
+  "workflowVideos": "Four approved old cover videos preserved",
+  "signedInAcceptance": "Pending at user request",
+  "validation": {
+    "combined": {
+      "files": 88,
+      "tests": 717,
+      "passed": 717
+    },
+    "characterAndDatabase": {
+      "tests": 67,
+      "passed": 67
+    },
+    "versionedRpcFollowup": {
+      "tests": 13,
+      "passed": 13
+    },
+    "imageWorker": {
+      "tests": 24,
+      "passed": 24
+    },
+    "lint": "pass",
+    "productionBuild": "pass using existing public Firebase settings only",
+    "paidMediaGenerated": false,
+    "customerPostsPublished": false
+  },
+  "deploymentRepairs": [
+    {
+      "path": "supabase/migrations/20261005140000_character_prompt_driven_generation.sql",
+      "reason": "Additive v2 RPC preserves the old function for uninterrupted rollout and rollback. New API only calls v2."
+    },
+    {
+      "path": "lib/characters/reservation.test.mjs",
+      "reason": "Verify the new API reservation endpoint."
+    },
+    {
+      "path": "scripts/character-prompt-driven-db.test.mjs",
+      "reason": "Verify unchanged legacy RPC and service-role-only v2 grants."
+    },
+    {
+      "path": "worker/src/jobs/generate-character-image.test.mjs",
+      "reason": "Separate new prompt-boundary tests from existing provider-recovery tests."
+    },
+    {
+      "path": "worker/src/jobs/generate-image.ts",
+      "reason": "Preserve deployed long-prompt support for other generators."
+    }
+  ],
+  "currentChangedPaths": [
+    {
+      "status": " M",
+      "path": "components/characters/character-workspace.module.css"
+    },
+    {
+      "status": " M",
+      "path": "components/characters/character-workspace.tsx"
+    },
+    {
+      "status": " M",
+      "path": "components/characters/use-character-builder.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/workflow-audio-reference.tsx"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/workflow-saved-audio-choices.tsx"
+    },
+    {
+      "status": " M",
+      "path": "docs/ai-character-builder.md"
+    },
+    {
+      "status": " M",
+      "path": "lib/audio/voice-sample.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "lib/audio/voice-sample.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/access-policy.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/client-session.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/client-session.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/generation-api.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/generation-service.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/generation.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/identity-service.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/identity.test.ts"
+    },
+    {
+      "status": " D",
+      "path": "lib/characters/planner.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/reservation.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/schema.ts"
+    },
+    {
+      "status": " M",
+      "path": "lib/characters/types.ts"
+    },
+    {
+      "status": " M",
+      "path": "scripts/character-shared-credits-db.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-workflow-preview.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "scripts/phone-workflow-preview.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-composition-panel.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-creation-form.test.mjs"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/jobs/generate-image.ts"
+    },
+    {
+      "status": "??",
+      "path": "docs/release-prompt-driven-review-2026-10-05.json"
+    },
+    {
+      "status": "??",
+      "path": "scripts/character-prompt-driven-db.test.mjs"
+    },
+    {
+      "status": "??",
+      "path": "scripts/workflow-bookmarked-audio.test.mjs"
+    },
+    {
+      "status": "??",
+      "path": "supabase/migrations/20261005140000_character_prompt_driven_generation.sql"
+    },
+    {
+      "status": "??",
+      "path": "worker/src/jobs/generate-character-image.test.mjs"
+    }
+  ],
+  "excludedLocalPatterns": [
+    ".env.local",
+    ".env.development.local",
+    ".env.production.local",
+    ".vercel/",
+    "node_modules/",
+    ".next/",
+    "worker/node_modules/",
+    "worker/dist/",
+    ".tmp/",
+    "private Terraform state/variable files",
+    "design autosaves and recovery files",
+    "user-deferred experimental workflow-cover replacements"
+  ],
+  "rollback": {
+    "web": "dpl_2mvprtZDPYHwCa2BkuF39UbQXrqn",
+    "commit": "f1b51640033856f055aca1bd2448c900dfd9b793",
+    "worker": "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:2925bfeaabff63634f071fcde0ec7c741c22962c3605acbd5019fc25e19eaab4",
+    "database": "Additive v2 RPC; previous reservation RPC unchanged. No down migration required for web rollback."
+  }
+}

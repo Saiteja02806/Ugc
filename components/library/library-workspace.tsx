@@ -94,7 +94,7 @@ export function LibraryWorkspace() {
         <header>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground-strong sm:text-[28px]">
-              Content Library
+              Demo
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               Keep reusable demo footage in one place, ready for your next
@@ -563,7 +563,7 @@ function LibraryCarouselCard({
           <img
             src={coverUrl}
             alt=""
-            className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
+            className="size-full object-contain"
           />
         ) : (
           <div className="flex size-full items-center justify-center text-white/70">
@@ -572,7 +572,7 @@ function LibraryCarouselCard({
         )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           <span className="rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-bold text-primary ring-1 ring-inset ring-primary/20">
-            Carousel
+            {item.sourceId.startsWith("explore-slideshow:") ? "Slideshow" : "Carousel"}
           </span>
           <span className="rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-bold text-white">
             {item.slideCount} slides
@@ -591,6 +591,7 @@ function LibraryCarouselCard({
         </div>
 
         <div className="flex items-center gap-1.5 border-t border-border pt-2.5">
+          {item.sourceId.startsWith("explore-slideshow:") ? <Link href={`/explore/slideshows?step=edit&slideshowId=${encodeURIComponent(item.id)}`} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-control border border-border px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-9">Edit slides</Link> : null}
           <button
             type="button"
             onClick={onView}

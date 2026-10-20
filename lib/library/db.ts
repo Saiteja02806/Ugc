@@ -1,4 +1,5 @@
 import "server-only";
+import { readSlideshowEditableDraft, type SlideshowEditableDraft } from "@/lib/explore/slideshow-editable-draft";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -36,7 +37,7 @@ type LibraryItemRow = {
 };
 
 type LibraryCarouselSlideRow = {
-  carousel_generation_id: string;
+  carousel_generation_id: string | null;
   carousel_slide_id: string | null;
   created_at: string;
   headline: string | null;
@@ -92,7 +93,8 @@ type LibraryDatabase = {
 };
 
 export type LibraryCarouselSlideRecord = {
-  carouselGenerationId: string;
+  mediaAssetId?: string;
+  carouselGenerationId: string | null;
   carouselSlideId: string | null;
   headline: string | null;
   id: string;
@@ -105,6 +107,7 @@ export type LibraryCarouselSlideRecord = {
 };
 
 export type LibraryCarouselItemRecord = {
+  editorDraft?: SlideshowEditableDraft;
   coverUrl: string | null;
   createdAt: string;
   id: string;
@@ -135,7 +138,7 @@ export function getMissingLibraryDbEnvVars() {
   return missing;
 }
 
-export async function saveGeneratedCarouselToLibrary(input: {
+export type GeneratedCarouselLibraryInput = {
   edit?: {
     id: string;
     revision: number;
@@ -148,7 +151,9 @@ export async function saveGeneratedCarouselToLibrary(input: {
   slides: CarouselSlideRecord[];
   title: string;
   userId: string;
-}) {
+};
+
+export function buildGeneratedCarouselLibraryPayload(input: GeneratedCarouselLibraryInput) {
   const orderedSlides = [...input.slides].sort(
     (first, second) => first.slideNumber - second.slideNumber,
   );
@@ -180,8 +185,7 @@ export async function saveGeneratedCarouselToLibrary(input: {
     slideType: slide.slideType,
     subtext: slide.subtext,
   }));
-  const { data, error } = await getLibrarySupabaseClient()
-    .rpc("save_generated_carousel_library_item", {
+  return {
       p_cover_url: coverUrl,
       p_metadata: {
         businessProfileId: input.generation.businessProfileId,
@@ -201,7 +205,13 @@ export async function saveGeneratedCarouselToLibrary(input: {
       p_thumbnail_url: coverUrl,
       p_title: input.title,
       p_user_id: input.userId,
-    })
+    };
+}
+
+export async function saveGeneratedCarouselToLibrary(input: GeneratedCarouselLibraryInput) {
+  const payload = buildGeneratedCarouselLibraryPayload(input);
+  const { data, error } = await getLibrarySupabaseClient()
+    .rpc("save_generated_carousel_library_item", payload)
     .single();
 
   if (error) {
@@ -337,7 +347,9 @@ function mapLibraryItem(
   row: LibraryItemRow,
   slides: LibraryCarouselSlideRecord[],
 ): LibraryCarouselItemRecord {
+  const editorDraft = row.project_id === "explore" && row.source_id.startsWith("explore-slideshow:") && row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? readSlideshowEditableDraft(row.metadata.editorDraft) : null;
   return {
+    ...(editorDraft ? { editorDraft } : {}),
     coverUrl: row.cover_url,
     createdAt: row.created_at,
     id: row.id,
@@ -357,6 +369,7 @@ function mapLibraryCarouselSlide(
   row: LibraryCarouselSlideRow,
 ): LibraryCarouselSlideRecord {
   return {
+    ...(row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) && typeof row.metadata.mediaAssetId === "string" ? { mediaAssetId: row.metadata.mediaAssetId } : {}),
     carouselGenerationId: row.carousel_generation_id,
     carouselSlideId: row.carousel_slide_id,
     headline: row.headline,

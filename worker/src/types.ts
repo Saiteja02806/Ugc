@@ -26,6 +26,7 @@ export type BackgroundJobStatus =
   | "waiting_external_service";
 
 export type BackgroundJobType =
+  | "generate_audio"
   | "analytics_sync"
   | "carousel_content_plan_generation"
   | "carousel_generation"
@@ -58,6 +59,7 @@ export type BackgroundJobType =
   | "wall_text_generation";
 
 export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
+  "generate_audio",
   "final_render",
   "analytics_sync",
   "carousel_content_plan_generation",
@@ -72,7 +74,9 @@ export const EXECUTABLE_BACKGROUND_JOB_TYPES = [
   "publish_social_post",
   "reaction_generation",
   "reaction_render",
+  "render_demo_video",
   "render_create_content_video",
+  "render_demo_video",
   "render_edit_video",
   "render_schedule_combination",
   "render_trending_carousel_edit",
@@ -122,6 +126,8 @@ export type BackgroundJobRow = {
   error_message: string | null;
   failed_at: string | null;
   id: string;
+  /** Present in persisted jobs; optional for historical worker fixtures. */
+  idempotency_key?: string | null;
   input_json: Json;
   input_reference: string | null;
   job_type: BackgroundJobType;
@@ -323,7 +329,7 @@ export type SocialPublishAccountLaneUpdate = Partial<{
   updated_at: string;
 }>;
 
-export type GenerationProvider = "gemini" | "openai" | "runway" | "veo";
+export type GenerationProvider = "gemini" | "higgsfield" | "openai" | "openrouter" | "reapi" | "runway" | "veo";
 
 export type GenerationProviderOperationStatus =
   | "failed"
@@ -554,6 +560,8 @@ export type CarouselGenerationRow = {
   generation_source: "auto_generated" | "manual";
   goal: string | null;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   id: string;
   project_id: string;
   renderer_version: string | null;
@@ -774,11 +782,16 @@ export type CarouselGenerationUpdate = Partial<{
   error_message: string | null;
   renderer_version: string | null;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   status: CarouselGenerationStatus;
   updated_at: string;
 }>;
 
 export type CarouselExperimentBatchRow = {
+  hook_template_mode_snapshot?: "off" | "shadow" | "enabled" | null;
+  structure_2_hook_templates_resolved_at?: string | null;
+  structure_2_hook_template_diagnostics?: Json;
   batch_sequence: number;
   business_profile_id: string;
   business_profile_version: number;
@@ -814,6 +827,8 @@ export type CarouselExperimentAssignmentRow = {
   experiment_batch_id: string;
   format_version: number;
   hook_family_id: string | null;
+  hook_template_id: string | null;
+  hook_template_version: number | null;
   id: string;
   replacement_for_format_id: string | null;
   slot_index: number;
@@ -1007,6 +1022,7 @@ export type ReactionCreativeRow = {
   caption: string;
   content_json: Json;
   duration_seconds: number;
+  generation_origin: "business_generation" | "internal_qa";
   id: string;
   preview_url: string;
   render_error: string | null;
@@ -1032,6 +1048,7 @@ type ReactionGenerationRunRow = {
   brief_payload: Json | null;
   business_profile_id: string;
   business_profile_version: number;
+  generation_origin: "business_generation" | "internal_qa";
   generation_context: Json;
   generation_job_id: string;
   id: string;
@@ -1293,6 +1310,22 @@ export type BackgroundJobsDatabase = {
         };
         Returns: WallTextContentPlanItemRow[];
       };
+      record_wall_text_failure_diagnostic_v1: {
+        Args: {
+          p_background_job_id: string | null;
+          p_content_plan_id: string | null;
+          p_details: Json;
+          p_error_code: string;
+          p_error_message: string;
+          p_generation_batch_id: string | null;
+          p_generation_chunk_id: string | null;
+          p_request_key: string | null;
+          p_retryable: boolean;
+          p_stage: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
       persist_reaction_generation_plan_v1: {
         Args: {
           p_brief_payload: Json;
@@ -1406,6 +1439,10 @@ export type BackgroundJobsDatabase = {
           p_planning_attempt_count: number;
         };
         Returns: CarouselExperimentBatchRow[];
+      };
+      resolve_carousel_structure_2_hooks: {
+        Args: { p_batch_id: string; p_mode: string; p_choices: Json };
+        Returns: Json;
       };
       persist_trending_hook_copy_generation: {
         Args: {

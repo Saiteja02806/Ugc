@@ -4,20 +4,27 @@ import type { CarouselFormat } from "../types.js";
 import type {
   CarouselStructure2RenderSpec,
 } from "./carousel-structure-2-render-spec.js";
-import { CAROUSEL_FIXED_FONT_SIZE } from "./carousel-render-slide.js";
 import {
-  CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
+  CAROUSEL_BODY_FONT_WEIGHT,
+  CAROUSEL_COVER_FONT_WEIGHT,
+  CAROUSEL_FONT_FAMILY,
+  CAROUSEL_HEADING_FONT_WEIGHT,
+  CAROUSEL_STATEMENT_FONT_WEIGHT,
+  CAROUSEL_HOOK_LINE_HEIGHT,
+  CAROUSEL_TEXT_OUTLINE_WIDTH,
+} from "./carousel-cover-typography.js";
+import { CAROUSEL_FIXED_FONT_SIZE, fitMeasuredText, measureHeadingSvgBackground, buildHeadingSvgText } from "./carousel-render-slide.js";
+import { CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "./carousel-text-presentation.js";
+import {
   CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
   CAROUSEL_STRUCTURE_2_SAFE_TOP,
   CAROUSEL_STRUCTURE_2_SAFE_X,
-  CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP,
   getCarouselStructure2StoryFontSize,
   getCarouselStructure2StoryMaxLines,
-  getCarouselStructure2TextLineHeight,
 } from "./carousel-structure-2-layout.js";
 
 export const CAROUSEL_STRUCTURE_2_RENDERER_VERSION =
-  "story-native-renderer-v6-outline-4";
+  "story-native-full-frame-product-inter-medium-v14";
 
 const FORMAT_DIMENSIONS: Record<
   CarouselFormat,
@@ -26,7 +33,7 @@ const FORMAT_DIMENSIONS: Record<
   "1:1": { height: 1080, width: 1080 },
   "4:5": { height: 1350, width: 1080 },
 };
-const FONT_FAMILY = "Geist, Arial, Helvetica, sans-serif";
+const FONT_FAMILY = CAROUSEL_FONT_FAMILY;
 const DIRECT_TEXT_SIDE_BUFFER = 34;
 
 type TextLayout = {
@@ -45,7 +52,14 @@ type Bounds = {
 };
 
 export type CarouselStructure2RenderDiagnostics = {
-  bubbleShapeStrategy: "plain-white-text-with-shadow";
+  fontFamily?: string;
+  storyFontWeight?: number;
+  headingFontWeight?: number;
+  textLineHeight?: number;
+  bubbleShapeStrategy: "heading-white-svg-background" | "plain-white-text" | "plain-white-text-with-outline";
+  bodyBlockCount?: number;
+  bodyBlockLineCounts?: number[];
+  headingBounds?: Bounds | null;
   ctaBounds: Bounds | null;
   ctaFontSize: number | null;
   ctaLineCount: number;
@@ -91,13 +105,14 @@ export async function renderCarouselStructure2SlideFromBuffer(params: {
   spec: CarouselStructure2RenderSpec;
 }): Promise<CarouselStructure2RenderedSlideResult> {
   const dimensions = FORMAT_DIMENSIONS[params.format];
-  const overlay = buildCarouselStructure2Overlay({
+  const overlay = await buildCarouselStructure2Overlay({
     height: dimensions.height,
     spec: params.spec,
     width: dimensions.width,
   });
   const background = await buildStructure2Background({
     assetBuffer: params.assetBuffer,
+    backgroundCrop: params.spec.backgroundCrop,
     height: dimensions.height,
     layoutVariant: params.spec.layoutVariant,
     width: dimensions.width,
@@ -110,19 +125,19 @@ export async function renderCarouselStructure2SlideFromBuffer(params: {
   return { buffer, diagnostics: overlay.diagnostics };
 }
 
-export function inspectCarouselStructure2SlideLayout(params: {
+export async function inspectCarouselStructure2SlideLayout(params: {
   format: CarouselFormat;
   spec: CarouselStructure2RenderSpec;
 }) {
   const dimensions = FORMAT_DIMENSIONS[params.format];
-  return buildCarouselStructure2Overlay({
+  return (await buildCarouselStructure2Overlay({
     height: dimensions.height,
     spec: params.spec,
     width: dimensions.width,
-  }).diagnostics;
+  })).diagnostics;
 }
 
-function buildCarouselStructure2Overlay(params: {
+async function buildCarouselStructure2Overlay(params: {
   height: number;
   spec: CarouselStructure2RenderSpec;
   width: number;
@@ -130,52 +145,48 @@ function buildCarouselStructure2Overlay(params: {
   const maximumTextWidth = params.width - CAROUSEL_STRUCTURE_2_SAFE_X * 2;
   const maximumRenderableTextWidth =
     maximumTextWidth - DIRECT_TEXT_SIDE_BUFFER * 2;
-  const story = fitText({
-    fontSize: getCarouselStructure2StoryFontSize(params.spec.slideNumber),
-    maximumLines: getCarouselStructure2StoryMaxLines(params.spec.slideNumber),
-    maximumWidth: maximumRenderableTextWidth,
-    value: params.spec.storyText,
-  });
-  const cta = params.spec.ctaText
-    ? fitText({
-        maximumLines: CAROUSEL_STRUCTURE_2_CTA_MAX_LINES,
-        maximumWidth: maximumRenderableTextWidth,
-        value: params.spec.ctaText,
-      })
-    : null;
-  const storyWidth = story.maximumLineWidth;
-  const storyHeight = story.blockHeight;
-  const ctaWidth = cta?.maximumLineWidth ?? 0;
-  const ctaHeight = cta ? cta.blockHeight : 0;
-  const textBlockHeight =
-    storyHeight +
-    (cta ? CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP + ctaHeight : 0);
+  const isCover = params.spec.slideNumber === 1;
+  const hasHeading = !isCover && Boolean(params.spec.headline?.trim());
+  const storyFontWeight = isCover ? CAROUSEL_COVER_FONT_WEIGHT : hasHeading ? CAROUSEL_BODY_FONT_WEIGHT : CAROUSEL_STATEMENT_FONT_WEIGHT;
+  const fit = async (value: string, fontSize: number, maximumLines: number, fontWeight = storyFontWeight, lineHeightRatio = isCover ? CAROUSEL_HOOK_LINE_HEIGHT : 1.16): Promise<TextLayout & { measuredLineWidths: number[]; measuredLineExtents: { left: number; right: number; width: number }[] }> => {
+    const layout = await fitMeasuredText(value, {
+      fontSize, fontFamily: FONT_FAMILY, fontWeight,
+      getCornerSafety: () => 0, lineHeightRatio, maxLines: maximumLines,
+      maxWidth: maximumRenderableTextWidth, paddingX: 0,
+    });
+    return { ...layout, blockHeight: layout.lines.length * layout.lineHeight, maximumLineWidth: Math.max(0, ...layout.measuredLineExtents.map((extent) => Math.max(extent.left, extent.right) * 2)) };
+  };
+  const values = isCover ? [params.spec.storyText] : getCarouselBodyBlocks(params.spec.storyText);
+  if (!isCover && values.length > 2) throw new Error("Structure 2 body copy requires at most two text blocks.");
+  const storyFontSize = isCover
+    ? params.spec.coverFontSize ?? getCarouselStructure2StoryFontSize(1)
+    : getCarouselStructure2StoryFontSize(params.spec.slideNumber);
+  const stories = await Promise.all(values.map((value) => fit(value, storyFontSize, isCover || params.spec.headline === undefined ? getCarouselStructure2StoryMaxLines(params.spec.slideNumber) : CAROUSEL_BODY_BLOCK_MAX_LINES)));
+  if (!stories.length) throw new Error("Structure 2 renderer cannot render empty story copy.");
+  const story = stories[0]!;
+  const heading = await fit(isCover ? "" : params.spec.headline ?? "", CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HEADING_MAX_LINES, CAROUSEL_HEADING_FONT_WEIGHT, 1.04);
+  const headingMetrics = measureHeadingSvgBackground(heading);
+  const cta = await fit(isCover ? "" : params.spec.ctaText ?? "", CAROUSEL_FIXED_FONT_SIZE, CAROUSEL_BODY_BLOCK_MAX_LINES);
+  const storyWidth = Math.max(...stories.map((block) => block.maximumLineWidth));
+  const storyHeight = stories.reduce((height, block) => height + block.blockHeight, 0) + Math.max(0, stories.length - 1) * CAROUSEL_TEXT_BLOCK_GAP;
+  const groupHeight = headingMetrics.groupHeight + (heading.lines.length ? CAROUSEL_TEXT_BLOCK_GAP : 0) + storyHeight + (cta.lines.length ? CAROUSEL_TEXT_BLOCK_GAP + cta.blockHeight : 0);
+  if (groupHeight > params.height - CAROUSEL_STRUCTURE_2_SAFE_TOP - CAROUSEL_STRUCTURE_2_SAFE_BOTTOM) throw new Error("Structure 2 text groups do not fit the slide safe area.");
   const storyTop = resolveStoryTop({
-    blockHeight: textBlockHeight,
+    blockHeight: groupHeight,
     height: params.height,
     maximumBottom: params.height - CAROUSEL_STRUCTURE_2_SAFE_BOTTOM,
     position: params.spec.textPosition,
   });
-  const ctaTop = cta
-    ? storyTop + storyHeight + CAROUSEL_STRUCTURE_2_TEXT_GROUP_GAP
-    : null;
   const storyLeft = Math.round((params.width - storyWidth) / 2);
   const storyBounds: Bounds = {
     height: storyHeight,
     width: storyWidth,
     x: storyLeft,
-    y: storyTop,
+    y: storyTop + headingMetrics.groupHeight + (heading.lines.length ? CAROUSEL_TEXT_BLOCK_GAP : 0),
   };
-  const ctaBounds: Bounds | null =
-    cta && ctaTop !== null
-      ? {
-          height: ctaHeight,
-          width: ctaWidth,
-          x: Math.round((params.width - ctaWidth) / 2),
-          y: ctaTop,
-        }
-      : null;
-  const safeAreaContained = [storyBounds, ctaBounds]
+  const headingBounds: Bounds | null = heading.lines.length ? { x: (params.width - headingMetrics.backgroundWidth) / 2, y: storyTop, width: headingMetrics.backgroundWidth, height: headingMetrics.groupHeight } : null;
+  const ctaBounds: Bounds | null = cta.lines.length ? { x: (params.width - cta.maximumLineWidth) / 2, y: storyBounds.y + storyHeight + CAROUSEL_TEXT_BLOCK_GAP, width: cta.maximumLineWidth, height: cta.blockHeight } : null;
+  const safeAreaContained = [headingBounds, storyBounds, ctaBounds]
     .filter((bounds): bounds is Bounds => bounds !== null)
     .every(
       (bounds) =>
@@ -193,135 +204,76 @@ function buildCarouselStructure2Overlay(params: {
   }
 
   const diagnostics: CarouselStructure2RenderDiagnostics = {
-    bubbleShapeStrategy: "plain-white-text-with-shadow",
+    fontFamily: FONT_FAMILY,
+    storyFontWeight,
+    headingFontWeight: CAROUSEL_HEADING_FONT_WEIGHT,
+    textLineHeight: story.lineHeight,
+    bubbleShapeStrategy:
+      heading.lines.length ? "heading-white-svg-background" : "plain-white-text-with-outline",
     ctaBounds,
-    ctaFontSize: cta?.fontSize ?? null,
-    ctaLineCount: cta?.lines.length ?? 0,
+    headingBounds,
+    bodyBlockCount: stories.length,
+    bodyBlockLineCounts: stories.map((block) => block.lines.length),
+    ctaFontSize: cta.lines.length ? cta.fontSize : null,
+    ctaLineCount: cta.lines.length,
     layoutVariant: params.spec.layoutVariant,
     rendererVersion: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
     safeAreaContained,
     storyBounds,
     storyFontSize: story.fontSize,
-    storyLineCount: story.lines.length,
+    storyLineCount: stories.reduce((count, block) => count + block.lines.length, 0),
     textTreatment: "overlay",
     visualRole: params.spec.visualRole,
-    whiteBackgroundGroupCount: 0,
+    whiteBackgroundGroupCount: heading.lines.length ? 1 : 0,
   };
-  const gradient = buildReadabilityGradient({
-    height: params.height,
-    layoutVariant: params.spec.layoutVariant,
-    position: params.spec.textPosition,
-    width: params.width,
-  });
-  const storyMarkup = buildPlainWhiteTextMarkup({
-    bounds: storyBounds,
-    layout: story,
-  });
-  const ctaMarkup =
-    cta && ctaBounds
-      ? buildPlainWhiteTextMarkup({ bounds: ctaBounds, layout: cta })
-      : "";
-
+  let blockY = storyBounds.y;
+  const storyMarkup = stories.map((block) => {
+    const markup = buildPlainWhiteTextMarkup({
+    bounds: { ...storyBounds, y: blockY, height: block.blockHeight },
+    fontWeight: storyFontWeight,
+    layout: block,
+    outlined: true,
+    });
+    blockY += block.blockHeight + CAROUSEL_TEXT_BLOCK_GAP;
+    return markup;
+  }).join("");
+  const headingMarkup = buildHeadingSvgText({ fontSize: heading.fontSize, lineHeight: heading.lineHeight, lines: heading.lines, metrics: headingMetrics, x: params.width / 2, y: storyTop });
+  const ctaMarkup = ctaBounds ? buildPlainWhiteTextMarkup({ bounds: ctaBounds, layout: cta, fontWeight: storyFontWeight, outlined: true }) : "";
   return {
     diagnostics,
     svg: Buffer.from(`
       <svg width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}" xmlns="http://www.w3.org/2000/svg">
-        ${gradient}
-        ${storyMarkup}
-        ${ctaMarkup}
+        <style>.headline { fill: #111316; font-family: ${FONT_FAMILY}; font-weight: ${CAROUSEL_HEADING_FONT_WEIGHT}; }</style>
+        ${headingMarkup}${storyMarkup}${ctaMarkup}
       </svg>
     `),
   };
 }
 
-function buildReadabilityGradient(params: {
-  height: number;
-  layoutVariant: CarouselStructure2RenderSpec["layoutVariant"];
-  position: CarouselStructure2RenderSpec["textPosition"];
-  width: number;
-}) {
-  if (params.layoutVariant === "story_pill_overlay") {
-    return `<rect width="${params.width}" height="${params.height}" fill="rgba(0,0,0,0.18)" />`;
-  }
-
-  if (params.layoutVariant === "story_product_reveal") {
-    return `
-      <defs>
-        <linearGradient id="product-readability-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#000000" stop-opacity="0.68" />
-          <stop offset="0.34" stop-color="#000000" stop-opacity="0.04" />
-          <stop offset="0.7" stop-color="#000000" stop-opacity="0.06" />
-          <stop offset="1" stop-color="#000000" stop-opacity="0.7" />
-        </linearGradient>
-      </defs>
-      <rect width="${params.width}" height="${params.height}" fill="url(#product-readability-gradient)" />
-      <rect x="42" y="54" width="${params.width - 84}" height="${params.height - 108}" rx="32" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2" />
-    `;
-  }
-
-  const topOpacity = params.position === "upper" ? 0.66 : 0.2;
-  const bottomOpacity = params.position === "lower" ? 0.72 : 0.42;
-
-  return `
-    <defs>
-      <linearGradient id="readability-gradient" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#000000" stop-opacity="${topOpacity}" />
-        <stop offset="0.48" stop-color="#000000" stop-opacity="0.04" />
-        <stop offset="1" stop-color="#000000" stop-opacity="${bottomOpacity}" />
-      </linearGradient>
-    </defs>
-    <rect width="${params.width}" height="${params.height}" fill="url(#readability-gradient)" />
-  `;
-}
-
 async function buildStructure2Background(params: {
   assetBuffer: Buffer;
+  backgroundCrop?: "centre";
   height: number;
   layoutVariant: CarouselStructure2RenderSpec["layoutVariant"];
   width: number;
 }) {
-  if (params.layoutVariant !== "story_product_reveal") {
-    return sharp(params.assetBuffer)
-      .rotate()
-      .resize(params.width, params.height, {
-        fit: "cover",
-        position: "attention",
-      })
-      .removeAlpha()
-      .toBuffer();
-  }
-
-  const softenedBackground = await sharp(params.assetBuffer)
+  // App screenshots fill the slide with a proportional centre crop. Keep the
+  // attention crop for the existing normalized library backgrounds.
+  return sharp(params.assetBuffer)
     .rotate()
-    .resize(params.width, params.height, { fit: "cover", position: "centre" })
-    .blur(24)
-    .modulate({ brightness: 0.54, saturation: 0.82 })
-    .removeAlpha()
-    .toBuffer();
-  const contained = await sharp(params.assetBuffer)
-    .rotate()
-    .resize(params.width - 96, params.height - 150, {
-      fit: "inside",
-      withoutEnlargement: false,
+    .resize(params.width, params.height, {
+      fit: "cover",
+      position: params.backgroundCrop === "centre" || params.layoutVariant === "story_product_reveal" ? "centre" : "attention",
     })
-    .ensureAlpha()
-    .toBuffer({ resolveWithObject: true });
-
-  return sharp(softenedBackground)
-    .composite([
-      {
-        input: contained.data,
-        left: Math.round((params.width - contained.info.width) / 2),
-        top: Math.round((params.height - contained.info.height) / 2),
-      },
-    ])
     .removeAlpha()
     .toBuffer();
 }
 
 function buildPlainWhiteTextMarkup(params: {
   bounds: Bounds;
+  fontWeight: number;
   layout: TextLayout;
+  outlined: boolean;
 }) {
   const centerX = params.bounds.x + params.bounds.width / 2;
   const baselineStart =
@@ -329,7 +281,7 @@ function buildPlainWhiteTextMarkup(params: {
   const lines = params.layout.lines
     .map(
       (line, index) =>
-        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="600" letter-spacing="0" paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="4" text-anchor="middle">${escapeXml(line)}</text>`,
+        `<text x="${centerX}" y="${baselineStart + index * params.layout.lineHeight}" fill="#ffffff" font-family="${FONT_FAMILY}" font-size="${params.layout.fontSize}" font-weight="${params.fontWeight}" letter-spacing="0" ${params.outlined ? `paint-order="stroke fill" stroke="#000000" stroke-linejoin="round" stroke-opacity="0.72" stroke-width="${CAROUSEL_TEXT_OUTLINE_WIDTH}"` : ""} text-anchor="middle">${escapeXml(line)}</text>`,
     )
     .join("");
 
@@ -359,73 +311,6 @@ function resolveStoryTop(params: {
   );
 }
 
-function fitText(params: {
-  fontSize?: number;
-  maximumLines: number;
-  maximumWidth: number;
-  value: string;
-}): TextLayout {
-  const value = params.value.trim().replace(/\s+/g, " ");
-
-  if (!value) {
-    throw new Error("Structure 2 renderer cannot render empty story copy.");
-  }
-
-  const fontSize = params.fontSize ?? CAROUSEL_FIXED_FONT_SIZE;
-  const lines = wrapWords(value, params.maximumWidth, fontSize);
-
-  if (lines.length > params.maximumLines) {
-    throw new Error(
-      `Structure 2 copy exceeds ${params.maximumLines} lines at the fixed ${fontSize}px font size.`,
-    );
-  }
-  const lineHeight = getCarouselStructure2TextLineHeight(fontSize);
-  const maximumLineWidth = Math.ceil(
-    Math.max(...lines.map((line) => estimateTextWidth(line, fontSize))),
-  );
-
-  return {
-    blockHeight: lines.length * lineHeight,
-    fontSize,
-    lineHeight,
-    lines,
-    maximumLineWidth,
-  };
-}
-
-function wrapWords(value: string, maximumWidth: number, fontSize: number) {
-  const words = value.split(" ").filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    if (estimateTextWidth(word, fontSize) > maximumWidth) {
-      throw new Error(`Structure 2 copy contains an unrenderable word: ${word}.`);
-    }
-
-    const candidate = current ? `${current} ${word}` : word;
-
-    if (estimateTextWidth(candidate, fontSize) <= maximumWidth) {
-      current = candidate;
-    } else {
-      lines.push(current);
-      current = word;
-    }
-  }
-
-  if (current) lines.push(current);
-  return lines;
-}
-
-function estimateTextWidth(value: string, fontSize: number) {
-  return Array.from(value).reduce((width, character) => {
-    if (character === " ") return width + fontSize * 0.29;
-    if (/[A-Z0-9]/.test(character)) return width + fontSize * 0.61;
-    if (/[il.,'|:;]/.test(character)) return width + fontSize * 0.27;
-    if (/[mwMW@%]/.test(character)) return width + fontSize * 0.8;
-    return width + fontSize * 0.52;
-  }, 0);
-}
 
 function escapeXml(value: string) {
   return value

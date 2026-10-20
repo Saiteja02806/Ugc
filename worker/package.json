@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:images": "npm run build && node --experimental-test-module-mocks --test dist/lib/image-output.test.js dist/lib/gemini-image.test.js dist/lib/openrouter-seedream-image.test.js dist/lib/seedream-image.test.js src/jobs/generate-image.test.mjs src/jobs/generate-character-image.test.mjs",
+    "test:seedance": "npm run build && node --test dist/lib/runway-seedance-video.test.js dist/lib/higgsfield-video.test.js dist/jobs/generate-hook-video.test.js",
+    "test:wall-overlay": "npm run build && node --test --test-concurrency=1 dist/lib/wall-text-overlay-asset.test.js dist/lib/render-engine.test.js dist/lib/wall-text-render-spec.test.js dist/jobs/render-wall-text-video.test.js",
     "build": "tsc -p tsconfig.json",
     "test:reaction-edit": "npm run build && node --test dist/jobs/render-reaction-edit.test.js",
     "posttest": "node --test --test-concurrency=1 dist/jobs/render-edit-video.test.js dist/jobs/render-create-content-video.test.js dist/lib/supabase-edit-render.test.js dist/lib/supabase-create-content-render.test.js dist/jobs/render-reaction-edit.test.js",
@@ -12,17 +15,30 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
-    "@google-cloud/storage": "^7.21.0",
+    "@google-cloud/storage": "8.2.0",
     "@google/genai": "^2.10.0",
-    "@runwayml/sdk": "^4.4.0",
+    "@runwayml/sdk": "4.20.1",
     "@supabase/supabase-js": "^2.108.2",
     "geist": "^1.7.0",
     "google-auth-library": "^10.5.0",
     "openai": "^6.45.0",
-    "sharp": "^0.34.5"
+    "opentype.js": "^2.0.0",
+    "sharp": "0.35.5",
+    "@higgsfield/client": "^0.2.6"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/opentype.js": "^1.3.10",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": "16.3.8",
+    "gaxios": {
+      "uuid": "11.1.1"
+    },
+    "source-map-js": "1.2.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

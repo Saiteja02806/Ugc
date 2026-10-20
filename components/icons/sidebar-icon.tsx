@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 export type SidebarIconName =
+  | "audio"
+  | "explore"
   | "trending"
   | "viral"
   | "image-gen"
@@ -21,6 +23,8 @@ export type SidebarIconName =
   | "time";
 
 const sidebarIconPaths: Record<SidebarIconName, string> = {
+  audio: "/icons/sidebar/audio.svg",
+  explore: "/icons/sidebar/explore.svg",
   trending: "/icons/sidebar/trending.svg",
   viral: "/icons/sidebar/viral.svg",
   "image-gen": "/icons/sidebar/image-gen.svg",
@@ -47,6 +51,7 @@ export function SidebarIcon({
   name: SidebarIconName;
 }) {
   const source = sidebarIconPaths[name];
+
   const style: CSSProperties = {
     WebkitMaskImage: `url("${source}")`,
     maskImage: `url("${source}")`,

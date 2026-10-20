@@ -30,9 +30,30 @@ const itemContextMigration = readFileSync(
   ),
   "utf8",
 );
+const planMatchedFactMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260923160227_store_wall_text_plan_selected_fact.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const terminalOwnerRecoveryMigration = readFileSync(
   new URL(
     "../../supabase/migrations/20260902054816_recover_terminal_wall_text_plan_jobs.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const dailyDeliveryShortfallRecoveryMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260912103553_repair_wall_text_daily_delivery_shortfalls.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const terminalDailyDeliveryReplacementMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260912140000_rotate_wall_text_terminal_delivery.sql",
     import.meta.url,
   ),
   "utf8",
@@ -71,6 +92,10 @@ const planLaunch = readFileSync(
   new URL("./wall-text-content-plan-generation-job.ts", import.meta.url),
   "utf8",
 );
+const generationRuntime = readFileSync(
+  new URL("./wall-text-generation-runtime.ts", import.meta.url),
+  "utf8",
+);
 const preparationRoute = readFileSync(
   new URL("../../app/api/trending/wall-text/feed/prepare/route.ts", import.meta.url),
   "utf8",
@@ -85,6 +110,13 @@ const storage = readFileSync(
 );
 const workerHandlers = readFileSync(
   new URL("../../worker/src/jobs/index.ts", import.meta.url),
+  "utf8",
+);
+const terminalRecoveryRoute = readFileSync(
+  new URL(
+    "../../app/api/internal/jobs/recover-wall-text-terminal/route.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const aiWorkerVariables = readFileSync(
@@ -137,20 +169,41 @@ test("creates a separate private 30-day Wall plan with forty briefs and two hund
   );
 });
 
+test("rotates a terminal daily Wall delivery before its successful partial work is reconciled", () => {
+  assert.match(
+    terminalDailyDeliveryReplacementMigration,
+    /request_wall_text_daily_terminal_replacement_v1[\s\S]+wall_text_retry_key = v_retry_key/i,
+  );
+  assert.match(
+    terminalDailyDeliveryReplacementMigration,
+    /intent\.job_id = p_failed_job_id[\s\S]+intent\.retry_key = coalesce\(v_feed\.wall_text_retry_key::text, ''\)/i,
+  );
+  assert.match(
+    terminalDailyDeliveryReplacementMigration,
+    /job\.input_json ->> 'dailyFeedId' = v_feed\.id::text/i,
+  );
+  assert.match(
+    terminalRecoveryRoute,
+    /if \(input\.dailyFeedId\)[\s\S]+requestWallTextDailyTerminalReplacement[\s\S]+replacementScheduled: retryKey !== null/i,
+  );
+  assert.doesNotMatch(
+    terminalRecoveryRoute.match(/if \(input\.dailyFeedId\)[\s\S]+?\n    }\n\n    const replacement/)?.[0] ?? "",
+    /enqueueTrendingWallTextRefill/,
+  );
+});
+
 test("uses five parent fields for five child ideas without prewriting Wall copy", () => {
   for (const definition of [
     /creativeSeed: The central human observation or tension\. It is not final copy/i,
     /audienceContext: The supported audience segment experiencing that situation\. It must not mean everyone/i,
     /humanMoment: One concrete, recognisable everyday event or situation/i,
-    /emotionalTension: The inner feeling or conflict created by that moment/i,
+    /emotionalTension: The inner feeling or conflict only when it follows naturally from that moment/i,
     /supportedAngle: The factual connection to the business, based only on approved facts\. It is not a sales claim or a promise/i,
   ]) {
     assert.match(planner, definition);
   }
-  assert.match(
-    planner,
-    /For every child return contentIdea, feeling, audienceContext/i,
-  );
+  assert.match(planner, /selectedFactId first, then /i);
+  assert.match(planner, /contentIdea, feeling, audienceContext/i);
   assert.match(
     planner,
     /children are not generated from creativeSeed alone/i,
@@ -159,22 +212,44 @@ test("uses five parent fields for five child ideas without prewriting Wall copy"
     planner,
     /Do not write final overlay copy, line breaks, a slide layout, a CTA, a product pitch, or a finished script/i,
   );
+  assert.match(planner, /const DEFAULT_MODEL = "gpt-5\.6-luna"/i);
+  assert.match(planner, /const DEFAULT_REASONING_EFFORT = "low"/i);
+  assert.match(planner, /OPENAI_WALL_TEXT_PLAN_MODEL/);
+  assert.match(planner, /OPENAI_WALL_TEXT_PLAN_REASONING_EFFORT/);
   assert.match(
     planner,
-    /wall-text-content-plan-five-context-v6-compact-chunks/i,
+    /wall-text-content-plan-reader-profiles-v19-four-copy-fixes/i,
   );
+  assert.match(appPlan, /WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5\.6-luna"/i);
   assert.match(
     appPlan,
-    /wall-text-content-plan-five-context-v6-compact-chunks/i,
+    /wall-text-content-plan-reader-profiles-v19-four-copy-fixes/i,
   );
 });
 
 test("stores a Wall item's exact private context and broad lane", () => {
   assert.match(itemContextMigration, /wall_text_content_plan_items[\s\S]*private_context jsonb/i);
   assert.match(planner, /getWallTextItemConceptLanes/);
-  assert.match(planner, /Every group of five must use five clearly different concrete human situations/i);
+  assert.match(planner, /Aim for five distinct supported situations or practical observations per group/i);
+  assert.match(planner, /vary at least two supported details/i);
+  assert.match(planner, /Never force a scene or outcome to meet a variety quota/i);
+  assert.match(planner, /concept lane and parent focus are suggestions subordinate to supported meaning and clarity/i);
+  assert.match(planner, /assignedBriefSituationFocuses/);
+  assert.match(planner, /current-plan situation focus/i);
+  assert.match(planner, /first choose exactly one selectedFactId from that list/i);
+  assert.match(planner, /Then create its humanMoment and contentIdea from what that exact fact supports/i);
+  assert.match(planner, /must not introduce a separate event, cause, workflow, problem, or outcome/i);
+  assert.match(planner, /Never invent a human moment first and search for a fact to attach later/i);
+  assert.match(planner, /selectedFactId first, then /i);
+  assert.match(planner, /the replacement idea and its five private context fields/i);
+  assert.match(planner, /For the replacement, first select exactly one valid selectedFactId/i);
+  assert.match(appPlan, /approvedFactSnapshot: buildBusinessFactSnapshot\(analysis\)/i);
+  assert.match(planner, /approvedPlanningContext\.wallTextReaders identifies the intended Wall-of-Text reader categories/i);
+  assert.match(appPlan, /wallTextReaders:/);
+  assert.doesNotMatch(planner, /previousItems\s*:/);
+  assert.doesNotMatch(planner, /existingIdeasToAvoid\s*:/);
   assert.match(planner, /MAX_SINGLE_IDEA_REPAIR_ATTEMPTS = 3/);
-  assert.match(finalWriter, /assigned concept lane when present/i);
+  assert.match(finalWriter, /conceptLane\?: string/);
 });
 
 test("requires a complete active Wall plan instead of falling back to direct generation", () => {
@@ -247,6 +322,29 @@ test("reopens Carousel and Wall plans when their durable owner job is already te
   );
 });
 
+test("reopens only a short, currently active daily Wall delivery without deleting history", () => {
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /intent\.retry_key = coalesce\(feed\.wall_text_retry_key::text, ''\)/i,
+  );
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /job\.status = 'completed'[\s\S]*jsonb_typeof\(job\.output_json -> 'ideaCount'\) = 'number'[\s\S]*::numeric < intent\.slot_count/i,
+  );
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /slot\.id = any\(intent\.slot_ids\)[\s\S]*slot\.wall_text_assignment_id is null/i,
+  );
+  assert.match(
+    dailyDeliveryShortfallRecoveryMigration,
+    /wall_text_retry_key = gen_random_uuid\(\)/i,
+  );
+  assert.doesNotMatch(
+    dailyDeliveryShortfallRecoveryMigration,
+    /^\s*(?:delete\s+from|truncate(?:\s+table)?|drop\s+table)\b/im,
+  );
+});
+
 test("rotates the active Wall plan without reintroducing the direct writer fallback", () => {
   assert.match(
     rotationMigration,
@@ -294,18 +392,52 @@ test("connects the complete planned Wall flow without exposing private context t
   assert.match(feed, /reserveWallTextGenerationBatch/);
   assert.match(feed, /getWallTextPrivateCreativeContexts/);
   assert.match(feed, /privateCreativeContext:/);
+  assert.match(feed, /planningBrief\?\.selectedFactId/);
+  assert.match(feed, /selectWallTextGroundingFact/);
+  assert.match(feed, /updateWallTextGenerationAssignmentGrounding/);
   assert.match(feed, /saveWallTextGenerationCandidate/);
   assert.match(storage, /reserve_wall_text_generation_batch_v1/);
   assert.match(storage, /save_wall_text_generation_candidate_v1/);
+  assert.match(
+    planMatchedFactMigration,
+    /set_wall_text_generation_assignment_grounding_v1\(\s*p_assignment_id uuid,\s*p_batch_id uuid,\s*p_focus_json jsonb,\s*p_user_id text/i,
+  );
+  assert.match(planMatchedFactMigration, /assignment\.status = 'processing'/i);
+  assert.match(planMatchedFactMigration, /batch\.user_id = p_user_id/i);
+  assert.match(planMatchedFactMigration, /revoke all on function[\s\S]+grant execute on function[\s\S]+service_role/i);
   assert.doesNotMatch(feed, /creativeSeed|audienceContext|humanMoment|emotionalTension|supportedAngle|preferredFormatFamily/);
+});
+
+test("checks Wall queue admission before plans or daily slots can be reserved", () => {
+  assert.match(
+    generationRuntime,
+    /wall_text_content_plan_generation[\s\S]*wall_text_generation/,
+  );
+  assert.match(
+    generationRuntime,
+    /getMissingJobQueueEnvVars\([\s\S]*WALL_TEXT_GENERATION_JOB_TYPES/,
+  );
+  assert.match(
+    planLaunch,
+    /assertWallTextGenerationRuntimeConfigured\(\);[\s\S]*ensureCurrentWallTextContentPlan/,
+  );
+  assert.match(
+    jobs,
+    /enqueueTrendingWallTextJob[\s\S]*assertWallTextGenerationRuntimeConfigured\(\);[\s\S]*ensureWallTextContentPlanGeneration/,
+  );
 });
 
 test("keeps planning context private and removes format pressure from the Wall writer", () => {
   assert.match(
     finalWriter,
-    /use its contentIdea, feeling, all five planningBrief fields, and its assigned concept lane when present as private guidance/i,
+    /check its moment against assignedBusinessFact before using it/i,
   );
+  assert.match(finalWriter, /discard the unsupported scene and explain the fact directly/i);
   assert.match(finalWriter, /Do not print field names or treat creativeSeed as finished copy/i);
+  assert.match(finalWriter, /clear paraphrase is valid/i);
+  assert.match(finalWriter, /businessName is the product or brand label/i);
+  assert.match(finalWriter, /selected for this exact planned idea/i);
+  assert.doesNotMatch(finalWriter, /Use at least two distinctive words from that assigned fact/i);
   assert.match(finalWriter, /Do not force it into a named writing format, template, list, or formula/i);
   assert.doesNotMatch(finalWriter, /preferredFormatFamily|assignedFormatId|APPROVED WALL FORMATS/);
   assert.doesNotMatch(feed, /selectWallTextFormatAssignments|getWallTextPerformanceSignals/);

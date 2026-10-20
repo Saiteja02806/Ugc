@@ -19,21 +19,6 @@ test("user-facing AI and analytics routes only enqueue durable jobs", () => {
       forbidden: ["generateBusinessHookSuggestions"],
       path: "app/api/trending/hook-videos/suggestions/route.ts",
     },
-    {
-      enqueue: "enqueueAnalyticsSyncJob",
-      forbidden: ["listInstagramAccountInsightsForOwner"],
-      path: "app/api/analytics/instagram/insights/route.ts",
-    },
-    {
-      enqueue: "enqueueAnalyticsSyncJob",
-      forbidden: ["listInstagramContentInsightsForOwner"],
-      path: "app/api/analytics/instagram/content/route.ts",
-    },
-    {
-      enqueue: "enqueueAnalyticsSyncJob",
-      forbidden: ["listTikTokPublicVideoAnalyticsForOwner"],
-      path: "app/api/analytics/tiktok/videos/route.ts",
-    },
   ];
 
   for (const contract of contracts) {
@@ -46,19 +31,23 @@ test("user-facing AI and analytics routes only enqueue durable jobs", () => {
       assert.doesNotMatch(source, new RegExp(forbidden));
     }
   }
-});
 
-test("Analytics is available to every signed-in user without a paid-plan gate", () => {
-  for (const routePath of [
-    "app/api/analytics/instagram/insights/route.ts",
-    "app/api/analytics/instagram/content/route.ts",
-    "app/api/analytics/tiktok/videos/route.ts",
+  const service = readFileSync("lib/analytics/snapshot-service.ts", "utf8");
+  const route = readFileSync("lib/analytics/route.ts", "utf8");
+  assert.match(service, /enqueueAnalyticsSyncJob/);
+  assert.match(route, /requireFirebaseUser\(request\)/);
+  assert.match(route, /refreshAnalyticsSnapshot/);
+  assert.match(route, /readAnalyticsSnapshot/);
+  assert.doesNotMatch(route, /requireActivePaidUser|BillingAccessError/);
+  for (const [path, operation] of [
+    ["instagram/insights", "instagram_insights"], ["instagram/content", "instagram_content"],
+    ["tiktok/videos", "tiktok_videos"], ["youtube/channel", "youtube_channel"],
   ]) {
-    const source = readFileSync(routePath, "utf8");
-
-    assert.match(source, /requireFirebaseUser\(request\)/);
-    assert.doesNotMatch(source, /requireActivePaidUser/);
-    assert.doesNotMatch(source, /BillingAccessError/);
+    const source = readFileSync(`app/api/analytics/${path}/route.ts`, "utf8");
+    assert.ok(source.includes(`createAnalyticsRoute("${operation}")`));
+    assert.match(source, /export const GET/);
+    assert.match(source, /export const POST/);
+    assert.doesNotMatch(source, /listInstagramAccountInsightsForOwner|listInstagramContentInsightsForOwner|listTikTokPublicVideoAnalyticsForOwner|listYouTubeChannelAnalyticsForOwner/);
   }
 });
 

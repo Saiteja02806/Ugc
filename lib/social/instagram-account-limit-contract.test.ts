@@ -91,7 +91,7 @@ test("settings exposes the first connection and blocks only accounts beyond the 
   );
   assert.match(
     settingsSource,
-    /disabled=\{Boolean\(connectingPlatform\) \|\| accountLimitReached\}/,
+    /accountLimitReached \? \([\s\S]*?Plan limit reached[\s\S]*?\) : \([\s\S]*?onClick=\{\(\) => void addInstagram\(\)\}/,
   );
   assert.match(settingsSource, /Upgrade to Starter to connect up to 3 accounts/);
   assert.match(settingsSource, /Upgrade to Growth to connect up to 5 accounts/);

@@ -1,0 +1,53 @@
+{
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 334,
+  "duration": 13.916666666666666,
+  "video": "create-hook-v1.mp4",
+  "poster": "create-hook-v1.webp",
+  "bytes": 1763026,
+  "sources": [
+    {
+      "name": "format1 (1).mp4",
+      "frames": 240
+    },
+    {
+      "name": "format1 (2).mp4",
+      "frames": 144
+    },
+    {
+      "name": "format1 (3).mp4",
+      "frames": 144
+    }
+  ],
+  "excerptStartSeconds": 1,
+  "excerptFrames": 72,
+  "stages": [
+    {
+      "name": "diagonal",
+      "frames": 72
+    },
+    {
+      "name": "video-1",
+      "frames": 72
+    },
+    {
+      "name": "video-2",
+      "frames": 72
+    },
+    {
+      "name": "video-3",
+      "frames": 72
+    },
+    {
+      "name": "horizontal",
+      "frames": 72
+    },
+    {
+      "name": "return-to-diagonal",
+      "frames": 24
+    }
+  ],
+  "transitionFrames": 10
+}

@@ -30,6 +30,10 @@ const context = applyPrimaryGoals(
 
 const completedProfile = {
   analysisId: "analysis-1",
+  businessContextDraftBaseVersion: null,
+  businessContextDraftContext: null,
+  businessContextDraftSource: null,
+  businessContextDraftUpdatedAt: null,
   context,
   id: "profile-1",
   intakeType: "manual" as const,
@@ -50,6 +54,7 @@ const completedProfile = {
   primaryGoals: ["increase_revenue", "brand_awareness"] as PrimaryGoal[],
   profileVersion: 1,
   projectId: "default-project",
+  sourceUrl: null,
   trendingTimezone: null,
   trendingWalkthroughCompletedAt: null,
   userId: "user-1",

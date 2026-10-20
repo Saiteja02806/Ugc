@@ -8,6 +8,7 @@ environment = "prod"
 #   supabase-service-role-key, and openai-api-key;
 # - GCS media public read has been enabled for the testing cutover.
 enable_carousel_worker = false
+enable_carousel_edit_worker = false
 
 # Example after running npm run worker:gcp:image:push -- --cloud-build:
 # worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718143000"
@@ -19,9 +20,10 @@ queue_name                   = "carousel"
 worker_job_types             = "generate_carousel,render_trending_carousel_edit"
 
 worker_visibility_timeout_seconds = 900
-# Keep one maximum until Carousel reservations are safe for parallel writers.
+# Controlled request-based autoscaling; edits have a separate warm service.
+# Match the Carousel queue concurrency. Production concurrency canaries passed.
 min_instance_count                = 0
-max_instance_count                = 1
+max_instance_count                = 2
 request_timeout_seconds           = 300
 cpu                               = "1"
 memory                            = "2Gi"

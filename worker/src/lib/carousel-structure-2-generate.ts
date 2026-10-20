@@ -18,6 +18,7 @@ import {
 import { createCarouselStructure2SlideInserts } from "./carousel-structure-2-persistence.js";
 import {
   buildCarouselStructure2StoryPlanBatch,
+  CarouselStructure2EmptyProviderResponseError,
   type CarouselStructure2StoryPlanResult,
 } from "./carousel-structure-2-planner.js";
 import {
@@ -26,6 +27,7 @@ import {
 } from "./carousel-structure-2-render-slide.js";
 import { buildCarouselStructure2RenderSpecs } from "./carousel-structure-2-render-spec.js";
 import { uploadRenderedCarouselSlide } from "./carousel-storage.js";
+import { resolveStructure2BatchHooks } from "./carousel-structure-2-hook-resolution.js";
 
 export async function generateCarouselStructure2Batch(params: {
   businessAnalysis: WebsiteBusinessAnalysis;
@@ -55,6 +57,8 @@ export async function generateCarouselStructure2Batch(params: {
       "Structure 2 creative briefs do not match their reserved content-plan items.",
     );
   }
+  const generations = await resolveStructure2BatchHooks(params);
+  params = { ...params, generations };
   await params.store.updateCarouselExperimentBatch(params.experimentBatchId, {
     status: "processing",
   });
@@ -66,6 +70,8 @@ export async function generateCarouselStructure2Batch(params: {
     plannedItems = await buildCarouselStructure2StoryPlanBatch({
       assignments: params.generations.map((generation, slotIndex) => ({
         candidateIndex: generation.candidate_index,
+        hookTemplateId: generation.hook_template_id,
+        hookTemplateVersion: generation.hook_template_version,
         creativeSeed: params.creativeBriefs[slotIndex]!.creativeSeed,
         emotion: params.creativeBriefs[slotIndex]!.emotion,
         planningBrief: params.creativeBriefs[slotIndex]!.planningBrief,
@@ -219,6 +225,8 @@ async function generateCarouselStructure2(params: {
       content_topic_id: null,
       error_message: null,
       hook_family_id: null,
+      hook_template_id: plannedItem.hookTemplateId ?? null,
+      hook_template_version: plannedItem.hookTemplateVersion ?? null,
       renderer_version: CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
       status: "processing",
     }),
@@ -226,6 +234,8 @@ async function generateCarouselStructure2(params: {
       actual_format_id: format.id,
       format_version: format.version,
       hook_family_id: null,
+      hook_template_id: plannedItem.hookTemplateId ?? null,
+      hook_template_version: plannedItem.hookTemplateVersion ?? null,
       replacement_for_format_id: null,
       status: "processing",
     }),
@@ -361,12 +371,29 @@ async function failEntireBatch(
   },
   error: unknown,
 ) {
+  const providerResponse =
+    error instanceof CarouselStructure2EmptyProviderResponseError
+      ? {
+          initialBatch: null,
+          providerDiagnostics: {
+            initialBatch: error.diagnostic,
+            repairs: [],
+          },
+          repair: null,
+        }
+      : null;
   const message = truncate(
     error instanceof Error ? error.message : "Structure 2 planning failed.",
   );
   await Promise.allSettled([
     ...params.generations.map((generation) =>
       params.store.updateCarouselGeneration(generation.id, {
+        ...(providerResponse
+          ? {
+              content_plan_raw_response:
+                providerResponse as unknown as Json,
+            }
+          : {}),
         error_message: message,
         status: "failed",
       }),

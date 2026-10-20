@@ -16,6 +16,7 @@ test("Structure 2 reserves six assets and uses the app screenshot on Slide 6", (
 
   assert.equal(specs.length, 6);
   assert.equal(specs[0]!.visualRole, "hook");
+  assert.equal(specs[0]!.textPosition, "center");
   assert.equal(specs[5]!.visualRole, "product_asset");
   assert.equal(specs[5]!.storyRole, "takeaway_cta");
   assert.equal(specs[5]!.layoutVariant, "story_product_reveal");
@@ -62,7 +63,7 @@ function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
     "I realized the problem was not effort; my plan assumed that ordinary work would never change after I wrote it down.",
     "Todaywise let me work from the changing task list, so I could update the next action without rebuilding the entire week from scratch.",
     "The week still changed, but I stopped treating each shift as a reset and finished the important work with a clearer next decision.",
-    "Keep the next decision visible, then try the same approach with one changing priority.",
+    "Keep the next decision visible so each changed priority still has one practical next step.",
   ];
   return parseCarouselStructure2StoryPlan(
     {
@@ -70,7 +71,7 @@ function makeStoryPlan(storyFormatId: CarouselStructure2FormatId) {
         CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS.map((positionKey, index) => [
           positionKey,
           {
-            ctaText: index === 5 ? "Try the same approach with one changing priority." : null,
+            ctaText: null,
             storyRole: CAROUSEL_STRUCTURE_2_STORY_ROLES[index]!,
             storyText: copy[index]!,
             visualContext: `planning scene ${index + 1}`,

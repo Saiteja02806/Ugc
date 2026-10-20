@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { gatewayRetryFetch } from "@/lib/supabase/gateway-retry-fetch";
 
 import type {
   AvatarAssetRatio,
@@ -128,6 +129,7 @@ function getSupabaseServerClient() {
       supabaseUrl,
       serviceRoleKey,
       {
+        global: { fetch: gatewayRetryFetch },
         auth: {
           autoRefreshToken: false,
           persistSession: false,

@@ -1,14 +1,22 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { ProductLogoMark } from "@/components/brand/product-logo";
+import landingLogo from "@/app/logo.png";
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
 
-const navItems = [{ label: "Pricing", href: "/pricing" }];
-const topOnlyNavItems = [{ label: "How it works", href: "#workflow" }];
+type NavItem = {
+  label: string;
+  href: string;
+};
+
+const navItems: NavItem[] = [
+  { label: "Guides", href: "/guides" },
+  { label: "Pricing", href: "/pricing" },
+];
 
 export function LandingHeader({
   initialHasSession,
@@ -49,17 +57,19 @@ export function LandingHeader({
         <Link
           href="/"
           className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="UGCPilot home"
+          aria-label="UGC Pilot home"
         >
-          <ProductLogoMark
-            className={`rounded-control bg-primary p-2 transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
+          <Image
+            src={landingLogo}
+            alt=""
+            sizes={isScrolled ? "32px" : "36px"}
+            priority
+            className={`rounded-md object-contain transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
               isScrolled ? "size-8" : "size-9"
             }`}
-            imageClassName="brightness-0 invert"
-            sizes="36px"
           />
           <span className="truncate text-[17px] font-semibold text-foreground-strong">
-            UGCPilot
+            UGC Pilot
           </span>
         </Link>
 
@@ -69,22 +79,11 @@ export function LandingHeader({
           }`}
           aria-label="Primary navigation"
         >
-          {!isScrolled
-            ? topOnlyNavItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  {item.label}
-                </Link>
-              ))
-            : null}
           {navItems.map((item) => (
             <Link
               key={item.label}
               href={item.href}
-              className="rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="whitespace-nowrap rounded-control transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               {item.label}
             </Link>
@@ -103,7 +102,7 @@ export function LandingHeader({
             <Menu className="size-5" aria-hidden="true" />
           </summary>
           <div className="absolute right-0 top-12 w-60 rounded-card border border-border bg-card/95 p-2 shadow-floating backdrop-blur-xl">
-            {[...(!isScrolled ? topOnlyNavItems : []), ...navItems].map(
+            {navItems.map(
               (item) => (
                 <Link
                   key={item.label}

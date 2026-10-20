@@ -2,10 +2,21 @@ import "server-only";
 
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
+import type { ParsedChatCompletion } from "openai/resources/chat/completions";
 import { z } from "zod";
 
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
-import { WALL_TEXT_CONTENT_RETRY_EXHAUSTED } from "@/lib/trending/wall-text-generation-failure";
+import {
+  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
+  WALL_TEXT_MODEL_OUTPUT_EMPTY,
+  WALL_TEXT_MODEL_OUTPUT_REFUSAL,
+  WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+  WallTextModelOutputError,
+  WallTextStagedError,
+  isWallTextRenderFitFailure,
+  type WallTextCandidateRejection,
+} from "@/lib/trending/wall-text-generation-failure";
+import { getWallTextRepairBudget } from "./wall-text-repair-budget";
 import {
   createAuthoritativeWallTextContent,
   deriveWallTextSpatialBudget,
@@ -16,16 +27,18 @@ import {
   type WallTextDuplicateSignature,
 } from "@/lib/trending/wall-text-duplicate-logic";
 import { buildWallTextGenerationPrompt } from "@/lib/trending/wall-prompt";
+import {
+  getWallTextGroundingIssue,
+  toWallTextGroundingMetadata,
+  type WallTextFactGrounding,
+} from "@/lib/trending/wall-text-grounding";
 import type { WallTextPrivateCreativeContext } from "@/lib/trending/wall-text-db";
 import { createWallTextLayout } from "@/lib/trending/wall-text-feed-logic";
 import {
   buildWallTextBusinessContext,
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
   normalizeWallTextGenerationCandidates,
   type WallTextGenerationCandidate,
 } from "@/lib/trending/wall-text-text-logic";
-import { WALL_TEXT_TARGET_WORDS } from "@/lib/trending/wall-text-copy-policy";
 import {
   applyWallTextRenderFit,
   validateWallTextRenderFit,
@@ -35,7 +48,10 @@ import {
   type TrendingWallTextLayout,
 } from "@/lib/trending/wall-text-types";
 
-const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_WRITER_REASONING_EFFORT = "medium";
+const DEFAULT_WRITER_REPAIR_REASONING_EFFORT = "medium";
+const DEFAULT_REVIEW_REASONING_EFFORT = "medium";
 // One initial pass plus two targeted replacements. Accepted candidates are
 // persisted before a retry, so only the failed item is sent back to the writer.
 const MAX_WRITER_RETRIES = 2;
@@ -56,12 +72,32 @@ const WallTextIdeaOutputSchema = z
   })
   .strict();
 
+const WallTextReviewSchema = z
+  .object({
+    reviews: z
+      .array(
+        z
+          .object({
+            approved: z.boolean(),
+            candidateIndex: z.number().int().min(0),
+            feedback: z.string().trim().min(1).max(300),
+            naturalSpokenLanguage: z.boolean(),
+            oneCentralThought: z.boolean(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(10),
+  })
+  .strict();
+
 const PROMOTIONAL_OR_CTA_PATTERNS = [
   /\b(?:book a call|download now|get started|join the waitlist|link in bio|shop now|try it|unlock your)\b/iu,
   /\b(?:game[- ]changer|revolutioni[sz]e|seamless(?:ly)?|supercharge)\b/iu,
 ] as const;
 
 type GenerationInputCandidate = WallTextGenerationCandidate & {
+  grounding?: WallTextFactGrounding;
   layout?: TrendingWallTextLayout;
   maxWords?: number;
   referenceText?: string;
@@ -72,8 +108,10 @@ type GenerationInputCandidate = WallTextGenerationCandidate & {
 type PreparedCandidate = {
   candidateIndex: number;
   durationSeconds: number;
+  grounding?: WallTextFactGrounding;
   layout: TrendingWallTextLayout;
   maxWords: number;
+  minWords: number;
   referenceText?: string;
   targetWords: number;
   privateCreativeContext?: WallTextPrivateCreativeContext;
@@ -83,6 +121,8 @@ type WriterFailure = {
   avoidOpening?: string;
   candidateIndex: number;
   reason: string;
+  rejectedText?: string;
+  detail?: string;
 };
 
 export type GeneratedBusinessTrendingWallTextIdea = {
@@ -95,9 +135,48 @@ export type GeneratedBusinessTrendingWallTextIdea = {
 };
 
 let openaiClient: OpenAI | null = null;
+let openaiClientApiKey: string | null = null;
+
+function getOpenAIClient(apiKey: string) {
+  if (!openaiClient || openaiClientApiKey !== apiKey) {
+    openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
+    openaiClientApiKey = apiKey;
+  }
+  return openaiClient;
+}
 
 export function getTrendingWallTextModelName() {
   return process.env.OPENAI_WALL_TEXT_MODEL?.trim() || DEFAULT_MODEL;
+}
+
+export function getTrendingWallTextWriterReasoningEffort(params?: {
+  repair?: boolean;
+}) {
+  const repair = params?.repair === true;
+  return getReasoningEffort(
+    repair
+      ? process.env.OPENAI_WALL_TEXT_WRITER_REPAIR_REASONING_EFFORT
+      : process.env.OPENAI_WALL_TEXT_WRITER_REASONING_EFFORT,
+    repair
+      ? DEFAULT_WRITER_REPAIR_REASONING_EFFORT
+      : DEFAULT_WRITER_REASONING_EFFORT,
+    repair
+      ? "OPENAI_WALL_TEXT_WRITER_REPAIR_REASONING_EFFORT"
+      : "OPENAI_WALL_TEXT_WRITER_REASONING_EFFORT",
+  );
+}
+
+export function getTrendingWallTextReviewModelName() {
+  return process.env.OPENAI_WALL_TEXT_REVIEW_MODEL?.trim() ||
+    getTrendingWallTextModelName();
+}
+
+export function getTrendingWallTextReviewReasoningEffort() {
+  return getReasoningEffort(
+    process.env.OPENAI_WALL_TEXT_REVIEW_REASONING_EFFORT,
+    DEFAULT_REVIEW_REASONING_EFFORT,
+    "OPENAI_WALL_TEXT_REVIEW_REASONING_EFFORT",
+  );
 }
 
 export async function generateBusinessTrendingWallTextIdeas(params: {
@@ -116,29 +195,27 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
     normalized.map(async (candidate): Promise<PreparedCandidate> => {
       const input = inputByIndex.get(candidate.candidateIndex)!;
       const layout = input.layout ?? createWallTextLayout();
-      const savedBudget = getSavedBudget(input);
-      const budget =
-        savedBudget ??
-        (await deriveWallTextSpatialBudget({
-          layout,
-        }));
+      // Older reservations contain duration-limited caps (for example 15/16
+      // words at six seconds). Recompute from the layout instead of reusing them.
+      const budget = await deriveWallTextSpatialBudget({ layout });
       return {
         candidateIndex: candidate.candidateIndex,
         durationSeconds: candidate.durationSeconds,
         layout,
         maxWords: budget.maxWords,
+        minWords: budget.minWords,
         ...(input.referenceText?.trim()
           ? { referenceText: normalizeText(input.referenceText) }
           : {}),
         ...(input.privateCreativeContext
           ? { privateCreativeContext: input.privateCreativeContext }
           : {}),
-        targetWords: budget.targetWords,
+        ...(input.grounding ? { grounding: input.grounding } : {}),
+        // The reservation schema still requires targetWords. It is stored as
+        // compatibility metadata only and is never sent to the Writer.
+        targetWords: budget.maxWords,
       };
     }),
-  );
-  const candidateByIndex = new Map(
-    candidates.map((candidate) => [candidate.candidateIndex, candidate]),
   );
   const business = buildWallTextBusinessContext(params.business);
   const accepted = new Map<number, Awaited<ReturnType<typeof validateCandidate>>>();
@@ -157,10 +234,18 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
             ? { retryFeedback: retryFeedback.get(candidate.candidateIndex) }
             : {}),
         })),
+        reasoningEffort: getTrendingWallTextWriterReasoningEffort({
+          repair: attempt > 0,
+        }),
       });
       const ideasByIndex = groupIdeasByIndex(ideas);
       const failures: WriterFailure[] = [];
       const newlyAccepted: PreparedCandidate[] = [];
+      const validated = new Map<
+        number,
+        Awaited<ReturnType<typeof validateCandidate>>
+      >();
+      const validatedSignatures: WallTextDuplicateSignature[] = [];
 
       for (const candidate of pending) {
         const outputs = ideasByIndex.get(candidate.candidateIndex) ?? [];
@@ -175,15 +260,77 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           const result = await validateCandidate({
             business,
             candidate,
-            historicalSignatures: acceptedSignatures,
+            historicalSignatures: [...acceptedSignatures, ...validatedSignatures],
             text: outputs[0]!.text,
           });
+          validated.set(candidate.candidateIndex, result);
+          validatedSignatures.push(result.duplicateSignature);
+        } catch (error) {
+          if (!(error instanceof CandidateValidationError)) throw error;
+          const failure = toWriterFailure(candidate.candidateIndex, error);
+          if (failure.reason === "layout_fit") {
+            failure.rejectedText = outputs[0]!.text;
+            failure.detail = error.message;
+          }
+          failures.push(failure);
+        }
+      }
+
+      if (validated.size > 0) {
+        // A V2 reservation has a backend-owned snapshot and one assigned
+        // fact. Its copy has already passed deterministic grounding, unsafe
+        // claim, structural, duplicate, and measured-layout gates. Accept it
+        // here without a second AI request. Older reservations intentionally
+        // retain the Reviewer while they have no stable fact assignment.
+        const reviewerCandidates = pending.filter((candidate) => {
+          const result = validated.get(candidate.candidateIndex);
+          if (!result) return false;
+          if (!candidate.grounding) return true;
           accepted.set(candidate.candidateIndex, result);
           acceptedSignatures.push(result.duplicateSignature);
           newlyAccepted.push(candidate);
-        } catch (error) {
-          const failure = toWriterFailure(candidate.candidateIndex, error);
-          failures.push(failure);
+          return false;
+        });
+
+        if (reviewerCandidates.length > 0) {
+          const reviews = await requestReviewer({
+            business,
+            candidates: reviewerCandidates,
+            textByCandidateIndex: new Map(
+              reviewerCandidates.map((candidate) => [
+                candidate.candidateIndex,
+                validated.get(candidate.candidateIndex)!.content.fullText,
+              ]),
+            ),
+          });
+
+          for (const candidate of reviewerCandidates) {
+            const result = validated.get(candidate.candidateIndex);
+            if (!result) continue;
+            const review = reviews.get(candidate.candidateIndex);
+            if (!review) {
+              throw new WallTextModelOutputError({
+                code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+                message: `Wall-of-text Reviewer omitted candidate ${candidate.candidateIndex}.`,
+              });
+            }
+            if (
+              !review.approved ||
+              !review.oneCentralThought ||
+              !review.naturalSpokenLanguage
+            ) {
+              failures.push({
+                candidateIndex: candidate.candidateIndex,
+                detail: review.feedback,
+                reason: "reviewer_rejected",
+                rejectedText: result.content.fullText,
+              });
+              continue;
+            }
+            accepted.set(candidate.candidateIndex, result);
+            acceptedSignatures.push(result.duplicateSignature);
+            newlyAccepted.push(candidate);
+          }
         }
       }
 
@@ -207,12 +354,22 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
           `Wall-of-text Writer could not repair candidates: ${failures
             .map((failure) => `${failure.candidateIndex}:${failure.reason}`)
             .join(", ")}.`,
+          failures.map(({ candidateIndex, detail, reason }) => ({
+            candidateIndex,
+            ...(detail ? { detail } : {}),
+            reason,
+          })),
         );
       }
       retryFeedback = new Map(
         failures.map((failure) => [failure.candidateIndex, failure]),
       );
-      pending = failures.map((failure) => candidateByIndex.get(failure.candidateIndex)!);
+      pending = failures.map((failure) => {
+        const candidate = pending.find((entry) => entry.candidateIndex === failure.candidateIndex)!;
+        return failure.reason === "layout_fit"
+          ? { ...candidate, ...getWallTextRepairBudget(candidate) }
+          : candidate;
+      });
     }
 
   }
@@ -224,10 +381,17 @@ export async function generateBusinessTrendingWallTextIdeas(params: {
 
 export class WallTextCandidateRepairExhaustedError extends Error {
   readonly code = WALL_TEXT_CONTENT_RETRY_EXHAUSTED;
+  readonly candidateRejections: WallTextCandidateRejection[];
 
-  constructor(message: string) {
+  constructor(
+    message: string,
+    candidateRejections: readonly WallTextCandidateRejection[] = [],
+  ) {
     super(message);
     this.name = "WallTextCandidateRepairExhaustedError";
+    this.candidateRejections = candidateRejections.map((rejection) => ({
+      ...rejection,
+    }));
   }
 }
 
@@ -249,60 +413,166 @@ function buildGeneratedIdea(params: {
   };
 }
 
-function getSavedBudget(candidate: GenerationInputCandidate) {
-  if (
-    Number.isInteger(candidate.targetWords) &&
-    Number.isInteger(candidate.maxWords) &&
-    candidate.targetWords! > 0 &&
-    candidate.maxWords! >= candidate.targetWords! &&
-    candidate.maxWords! >= MIN_CURRENT_GENERATION_WALL_TEXT_WORDS
-  ) {
-    const maxWords = Math.min(
-      candidate.maxWords!,
-      MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-    );
-    return {
-      maxWords,
-      // Existing retry-pending assignments may still contain 18/50. Preserve
-      // those rows, but generate their retry with the current contract.
-      targetWords: Math.min(WALL_TEXT_TARGET_WORDS, maxWords),
-    };
-  }
-  return null;
-}
-
 async function requestWriter(params: {
   business: ReturnType<typeof buildWallTextBusinessContext>;
   candidates: Array<PreparedCandidate & { retryFeedback?: WriterFailure }>;
+  reasoningEffort: ReturnType<typeof getTrendingWallTextWriterReasoningEffort>;
 }) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error("OpenAI is not configured.");
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
-  const completion = await openaiClient.chat.completions.parse({
-    model: getTrendingWallTextModelName(),
-    reasoning_effort: "low",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You write grounded Wall-of-Text social copy. Return one complete plain text message per assigned candidate and silently review it in the same response.",
-      },
-      {
-        role: "user",
-        content: buildWallTextGenerationPrompt({
-          business: params.business,
-          candidates: params.candidates,
-        }),
-      },
-    ],
-    response_format: zodResponseFormat(
-      WallTextIdeaOutputSchema,
-      "trending_wall_text_ideas_v7",
-    ),
-  });
-  const parsed = completion.choices[0]?.message.parsed;
-  if (!parsed) throw new Error("OpenAI returned no structured Wall-of-text ideas.");
+  const client = getOpenAIClient(apiKey);
+  let completion: ParsedChatCompletion<z.infer<typeof WallTextIdeaOutputSchema>>;
+  try {
+    completion = await client.chat.completions.parse({
+      model: getTrendingWallTextModelName(),
+      reasoning_effort: params.reasoningEffort,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write Wall-of-Text social copy that an ordinary reader understands on first read. Do not hallucinate. For a fact-grounded candidate, assignedBusinessFact controls the factual meaning; qualificationContext may only restrict that claim. Private plan text is a fallible draft, not evidence: discard guessed causes, feelings, workflows, or explanations. Writing examples teach style only. Express the supported meaning in everyday words; no exact source phrase or literal business anchor is required. Use 'posting regularly' or 'posts do not follow a regular schedule', never 'cadence', preserving whether posting is irregular. Use one sentence for a simple fact; use two only for different supported details or conditions. Do not describe a scene and then repeat the same point in a second sentence. Delete any sentence if removing it loses no useful information. Keep 'may need editing' possible even when approval is required; do not make both actions mandatory unless the approved fact explicitly requires both. If the source contains both possible editing and required approval before publication, explicitly retain BOTH, even if the private plan mentions only one. Supporting multiple accounts does not imply simultaneous or bulk publishing unless the selected fact explicitly says so. Keep real factual conditions, but never print editorial instructions about claims or writing. Return one complete plain text message per assigned candidate in the required schema and word range.",
+        },
+        {
+          role: "user",
+          content: buildWallTextGenerationPrompt({
+            business: params.business,
+            candidates: params.candidates,
+          }),
+        },
+      ],
+      response_format: zodResponseFormat(
+        WallTextIdeaOutputSchema,
+        "trending_wall_text_ideas_v8",
+      ),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new WallTextModelOutputError({
+        code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+        message: "The Wall-of-text Writer returned an invalid structured response.",
+      });
+    }
+    throw new WallTextStagedError("writer", error);
+  }
+  const choice = completion.choices[0];
+  if (choice?.message.refusal?.trim()) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_REFUSAL,
+      finishReason: choice.finish_reason ?? null,
+      message: "The Wall-of-text Writer refused the requested content.",
+    });
+  }
+  const parsed = choice?.message.parsed;
+  if (!parsed) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_EMPTY,
+      finishReason: choice?.finish_reason ?? null,
+      message: "The Wall-of-text Writer returned no structured ideas.",
+    });
+  }
   return parsed.ideas;
+}
+
+async function requestReviewer(params: {
+  business: ReturnType<typeof buildWallTextBusinessContext>;
+  candidates: PreparedCandidate[];
+  textByCandidateIndex: ReadonlyMap<number, string>;
+}) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) throw new Error("OpenAI is not configured.");
+  const client = getOpenAIClient(apiKey);
+  let completion: ParsedChatCompletion<z.infer<typeof WallTextReviewSchema>>;
+  try {
+    completion = await client.chat.completions.parse({
+      model: getTrendingWallTextReviewModelName(),
+      reasoning_effort: getTrendingWallTextReviewReasoningEffort(),
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You independently review Wall-of-Text social overlays. Do not rewrite them.",
+            "Review the clarity and quality of the complete copy. Video duration and reading speed are not approval criteria; do not reject copy because it may take longer than one play to read.",
+            "The copy needs one concrete daily action, one central thought, natural spoken language, and only supported business claims.",
+            "Reject semicolon-linked marketing mini-stories, feature stacking, forced emotional conclusions, and product mentions that are not needed for the thought.",
+            "Keep every boolean consistent with approved and feedback.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            business: params.business,
+            candidates: params.candidates.map((candidate) => ({
+              candidateIndex: candidate.candidateIndex,
+              ...(candidate.privateCreativeContext
+                ? {
+                    plan: {
+                      contentIdea: candidate.privateCreativeContext.contentIdea,
+                      humanMoment:
+                        candidate.privateCreativeContext.planningBrief.humanMoment,
+                      supportedAngle:
+                        candidate.privateCreativeContext.planningBrief.supportedAngle,
+                    },
+                  }
+                : {}),
+              text: params.textByCandidateIndex.get(candidate.candidateIndex),
+            })),
+          }),
+        },
+      ],
+      response_format: zodResponseFormat(
+        WallTextReviewSchema,
+        "trending_wall_text_review_v9",
+      ),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new WallTextModelOutputError({
+        code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+        message: "The Wall-of-text Reviewer returned an invalid structured response.",
+      });
+    }
+    throw new WallTextStagedError("reviewer", error);
+  }
+  const choice = completion.choices[0];
+  if (choice?.message.refusal?.trim()) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_REFUSAL,
+      finishReason: choice.finish_reason ?? null,
+      message: "The Wall-of-text Reviewer refused the requested review.",
+    });
+  }
+  const parsed = choice?.message.parsed;
+  if (!parsed) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_EMPTY,
+      finishReason: choice?.finish_reason ?? null,
+      message: "The Wall-of-text Reviewer returned no structured review.",
+    });
+  }
+
+  const expectedCandidateIndexes = new Set(
+    params.candidates.map((candidate) => candidate.candidateIndex),
+  );
+  const reviews = new Map<
+    number,
+    z.infer<typeof WallTextReviewSchema>["reviews"][number]
+  >();
+  for (const review of parsed.reviews) {
+    if (!expectedCandidateIndexes.has(review.candidateIndex) || reviews.has(review.candidateIndex)) {
+      throw new WallTextModelOutputError({
+        code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+        message: "The Wall-of-text Reviewer returned an invalid review mapping.",
+      });
+    }
+    reviews.set(review.candidateIndex, review);
+  }
+  if (reviews.size !== params.candidates.length) {
+    throw new WallTextModelOutputError({
+      code: WALL_TEXT_MODEL_OUTPUT_SCHEMA_INVALID,
+      message: "The Wall-of-text Reviewer did not review every candidate.",
+    });
+  }
+  return reviews;
 }
 
 async function validateCandidate(params: {
@@ -314,13 +584,20 @@ async function validateCandidate(params: {
   const text = normalizeText(params.text);
   const wordCount = countWords(text);
   if (
-    wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS ||
+    wordCount < params.candidate.minWords ||
     wordCount > params.candidate.maxWords
   ) {
     throw new CandidateValidationError("word_limit");
   }
   if (!/[.!?]["')]?$/u.test(text)) {
     throw new CandidateValidationError("incomplete_sentence");
+  }
+  const sentenceCount = text.match(/[.!?](?=\s|$)/gu)?.length ?? 0;
+  if (sentenceCount < 1 || sentenceCount > 2) {
+    throw new CandidateValidationError("sentence_structure");
+  }
+  if (text.includes(";")) {
+    throw new CandidateValidationError("semicolon_story");
   }
   if (PROMOTIONAL_OR_CTA_PATTERNS.some((pattern) => pattern.test(text))) {
     throw new CandidateValidationError("promotional_or_cta");
@@ -330,6 +607,15 @@ async function validateCandidate(params: {
     const normalizedClaim = normalizeComparison(avoidedClaim);
     if (normalizedClaim.length >= 5 && normalizedComparison.includes(normalizedClaim)) {
       throw new CandidateValidationError("forbidden_claim");
+    }
+  }
+  if (params.candidate.grounding) {
+    const groundingIssue = getWallTextGroundingIssue({
+      grounding: params.candidate.grounding,
+      text,
+    });
+    if (groundingIssue) {
+      throw new CandidateValidationError(groundingIssue);
     }
   }
 
@@ -357,11 +643,21 @@ async function validateCandidate(params: {
     const render = await validateWallTextRenderFit(authoritative.content);
     return {
       ...authoritative,
-      content: applyWallTextRenderFit(authoritative.content, render),
+      content: {
+        ...applyWallTextRenderFit(authoritative.content, render),
+        ...(params.candidate.grounding
+          ? {
+              grounding: toWallTextGroundingMetadata(
+                params.candidate.grounding,
+              ),
+            }
+          : {}),
+      },
       duplicateSignature,
     };
-  } catch {
-    throw new CandidateValidationError("layout_fit");
+  } catch (error) {
+    if (!isWallTextRenderFitFailure(error)) throw error;
+    throw new CandidateValidationError("layout_fit", undefined, error instanceof Error ? error.message : undefined);
   }
 }
 
@@ -389,8 +685,9 @@ class CandidateValidationError extends Error {
   constructor(
     readonly reason: string,
     readonly avoidOpening?: string,
+    detail?: string,
   ) {
-    super(reason);
+    super(detail ?? reason);
   }
 }
 
@@ -399,6 +696,9 @@ function toWriterFailure(candidateIndex: number, error: unknown): WriterFailure 
     ? {
         ...(error.avoidOpening ? { avoidOpening: error.avoidOpening } : {}),
         candidateIndex,
+        ...(error.message && error.message !== error.reason
+          ? { detail: error.message }
+          : {}),
         reason: error.reason,
       }
     : { candidateIndex, reason: "validation_failed" };
@@ -418,4 +718,16 @@ function normalizeComparison(value: string) {
 
 function countWords(value: string) {
   return value.split(/\s+/u).filter(Boolean).length;
+}
+
+function getReasoningEffort(
+  value: string | undefined,
+  fallback: "low" | "medium",
+  variableName: string,
+) {
+  const normalized = value?.trim().toLocaleLowerCase("en-US") || fallback;
+  if (normalized === "none" || normalized === "low" || normalized === "medium") {
+    return normalized;
+  }
+  throw new Error(`${variableName} must be none, low, or medium.`);
 }

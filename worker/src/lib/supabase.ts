@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { retryCarouselStructureTakeover } from "./carousel-structure-takeover-retry.js";
 
 import type {
   BackgroundJobsDatabase,
@@ -82,6 +83,7 @@ type ReactionGenerationRunRow = {
   brief_payload: Json | null;
   business_profile_id: string;
   business_profile_version: number;
+  generation_origin: "business_generation" | "internal_qa";
   generation_context: Json;
   generation_job_id: string;
   id: string;
@@ -897,7 +899,7 @@ export class SupabaseJobStore {
         "rendering",
         "uploading_output",
       ])
-      .select("*")
+      .select("id")
       .maybeSingle();
 
     if (error) {
@@ -1097,6 +1099,10 @@ export class SupabaseJobStore {
     autoFinalize: boolean;
     compositionFingerprint: string;
     demoVideoId: string;
+    durationSeconds: number;
+    fileName: string;
+    fileSizeBytes: number;
+    height: number;
     hookAudioAssetId: string | null;
     hookVideoId: string;
     key: string;
@@ -1108,15 +1114,16 @@ export class SupabaseJobStore {
     title: string;
     url: string;
     userId: string;
+    width: number;
   }) {
     const now = new Date().toISOString();
 
     await this.saveMediaAsset({
       collection: "video",
-      duration_seconds: null,
-      file_name: null,
-      file_size_bytes: null,
-      height: null,
+      duration_seconds: params.durationSeconds,
+      file_name: params.fileName,
+      file_size_bytes: params.fileSizeBytes,
+      height: params.height,
       id: params.mediaAssetId,
       metadata: {
         compositionFingerprint: params.compositionFingerprint,
@@ -1139,7 +1146,7 @@ export class SupabaseJobStore {
       updated_at: now,
       url: params.url,
       user_id: params.userId,
-      width: null,
+      width: params.width,
     });
 
     await this.patchScheduledPost({
@@ -1201,6 +1208,10 @@ export class SupabaseJobStore {
     compositionFingerprint: string;
     demoVideoId: string;
     draftId: string;
+    durationSeconds: number;
+    fileName: string;
+    fileSizeBytes: number;
+    height: number;
     hookAudioAssetId: string | null;
     hookVideoId: string;
     key: string;
@@ -1211,15 +1222,16 @@ export class SupabaseJobStore {
     title: string;
     url: string;
     userId: string;
+    width: number;
   }) {
     const now = new Date().toISOString();
 
     await this.saveMediaAsset({
       collection: "video",
-      duration_seconds: null,
-      file_name: null,
-      file_size_bytes: null,
-      height: null,
+      duration_seconds: params.durationSeconds,
+      file_name: params.fileName,
+      file_size_bytes: params.fileSizeBytes,
+      height: params.height,
       id: params.mediaAssetId,
       metadata: {
         compositionFingerprint: params.compositionFingerprint,
@@ -1243,7 +1255,7 @@ export class SupabaseJobStore {
       updated_at: now,
       url: params.url,
       user_id: params.userId,
-      width: null,
+      width: params.width,
     });
 
     const { data, error } = await this.client
@@ -2571,6 +2583,37 @@ export class SupabaseJobStore {
     return data ?? [];
   }
 
+  async recordWallTextFailureDiagnostic(params: {
+    backgroundJobId: string;
+    contentPlanId: string | null;
+    details: Json;
+    errorCode: string;
+    errorMessage: string;
+    retryable: boolean;
+    stage: string;
+    userId: string;
+  }) {
+    const { error } = await this.client.rpc(
+      "record_wall_text_failure_diagnostic_v1",
+      {
+        p_background_job_id: params.backgroundJobId,
+        p_content_plan_id: params.contentPlanId,
+        p_details: params.details,
+        p_error_code: params.errorCode.slice(0, 120),
+        p_error_message: params.errorMessage.slice(0, 4_000),
+        p_generation_batch_id: null,
+        p_generation_chunk_id: null,
+        p_request_key: null,
+        p_retryable: params.retryable,
+        p_stage: params.stage,
+        p_user_id: params.userId,
+      },
+    );
+    if (error) {
+      throw new Error(`Could not record private Wall planner diagnostic: ${error.message}`);
+    }
+  }
+
   async getWallTextPlanPublication(params: {
     itemCount: number;
     planId: string;
@@ -3117,19 +3160,36 @@ export class SupabaseJobStore {
     }
   }
 
+  async listRecentStructure2HookTemplateIds(profileId: string, batchId: string) {
+    const { data, error } = await this.client.from(CAROUSEL_GENERATIONS_TABLE)
+      .select("hook_template_id").eq("business_profile_id", profileId)
+      .eq("structure_id", "structure_2").eq("status", "completed")
+      .neq("carousel_experiment_batch_id", batchId).not("hook_template_id", "is", null)
+      .order("created_at", { ascending: false }).limit(10);
+    if (error) throw new Error(`Could not read recent Structure 2 hooks: ${error.message}`);
+    return (data ?? []).flatMap(row => row.hook_template_id ? [row.hook_template_id] : []);
+  }
+
+  async resolveCarouselStructure2Hooks(batchId: string, mode: "off" | "shadow" | "enabled", choices: Json) {
+    const { error } = await this.client.rpc("resolve_carousel_structure_2_hooks", {
+      p_batch_id: batchId, p_mode: mode, p_choices: choices,
+    });
+    if (error) throw new Error(`Could not persist Structure 2 hooks: ${error.message}`);
+  }
+
   async takeOverCarouselExperimentBatchWithStructure2(params: {
     experimentBatchId: string;
     failureReason: string;
     planningAttemptCount: 2;
   }) {
-    const { data, error } = await this.client.rpc(
+    const { data, error } = await retryCarouselStructureTakeover(() => this.client.rpc(
       "take_over_carousel_experiment_batch_with_structure_2",
       {
         p_experiment_batch_id: params.experimentBatchId,
         p_failure_reason: params.failureReason,
         p_planning_attempt_count: params.planningAttemptCount,
       },
-    );
+    ));
 
     if (error) {
       throw new Error(

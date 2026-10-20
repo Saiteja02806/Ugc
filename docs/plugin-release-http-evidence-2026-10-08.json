@@ -1,0 +1,192 @@
+{
+  "checked_at": "2026-10-08T06:12:48.063Z",
+  "version": "0.1.1",
+  "passed": true,
+  "evidence": [
+    {
+      "name": "setup page",
+      "status": 200,
+      "url": "https://getugcpilot.com/connect-ai",
+      "milliseconds": 753,
+      "bytes": 44415,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "archive 0.1.0",
+      "status": 200,
+      "url": "https://getugcpilot.com/downloads/ugc-pilot-0.1.0.zip",
+      "milliseconds": 353,
+      "bytes": 37623,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "sha256": "f7d363d5f297cc7a04f34bf5c0e2c8d428e3920773df0807183c6b5423df23b5",
+      "passed": true
+    },
+    {
+      "name": "checksum 0.1.0",
+      "status": 200,
+      "url": "https://getugcpilot.com/downloads/ugc-pilot-0.1.0.zip.sha256",
+      "milliseconds": 833,
+      "bytes": 87,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "archive 0.1.1",
+      "status": 200,
+      "url": "https://getugcpilot.com/downloads/ugc-pilot-0.1.1.zip",
+      "milliseconds": 88,
+      "bytes": 40258,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "sha256": "037c35c4d1866fd17e267a9cffa4ed20cd12c4c4c766825af39923a1dfa2b830",
+      "passed": true
+    },
+    {
+      "name": "checksum 0.1.1",
+      "status": 200,
+      "url": "https://getugcpilot.com/downloads/ugc-pilot-0.1.1.zip.sha256",
+      "milliseconds": 93,
+      "bytes": 87,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "setup guide",
+      "status": 200,
+      "url": "https://getugcpilot.com/downloads/ugc-pilot-setup.md",
+      "milliseconds": 368,
+      "bytes": 6940,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "/contact",
+      "status": 200,
+      "url": "https://getugcpilot.com/contact",
+      "milliseconds": 599,
+      "bytes": 38634,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "/terms",
+      "status": 200,
+      "url": "https://getugcpilot.com/terms",
+      "milliseconds": 576,
+      "bytes": 66596,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "AI privacy disclosure",
+      "status": 200,
+      "url": "https://getugcpilot.com/privacy",
+      "milliseconds": 293,
+      "bytes": 73615,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "MCP readiness",
+      "status": 200,
+      "url": "https://mcp.getugcpilot.com/mcp/health",
+      "milliseconds": 590,
+      "bytes": 18,
+      "request_id": null,
+      "cache_control": "no-store",
+      "passed": true
+    },
+    {
+      "name": "OAuth resource",
+      "status": 200,
+      "url": "https://mcp.getugcpilot.com/.well-known/oauth-protected-resource",
+      "milliseconds": 257,
+      "bytes": 249,
+      "request_id": null,
+      "cache_control": "no-store",
+      "passed": true
+    },
+    {
+      "name": "OAuth issuer",
+      "status": 200,
+      "url": "https://mcp.getugcpilot.com/.well-known/oauth-authorization-server",
+      "milliseconds": 54,
+      "bytes": 704,
+      "request_id": null,
+      "cache_control": "public, max-age=300",
+      "passed": true
+    },
+    {
+      "name": "missing bearer",
+      "status": 401,
+      "url": "https://mcp.getugcpilot.com/mcp",
+      "milliseconds": 285,
+      "bytes": 25,
+      "request_id": "2c324702-07c0-43d3-9042-90b87164a717",
+      "cache_control": "no-store",
+      "passed": true
+    },
+    {
+      "name": "invalid bearer",
+      "status": 401,
+      "url": "https://mcp.getugcpilot.com/mcp",
+      "milliseconds": 408,
+      "bytes": 25,
+      "request_id": "9e767ebf-1f6d-45f4-8407-74ba45571b51",
+      "cache_control": "no-store",
+      "passed": true
+    },
+    {
+      "name": "invalid origin",
+      "status": 403,
+      "url": "https://mcp.getugcpilot.com/mcp",
+      "milliseconds": 268,
+      "bytes": 26,
+      "request_id": "9a167d4f-1035-422d-bb09-4e4ddc883ec0",
+      "cache_control": "no-store",
+      "passed": true
+    },
+    {
+      "name": "website MCP isolation",
+      "status": 404,
+      "url": "https://getugcpilot.com/mcp",
+      "milliseconds": 89,
+      "bytes": 0,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "MCP website isolation",
+      "status": 404,
+      "url": "https://mcp.getugcpilot.com/pricing",
+      "milliseconds": 47,
+      "bytes": 0,
+      "request_id": null,
+      "cache_control": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "name": "invalid OAuth token request",
+      "status": 400,
+      "url": "https://mcp.getugcpilot.com/oauth/token",
+      "milliseconds": 265,
+      "bytes": 27,
+      "request_id": null,
+      "cache_control": "no-store",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Does not verify authenticated installed-host behavior, publisher identity, directory approval or intermittent transport reliability."
+  ]
+}

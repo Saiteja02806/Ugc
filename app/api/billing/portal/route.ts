@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { createDodoCustomerPortalSession } from "@/lib/billing/dodo";
-import { getBillingCustomerId } from "@/lib/billing/subscription-db";
+import {
+  getBillingCustomerId,
+  getUserSubscription,
+} from "@/lib/billing/subscription-db";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -12,6 +15,15 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const user = await requireFirebaseUser(request);
+    const subscription = await getUserSubscription(user.uid);
+
+    if (!subscription.isDodoManaged) {
+      return NextResponse.json(
+        { error: "No managed subscription is available for this user." },
+        { status: 409 },
+      );
+    }
+
     const customerId = await getBillingCustomerId(user.uid);
 
     if (!customerId) {

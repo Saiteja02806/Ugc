@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "layout": "two original references, full framing",
+  "sources": [
+    {
+      "file": "hook.mp4",
+      "bytes": 2814775,
+      "sha256": "f561ef8d7e5e9991e1596d19f25330a98a5cec3df1019319b78b5aacdb491948"
+    },
+    {
+      "file": "hook1.mp4",
+      "bytes": 2132384,
+      "sha256": "00a61c2263212035d6af68748046c3e4ed449766e9b5d20b660000f5ccfe5d97"
+    },
+    {
+      "file": "WOT.mp4",
+      "bytes": 1462106,
+      "sha256": "c3f32c039b26103dec4f5e1e892e65db76c66c5589dedfe06b2f149962649998"
+    },
+    {
+      "file": "WOT_2-Vmake.mp4",
+      "bytes": 3297990,
+      "sha256": "6e5e455779739400d88d46484ba73ec5b88a8f7c95b60c79501c09d5af517f70"
+    },
+    {
+      "file": "slideshows/1.jpg",
+      "bytes": 260698,
+      "sha256": "245da69e5521a47c77fde06e4c86e902353012027143d43f88c3cda58d5271a5"
+    },
+    {
+      "file": "slideshows/2.jpg",
+      "bytes": 168329,
+      "sha256": "584f7a665b4820bd399fbd4a58d9a3cfee489dd71b827b18ba9726a3990f0827"
+    },
+    {
+      "file": "slideshows/3.jpg",
+      "bytes": 185948,
+      "sha256": "0301122280346e3f2e55797c66c438e8fdb5766690064514c915c097d508ce3b"
+    },
+    {
+      "file": "slideshows/4.jpg",
+      "bytes": 117560,
+      "sha256": "63d001b6c1714e2a8ac5f75ef22d17d8e4d2068667b11b0c9096fe08e6075fc1"
+    },
+    {
+      "file": "slideshows/5.jpg",
+      "bytes": 443651,
+      "sha256": "d41d2110c59c365d82833cd51bfde7e5219cc1ad7b320599cf97eab1440f2e6b"
+    },
+    {
+      "file": "slideshows/6.jpg",
+      "bytes": 203677,
+      "sha256": "4199f634ef7c85894d0292e8410302fe9ff8b9aead4a61afaa1388fcdc86be84"
+    },
+    {
+      "file": "slideshows (2)/1.jpg",
+      "bytes": 101684,
+      "sha256": "09d72a202acd6aa00ee84137d68558858d1c5d2ae3991a1aef21bac5c99dc0db"
+    },
+    {
+      "file": "slideshows (2)/2.jpg",
+      "bytes": 124129,
+      "sha256": "e45f7663dc31d37c14edad90fb576afec94aec0e3c7d93d29286361e781d360c"
+    },
+    {
+      "file": "slideshows (2)/3.jpg",
+      "bytes": 133351,
+      "sha256": "b93311a63936bfa843c21d2c912a94485dc9523f52dcf22a247a3c5edcadacf1"
+    },
+    {
+      "file": "slideshows (2)/4.jpg",
+      "bytes": 87303,
+      "sha256": "658c43377815af1bc2893a567b05fe9f6824f7ff9d57b934abd025f492fbfc3b"
+    }
+  ]
+}

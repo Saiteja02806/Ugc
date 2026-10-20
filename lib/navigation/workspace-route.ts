@@ -21,13 +21,15 @@ type WorkspaceRouteDefinition = Omit<
 const workspaceRoutes: ReadonlyArray<WorkspaceRouteDefinition> = [
   { prefix: "/dashboard/billing", activeKey: "trending", access: "authentication" },
   { prefix: "/dashboard", activeKey: "trending", access: "profile" },
-  { prefix: "/create-content", activeKey: "create-content", access: "profile" },
+  { prefix: "/explore", activeKey: "explore", access: "profile" },
+  { prefix: "/audio-generation", activeKey: "audio-generation", access: "authentication" },
   { prefix: "/ai-studio", activeKey: "ai-studio", access: "profile" },
   { prefix: "/analytics", activeKey: "analytics", access: "profile" },
   { prefix: "/viral", activeKey: "explore", access: "profile" },
   { prefix: "/library", activeKey: "library", access: "profile" },
   { prefix: "/scheduling", activeKey: "scheduling", access: "profile" },
   { prefix: "/settings", activeKey: "settings", access: "profile" },
+  { prefix: "/updates", activeKey: "updates", access: "profile" },
   { prefix: "/avatars", activeKey: "avatars", access: "none" },
 ];
 
@@ -51,6 +53,10 @@ export function getWorkspaceRouteConfig(
 
 function matchesRoutePrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+export function isFocusedVideoWorkflowRoute(pathname: string) {
+  return ["/explore/hook-video", "/explore/wall-of-text", "/explore/create-hook", "/explore/slideshows"].includes(pathname.replace(/\/$/, ""));
 }
 
 function shouldDefaultSidebarToCollapsed(pathname: string) {

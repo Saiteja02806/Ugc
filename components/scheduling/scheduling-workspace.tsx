@@ -27,8 +27,12 @@ import type {
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { useAuth } from "@/contexts/auth-context";
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getDefaultAccountScheduleSlot } from "@/lib/scheduling/account-timezone";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
+import { isScheduledVideoMediaAsset } from "@/lib/scheduling/secondary-clip-media";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -60,6 +64,7 @@ import {
 import { getScheduleMediaIssue } from "@/lib/scheduling/media-availability";
 import { getSocialConnectionAccountLabel } from "@/lib/scheduling/schedule-form-persistence";
 import {
+  getConnectionPublishingBlockMessage,
   getInstagramSchedulingAccessState,
   type InstagramSchedulingAccessState,
 } from "@/lib/scheduling/social-connection-policy";
@@ -81,7 +86,6 @@ import {
 } from "@/lib/scheduling/types";
 import {
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
-  getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
 } from "@/lib/scheduling/schedule-time";
 import {
@@ -94,6 +98,8 @@ import {
   getScheduleEditBlockReason,
 } from "@/lib/scheduling/schedule-action-policy";
 import { getSchedulePublishFailureMessage } from "@/lib/scheduling/schedule-publish-outcome";
+import { getScheduleRefreshDelay } from "@/lib/scheduling/schedule-refresh-policy";
+import { getPublishedPostLink, getPostLinkUnavailableReason, shouldShowExportPreview } from "@/lib/scheduling/published-post-link";
 import {
   AccountDataAuthenticationUnavailableError,
   getAccountSchedulesQueryKey,
@@ -109,6 +115,8 @@ import {
   SCHEDULING_CATALOG_GC_TIME_MS,
 } from "@/lib/scheduling/workspace-query-cache";
 import type { SocialConnection } from "@/lib/social/types";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import type { ScheduleFormSubmission } from "@/components/scheduling/schedule-editor";
 import { cn } from "@/lib/utils";
 
@@ -126,18 +134,6 @@ const creativeAssetHookVideoSourceTypes: MediaSourceType[] = [
   "influencer_upload",
   "generated_video",
 ];
-const scheduledVideoSourceTypes: MediaSourceType[] = [
-  "demo_upload",
-  "upload",
-  "generated_video",
-  "edit_export",
-  "wall_text_render",
-  "reaction_render",
-];
-const ACTIVE_SCHEDULE_POLL_INTERVAL_MS = 5_000;
-const ACTIVE_SCHEDULE_LOOKAHEAD_MS = 60_000;
-const ACTIVE_SCHEDULE_LOOKBEHIND_MS = 120_000;
-const ACTIVE_JOB_TIMEOUT_MS = 5 * 60 * 1_000;
 type MediaListResponse =
   | { assets: MediaAsset[]; ok: true }
   | { error?: string; ok?: false };
@@ -187,6 +183,7 @@ type SchedulePublishRetryResponse =
   | { message?: string; ok?: false };
 
 type SchedulingMediaCatalog = {
+  availableScheduledVideoIds: string[];
   demoMediaOptions: ScheduleMediaOption[];
   hookMediaOptions: ScheduleMediaOption[];
 };
@@ -208,6 +205,19 @@ const tabLabels: Record<ScheduleTab, string> = {
 
 export function SchedulingWorkspace() {
   const { user } = useAuth();
+  const accountTimezone = useAccountTimeZone();
+  const tiktokBetaEnabled = hasTikTokBetaAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
+  const hasAdditionalPublishingPlatform =
+    tiktokBetaEnabled || youtubeBetaEnabled;
+  const publishingPlatformList = getPublishingPlatformList(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
+  const publishingPlatformSummary = getPublishingPlatformSummary(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
   const cachedMediaCatalog = queryClient.getQueryData<SchedulingMediaCatalog>(
@@ -225,6 +235,11 @@ export function SchedulingWorkspace() {
   const [schedulesLoaded, setSchedulesLoaded] = useState(
     () => cachedSchedules !== undefined,
   );
+  const [hasScheduleData, setHasScheduleData] = useState(
+    () => cachedSchedules !== undefined,
+  );
+  const [scheduleLoadError, setScheduleLoadError] = useState<string | null>(null);
+  const [schedulesRefreshing, setSchedulesRefreshing] = useState(false);
   const initialDraftQueryState = useRef<"handled" | "idle" | "opening">(
     "idle",
   );
@@ -237,6 +252,12 @@ export function SchedulingWorkspace() {
   const [demoMediaOptions, setDemoMediaOptions] = useState<ScheduleMediaOption[]>(
     () => cachedMediaCatalog?.demoMediaOptions ?? [],
   );
+  const [availableScheduledVideoIds, setAvailableScheduledVideoIds] = useState<string[]>(
+    () =>
+      cachedMediaCatalog?.availableScheduledVideoIds ??
+      cachedMediaCatalog?.demoMediaOptions.map((option) => option.id) ??
+      [],
+  );
   const [scheduleMediaLoaded, setScheduleMediaLoaded] = useState(
     () => cachedMediaCatalog !== undefined,
   );
@@ -245,7 +266,7 @@ export function SchedulingWorkspace() {
   );
   const drafts = useMemo(() => {
     const activeOpeningIds = new Set(hookMediaOptions.map((option) => option.id));
-    const activeDemoIds = new Set(demoMediaOptions.map((option) => option.id));
+    const activeDemoIds = new Set(availableScheduledVideoIds);
 
     return serverSchedules.map((schedule) => {
       const mediaIssue = getScheduleMediaIssue({
@@ -262,7 +283,7 @@ export function SchedulingWorkspace() {
       );
     });
   }, [
-    demoMediaOptions,
+    availableScheduledVideoIds,
     hookMediaOptions,
     scheduleMediaLoaded,
     serverSchedules,
@@ -290,6 +311,17 @@ export function SchedulingWorkspace() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [dayPlannerOpen, setDayPlannerOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [schedulePreviewNow, setSchedulePreviewNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const refresh = () => setSchedulePreviewNow(Date.now());
+    const initial = window.setTimeout(refresh, 0);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [drawerOpen]);
   const [requireScheduleTarget, setRequireScheduleTarget] = useState(false);
   const [scheduleAccessPrompt, setScheduleAccessPrompt] = useState<
     Exclude<InstagramSchedulingAccessState, "ready"> | null
@@ -318,10 +350,12 @@ export function SchedulingWorkspace() {
   const [calendarStartAt, setCalendarStartAt] = useState(
     () => getSocialSchedulingCalendarStartAt(cachedSchedules?.calendarStartAt),
   );
-  const defaultNewScheduleSlot = getDefaultScheduleSlot(
-    newScheduleInitialDate,
-    minimumScheduleLeadMinutes,
-  );
+  const defaultNewScheduleSlot = getDefaultAccountScheduleSlot({
+    selectedDate: newScheduleInitialDate,
+    minimumLeadMinutes: minimumScheduleLeadMinutes,
+    now: schedulePreviewNow,
+    timezone: accountTimezone,
+  });
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -389,10 +423,11 @@ export function SchedulingWorkspace() {
           }
 
           const videoAssets = videoData.assets;
+          const scheduledVideoAssets = videoAssets.filter(isScheduledVideoMediaAsset);
 
           return {
-            demoMediaOptions: videoAssets
-              .filter(isScheduledVideoMediaAsset)
+            availableScheduledVideoIds: [...scheduledVideoAssets, ...influencerData.assets.filter(isCreativeAssetHookMediaAsset)].map((asset) => asset.id),
+            demoMediaOptions: scheduledVideoAssets
               .map(mapMediaAssetToScheduleMediaOption),
             hookMediaOptions: dedupeScheduleMediaOptions([
               ...influencerData.assets
@@ -411,6 +446,7 @@ export function SchedulingWorkspace() {
 
       setHookMediaOptions(mediaCatalog.hookMediaOptions);
       setDemoMediaOptions(mediaCatalog.demoMediaOptions);
+      setAvailableScheduledVideoIds(mediaCatalog.availableScheduledVideoIds);
       setScheduleMediaLoaded(true);
       return true;
     } catch (error) {
@@ -426,6 +462,7 @@ export function SchedulingWorkspace() {
   const loadSchedules = useCallback(async (
     options: SchedulingCatalogLoadOptions = {},
   ) => {
+    setSchedulesRefreshing(true);
     try {
       const data = await loadAccountSchedules(queryClient, accountId, options);
 
@@ -443,16 +480,19 @@ export function SchedulingWorkspace() {
           current === configuredLeadMinutes ? current : configuredLeadMinutes,
         );
       }
+      setHasScheduleData(true);
+      setScheduleLoadError(null);
       return data;
     } catch (error) {
       if (error instanceof AccountDataAuthenticationUnavailableError) {
         return null;
       }
 
-      setActionNotice("Could not load server schedules.");
+      setScheduleLoadError("Could not load schedules.");
       return null;
     } finally {
       setSchedulesLoaded(true);
+      setSchedulesRefreshing(false);
     }
   }, [accountId, queryClient]);
 
@@ -473,7 +513,7 @@ export function SchedulingWorkspace() {
         return null;
       }
 
-      setActionNotice("Could not load connected Instagram accounts.");
+      setActionNotice("Could not load connected publishing accounts.");
       return null;
     }
   }, [accountId, queryClient]);
@@ -493,28 +533,62 @@ export function SchedulingWorkspace() {
 
     const timer = window.setTimeout(() => {
       void loadScheduleMedia();
-      void loadSchedules();
+      // Workflow mutations and background preparation may have changed the
+      // calendar while this route was inactive. Keep cached rows visible, but
+      // always reconcile the list when returning to Scheduling.
+      void loadSchedules({ force: true });
       void loadSocialConnections();
     }, 0);
     return () => window.clearTimeout(timer);
   }, [accountId, loadScheduleMedia, loadSchedules, loadSocialConnections]);
 
-  const hasActiveServerWork = useMemo(
-    () => serverSchedules.some(hasActiveSchedulingWork),
-    [serverSchedules],
-  );
-
   useEffect(() => {
-    if (!hasActiveServerWork) {
+    if (accountId === "signed-out") {
       return;
     }
 
-    const timer = window.setInterval(() => {
-      void loadSchedules({ force: true });
-    }, ACTIVE_SCHEDULE_POLL_INTERVAL_MS);
+    let disposed = false;
+    let timer: number | undefined;
+    let refreshing = false;
 
-    return () => window.clearInterval(timer);
-  }, [hasActiveServerWork, loadSchedules]);
+    function scheduleRefresh(schedules: ScheduledPost[]) {
+      window.clearTimeout(timer);
+      const delay = getScheduleRefreshDelay(schedules);
+      if (delay !== null && !disposed) {
+        timer = window.setTimeout(() => void refresh(), delay);
+      }
+    }
+
+    async function refresh() {
+      if (disposed || refreshing) {
+        return;
+      }
+      refreshing = true;
+      window.clearTimeout(timer);
+      const data = await loadSchedules({ force: true });
+      refreshing = false;
+      if (!disposed) {
+        scheduleRefresh(data?.schedules ?? serverSchedules);
+      }
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    }
+
+    scheduleRefresh(serverSchedules);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [accountId, loadSchedules, serverSchedules]);
 
   const counts = useMemo(() => getTabCounts(drafts), [drafts]);
   const visibleDrafts = useMemo(
@@ -575,15 +649,35 @@ export function SchedulingWorkspace() {
     setActionNotice(null);
 
     try {
-      const connections = await loadSocialConnections();
+      // Account connection changes must be visible immediately, not after the
+      // shared catalog's 30-minute freshness window.
+      const connections = await loadSocialConnections({ force: true });
 
       if (!connections) {
         return;
       }
 
       const accessState = getInstagramSchedulingAccessState(connections);
+      const hasReadyTikTokConnection =
+        tiktokBetaEnabled &&
+        connections.some(
+          (connection) =>
+            connection.platform === "tiktok" &&
+            getConnectionPublishingBlockMessage(connection) === null,
+        );
+      const hasReadyYouTubeConnection =
+        youtubeBetaEnabled &&
+        connections.some(
+          (connection) =>
+            connection.platform === "youtube" &&
+            getConnectionPublishingBlockMessage(connection) === null,
+        );
 
-      if (accessState !== "ready") {
+      if (
+        accessState !== "ready" &&
+        !hasReadyTikTokConnection &&
+        !hasReadyYouTubeConnection
+      ) {
         setScheduleAccessPrompt(accessState);
         return;
       }
@@ -610,6 +704,8 @@ export function SchedulingWorkspace() {
     loadScheduleMedia,
     loadSocialConnections,
     selectedCalendarDate,
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
   ]);
 
   useEffect(() => {
@@ -627,7 +723,7 @@ export function SchedulingWorkspace() {
 
       if (!demoMediaOptions.some((asset) => asset.id === assetId)) {
         initialAssetQueryState.current = "handled";
-        setActionNotice("The rendered Create Content video is not ready to schedule yet.");
+        setActionNotice("The selected video is not ready to schedule yet.");
         return;
       }
 
@@ -665,7 +761,7 @@ export function SchedulingWorkspace() {
     setNewScheduleInitialDate(draft.scheduledDate ?? selectedCalendarDate);
     await Promise.all([
       loadScheduleMedia(),
-      loadSocialConnections(),
+      loadSocialConnections({ force: true }),
     ]);
     setDrawerOpen(true);
   }
@@ -776,10 +872,17 @@ export function SchedulingWorkspace() {
 
   async function handleSaveScheduleDraft(submission: ScheduleFormSubmission) {
     if (
-      !submission.targets.some((target) => target.platform === "instagram")
+      !submission.targets.some(
+        (target) =>
+          target.platform === "instagram" ||
+          (tiktokBetaEnabled && target.platform === "tiktok") ||
+          (youtubeBetaEnabled && target.platform === "youtube"),
+      )
     ) {
       setDrawerError(
-        "Connect and select an Instagram account before scheduling.",
+        hasAdditionalPublishingPlatform
+          ? `Connect and select an ${publishingPlatformList} account before scheduling.`
+          : "Connect and select an Instagram account before scheduling.",
       );
       return;
     }
@@ -1146,14 +1249,15 @@ export function SchedulingWorkspace() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
             <SocialPlatformIcon className="size-4" platform="instagram" />
-            Instagram publishing
+            {hasAdditionalPublishingPlatform
+              ? `${publishingPlatformSummary} publishing`
+              : "Instagram publishing"}
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">
             Content calendar
           </h1>
           <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-muted sm:text-base">
-            Plan, review, and publish your Instagram content from one focused
-            workspace.
+            Plan, review, and publish your {publishingPlatformList} content from one focused workspace.
           </p>
         </div>
 
@@ -1177,8 +1281,8 @@ export function SchedulingWorkspace() {
             <Plus className="size-4" aria-hidden="true" />
           )}
           {checkingScheduleAccess
-            ? "Checking Instagram…"
-            : "Schedule Instagram post"}
+            ? `Checking ${hasAdditionalPublishingPlatform ? "publishing accounts" : "Instagram"}…`
+            : `Schedule ${hasAdditionalPublishingPlatform ? "publishing" : "Instagram"} post`}
         </button>
       </header>
 
@@ -1193,7 +1297,47 @@ export function SchedulingWorkspace() {
           </div>
         ) : null}
 
-        {dayPlannerOpen ? (
+        {scheduleLoadError ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-error/30 bg-card px-4 py-3"
+          >
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                {hasScheduleData
+                  ? "Could not refresh schedules."
+                  : scheduleLoadError}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {hasScheduleData
+                  ? "Showing the last loaded data. Retry to see the latest status."
+                  : "Your posts could not be retrieved. Retry to load your calendar."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={schedulesRefreshing}
+              aria-busy={schedulesRefreshing}
+              onClick={() => void loadSchedules({ force: true })}
+            >
+              <RefreshCw
+                className={cn(
+                  "size-4",
+                  schedulesRefreshing && "animate-spin motion-reduce:animate-none",
+                )}
+                aria-hidden="true"
+              />
+              {schedulesRefreshing ? "Retrying…" : "Retry"}
+            </Button>
+          </div>
+        ) : null}
+
+        {!hasScheduleData ? (
+          scheduleLoadError ? null : (
+            <p role="status" className="text-sm text-muted">Loading schedules…</p>
+          )
+        ) : dayPlannerOpen ? (
           <DayScheduleWorkspace
             drafts={selectedDayDrafts}
             isSchedulingFinalDraftId={schedulingFinalDraftId}
@@ -1213,13 +1357,29 @@ export function SchedulingWorkspace() {
         ) : (
           <>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <ScheduleTabs
-                activeTab={activeTab}
-                counts={counts}
-                onChange={setActiveTab}
-              />
+              {viewMode === "list" ? (
+                <ScheduleTabs
+                  activeTab={activeTab}
+                  counts={counts}
+                  onChange={setActiveTab}
+                />
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm font-semibold text-muted">All post statuses</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setActiveTab("drafts");
+                      setViewMode("list");
+                    }}
+                  >
+                    View drafts ({counts.drafts})
+                  </Button>
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                {viewMode === "list" ? (
+                {viewMode === "list" && activeTab !== "drafts" ? (
                   <ScheduleListDatePicker
                     selectedDate={selectedCalendarDate}
                     onSelectDate={handleSelectCalendarDate}
@@ -1229,20 +1389,40 @@ export function SchedulingWorkspace() {
               </div>
             </div>
 
-            <ScheduleContent
-              activeTab={activeTab}
-              calendarMonth={visibleCalendarMonth}
-              calendarDrafts={calendarDrafts}
-              drafts={visibleDrafts}
-              selectedDate={selectedCalendarDate}
-              viewMode={viewMode}
-              onCreateDraftForDate={(dateKey) =>
-                void handleNewSchedulePost(dateKey)
-              }
-              onMonthChange={setVisibleCalendarMonth}
-              onOpenDate={handleOpenDayPlanner}
-              onSelectDate={handleSelectCalendarDate}
-            />
+            {viewMode === "list" && activeTab === "drafts" ? (
+              <div
+                id="schedule-content-panel"
+                role="tabpanel"
+                aria-labelledby="schedule-tab-drafts"
+              >
+                <ScheduleUndatedDraftList
+                  drafts={visibleDrafts}
+                  renderingScheduleId={renderingScheduleId}
+                  schedulingFinalDraftId={schedulingFinalDraftId}
+                  retryingPublishTargetId={retryingPublishTargetId}
+                  onEditDraft={(draft) => void handleEditSchedule(draft)}
+                  onCancelDraft={setSchedulePendingCancellation}
+                  onRenderDraft={handleStartCombinationRender}
+                  onScheduleDraft={handleScheduleFinalPost}
+                  onRetryPublishing={handleRetryPublishing}
+                />
+              </div>
+            ) : (
+              <ScheduleContent
+                activeTab={activeTab}
+                calendarMonth={visibleCalendarMonth}
+                calendarDrafts={calendarDrafts}
+                drafts={visibleDrafts}
+                selectedDate={selectedCalendarDate}
+                viewMode={viewMode}
+                onCreateDraftForDate={(dateKey) =>
+                  void handleNewSchedulePost(dateKey)
+                }
+                onMonthChange={setVisibleCalendarMonth}
+                onOpenDate={handleOpenDayPlanner}
+                onSelectDate={handleSelectCalendarDate}
+              />
+            )}
           </>
         )}
       </div>
@@ -1284,15 +1464,28 @@ export function SchedulingWorkspace() {
           minimumScheduleLeadMinutes={minimumScheduleLeadMinutes}
           onClose={handleCloseScheduleDrawer}
           onRefreshMedia={() => loadScheduleMedia({ force: true })}
+          onRefreshConnections={async () =>
+            (await loadSocialConnections({ force: true })) !== null
+          }
+          onUploadVideo={async (file) => {
+            if (!user?.uid) throw new Error("Sign in before uploading a video.");
+            if (!file.size || file.size > 250 * 1024 * 1024) throw new Error("Choose a video up to 250 MB.");
+            const uploaded = await uploadAIStudioReferenceMedia(file, "video", 86_400, user.uid, { requireVideoReferenceRatio: false });
+            return mapMediaAssetToScheduleMediaOption(uploaded.asset);
+          }}
           onSave={handleSaveScheduleDraft}
           requireScheduleTarget={requireScheduleTarget}
           saving={savingSchedule}
           socialConnections={socialConnections}
+          tiktokBetaEnabled={tiktokBetaEnabled}
+          youtubeBetaEnabled={youtubeBetaEnabled}
         />
       ) : null}
 
       <InstagramScheduleAccessDialog
         accessState={scheduleAccessPrompt}
+        tiktokBetaEnabled={tiktokBetaEnabled}
+        youtubeBetaEnabled={youtubeBetaEnabled}
         onClose={() => setScheduleAccessPrompt(null)}
       />
 
@@ -1330,12 +1523,22 @@ function ScheduleEditorLoading() {
 
 function InstagramScheduleAccessDialog({
   accessState,
+  tiktokBetaEnabled,
+  youtubeBetaEnabled,
   onClose,
 }: {
   accessState: Exclude<InstagramSchedulingAccessState, "ready"> | null;
+  tiktokBetaEnabled: boolean;
+  youtubeBetaEnabled: boolean;
   onClose: () => void;
 }) {
   const reconnecting = accessState === "reconnect";
+  const hasAdditionalPublishingPlatform =
+    tiktokBetaEnabled || youtubeBetaEnabled;
+  const publishingPlatformList = getPublishingPlatformList(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
 
   return (
     <Dialog
@@ -1351,16 +1554,26 @@ function InstagramScheduleAccessDialog({
           <span className="mb-2 inline-flex size-11 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--instagram-orange),var(--instagram-rose)_55%,var(--instagram-violet))] shadow-[0_10px_24px_rgb(214_41_118_/_0.18)]">
             <SocialPlatformIcon
               className="size-6 text-white"
-              platform="instagram"
+              platform={
+                youtubeBetaEnabled
+                  ? "youtube"
+                  : tiktokBetaEnabled
+                    ? "tiktok"
+                    : "instagram"
+              }
             />
           </span>
           <DialogTitle className="text-lg font-bold tracking-[-0.02em] text-foreground-strong">
-            {reconnecting
+            {hasAdditionalPublishingPlatform
+              ? "Connect a publishing account"
+              : reconnecting
               ? "Reconnect Instagram to schedule"
               : "Connect Instagram first"}
           </DialogTitle>
           <DialogDescription className="leading-6">
-            {reconnecting
+            {hasAdditionalPublishingPlatform
+              ? `Connect ${publishingPlatformList} before choosing media, date, and time.`
+              : reconnecting
               ? "Your Instagram connection cannot publish right now. Reconnect it before choosing media, date, and time."
               : "Scheduling requires a connected Instagram professional account. Connect one before choosing media, date, and time."}
           </DialogDescription>
@@ -1381,12 +1594,54 @@ function InstagramScheduleAccessDialog({
             className={buttonVariants({ size: "lg" })}
           >
             <Plus data-icon="inline-start" aria-hidden="true" />
-            {reconnecting ? "Reconnect Instagram" : "Connect Instagram"}
+            {hasAdditionalPublishingPlatform
+              ? "Open connected accounts"
+              : reconnecting
+                ? "Reconnect Instagram"
+                : "Connect Instagram"}
           </Link>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+function getPublishingPlatformList(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram, TikTok, or YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram or TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram or YouTube";
+  }
+
+  return "Instagram";
+}
+
+function getPublishingPlatformSummary(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram + TikTok + YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram + TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram + YouTube";
+  }
+
+  return "Instagram";
 }
 
 function ScheduleTabs({
@@ -1543,8 +1798,9 @@ function ScheduleContent({
   return (
     <div
       id="schedule-content-panel"
-      role="tabpanel"
-      aria-labelledby={`schedule-tab-${activeTab}`}
+      role={viewMode === "calendar" ? "region" : "tabpanel"}
+      aria-label={viewMode === "calendar" ? "Publishing calendar, all statuses" : undefined}
+      aria-labelledby={viewMode === "list" ? `schedule-tab-${activeTab}` : undefined}
       className="flex min-h-0 w-full flex-1"
     >
       {content}
@@ -1714,6 +1970,61 @@ function ScheduleDayListItem({ draft }: { draft: ScheduleDraft }) {
         {getScheduleStatusLabel(draft.status)}
       </Badge>
     </li>
+  );
+}
+
+function ScheduleUndatedDraftList({
+  drafts,
+  renderingScheduleId,
+  schedulingFinalDraftId,
+  retryingPublishTargetId,
+  onEditDraft,
+  onCancelDraft,
+  onRenderDraft,
+  onScheduleDraft,
+  onRetryPublishing,
+}: {
+  drafts: ScheduleDraft[];
+  renderingScheduleId: string | null;
+  schedulingFinalDraftId: string | null;
+  retryingPublishTargetId: string | null;
+  onEditDraft: (draft: ScheduleDraft) => void;
+  onCancelDraft: (draft: ScheduleDraft) => void;
+  onRenderDraft: (draftId: string) => void;
+  onScheduleDraft: (draft: ScheduleDraft) => void;
+  onRetryPublishing: (draft: ScheduleDraft, target: ScheduledPostTarget) => void;
+}) {
+  return (
+    <section aria-labelledby="undated-drafts-title" className="rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-card sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="undated-drafts-title" className="text-lg font-bold text-foreground">Drafts</h2>
+          <p className="mt-1 text-sm text-muted">Posts without a selected publish date and time.</p>
+        </div>
+        <Badge variant="outline">{drafts.length} {getTabItemName("drafts", drafts.length)}</Badge>
+      </div>
+      {drafts.length > 0 ? (
+        <ol aria-label="Undated drafts" className="mt-5 space-y-3">
+          {drafts.map((draft) => (
+            <li key={draft.id}>
+              <SelectedDayDraftCard
+                draft={draft}
+                isRendering={renderingScheduleId === draft.id}
+                isSchedulingFinal={schedulingFinalDraftId === draft.id}
+                retryingPublishTargetId={retryingPublishTargetId}
+                onEditDraft={onEditDraft}
+                onCancelDraft={onCancelDraft}
+                onRenderDraft={onRenderDraft}
+                onScheduleDraft={onScheduleDraft}
+                onRetryPublishing={onRetryPublishing}
+              />
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-5 rounded-control border border-dashed border-border bg-card-muted p-6 text-sm text-muted">No undated drafts.</p>
+      )}
+    </section>
   );
 }
 
@@ -1934,8 +2245,9 @@ function ScheduleTargetStatusList({
   const plannedAccounts = (draft.plannedConnectionIds ?? []).flatMap(
     (connectionId) => {
       const label = draft.accountLabelsByConnectionId?.[connectionId];
+      const platform = draft.plannedPlatformsByConnectionId?.[connectionId];
 
-      return label ? [{ connectionId, label }] : [];
+      return label ? [{ connectionId, label, platform }] : [];
     },
   );
 
@@ -1953,7 +2265,12 @@ function ScheduleTargetStatusList({
               key={account.connectionId}
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card-muted px-2.5 py-1"
             >
-              <SocialPlatformIcon className="size-3.5" platform="instagram" />
+              {account.platform ? (
+                <SocialPlatformIcon
+                  className="size-3.5"
+                  platform={account.platform}
+                />
+              ) : null}
               {account.label}
             </span>
           ))
@@ -1992,6 +2309,7 @@ function ScheduleTargetStatusList({
         {targets.map((target) => {
           const isRetrying = retryingPublishTargetId === target.id;
           const showPublishRetry = canRetryTargetPublishing(target);
+          const publishedPostLink = getPublishedPostLink(target);
           const customerErrorMessage =
             getCustomerFacingTargetErrorMessage(target);
           const accountLabel =
@@ -2028,6 +2346,11 @@ function ScheduleTargetStatusList({
                 <p className="mt-1 text-[11px] font-semibold leading-4 text-muted">
                   {getTargetStatusHelpText(target, draft.timezone)}
                 </p>
+                {!publishedPostLink && target.status === "published" ? (
+                  <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
+                    {getPostLinkUnavailableReason(target)}
+                  </p>
+                ) : null}
                 {customerErrorMessage ? (
                   <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-error">
                     {customerErrorMessage}
@@ -2035,18 +2358,22 @@ function ScheduleTargetStatusList({
                 ) : null}
               </div>
 
-              {target.platformPostUrl ? (
+              {publishedPostLink ? (
                 <a
-                  href={target.platformPostUrl}
+                  href={publishedPostLink.href}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="inline-flex h-7 w-fit items-center justify-center rounded-full border border-border bg-card-muted px-2.5 text-[11px] font-bold text-foreground transition hover:border-border-strong hover:bg-card"
                 >
-                  View post
+                  {publishedPostLink.label}
                 </a>
+              ) : target.status === "published" ? (
+                <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
+                  Post link unavailable
+                </span>
               ) : target.platformPostId ? (
                 <span className="rounded-full bg-card-muted px-2.5 py-1 text-[11px] font-bold text-muted">
-                  ID saved
+                  Publishing reference saved
                 </span>
               ) : target.status === "action_required" &&
                 shouldReconnectSocialTarget(target.lastErrorCode) ? (
@@ -2100,7 +2427,9 @@ function CalendarPlanner({
     [calendarMonth],
   );
   const draftsByDate = useMemo(() => groupDraftsByDate(drafts), [drafts]);
-  const postCount = drafts.filter((draft) => draft.scheduledDate).length;
+  const postCount = drafts.filter(
+    (draft) => draft.scheduledDate?.slice(0, 7) === calendarMonth,
+  ).length;
   const selectedDayDrafts = draftsByDate.get(selectedDate) ?? [];
 
   function moveMonth(monthOffset: number) {
@@ -2138,7 +2467,7 @@ function CalendarPlanner({
             </span>
           </div>
           <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            New posts only. Older posts remain available in the history tabs.
+            All post statuses. Browse older posts in List view.
           </p>
         </div>
 
@@ -2403,7 +2732,7 @@ function SelectedCalendarDayPanel({
         <div className="mt-4 rounded-control border border-dashed border-border bg-card px-3 py-5 text-center">
           <CalendarDays className="mx-auto size-5 text-muted" aria-hidden="true" />
           <p className="mt-2 text-sm font-bold text-foreground">
-            No Instagram posts yet
+            No posts yet
           </p>
           <p className="mt-1 text-xs font-medium leading-5 text-muted">
             Add a post to start planning this day.
@@ -2562,8 +2891,8 @@ function DayScheduleWorkspace({
           <div className="rounded-[var(--radius-card)] border border-border bg-card p-4">
             <p className="text-sm font-bold text-foreground">What appears here</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-              Upcoming posts first, then published posts and other publishing
-              statuses for this selected calendar date.
+              Posts are shown from latest to earliest, across every publishing
+              platform, for this selected calendar date.
             </p>
           </div>
         </div>
@@ -2575,7 +2904,7 @@ function DayScheduleWorkspace({
                 Posts for this day
               </p>
               <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                Upcoming posts appear first. Publishing status updates here.
+                Latest posts appear first. Publishing status updates here.
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full bg-card-muted px-3 py-1 text-xs font-bold text-muted ring-1 ring-inset ring-border">
@@ -2666,7 +2995,7 @@ function SelectedDayDraftCard({
             {draft.mediaTitle || "Combination draft"}
           </p>
           <p className="mt-1 text-xs font-semibold text-muted">
-            {draft.scheduledTime || "--:--"} {draft.timezone}
+            {draft.scheduledTime ? `${draft.scheduledTime} ${draft.timezone}` : "Publish date and time not selected"}
           </p>
         </div>
         <span
@@ -2710,18 +3039,18 @@ function SelectedDayDraftCard({
         retryingPublishTargetId={retryingPublishTargetId}
       />
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {combinedMedia?.mediaUrl ? (
+      {combinedMedia?.mediaUrl && shouldShowExportPreview(draft.targets) ? (
+        <div className="mt-3 flex flex-wrap gap-2">
           <a
             href={combinedMedia.mediaUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-8 items-center justify-center rounded-control border border-border bg-card-muted px-3 text-xs font-bold text-foreground transition hover:border-border-strong hover:bg-card"
           >
-            Open MP4
+            Preview video file
           </a>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <ScheduleDraftActions
         draft={draft}
@@ -2749,13 +3078,13 @@ function getScheduleDayListDrafts(drafts: ScheduleDraft[], selectedDate: string)
   return drafts
     .filter((draft) => draft.scheduledDate === selectedDate)
     .sort((first, second) => {
-      const timeDifference = (first.scheduledTime ?? "").localeCompare(
-        second.scheduledTime ?? "",
+      const timeDifference = (second.scheduledTime ?? "").localeCompare(
+        first.scheduledTime ?? "",
       );
 
       return timeDifference !== 0
         ? timeDifference
-        : first.createdAt.localeCompare(second.createdAt);
+        : second.createdAt.localeCompare(first.createdAt);
     });
 }
 
@@ -2812,41 +3141,17 @@ function groupDraftsByDate(drafts: ScheduleDraft[]) {
 
   for (const draftsForDate of grouped.values()) {
     draftsForDate.sort((first, second) => {
-      const statusDifference =
-        getCalendarDayDraftSortRank(first) -
-        getCalendarDayDraftSortRank(second);
-
-      if (statusDifference !== 0) {
-        return statusDifference;
-      }
-
-      const timeDifference = (first.scheduledTime ?? "").localeCompare(
-        second.scheduledTime ?? "",
+      const timeDifference = (second.scheduledTime ?? "").localeCompare(
+        first.scheduledTime ?? "",
       );
 
       return timeDifference !== 0
         ? timeDifference
-        : first.createdAt.localeCompare(second.createdAt);
+        : second.createdAt.localeCompare(first.createdAt);
     });
   }
 
   return grouped;
-}
-
-function getCalendarDayDraftSortRank(draft: ScheduleDraft) {
-  if (isUpcomingDraft(draft)) {
-    return 0;
-  }
-
-  if (draft.status === "published") {
-    return 1;
-  }
-
-  if (isFailedDraft(draft)) {
-    return 2;
-  }
-
-  return 3;
 }
 
 function getMonthCalendarDays(monthKey: string): CalendarDay[] {
@@ -3038,13 +3343,16 @@ function getTargetStatusHelpText(
 
   if (target.status === "publishing") {
     if (target.nextRetryAt) {
-      return `Temporary platform issue. Retrying ${formatShortDateTime(
+      const prefix = Date.parse(target.nextRetryAt) <= Date.now()
+        ? "Retry pending since"
+        : "Retry scheduled for";
+      return `${prefix} ${formatShortDateTime(
         target.nextRetryAt,
         timezone,
       )}.`;
     }
 
-    return "The worker is posting this video now.";
+    return "The worker is publishing this post now.";
   }
 
   if (target.status === "scheduled") {
@@ -3267,32 +3575,6 @@ function toDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function getTimeKey(date: Date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(
-    date.getMinutes(),
-  ).padStart(2, "0")}`;
-}
-
-function getDefaultScheduleSlot(
-  selectedDate: string,
-  minimumLeadMinutes: number,
-  now = Date.now(),
-) {
-  const currentDate = toDateKey(new Date(now));
-  const earliestDate = new Date(
-    getEarliestScheduleTimestamp({
-      minimumLeadMinutes,
-      now,
-    }),
-  );
-
-  return {
-    date:
-      selectedDate === currentDate ? toDateKey(earliestDate) : selectedDate,
-    time: getTimeKey(earliestDate),
-  };
-}
-
 function getTabItemName(tab: ScheduleTab, count: number) {
   const singular: Record<ScheduleTab, string> = {
     drafts: "draft",
@@ -3450,73 +3732,6 @@ function getDraftPlannedScheduledFor(draft: ScheduleDraft) {
   return `${draft.scheduledDate}T${draft.scheduledTime}`;
 }
 
-function hasActiveSchedulingWork(schedule: ScheduledPost) {
-  const now = Date.now();
-  const isWallText = Boolean(getString(schedule.metadata.wallTextAssignmentId));
-  const renderStatus = getString(
-    isWallText
-      ? schedule.metadata.wallTextRenderStatus
-      : schedule.metadata.combinedRenderStatus,
-  );
-  const finalScheduleStatus = getString(schedule.metadata.finalScheduleStatus);
-  const renderQueuedAt = Date.parse(
-    getString(
-      isWallText
-        ? schedule.metadata.wallTextRenderQueuedAt
-        : schedule.metadata.combinedRenderQueuedAt,
-    ) ?? schedule.updatedAt,
-  );
-  const isRecentRender =
-    (renderStatus === "queued" || renderStatus === "rendering") &&
-    Number.isFinite(renderQueuedAt) &&
-    now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
-  // The initial Wall schedule is returned before the server-side `after()`
-  // continuation has claimed its render. Keep the directly opened Scheduling
-  // page fresh through that small hand-off window instead of leaving it on an
-  // old "Video needs preparation" state until the user refreshes.
-  const isAwaitingWallRenderStart =
-    isWallText &&
-    renderStatus === "not_requested" &&
-    Number.isFinite(renderQueuedAt) &&
-    now - renderQueuedAt < ACTIVE_JOB_TIMEOUT_MS;
-
-  const finalScheduleStartedAt = Date.parse(
-    getString(schedule.metadata.finalScheduleQueuedAt) ?? schedule.updatedAt,
-  );
-  const isRecentFinalize =
-    ["draft", "scheduling"].includes(schedule.status) &&
-    ["finalizing", "scheduling"].includes(finalScheduleStatus ?? "") &&
-    Number.isFinite(finalScheduleStartedAt) &&
-    now - finalScheduleStartedAt < ACTIVE_JOB_TIMEOUT_MS;
-
-  const hasDuePublishingTarget = schedule.targets.some((target) => {
-    if (target.status === "publishing" || target.status === "scheduling") {
-      const targetUpdatedAt = Date.parse(target.updatedAt);
-
-      return (
-        Number.isFinite(targetUpdatedAt) &&
-        now - targetUpdatedAt < ACTIVE_JOB_TIMEOUT_MS
-      );
-    }
-
-    const scheduledTime = Date.parse(target.scheduledFor);
-
-    return (
-      target.status === "scheduled" &&
-      Number.isFinite(scheduledTime) &&
-      scheduledTime >= now - ACTIVE_SCHEDULE_LOOKBEHIND_MS &&
-      scheduledTime <= now + ACTIVE_SCHEDULE_LOOKAHEAD_MS
-    );
-  });
-
-  return (
-    isRecentRender ||
-    isAwaitingWallRenderStart ||
-    isRecentFinalize ||
-    hasDuePublishingTarget
-  );
-}
-
 async function queueCombinationRender({
   scheduleId,
   token,
@@ -3623,6 +3838,19 @@ function mapScheduledPostToScheduleDraft(
       ...getMetadataCsv(metadata.plannedConnectionIds),
     ]),
   ];
+  const plannedPlatformsByConnectionId = Object.fromEntries(
+    plannedConnectionIds.flatMap((connectionId) => {
+      const savedTarget = savedPlannedTargets.find(
+        (target) => target.connectionId === connectionId,
+      );
+      const platform =
+        savedTarget?.platform ??
+        socialConnections.find((connection) => connection.id === connectionId)
+          ?.platform;
+
+      return platform ? [[connectionId, platform]] : [];
+    }),
+  );
   const relevantConnectionIds = new Set([
     ...schedule.targets.map((target) => target.socialConnectionId),
     ...plannedConnectionIds,
@@ -3702,6 +3930,10 @@ function mapScheduledPostToScheduleDraft(
           : "single_video",
     mediaTitle: schedule.title,
     plannedConnectionIds,
+    plannedPlatformsByConnectionId:
+      Object.keys(plannedPlatformsByConnectionId).length > 0
+        ? plannedPlatformsByConnectionId
+        : undefined,
     plannedScheduledFor: plannedScheduledFor ?? undefined,
     platforms: getDraftPlatformsFromSchedule(schedule),
     scheduledDate,
@@ -3733,6 +3965,11 @@ function getDraftStatusFromScheduledPost(
   schedule: ScheduledPost,
   mediaIssue: ScheduleMediaIssue | null = null,
 ): ScheduleDraftStatus {
+  // Cancellation is authoritative even when historical render metadata remains.
+  if (schedule.status === "cancelled") {
+    return "cancelled";
+  }
+
   const isWallTextSchedule = Boolean(
     getString(schedule.metadata.wallTextAssignmentId),
   );
@@ -3769,10 +4006,6 @@ function getDraftStatusFromScheduledPost(
 
   if (schedule.status === "partially_failed") {
     return "partially_failed";
-  }
-
-  if (schedule.status === "cancelled") {
-    return "cancelled";
   }
 
   if (schedule.status === "published") {
@@ -4048,13 +4281,6 @@ function isCreativeAssetHookMediaAsset(asset: MediaAsset) {
   return (
     (asset.collection === "influencer" || asset.collection === "video") &&
     creativeAssetHookVideoSourceTypes.includes(asset.sourceType)
-  );
-}
-
-function isScheduledVideoMediaAsset(asset: MediaAsset) {
-  return (
-    asset.collection === "video" &&
-    scheduledVideoSourceTypes.includes(asset.sourceType)
   );
 }
 

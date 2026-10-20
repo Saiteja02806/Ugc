@@ -1,0 +1,12 @@
+.workspace.workspace { gap: 14px; }
+.sequence.sequence { flex: none; height: min(60dvh, 480px); min-height: 240px; max-height: 480px; }
+/* Schedule stays inside the same tabbed controls card as Create and Edit demo. */
+.shell.shell[data-section="schedule"] [aria-label="Post scheduling settings"] { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.shell.shell[data-section="schedule"] [data-workflow-action] { display: none; }
+.shell.shell[data-section="schedule"] [id="hook-workflow-preview"] { min-height: 0; border-color: var(--border); background: var(--card); }
+@media (min-width: 1024px) and (max-height: 760px) {
+  .shell.shell[data-section="schedule"] [aria-label="Post scheduling settings"] { gap: 12px; }
+}
+@media (max-width: 1023px) {
+  .sequence.sequence { flex: none; max-height: none; }
+}

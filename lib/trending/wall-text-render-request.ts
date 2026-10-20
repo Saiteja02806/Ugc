@@ -1,4 +1,6 @@
 import "server-only";
+import { ensureStoredWallTextOverlay } from "@/lib/trending/wall-text-overlay-storage";
+import type { WallTextOverlayInput } from "@/worker/src/lib/wall-text-overlay-renderer";
 
 import {
   getMissingJobQueueEnvVars,
@@ -136,6 +138,15 @@ export async function requestWallTextRender(params: {
       editAttribution?.duplicateSignature ??
       createWallTextDuplicateSignature(draft.text.fullText);
 
+    const overlay = process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true"
+      ? (await ensureStoredWallTextOverlay(params.userId, {
+          text: editedContent?.content ?? draft.text,
+          textBox: editedContent?.layout.textBox ?? draft.layout.textBox,
+          placement: editedContent?.layout.placement ?? draft.layout.placement,
+          safeArea: editedContent?.layout.safeArea ?? draft.layout.safeArea,
+          textColor: editedContent?.textColor ?? DEFAULT_TRENDING_TEXT_COLOR,
+        } as WallTextOverlayInput)).asset : null;
+
     let claimed = await claimWallTextRender({
       assignmentId: params.assignmentId,
       editId: creativeEdit?.id,
@@ -183,6 +194,7 @@ export async function requestWallTextRender(params: {
     const creationResult = await createBackgroundJobWithCreationResult({
       idempotencyKey: `wall-text-render:${claimed.render_id}`,
       input: {
+        ...(overlay ? { overlayAsset: overlay } : {}),
         assignmentId: claimed.id,
         attribution: {
           contentHash: contentSignature.contentHash,

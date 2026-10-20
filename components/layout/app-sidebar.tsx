@@ -1,7 +1,10 @@
 "use client";
 
+import { CreditIcon } from "@/components/icons/credit-icon";
+import scrollbars from "@/components/ui/quiet-scrollbar.module.css";
+import { useWorkflowNavigation } from "@/components/layout/workflow-navigation";
+
 import {
-  ExternalLink,
   Menu,
   Settings,
   X,
@@ -21,7 +24,6 @@ import {
   SidebarIcon,
   type SidebarIconName,
 } from "@/components/icons/sidebar-icon";
-import { DiscordIcon } from "@/components/icons/discord-icon";
 import { ProductLogoMark } from "@/components/brand/product-logo";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -29,14 +31,15 @@ import { useBillingSubscription } from "@/components/billing/use-billing-subscri
 
 export type AppSidebarActiveKey =
   | "trending"
-  | "create-content"
   | "explore"
+  | "audio-generation"
   | "ai-studio"
   | "library"
   | "avatars"
   | "analytics"
   | "scheduling"
-  | "settings";
+  | "settings"
+  | "updates";
 
 type SidebarItem = {
   href: string;
@@ -47,16 +50,22 @@ type SidebarItem = {
 
 const primaryNavigationItems: SidebarItem[] = [
   {
+    key: "explore",
+    label: "Explore",
+    href: "/explore",
+    icon: "explore",
+  },
+  {
+    key: "audio-generation",
+    label: "Audio generation",
+    href: "/audio-generation",
+    icon: "audio",
+  },
+  {
     key: "trending",
     label: "Trending",
     href: "/dashboard",
     icon: "trending",
-  },
-  {
-    key: "create-content",
-    label: "Create Content",
-    href: "/create-content",
-    icon: "edit",
   },
   {
     key: "ai-studio",
@@ -78,17 +87,10 @@ const primaryNavigationItems: SidebarItem[] = [
   },
 ];
 
-const exploreNavigationItem: SidebarItem = {
-  key: "explore",
-  label: "Explore",
-  href: "/viral",
-  icon: "viral",
-};
-
 const libraryNavigationItems: SidebarItem[] = [
   {
     key: "library",
-    label: "Content",
+    label: "Demo",
     href: "/library?tab=posts",
     icon: "library",
   },
@@ -102,7 +104,6 @@ const libraryNavigationItems: SidebarItem[] = [
 
 const SIDEBAR_STORAGE_KEY = "ugc-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "ugc-studio:sidebar-change";
-const isCreateContentScreenEnabled = process.env.NODE_ENV !== "production";
 
 export function AppSidebar({
   activeKey = "trending",
@@ -112,8 +113,12 @@ export function AppSidebar({
   defaultCollapsed?: boolean;
 }) {
   const { user } = useAuth();
-  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
-  const mobileNavigationId = useId();
+  const workflowNavigation = useWorkflowNavigation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isMobileNavigationOpen = workflowNavigation?.enabled ? workflowNavigation.open : mobileOpen;
+  const setIsMobileNavigationOpen = workflowNavigation?.enabled ? workflowNavigation.setOpen : setMobileOpen;
+  const fallbackNavigationId = useId();
+  const mobileNavigationId = workflowNavigation?.enabled ? workflowNavigation.id : fallbackNavigationId;
   const mobileNavigationRef = useRef<HTMLElement>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
   const collapsed = useSyncExternalStore(
@@ -176,7 +181,7 @@ export function AppSidebar({
         previouslyFocused.focus();
       }
     };
-  }, [isMobileNavigationOpen]);
+  }, [isMobileNavigationOpen, setIsMobileNavigationOpen]);
 
   function toggleSidebar() {
     setSidebarPreference(!collapsed);
@@ -202,7 +207,8 @@ export function AppSidebar({
       <aside
         id="ugc-desktop-sidebar"
         className={cn(
-          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          "sticky top-0 z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          !workflowNavigation?.enabled && "md:flex",
           collapsed ? "w-[60px]" : "w-[196px]",
         )}
       >
@@ -227,8 +233,6 @@ export function AppSidebar({
           collapsed={collapsed}
         />
 
-        <SidebarDiscordLink collapsed={collapsed} />
-
         {collapsed ? null : <SidebarPlanCreditsWidget />}
 
         <AccountSection
@@ -241,7 +245,7 @@ export function AppSidebar({
       </aside>
 
       {isMobileNavigationOpen ? (
-        <div className="fixed inset-0 z-[var(--z-modal)] md:hidden">
+        <div className={cn("fixed inset-0 z-[var(--z-modal)]", !workflowNavigation?.enabled && "md:hidden")}>
           <button
             type="button"
             tabIndex={-1}
@@ -277,8 +281,6 @@ export function AppSidebar({
               activeKey={activeKey}
               onNavigate={() => setIsMobileNavigationOpen(false)}
             />
-
-            <SidebarDiscordLink collapsed={false} />
 
             <SidebarPlanCreditsWidget />
 
@@ -371,17 +373,13 @@ function SidebarNavigation({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const visiblePrimaryNavigationItems = [
-    ...primaryNavigationItems.filter(
-      (item) => item.key !== "create-content" || isCreateContentScreenEnabled,
-    ),
-    exploreNavigationItem,
-  ];
+  const visiblePrimaryNavigationItems = primaryNavigationItems;
 
   return (
     <nav
       aria-label="Primary navigation"
       className={cn(
+        scrollbars.surface,
         "min-h-0 flex-1 py-3.5",
         collapsed ? "px-[10px]" : "px-3",
         collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden",
@@ -447,6 +445,7 @@ function SidebarLink({
   return (
     <Link
       href={item.href}
+      prefetch={item.key === "explore" ? true : undefined}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -515,6 +514,7 @@ function CollapsedMagneticNavItem({
   return (
     <Link
       href={item.href}
+      prefetch={item.key === "explore" ? true : undefined}
       onClick={onNavigate}
       onBlur={resetSurface}
       onPointerCancel={resetSurface}
@@ -553,89 +553,6 @@ function CollapsedMagneticNavItem({
   );
 }
 
-function SidebarDiscordLink({ collapsed = false }: { collapsed?: boolean }) {
-  const surfaceRef = useRef<HTMLSpanElement>(null);
-  const tooltipId = useId();
-  const discordHref = "https://discord.gg/wNtwSVFvK";
-
-  function resetSurface() {
-    if (surfaceRef.current) {
-      surfaceRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
-    }
-  }
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLAnchorElement>) {
-    if (
-      event.pointerType !== "mouse" ||
-      window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
-
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const relativeX = (event.clientX - bounds.left) / bounds.width - 0.5;
-    const relativeY = (event.clientY - bounds.top) / bounds.height - 0.5;
-    const translateX = Math.max(-4, Math.min(4, relativeX * 8));
-    const translateY = Math.max(-3, Math.min(3, relativeY * 6));
-
-    if (surfaceRef.current) {
-      surfaceRef.current.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(1.05)`;
-    }
-  }
-
-  if (collapsed) {
-    return (
-      <div className="mb-2 flex justify-center">
-        <a
-          href={discordHref}
-          target="_blank"
-          rel="noreferrer noopener"
-          onBlur={resetSurface}
-          onPointerCancel={resetSurface}
-          onPointerLeave={resetSurface}
-          onPointerMove={handlePointerMove}
-          aria-describedby={tooltipId}
-          aria-label="Discord"
-          className="group/rail-item relative flex size-10 items-center justify-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-        >
-          <span
-            ref={surfaceRef}
-            className="flex size-10 items-center justify-center rounded-control text-muted-subtle transition-[transform,background-color,color,box-shadow] duration-[160ms] ease-out will-change-transform group-hover/rail-item:bg-deep-contrast group-hover/rail-item:text-white group-hover/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] group-focus-visible/rail-item:bg-deep-contrast group-focus-visible/rail-item:text-white group-focus-visible/rail-item:shadow-[0_8px_20px_rgb(23_52_84_/_0.24)] motion-reduce:transform-none motion-reduce:transition-none"
-          >
-            <DiscordIcon className="size-5" />
-          </span>
-          <span
-            id={tooltipId}
-            role="tooltip"
-            className="pointer-events-none invisible absolute left-full top-1/2 z-[var(--z-tooltip)] ml-3 -translate-y-1/2 whitespace-nowrap rounded-small bg-deep-contrast px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-floating transition-opacity duration-150 delay-0 group-hover/rail-item:visible group-hover/rail-item:opacity-100 group-hover/rail-item:delay-[160ms] group-focus-visible/rail-item:visible group-focus-visible/rail-item:opacity-100 motion-reduce:transition-none"
-          >
-            Discord
-          </span>
-        </a>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-2 px-3">
-      <a
-        href={discordHref}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="group relative flex h-10 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-muted transition-colors duration-150 hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 motion-reduce:transition-none"
-      >
-        <DiscordIcon className="size-[19px] text-muted-subtle transition-colors group-hover:text-foreground-strong" />
-        <span className="truncate">Discord</span>
-        <ExternalLink
-          className="ml-auto size-3.5 text-muted-subtle/70 transition-colors group-hover:text-foreground-strong"
-          aria-hidden="true"
-        />
-      </a>
-    </div>
-  );
-}
-
 function SidebarPlanCreditsWidget() {
   const subscriptionQuery = useBillingSubscription();
   const subscription = subscriptionQuery.data;
@@ -652,7 +569,9 @@ function SidebarPlanCreditsWidget() {
 
   const planLabel = subscription?.displayName ?? "Free";
   const creditsRemaining = subscription?.creditsRemaining ?? 0;
-  const creditsLimit = subscription?.sharedMonthlyCredits ?? 0;
+  const creditsLimit = subscription?.isActive
+    ? subscription.sharedMonthlyCredits
+    : subscription?.freeGenerationCredits?.granted ?? 0;
   const billingHref = "/pricing";
   const actionLabel = "Upgrade";
 
@@ -672,7 +591,7 @@ function SidebarPlanCreditsWidget() {
         </Link>
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-muted">
-        <span>Shared AI credits</span>
+        <span className="inline-flex items-center gap-1"><CreditIcon className="size-3.5" />One-time AI credits</span>
         <span className="font-mono font-bold text-foreground">
           {creditsRemaining} / {creditsLimit}
         </span>

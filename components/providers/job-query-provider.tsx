@@ -1,9 +1,11 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { subscribeConnectionChanges } from "@/lib/social/connection-cache-events";
 
 import { useAuth } from "@/contexts/auth-context";
+import { AccountTimeZoneProvider } from "./account-timezone-provider";
 
 export function JobQueryProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -16,6 +18,7 @@ export function JobQueryProvider({ children }: { children: ReactNode }) {
 }
 
 function AccountQueryClientProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -31,7 +34,12 @@ function AccountQueryClientProvider({ children }: { children: ReactNode }) {
       }),
   );
 
+  const ownerId = user?.uid;
+  useEffect(() => ownerId ? subscribeConnectionChanges(queryClient, ownerId) : undefined, [queryClient, ownerId]);
+
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <AccountTimeZoneProvider>{children}</AccountTimeZoneProvider>
+    </QueryClientProvider>
   );
 }

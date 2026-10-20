@@ -59,6 +59,7 @@ test("TikTok Hook observations do not manufacture watch or sales data", () => {
       connectionId: "connection-2",
       lastSyncedAt: "2026-08-03T10:00:00.000Z",
       message: null,
+      privatePublishingRecords: [],
       status: "ready",
       videos: [
         {

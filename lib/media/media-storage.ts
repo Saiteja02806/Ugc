@@ -1,6 +1,10 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { mediaCollections } from "@/lib/media/types";
+import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import { getAssetReferenceSoundtrack, getExplorePairedReference, referenceAudioBaseStorageKey } from "@/worker/src/lib/explore-reference-soundtrack";
 
 import type {
   MediaAsset,
@@ -73,6 +77,7 @@ export type CreateUploadingMediaAssetInput = {
   fileName: string;
   fileSizeBytes: number;
   mimeType: string;
+  metadata?: Record<string, Json | undefined>;
   projectId?: string | null;
   sourceType: Extract<MediaSourceType, "upload" | "influencer_upload">;
   storageKey: string;
@@ -158,7 +163,7 @@ export async function createUploadingMediaAsset(
       file_size_bytes: input.fileSizeBytes,
       height: null,
       id: input.assetId,
-      metadata: {},
+      metadata: input.metadata ?? {},
       mime_type: input.mimeType,
       parent_asset_id: null,
       project_id: input.projectId ?? null,
@@ -184,9 +189,25 @@ export async function createUploadingMediaAsset(
   return data;
 }
 
+export async function listImageLibraryAssetsPage(params: { userId: string; offset: number; query: string }) {
+  let query = getSupabaseServerClient().from(MEDIA_ASSETS_TABLE).select("*")
+    .eq("user_id", params.userId).eq("collection", "image").eq("status", "ready").is("deleted_at", null)
+    .in("source_type", ["upload", "generated_image"])
+    .order("created_at", { ascending: false }).order("id", { ascending: false }).range(params.offset, params.offset + 60);
+  if (params.query) {
+    const escaped = params.query.replace(/[\\%_"]/g, character => `\\${character}`);
+    const pattern = `"%${escaped}%"`;
+    query = query.or(`title.ilike.${pattern},file_name.ilike.${pattern}`);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`Could not load image library: ${error.message}`);
+  return data ?? [];
+}
+
 export async function listMediaAssets(params: {
   collection?: MediaCollection | null;
   sourceTypes?: MediaSourceType[] | null;
+  projectId?: string;
   userId: string;
 }) {
   let query = getSupabaseServerClient()
@@ -205,6 +226,10 @@ export async function listMediaAssets(params: {
     query = query.in("source_type", params.sourceTypes);
   }
 
+  if (params.projectId) {
+    query = query.eq("project_id", params.projectId);
+  }
+
   const { data, error } = await query;
 
   if (error) {
@@ -212,6 +237,58 @@ export async function listMediaAssets(params: {
   }
 
   return data;
+}
+
+/** Bounded owner-scoped listing for MCP. The caller validates filters and cursor. */
+export async function listMediaAssetsPage(params: {
+  collection?: MediaCollection;
+  collections?: readonly MediaCollection[];
+  sourceType?: MediaSourceType;
+  query?: string;
+  after?: { updatedAt: string; id: string };
+  limit: number;
+  userId: string;
+}) {
+  let request = getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("status", "ready")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(params.limit + 1);
+
+  if (params.collection) request = request.eq("collection", params.collection);
+  else request = request.in("collection", params.collections ?? mediaCollections);
+  if (params.sourceType) request = request.eq("source_type", params.sourceType);
+
+  // PostgREST raw OR grammar. Values are quoted, with LIKE wildcards escaped,
+  // and the date/UUID come only from an authenticated, signed cursor.
+  const search = params.query
+    ? (() => {
+        const escaped = params.query.replace(/[\\%_"]/g, (character) => `\\${character}`);
+        const pattern = `"%${escaped}%"`;
+        return [`title.ilike.${pattern}`, `file_name.ilike.${pattern}`];
+      })()
+    : [];
+  const position = params.after
+    ? [
+        `updated_at.lt.${params.after.updatedAt}`,
+        `and(updated_at.eq.${params.after.updatedAt},id.lt.${params.after.id})`,
+      ]
+    : [];
+  if (search.length && position.length) {
+    request = request.or(search.flatMap((term) =>
+      position.map((point) => `and(${term},${point})`),
+    ).join(","));
+  } else if (search.length || position.length) {
+    request = request.or((search.length ? search : position).join(","));
+  }
+
+  const { data, error } = await request;
+  if (error) throw new Error(`Could not list media assets: ${error.message}`);
+  return data ?? [];
 }
 
 export async function getMediaAssetForOwner(params: {
@@ -231,6 +308,51 @@ export async function getMediaAssetForOwner(params: {
   }
 
   return data;
+}
+
+/** Reuse an active catalogue import without reading any other owner's media. */
+export async function getMediaAssetForOwnerByStorageKey(params: {
+  storageKey: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .eq("storage_key", params.storageKey)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load media asset: ${error.message}`);
+  return data;
+}
+
+/** Bounded lookup for multi-slide edits; never reads another owner's assets. */
+export async function getMediaAssetsForOwnerByIds(params: {
+  assetIds: string[];
+  userId: string;
+}) {
+  const assetIds = [...new Set(params.assetIds)];
+  if (assetIds.length > 20) throw new Error("Choose at most 20 slide images.");
+  if (assetIds.length === 0) return [];
+  const { data, error } = await getSupabaseServerClient()
+    .from(MEDIA_ASSETS_TABLE)
+    .select("*")
+    .eq("user_id", params.userId)
+    .in("id", assetIds)
+    .is("deleted_at", null);
+  if (error) throw new Error(`Could not load slide images: ${error.message}`);
+  return data ?? [];
+}
+
+/** Look up durable reference URLs without trusting client-supplied sizes. */
+export async function getMediaAssetsForOwnerByUrls(params: { urls: string[]; userId: string }) {
+  const urls = [...new Set(params.urls)];
+  if (urls.length > 6) throw new Error("Choose at most six reference files.");
+  if (!urls.length) return [];
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("user_id", params.userId).in("url", urls).is("deleted_at", null);
+  if (error) throw new Error("Could not verify reference images.");
+  return data ?? [];
 }
 
 export async function getLatestReadyMediaAssetForParent(params: {
@@ -257,15 +379,35 @@ export async function getLatestReadyMediaAssetForParent(params: {
   return data;
 }
 
-export async function markMediaAssetReady(params: {
+/** Bearer-token delivery route only; ordinary reads must remain owner-scoped. */
+export async function getReadyMediaAssetForDelivery(assetId: string) {
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("id", assetId).eq("status", "ready").is("deleted_at", null).maybeSingle();
+  if (error) throw new Error("Could not read private-media delivery record.");
+  return data;
+}
+
+export async function getReadyMediaAssetByKeyForOwner(key: string, owner: string) {
+  const { data, error } = await getSupabaseServerClient().from(MEDIA_ASSETS_TABLE)
+    .select("*").eq("storage_key", key).eq("user_id", owner).eq("status", "ready")
+    .is("deleted_at", null).maybeSingle();
+  if (error) throw new Error("Could not check the selected private reference.");
+  return data;
+}
+
+type MarkMediaAssetReadyParams = {
   assetId: string;
   durationSeconds?: number | null;
-  height: number;
+  height: number | null;
   ratio: MediaRatio;
   userId: string;
-  width: number;
-}) {
-  const { data, error } = await getSupabaseServerClient()
+  width: number | null;
+};
+
+export function markMediaAssetReady(params: MarkMediaAssetReadyParams & { expectedStatus: "uploading" }): Promise<MediaAssetRow | null>;
+export function markMediaAssetReady(params: MarkMediaAssetReadyParams): Promise<MediaAssetRow>;
+export async function markMediaAssetReady(params: MarkMediaAssetReadyParams & { expectedStatus?: "uploading" }) {
+  let query = getSupabaseServerClient()
     .from(MEDIA_ASSETS_TABLE)
     .update({
       duration_seconds: params.durationSeconds ?? null,
@@ -278,8 +420,12 @@ export async function markMediaAssetReady(params: {
     .eq("id", params.assetId)
     .eq("user_id", params.userId)
     .is("deleted_at", null)
-    .select("*")
-    .single();
+    .select("*");
+
+  if (params.expectedStatus) query = query.eq("status", params.expectedStatus);
+  const { data, error } = params.expectedStatus
+    ? await query.maybeSingle()
+    : await query.single();
 
   if (error) {
     throw new Error(`Could not finish media asset: ${error.message}`);
@@ -293,7 +439,7 @@ export async function updateMediaAssetForOwner(params: {
   metadata?: Record<string, Json | undefined>;
   title?: string;
   userId: string;
-}) {
+}, attempt = 0): Promise<MediaAssetRow | null> {
   const current = await getMediaAssetForOwner(params);
 
   if (!current) {
@@ -316,18 +462,21 @@ export async function updateMediaAssetForOwner(params: {
     update.title = params.title.trim().slice(0, 140);
   }
 
-  const { data, error } = await getSupabaseServerClient()
+  let query = getSupabaseServerClient()
     .from(MEDIA_ASSETS_TABLE)
     .update(update)
     .eq("id", params.assetId)
     .eq("user_id", params.userId)
-    .is("deleted_at", null)
-    .select("*")
-    .single();
+    .is("deleted_at", null);
+  // Archive flags must not overwrite metadata saved concurrently by a worker.
+  if (params.metadata) query = query.eq("updated_at", current.updated_at);
+  const { data, error } = await query.select("*").maybeSingle();
 
   if (error) {
     throw new Error(`Could not update media asset: ${error.message}`);
   }
+  if (!data && params.metadata && attempt < 2) return updateMediaAssetForOwner(params, attempt + 1);
+  if (!data) throw new Error("This media changed while saving. Refresh and try again.");
 
   return data;
 }
@@ -410,6 +559,10 @@ export async function upsertReadyMediaAsset(input: UpsertReadyMediaAssetInput) {
 }
 
 export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
+  const metadata = isJsonObject(row.metadata) ? row.metadata : {};
+  const soundtrack = row.source_type === "generated_video" || metadata.exploreFinish === true ? getAssetReferenceSoundtrack(metadata) : null;
+  const reference = soundtrack ? getExplorePairedReference(soundtrack.referenceId) : null;
+  if (soundtrack?.cleanStorageKey && soundtrack.cleanStorageKey !== referenceAudioBaseStorageKey(row.id)) throw new Error("The reference audio base belongs to another asset.");
   return {
     collection: row.collection,
     createdAt: row.created_at,
@@ -418,7 +571,9 @@ export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
     fileSizeBytes: row.file_size_bytes,
     height: row.height,
     id: row.id,
-    metadata: isJsonObject(row.metadata) ? row.metadata : {},
+    metadata: { ...metadata, ...(reference && soundtrack ? { referenceAudioPreview: { referenceId: reference.id, title: reference.audioTitle,
+      audioUrl: buildPublicStorageUrl(reference.audioStorageKey), volume: soundtrack.volume,
+      cleanVideoUrl: soundtrack.cleanStorageKey ? buildPublicStorageUrl(soundtrack.cleanStorageKey) : null } } : {}) },
     mimeType: row.mime_type,
     parentAssetId: row.parent_asset_id,
     projectId: row.project_id,
@@ -426,10 +581,11 @@ export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
     sourceRecordId: row.source_record_id,
     sourceType: row.source_type,
     status: row.status,
-    thumbnailUrl: row.thumbnail_url,
+    thumbnailUrl: isPrivateUserMedia(row) && row.thumbnail_url
+      ? getProtectedMediaDeliveryUrl(row.id, Date.now(), "thumbnail") : row.thumbnail_url,
     title: row.title,
     updatedAt: row.updated_at,
-    url: row.url,
+    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : row.url,
     width: row.width,
   };
 }

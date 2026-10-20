@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import {
   createAndDispatchBackgroundJob,
@@ -9,6 +10,7 @@ import { getBackgroundJobForUser, type BackgroundJobRecord } from "@/lib/jobs/ba
 import { ensureWallTextContentPlanGeneration } from "@/lib/trending/wall-text-content-plan-generation-job";
 import { admitWallTextDailyDelivery } from "@/lib/trending/wall-text-early-delivery";
 import { isWallTextGenerationFailureTerminalCode } from "@/lib/trending/wall-text-generation-failure";
+import { assertWallTextGenerationRuntimeConfigured } from "@/lib/trending/wall-text-generation-runtime";
 import {
   WALL_TEXT_FINAL_LAYOUT_VERSION,
   WALL_TEXT_GENERATOR_VERSION,
@@ -33,6 +35,12 @@ type WallTextJobParams = {
 export function enqueueTrendingWallTextJob(params: WallTextJobParams & { dailyFeedId?: undefined }): Promise<BackgroundJobRecord>;
 export function enqueueTrendingWallTextJob(params: WallTextJobParams): Promise<BackgroundJobRecord | null>;
 export async function enqueueTrendingWallTextJob(params: WallTextJobParams) {
+  assertTrendingFormatGenerationEnabled("wall_text");
+  // A current plan can skip the plan launcher, so guard the writer path here
+  // as well as in the planner launcher. This check is intentionally before
+  // daily delivery admission, which can reserve a customer's Wall slot.
+  assertWallTextGenerationRuntimeConfigured();
+
   const plan = await ensureWallTextContentPlanGeneration({
     profile: params.profile,
   });

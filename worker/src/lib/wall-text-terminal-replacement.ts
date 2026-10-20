@@ -12,7 +12,7 @@ const REQUEST_TIMEOUT_MS = 45_000;
 export async function scheduleWallTextTerminalReplacement(params: {
   businessProfileId: string;
   businessProfileVersion: number;
-  dailyFeedId: string;
+  dailyFeedId?: string | null;
   errorCode: string;
   failedJobId: string;
   recoveryKey?: string | null;

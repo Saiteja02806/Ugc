@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "projectRef": "kltxwijhluawgveykfbt",
+  "observedAt": "2026-10-03",
+  "readOnly": true,
+  "normalization": "CRLF to LF; trim only outer ASCII space/tab/CR/LF; join stored statements with LF",
+  "rows": [
+    {
+      "version": "20260829093001",
+      "name": "production_baseline_v1",
+      "sql_sha256": "947aa21cd02ca838b68c5ab2d96d49bb46cf481c8fbd05eea9e442122332455a",
+      "statement_count": 1
+    },
+    {
+      "version": "20260829124811",
+      "name": "simplify_trending_hook_feed_generation",
+      "sql_sha256": "d2a6f3ca8df15943577cbbf197482044f04e4874107b1aa9e2dd5f602279d440",
+      "statement_count": 21
+    },
+    {
+      "version": "20260830081949",
+      "name": "allow_multiple_hook_video_schedules",
+      "sql_sha256": "927bfe69f50b6e39d049ae2eb1b8e0a9b8ac9dcbc23aaa3e148c78e249df47f4",
+      "statement_count": 6
+    },
+    {
+      "version": "20260830120123",
+      "name": "harden_daily_trending_feed_recovery",
+      "sql_sha256": "812e870f7a13c8a00703f74e1d5b2adc18ed02317b3e3b96ec2e485d82a65eb4",
+      "statement_count": 1
+    },
+    {
+      "version": "20260830130854",
+      "name": "reuse_unconsumed_carousel_content_plan_reservations",
+      "sql_sha256": "4baba84bca972ad6a2e68033ef75b97fd1422f83f45ffb9f5c36160b6da4f139",
+      "statement_count": 1
+    },
+    {
+      "version": "20260830130901",
+      "name": "replace_partial_daily_carousel_refill_batches",
+      "sql_sha256": "7fae1a1d66b292fb6510f61586c4ea947424b262709d72b65b23135f8a43c533",
+      "statement_count": 1
+    },
+    {
+      "version": "20260830130908",
+      "name": "prevent_wall_text_background_reservation_collisions",
+      "sql_sha256": "9c392fddfc3a2e12a8ff6f336ba9cfb81e978d3d49bfb1154ae97036644dd3e9",
+      "statement_count": 1
+    },
+    {
+      "version": "20260830190000",
+      "name": "fix_trending_hook_v2_return_ambiguity",
+      "sql_sha256": "2a2f7dc9b09d7586eed23317b7e362e1473ea8ac50839800fcf5a5ca7db3e7d1",
+      "statement_count": 9
+    },
+    {
+      "version": "20260830190443",
+      "name": "allow_wall_text_background_reuse_after_fresh_rotation",
+      "sql_sha256": "0fe322434f6a7c13d2bda84fd0b04fc954524d22738e95d28a69c778bb80147c",
+      "statement_count": 1
+    },
+    {
+      "version": "20260830190513",
+      "name": "prioritize_fresh_carousel_images_before_reuse",
+      "sql_sha256": "4924a98406bc5d0aa2818048dcfe3f6e149327aa2fff6b3d3c739eea342ccd7c",
+      "statement_count": 1
+    },
+    {
+      "version": "20260831053441",
+      "name": "add_wall_text_pending_schedules",
+      "sql_sha256": "bae124d282f08a0b2d52d67332dbe3b973c8a380da26b9c18bde57506c74da37",
+      "statement_count": 1
+    },
+    {
+      "version": "20260831103952",
+      "name": "enforce_30_day_content_plan_continuity",
+      "sql_sha256": "2fc208ae750b6fa99bb5f41d619d3871c1ba302fcd5ffd8e2a79750376c1c09a",
+      "statement_count": 12
+    },
+    {
+      "version": "20260831133000",
+      "name": "rotate_30_day_content_plan_items",
+      "sql_sha256": "b8028df66db5309fe21cb496b11ab6e436efcfce234965c519bd7d417a8b2a97",
+      "statement_count": 40
+    },
+    {
+      "version": "20260831151506",
+      "name": "isolate_published_renders_from_creative_assets",
+      "sql_sha256": "f34b53ee1c8968469820809c2ca71a2736dcd0680724068848712eab98f0833b",
+      "statement_count": 3
+    },
+    {
+      "version": "20260831173300",
+      "name": "add_per_idea_private_context",
+      "sql_sha256": "cb2e1737abdbbd2f31617df97e72f149ec6b288c1f41c130685aceabfcd36688",
+      "statement_count": 14
+    },
+    {
+      "version": "20260901115546",
+      "name": "add_wall_text_arial_bold_typography",
+      "sql_sha256": "c753427155d4e1b730e7f8d9fb5c02a83145ead618756563f4038b539db8cb13",
+      "statement_count": 1
+    },
+    {
+      "version": "20260902054816",
+      "name": "recover_terminal_wall_text_plan_jobs",
+      "sql_sha256": "22d035a46893e20c105af2015a0189419cff13f758ace51cff542abe79fb40e7",
+      "statement_count": 9
+    },
+    {
+      "version": "20260902120000",
+      "name": "add_wall_text_regular_typography",
+      "sql_sha256": "da4f2a565febdde0309de19df84ef06c115e19b4674dbfd4efc9c14b22e45fdd",
+      "statement_count": 1
+    },
+    {
+      "version": "20260903113000",
+      "name": "add_wall_text_avenir_next_typography",
+      "sql_sha256": "331b1a464e4008677c4fb802553ca404c9ec85e1755791eb009aaba5bf09ccd5",
+      "statement_count": 1
+    },
+    {
+      "version": "20260905044832",
+      "name": "expand_carousel_role_asset_reservation_to_six_slides",
+      "sql_sha256": "a550b8c1d2149871c18c14c13e040a6b9470260ed0930b2ae362654693180375",
+      "statement_count": 7
+    },
+    {
+      "version": "20260905110000",
+      "name": "update_instagram_connection_plan_limits",
+      "sql_sha256": "608b081c8408535b54e838a52744430f62e63d64ec8000c7d1a516d6bc943e38",
+      "statement_count": 6
+    },
+    {
+      "version": "20260905123000",
+      "name": "harden_wall_text_regeneration_recovery",
+      "sql_sha256": "49f48d9c114461cb2fbc595d762a349663d6e0424fdfb3a263acfce630e3ddbb",
+      "statement_count": 4
+    },
+    {
+      "version": "20260905150000",
+      "name": "create_reaction_asset_catalog",
+      "sql_sha256": "ecc19594ad9c814ba33da0c78c0fff1a07be11e5467250e0187f770de714892e",
+      "statement_count": 24
+    },
+    {
+      "version": "20260906091416",
+      "name": "fix_carousel_six_slide_reservation_initialization",
+      "sql_sha256": "a1c4f1dafdcd78d66a663820596820572c2c0a460d08753f16acbb7c092625fa",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906093500",
+      "name": "allow_sixth_carousel_image_usage_slot",
+      "sql_sha256": "b861b9a8a8f039bcd10098503367185be0d51798d77cbbf7a31a2c92b41cdbe6",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906120000",
+      "name": "add_reaction_trending_delivery",
+      "sql_sha256": "83c69bcbea72f66ee44ddb31bfefd3c89eef604548c9ae0a5560a8c5dac0a243",
+      "statement_count": 57
+    },
+    {
+      "version": "20260906172732",
+      "name": "repair_terminal_generation_recovery",
+      "sql_sha256": "37f8c323ca94c465542bb462dd5509357410dbc8c1782911f4567cf96abffef0",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906175631",
+      "name": "bound_daily_carousel_recovery",
+      "sql_sha256": "c516b9db2f951f24dc0c3bd822eea88eb3c7aa729f9fd400a49c84f3c9861994",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906180000",
+      "name": "add_durable_reaction_generation_worker",
+      "sql_sha256": "f8ecc03e0ffb8d2c465205e2df0d3a9f072c752e721a52c0ec4f8cac1f4cdc70",
+      "statement_count": 39
+    },
+    {
+      "version": "20260906183128",
+      "name": "allow_explicit_bounded_format_recovery",
+      "sql_sha256": "9bd79b8234f556f3fe9f916c45e43ba2fdf9a9b287529a2ee0957ead0112cbeb",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906184412",
+      "name": "restrict_carousel_recovery_rpc_access",
+      "sql_sha256": "2dafceb0dc418ad7284c987abe923920e7cc745069454da815ce465321d10e38",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906190000",
+      "name": "allow_reaction_daily_feed_failure_marking",
+      "sql_sha256": "179818b5c700f24a79532c042529efc29f7ff9d3ee6c0927815410387695836e",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906200000",
+      "name": "terminalize_wall_text_stale_layout_failures",
+      "sql_sha256": "a6bc0e1fdadf211230f51ee43c948409cf171270d11b81a7822e7cf0eaf18023",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906210000",
+      "name": "fix_reaction_generation_plan_sql_ambiguity",
+      "sql_sha256": "786097a8cfb8ba24b2d0b44bdc29b493fb78bc989b2a6ab8fed82d1ac317488f",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906213000",
+      "name": "fix_wall_text_terminalization_current_generator_layouts",
+      "sql_sha256": "0dd3dcae3c6e06534b6be9d4bf571ff9f9b0842e149bd6aa3e620d48d1f091b3",
+      "statement_count": 1
+    },
+    {
+      "version": "20260906220000",
+      "name": "refresh_instagram_analytics_thumbnails",
+      "sql_sha256": "39104bf7df24eb34a664a852bdb9379bb729e5e811ee98f6746ee75b115bcf56",
+      "statement_count": 1
+    },
+    {
+      "version": "20260907061454",
+      "name": "allow_reaction_render_execution_slots",
+      "sql_sha256": "bc41bbc8fc2270a0f87f3a2dff4f810a83eeb0f14fca2bed5665ce80e9bbdfc5",
+      "statement_count": 1
+    },
+    {
+      "version": "20260907065625",
+      "name": "clear_resolved_daily_feed_recovery_errors",
+      "sql_sha256": "e9bd1c2e662d343a1c2bac6e339ffdc0d4f19d925196932bdc5a63dae0701013",
+      "statement_count": 1
+    },
+    {
+      "version": "20260907150000",
+      "name": "add_wall_text_arial_bold_v6_typography",
+      "sql_sha256": "0bbcabf89d25bc7c4151098a55c81b3098517da77044e81bb08d16f51ef6d4ea",
+      "statement_count": 1
+    },
+    {
+      "version": "20260907160000",
+      "name": "create_content_cards",
+      "sql_sha256": "b54fd128ce8cb0cdae4a46ceeeabd0244f7af3ba90021061f039a854c480d7eb",
+      "statement_count": 6
+    },
+    {
+      "version": "20260907170000",
+      "name": "add_create_content_video_renders",
+      "sql_sha256": "261fe1228595c499dbbcd802e996b8d0275c6587efb88939e37e7263993b7bf1",
+      "statement_count": 14
+    },
+    {
+      "version": "20260907180000",
+      "name": "restrict_internal_security_definer_functions",
+      "sql_sha256": "932020a3e1ddba802b20004b494eb5d532e5790cc2eac13421d51cc406f5fb91",
+      "statement_count": 1
+    },
+    {
+      "version": "20260907190000",
+      "name": "add_background_job_cloud_run_operation_identity",
+      "sql_sha256": "b94d4e657b40d248348282588c04673b6a7943fe972737e81a249b34509a7377",
+      "statement_count": 4
+    },
+    {
+      "version": "20260907195000",
+      "name": "lighten_wall_text_v11_treatment",
+      "sql_sha256": "3765a1413012cbaf8eccd144d23f5266d4e1d9647f1910193b458ebebf6e1f09",
+      "statement_count": 1
+    },
+    {
+      "version": "20260907200000",
+      "name": "allow_reaction_text_edit_render_slots",
+      "sql_sha256": "07c600a859f5d09ef3889e12b3a3cb2cd37291d5f8f0f9c4a844366549013ba8",
+      "statement_count": 1
+    },
+    {
+      "version": "20260908110000",
+      "name": "match_wall_text_reference_typography_v12",
+      "sql_sha256": "3181a60889b77f11392ca63db33d1533180d93870f52b555471c97882ed466d4",
+      "statement_count": 1
+    },
+    {
+      "version": "20260908172213",
+      "name": "apply_wall_text_b_52px_typography_v13",
+      "sql_sha256": "0c64086bcff558180f58c36cd7f44b3d54bf28929ee6ff86235c57ed47259af1",
+      "statement_count": 1
+    },
+    {
+      "version": "20260908173235",
+      "name": "wall_text_early_delivery",
+      "sql_sha256": "ec40156fea7ed8479c06a7528cce970a318d87cdf8b1632cbc759dec0deb5766",
+      "statement_count": 1
+    },
+    {
+      "version": "20260909062121",
+      "name": "enable_wall_text_early_delivery_for_all_accounts",
+      "sql_sha256": "b56ddf045b74323f9c4ebacebb8b8b0234da81d724621d0102cc6a9d5d75c825",
+      "statement_count": 1
+    },
+    {
+      "version": "20260909111526",
+      "name": "wall_text_publication_fast_delivery",
+      "sql_sha256": "4fb92dfce18b2b8a15cacd2a1f610b714100a5343d07282ec983e6461ec047e5",
+      "statement_count": 7
+    },
+    {
+      "version": "20260909140000",
+      "name": "split_reaction_reel_render_workers",
+      "sql_sha256": "78962b2ad9d377b22f746d47b57cac3025016359e8827c50142ad3d2c545c025",
+      "statement_count": 20
+    },
+    {
+      "version": "20260909165333",
+      "name": "add_background_business_onboarding",
+      "sql_sha256": "514c210cad6637ef4137178bd7c5a745fb5c021cdbf14d52785f16f96c915514",
+      "statement_count": 15
+    },
+    {
+      "version": "20260909175456",
+      "name": "restrict_reaction_render_rpc_access",
+      "sql_sha256": "70f0e019c6b28accd8f90cbb66267fcfc107f43555f993c39f0506733077aa18",
+      "statement_count": 10
+    },
+    {
+      "version": "20260910035008",
+      "name": "fix_wall_text_plan_local_date",
+      "sql_sha256": "328c2c7422850b1f6e0ffa82a5829bca8a4d2d7a5b1952e43e73cee5c28c7520",
+      "statement_count": 1
+    },
+    {
+      "version": "20260910105839",
+      "name": "add_complimentary_plan_grants",
+      "sql_sha256": "2eb75a5c4b195172113741bc99639e03bf2742644360abe9d8534c1463e9c680",
+      "statement_count": 30
+    },
+    {
+      "version": "20260910112546",
+      "name": "increase_free_trial_allowances",
+      "sql_sha256": "51138ed79a8b845486c56209391695f6861e7d34bb76070df05ffaec89c2c006",
+      "statement_count": 6
+    },
+    {
+      "version": "20260910113000",
+      "name": "finalize_complimentary_plan_trial_guards",
+      "sql_sha256": "b4300d913fa780ef3c0990483184aca073eeb7b5b1d7da1959a03a1e25e901c9",
+      "statement_count": 7
+    },
+    {
+      "version": "20260910150000",
+      "name": "add_carousel_hook_template_assignments",
+      "sql_sha256": "2ac129e94d9b8d82371bb8cd2cbe1ecdbdeaebef3fb8676b135d2d6030e93417",
+      "statement_count": 1
+    },
+    {
+      "version": "20260911120000",
+      "name": "harden_reaction_generation_provenance",
+      "sql_sha256": "2f6d489903c871b2fc5c6f0b8b8ac9326cdf8ab9b6e267273b8b855ff8be7de9",
+      "statement_count": 1
+    },
+    {
+      "version": "20260912090917",
+      "name": "reaction_render_trending_reconciliation",
+      "sql_sha256": "fbd38f3fc40093ddf9c810411a38633c1faa1d18883265eab5729ae26ddb4bd0",
+      "statement_count": 2
+    },
+    {
+      "version": "20260912103553",
+      "name": "repair_wall_text_daily_delivery_shortfalls",
+      "sql_sha256": "d89f439b59a663a7ad7a528ee0b835c414bd2425323d2abd61df2e2e34556208",
+      "statement_count": 1
+    },
+    {
+      "version": "20260912110000",
+      "name": "add_private_wall_text_failure_diagnostics",
+      "sql_sha256": "812cf77629961e7532a0a13354d63ad5c72dafe71a438b92c3d627a24a0ae816",
+      "statement_count": 11
+    },
+    {
+      "version": "20260912140000",
+      "name": "rotate_wall_text_terminal_delivery",
+      "sql_sha256": "e6f9030519c65aab568d49348cc66e9b48ddcc5b471cd685589699fbf9a01e66",
+      "statement_count": 1
+    },
+    {
+      "version": "20260914120000",
+      "name": "add_reaction_grounding_context_v2",
+      "sql_sha256": "004689bb788ea4e9bb8063fbd97f92e2d44442b1cdb611183be0c9f27560d39f",
+      "statement_count": 15
+    },
+    {
+      "version": "20260914121000",
+      "name": "add_wall_text_grounding_v2",
+      "sql_sha256": "34d73e7c358b70f34965bbb2d36643ddb9e0972f8a7d171daaca806dd2625108",
+      "statement_count": 11
+    },
+    {
+      "version": "20260914123000",
+      "name": "add_business_context_settings_drafts",
+      "sql_sha256": "76848583ea0b73ee7197c69c8c69db06675efd0771498e4e1b43909382e62074",
+      "statement_count": 6
+    },
+    {
+      "version": "20260915090010",
+      "name": "reset_terminal_instagram_container_on_manual_retry",
+      "sql_sha256": "7f9a3e7cf777360591e9cbbb1b1953402db8f65edd3b755d07e1971b58633798",
+      "statement_count": 1
+    },
+    {
+      "version": "20260915090124",
+      "name": "reset_terminal_instagram_container_on_manual_retry",
+      "sql_sha256": "7f9a3e7cf777360591e9cbbb1b1953402db8f65edd3b755d07e1971b58633798",
+      "statement_count": 1
+    },
+    {
+      "version": "20260915144500",
+      "name": "reset_terminal_instagram_container_on_manual_retry",
+      "sql_sha256": "910d26b5368908c09cb507aaeef2e6e67a5b5fc3b843aaaf0d5c899573cbcfee",
+      "statement_count": 5
+    },
+    {
+      "version": "20260915160000",
+      "name": "apply_business_context_directly",
+      "sql_sha256": null,
+      "statement_count": null
+    },
+    {
+      "version": "20260916102534",
+      "name": "allow_approved_loopable_hook_audio",
+      "sql_sha256": "40d7f8eb21f9243a98c6bdfd7f49c53b841df284c66089faf387a0da03beefe5",
+      "statement_count": 3
+    },
+    {
+      "version": "20260917130211",
+      "name": "hook_v5_56px_typography",
+      "sql_sha256": "e6993288312df6acf9c579ce62c8454ad67b08393ed2e2ffca065dc34a90f30d",
+      "statement_count": 7
+    },
+    {
+      "version": "20260922034228",
+      "name": "carousel_structure_2_hook_templates",
+      "sql_sha256": "6f62c09c10ee153c2b077c493092e46836f63b547611a894ef9f2754e0c3d758",
+      "statement_count": 1
+    },
+    {
+      "version": "20260923160227",
+      "name": "store_wall_text_plan_selected_fact",
+      "sql_sha256": "0406fffe5e6e4dd108ac7a0c05ff468c2a90041e8ebe92536ce9a5e1febd8c9e",
+      "statement_count": 1
+    },
+    {
+      "version": "20260923160429",
+      "name": "stage_fact_matched_wall_plans_for_pro",
+      "sql_sha256": "7ecd3be8b27ed826b4ee27a526804292089a3cde3667b109b567d3b898804382",
+      "statement_count": 1
+    },
+    {
+      "version": "20260923203545",
+      "name": "allow_wall_text_background_reuse",
+      "sql_sha256": "133e82658b46ed5bdd48d81713a22a36fdf9f71cce09e141eb3080996ecb0e8d",
+      "statement_count": 1
+    },
+    {
+      "version": "20260924183540",
+      "name": "reopen_trending_reconciliation_on_recompleted_jobs",
+      "sql_sha256": "3aee8d6d516883f0cfb99dc4ba5c2f8a79ad719f612a568da583f0aa5aa02874",
+      "statement_count": 1
+    },
+    {
+      "version": "20260924185333",
+      "name": "allow_reaction_clip_repeat_after_catalog_exhaustion",
+      "sql_sha256": "41d97bfcc9e72b3fcae1eacb7cc751832bb5c3674a67c919a07f2c6d4a5d380d",
+      "statement_count": 1
+    },
+    {
+      "version": "20260927202555",
+      "name": "mcp_oauth",
+      "sql_sha256": "a1215ea4d033ded761d45c605b1e307350e16b6ad41048961f04ddf0fb8a82f0",
+      "statement_count": 1
+    },
+    {
+      "version": "20260927202613",
+      "name": "mcp_atomic_generation_job",
+      "sql_sha256": "0a7f5e3ce5c2b1cae46dfd81f465cde41df0d54a617b0b455824cd505b17290d",
+      "statement_count": 1
+    },
+    {
+      "version": "20260928111109",
+      "name": "mcp_oauth_atomic_family_revocation",
+      "sql_sha256": "5d8c62d1d9d39aa6e2661d4a9ece75772573a938ee1c6620e2a4a4fb72b4b5c1",
+      "statement_count": 1
+    },
+    {
+      "version": "20260928151747",
+      "name": "mcp_upload_quota",
+      "sql_sha256": "92a0065f939b581b04b176748893a97304f99adcc295a128e2f07e90dc0979e0",
+      "statement_count": 1
+    },
+    {
+      "version": "20260928205436",
+      "name": "allow_higgsfield_generation_provider",
+      "sql_sha256": "d37cc178a6fcf7dab73311c0650c43b2c9f7b54945365ca292da4cb3c507a385",
+      "statement_count": 1
+    },
+    {
+      "version": "20260930093912",
+      "name": "ai_studio_audio_references",
+      "sql_sha256": "b585d7701bc8f84e637e2580dd5551eb213be3d3aa764aae778b1b59cbc34138",
+      "statement_count": 1
+    },
+    {
+      "version": "20260930144135",
+      "name": "mcp_video_generation",
+      "sql_sha256": "57df796bfae448a1296b6c6df3e9c3662ed22c85dbfd0af536242ea06face68b",
+      "statement_count": 1
+    },
+    {
+      "version": "20260930155642",
+      "name": "auth_email_rate_limits",
+      "sql_sha256": "c805e795b5819207fd5ae88a66216c48ceebe9078f13c7c2d74f7e53087c9726",
+      "statement_count": 1
+    },
+    {
+      "version": "20261001042901",
+      "name": "allow_wall_text_v13_50px_typography",
+      "sql_sha256": "28ec44ed3dffd54f8662aebb0ed3a833e398d85d3827ccba5da1ff25008d329a",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003041121",
+      "name": "character_generation_batch",
+      "sql_sha256": "bd3643498af9571602bf1f81b8d44a51c6a237588a1b85501f34cfeee6019c8b",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003041127",
+      "name": "character_preferences",
+      "sql_sha256": "f62dc04780cbdb4eb2fd522f035529095e88224c8534c09b5062d98af9da8b60",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003041415",
+      "name": "character_allowance_privileges",
+      "sql_sha256": "79e0512aa055461c4fe316f7316953caed586d680b7f31a9b0ed7c07e1783001",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003045651",
+      "name": "character_gemini_3_pro_image",
+      "sql_sha256": "ef981ebeac3749352d5b543ed3d9bd64724a8994125b0047392c2bde2d1d7842",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003061100",
+      "name": "allow_openrouter_generation_provider",
+      "sql_sha256": "9012e580b3572d412ab2f48e38de20dfeef0b1c6a6a31d2437626ec13296ac8d",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003080500",
+      "name": "dodo_billing_recovery",
+      "sql_sha256": "843eee0c1ea23d3b050fa24b4e923e62f62d38d359373cafe4aa3ef8fc6219ac",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003092157",
+      "name": "extend_trending_free_trial_to_seven_days",
+      "sql_sha256": "3324f811dc8a7677653fb2997d0c36cee0c5f41d46588c1c97002b99da9af16c",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003110411",
+      "name": "one_time_free_generation_credits",
+      "sql_sha256": "b71534c684bb880abd59782773a22098703b16ac799bb4938d568f30d78e2868",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003114017",
+      "name": "fund_generation_job_retries",
+      "sql_sha256": "2c4f5234453949a29764f7f12c02ce85648e501400ea2ef1713654203448af83",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003121102",
+      "name": "prevent_early_social_publishing",
+      "sql_sha256": "676a2c0ed329be5deb13d99a7f05a0167de4e10c8c197b77f702e5023a6421f8",
+      "statement_count": 1
+    },
+    {
+      "version": "20261003122024",
+      "name": "account_timezone_preferences",
+      "sql_sha256": "78d590ec15f7cf8a79b9e9a657e29ff26a83cd62a4ce3df117d494d722620c76",
+      "statement_count": 1
+    }
+  ]
+}

@@ -7,9 +7,14 @@ export const tiktokPrivacyLevels = [
 
 export type TikTokPrivacyLevel = (typeof tiktokPrivacyLevels)[number];
 
+export const TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE =
+  "Public TikTok posting will be available after UGC Pilot's TikTok Direct Post audit is approved. For a private test, choose Only me and make the TikTok account private.";
+
 export type TikTokPublishCapabilities = {
   creatorNickname: string | null;
   creatorUsername: string | null;
+  /** Whether TikTok has approved this client to Direct Post beyond private testing. */
+  directPostAudited: boolean;
   interactions: {
     commentsDisabled: boolean;
     duetsDisabled: boolean;

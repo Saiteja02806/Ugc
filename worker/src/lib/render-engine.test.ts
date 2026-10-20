@@ -15,6 +15,7 @@ import {
   buildCreateContentWallTextVideoArgs,
   buildWallTextVideoArgs,
   buildScheduleCombinationSegmentArgs,
+  buildScheduleCombinationSoundtrackArgs,
   buildPreparedTextOverlaySvg,
   ensureEditOverlayFontRegistered,
   ensureWallTextFontsRegistered,
@@ -25,7 +26,10 @@ import {
   buildWallTextOverlaySvg,
   buildWallTextRenderLayout,
   WALL_TEXT_INLINE_SAFE_PADDING,
+  WALL_TEXT_RASTER_EDGE_GUARD,
+  getWallTextRasterSafeLineWidth,
 } from "./wall-text-render-spec.js";
+import { HOOK_INLINE_SYMBOL_STROKE_WIDTH } from "./hook-inline-symbols.js";
 
 test("measures Avenir Next through its actual Pango family instead of a host fallback", async () => {
   const candidates = [
@@ -67,23 +71,64 @@ test("reflows an overflowing Reaction caption into the safe white-card area", as
   });
 
   assert.equal(layout.lines.join(" "), captionLines.join(" "));
-  assert.equal(layout.lines.length, 2);
+  assert.ok(
+    layout.lines.length >= 2 && layout.lines.length <= 3,
+    "the readable Reaction scale may use the permitted third caption line",
+  );
   assert.ok(layout.card);
   assert.ok(layout.card.width < 936, "the card should fit its content, not use the legacy full-width box");
   assert.ok(layout.card.x >= 90);
   assert.ok(layout.card.x + layout.card.width <= 990);
+  assert.equal(layout.card.y, 320, "the Reaction caption sits below the top UI area");
+  assert.equal(layout.textY, 320 + 18 + layout.fontSize);
   assert.ok(
     layout.lineWidths.every((width) => width <= layout.card!.width - 56),
     "each line keeps the requested left and right padding inside the card",
   );
-  assert.equal(svg.match(/<text /gu)?.length, 2);
-  assert.match(svg, /rx="18"/u);
+  assert.equal(svg.match(/<text /gu)?.length, layout.lines.length);
+  assert.match(svg, /rx="\d+"/u);
   assert.doesNotMatch(svg, /width="936"/u);
   assert.doesNotMatch(svg, /textLength=|lengthAdjust=/u);
 
   const metadata = await sharp(Buffer.from(svg)).png().metadata();
   assert.equal(metadata.width, 1080);
   assert.equal(metadata.height, 1920);
+});
+
+test("uses the same lower anchor for outlined Reaction captions", async () => {
+  const layout = await buildReactionCaptionLayout({
+    captionLines: ["The message stays clear", "over every background"],
+    treatment: "outlined_text",
+  });
+  const svg = await buildReactionCaptionOverlaySvg({
+    captionLines: ["The message stays clear", "over every background"],
+    treatment: "outlined_text",
+  });
+
+  assert.equal(layout.card, null);
+  assert.equal(layout.textY, 320 + layout.fontSize);
+  assert.doesNotMatch(svg, /<rect /u);
+  assert.match(svg, new RegExp(`y="${layout.textY}"`, "u"));
+});
+
+test("keeps feed-sized outlined Reaction captions above the old shrink floor", async () => {
+  const layout = await buildReactionCaptionLayout({
+    captionLines: [
+      "Me marketing my web application realizing viral",
+      "ready to post marketing content takes a long time",
+    ],
+    treatment: "outlined_text",
+  });
+
+  assert.ok(
+    layout.fontSize >= 50,
+    "the supplied feed-sized caption retains a visibly larger 50px minimum",
+  );
+  assert.ok(layout.lines.length <= 3);
+  assert.deepEqual(
+    layout.lines.join(" "),
+    "Me marketing my web application realizing viral ready to post marketing content takes a long time",
+  );
 });
 
 test("keeps the Reaction foreground legible when a catalog placement is too small", () => {
@@ -105,6 +150,29 @@ test("keeps the Reaction foreground legible when a catalog placement is too smal
   });
 
   assert.match(args[args.indexOf("-filter_complex") + 1]!, /scale=-2:1248/u);
+});
+
+test("preserves the selected Reaction source audio in the final Reel", () => {
+  const args = buildReactionVideoArgs({
+    backgroundPath: "background.jpg",
+    foregroundPath: "foreground.mov",
+    outputPath: "reaction.mp4",
+    overlayPath: "caption.png",
+    payload: {
+      backgroundStorageKey: "background.jpg",
+      captionLines: ["When the deadline moves", "before your first coffee"],
+      creativeId: "creative-1",
+      durationSeconds: 6,
+      foreground: { anchor: "bottom_center", heightPercent: 0.65 },
+      foregroundStorageKey: "foreground.mov",
+      renderId: "render-1",
+      treatment: "outlined_text",
+    },
+  });
+
+  assert.equal(args.includes("-an"), false);
+  assert.deepEqual(args.slice(args.indexOf("-map", args.indexOf("[video]")) + 1, args.indexOf("-map", args.indexOf("[video]")) + 3), ["1:a:0", "-t"]);
+  assert.deepEqual(args.slice(args.indexOf("-c:a"), args.indexOf("-c:a") + 4), ["-c:a", "aac", "-b:a", "160k"]);
 });
 
 test("applies Hook trim and text only to the opening segment", () => {
@@ -129,6 +197,7 @@ test("applies Hook trim and text only to the opening segment", () => {
       audioAssetId: "hook_audio_029",
       audioUrl: "https://cdn.example.com/EWW.mp3",
       durationSeconds: 14.08,
+      fitMode: "trim" as const,
       selectionSource: "video_locked" as const,
     },
     hookTrimEnd: 4.5,
@@ -144,7 +213,6 @@ test("applies Hook trim and text only to the opening segment", () => {
   };
   const hookArgs = buildScheduleCombinationSegmentArgs({
     hasAudio: false,
-    hookAudioPath: "EWW.mp3",
     inputPath: "hook.mp4",
     outputPath: "hook-normalized.mp4",
     payload,
@@ -170,12 +238,89 @@ test("applies Hook trim and text only to the opening segment", () => {
   assert.ok(hookArgs.includes("hook-overlay.png"));
   assert.ok(hookArgs.includes("-filter_complex"));
   assert.ok(hookArgs.includes("3.250"));
-  assert.ok(hookArgs.includes("EWW.mp3"));
+  assert.equal(hookArgs.includes("EWW.mp3"), false);
   assert.ok(hookArgs.includes("2:a:0"));
-  assert.ok(hookArgs.includes("volume=0.45"));
+  assert.ok(
+    hookArgs.includes("anullsrc=channel_layout=stereo:sample_rate=48000"),
+  );
   assert.equal(demoArgs.includes("-ss"), false);
   assert.equal(demoArgs.includes("-t"), false);
   assert.equal(demoArgs.includes("-filter_complex"), false);
+
+  const silentHookArgs = buildScheduleCombinationSegmentArgs({
+    hasAudio: false,
+    inputPath: "silent-hook.mp4",
+    outputPath: "silent-hook-normalized.mp4",
+    payload: { ...payload, hookAudio: null },
+    preparedTextOverlay,
+    segmentLabel: "hook",
+  });
+  assert.ok(
+    silentHookArgs.includes(
+      "anullsrc=channel_layout=stereo:sample_rate=48000",
+    ),
+  );
+});
+
+test("trims a full-length approved soundtrack across the Hook and Demo timeline", () => {
+  const args = buildScheduleCombinationSoundtrackArgs({
+    audioFitMode: "trim",
+    audioPath: "EWW.mp3",
+    inputPath: "combined-segments.mp4",
+    outputPath: "combined.mp4",
+  });
+
+  assert.deepEqual(args, [
+    "-y",
+    "-i",
+    "combined-segments.mp4",
+    "-i",
+    "EWW.mp3",
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a:0",
+    "-filter:a",
+    "volume=0.45",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    "-shortest",
+    "-avoid_negative_ts",
+    "make_zero",
+    "-movflags",
+    "+faststart",
+    "combined.mp4",
+  ]);
+  assert.equal(args.includes("-stream_loop"), false);
+});
+
+test("loops only a soundtrack explicitly selected as loopable", () => {
+  const args = buildScheduleCombinationSoundtrackArgs({
+    audioFitMode: "loop",
+    audioPath: "loop.mp3",
+    inputPath: "combined-segments.mp4",
+    outputPath: "combined.mp4",
+  });
+
+  assert.deepEqual(args.slice(0, 8), [
+    "-y",
+    "-i",
+    "combined-segments.mp4",
+    "-stream_loop",
+    "-1",
+    "-i",
+    "loop.mp3",
+    "-map",
+  ]);
+  assert.equal(args.includes("apad"), false);
 });
 
 test("rasterizes the shared overlay plan without distorting the font", async () => {
@@ -266,11 +411,20 @@ test("rasterizes approved Hook symbols as bundled cross/check icons", async () =
     style: "hook",
   });
 
-  assert.equal(layout.fontSize, 52);
+  assert.equal(layout.fontSize, 56);
   assert.equal(layout.lines.length, 2);
   assert.match(svg, /data-hook-inline-symbol="cross"/);
   assert.match(svg, /data-hook-inline-symbol="check"/);
-  assert.match(svg, /stroke-width="5"/);
+  const symbolStrokeWidths = Array.from(
+    svg.matchAll(
+      /<g data-hook-inline-symbol="[^"]+"[^>]*stroke-width="([^"]+)"/gu,
+    ),
+    (match) => match[1],
+  );
+  assert.deepEqual(symbolStrokeWidths, [
+    String(HOOK_INLINE_SYMBOL_STROKE_WIDTH),
+    String(HOOK_INLINE_SYMBOL_STROKE_WIDTH),
+  ]);
   assert.doesNotMatch(svg, /❌|✅|274C|2705/);
 
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
@@ -378,6 +532,62 @@ test("keeps the final painted Wall overlay inside the 15px inner fence", async (
   assert.ok(
     bounds.right <
       layout.textBox.left + layout.textBox.width - WALL_TEXT_INLINE_SAFE_PADDING - 1,
+  );
+});
+
+test("reserves raster edge space before a V9 line can touch the inner fence", async () => {
+  const textBox = {
+    height: 480 / 1920,
+    width: 780 / 1080,
+    x: 150 / 1080,
+    y: 800 / 1920,
+  };
+  const lines = [
+    "A customer question",
+    "interrupts the caption, and the",
+    "half-written note waits in",
+    "drafts. Use UGCPilot's",
+    "completed, business-aware",
+    "post drafts to publish one",
+    "finished Instagram post",
+    "before closing each day.",
+  ];
+  const content = {
+    fullText: lines.join(" "),
+    segments: [
+      { lines: lines.slice(0, 3), role: "lead" as const },
+      { lines: lines.slice(3, 6), role: "support" as const },
+      { lines: lines.slice(6), role: "closing" as const },
+    ],
+    finalLayout: {
+      blocks: [{ lines, role: "text" as const }],
+      fontFamily: "Arial" as const,
+      fontSizePx: 52 as const,
+      fontWeight: 700 as const,
+      lineHeightPx: 57.2,
+      textBox,
+      version: "wall-text-final-layout-v9" as const,
+    },
+  };
+
+  assert.equal(
+    getWallTextRasterSafeLineWidth(780),
+    780 - WALL_TEXT_INLINE_SAFE_PADDING * 2 - WALL_TEXT_RASTER_EDGE_GUARD,
+  );
+  assert.equal(getWallTextRasterSafeLineWidth(780), 748);
+
+  await ensureWallTextFontsRegistered();
+  await assert.rejects(
+    import("./wall-text-overlay-renderer.js").then(({ prepareWallTextOverlayAsset }) =>
+      prepareWallTextOverlayAsset({
+        placement: "lower-middle",
+        safeArea: { bottom: 0.1, left: 0.1, right: 0.1, top: 0.1 },
+        text: content,
+        textBox,
+        textColor: "#FFFFFF",
+      }),
+    ),
+    /line exceeds the measured Arial Bold text width/,
   );
 });
 

@@ -32,6 +32,9 @@ export type InstagramAnalyticsSummary = {
   scheduled: number;
 };
 
+export type InstagramActivityTarget = Pick<ScheduledPostTarget, "id" | "platform" | "socialConnectionId" | "status" | "publishedAt" | "scheduledFor" | "updatedAt" | "platformPostUrl">;
+export type InstagramActivitySchedule = Pick<ScheduledPost, "id" | "title"> & { targets: InstagramActivityTarget[] };
+
 /**
  * Builds Analytics activity for the Instagram accounts that are still connected
  * to the workspace. Historical targets from revoked accounts must not change
@@ -40,8 +43,9 @@ export type InstagramAnalyticsSummary = {
 export function buildInstagramActivitySummary(params: {
   accountNames: ReadonlyMap<string, string | null>;
   dateKeys: readonly string[];
-  schedules: ScheduledPost[];
+  schedules: InstagramActivitySchedule[];
   visibleConnectionIds: ReadonlySet<string>;
+  offsetMinutes?: number;
 }): InstagramAnalyticsSummary {
   const rangeSet = new Set(params.dateKeys);
   const bucketMap = new Map(
@@ -73,7 +77,7 @@ export function buildInstagramActivitySummary(params: {
       }
 
       const date = getTargetActivityDate(target);
-      const dateKey = getDateKey(date);
+      const dateKey = getDateKey(date, params.offsetMinutes);
 
       if (!dateKey || !rangeSet.has(dateKey)) {
         continue;
@@ -121,7 +125,7 @@ export function buildInstagramActivitySummary(params: {
 }
 
 function getInstagramActivityStatus(
-  target: ScheduledPostTarget,
+  target: InstagramActivityTarget,
 ): InstagramActivityStatus | null {
   if (target.status === "cancelled") {
     return null;
@@ -149,7 +153,7 @@ function getInstagramActivityStatus(
   return "draft";
 }
 
-function getTargetActivityDate(target: ScheduledPostTarget) {
+function getTargetActivityDate(target: InstagramActivityTarget) {
   if (target.status === "published" && target.publishedAt) {
     return target.publishedAt;
   }
@@ -164,7 +168,11 @@ function getTargetActivityDate(target: ScheduledPostTarget) {
   return target.scheduledFor || target.updatedAt;
 }
 
-function getDateKey(value: string) {
+function getDateKey(value: string, offsetMinutes?: number) {
+  if (offsetMinutes !== undefined) {
+    const time = Date.parse(value) - offsetMinutes * 60_000;
+    return Number.isFinite(time) ? new Date(time).toISOString().slice(0, 10) : null;
+  }
   const date = new Date(value);
 
   return Number.isNaN(date.getTime())

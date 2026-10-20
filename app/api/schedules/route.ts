@@ -18,6 +18,8 @@ import {
   type ScheduleCreateInput,
   type ScheduledPostStatus,
 } from "@/lib/scheduling/types";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,9 +119,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     return authErrorResponse(error, "Sign in before scheduling posts.");
   }
@@ -154,6 +158,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await createUserSchedule({
+      allowTikTokTargets: hasTikTokBetaAccess(user),
+      allowYouTubeTargets: hasYouTubeBetaAccess(user),
       input: body,
       userId,
     });

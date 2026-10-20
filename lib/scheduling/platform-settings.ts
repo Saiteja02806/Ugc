@@ -1,5 +1,6 @@
 import {
   isTikTokPrivacyLevel,
+  TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE,
   type TikTokPrivacyLevel,
   type TikTokPublishCapabilities,
 } from "../social/tiktok-publishing.ts";
@@ -21,6 +22,7 @@ export type TikTokScheduleSettings = {
   brandOrganic: boolean;
   brandedContent: boolean;
   containsSyntheticMedia: boolean;
+  musicUsageConfirmed: boolean;
   privacyLevel: TikTokPrivacyLevel;
 };
 
@@ -58,7 +60,9 @@ export function getDefaultScheduleTargetSettings(
       allowStitch: false,
       brandOrganic: false,
       brandedContent: false,
+      commercialContentDisclosureEnabled: false,
       containsSyntheticMedia: true,
+      musicUsageConfirmed: true,
       privacyLevel: "",
     };
   }
@@ -71,8 +75,37 @@ export function getDefaultScheduleTargetSettings(
   };
 }
 
+/** Apply music acknowledgement only when the user confirms the final schedule. */
+export function getConfirmedScheduleTargetSettings(
+  platform: SchedulePlatform,
+  settings?: ScheduleTargetSettings,
+): ScheduleTargetSettings {
+  const current = settings ?? getDefaultScheduleTargetSettings(platform);
+  return platform === "tiktok"
+    ? { ...current, musicUsageConfirmed: true }
+    : current;
+}
+
+export function getTikTokPublishingAgreement(params: {
+  connections: Array<{ id: string; platform: SchedulePlatform }>;
+  settings: Record<string, ScheduleTargetSettings>;
+}) {
+  const tiktokConnections = params.connections.filter(
+    (connection) => connection.platform === "tiktok",
+  );
+  if (!tiktokConnections.length) {
+    return null;
+  }
+  return tiktokConnections.some(
+    (connection) => params.settings[connection.id]?.brandedContent === true,
+  )
+    ? "By confirming this schedule, you agree to TikTok's Branded Content Policy and Music Usage Confirmation."
+    : "By confirming this schedule, you agree to TikTok's Music Usage Confirmation.";
+}
+
 export function getScheduleTargetSettingsError(params: {
   connections: Array<{ id: string; platform: SchedulePlatform }>;
+  requireTikTokMusicConfirmation?: boolean;
   settings: Record<string, ScheduleTargetSettings>;
   tiktokCapabilities: Record<
     string,
@@ -109,6 +142,28 @@ export function getScheduleTargetSettingsError(params: {
 
     if (!capabilityState.capabilities.privacyLevels.includes(privacyLevel)) {
       return "Choose a TikTok visibility available for this account.";
+    }
+
+    if (
+      !capabilityState.capabilities.directPostAudited &&
+      privacyLevel !== "SELF_ONLY"
+    ) {
+      return TIKTOK_PRIVATE_TESTING_VISIBILITY_MESSAGE;
+    }
+
+    if (
+      params.requireTikTokMusicConfirmation !== false &&
+      settings.musicUsageConfirmed !== true
+    ) {
+      return "Confirm TikTok's Music Usage Confirmation before scheduling.";
+    }
+
+    if (
+      settings.commercialContentDisclosureEnabled === true &&
+      settings.brandOrganic !== true &&
+      settings.brandedContent !== true
+    ) {
+      return "Choose Your brand or Branded content before scheduling.";
     }
 
     if (settings.brandedContent === true && privacyLevel === "SELF_ONLY") {
@@ -150,8 +205,15 @@ export function normalizeScheduleTargetSettings(
         settings.containsSyntheticMedia,
         true,
       ),
+      musicUsageConfirmed: getBoolean(settings.musicUsageConfirmed, false),
       privacyLevel,
     } satisfies TikTokScheduleSettings;
+
+    if (!normalized.musicUsageConfirmed) {
+      throw new SchedulePlatformSettingsError(
+        "Confirm TikTok's Music Usage Confirmation before scheduling.",
+      );
+    }
 
     if (normalized.brandedContent && normalized.privacyLevel === "SELF_ONLY") {
       throw new SchedulePlatformSettingsError(

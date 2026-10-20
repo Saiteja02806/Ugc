@@ -24,22 +24,28 @@ export async function runAnalyticsSyncJob(
 }
 
 function assertValidInput(job: BackgroundJobRow) {
+  if (!isValidAnalyticsSyncInput(job)) {
+    throw new Error("analytics_sync input is invalid.");
+  }
+}
+
+export function isValidAnalyticsSyncInput(job: BackgroundJobRow) {
   const input = getRecord(job.input_json);
 
-  if (
+  return !(
     !job.user_id ||
     input?.userId !== job.user_id ||
     ![
+      "connection_profiles",
       "instagram_attribution",
       "instagram_content",
       "instagram_insights",
       "tiktok_videos",
+      "youtube_channel",
     ].includes(
       typeof input.operation === "string" ? input.operation : "",
     )
-  ) {
-    throw new Error("analytics_sync input is invalid.");
-  }
+  );
 }
 
 function getRecord(value: Json | undefined) {

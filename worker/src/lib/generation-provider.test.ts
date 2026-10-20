@@ -6,9 +6,38 @@ import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
   persistProviderSubmissionFailure,
+  ProviderOperationTerminalError,
+  ProviderInsufficientCreditsError,
   ProviderSubmissionUncertainError,
+  ProviderOutputCollectionError,
+  toProviderPollingRetry,
 } from "./generation-provider.js";
 import type { SupabaseJobStore } from "./supabase.js";
+
+test("completed-output collection failures retain their safe reason through retry wrapping", () => {
+  for (const reason of ["missing_output", "untrusted_output_url", "download_failed"] as const) {
+    const error = new ProviderOutputCollectionError(reason);
+    assert.equal(toProviderPollingRetry(error), error);
+    assert.equal(error.code, "PROVIDER_OUTPUT_COLLECTION_FAILED");
+    assert.match(error.message, /provider completed the video/);
+    assert.equal(error.retryAfterSeconds, 30);
+  }
+  const unknown = toProviderPollingRetry(new Error("private signed URL"));
+  assert.equal(unknown.code, "provider_operation_pending");
+  assert.doesNotMatch(unknown.message, /private/);
+});
+
+test("terminal provider failures carry a structured code for durable job reporting", () => {
+  for (const failureCode of ["INPUT_PREPROCESSING.SAFETY.THIRD_PARTY", "INPUT_PREPROCESSING.SAFETY.TEXT", "SAFETY.INPUT.IMAGE", "SAFETY.OUTPUT.TEXT"]) {
+    const details = { failureCode, failure: "private provider diagnostics" };
+    const error = new ProviderOperationTerminalError("Runway task failed: content moderation", details);
+    assert.equal(error.code, "PROVIDER_CONTENT_MODERATION");
+    assert.equal(error.details, details);
+  }
+  for (const details of [undefined, null, { failureCode: "INPUT_PREPROCESSING.INTERNAL" }, { failureCode: "THIRD_PARTY.UNAVAILABLE" }, { failureCode: 123 }]) {
+    assert.equal(new ProviderOperationTerminalError("Provider failed", details).code, "provider_operation_failed");
+  }
+});
 
 test("uses a stable fingerprint for the same provider request", () => {
   assert.equal(
@@ -82,4 +111,69 @@ test("does not resubmit when provider acceptance is uncertain", async () => {
     ProviderSubmissionUncertainError,
   );
   assert.equal(uncertainWrites, 1);
+});
+
+test("provider billing exhaustion is terminal even when returned as HTTP 429", async () => {
+  for (const error of [
+    Object.assign(new Error("429 You have no credits remaining. Add credits to continue. request-private"), { status: 429, code: "credit_balance_exhausted" }),
+    { status: 429, code: "insufficient_quota", message: "private billing diagnostics" },
+    { status: 429, code: "billing_hard_limit_reached", message: "private billing diagnostics" },
+    new Error("429 You have no credits remaining. Add credits to continue."),
+    new Error("Your credit balance is too low. request-private"),
+  ]) {
+    const failures: Array<{ errorCode: string; retryAllowed: boolean }> = [];
+    let uncertainWrites = 0;
+    const store = {
+      async markGenerationProviderFailed(input: { errorCode: string; retryAllowed: boolean }) { failures.push(input); },
+      async markGenerationProviderSubmissionUncertain() { uncertainWrites += 1; },
+    } as unknown as SupabaseJobStore;
+    await assert.rejects(persistProviderSubmissionFailure({ error, jobId: "job-billing", operationKey: "openai-image", store }),
+      failure => failure instanceof ProviderInsufficientCreditsError && failure.code === "PROVIDER_INSUFFICIENT_CREDITS" &&
+        !/request-private|private billing/.test(failure.message));
+    assert.equal(failures.length, 1);
+    assert.equal(failures[0].errorCode, "PROVIDER_INSUFFICIENT_CREDITS");
+    assert.equal(failures[0].retryAllowed, false);
+    assert.equal(uncertainWrites, 0);
+  }
+});
+
+test("ordinary rate-limit rejections still retry without guessing from unrelated billing words", async () => {
+  for (const message of ["Rate limit reached", "Request contains the words no credits remaining", "Billing status temporarily unavailable"]) {
+    let retryAllowed = false;
+    const store = { async markGenerationProviderFailed(input: { retryAllowed: boolean }) { retryAllowed = input.retryAllowed; } } as unknown as SupabaseJobStore;
+    await assert.rejects(persistProviderSubmissionFailure({ error: { status: 429, code: "rate_limit_exceeded", message }, jobId: "job-rate", operationKey: "openai-image", store }),
+      failure => failure instanceof RetryableJobError && failure.code === "provider_submission_rejected");
+    assert.equal(retryAllowed, true);
+  }
+});
+
+test("records a bare Gemini configuration validation error as not submitted", async () => {
+  const failures: Array<{ errorCode: string; retryAllowed: boolean }> = [];
+  let uncertainWrites = 0;
+  const configurationError = new Error(
+    "generateAudio parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.",
+  );
+  const store = {
+    async markGenerationProviderFailed(params: { errorCode: string; retryAllowed: boolean }) {
+      failures.push({ errorCode: params.errorCode, retryAllowed: params.retryAllowed });
+    },
+    async markGenerationProviderSubmissionUncertain() {
+      uncertainWrites += 1;
+    },
+  } as unknown as SupabaseJobStore;
+
+  await assert.rejects(
+    persistProviderSubmissionFailure({
+      error: configurationError,
+      jobId: "job-1",
+      operationKey: "primary-veo",
+      store,
+    }),
+    configurationError,
+  );
+  assert.deepEqual(failures, [{
+    errorCode: "provider_configuration_invalid",
+    retryAllowed: false,
+  }]);
+  assert.equal(uncertainWrites, 0);
 });

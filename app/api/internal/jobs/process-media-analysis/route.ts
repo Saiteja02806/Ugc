@@ -15,6 +15,7 @@ import {
 } from "@/lib/scheduling/internal-finalization-auth";
 import { WebsiteAnalysisError } from "@/lib/website-analysis/errors";
 import { processWebsiteAnalysisJob } from "@/lib/website-analysis/process";
+import { finalizeOnboardingJob } from "@/lib/business-profiles/onboarding-drafts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,12 @@ export async function POST(request: Request) {
     }
 
     if (operation === "business_profile_setup") {
+      const draftId = getString(input.onboardingDraftId);
+      const sourceRevision = typeof input.sourceRevision === "number" ? input.sourceRevision : undefined;
+      if (input.finalizeOnly === true) {
+        if (!draftId || !sourceRevision) return json({ ok: false, error: "Invalid onboarding finalization input." }, 400);
+        return json({ ...await finalizeOnboardingJob({ userId: job.userId, jobId: job.id, draftId, sourceRevision }), ok: true });
+      }
       const parsed = BusinessProfileSetupInputSchema.safeParse(input);
 
       if (!parsed.success) {
@@ -79,6 +86,8 @@ export async function POST(request: Request) {
         input: parsed.data,
         jobId: job.id,
         userId: job.userId,
+        draftId: draftId || undefined,
+        sourceRevision,
       });
 
       return json({ ...result, ok: true });

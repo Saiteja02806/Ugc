@@ -19,6 +19,9 @@ import {
 } from "react";
 
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
+import { AI_STUDIO_VIDEO_MODELS, getAIStudioVideoModelLabel, isAIStudioVideoModelAvailable, type AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
+import { getExploreVideoGenerationLink } from "@/lib/explore/video-generation-link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -121,6 +124,7 @@ const EXPLORE_BACKDROP_VIDEO_LIMIT = 4;
 
 export function ViralWorkspace() {
   const [activeSection, setActiveSection] = useState<ExploreSection>("hook");
+  const [videoModel, setVideoModel] = useState<AIStudioVideoModel>("kling_3_0");
   const { loading: authLoading, user } = useAuth();
   const subscriptionQuery = useBillingSubscription();
   const isProUser = subscriptionQuery.data?.isActive === true;
@@ -153,6 +157,21 @@ export function ViralWorkspace() {
             <p className="mt-2 text-sm leading-6 text-muted sm:text-[15px]">
               {config.description}
             </p>
+            {isProUser ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+                <span>Recreate using</span>
+                <AiStudioSettingSelect
+                  ariaLabel="Explore video model"
+                  value={videoModel}
+                  options={AI_STUDIO_VIDEO_MODELS.map((model) => ({
+                    value: model,
+                    label: `${getAIStudioVideoModelLabel(model)}${isAIStudioVideoModelAvailable(model) ? "" : " · temporarily unavailable"}`,
+                    disabled: !isAIStudioVideoModelAvailable(model),
+                  }))}
+                  onChange={(value) => setVideoModel(value as AIStudioVideoModel)}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div
@@ -230,6 +249,7 @@ export function ViralWorkspace() {
                     key={item.id}
                     item={item}
                     section={activeSection}
+                    model={videoModel}
                   />
                 ))}
               </div>
@@ -375,10 +395,12 @@ function ExploreVideoCard({
   item,
   section,
   autoPlay = false,
+  model = "kling_3_0",
 }: {
   item: ExploreVideoReference;
   section: ExploreSection;
   autoPlay?: boolean;
+  model?: AIStudioVideoModel;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -481,7 +503,7 @@ function ExploreVideoCard({
       </div>
       <div className="border-t border-border bg-card p-2">
         <Link
-          href={getExploreStudioHref(item, section)}
+          href={getExploreStudioHref(item, section, model)}
           className={buttonVariants({
             size: "lg",
             className: "w-full font-semibold",
@@ -498,16 +520,14 @@ function ExploreVideoCard({
 function getExploreStudioHref(
   item: ExploreVideoReference,
   section: ExploreSection,
+  model: AIStudioVideoModel,
 ) {
-  const params = new URLSearchParams({
-    mode: "videos",
-    exploreRecreate: "1",
-    refId: item.id,
-    refType: EXPLORE_SECTION_CONFIG[section].referenceType,
+  return getExploreVideoGenerationLink({
+    id: item.id,
+    type: EXPLORE_SECTION_CONFIG[section].referenceType,
     sourceUrl: item.videoUrl,
+    model,
   });
-
-  return `/ai-studio?${params.toString()}`;
 }
 
 function ExploreVideoGridSkeleton() {

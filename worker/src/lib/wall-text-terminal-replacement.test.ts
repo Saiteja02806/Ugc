@@ -45,6 +45,23 @@ test("retries a temporary replacement admission failure", async () => {
   await assert.rejects(scheduleWallTextTerminalReplacement(params()), RetryableJobError);
 });
 
+test("allows a non-daily Wall batch to replenish its missing slot", async () => {
+  process.env.UGC_INTERNAL_APP_URL = "https://www.getugcpilot.com";
+  process.env.UGC_INTERNAL_SCHEDULING_SECRET = "a".repeat(32);
+  let requestBody = "";
+  globalThis.fetch = async (_input, init) => {
+    requestBody = String(init?.body);
+    return new Response(JSON.stringify({ ok: true, replacementScheduled: false }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const { dailyFeedId: _dailyFeedId, ...nonDaily } = params();
+  await scheduleWallTextTerminalReplacement(nonDaily);
+
+  assert.equal("dailyFeedId" in JSON.parse(requestBody), false);
+});
+
 function params() {
   return {
     businessProfileId: "123e4567-e89b-42d3-a456-426614174000",

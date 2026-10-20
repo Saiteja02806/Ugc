@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createDodoCheckoutSession } from "@/lib/billing/dodo";
+import { createDodoCheckoutSession, createDodoCustomerPortalSession } from "@/lib/billing/dodo";
 import {
   getPendingCheckoutSessionIds,
   PENDING_CHECKOUT_COOKIE_NAME,
   PENDING_CHECKOUT_MAX_AGE_SECONDS,
   serializePendingCheckoutSessionIds,
 } from "@/lib/billing/pending-checkout";
-import { getBillingCustomerId } from "@/lib/billing/subscription-db";
+import { getBillingCustomerId, getUserSubscription } from "@/lib/billing/subscription-db";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -39,6 +39,29 @@ export async function POST(request: NextRequest) {
 
     const { billingInterval, planSlug } = parseResult.data;
 
+    const [subscription, customerId] = await Promise.all([
+      getUserSubscription(user.uid, { strict: true, refreshCredits: false }),
+      getBillingCustomerId(user.uid),
+    ]);
+
+    // The displayed plan can become stale while the pricing page is open.
+    // Resolve managed subscribers to their existing account instead of selling
+    // them a second subscription when they click a checkout action.
+    if (subscription.isDodoManaged) {
+      if (!customerId) {
+        return NextResponse.json(
+          { error: "Your existing billing account could not be found. Try again or contact support." },
+          { status: 409 },
+        );
+      }
+
+      const portalUrl = await createDodoCustomerPortalSession({ customerId });
+      return NextResponse.json(
+        { checkoutUrl: portalUrl, portalUrl, status: "portal" },
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+
     const userEmail = user.email?.trim();
 
     if (!userEmail) {
@@ -48,7 +71,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const customerId = await getBillingCustomerId(user.uid);
     const session = await createDodoCheckoutSession({
       billingInterval,
       customerId,
@@ -58,12 +80,15 @@ export async function POST(request: NextRequest) {
       userName: user.displayName,
     });
 
-    const response = NextResponse.json({
-      checkoutUrl: session.checkoutUrl,
-      productId: session.productId,
-      sessionId: session.sessionId,
-      status: "ready",
-    });
+    const response = NextResponse.json(
+      {
+        checkoutUrl: session.checkoutUrl,
+        productId: session.productId,
+        sessionId: session.sessionId,
+        status: "ready",
+      },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
     const pendingCheckoutSessionIds = [
       session.sessionId,
       ...getPendingCheckoutSessionIds(

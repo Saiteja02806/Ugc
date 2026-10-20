@@ -10,18 +10,24 @@ import {
 import {
   startWallTextScheduleRender,
 } from "@/lib/scheduling/wall-text-render-start";
-import { getSelectedWallTextDraft } from "@/lib/trending/wall-text-db";
+import { getSelectedWallTextDraft, getWallTextSchedulingAssignment } from "@/lib/trending/wall-text-db";
+import { acceptTrendingCreativeForScheduling } from "@/lib/trending/creative-decisions";
+import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
 import { WallTextScheduleRequestSchema } from "@/lib/trending/wall-text-scheduling-contract";
 import { getWallTextPreviewTitle } from "@/lib/trending/wall-text-text-logic";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     return authErrorResponse(error);
   }
@@ -38,6 +44,18 @@ export async function POST(request: Request) {
   }
 
   try {
+    const assignment = await getWallTextSchedulingAssignment({
+      assignmentId: parsed.data.assignmentId,
+      userId,
+    });
+    if (!assignment) {
+      return json({ message: "This Wall-of-text video is no longer available.", ok: false }, 404);
+    }
+
+    // Confirm selection on the server before requiring a selected draft. The
+    // browser's accepted/skip outbox may still be in flight when the user saves.
+    await acceptTrendingCreativeForScheduling({ ...assignment, format: "wall_text", userId });
+    await markDailyTrendingSlotDecided({ assignmentId: assignment.assignmentId, format: "wall_text", userId });
     const draft = await getSelectedWallTextDraft({
       assignmentId: parsed.data.assignmentId,
       userId,
@@ -51,6 +69,8 @@ export async function POST(request: Request) {
     }
 
     const pending = await createUserSchedule({
+      allowTikTokTargets: hasTikTokBetaAccess(user),
+      allowYouTubeTargets: hasYouTubeBetaAccess(user),
       input: {
         caption: parsed.data.caption ?? "",
         metadata: {

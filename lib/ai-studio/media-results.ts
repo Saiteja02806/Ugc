@@ -1,21 +1,33 @@
 import type { MediaAsset } from "../media/types.ts";
+import { readRemixSource, type RemixTextSource } from "../explore/remix-source.ts";
+import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "../../worker/src/lib/slideshow-generation-batch.ts";
 
 export type AIStudioImageResult = {
+  slideshowGeneration?: SlideshowGenerationSlot;
+  remixTextSource?: RemixTextSource | null;
   aspectRatio: "1:1" | "4:5" | "9:16" | "16:9";
   createdAt: string;
   id: string;
+  prompt?: string;
+  /** A job preview can precede its ready owner-scoped media record. */
+  mediaAssetId?: string | null;
+  sourceJobId?: string;
   title: string;
   url: string;
 };
 
 export type AIStudioVideoResult = {
+  remixTextSource?: RemixTextSource | null;
   createdAt: string;
   durationSeconds: number | null;
   id: string;
   mediaAssetId: string | null;
+  modelLabel: string | null;
   prompt: string;
   ratio: "1:1" | "4:5" | "9:16" | "16:9";
+  resolution: "480p" | "720p" | "1080p" | null;
   status: "Ready";
+  thumbnailUrl: string | null;
   title: string;
   url: string;
 };
@@ -37,8 +49,13 @@ export function getAIStudioImageResults(
     .slice(0, limit)
     .map((asset) => ({
       aspectRatio: toSupportedRatio(asset.ratio, "4:5"),
+      ...(readSlideshowGenerationSlot(asset.metadata?.slideshowGeneration) ? { slideshowGeneration: readSlideshowGenerationSlot(asset.metadata.slideshowGeneration)! } : {}),
+      ...(Object.hasOwn(asset.metadata ?? {}, "remixTextSource") ? { remixTextSource: readRemixSource(asset.metadata.remixTextSource) } : {}),
       createdAt: asset.createdAt,
       id: asset.id,
+      mediaAssetId: asset.id,
+      sourceJobId: asset.sourceRecordId ?? undefined,
+      prompt: getMetadataString(asset.metadata, "prompt") ?? undefined,
       title: asset.title || "Generated image",
       url: asset.url,
     }));
@@ -60,14 +77,59 @@ export function getAIStudioVideoResults(
     .map((asset) => ({
       createdAt: asset.createdAt,
       durationSeconds: asset.durationSeconds,
+      ...(Object.hasOwn(asset.metadata ?? {}, "remixTextSource") ? { remixTextSource: readRemixSource(asset.metadata.remixTextSource) } : {}),
       id: asset.id,
       mediaAssetId: asset.id,
-      prompt: asset.title || "Generated video",
+      modelLabel: getVideoModelLabel(asset.metadata),
+      prompt: getVideoPrompt(asset),
       ratio: toSupportedRatio(asset.ratio, "9:16"),
+      resolution: getVideoResolution(asset.metadata),
       status: "Ready",
+      thumbnailUrl: asset.thumbnailUrl,
       title: asset.title || "Generated video",
       url: asset.url,
     }));
+}
+
+function getVideoPrompt(asset: MediaAsset) {
+  const prompt = getMetadataString(asset.metadata, "prompt") ??
+    getMetadataString(asset.metadata, "hookIdea");
+
+  return prompt || asset.title || "Generated video";
+}
+
+function getVideoModelLabel(metadata: MediaAsset["metadata"]) {
+  const model = getMetadataString(metadata, "model");
+
+  if (model === "kling_3_0") return "Kling 3.0";
+  if (model === "seedance_2_5") return "Seedance 2.5";
+  if (model === "wan_3_0") return "WAN 3.0";
+  if (model === "google_omni") return "Google Omni";
+
+  const provider = getMetadataString(metadata, "provider");
+
+  if (provider === "higgsfield") return "Seedance 2.5";
+  if (provider === "gemini") return "Google Omni";
+  if (provider === "runway") return "Runway";
+
+  return null;
+}
+
+function getVideoResolution(metadata: MediaAsset["metadata"]) {
+  const resolution = getMetadataString(metadata, "resolution");
+
+  return resolution === "480p" || resolution === "720p" || resolution === "1080p"
+    ? resolution
+    : null;
+}
+
+function getMetadataString(
+  metadata: MediaAsset["metadata"],
+  key: string,
+) {
+  const value = metadata[key];
+
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 export function upsertAIStudioResult<T extends { id: string }>(

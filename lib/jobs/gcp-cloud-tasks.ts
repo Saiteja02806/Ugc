@@ -13,8 +13,11 @@ import {
   isVideoRenderLauncherDispatchUrl,
   resolveBackgroundJobDispatchUrlFromEnv,
   VIDEO_RENDER_LAUNCHER_PATH,
+  getBackgroundJobTaskName,
+  getCloudTasksCreateEndpoint,
 } from "./gcp-cloud-tasks-logic";
 import { getGcpProjectId, getQueueNameForJobType } from "@/lib/queues/config";
+import { exploreInteractiveDispatchUrl } from "./explore-interactive-dispatch";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 let cloudTasksAuth: GoogleAuth | null = null;
@@ -22,6 +25,7 @@ let cloudTasksAuth: GoogleAuth | null = null;
 const dispatchUrlEnvByQueueName = {
   "ai-generation": "GCP_AI_GENERATION_TASK_URL",
   carousel: "GCP_CAROUSEL_TASK_URL",
+  "carousel-edit": "GCP_CAROUSEL_EDIT_TASK_URL",
   "media-processing": "GCP_MEDIA_PROCESSING_TASK_URL",
   "reaction-render": "GCP_REACTION_RENDER_TASK_URL",
   "social-publish": "GCP_SOCIAL_PUBLISH_TASK_URL",
@@ -51,7 +55,7 @@ export function getMissingBackgroundJobCloudTasksEnvVars(
     const dispatchUrl = getBackgroundJobDispatchUrl(queueName, env);
 
     if (!dispatchUrl) {
-      missing.add(`${envName} or GCP_BACKGROUND_JOB_TASK_URL`);
+      missing.add(getRequiredDispatchConfigName(queueName));
     } else if (
       queueName === "video-render" &&
       !isVideoRenderLauncherDispatchUrl(dispatchUrl)
@@ -74,12 +78,13 @@ export async function enqueueBackgroundJobCloudTask(job: BackgroundJobRecord) {
     process.env.GCP_REGION?.trim() ||
     DEFAULT_GCP_JOB_TASKS_LOCATION;
   const queueName = getCloudTasksQueueName(job.jobType);
-  const dispatchUrl = getRequiredDispatchUrl(job.jobType);
+  const interactiveUrl = exploreInteractiveDispatchUrl(job, process.env);
+  const dispatchUrl = interactiveUrl ?? getRequiredDispatchUrl(job.jobType);
   const { endpoint, requestBody, taskName } =
     buildBackgroundJobCloudTaskRequest({
       attempt: job.attemptCount,
       audience:
-        process.env.GCP_BACKGROUND_JOB_TASK_AUDIENCE?.trim() ||
+        (interactiveUrl ? new URL(interactiveUrl).origin : process.env.GCP_BACKGROUND_JOB_TASK_AUDIENCE?.trim()) ||
         new URL(dispatchUrl).origin,
       dispatchUrl,
       jobId: job.id,
@@ -113,6 +118,29 @@ export async function enqueueBackgroundJobCloudTask(job: BackgroundJobRecord) {
   };
 }
 
+/** A queued task may legitimately wait longer than the recovery lease. */
+export async function backgroundJobCloudTaskExists(job: BackgroundJobRecord) {
+  const baseEndpoint = getCloudTasksCreateEndpoint({
+    projectId: getRequiredProjectId(),
+    location: process.env.GCP_CLOUD_TASKS_LOCATION?.trim() || process.env.GCP_REGION?.trim() || DEFAULT_GCP_JOB_TASKS_LOCATION,
+    queueName: getCloudTasksQueueName(job.jobType),
+  });
+  // Historical recovery may have created another delivery while the original
+  // was still queued. Either task can claim the durable job safely.
+  for (let attempt = job.attemptCount; attempt >= 0; attempt -= 1) {
+    const endpoint = `${baseEndpoint}/${getBackgroundJobTaskName({ jobId: job.id, attempt })}`;
+    const response = await fetch(endpoint, {
+      cache: "no-store",
+      headers: { Authorization: await getAuthorizationHeader(endpoint) },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (response.status === 404) continue;
+    if (!response.ok) throw new Error(`Could not verify queued Cloud Task: ${response.status}`);
+    return true;
+  }
+  return false;
+}
+
 function getCloudTasksQueueName(jobType: BackgroundJobType) {
   const queueName = getQueueNameForJobType(jobType);
   const prefix = process.env.GCP_RESOURCE_NAME_PREFIX?.trim() || "ugc";
@@ -128,7 +156,7 @@ function getRequiredDispatchUrl(jobType: BackgroundJobType) {
 
   if (!dispatchUrl) {
     throw new Error(
-      `Missing ${getDispatchUrlEnvName(queueName)} or GCP_BACKGROUND_JOB_TASK_URL.`,
+      `Missing ${getRequiredDispatchConfigName(queueName)}.`,
     );
   }
 
@@ -149,9 +177,9 @@ export function getBackgroundJobDispatchUrl(
   env: Record<string, string | undefined> = process.env,
 ) {
   const explicitUrl = env[getDispatchUrlEnvName(queueName)]?.trim();
-  // A generic fallback can point at the legacy one-shot video launcher. Never
-  // send a per-Reel Reaction task there: it needs the dedicated service URL.
-  const fallbackUrl = queueName === "reaction-render"
+  // Interactive edits and Reaction renders require their dedicated services.
+  // A common URL can point at the generation service or video launcher.
+  const fallbackUrl = queueName === "reaction-render" || queueName === "carousel-edit"
     ? undefined
     : env.GCP_BACKGROUND_JOB_TASK_URL?.trim();
 
@@ -164,6 +192,12 @@ function getDispatchUrlEnvName(queueName: string) {
       queueName as keyof typeof dispatchUrlEnvByQueueName
     ] || "GCP_BACKGROUND_JOB_TASK_URL"
   );
+}
+
+function getRequiredDispatchConfigName(queueName: string) {
+  const name = getDispatchUrlEnvName(queueName);
+  return queueName === "carousel-edit" || queueName === "reaction-render"
+    ? name : `${name} or GCP_BACKGROUND_JOB_TASK_URL`;
 }
 
 function getVideoRenderLauncherConfigurationError(envName: string) {

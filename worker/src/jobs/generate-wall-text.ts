@@ -22,7 +22,10 @@ export async function runGenerateWallTextJob(
     });
   } catch (error) {
     const errorCode = getErrorCode(error);
-    if (input.dailyFeedId && isCandidateReplacementFailure(errorCode)) {
+    if (
+      isCandidateReplacementFailure(errorCode) &&
+      !hasTerminalReplacementAlreadyBeenScheduled(input.refillKey)
+    ) {
       const replacement = await scheduleWallTextTerminalReplacement({
         businessProfileId: input.businessProfileId,
         businessProfileVersion: input.businessProfileVersion,
@@ -105,7 +108,12 @@ function getErrorCode(error: unknown) {
 
 function isCandidateReplacementFailure(errorCode: string) {
   return errorCode === "wall_text_render_fit_rejected" ||
-    errorCode === "content_retry_exhausted";
+    errorCode === "content_retry_exhausted" ||
+    errorCode === "model_output_refusal";
+}
+
+function hasTerminalReplacementAlreadyBeenScheduled(refillKey: string | null) {
+  return Boolean(refillKey && refillKey.startsWith("terminal:"));
 }
 
 function getRecord(value: Json | undefined) {

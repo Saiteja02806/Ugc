@@ -13,12 +13,13 @@ import {
   youtubeAuthorizationEndpoint,
 } from "./youtube-oauth-config.ts";
 
-test("uses least-privilege YouTube OAuth scopes for implemented features", () => {
+test("uses the YouTube OAuth scopes required for publishing and analytics", () => {
   assert.deepEqual(YOUTUBE_OAUTH_SCOPES, [
     YOUTUBE_READONLY_SCOPE,
     YOUTUBE_UPLOAD_SCOPE,
+    YOUTUBE_ANALYTICS_READONLY_SCOPE,
   ]);
-  assert.equal(YOUTUBE_OAUTH_SCOPES.includes(YOUTUBE_ANALYTICS_READONLY_SCOPE), false);
+  assert.equal(YOUTUBE_OAUTH_SCOPES.includes(YOUTUBE_ANALYTICS_READONLY_SCOPE), true);
   assert.equal(new Set(YOUTUBE_OAUTH_SCOPES).size, YOUTUBE_OAUTH_SCOPES.length);
 });
 
@@ -26,7 +27,6 @@ test("builds the YouTube authorization URL with every product scope", () => {
   const url = buildYouTubeOAuthAuthorizationUrl({
     clientId: "google-client-id.apps.googleusercontent.com",
     codeVerifierChallenge: "code-challenge",
-    forceConsent: false,
     redirectUri: "https://getugcpilot.com/api/social/youtube/callback",
     state: "state-value",
   });
@@ -47,14 +47,13 @@ test("builds the YouTube authorization URL with every product scope", () => {
   assert.equal(url.searchParams.get("include_granted_scopes"), "true");
   assert.equal(url.searchParams.get("code_challenge"), "code-challenge");
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
-  assert.equal(url.searchParams.has("prompt"), false);
+  assert.equal(url.searchParams.get("prompt"), "consent");
 });
 
-test("forces YouTube consent only for an intentional reconnect", () => {
+test("always forces YouTube consent so Google issues usable refresh tokens", () => {
   const url = buildYouTubeOAuthAuthorizationUrl({
     clientId: "google-client-id.apps.googleusercontent.com",
     codeVerifierChallenge: "code-challenge",
-    forceConsent: true,
     redirectUri: "https://getugcpilot.com/api/social/youtube/callback",
     state: "state-value",
   });
@@ -68,14 +67,7 @@ test("checks YouTube upload and analytics scopes separately", () => {
     hasYouTubeUploadScope([YOUTUBE_READONLY_SCOPE, YOUTUBE_UPLOAD_SCOPE]),
     true,
   );
-  assert.equal(hasYouTubeAnalyticsScope(YOUTUBE_OAUTH_SCOPES), false);
-  assert.equal(
-    hasYouTubeAnalyticsScope([
-      ...YOUTUBE_OAUTH_SCOPES,
-      YOUTUBE_ANALYTICS_READONLY_SCOPE,
-    ]),
-    true,
-  );
+  assert.equal(hasYouTubeAnalyticsScope(YOUTUBE_OAUTH_SCOPES), true);
 });
 
 test("builds a safe YouTube OAuth diagnostic without secrets", () => {

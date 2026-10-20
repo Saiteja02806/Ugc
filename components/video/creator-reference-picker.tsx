@@ -18,6 +18,7 @@ import {
 export function CreatorReferencePicker({
   active = true,
   disabled = false,
+  iconOnly = false,
   onChange,
   onPendingChange,
   onSelectedCreatorChange,
@@ -27,6 +28,7 @@ export function CreatorReferencePicker({
 }: {
   active?: boolean;
   disabled?: boolean;
+  iconOnly?: boolean;
   onChange: (selection: AIStudioReferenceMedia | null) => void;
   onPendingChange: (pending: boolean) => void;
   onSelectedCreatorChange: (creatorId: string | null) => void;
@@ -148,9 +150,14 @@ export function CreatorReferencePicker({
             type="button"
             disabled={disabled || isPending || !active}
             aria-label={`Creator reference, currently ${triggerLabel}`}
+            title={`Creator reference: ${triggerLabel}`}
             aria-haspopup="dialog"
             aria-expanded={open}
-            className="inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-card-muted/80 px-3 text-xs font-medium text-foreground ring-1 ring-inset ring-border/70 transition-all hover:bg-card hover:ring-border active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50",
+              iconOnly && "h-7 gap-1 px-2.5",
+              iconOnly && hasImageReference && "text-primary ring-primary/40",
+            )}
           />
         }
       >
@@ -166,7 +173,7 @@ export function CreatorReferencePicker({
         ) : (
           <UserRound className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
         )}
-        <span className="truncate">{isPending ? "Preparing" : triggerLabel}</span>
+        <span className={iconOnly ? "sr-only" : "truncate"}>{isPending ? "Preparing" : triggerLabel}</span>
         {isPending ? (
           <Loader2
             className="size-3 shrink-0 animate-spin text-muted motion-reduce:animate-none"

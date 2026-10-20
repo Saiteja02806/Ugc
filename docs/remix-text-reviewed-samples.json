@@ -1,0 +1,102 @@
+{
+  "items": [
+    {
+      "referenceId": "explore-slideshow-fitness-2ac394bae86d6779",
+      "slideId": "slide-1-245da69e5521",
+      "sourceSha256": "245da69e5521a47c77fde06e4c86e902353012027143d43f88c3cda58d5271a5",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "5 tips to get bigger in the\ngym",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Post copy checked visually against the original slide; OCR mistakes corrected. Incidental scenery excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-2ac394bae86d6779",
+      "slideId": "slide-2-584f7a665b48",
+      "sourceSha256": "584f7a665b4820bd399fbd4a58d9a3cfee489dd71b827b18ba9726a3990f0827",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "1. Train with intensity",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Post copy checked visually against the original slide; OCR mistakes corrected. Incidental scenery excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-2ac394bae86d6779",
+      "slideId": "slide-3-030112228034",
+      "sourceSha256": "0301122280346e3f2e55797c66c438e8fdb5766690064514c915c097d508ce3b",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "2. Make this shake\n2.5k cals 150g protein",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Post copy checked visually against the original slide; OCR mistakes corrected. Incidental scenery excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-2ac394bae86d6779",
+      "slideId": "slide-5-d41d2110c59c",
+      "sourceSha256": "d41d2110c59c365d82833cd51bfde7e5219cc1ad7b320599cf97eab1440f2e6b",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "4. Eat clean",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Post copy checked visually against the original slide; OCR mistakes corrected. Incidental scenery excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-2ac394bae86d6779",
+      "slideId": "slide-6-4199f634ef7c",
+      "sourceSha256": "4199f634ef7c85894d0292e8410302fe9ff8b9aead4a61afaa1388fcdc86be84",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "5. Remember how you felt\nthat day",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Post copy checked visually against the original slide; OCR mistakes corrected. Incidental scenery excluded."
+    },
+    {
+      "referenceId": "explore-hook-02",
+      "slideId": null,
+      "sourceSha256": "ad7de81331d83919f5e38df0656688a48649a5b77b3e5405cd50f0787352a954",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "so graphic designers have\nbeen using THIS instead of\nPinterest this WHOLE time??!",
+          "startMs": 0,
+          "endMs": 3000
+        }
+      ],
+      "notes": "Post copy checked visually against all six sampled frames. Static overlay; 2fps interval timing remains approximate."
+    },
+    {
+      "referenceId": "explore-wall-text-05",
+      "slideId": null,
+      "sourceSha256": "4d4431a5988c97ac698564ffa479f498cffe020dd8207b81a9687246a98754db",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "to be loved is to be worth the\ninconvenience. to need\nattention in the middle of a\nlong day. to need reassurance\nat the wrong hour. to talk\nwhen there isn't any time.\ntrue love involves accepting\nimperfections, messy\nemotions, and poor timing.",
+          "startMs": 0,
+          "endMs": 12500
+        }
+      ],
+      "notes": "Post copy checked visually against sampled frames at beginning, middle and end; raw OCR is unchanged across all 25 frames. Static overlay; 2fps timing remains approximate."
+    }
+  ]
+}

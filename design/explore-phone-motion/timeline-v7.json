@@ -1,0 +1,133 @@
+{
+  "basename": "creator-phone-v7",
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 216,
+  "duration": 9,
+  "posterTime": 0.75,
+  "stages": [
+    {
+      "name": "framed-iphone-and-kinetic-title",
+      "startFrame": 0,
+      "endFrame": 34
+    },
+    {
+      "name": "natural-phone-to-real-handset",
+      "startFrame": 30,
+      "endFrame": 73
+    },
+    {
+      "name": "creator-result",
+      "startFrame": 73,
+      "endFrame": 143
+    },
+    {
+      "name": "alternate-example",
+      "startFrame": 141,
+      "endFrame": 195
+    },
+    {
+      "name": "clean-phone-return-with-caption",
+      "startFrame": 189,
+      "endFrame": 216
+    }
+  ],
+  "caption": {
+    "phrases": [
+      {
+        "text": "Your app.",
+        "startFrame": 0,
+        "endFrame": 34
+      },
+      {
+        "text": "On their phone.",
+        "startFrame": 45,
+        "endFrame": 77
+      },
+      {
+        "text": "Create your video.",
+        "startFrame": 75,
+        "endFrame": 144
+      },
+      {
+        "text": "Your app.",
+        "startFrame": 202,
+        "fullyVisibleFrame": 212,
+        "endFrame": 216,
+        "continuesAcrossLoop": true
+      }
+    ],
+    "noRepeatedHeadlineForSecondCreator": true,
+    "loopBoundary": "Both input text layers are fully visible in the final frames and at frame zero, at identical positions. The closing phrase begins returning at 8.4 seconds; both words are fully visible by 8.8 seconds."
+  },
+  "motion": {
+    "editor": "After Effects",
+    "project": "design/explore-phone-motion/Explore Phone Cover — Cal AI v7.aep",
+    "mainComp": "Explore Phone Cover — Cal AI v7",
+    "nativeRenderTemplate": "H.264 - Match Render Settings - 40 Mbps",
+    "style": "Explore charcoal stage, orange keyword accents, supplied iPhone at natural proportions, clean movement and phrase-based kinetic sans serif",
+    "fonts": [
+      "SegoeUIVariable-BoldDisplay"
+    ],
+    "sourceTextEditable": true,
+    "screenFit": "The intact Cal AI mockup approaches the gym creator handset at composition time 3 seconds (source time 4 seconds), using position [639,314], equal 54% scale and 2.8-degree Z rotation. Frame 73 cuts to the recorded phone. No image warp or screen replacement is applied to the source footage.",
+    "creator1": {
+      "source": "Media/creator-cal-ai.mp4",
+      "sourceTime": "composition time + 1 second",
+      "anchorPoint": [
+        360,
+        575
+      ],
+      "position": [
+        717,
+        270
+      ],
+      "scale": 67.5,
+      "sourceSha256": "C18B64C60CA1D61F0942C81EB4C1249DDB7800060B24EC6B2104BBBD5FDC1FED"
+    },
+    "creator2": {
+      "source": "Media/creator-2.mp4",
+      "sourceTime": "composition time + 0.75 seconds",
+      "anchorPoint": [
+        360,
+        605
+      ],
+      "position": [
+        237,
+        270
+      ],
+      "scale": 62.5
+    },
+    "return": "The supplied Cal AI iPhone returns using native 3D Y rotation and uniform scale, without contour graphics. Your app. reappears on the right and stays fully visible across the nine-second loop boundary.",
+    "demoIncluded": false,
+    "footageBlur": false,
+    "playbackControls": false,
+    "screenArtBaked": true,
+    "referenceMediaIncluded": false,
+    "phoneImage": "Media/iphone-cal-ai.png",
+    "phoneImageDimensions": [
+      375,
+      666
+    ],
+    "phoneSurfaceDimensions": [
+      400,
+      800
+    ],
+    "phoneImageScale": [
+      135.2,
+      135.2
+    ],
+    "preserveSourceAspectRatio": true,
+    "scaleConstraint": "Main phone Scale expression locks X, Y and Z to the same value. No Corner Pin or independent width/height scale is applied to the supplied image.",
+    "frameArtBaked": true,
+    "decorativeOutlines": false,
+    "disabledDecorativeLayers": [
+      "DEPTH — trailing app plane",
+      "RETURN — contour into next loop",
+      "Phone v7 — Framed Cal AI iPhone / TRAVEL — edge light"
+    ],
+    "openingContinuity": "The phone continues a small uniform scale/position drift between its early settled pose and transfer, preventing a frozen interval after removing the edge-light graphics.",
+    "phoneImageSha256": "5EE7A5BF381B82341D48FC74FA59204571D9BCAE9BF62E793CECA80C0D18B062"
+  }
+}

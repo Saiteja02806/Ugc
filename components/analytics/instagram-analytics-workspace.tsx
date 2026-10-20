@@ -1,6 +1,7 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useAnalyticsDisplayTiming } from "@/lib/analytics/use-analytics-display-timing";
 import {
   AlertCircle,
   ArrowRight,
@@ -27,22 +28,19 @@ import {
 import Link from "next/link";
 import {
   useCallback,
-  useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
+import { SocialAnalyticsBetaControls } from "@/components/analytics/social-analytics-beta-controls";
+import { TikTokBetaAnalyticsPanel } from "@/components/analytics/tiktok-beta-analytics-panel";
+import { YouTubeBetaAnalyticsPanel } from "@/components/analytics/youtube-beta-analytics-panel";
 import { InstagramAccountAvatar } from "@/components/social/instagram-account-avatar";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -79,7 +77,14 @@ import {
   type InstagramContentSort,
   type InstagramContentType,
 } from "@/lib/analytics/instagram-content-insights";
-import { loadInstagramAnalyticsQuery } from "@/lib/analytics/instagram-query";
+import {
+  getConnectionsForAnalyticsPlatform,
+  getEffectiveAnalyticsConnectionId,
+} from "@/lib/analytics/social-account-selection";
+import { useInstagramAnalytics } from "@/lib/analytics/use-instagram-analytics";
+import { analyticsRequest } from "@/lib/analytics/use-analytics-resource";
+import { getConnectionsRevision } from "@/lib/social/connection-revision";
+import { getAccountSocialConnectionsQueryKey } from "@/lib/scheduling/account-data-query-cache";
 import { useAuth } from "@/contexts/auth-context";
 import {
   getInstagramPerformanceTrendMode,
@@ -87,47 +92,15 @@ import {
   type InstagramInsightPoint,
   type InstagramInsightsAccount,
 } from "@/lib/analytics/instagram-insights";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import {
-  loadAccountSchedules,
-  loadAccountSocialConnections,
-} from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
-import type { ScheduledPost } from "@/lib/scheduling/types";
-import type { SocialConnection } from "@/lib/social/types";
+import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
+import { hasTikTokUiAccess, isSocialPlatformVisible } from "@/lib/social/platform-visibility";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import { cn } from "@/lib/utils";
 
 type AnalyticsLoadState = "error" | "loading" | "ready";
 type DateRangeDays = 7 | 30 | 90;
 type PerformanceMetric = "interactions" | "reach" | "views";
-
-type InstagramInsightsResponse = {
-  accounts?: InstagramInsightsAccount[];
-  days?: DateRangeDays;
-  message?: string;
-  ok?: boolean;
-};
-
-type InstagramInsightsResult = {
-  accounts: InstagramInsightsAccount[];
-  days: DateRangeDays | null;
-  message: string | null;
-  state: "loading" | "ready";
-};
-
-type InstagramContentResponse = {
-  accounts?: InstagramContentAccount[];
-  days?: DateRangeDays;
-  message?: string;
-  ok?: boolean;
-};
-
-type InstagramContentResult = {
-  accounts: InstagramContentAccount[];
-  days: DateRangeDays | null;
-  message: string | null;
-  state: "loading" | "ready";
-};
 
 type InstagramAnalyticsWorkspaceSummary = InstagramAnalyticsSummary & {
   rangeLabel: string;
@@ -157,10 +130,12 @@ type PositionedPerformanceTrendPoint = {
   y: number;
 };
 
-type AvailablePerformanceTrendPoint =
-  Omit<PositionedPerformanceTrendPoint, "value"> & {
-    value: number;
-  };
+type AvailablePerformanceTrendPoint = Omit<
+  PositionedPerformanceTrendPoint,
+  "value"
+> & {
+  value: number;
+};
 
 const dateRangeOptions: Array<{ days: DateRangeDays; label: string }> = [
   { days: 7, label: "7 days" },
@@ -208,285 +183,108 @@ const contentTypeLabels: Record<InstagramContentType, string> = {
 };
 
 export function InstagramAnalyticsWorkspace() {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
+  const betaSocialAnalyticsEnabled = hasYouTubeBetaAccess(user);
+  const tiktokBetaEnabled =
+    betaSocialAnalyticsEnabled && hasTikTokUiAccess(user);
   const accountId = user?.uid ?? "";
 
-  const [connections, setConnections] = useState<SocialConnection[]>([]);
-  const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
-  const activeDateRangeRef = useRef<DateRangeDays>(dateRangeDays);
-  const [performanceMetric, setPerformanceMetric] =
-    useState<PerformanceMetric>("views");
-  const [loadState, setLoadState] =
-    useState<AnalyticsLoadState>("loading");
-  const [refreshInProgress, setRefreshInProgress] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [insightsResult, setInsightsResult] =
-    useState<InstagramInsightsResult>({
-      accounts: [],
-      days: null,
-      message: null,
-      state: "loading",
-    });
-  const [contentResult, setContentResult] =
-    useState<InstagramContentResult>({
-      accounts: [],
-      days: null,
-      message: null,
-      state: "loading",
-    });
+  const [performanceMetric, setPerformanceMetric] = useState<PerformanceMetric>("views");
+  const [instagramRefreshRequest, setInstagramRefreshRequest] = useState(0);
+  const connectionsQuery = useQuery({
+    queryKey: getAccountSocialConnectionsQueryKey(accountId),
+    enabled: Boolean(accountId), staleTime: 30 * 60_000, gcTime: 30 * 60_000,
+    retry: false, refetchOnWindowFocus: true,
+    queryFn: async ({ signal }) => (await analyticsRequest<{ connections: SocialConnection[] }>("/api/social/connections", accountId, signal)).connections,
+  });
+  const allSocialConnections = useMemo(() => [...(connectionsQuery.data ?? [])].sort(
+    (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
+  ), [connectionsQuery.data]);
+  const connections = useMemo(() => getUniqueInstagramConnections(allSocialConnections), [allSocialConnections]);
+  const loadState: AnalyticsLoadState = connectionsQuery.data ? "ready" : connectionsQuery.isError ? "error" : "loading";
+  const errorMessage = connectionsQuery.error?.message ?? null;
+  useAnalyticsDisplayTiming("accounts", accountId, Boolean(accountId), Boolean(connectionsQuery.data));
 
-  useEffect(() => {
-    activeDateRangeRef.current = dateRangeDays;
-  }, [dateRangeDays]);
+  const [selectedConnectionId, setSelectedConnectionId] =
+    useState<string>("all");
+  const [requestedBetaPlatform, setBetaSelectedPlatform] =
+    useState<SocialPlatform>("instagram");
+  const betaSelectedPlatform = isSocialPlatformVisible(requestedBetaPlatform)
+    ? requestedBetaPlatform
+    : "instagram";
+  const [betaSelectedConnectionId, setBetaSelectedConnectionId] =
+    useState<string>("all");
+  const [socialRefreshRequest, setSocialRefreshRequest] = useState(0);
+  const [socialRefreshInProgress, setSocialRefreshInProgress] = useState(false);
 
-  const loadAnalytics = useCallback(async (
-    signal?: AbortSignal,
-    idempotencyKey?: string,
-  ) => {
-    try {
-      const token = await getCurrentUserIdToken();
-
-      if (signal?.aborted) {
-        return;
-      }
-
-      if (!token) {
-        setConnections([]);
-        setSchedules([]);
-        setInsightsResult({
-          accounts: [],
-          days: dateRangeDays,
-          message: null,
-          state: "ready",
-        });
-        setErrorMessage(null);
-        setLoadState("ready");
-        return;
-      }
-
-      setInsightsResult((current) =>
-        current.days === dateRangeDays && current.accounts.length > 0
-          ? current
-          : { ...current, state: "loading" },
-      );
-      const [
-        loadedConnections,
-        loadedSchedules,
-        insightsOutput,
-      ] = await Promise.all([
-        loadAccountSocialConnections(queryClient, accountId, {
-          force: Boolean(idempotencyKey),
-          token,
-        }),
-        loadAccountSchedules(queryClient, accountId, {
-          force: Boolean(idempotencyKey),
-          token,
-        }),
-        loadInstagramAnalyticsQuery({
-          accountId,
-          days: dateRangeDays,
-          force: Boolean(idempotencyKey),
-          idempotencyKey,
-          kind: "insights",
-          onBackgroundError: (error) => {
-            setInsightsResult((current) => ({
-              ...current,
-              message: error.message,
-            }));
-          },
-          onBackgroundOutput: (output) => {
-            const refreshed = output as InstagramInsightsResponse | null;
-
-            if (
-              refreshed?.accounts &&
-              refreshed.days === activeDateRangeRef.current
-            ) {
-              setInsightsResult({
-                accounts: refreshed.accounts,
-                days: dateRangeDays,
-                message: refreshed.message ?? null,
-                state: "ready",
-              });
-            }
-          },
-          queryClient,
-          token,
-        }),
-      ]);
-      const insightsData =
-        insightsOutput as InstagramInsightsResponse | null;
-
-      if (signal?.aborted) {
-        return;
-      }
-
-      setConnections(
-        getUniqueInstagramConnections(
-          [...(loadedConnections ?? [])].sort(
-            (left, right) =>
-              Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
-          ),
-        ),
-      );
-      setSchedules(
-        Array.isArray(loadedSchedules.schedules)
-          ? loadedSchedules.schedules
-          : [],
-      );
-      setInsightsResult({
-        accounts: insightsData?.accounts ?? [],
-        days: dateRangeDays,
-        message: insightsData?.message ?? null,
-        state: "ready",
-      });
-      setErrorMessage(null);
-      setLoadState("ready");
-    } catch (error) {
-      if (signal?.aborted) {
-        return;
-      }
-
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not load analytics. Refresh and try again.",
-      );
-      setInsightsResult((current) => ({
-        ...current,
-        days: dateRangeDays,
-        message: "Performance insights could not load right now.",
-        state: "ready",
-      }));
-      setLoadState("error");
-    }
-  }, [accountId, dateRangeDays, queryClient]);
-
-  const loadContentPerformance = useCallback(
-    async (signal?: AbortSignal, idempotencyKey?: string) => {
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (signal?.aborted) {
-          return;
-        }
-
-        if (!token) {
-          setContentResult({
-            accounts: [],
-            days: dateRangeDays,
-            message: null,
-            state: "ready",
-          });
-          return;
-        }
-
-        setContentResult((current) =>
-          current.days === dateRangeDays && current.accounts.length > 0
-            ? current
-            : { ...current, state: "loading" },
-        );
-        const output = await loadInstagramAnalyticsQuery({
-          accountId,
-          days: dateRangeDays,
-          force: Boolean(idempotencyKey),
-          idempotencyKey,
-          kind: "content",
-          onBackgroundError: (error) => {
-            setContentResult((current) => ({
-              ...current,
-              message: error.message,
-            }));
-          },
-          onBackgroundOutput: (backgroundOutput) => {
-            const refreshed =
-              backgroundOutput as InstagramContentResponse | null;
-
-            if (
-              refreshed?.accounts &&
-              refreshed.days === activeDateRangeRef.current
-            ) {
-              setContentResult({
-                accounts: refreshed.accounts,
-                days: dateRangeDays,
-                message: refreshed.message ?? null,
-                state: "ready",
-              });
-            }
-          },
-          queryClient,
-          token,
-        });
-        const data = output as InstagramContentResponse | null;
-
-        if (signal?.aborted) {
-          return;
-        }
-
-        setContentResult({
-          accounts: data?.accounts ?? [],
-          days: dateRangeDays,
-          message: null,
-          state: "ready",
-        });
-      } catch (error) {
-        if (signal?.aborted) {
-          return;
-        }
-
-        setContentResult({
-          accounts: [],
-          days: dateRangeDays,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Content performance could not load right now.",
-          state: "ready",
-        });
-      }
-    },
-    [accountId, dateRangeDays, queryClient],
+  const betaPlatformConnections = useMemo(
+    () =>
+      getConnectionsForAnalyticsPlatform(
+        allSocialConnections,
+        betaSelectedPlatform,
+      ),
+    [allSocialConnections, betaSelectedPlatform],
+  );
+  const effectiveBetaSelectedConnectionId = getEffectiveAnalyticsConnectionId(
+    betaPlatformConnections,
+    betaSelectedConnectionId,
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const showInstagramAnalytics =
+    !betaSocialAnalyticsEnabled || betaSelectedPlatform === "instagram";
+  const showTikTokAnalytics =
+    tiktokBetaEnabled &&
+    (!betaSocialAnalyticsEnabled || betaSelectedPlatform === "tiktok");
+  const showYouTubeAnalytics =
+    betaSocialAnalyticsEnabled && betaSelectedPlatform === "youtube";
 
-    queueMicrotask(() => {
-      if (!controller.signal.aborted) {
-        void loadAnalytics(controller.signal);
-        void loadContentPerformance(controller.signal);
-      }
-    });
-
-    return () => controller.abort();
-  }, [loadAnalytics, loadContentPerformance]);
-
-  const retryAnalytics = useCallback(() => {
-    setErrorMessage(null);
-    setRefreshInProgress(true);
-    const refreshKey = crypto.randomUUID();
-    void Promise.all([
-      loadAnalytics(undefined, refreshKey),
-      loadContentPerformance(undefined, refreshKey),
-    ]).finally(() => setRefreshInProgress(false));
-  }, [loadAnalytics, loadContentPerformance]);
-
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string>("all");
-
+  const { insights, content } = useInstagramAnalytics({
+    owner: accountId, connections, days: dateRangeDays,
+    enabled: showInstagramAnalytics && Boolean(connectionsQuery.data && connections.length),
+    refreshRequest: instagramRefreshRequest,
+  });
+  const insightsResult = { accounts: insights.output?.accounts ?? [], message: insights.error };
+  const contentResult = { accounts: content.output?.accounts ?? [], message: content.error };
   const activeConnectionIds = useMemo(
     () => new Set(connections.map((connection) => connection.id)),
     [connections],
   );
   const effectiveSelectedConnectionId =
-    selectedConnectionId !== "all" && !activeConnectionIds.has(selectedConnectionId)
+    selectedConnectionId !== "all" &&
+    !activeConnectionIds.has(selectedConnectionId)
       ? "all"
       : selectedConnectionId;
 
+  const effectiveInstagramSelectedConnectionId =
+    betaSocialAnalyticsEnabled && betaSelectedPlatform === "instagram"
+      ? effectiveBetaSelectedConnectionId
+      : effectiveSelectedConnectionId;
   const displayedConnections = useMemo(() => {
-    if (effectiveSelectedConnectionId === "all") return connections;
-    return connections.filter((c) => c.id === effectiveSelectedConnectionId);
-  }, [connections, effectiveSelectedConnectionId]);
+    if (effectiveInstagramSelectedConnectionId === "all") return connections;
+    return connections.filter(
+      (connection) => connection.id === effectiveInstagramSelectedConnectionId,
+    );
+  }, [connections, effectiveInstagramSelectedConnectionId]);
+
+  const rangeKeys = getDateRangeKeys(dateRangeDays);
+  const endDate = rangeKeys.at(-1)!;
+  const offsetMinutes = new Date().getTimezoneOffset();
+  const activityQuery = useQuery({
+    queryKey: ["account", accountId, "analytics-activity", dateRangeDays, endDate, offsetMinutes, effectiveInstagramSelectedConnectionId, getConnectionsRevision(connections)],
+    enabled: Boolean(accountId && showInstagramAnalytics && connections.length),
+    staleTime: 30 * 60_000, retry: false,
+    queryFn: ({ signal }) => analyticsRequest<{ activity: InstagramAnalyticsSummary }>(
+      `/api/analytics/activity?days=${dateRangeDays}&end=${endDate}&offset=${offsetMinutes}&connection=${effectiveInstagramSelectedConnectionId}`, accountId, signal,
+    ),
+  });
+  const refetchConnections = connectionsQuery.refetch;
+  const refetchActivity = activityQuery.refetch;
+  const retryAnalytics = useCallback(() => {
+    void refetchConnections();
+    if (connections.length) void refetchActivity();
+    setInstagramRefreshRequest((request) => request + 1);
+  }, [refetchConnections, refetchActivity, connections.length]);
 
   const activeInsightAccounts = useMemo(
     () =>
@@ -504,42 +302,36 @@ export function InstagramAnalyticsWorkspace() {
   );
 
   const displayedContentAccounts = useMemo(() => {
-    if (effectiveSelectedConnectionId === "all") return activeContentAccounts;
+    if (effectiveInstagramSelectedConnectionId === "all") {
+      return activeContentAccounts;
+    }
+
     return activeContentAccounts.filter(
-      (account) => account.connectionId === effectiveSelectedConnectionId,
+      (account) =>
+        account.connectionId === effectiveInstagramSelectedConnectionId,
     );
-  }, [activeContentAccounts, effectiveSelectedConnectionId]);
+  }, [activeContentAccounts, effectiveInstagramSelectedConnectionId]);
 
   const displayedInsightAccounts = useMemo(() => {
-    if (effectiveSelectedConnectionId === "all") return activeInsightAccounts;
-    return activeInsightAccounts.filter(
-      (account) => account.connectionId === effectiveSelectedConnectionId,
-    );
-  }, [activeInsightAccounts, effectiveSelectedConnectionId]);
+    if (effectiveInstagramSelectedConnectionId === "all") {
+      return activeInsightAccounts;
+    }
 
-  const displayedVisibleConnectionIds = useMemo(
-    () => new Set(displayedConnections.map((connection) => connection.id)),
-    [displayedConnections],
-  );
+    return activeInsightAccounts.filter(
+      (account) =>
+        account.connectionId === effectiveInstagramSelectedConnectionId,
+    );
+  }, [activeInsightAccounts, effectiveInstagramSelectedConnectionId]);
 
   const analytics = useMemo<InstagramAnalyticsWorkspaceSummary>(() => {
     const dateKeys = getDateRangeKeys(dateRangeDays);
-
     return {
-      ...buildInstagramActivitySummary({
-        accountNames: new Map(
-          displayedConnections.map((connection) => [
-            connection.id,
-            getInstagramAccountName(connection),
-          ]),
-        ),
-        dateKeys,
-        schedules,
-        visibleConnectionIds: displayedVisibleConnectionIds,
-      }),
+      ...(activityQuery.data?.activity ?? buildInstagramActivitySummary({
+        accountNames: new Map(), dateKeys, schedules: [], visibleConnectionIds: new Set(),
+      })),
       rangeLabel: getRangeLabel(dateKeys),
     };
-  }, [dateRangeDays, displayedConnections, displayedVisibleConnectionIds, schedules]);
+  }, [dateRangeDays, activityQuery.data]);
 
   const primaryConnection = useMemo(
     () => getPrimaryInstagramConnection(displayedConnections),
@@ -548,23 +340,27 @@ export function InstagramAnalyticsWorkspace() {
   const primaryInsightAccount = useMemo(
     () =>
       primaryConnection
-        ? displayedInsightAccounts.find(
+        ? (displayedInsightAccounts.find(
             (account) => account.connectionId === primaryConnection.id,
-          ) ?? null
+          ) ?? null)
         : null,
     [displayedInsightAccounts, primaryConnection],
   );
-  const insightsLoading =
-    insightsResult.state === "loading" ||
-    insightsResult.days !== dateRangeDays;
-  const contentLoading =
-    contentResult.state === "loading" ||
-    contentResult.days !== dateRangeDays;
-  const refreshing =
-    refreshInProgress ||
-    loadState === "loading" ||
-    insightsLoading ||
-    contentLoading;
+  const insightsLoading = insights.loading || (insights.refreshing && !insights.output?.accounts.length);
+  const contentLoading = content.loading || (content.refreshing && !content.output?.accounts.length);
+  const refreshing = loadState === "loading" || insights.refreshing || content.refreshing;
+  const isInstagramRefreshActive = showInstagramAnalytics;
+  const activeRefreshInProgress = isInstagramRefreshActive
+    ? refreshing
+    : socialRefreshInProgress;
+  const refreshActiveAnalytics = useCallback(() => {
+    if (isInstagramRefreshActive) {
+      retryAnalytics();
+      return;
+    }
+
+    setSocialRefreshRequest((current) => current + 1);
+  }, [isInstagramRefreshActive, retryAnalytics]);
 
   return (
     <section className="min-h-dvh min-w-0 flex-1 bg-background px-4 py-5 text-foreground sm:px-6 lg:px-10 lg:py-8">
@@ -592,14 +388,14 @@ export function InstagramAnalyticsWorkspace() {
               type="button"
               variant="outline"
               size="lg"
-              onClick={retryAnalytics}
-              disabled={refreshing}
-              className="w-full sm:w-auto"
+              onClick={refreshActiveAnalytics}
+              disabled={activeRefreshInProgress}
+              className="w-full rounded-full sm:w-auto"
             >
               <RefreshCw
                 data-icon="inline-start"
                 className={cn(
-                  refreshing &&
+                  activeRefreshInProgress &&
                     "animate-spin motion-reduce:animate-none",
                 )}
                 aria-hidden="true"
@@ -609,38 +405,79 @@ export function InstagramAnalyticsWorkspace() {
           </div>
         </header>
 
-        <div
-          className="mt-6"
-          aria-busy={loadState === "loading"}
-        >
-          {loadState === "loading" ? <AnalyticsLoadingState /> : null}
-          {loadState === "error" ? (
-            <AnalyticsErrorState
-              message={errorMessage}
-              onRetry={retryAnalytics}
-            />
-          ) : null}
-          {loadState === "ready" ? (
-            <AnalyticsReadyState
-              allConnections={connections}
-              analytics={analytics}
-              connection={primaryConnection}
-              connectionCount={displayedConnections.length}
-              contentAccounts={displayedContentAccounts}
-              contentLoading={contentLoading}
-              contentMessage={contentResult.message}
-              dateRangeDays={dateRangeDays}
-              insightAccount={primaryInsightAccount}
-              insightsLoading={insightsLoading}
-              insightsMessage={insightsResult.message}
-              onDateRangeChange={setDateRangeDays}
-              onPerformanceMetricChange={setPerformanceMetric}
-              onSelectConnectionId={setSelectedConnectionId}
-              performanceMetric={performanceMetric}
-              selectedConnectionId={effectiveSelectedConnectionId}
-            />
-          ) : null}
-        </div>
+        {betaSocialAnalyticsEnabled ? (
+          <SocialAnalyticsBetaControls
+            connections={allSocialConnections}
+            loading={loadState === "loading"}
+            error={errorMessage}
+            platform={betaSelectedPlatform}
+            selectedConnectionId={effectiveBetaSelectedConnectionId}
+            onPlatformChange={(platform) => {
+              setBetaSelectedPlatform(platform);
+              setBetaSelectedConnectionId("all");
+              setSocialRefreshInProgress(false);
+              setSocialRefreshRequest(0);
+            }}
+            onConnectionChange={setBetaSelectedConnectionId}
+          />
+        ) : null}
+
+        {showTikTokAnalytics && loadState === "ready" ? (
+          <TikTokBetaAnalyticsPanel
+            connections={betaPlatformConnections}
+            onRefreshStateChange={setSocialRefreshInProgress}
+            refreshRequest={socialRefreshRequest}
+            selectedConnectionId={effectiveBetaSelectedConnectionId}
+          />
+        ) : null}
+        {showYouTubeAnalytics && loadState === "ready" ? (
+          <YouTubeBetaAnalyticsPanel
+            connections={betaPlatformConnections}
+            onRefreshStateChange={setSocialRefreshInProgress}
+            refreshRequest={socialRefreshRequest}
+            selectedConnectionId={effectiveBetaSelectedConnectionId}
+          />
+        ) : null}
+
+        {connectionsQuery.data && errorMessage ? <p role="status" className="mt-4 text-sm text-muted">Showing saved accounts. {errorMessage}</p> : null}
+        {showInstagramAnalytics && activityQuery.error ? <p role="status" className="mt-4 text-sm text-muted">Publishing activity could not refresh. Performance data remains available.</p> : null}
+        {showInstagramAnalytics ? (
+          <div className="mt-6" aria-busy={loadState === "loading"}>
+            {loadState === "loading" ? <AnalyticsLoadingState /> : null}
+            {loadState === "error" ? (
+              <AnalyticsErrorState
+                message={errorMessage}
+                onRetry={retryAnalytics}
+              />
+            ) : null}
+            {loadState === "ready" ? (
+              <AnalyticsReadyState
+                allConnections={connections}
+                analytics={analytics}
+                activityAvailable={Boolean(activityQuery.data) || connections.length === 0}
+                connection={primaryConnection}
+                connectionCount={displayedConnections.length}
+                contentAccounts={displayedContentAccounts}
+                contentLoading={contentLoading}
+                contentMessage={contentResult.message}
+                dateRangeDays={dateRangeDays}
+                insightAccount={primaryInsightAccount}
+                insightsLoading={insightsLoading}
+                insightsMessage={insightsResult.message}
+                onDateRangeChange={setDateRangeDays}
+                onPerformanceMetricChange={setPerformanceMetric}
+                onSelectConnectionId={
+                  betaSocialAnalyticsEnabled
+                    ? setBetaSelectedConnectionId
+                    : setSelectedConnectionId
+                }
+                performanceMetric={performanceMetric}
+                selectedConnectionId={effectiveInstagramSelectedConnectionId}
+                showAccountSelector={!betaSocialAnalyticsEnabled}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -649,6 +486,7 @@ export function InstagramAnalyticsWorkspace() {
 function AnalyticsReadyState({
   allConnections,
   analytics,
+  activityAvailable,
   connection,
   connectionCount,
   contentAccounts,
@@ -663,9 +501,11 @@ function AnalyticsReadyState({
   onSelectConnectionId,
   performanceMetric,
   selectedConnectionId,
+  showAccountSelector,
 }: {
   allConnections: SocialConnection[];
   analytics: InstagramAnalyticsWorkspaceSummary;
+  activityAvailable: boolean;
   connection: SocialConnection | null;
   connectionCount: number;
   contentAccounts: InstagramContentAccount[];
@@ -680,22 +520,20 @@ function AnalyticsReadyState({
   onSelectConnectionId: (connectionId: string) => void;
   performanceMetric: PerformanceMetric;
   selectedConnectionId: string;
+  showAccountSelector: boolean;
 }) {
   const contentSnapshot = useMemo(
     () =>
-      buildInstagramVisibleContentSnapshot(
-        contentAccounts,
-        connectionCount,
-      ),
+      buildInstagramVisibleContentSnapshot(contentAccounts, connectionCount),
     [connectionCount, contentAccounts],
   );
   const contentMetricsReady = contentSnapshot.readyAccountCount > 0;
-  const displayedViews = contentLoading || !contentMetricsReady
-    ? null
-    : contentSnapshot.views;
-  const displayedInteractions = contentLoading || !contentMetricsReady
-    ? null
-    : contentSnapshot.interactions;
+  const displayedViews =
+    contentLoading || !contentMetricsReady ? null : contentSnapshot.views;
+  const displayedInteractions =
+    contentLoading || !contentMetricsReady
+      ? null
+      : contentSnapshot.interactions;
   const contentMetricSource = getContentMetricSource({
     contentSnapshot,
     contentLoading,
@@ -724,7 +562,7 @@ function AnalyticsReadyState({
         />
       </div>
 
-      {allConnections.length > 1 ? (
+      {showAccountSelector && allConnections.length > 1 ? (
         <div className="flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-card p-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 px-0.5">
             <span className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
@@ -785,7 +623,7 @@ function AnalyticsReadyState({
             icon={<CalendarClock aria-hidden="true" />}
             label="Upcoming posts"
             source="Schedule records"
-            value={formatNumber(analytics.scheduled)}
+            value={formatOptionalNumber(activityAvailable ? analytics.scheduled : null)}
           />
         </div>
       </section>
@@ -820,7 +658,7 @@ function AnalyticsReadyState({
           insightAccount={insightAccount}
           insightsLoading={insightsLoading}
           insightsMessage={insightsMessage}
-          needsAttention={analytics.needsAttention}
+          needsAttention={activityAvailable ? analytics.needsAttention : null}
         />
       </div>
 
@@ -990,7 +828,7 @@ function DateRangeSelector({
   return (
     <div
       aria-label="Analytics date range"
-      className="inline-flex w-fit max-w-full overflow-x-auto rounded-[var(--radius-control)] border border-border bg-card p-1"
+      className="inline-flex w-fit max-w-full overflow-x-auto rounded-full border border-border bg-card p-1"
       role="group"
     >
       {dateRangeOptions.map((option) => {
@@ -1002,7 +840,7 @@ function DateRangeSelector({
             type="button"
             aria-pressed={selected}
             className={cn(
-              "min-h-11 touch-manipulation whitespace-nowrap rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+              "min-h-10 touch-manipulation whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
               selected
                 ? "bg-primary text-primary-foreground shadow-card"
                 : "text-muted hover:bg-card-muted hover:text-foreground-strong",
@@ -1027,7 +865,7 @@ function PerformanceMetricSelector({
   return (
     <div
       aria-label="Performance metric"
-      className="grid w-full grid-cols-3 rounded-[var(--radius-control)] border border-border bg-card-muted p-1 sm:inline-grid sm:w-auto"
+      className="grid w-full grid-cols-3 rounded-full border border-border bg-card-muted p-1 sm:inline-grid sm:w-auto"
       role="group"
     >
       {(Object.keys(performanceMetricLabels) as PerformanceMetric[]).map(
@@ -1040,7 +878,7 @@ function PerformanceMetricSelector({
               type="button"
               aria-pressed={selected}
               className={cn(
-                "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[7px] px-2.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                "inline-flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
                 selected
                   ? "bg-card text-foreground-strong shadow-card"
                   : "text-muted hover:text-foreground-strong",
@@ -1086,8 +924,9 @@ function InstagramPerformanceTrendChart({
   const [selectedContentDate, setSelectedContentDate] = useState<string | null>(
     null,
   );
-  const [selectedItem, setSelectedItem] =
-    useState<InstagramContentItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<InstagramContentItem | null>(
+    null,
+  );
   const gradientId = `instagram-performance-${useId().replaceAll(":", "")}`;
   const chartWidth = 720;
   const chartHeight = 280;
@@ -1105,8 +944,8 @@ function InstagramPerformanceTrendChart({
   const drawableWidth = chartWidth - paddingX * 2;
   const drawableHeight = chartHeight - paddingTop - paddingBottom;
   const baselineY = chartHeight - paddingBottom;
-  const positionedPoints: PositionedPerformanceTrendPoint[] =
-    points.map((point, index) => ({
+  const positionedPoints: PositionedPerformanceTrendPoint[] = points.map(
+    (point, index) => ({
       date: point.date,
       index,
       value: point[metric],
@@ -1118,12 +957,11 @@ function InstagramPerformanceTrendChart({
       y:
         point[metric] === null
           ? baselineY
-          : paddingTop +
-            (1 - point[metric] / maxValue) * drawableHeight,
-    }));
+          : paddingTop + (1 - point[metric] / maxValue) * drawableHeight,
+    }),
+  );
   const availablePoints = positionedPoints.filter(
-    (point): point is AvailablePerformanceTrendPoint =>
-      point.value !== null,
+    (point): point is AvailablePerformanceTrendPoint => point.value !== null,
   );
   const segments = splitPerformanceTrendSegments(positionedPoints);
   const activePoint =
@@ -1174,11 +1012,11 @@ function InstagramPerformanceTrendChart({
       )
     : [];
   const activeSelectedItem = selectedItem
-    ? contentItems.find(
+    ? (contentItems.find(
         (item) =>
           item.id === selectedItem.id &&
           item.connectionId === selectedItem.connectionId,
-      ) ?? null
+      ) ?? null)
     : null;
   const firstPoint = availablePoints[0] ?? null;
   const firstPointItems = firstPoint
@@ -1188,10 +1026,7 @@ function InstagramPerformanceTrendChart({
       )
     : [];
 
-  const openContentItems = (
-    date: string,
-    items: InstagramContentItem[],
-  ) => {
+  const openContentItems = (date: string, items: InstagramContentItem[]) => {
     if (items.length === 0) {
       return;
     }
@@ -1208,17 +1043,14 @@ function InstagramPerformanceTrendChart({
     setSelectedContentDate(date);
   };
 
-  const activateNearestPoint = (
-    event: ReactPointerEvent<SVGSVGElement>,
-  ) => {
+  const activateNearestPoint = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (availablePoints.length === 0) {
       return;
     }
 
     const bounds = event.currentTarget.getBoundingClientRect();
     const pointerX =
-      ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) *
-      chartWidth;
+      ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) * chartWidth;
     const nearest = availablePoints.reduce((closest, point) =>
       Math.abs(point.x - pointerX) < Math.abs(closest.x - pointerX)
         ? point
@@ -1288,23 +1120,9 @@ function InstagramPerformanceTrendChart({
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         >
           <defs>
-            <linearGradient
-              id={gradientId}
-              x1="0"
-              x2="0"
-              y1="0"
-              y2="1"
-            >
-              <stop
-                offset="0%"
-                stopColor={metricColor}
-                stopOpacity="0.28"
-              />
-              <stop
-                offset="100%"
-                stopColor={metricColor}
-                stopOpacity="0"
-              />
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={metricColor} stopOpacity="0.28" />
+              <stop offset="100%" stopColor={metricColor} stopOpacity="0" />
             </linearGradient>
           </defs>
           {hasData
@@ -1382,9 +1200,7 @@ function InstagramPerformanceTrendChart({
                 r={activePoint?.date === point.date ? 5 : 3}
                 role="img"
                 stroke={
-                  activePoint?.date === point.date
-                    ? "#f5f3f0"
-                    : "rgb(41 41 41)"
+                  activePoint?.date === point.date ? "#f5f3f0" : "rgb(41 41 41)"
                 }
                 strokeWidth={activePoint?.date === point.date ? 2.5 : 1.5}
                 tabIndex={0}
@@ -1433,9 +1249,7 @@ function InstagramPerformanceTrendChart({
             metric={metric}
             metricColor={metricColor}
             onActivate={setActiveDate}
-            onSelect={() =>
-              openContentItems(marker.point.date, marker.items)
-            }
+            onSelect={() => openContentItems(marker.point.date, marker.items)}
             peak={peakPoint?.date === marker.point.date}
             point={marker.point}
             previewItem={marker.previewItem}
@@ -1484,10 +1298,7 @@ function InstagramPerformanceTrendChart({
       </div>
 
       <dl className="mt-4 grid grid-cols-3 gap-2">
-        <ChartStat
-          label="Visible total"
-          value={formatOptionalNumber(total)}
-        />
+        <ChartStat label="Visible total" value={formatOptionalNumber(total)} />
         <ChartStat
           label="Peak publish date"
           value={
@@ -1557,8 +1368,9 @@ function PerformanceTrendInsufficientState({
           </EmptyMedia>
           <EmptyTitle>Not enough history to show a trend</EmptyTitle>
           <EmptyDescription>
-            We recorded your first reporting day on {formatShortDate(point.date)}.
-            The chart will appear after another day reports performance.
+            We recorded your first reporting day on{" "}
+            {formatShortDate(point.date)}. The chart will appear after another
+            day reports performance.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
@@ -1681,7 +1493,8 @@ function PerformanceContentMarker({
         </span>
       ) : null}
       <span className="sr-only">
-        {formatNumber(point.value)} {performanceMetricLabels[metric].toLowerCase()}
+        {formatNumber(point.value)}{" "}
+        {performanceMetricLabels[metric].toLowerCase()}
       </span>
     </button>
   );
@@ -1708,14 +1521,8 @@ function sortContentForPerformanceMarker(
 
 function PerformanceTrendLoadingState() {
   return (
-    <div
-      className="mt-6"
-      aria-label="Loading performance trend"
-      role="status"
-    >
-      <span className="sr-only">
-        Loading performance trend…
-      </span>
+    <div className="mt-6" aria-label="Loading performance trend" role="status">
+      <span className="sr-only">Loading performance trend…</span>
       <div className="flex h-[280px] items-end gap-2 overflow-hidden rounded-[var(--radius-control)] border border-border bg-card-muted/35 p-5">
         {[42, 64, 38, 78, 56, 84, 62, 72, 48, 68, 52, 76].map(
           (height, index) => (
@@ -1759,9 +1566,7 @@ function PerformanceTrendTooltip({
         ? "-translate-x-full"
         : "-translate-x-1/2";
   const verticalClass =
-    point.y < 88
-      ? "translate-y-3"
-      : "-translate-y-[calc(100%+12px)]";
+    point.y < 88 ? "translate-y-3" : "-translate-y-[calc(100%+12px)]";
 
   return (
     <div
@@ -1833,7 +1638,7 @@ function InstagramReadinessPanel({
   insightAccount: InstagramInsightsAccount | null;
   insightsLoading: boolean;
   insightsMessage: string | null;
-  needsAttention: number;
+  needsAttention: number | null;
 }) {
   const publishingBlockMessage = connection
     ? getConnectionPublishingBlockMessage(connection)
@@ -1852,9 +1657,7 @@ function InstagramReadinessPanel({
   const primaryAccountLabel = accountIdentityRepeats
     ? accountHandle
     : accountName;
-  const secondaryAccountHandle = accountIdentityRepeats
-    ? null
-    : accountHandle;
+  const secondaryAccountHandle = accountIdentityRepeats ? null : accountHandle;
   const insightsReadiness = getInstagramInsightsReadiness({
     connection,
     insightAccount,
@@ -1912,11 +1715,7 @@ function InstagramReadinessPanel({
         <ReadinessRow
           label="Publishing access"
           value={
-            !connection
-              ? "Not connected"
-              : ready
-                ? "Ready"
-                : "Needs attention"
+            !connection ? "Not connected" : ready ? "Ready" : "Needs attention"
           }
           tone={ready ? "success" : connection ? "warning" : "muted"}
         />
@@ -1927,8 +1726,8 @@ function InstagramReadinessPanel({
         />
         <ReadinessRow
           label="Posts needing attention"
-          value={formatNumber(needsAttention)}
-          tone={needsAttention > 0 ? "warning" : "success"}
+          value={formatOptionalNumber(needsAttention)}
+          tone={needsAttention === null ? "muted" : needsAttention > 0 ? "warning" : "success"}
         />
       </dl>
 
@@ -2013,12 +1812,12 @@ function InstagramContentPerformance({
   loading: boolean;
   message: string | null;
 }) {
-  const [filter, setFilter] =
-    useState<InstagramContentFilter>("all");
+  const [filter, setFilter] = useState<InstagramContentFilter>("all");
   const [sort, setSort] = useState<InstagramContentSort>("views");
   const [page, setPage] = useState(0);
-  const [selectedItem, setSelectedItem] =
-    useState<InstagramContentItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<InstagramContentItem | null>(
+    null,
+  );
   const items = useMemo(
     () => flattenReadyInstagramContentAccounts(accounts),
     [accounts],
@@ -2042,11 +1841,11 @@ function InstagramContentPerformance({
   );
   const showAccountName = connectionCount > 1;
   const activeSelectedItem = selectedItem
-    ? items.find(
+    ? (items.find(
         (item) =>
           item.id === selectedItem.id &&
           item.connectionId === selectedItem.connectionId,
-      ) ?? null
+      ) ?? null)
     : null;
 
   return (
@@ -2142,9 +1941,14 @@ function InstagramContentPerformance({
           ) : null}
         </header>
 
+        {message && readyAccountCount > 0 ? (
+          <p role="status" className="border-b border-border px-5 py-3 text-sm text-warning sm:px-6">
+            Showing saved content. {message}
+          </p>
+        ) : null}
         {loading ? (
           <ContentPerformanceLoadingState />
-        ) : message ? (
+        ) : message && readyAccountCount === 0 ? (
           <ContentPerformanceState
             description={message}
             title="Content performance is unavailable"
@@ -2367,18 +2171,9 @@ function ContentPerformanceMobileList({
           </div>
 
           <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-3">
-            <ContentMobileMetric
-              label="Reach"
-              value={item.metrics.reach}
-            />
-            <ContentMobileMetric
-              label="Saves"
-              value={item.metrics.saves}
-            />
-            <ContentMobileMetric
-              label="Shares"
-              value={item.metrics.shares}
-            />
+            <ContentMobileMetric label="Reach" value={item.metrics.reach} />
+            <ContentMobileMetric label="Saves" value={item.metrics.saves} />
+            <ContentMobileMetric label="Shares" value={item.metrics.shares} />
           </dl>
         </button>
       ))}
@@ -2452,15 +2247,18 @@ function ContentDayPickerDialog({
   showAccountName: boolean;
 }) {
   return (
-    <Dialog open={Boolean(date && items.length > 1)} onOpenChange={onOpenChange}>
+    <Dialog
+      open={Boolean(date && items.length > 1)}
+      onOpenChange={onOpenChange}
+    >
       <DialogContent className="max-h-[min(80dvh,640px)] gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
           <DialogTitle className="text-lg font-bold leading-6 tracking-[-0.02em] text-foreground-strong">
             Posts from {formatFullDate(date ?? "")}
           </DialogTitle>
           <DialogDescription className="text-sm leading-6 text-muted">
-            {formatNumber(items.length)} posts were published on this day. Select
-            one to view its exact content metrics and preview.
+            {formatNumber(items.length)} posts were published on this day.
+            Select one to view its exact content metrics and preview.
           </DialogDescription>
         </DialogHeader>
 
@@ -2703,11 +2501,7 @@ function ContentThumbnail({
     null,
   );
   const sizeClassName =
-    size === "lg"
-      ? "h-20 w-16"
-      : size === "md"
-        ? "h-[72px] w-14"
-        : "h-14 w-11";
+    size === "lg" ? "h-20 w-16" : size === "md" ? "h-[72px] w-14" : "h-14 w-11";
   const fallbackIcon =
     item.contentType === "reel" ? (
       <Film className="size-5" aria-hidden="true" />
@@ -2761,7 +2555,8 @@ function ContentTypeBadge({ type }: { type: InstagramContentType }) {
       variant="outline"
       className={cn(
         "w-fit",
-        type === "reel" && "border-instagram-rose/25 bg-instagram-rose/8 text-instagram-rose",
+        type === "reel" &&
+          "border-instagram-rose/25 bg-instagram-rose/8 text-instagram-rose",
         type === "carousel" &&
           "border-instagram-violet/25 bg-instagram-violet/8 text-instagram-violet",
         type === "post" && "border-primary/25 bg-primary/8 text-primary",
@@ -2847,11 +2642,7 @@ function DrawerMetric({
 
 function AnalyticsLoadingState() {
   return (
-    <div
-      className="space-y-5"
-      aria-label="Loading analytics"
-      role="status"
-    >
+    <div className="space-y-5" aria-label="Loading analytics" role="status">
       <span className="sr-only">Loading analytics…</span>
       <Skeleton className="h-10 w-64 max-w-full rounded-[var(--radius-control)]" />
       <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border bg-card p-5 sm:p-6">
@@ -3015,8 +2806,7 @@ function buildInstagramVisibleContentSnapshot(
   return {
     hasUnavailableAccounts: accounts.some(
       (account) =>
-        account.status === "error" ||
-        account.status === "unavailable",
+        account.status === "error" || account.status === "unavailable",
     ),
     interactions: summary.interactions,
     permissionMissing: accounts.some(
@@ -3044,10 +2834,7 @@ function getContentMetricSource({
   }
 
   if (contentSnapshot.readyAccountCount > 0) {
-    if (
-      contentSnapshot.readyAccountCount <
-      contentSnapshot.totalAccountCount
-    ) {
+    if (contentSnapshot.readyAccountCount < contentSnapshot.totalAccountCount) {
       return `${formatNumber(
         contentSnapshot.readyAccountCount,
       )} of ${formatNumber(contentSnapshot.totalAccountCount)} accounts loaded`;
@@ -3055,9 +2842,7 @@ function getContentMetricSource({
 
     return contentSnapshot.readyAccountCount === 1
       ? "Current Instagram posts"
-      : `${formatNumber(
-          contentSnapshot.readyAccountCount,
-        )} connected accounts`;
+      : `${formatNumber(contentSnapshot.readyAccountCount)} connected accounts`;
   }
 
   if (contentSnapshot.totalAccountCount === 0) {
@@ -3114,7 +2899,7 @@ function getInstagramInsightsReadiness({
     return {
       message: insightsMessage,
       tone: "warning",
-      value: "Unavailable",
+      value: insightAccount?.status === "ready" ? "Saved insights" : "Unavailable",
     };
   }
 
@@ -3145,10 +2930,7 @@ function getInstagramInsightsReadiness({
   return {
     message: insightAccount.message,
     tone: "warning",
-    value:
-      insightAccount.status === "error"
-        ? "Try again"
-        : "Unavailable",
+    value: insightAccount.status === "error" ? "Try again" : "Unavailable",
   };
 }
 
@@ -3357,14 +3139,10 @@ function buildSmoothPath(
     const next = points[index + 1];
     const previous = points[index - 1] ?? current;
     const afterNext = points[index + 2] ?? next;
-    const firstControlX =
-      current.x + (next.x - previous.x) * smoothing;
-    const firstControlY =
-      current.y + (next.y - previous.y) * smoothing;
-    const secondControlX =
-      next.x - (afterNext.x - current.x) * smoothing;
-    const secondControlY =
-      next.y - (afterNext.y - current.y) * smoothing;
+    const firstControlX = current.x + (next.x - previous.x) * smoothing;
+    const firstControlY = current.y + (next.y - previous.y) * smoothing;
+    const secondControlX = next.x - (afterNext.x - current.x) * smoothing;
+    const secondControlY = next.y - (afterNext.y - current.y) * smoothing;
 
     path += ` C ${firstControlX} ${firstControlY}, ${secondControlX} ${secondControlY}, ${next.x} ${next.y}`;
   }

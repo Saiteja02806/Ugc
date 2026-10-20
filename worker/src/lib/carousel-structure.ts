@@ -13,6 +13,7 @@ export const CAROUSEL_STRUCTURE_SELECTION_MODES = [
   "legacy_default",
   "rotation",
   "global_override",
+  "account_preference",
 ] as const;
 
 export type CarouselStructureId =

@@ -12,6 +12,7 @@ const TIMESTAMP_HEADER = "x-ugc-finalization-timestamp";
 export async function prepareWallTextInApp(params: {
   businessProfileId: string;
   businessProfileVersion: number;
+  dailyFeedId?: string | null;
   earlyPlanId?: string | null;
   recoveryIteration?: number;
   recoveryKey?: string | null;
@@ -62,7 +63,7 @@ export async function prepareWallTextInApp(params: {
           ? result.errorCode.trim().slice(0, 120)
           : "wall_text_preparation_failed";
 
-      if (errorCode === "infrastructure_error" ||
+      if (isRetryablePreparationErrorCode(errorCode) ||
           (errorCode === "wall_text_preparation_failed" &&
             (response.status === 408 || response.status === 429 || response.status >= 500))) {
         throw new RetryableJobError(
@@ -76,6 +77,22 @@ export async function prepareWallTextInApp(params: {
           `Wall-of-text preparation request failed with HTTP ${response.status}.${detail}`,
         ),
         { code: errorCode },
+      );
+    }
+
+    // Keep the fixed daily-slot contract at the caller boundary too. This
+    // protects the worker during a rolling deployment if an older app server
+    // reports a successful but short response.
+    if (
+      params.dailyFeedId &&
+      result.ideaCount !== params.requestedCount
+    ) {
+      throw new RetryableJobError(
+        `Wall-of-text daily delivery prepared ${result.ideaCount} of ${params.requestedCount} required items.`,
+        {
+          code: "wall_text_daily_delivery_shortfall",
+          retryAfterSeconds: 30,
+        },
       );
     }
 
@@ -93,6 +110,17 @@ export async function prepareWallTextInApp(params: {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function isRetryablePreparationErrorCode(errorCode: string) {
+  return [
+    "infrastructure_error",
+    "model_output_empty",
+    "model_output_schema_invalid",
+    "wall_text_provider_rate_limited",
+    "wall_text_provider_transient",
+    "wall_text_daily_delivery_shortfall",
+  ].includes(errorCode);
 }
 
 function getConfig() {

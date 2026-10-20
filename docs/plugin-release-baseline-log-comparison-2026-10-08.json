@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-10-08T06:33:09.0806544+00:00",
+  "previous_deployment": "dpl_94qjVSXUHuVFaU4ytcZjHNzShhMD",
+  "sampled_rows": 50,
+  "internal_carousel_requests": [
+    {
+      "count": 3,
+      "status": "401"
+    }
+  ],
+  "five_hundred_responses": 0
+}

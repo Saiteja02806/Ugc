@@ -8,9 +8,16 @@ test("distinguishes access-check failures from a locked account", () => {
   assert.match(getAIStudioAccessMessage("error") ?? "", /could not be verified/i);
   assert.match(
     getAIStudioAccessMessage("locked") ?? "",
-    /active Starter or Growth/i,
+    /free generation credits.*Starter or Growth/i,
   );
   assert.equal(getAIStudioAccessMessage("pro"), null);
+});
+
+test("an on-hold plan explains the billing action instead of asking for another plan", () => {
+  assert.equal(getAIStudioAccessMessage("locked", "on_hold"), "Your subscription is on hold. Update billing to resume generation.");
+  assert.match(getAIStudioAccessMessage("locked", "paused") ?? "", /paused/);
+  assert.equal(getAIStudioAccessMessage("pro", "active"), null);
+  assert.match(getAIStudioAccessMessage("error", "on_hold") ?? "", /could not be verified/);
 });
 
 test("production access and billing have no email allowlist bypass", () => {

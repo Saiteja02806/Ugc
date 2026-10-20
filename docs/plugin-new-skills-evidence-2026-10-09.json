@@ -1,0 +1,148 @@
+{
+  "date": "2026-10-09",
+  "scope": "Local static source/package review; no host activation test, deployment, installation, or generation",
+  "validator": "Ajv 6, draft-07-compatible subset of the supplied slideshow schema",
+  "bundledSkills": [
+    "connect-ugc-pilot",
+    "create-ugc-media",
+    "manage-ugc-media"
+  ],
+  "tools": [
+    "get_profile",
+    "get_entitlements",
+    "get_saas_brand",
+    "list_assets",
+    "get_asset",
+    "get_capabilities",
+    "create_upload",
+    "confirm_upload",
+    "delete_asset",
+    "generate_image",
+    "generate_video",
+    "get_job"
+  ],
+  "sourceAudit": [
+    {
+      "path": "plugins/UGC_Hook_Intelligence_All_In_One.md",
+      "bytes": 39555,
+      "lines": 603,
+      "metadata": {
+        "name": "ugc-hook-intelligence",
+        "description": "Research, transcribe, classify, generate, and validate high-retention, wall-of-text hooks for short-form UGC, SaaS marketing, app demos, and AI-influencer reels. Use for screenshot hook extraction, hook ideation, reaction-based creator ads, silent visual hooks, A/B variations, and 3–5 second intro scripts. Includes a reference library of Instagram hook structures and quality rules."
+      },
+      "discoverableInCurrentBundle": false,
+      "relativeLinks": [
+        {
+          "link": "references/source-hook-library.md",
+          "exists": false
+        },
+        {
+          "link": "references/hook-patterns.md",
+          "exists": false
+        },
+        {
+          "link": "schemas/hook-output.schema.json",
+          "exists": false
+        },
+        {
+          "link": "references/visual-production.md",
+          "exists": false
+        },
+        {
+          "link": "references/examples.md",
+          "exists": false
+        },
+        {
+          "link": "evals/cases.json",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "path": "plugins/ugc-native-slideshow-skill/ugc-native-slideshow/SKILL.md",
+      "bytes": 20584,
+      "lines": 1032,
+      "metadata": {
+        "name": "ugc-native-slideshow",
+        "description": "Generate native-looking TikTok, Instagram, Reels, Shorts, and carousel slideshows for UGCpilot. Use when creating, rewriting, structuring, or reviewing slideshow hooks, body-slide copy, slide counts, text hierarchy, product placement, visual intents, typography roles, or slideshow output data. Covers personal-shift listicles, story/confession slideshows, educational methods, quick tips, fitness routines, product-assisted slideshows, and CTA slides."
+      },
+      "discoverableInCurrentBundle": false,
+      "relativeLinks": []
+    },
+    {
+      "path": "plugins/instagram_wall_of_text_transcriptions.md",
+      "bytes": 50538,
+      "lines": 631,
+      "metadata": null,
+      "discoverableInCurrentBundle": false,
+      "relativeLinks": []
+    }
+  ],
+  "schemaProbes": [
+    {
+      "id": "valid_copy_plan",
+      "expectedValid": true,
+      "actualValid": true,
+      "behaviorMatchesExpectation": true,
+      "errors": null
+    },
+    {
+      "id": "cover_missing_hook",
+      "expectedValid": false,
+      "actualValid": true,
+      "behaviorMatchesExpectation": false,
+      "errors": null
+    },
+    {
+      "id": "no_cover_and_no_visible_copy",
+      "expectedValid": false,
+      "actualValid": true,
+      "behaviorMatchesExpectation": false,
+      "errors": null
+    },
+    {
+      "id": "numbered_shift_missing_copy",
+      "expectedValid": false,
+      "actualValid": true,
+      "behaviorMatchesExpectation": false,
+      "errors": null
+    },
+    {
+      "id": "routine_missing_exercise_reason_and_cue",
+      "expectedValid": false,
+      "actualValid": true,
+      "behaviorMatchesExpectation": false,
+      "errors": null
+    },
+    {
+      "id": "unknown_format",
+      "expectedValid": false,
+      "actualValid": false,
+      "behaviorMatchesExpectation": true,
+      "errors": [
+        {
+          "keyword": "enum",
+          "dataPath": ".format",
+          "schemaPath": "#/properties/format/enum",
+          "params": {
+            "allowedValues": [
+              "personal_shift",
+              "story_confession",
+              "quick_tips",
+              "educational_method",
+              "fitness_routine",
+              "product_assisted",
+              "goal_based_routine"
+            ]
+          },
+          "message": "should be equal to one of the allowed values"
+        }
+      ]
+    }
+  ],
+  "unexecutedChecks": [
+    "Signed-in ChatGPT skill discovery and activation",
+    "Signed-in Claude skill discovery and activation",
+    "Real rendered output acceptance"
+  ]
+}

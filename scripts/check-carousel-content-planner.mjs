@@ -23,11 +23,18 @@ const structure2Formats = await jiti.import(
 );
 const fixture = createPlanFixture();
 const analysis = createAnalysisFixture();
+const liveStructure2CreativeSeeds = [
+  "Why campaign approvals quietly create late-night rework",
+  "The reporting handoff that leaves the next owner guessing",
+  "Why a perfect weekly campaign plan fails after one urgent change",
+  "The planning habit that hides a campaign's real next decision",
+  "How scattered launch notes turn small follow-ups into missed deadlines",
+];
 const workerParsed = workerPlanner.parseCarouselContentPlan(fixture, 6);
 const failures = [];
 
 if (
-  workerParsed.slides[0]?.layoutPreset !== "top-hook" ||
+  workerParsed.slides[0]?.layoutPreset !== "middle-statement" ||
   workerParsed.slides[5]?.layoutPreset !== "middle-statement"
 ) {
   failures.push("Planner did not derive the expected renderer layout presets.");
@@ -287,14 +294,28 @@ if (
 
 let livePlan = null;
 let liveStructure2Plans = null;
+let liveStructure2Failures = null;
 
-if (process.argv.includes("--live")) {
+const runLiveStructure1 =
+  process.argv.includes("--live") || process.argv.includes("--hook-overlay-live");
+const runLiveStructure2 =
+  process.argv.includes("--live") || process.argv.includes("--structure-2-live");
+
+if (runLiveStructure1 || runLiveStructure2) {
   loadEnvFile(path.resolve(workspaceRoot, ".env.local"));
+}
+
+if (runLiveStructure1) {
   livePlan = await workerPlanner.buildCarouselContentPlan({
     analysis,
     candidateIndex: 1,
-    contentFormatId: "problem_solution",
+    businessDescription: analysis.productSummary,
+    contentFormatId: "mistakes",
+    creativeSeed: "Three campaign handoff mistakes that create avoidable rework",
+    emotion: "relief",
     hookFamilyId: "problem_recognition",
+    hookTemplateId: "doing_it_wrong",
+    hookTemplateVersion: 1,
     recentHistory: [],
     selectedAngle: "The hidden cost of scattered campaign work",
     slideCount: 6,
@@ -306,7 +327,34 @@ if (process.argv.includes("--live")) {
   if (livePlan.model !== "gpt-4o-mini") {
     failures.push(`Live Structure 1 planner used model ${livePlan.model}.`);
   }
+  const liveHookCopy = [
+    livePlan.slides[0]?.headline,
+    livePlan.slides[0]?.body,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (/\{\s*topic\s*\}|_{3,}/i.test(liveHookCopy)) {
+    failures.push("Live Structure 1 hook retained a template placeholder.");
+  }
+  if (
+    livePlan.contentStrategy?.contentFormatId !== "mistakes" ||
+    livePlan.contentStrategy?.hookFamilyId !== "problem_recognition" ||
+    livePlan.slides[0]?.formatRole !== "cover_hook" ||
+    livePlan.slides[1]?.formatRole !== "mistake_1" ||
+    livePlan.slides[2]?.formatRole !== "mistake_2" ||
+    livePlan.slides[3]?.formatRole !== "mistake_3" ||
+    livePlan.slides[4]?.formatRole !== "practical_extension" ||
+    livePlan.slides[5]?.formatRole !== "takeaway_cta"
+  ) {
+    failures.push(
+      "Live Structure 1 hook overlay changed the assigned six-slide mistakes format.",
+    );
+  }
 
+}
+
+if (runLiveStructure2) {
+  liveStructure2Failures = [];
   liveStructure2Plans =
     await structure2Planner.buildCarouselStructure2StoryPlanBatch({
       businessDescription: analysis.productSummary,
@@ -314,9 +362,16 @@ if (process.argv.includes("--live")) {
         .slice(0, 5)
         .map((storyFormatId, slotIndex) => ({
           candidateIndex: slotIndex,
+          creativeSeed:
+            liveStructure2CreativeSeeds[slotIndex] ??
+            `Practical marketing workflow insight ${slotIndex + 1}`,
+          emotion: "relief",
           slotIndex,
           storyFormatId,
-        })),
+      })),
+      onPlanFailure: async (failure) => {
+        liveStructure2Failures.push(failure);
+      },
       recentHistory: [],
     });
 
@@ -330,6 +385,11 @@ if (process.argv.includes("--live")) {
     )
   ) {
     failures.push("Live Structure 2 planner violated the LLM-only batch contract.");
+  }
+  if (liveStructure2Failures.length > 0) {
+    failures.push(
+      `Live Structure 2 planner rejected ${liveStructure2Failures.length} candidate(s).`,
+    );
   }
 }
 
@@ -362,6 +422,14 @@ console.log(
             slides: item.plan.slides,
             source: item.source,
             storyFormatId: item.assignedStoryFormatId,
+            validationResult: item.validationResult,
+          }))
+        : null,
+      liveStructure2Failures: liveStructure2Failures
+        ? liveStructure2Failures.map((failure) => ({
+            issues: failure.issues,
+            rawLlmResponse: failure.rawLlmResponse,
+            slotIndex: failure.slotIndex,
           }))
         : null,
       plannerVersion: workerPlanner.CAROUSEL_CONTENT_PLANNER_VERSION,
@@ -386,7 +454,7 @@ function createPlanFixture() {
     concept: "The campaign workday that never ends",
     slides: [
       {
-        body: "Why campaign updates keep spilling into after-hours work.",
+        body: null,
         ctaText: null,
         headline: "Your campaign should not follow you home",
         imageDirection:
@@ -394,11 +462,11 @@ function createPlanFixture() {
         listItems: [],
         slideNumber: 1,
         slideType: "hook",
-        textMode: "headline_body",
+        textMode: "single_statement",
       },
       {
         body:
-          "Every update becomes another file while the next action gets harder to find before launch.",
+          "Every update creates another file, so reviewers lose the campaign context needed to identify the next action before launch begins.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -425,7 +493,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "A visible next action keeps tomorrow moving without rebuilding the campaign plan again.",
+          "A visible next action keeps tomorrow moving without rebuilding the campaign plan again, even when priorities shift during a busy launch review.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -437,7 +505,7 @@ function createPlanFixture() {
       },
       {
         body:
-          "Set the next decision beside the approval note before closing each campaign review.",
+          "Set the next decision beside the approval note before closing each campaign review, so the incoming owner can continue work without reopening old discussions.",
         ctaText: null,
         headline: null,
         imageDirection:
@@ -449,9 +517,9 @@ function createPlanFixture() {
       },
       {
         body:
-          "Connected planning and reporting keep the next campaign easier to launch and review.",
-        ctaText: "Build your campaign",
-        headline: "Put the next launch in one place",
+          "Connected planning keeps campaign decisions visible, giving each review a clear next action before the work moves into another launch stage.",
+        ctaText: null,
+        headline: null,
         imageDirection:
           "Minimal laptop and notebook still life with clean central negative space.",
         listItems: [],

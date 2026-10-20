@@ -1,0 +1,70 @@
+{
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 835,
+  "duration": 34.791666666666664,
+  "bytes": 3553064,
+  "zoomFrames": 8,
+  "zoomScale": 1.22,
+  "slideFrames": 29,
+  "framing": "edge-to-edge sharp crops",
+  "stages": [
+    {
+      "name": "hook-1",
+      "source": "hook.mp4",
+      "contentFrames": 68,
+      "frames": 76,
+      "startFrame": 0
+    },
+    {
+      "name": "hook-2",
+      "source": "hook1.mp4",
+      "contentFrames": 69,
+      "frames": 77,
+      "startFrame": 76
+    },
+    {
+      "name": "wall-of-text-1",
+      "source": "WOT_1-Vmake.mp4",
+      "contentFrames": 156,
+      "frames": 164,
+      "startFrame": 153
+    },
+    {
+      "name": "wall-of-text-2",
+      "source": "WOT_2-Vmake.mp4",
+      "contentFrames": 204,
+      "frames": 212,
+      "startFrame": 317
+    },
+    {
+      "name": "slideshow-1",
+      "source": "1",
+      "slides": [
+        "1.jpg",
+        "2.jpg",
+        "3.jpg",
+        "4.jpg"
+      ],
+      "contentFrames": 116,
+      "frames": 124,
+      "startFrame": 529
+    },
+    {
+      "name": "slideshow-2",
+      "source": "New folder",
+      "slides": [
+        "1.jpg",
+        "2.jpg",
+        "3.jpg",
+        "4.jpg",
+        "5.jpg",
+        "6.jpg"
+      ],
+      "contentFrames": 174,
+      "frames": 182,
+      "startFrame": 653
+    }
+  ]
+}

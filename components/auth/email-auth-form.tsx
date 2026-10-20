@@ -13,10 +13,18 @@ import {
   signUpWithEmail,
 } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils";
+import { getEmailVerificationPath, PASSWORD_RESET_MESSAGE, type EmailPurchaseIntent } from "@/lib/auth/email-policy";
 
 type EmailAuthMode = "sign-in" | "create-account";
 
-export function EmailAuthForm() {
+export function EmailAuthForm({
+  successPath = "/dashboard", intent = {}, onAuthFlowStart, onBusyChange,
+}: {
+  successPath?: string;
+  intent?: EmailPurchaseIntent;
+  onAuthFlowStart?: () => void;
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const router = useRouter();
   const { refreshUser } = useAuth();
   const [mode, setMode] = useState<EmailAuthMode>("sign-in");
@@ -32,6 +40,8 @@ export function EmailAuthForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
+    onAuthFlowStart?.();
+    onBusyChange?.(true);
     setErrorMessage(null);
     setStatusMessage(null);
 
@@ -42,20 +52,26 @@ export function EmailAuthForm() {
           return;
         }
 
-        await signUpWithEmail(email, password);
+        const user = await signUpWithEmail(email, password, intent);
         await refreshUser();
-        router.replace("/verify-email");
+        router.replace(user.emailVerified ? successPath : getEmailVerificationPath(intent));
 
         return;
       }
 
       const user = await signInWithEmail(email, password);
       await refreshUser();
-      router.replace(user.emailVerified ? "/dashboard" : "/verify-email");
+      router.replace(user.emailVerified ? successPath : getEmailVerificationPath(intent));
     } catch (error) {
+      if ((error as { code?: string })?.code === "auth/verification-send-failed") {
+        const path = getEmailVerificationPath(intent);
+        router.replace(`${path}${path.includes("?") ? "&" : "?"}delivery=failed`);
+        return;
+      }
       setErrorMessage(getFirebaseAuthErrorMessage(error));
     } finally {
       setIsSubmitting(false);
+      onBusyChange?.(false);
     }
   }
 
@@ -71,14 +87,16 @@ export function EmailAuthForm() {
     }
 
     setIsResettingPassword(true);
+    onBusyChange?.(true);
 
     try {
       await requestPasswordReset(trimmedEmail);
-      setStatusMessage("Password reset email sent.");
+      setStatusMessage(PASSWORD_RESET_MESSAGE);
     } catch (error) {
       setErrorMessage(getFirebaseAuthErrorMessage(error));
     } finally {
       setIsResettingPassword(false);
+      onBusyChange?.(false);
     }
   }
 
@@ -94,6 +112,7 @@ export function EmailAuthForm() {
         <button
           type="button"
           onClick={() => switchMode("sign-in")}
+          disabled={isSubmitting || isResettingPassword}
           aria-pressed={!isCreateMode}
           className={modeButtonClassName(!isCreateMode)}
         >
@@ -102,6 +121,7 @@ export function EmailAuthForm() {
         <button
           type="button"
           onClick={() => switchMode("create-account")}
+          disabled={isSubmitting || isResettingPassword}
           aria-pressed={isCreateMode}
           className={modeButtonClassName(isCreateMode)}
         >
@@ -166,7 +186,7 @@ export function EmailAuthForm() {
               className="inline-flex items-center gap-2 text-sm font-bold text-primary transition hover:text-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <KeyRound className="size-4" aria-hidden="true" />
-              {isResettingPassword ? "Sending…" : "Reset password"}
+              {isResettingPassword ? "Sending…" : "Forgot password?"}
             </button>
           </div>
         ) : null}
@@ -188,8 +208,8 @@ export function EmailAuthForm() {
               ? "Creating account…"
               : "Signing in…"
             : isCreateMode
-              ? "Continue with Email"
-              : "Sign in with Email"}
+              ? "Create account"
+              : "Sign in with email"}
         </button>
       </form>
 

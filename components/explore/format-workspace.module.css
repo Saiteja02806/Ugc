@@ -1,0 +1,260 @@
+.workspace { min-height: calc(100dvh - 4rem); display: flex; flex-direction: column; background: var(--background); color: var(--foreground); }
+.header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; min-height: 76px; padding: 16px 24px; }
+.heading { flex: 1; min-width: 200px; }
+.heading p { margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--muted-foreground); }
+.mediaBadge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; color: var(--muted-foreground); }
+.body { display: grid; grid-template-columns: 378px minmax(0, 1fr); gap: 16px; padding: 0 24px 24px; flex: 1; min-height: 0; }
+.controls { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.controlContent { flex: 1; min-height: 0; overflow-y: auto; }
+.actionFooter { flex: none; border-top: 1px solid var(--border); padding: 14px 16px; background: var(--card); }
+.sectionTabs { display: grid; flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid var(--border); }
+.sectionTab { position: relative; min-width: 0; padding: 14px 4px; border-radius: 6px 6px 0 0; color: var(--muted-foreground); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.sectionTab:hover { background: var(--card-muted); color: var(--foreground); }
+.sectionTab[data-active] { color: var(--foreground); font-weight: 600; }
+.sectionTab[data-active]::after { position: absolute; content: ""; inset: auto 8px 0; height: 2px; background: var(--primary); border-radius: 2px; }
+.sectionTab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.sectionPanel { min-width: 0; }
+.createControls, .editControls { min-width: 0; }
+.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.resultTabs { display: flex; flex: none; gap: 24px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+.resultTab { padding: 20px 0 17px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; }
+.resultTab.active { border-bottom-color: var(--primary); }
+.referenceArea, .results, .savedPreview { padding: 20px; min-width: 0; }
+.referenceGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 20px 16px; }
+.referenceGrid > article { max-width: 240px; }
+.emptyResult { display: flex; min-height: 320px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 8px; text-align: center; }
+.emptyIcon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 4px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted-foreground); }
+.results { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.savedPreview { display: flex; flex-direction: column; align-items: center; }
+.workspace [hidden] { display: none !important; }
+.resultTab:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; }
+.controls form[data-layout="workflow"] > div:first-child { padding: 16px; overflow: visible; }
+.controls form[data-layout="workflow"] { height: auto; }
+@media (min-width: 1024px) { .workspace { height: 100dvh; min-height: 0; overflow: hidden; } .main, .referenceArea, .results { overflow-y: auto; } }
+@media (max-width: 1023px) { .body { grid-template-columns: minmax(0, 1fr); padding: 0 16px 16px; gap: 16px; } .controls { min-height: 420px; } .controlContent { overflow: visible; } .main { min-height: 420px; } .header { padding: 16px; gap: 10px; } .heading { min-width: 0; } .mediaBadge { display: none; } }
+
+/* All three formats use the existing talking-head / phone workflow frames. */
+.workspace.classicWorkspace { height: auto; min-height: calc(100dvh - 4rem); overflow: visible; }
+.classicMain .results { overflow: visible; }
+.classicMain .resultTabs { border-bottom-color: color-mix(in srgb, var(--border) 45%, transparent); }
+.classicWorkspace .editControls > div, .classicSchedule > div { padding: 0; }
+.workflowControls { overflow: hidden; }
+.workflowTabs { flex: none; overflow: visible; }
+.workflowContent { min-height: 0; }
+.workflowFooter { flex: none; background: var(--card); }
+.emptyControls { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 0; }
+.emptyControls .emptyIcon { width: 44px; height: 44px; border-radius: 10px; }
+.classicWorkspace:not([data-format="slideshow"]) .workflowControls[data-section="edit"] { align-self: start; }
+.clipStage { container: clip-editor / inline-size; gap: 20px; }
+.clipStage[data-editing="true"] { gap: 12px; padding: 12px; }
+.clipStage[data-editing="true"] .clipStageHeader { gap: 8px 16px; }
+.clipStage[data-editing="true"] .clipActions { width: auto; min-width: 0; margin-left: auto; }
+.clipStage[data-editing="true"] .clipActions > div { justify-content: flex-end; }
+.clipStage[data-editing="true"] .clipTools { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.clipStage[data-editing="true"] [data-clip-tools-heading] { display: none; }
+.clipStageHeader { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--background); }
+.clipStageHeader button { min-height: 40px; }
+.clipStageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.compactControlsToggle { display: none; }
+.paneNavigation, .controlsReturn { display: none; }
+.paneNavigation { flex: none; gap: 4px; margin: 0 16px 12px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.paneNavigation > button { flex: 1; min-height: 40px; font-size: 14px; }
+.paneNavigation > button[aria-pressed="true"] { background: var(--card-muted); color: var(--foreground); font-weight: 600; }
+.controlsReturn { flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); }
+.controlsReturn button { min-height: 40px; }
+.clipScrollArea { min-width: 0; min-height: 0; }
+.clipScrollArea:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 8px; }
+.clipEditorBody { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.clipPreviews { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.clipPreviewCard { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.clipPreviewCard > section { height: 100%; gap: 12px; }
+.clipPreviewCard button { min-height: 40px; }
+.clipPreviewCard [data-clip-media] { max-width: min(100%, 360px, calc(clamp(200px, 100dvh - 340px, 360px) * var(--clip-aspect))); flex: none; }
+.clipPreviewCard [data-edit-clip] { width: fit-content; max-width: 100%; margin-inline: auto; }
+.clipCardActions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: auto; }
+.clipCardActions > button { min-height: 34px; height: auto; padding: 6px 10px; font-size: 12px; line-height: 20px; }
+@media (pointer: coarse) { .clipCardActions > button { min-height: 44px; } }
+.clipEditorBody[data-editing="true"] .clipPreviews { display: block; }
+.clipEditorBody[data-editing="true"] [data-clip-media] { max-width: min(100%, 560px, calc(clamp(240px, 100dvh - 390px, 720px) * var(--clip-aspect))); max-height: none; box-shadow: 0 0 0 1px var(--border); }
+.clipEditorBody[data-editing="true"] .clipPreviewCard { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.clipEditorBody[data-editing="true"] .clipPreviewCard > section { gap: 12px; }
+.clipEditorBody[data-editing="true"] .clipPreviewCard > section > p { align-self: start; text-align: left; }
+.clipPreviewHeading { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; }
+.clipPreviewHeading h3 { font-size: 13px; font-weight: 500; }
+.clipPreviewHeading span { font-size: 11px; color: var(--muted-foreground); }
+.clipEditorBody[data-editing="true"] .clipPreviewHeading { max-width: min(100%, 560px, calc(clamp(280px, 100dvh - 310px, 720px) * var(--clip-aspect))); }
+.clipStage[data-editing="true"] > .clipStageHeader,
+.clipStage[data-editing="true"] > .clipScrollArea,
+.clipStage[data-editing="true"] > .clipActions { width: 100%; min-width: 0; }
+.classicMain:has(.clipStage[data-editing="true"]) { width: 100%; max-width: none; justify-self: stretch; }
+.clipTools { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.clipControlContent { display: grid; gap: 20px; }
+.clipControlsGrid { display: grid; min-width: 0; gap: 20px; align-items: start; }
+.clipControlsGrid > * { min-width: 0; }
+.clipTextControls { min-width: 0; }
+.clipUtilityControls { display: grid; min-width: 0; gap: 20px; }
+.clipControlsGrid .demoOptions { padding: 16px; background: var(--card-muted); border-radius: 12px; }
+.clipControlsGrid .demoOptions summary { min-height: 28px; font-size: 14px; }
+.clipTextStyle { padding: 16px; background: var(--card-muted); border-radius: 12px; }
+.clipTextStyle > summary { min-height: 28px; }
+.clipTextStyleFields { display: grid; gap: 16px; }
+.clipTextStyleFields > label:first-child { grid-column: 1 / -1; }
+.clipTextStyleFields > div { grid-column: 1 / -1; }
+.clipTools:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.clipActions { flex: none; }
+.clipActionContent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.clipActionContent > p { flex: 1; min-width: 220px; max-width: 560px; margin: 0; }
+.clipActionButtons { display: flex; flex: none; flex-wrap: wrap; flex-direction: row-reverse; gap: 8px; margin-left: auto; order: 2; }
+.clipActions button { min-height: 44px; }
+.emptyClip { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; color: var(--muted-foreground); }
+.emptyClipIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--card-muted); }
+.emptyClipIcon svg { width: 20px; height: 20px; }
+.emptyClipCopy { display: grid; min-width: 0; gap: 5px; }
+.emptyClipTitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.emptyClipTitle h3 { color: var(--foreground); font-size: 14px; line-height: 1.5; font-weight: 600; }
+.emptyClipCopy p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.clipOptional { font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
+.emptyClip > button { white-space: normal; }
+.emptyClipActions { width: 100%; min-width: 0; max-width: 360px; }
+/* An empty slot previews the portrait canvas; source actions stay in its center. */
+.clipPreviewCard[data-clip-empty="true"] { align-self: start; }
+.clipPreviewCard[data-clip-empty="true"] > section { align-items: stretch; gap: 0; }
+@container (min-width: 600px) {
+  .clipEditorBody[data-editing="true"] { grid-template-columns: minmax(240px, .38fr) minmax(300px, .62fr); gap: 24px; }
+  .clipEditorBody[data-editing="true"]:has(.clipPreviewCard:not([hidden]) [data-clip-orientation="portrait"]) { grid-template-columns: minmax(240px, .3fr) minmax(300px, .7fr); }
+  .clipEditorBody[data-editing="true"] .clipPreviews { position: sticky; top: 0; align-self: start; }
+}
+@container clip-editor (min-width: 1100px) {
+  .clipControlsGrid { grid-template-columns: minmax(0, 1.2fr) minmax(240px, 1fr); grid-template-rows: auto 1fr; }
+  .clipTextControls { grid-column: 1; grid-row: 1 / 3; }
+  .clipControlsGrid > [data-editor-section="trim"] { grid-column: 2; grid-row: 1; }
+  .clipUtilityControls { grid-column: 2; grid-row: 2; }
+  .clipTextStyleFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.demoSourceActions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.demoSourceActions > button { width: 100%; height: auto; min-height: 124px; flex-direction: column; justify-content: center; gap: 12px; padding: 18px 14px; text-align: center; font-size: 13px; white-space: normal; border-radius: 14px; }
+.demoSourceIcon { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 12px; background: var(--card-muted); }
+.backgroundAudioSwitch { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 24px; background: transparent; cursor: pointer; }
+.backgroundAudioTrack { display: flex; align-items: center; width: 44px; height: 24px; padding: 3px; border-radius: 12px; background: var(--muted); transition: background-color 160ms ease; }
+.backgroundAudioThumb { width: 18px; height: 18px; flex: none; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform 160ms ease; }
+.backgroundAudioSwitch[aria-checked="true"] .backgroundAudioTrack { background: var(--primary); }
+.backgroundAudioSwitch[aria-checked="true"] .backgroundAudioThumb { transform: translateX(20px); }
+.backgroundAudioSwitch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.backgroundAudioSwitch:disabled { opacity: .55; cursor: default; }
+.backgroundChoices { display: grid; gap: 10px; margin-top: 12px; }
+@container workflow-form (min-width: 350px) { .demoSourceActions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.clipEditorBody[data-editing="false"] .clipPreviews { --overview-height: clamp(260px, 100dvh - 380px, 520px); display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; width: 100%; max-width: none; gap: 20px; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard { flex: 1 1 280px; width: min(100%, 480px); max-width: 480px; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard[data-clip-empty="true"] { align-self: stretch; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard[data-clip-empty="true"] { display: flex; align-items: center; justify-content: center; }
+.clipEditorBody[data-editing="false"] .emptyClip { display: flex; width: min(100%, calc(var(--overview-height) * 9 / 16)); min-height: var(--overview-height); flex-direction: column; justify-content: center; gap: 16px; padding: 12px; text-align: center; }
+.clipEditorBody[data-editing="false"] .emptyClipTitle { justify-content: center; }
+.clipEditorBody[data-editing="false"] .emptyClipActions { max-width: 240px; }
+.clipEditorBody[data-editing="false"] .clipPreviewCard [data-clip-media] { max-width: min(100%, 440px, calc(var(--overview-height) * var(--clip-aspect))); }
+@media (prefers-reduced-motion: reduce) { .backgroundAudioTrack, .backgroundAudioThumb { transition: none; } }
+.demoOptions { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.demoOptions summary { cursor: pointer; min-height: 24px; font-size: 13px; font-weight: 500; }
+.demoOptions summary span { float: right; margin-left: 8px; color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
+.demoOptions summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
+.slideshowReferenceTiles { display: grid; grid-template-columns: repeat(2, minmax(0, 128px)); gap: 10px; }
+.slideshowReferenceTile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-muted); cursor: pointer; }
+.slideshowReferenceTile img { width: 100%; height: 100%; object-fit: contain; }
+.slideshowReferenceTile span { position: absolute; inset: auto 0 0; padding: 6px; background: #000b; color: #fff; font-size: 11px; font-weight: 500; text-align: center; }
+.slideshowReferenceTile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.slideshowReferenceTile:disabled { cursor: default; opacity: .6; }
+.slideshowContextStrip { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; padding: 2px 2px 6px; scroll-snap-type: x proximity; }
+.slideshowContextSlide { position: relative; flex: 0 0 48px; height: 64px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--card-muted); cursor: pointer; scroll-snap-align: start; }
+.slideshowContextSlide img { width: 100%; height: 100%; object-fit: contain; }
+.slideshowContextSlide[aria-pressed="true"] { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.slideshowContextSlide:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.slideshowContextSlide:disabled { cursor: default; opacity: .6; }
+.slideshowContextCheck { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid #fffc; border-radius: 4px; color: #111; background: #0008; }
+.slideshowContextSlide[aria-pressed="true"] .slideshowContextCheck { background: var(--primary); border-color: var(--primary); }
+.slideshowContextNumber { position: absolute; bottom: 0; inset-inline: 0; padding: 2px; background: #000b; color: #fff; text-align: center; font-size: 10px; }
+.classicWorkspace [data-workflow-design="classic"] textarea::placeholder { font-size: inherit; opacity: 1; }
+/* Writing has a comfortable minimum; settings can continue below the fold. */
+.classicWorkspace [data-workflow-design="classic"] textarea { flex: none; height: clamp(160px, calc(100dvh - 620px), 240px); min-height: 160px; }
+.classicWorkspace .workflowControls[data-section="create"] [data-workflow-design="classic"],
+.classicWorkspace .workflowControls[data-section="create"] [data-workflow-design="classic"] > div { flex: none; }
+.workflowContent [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 128px)); }
+.clipTools textarea { resize: vertical; }
+.clipTools [aria-label="Overlay text"], .clipTools [aria-label="Wall of text"] { min-height: 144px; }
+@container (max-width: 599px) {
+  .clipActionContent { flex-direction: column; align-items: stretch; }
+  .clipActionContent > p { min-width: 0; }
+  .clipActionButtons { flex-direction: column-reverse; margin-left: 0; }
+  .clipActionButtons > button { flex: 1; }
+}
+@media (min-width: 1024px) {
+  .workspace.classicWorkspace { height: 100dvh; min-height: 0; overflow: hidden; }
+  .classicWorkspace > div { min-height: 0; }
+  .classicWorkspace aside { min-height: 0; }
+  .workspace.classicWorkspace .workflowContent { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scroll-padding-block: 12px; }
+  .classicWorkspace .workflowControls[data-section] .workflowContent > [role="tabpanel"]:not([hidden]) { flex: none; min-height: 0; }
+  .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"],
+  .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"] > div { flex: none; }
+  .classicWorkspace[data-format="slideshow"] aside[data-section="create"] [data-workflow-design="classic"] { gap: 16px; }
+  .workspace.classicWorkspace .classicMain { min-height: 0; overflow: hidden; }
+  .classicMain .referenceArea { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+  .classicMain .results, .classicMain .savedPreview { overflow-y: auto; }
+  /* The compact header owns actions; the remaining height belongs to tools. */
+  .classicMain .clipStage { overflow: hidden; }
+  .clipScrollArea { flex: 1; overflow-y: auto; scrollbar-gutter: stable; scroll-padding-block: 12px; padding-bottom: 12px; }
+}
+@media (max-width: 1366.98px), (max-height: 740px) {
+  .workflowContent [data-workflow-reference-grid] { grid-template-columns: repeat(2, minmax(0, 96px)); }
+  .workflowContent :global([data-workflow-tile="reference"]) { height: 96px; min-height: 96px; }
+  .slideshowReferenceTiles { grid-template-columns: repeat(2, minmax(0, 96px)); }
+}
+/* Compact the frame, not the whole page: readable text and full media remain. */
+@media (min-width: 1024px) and (max-width: 1366.98px), (min-width: 1024px) and (max-height: 740px) {
+  .workspace.classicWorkspace .workflowLayout { gap: 12px; padding-inline: 16px; padding-bottom: 12px; }
+  .workflowTabs > button { min-height: 44px; padding-block: 10px; }
+  .workspace.classicWorkspace .workflowContent { gap: 10px; padding: 12px; }
+  .workflowFooter { padding: 10px 12px 12px; }
+  .workflowContent :global([data-workflow-design="classic"]) { gap: 10px; }
+  .workflowContent :global([data-workflow-tile="reference"]) { width: 100%; height: 96px; min-height: 96px; }
+  .workflowContent :global([data-workflow-tile="upload"]) { min-height: 104px; }
+  .workflowContent :global([aria-label="Video generation settings"]) button,
+  .workflowContent :global([aria-label="Image generation settings"]) button { padding-inline: 6px; font-size: 13px; }
+  .workflowContent .demoControls, .workflowContent .demoControls > fieldset { display: flex; flex-direction: column; gap: 8px; }
+  .workflowContent .demoControls > *, .workflowContent .demoControls > fieldset > * { margin-block: 0; }
+  .slideshowReferenceTiles { grid-template-columns: repeat(2, minmax(0, 96px)); }
+  .resultTab { padding-block: 16px 13px; }
+  .referenceArea, .results, .savedPreview { padding: 16px; }
+  .referenceGrid { gap: 16px 12px; }
+  .emptyResult { gap: 12px; min-height: 240px; }
+}
+/* Clip editing is one focused workspace at every size. Workflow controls remain
+   mounted and can be revealed explicitly without leaving the current clip. */
+.workspace.classicWorkspace[data-editing="true"] .workflowLayout { grid-template-columns: minmax(0, 1fr); }
+.workspace.classicWorkspace[data-editing="true"][data-controls-expanded="false"] .workflowControls { display: none; }
+.workspace.classicWorkspace[data-editing="true"][data-controls-expanded="true"] .classicMain { display: none; }
+.workspace.classicWorkspace[data-editing="true"][data-controls-expanded="true"] .workflowControls { width: 100%; max-width: 480px; justify-self: center; }
+.workspace.classicWorkspace[data-editing="true"] .controlsReturn { display: flex; }
+.workspace.classicWorkspace[data-editing="true"] .compactControlsToggle { display: inline-flex; }
+.workspace.classicWorkspace[data-editing="true"] .paneNavigation { display: none; }
+/* Both panels stay mounted. Smaller windows show one at a time, without
+   forcing users past the entire form to reach their preview. */
+@media (max-width: 1023.98px) {
+  .paneNavigation { display: flex; position: sticky; top: 0; z-index: 10; }
+  .workspace.classicWorkspace[data-pane="preview"] .workflowControls,
+  .workspace.classicWorkspace[data-pane="controls"] .classicMain { display: none; }
+  .workspace.classicWorkspace[data-editing="true"][data-pane="controls"] .workflowControls { display: flex; }
+}
+/* Browser zoom and very short windows use document scrolling rather than
+   squeezing the controls between a fixed tab bar and footer. */
+@media (min-width: 1024px) and (max-height: 520px) {
+  .workspace.classicWorkspace { height: auto; min-height: 100dvh; overflow: visible; }
+  .workspace.classicWorkspace .workflowControls { align-self: start; }
+  .workspace.classicWorkspace .workflowContent { flex: none; overflow: visible; }
+  .workspace.classicWorkspace .classicMain { min-height: 380px; overflow: visible; }
+  .classicMain .referenceArea, .classicMain .results, .classicMain .savedPreview { overflow: visible; }
+  .clipScrollArea { flex: none; overflow: visible; }
+}
+
+@container clip-editor (max-width: 599px) {
+  .clipEditorBody[data-editing="true"] .clipPreviews { position: sticky; top: 0; z-index: 5; background: var(--background); }
+  .clipEditorBody[data-editing="true"] [data-clip-media] { max-width: min(100%, calc(32dvh * var(--clip-aspect))); }
+}

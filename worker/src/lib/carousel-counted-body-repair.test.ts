@@ -1,0 +1,73 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildCountedBodyRepairSchema, decodeCountedPlanBodies, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, withCountedPlanBodies } from "./carousel-counted-body-repair.js";
+import type { PlannedCarouselSlide } from "./carousel-slide-plan.js";
+const words = "Keep the campaign context beside the next decision today.".split(" ");
+
+test("counted generation and full repairs enforce body arrays without changing cover/list schemas", () => {
+  const stringBody = { anyOf: [{ type: "string" }, { type: "null" }] };
+  const schema = { items: { anyOf: [
+    { properties: { slideNumber: { enum: [1] }, body: { type: "null" } } },
+    { properties: { slideNumber: { enum: [2] }, body: stringBody } },
+    { properties: { slideNumber: { enum: [3] }, body: { type: "null" } } },
+  ] } };
+  const counted = withCountedPlanBodies(schema);
+  assert.deepEqual(schema.items.anyOf[1]!.properties.body, stringBody);
+  assert.deepEqual(counted.items.anyOf[0]!.properties.body, { type: "null" });
+  assert.deepEqual(counted.items.anyOf[2]!.properties.body, { type: "null" });
+  assert.match(JSON.stringify(counted.items.anyOf[1]), /firstWords/);
+  const decoded = decodeCountedPlanBodies({ concept: "Specific workflow", slides: [
+    { slideNumber: 1, body: null },
+    { slideNumber: 2, body: { firstWords: words, secondWords: words } },
+  ] }) as { slides: { body: string | null }[] };
+  assert.equal(decoded.slides[0]!.body, null);
+  assert.equal(decoded.slides[1]!.body, `${words.join(" ")}\n\n${words.join(" ")}`);
+  assert.equal((decodeCountedPlanBodies({ slides: [{ slideNumber: 2, body: { firstWords: ["Keep", "context", "visible."], secondWords: [] } }] }) as { slides: { body: string }[] }).slides[0]!.body, "Keep context visible.");
+  const followup = { properties: { slideNumber: { enum: [2] }, body: stringBody,
+    headline: stringBody, textMode: { type: "string", enum: ["headline_body", "body_only"] } } };
+  const safeFollowup = withCountedPlanBodies(followup);
+  assert.deepEqual(safeFollowup.properties.headline, { type: "null" });
+  assert.deepEqual(safeFollowup.properties.textMode.enum, ["body_only"]);
+  assert.deepEqual(followup.properties.textMode.enum, ["headline_body", "body_only"]);
+});
+
+test("counted repair rejects whitespace tokens, missing blocks, extra fields and word padding", () => {
+  const good = { bodiesBySlide: { slide6: { firstWords: words, secondWords: words } } };
+  assert.equal(parseCountedBodyRepair(good, [6]).get(6), `${words.join(" ")}\n\n${words.join(" ")}`);
+  for (const invalid of [
+    { bodiesBySlide: { slide6: { firstWords: [], secondWords: words } } },
+    { bodiesBySlide: { slide6: { firstWords: ["two words", ...words.slice(1)], secondWords: words } } },
+    { bodiesBySlide: { slide6: { firstWords: [".", ...words.slice(1)], secondWords: words } } },
+    { bodiesBySlide: { slide6: { firstWords: words } } },
+    { bodiesBySlide: { slide6: { firstWords: words, secondWords: words }, slide2: {} } },
+  ]) assert.throws(() => parseCountedBodyRepair(invalid, [6]));
+  const token = buildCountedBodyRepairSchema([6]).properties.bodiesBySlide.properties.slide6!.properties.firstWords.items;
+  assert.equal(new RegExp(token.pattern).test("decision."), true);
+  assert.equal(new RegExp(token.pattern).test("two words"), false);
+  assert.equal(new RegExp(token.pattern).test("."), false);
+  assert.equal(new RegExp(token.pattern).test("decision:"), false);
+});
+
+test("counted bodies allow one complete paragraph and enforce the combined maximum", () => {
+  const paragraph = "Keep the campaign brief beside each draft so reviewers can check the intended message before choosing the next change.".split(" ");
+  const body = { firstWords: paragraph, secondWords: [] };
+  assert.equal(parseCountedBodyRepair({ bodiesBySlide: { slide2: body } }, [2]).get(2), paragraph.join(" "));
+  assert.throws(() => parseCountedBodyRepair({ bodiesBySlide: { slide2: { firstWords: paragraph, secondWords: paragraph } } }, [2]), /body copy limit/);
+  const schema = buildCountedBodyRepairSchema([2]).properties.bodiesBySlide.properties.slide2!;
+  assert.equal(schema.properties.firstWords.minItems, 1);
+  assert.equal(schema.properties.firstWords.maxItems, 30);
+  assert.equal(schema.properties.secondWords.minItems, 0);
+});
+
+test("counted repair only selects scoped non-list body failures and rejects unknown policy", () => {
+  const slide = { slideNumber: 6, body: "Keep the next decision visible", listItems: [] } as unknown as PlannedCarouselSlide;
+  assert.deepEqual(getCountedBodyRepairSlides([slide], [{ code: "body_length", slideNumber: 6, message: "Short body" }]), [6]);
+  for (const issue of [
+    { code: "grounding_disconnected" as const, slideNumber: null, message: "Disconnected" },
+    { code: "render_fit" as const, slideNumber: 6, message: "Headline does not fit" },
+    { code: "unsupported_claim" as const, slideNumber: 6, message: "Unknown claim" },
+  ]) assert.equal(getCountedBodyRepairSlides([slide], [issue]), null);
+  assert.equal(getCountedBodyRepairSlides([{ ...slide, listItems: ["One", "Two"] }], [{ code: "body_length", slideNumber: 6, message: "Short" }]), null);
+  assert.equal(validateCountedBodyRepairPolicy(), false);
+  assert.throws(() => validateCountedBodyRepairPolicy({ version: "unknown" } as never), /Unsupported/);
+});

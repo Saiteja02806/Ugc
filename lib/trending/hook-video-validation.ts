@@ -35,6 +35,7 @@ export const HookVideoDraftRequestSchema = HookSuggestionRequestSchema.extend({
   });
 
 export const HookVideoScheduleRequestSchema = HookVideoDraftRequestSchema.extend({
+  caption: z.string().trim().max(5000).optional(),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/),
   // The fields above remain required for compatibility with existing clients.

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { FREE_TRIAL_CONTENT_DAYS } from "@/lib/billing/free-trial-policy";
 import { SchedulingRequestError } from "@/lib/scheduling/errors";
 import type {
   ScheduledPost,
@@ -171,6 +172,10 @@ type ScheduledPostTargetInsert = Pick<
 type SchedulingDatabase = {
   public: {
     Functions: {
+      create_direct_scheduled_post: {
+        Args: { p_post: Json; p_targets: Json; p_request_hash: string; p_queue_name: string };
+        Returns: Json;
+      };
       cancel_scheduled_post: {
         Args: {
           p_post_id: string;
@@ -401,6 +406,48 @@ export async function insertScheduledPost(input: ScheduledPostInsert) {
   return data;
 }
 
+/** Commit destination rows and their durable jobs with the parent. Provider
+ * scheduling happens later and can resume using these exact identities. */
+export async function insertDirectScheduledPost(params: {
+  post: ScheduledPostInsert;
+  targets: Array<{ platform: SchedulePlatform; settings: Record<string, boolean | number | string>; social_connection_id: string }>;
+  requestHash: string;
+  queueName: string;
+}) {
+  const { data, error } = await getSchedulingSupabaseClient().rpc("create_direct_scheduled_post", {
+    p_post: params.post, p_targets: params.targets, p_request_hash: params.requestHash, p_queue_name: params.queueName,
+  });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (["42883", "PGRST202"].includes(error.code)) {
+      throw new SchedulingRequestError("Safe scheduling storage is not available yet. Apply the atomic scheduling migration before scheduling new posts.", 503, "schedule_atomic_storage_unavailable");
+    }
+    if (message.includes("schedule_idempotency_conflict")) {
+      throw new SchedulingRequestError("This saved request belongs to different scheduling details. Review its original post in Scheduling.", 409, "schedule_idempotency_conflict");
+    }
+    if (message.includes("schedule_time_too_soon")) {
+      throw new SchedulingRequestError("The selected publish time elapsed while scheduling was being checked. Choose a future time and confirm again.", 409, "schedule_time_too_soon");
+    }
+    if (message.includes("free_trial_schedule_limit_reached")) {
+      throw new SchedulingRequestError("Your free trial allows up to the configured Instagram post limit. Upgrade to schedule more.", 402, "free_trial_schedule_limit_reached");
+    }
+    if (message.includes("free_trial_schedule_expired")) {
+      throw new SchedulingRequestError(`Your ${FREE_TRIAL_CONTENT_DAYS}-day free trial has ended. Upgrade to schedule another Instagram post.`, 402, "free_trial_schedule_expired");
+    }
+    if (message.includes("schedule_source_unavailable") || message.includes("schedule_account_unavailable")) {
+      throw new SchedulingRequestError("Your selected media or account changed. Review the current selections before scheduling.", 409, "schedule_selection_unavailable");
+    }
+    throw new SchedulingRequestError("Could not confirm the scheduling transaction. Keep the same saved request and check again.", 503, "schedule_creation_unconfirmed");
+  }
+  const value = data as { created?: boolean; post?: ScheduledPostRow; targets?: ScheduledPostTargetRow[] } | null;
+  if (typeof value?.created !== "boolean" || !value.post?.id || value.post.user_id !== params.post.user_id ||
+      !Array.isArray(value.targets) || value.targets.length !== params.targets.length ||
+      value.targets.some(target => target.user_id !== params.post.user_id || target.scheduled_post_id !== value.post!.id || !target.publish_job_id)) {
+    throw new SchedulingRequestError("Could not verify the saved scheduling transaction. Keep and check the same request.", 503, "schedule_creation_unconfirmed");
+  }
+  return { created: value.created, post: value.post, targetRows: value.targets };
+}
+
 export async function insertScheduledPostTargets(
   targets: ScheduledPostTargetInsert[],
 ) {
@@ -426,7 +473,7 @@ export async function insertScheduledPostTargets(
 
     if (databaseMessage.includes("free_trial_schedule_expired")) {
       throw new SchedulingRequestError(
-        "Your 3-day free trial has ended. Upgrade to schedule another Instagram post.",
+        `Your ${FREE_TRIAL_CONTENT_DAYS}-day free trial has ended. Upgrade to schedule another Instagram post.`,
         402,
         "free_trial_schedule_expired",
       );

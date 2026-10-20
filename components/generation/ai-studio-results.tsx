@@ -1,5 +1,9 @@
-import { AlertCircle, Loader2 } from "lucide-react";
+"use client";
+
+import { AlertCircle, Loader2, X } from "lucide-react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,35 +24,86 @@ export type AiStudioResultsStatus = {
 export function AiStudioResults({
   ariaLabel,
   children,
+  emptyContent,
+  emptyContentClassName,
   emptyDescription,
   emptyTitle,
+  failure,
   gridClassName,
   hasResults,
   loading = false,
   status,
+  dismissibleStatusKey,
+  statusPlacement = "toolbar",
+  scrollToLatestKey,
+  toolbar,
+  portalTarget,
 }: {
   ariaLabel: string;
   children: ReactNode;
+  emptyContent?: ReactNode;
+  emptyContentClassName?: string;
   emptyDescription?: string;
   emptyTitle?: string;
+  failure?: ReactNode;
   gridClassName?: string;
   hasResults: boolean;
   loading?: boolean;
   status?: AiStudioResultsStatus | null;
+  /** Opt in for transient error badges; use a stable key for each generation attempt. */
+  dismissibleStatusKey?: string | null;
+  statusPlacement?: "toolbar" | "inline";
+  scrollToLatestKey?: string | null;
+  toolbar?: ReactNode;
+  portalTarget?: HTMLElement | null;
 }) {
+  const resultsRef = useRef<HTMLElement>(null);
+  const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(null);
+  const noticeKey = dismissibleStatusKey && status?.tone === "error"
+    ? JSON.stringify([dismissibleStatusKey, status.label]) : null;
+  const noticeDismissed = noticeKey !== null && dismissedNoticeKey === noticeKey;
+  useEffect(() => {
+    if (!noticeKey || noticeDismissed) return;
+    const timer = window.setTimeout(() => setDismissedNoticeKey(noticeKey), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [noticeKey, noticeDismissed]);
+  useEffect(() => {
+    if (!scrollToLatestKey) return;
+    const frame = window.requestAnimationFrame(() => {
+      const results = resultsRef.current;
+      if (results) results.scrollTop = results.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollToLatestKey]);
+  const showFailure = status?.tone === "error" && Boolean(failure) && !loading;
   const showStatusBadge =
     Boolean(status) &&
+    !noticeDismissed &&
+    !showFailure &&
+    !(status?.tone === "progress" && statusPlacement === "inline" && hasResults) &&
     !(status?.tone === "progress" && !loading && !hasResults);
 
-  return (
+  const content = (
     <section
+      ref={resultsRef}
       aria-label={ariaLabel}
       aria-busy={loading || status?.tone === "progress"}
-      className="relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain md:min-h-0"
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain"
     >
+      {toolbar ? (
+        <div className="sticky top-0 z-20 flex shrink-0 justify-end bg-background/90 px-1 pb-2 pt-1 backdrop-blur-sm">
+          {toolbar}
+        </div>
+      ) : null}
       {showStatusBadge && status ? (
-        <div className="sticky top-0 z-10 flex shrink-0 justify-start px-1 pb-2 pt-1">
+        <div
+          className={cn(
+            "sticky z-10 flex shrink-0 justify-start px-1 pb-2 pt-1",
+            toolbar ? "top-12" : "top-0",
+          )}
+        >
           <Badge
+            className={cn("max-w-full whitespace-normal text-left leading-relaxed", noticeKey && "h-auto items-center gap-2 py-1 pl-2 pr-1")}
             variant={status.tone === "error" ? "destructive" : "secondary"}
             role={status.tone === "error" ? "alert" : "status"}
             aria-live="polite"
@@ -62,26 +117,29 @@ export function AiStudioResults({
             ) : status.tone === "error" ? (
               <AlertCircle data-icon="inline-start" aria-hidden="true" />
             ) : null}
-            {status.label}
+            {noticeKey ? <span className="min-w-0 break-words">{status.label}</span> : status.label}
+            {noticeKey ? <button type="button" aria-label="Dismiss generation error" title="Dismiss generation error"
+              className="grid size-7 shrink-0 place-items-center rounded-full hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+              onClick={() => setDismissedNoticeKey(noticeKey)}>
+              <X className="size-3.5" aria-hidden="true" />
+            </button> : null}
           </Badge>
         </div>
       ) : null}
 
+      {showFailure && hasResults ? (
+        <div className="mx-auto w-full max-w-2xl shrink-0 px-1 pb-5 pt-3">
+          {failure}
+        </div>
+      ) : null}
       {loading ? (
         <div
-          className={cn(
-            "grid auto-rows-min grid-cols-1 gap-4 px-1 pb-8 pt-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4",
-            gridClassName,
-          )}
+          className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-8"
           role="status"
           aria-label={`Loading ${ariaLabel.toLowerCase()}`}
         >
-          {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="space-y-2">
-              <Skeleton className="aspect-[4/5] w-full rounded-[var(--radius-card)]" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          ))}
+          <Skeleton className="aspect-[9/16] w-[min(160px,20dvh)] rounded-xl" />
+          <span className="text-xs text-muted">Loading your workspace…</span>
         </div>
       ) : hasResults ? (
         <div
@@ -92,9 +150,13 @@ export function AiStudioResults({
         >
           {children}
         </div>
+      ) : showFailure ? (
+        <div className="flex min-h-0 flex-1 flex-col px-1 py-8 sm:px-5">
+          <div className="my-auto w-full max-w-xl shrink-0 self-center">{failure}</div>
+        </div>
       ) : status?.tone === "progress" ? (
         <Empty
-          className="min-h-[360px] flex-1 px-5 pb-28 pt-16 sm:pb-32 md:min-h-0"
+          className="min-h-0 flex-1 px-5 py-8"
           role="status"
           aria-live="polite"
         >
@@ -112,8 +174,10 @@ export function AiStudioResults({
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : emptyContent ? (
+        <div className={cn("flex min-h-0 flex-1 items-center px-1 py-5", emptyContentClassName)}>{emptyContent}</div>
       ) : (
-        <Empty className="min-h-[360px] flex-1 px-5 pb-28 pt-16 sm:pb-32 md:min-h-0">
+        <Empty className="min-h-0 flex-1 px-5 py-8">
           <EmptyHeader>
             <EmptyTitle>{emptyTitle ?? "No generations yet"}</EmptyTitle>
             <EmptyDescription>
@@ -125,4 +189,5 @@ export function AiStudioResults({
       )}
     </section>
   );
+  return portalTarget ? createPortal(content, portalTarget) : content;
 }

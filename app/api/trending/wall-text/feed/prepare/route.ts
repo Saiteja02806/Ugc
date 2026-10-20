@@ -11,6 +11,7 @@ import {
   getPublicBackgroundJob,
 } from "@/lib/jobs/background-job-contract";
 import { enqueueTrendingWallTextJob } from "@/lib/trending/wall-text-jobs";
+import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,9 @@ const PrepareWallTextSchema = z
   .strict();
 
 export async function POST(request: Request) {
+  if (!isWallTextEnabled()) {
+    return json({ code: "feature_unavailable", error: "Trending currently generates slideshows only.", ok: false }, 404);
+  }
   let userId: string;
 
   try {

@@ -1,0 +1,15 @@
+# Complete release review — 2026-10-09
+
+All 1,184 source-checkout status paths were accounted for. 1,069 paths were unchanged from the prior complete reconciliation. The 115 newer source paths were incorporated or adapted into the current approved workflow; none is missing. The full path manifest and exclusions are in `complete-release-inventory-2026-10-09.json`, with historical decisions in the October 8 inventory.
+
+Included scope: Trending card spacing, keyboard focus and safe scheduling of revisited posts; slideshow curiosity hooks and typography; founder guide/landing content and plugin documentation; compact Explore controls, preview-based hook/demo editing, Change actions, background-audio control, image reference selection, owner-scoped generation recovery and downloads; WAN 3.0 through OpenRouter; ChatGPT Image and ChatGPT Image 2.5 Sunburst through OpenAI; Seedream 5.0 Pro through Runway; the additive influencer-model database migration.
+
+Incoming older UI code was merged semantically. The approved three-tab video workflow and preview editors remain active. The old standalone Edit video tab and duplicate Upload/Create/Creative Assets actions in the hook preview were not restored. New compatibility components are included without wiring them into the approved runtime. The browser QA runner now checks the current preview-editing workflow.
+
+Validation completed before release: TypeScript, production build, scoped ESLint (zero errors; existing unused-variable/ignored-file warnings), 637 Explore tests (636 passed in the sandbox; all 10 catalogue tests passed on the normal filesystem), all WAN suites, 75 provider/model/download checks, 310 worker checks, 165 Trending checks, 125 carousel grammar checks, additional structure-2 hook checks, and 16 reconciliation/migration-history audit checks. Tests use offline mocks, isolated Postgres and local media; no paid provider requests were made.
+
+Local browser review: hook/demo editing at 1280×640 retains a separate footer and scrollable tools with no horizontal overflow; compact workflow controls open in a temporary drawer. At 900×560 the slideshow Controls/Preview switch preserves the selected two-slide sequence. Reference images, Creating slide 1 of 6, and Versions for this slide are distinct.
+
+Excluded paths and reasons: duplicate migration aliases already applied under canonical versions; private `.env*` files except `.env.example`, authentication/infrastructure state, `.tools/`, `.codex/`, `.agents/`, `.aws/`, `.vercel/`, Terraform state/private variables; `.tmp/`, `.next/`, dependencies, worker build output, logs and QA screenshots; local landing/design inputs and hosted Try media. The complete path-pattern list is in the manifest. The retired Higgsfield example remains excluded as recorded in the previous inventory. Existing source checkout work is preserved.
+
+Production verification is recorded separately after rollout. Paid generation, publishing and the user's real end-to-end test remain deferred at the user's request.

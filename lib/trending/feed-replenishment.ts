@@ -1,4 +1,5 @@
 import "server-only";
+import { isTrendingFormatEnabled } from "./format-policy";
 
 import {
   getBusinessProfileForUser,
@@ -15,6 +16,9 @@ export async function replenishTrendingFormatAfterDecision(params: {
 }) {
   if (params.format === "carousel") {
     return { status: "not_applicable" as const };
+  }
+  if (!isTrendingFormatEnabled(params.format)) {
+    return { status: "disabled" as const };
   }
 
   const profile = await getBusinessProfileForUser(params.userId);

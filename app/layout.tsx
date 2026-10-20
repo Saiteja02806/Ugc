@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { WorkspaceRouteBoundary } from "@/components/layout/workspace-route-boundary";
+import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 import {
   THEME_BACKGROUND_COLORS,
   THEME_STORAGE_KEY,
@@ -88,12 +89,13 @@ const arialBoldWallText = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://getugcpilot.com"),
   title: {
     default: "UGC Pilot",
     template: "%s | UGC Pilot",
   },
   description:
-    "Create Instagram Reel hooks, text-led videos, carousel posts, and approved publishing workflows in one focused workspace.",
+    `Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset for ${visibleSocialPlatformList}.`,
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [
@@ -146,15 +148,14 @@ export default function RootLayout({
       }}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          id="ugc-pilot-theme"
-          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
-        />
-      </head>
       <body
         className={`${geistSans.className} min-h-full bg-background text-foreground antialiased`}
       >
+        <Script
+          id="ugc-pilot-theme"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitializationScript }}
+        />
         <Script
           id="ugc-pilot-retired-content-storage-cleanup"
           strategy="beforeInteractive"

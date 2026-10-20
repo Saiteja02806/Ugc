@@ -6,6 +6,7 @@ import {
   Bug,
   CheckCircle2,
   CreditCard,
+  FileText,
   Images,
   Lightbulb,
   LoaderCircle,
@@ -34,15 +35,22 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
+import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-account-manager";
+import { YouTubeBetaAccountManager } from "@/components/settings/youtube-beta-account-manager";
 import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
+import { MediaLibraryPanel } from "@/components/media/media-library-dialog";
+import { BusinessContextSettings } from "@/components/settings/business-context-settings";
+import { PublishingPreferencesSettings } from "@/components/settings/publishing-preferences-settings";
 import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { LATEST_PRODUCT_UPDATE } from "@/lib/updates/product-updates";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
+import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 const SETTINGS_SECTIONS = [
   {
@@ -51,9 +59,19 @@ const SETTINGS_SECTIONS = [
     label: "Account",
   },
   {
+    icon: FileText,
+    id: "business-context",
+    label: "Business Context",
+  },
+  {
     icon: CreditCard,
     id: "subscription-billing",
     label: "Plan & billing",
+  },
+  {
+    icon: Images,
+    id: "media-library",
+    label: "Media library",
   },
   {
     icon: Images,
@@ -69,6 +87,11 @@ const SETTINGS_SECTIONS = [
     icon: Palette,
     id: "preferences",
     label: "Preferences",
+  },
+  {
+    icon: Sparkles,
+    id: "product-updates",
+    label: "Product updates",
   },
   {
     icon: Bug,
@@ -92,6 +115,8 @@ type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];
 export function SettingsWorkspace() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const tiktokBetaEnabled = hasTikTokUiAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
   const { locked: themeLocked, setTheme, theme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -358,6 +383,17 @@ export function SettingsWorkspace() {
           </SettingsSection>
           ) : null}
 
+          {activeSection === "business-context" ? (
+          <SettingsSection
+            id="business-context"
+            description="Review the approved facts that guide future marketing content."
+            icon={<FileText className="size-5" aria-hidden="true" />}
+            title="Business Context"
+          >
+            <BusinessContextSettings />
+          </SettingsSection>
+          ) : null}
+
           {activeSection === "subscription-billing" ? (
           <SettingsSection
             id="subscription-billing"
@@ -401,18 +437,24 @@ export function SettingsWorkspace() {
                     </div>
                     <p className="mt-1 text-sm text-muted">
                       {subscription?.isActive
-                        ? `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
-                        : subscription?.trial.status === "active" &&
+                        ? subscription.accessSource === "complimentary"
+                          ? subscription.isDodoManaged
+                            ? `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. An existing Dodo subscription remains separate and can be managed below.`
+                            : `Your complimentary ${subscription.displayName} access includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits. No payment method is attached.`
+                          : `Your ${subscription.displayName} subscription includes ${subscription.dailyContentPieces} daily drops and ${subscription.sharedMonthlyCredits} monthly AI credits.`
+                        : subscription?.status === "on_hold"
+                          ? "Your payment needs attention. Update your payment method to restore your subscription."
+                          : subscription?.trial.status === "active" &&
                             subscription.trial.contentDaysRemaining > 0
-                          ? `Your 3-day trial includes 10 daily ready-to-post concepts. You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining, including future dates.`
+                          ? `Your ${subscription.trial.contentDaysLimit}-day trial includes ${subscription.trial.dailyContentPieces} daily ready-to-post concepts. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling is available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining.`}`
                           : subscription?.trial.status === "active"
-                            ? `Your trial content allowance is used. You still have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`
-                            : "Your 3-day free trial has ended. Upgrade to generate content or schedule more Instagram posts."}
+                            ? `Your trial content allowance is used. ${subscription.trial.instagramSchedulesLimit === null ? "Unlimited Instagram scheduling remains available until the trial ends." : `You have ${subscription.trial.instagramSchedulesRemaining} of ${subscription.trial.instagramSchedulesLimit} Instagram schedules remaining until the trial ends.`}`
+                            : "Your free trial has ended. Upgrade for more daily content or Instagram scheduling. Any unused free AI credits remain available."}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
-                  {subscription?.isActive ? (
+                  {subscription?.isDodoManaged ? (
                     <Button
                       type="button"
                       size="lg"
@@ -429,8 +471,15 @@ export function SettingsWorkspace() {
                       ) : (
                         <CreditCard data-icon="inline-start" aria-hidden="true" />
                       )}
-                      {isOpeningBilling ? "Opening billing" : "Manage billing"}
+                      {isOpeningBilling ? "Opening billing" : subscription?.status === "on_hold" ? "Update payment method" : "Manage billing"}
                     </Button>
+                  ) : subscription?.isActive ? (
+                    <Badge
+                      variant="outline"
+                      className="w-full justify-center border-primary/30 text-primary sm:w-auto"
+                    >
+                      Complimentary access
+                    </Badge>
                   ) : (
                     <Link
                       href="/pricing"
@@ -462,10 +511,10 @@ export function SettingsWorkspace() {
                   </p>
                   <p className="mt-1 text-lg font-black text-foreground-strong font-mono">
                     {subscription?.creditsRemaining ?? 0}{" "}
-                    <span className="text-xs font-normal text-muted">/ {subscription?.sharedMonthlyCredits ?? 0}</span>
+                    <span className="text-xs font-normal text-muted">/ {subscription?.isActive ? subscription.sharedMonthlyCredits : subscription?.freeGenerationCredits?.granted ?? 0}</span>
                   </p>
                   <p className="mt-1 text-[11px] text-muted">
-                    {subscription?.creditsUsed ?? 0} used this month
+                    {subscription?.creditsUsed ?? 0} {subscription?.isActive ? "used this month" : "used · once per account"}
                   </p>
                 </div>
 
@@ -523,6 +572,11 @@ export function SettingsWorkspace() {
           </SettingsSection>
           ) : null}
 
+          {activeSection === "media-library" ? (
+          <SettingsSection id="media-library" description="Manage reusable images and background collections for your slideshows." icon={<Images className="size-5" aria-hidden="true" />} title="Media library">
+            <div className="p-5 sm:p-6"><MediaLibraryPanel /></div>
+          </SettingsSection>
+          ) : null}
           {activeSection === "app-screenshots" ? (
           <SettingsSection
             id="app-screenshots"
@@ -537,23 +591,22 @@ export function SettingsWorkspace() {
           {activeSection === "instagram-publishing" ? (
           <SettingsSection
             id="instagram-publishing"
-            description="Connect and manage the Instagram accounts available for publishing."
-            icon={
-              <SocialPlatformIcon
-                className="size-5"
-                platform="instagram"
-              />
-            }
+            description="Connect and organize the social accounts UGC Pilot can use for publishing."
+            icon={<Plug className="size-5" aria-hidden="true" />}
             title="Connected accounts"
           >
-            <InstagramAccountManager />
+            <div className="space-y-4 px-5 py-5 sm:px-6">
+              <InstagramAccountManager />
+              {tiktokBetaEnabled ? <TikTokBetaAccountManager /> : null}
+              {youtubeBetaEnabled ? <YouTubeBetaAccountManager /> : null}
+            </div>
           </SettingsSection>
           ) : null}
 
           {activeSection === "preferences" ? (
           <SettingsSection
             id="preferences"
-            description="Choose how UGC Pilot looks and behaves on this device."
+            description="Choose your account publishing defaults and this device's appearance."
             icon={<Palette className="size-5" aria-hidden="true" />}
             title="Preferences"
           >
@@ -600,6 +653,46 @@ export function SettingsWorkspace() {
                   ? "Theme locked"
                   : `Use ${theme === "light" ? "dark" : "light"} theme`}
               </Button>
+            </div>
+            <PublishingPreferencesSettings />
+          </SettingsSection>
+          ) : null}
+
+          {activeSection === "product-updates" ? (
+          <SettingsSection
+            id="product-updates"
+            description="Review the latest fixes and improvements to UGC Pilot."
+            icon={<Sparkles className="size-5" aria-hidden="true" />}
+            title="Product updates"
+          >
+            <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="success">Latest release</Badge>
+                  <time
+                    dateTime={LATEST_PRODUCT_UPDATE.releasedOn}
+                    className="text-xs font-medium text-muted"
+                  >
+                    Released {LATEST_PRODUCT_UPDATE.releasedOnLabel}
+                  </time>
+                </div>
+                <p className="mt-3 text-sm font-bold text-foreground-strong">
+                  {LATEST_PRODUCT_UPDATE.title}
+                </p>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+                  {LATEST_PRODUCT_UPDATE.summary}
+                </p>
+              </div>
+              <Link
+                href={`/updates#${LATEST_PRODUCT_UPDATE.id}`}
+                className={buttonVariants({
+                  size: "lg",
+                  variant: "outline",
+                })}
+              >
+                View all updates
+                <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+              </Link>
             </div>
           </SettingsSection>
           ) : null}

@@ -10,6 +10,7 @@ import {
   verifyInternalFinalizationRequest,
 } from "@/lib/scheduling/internal-finalization-auth";
 import { enqueueTrendingWallTextRefill } from "@/lib/trending/trending-wall-text-feed";
+import { requestWallTextDailyTerminalReplacement } from "@/lib/trending/wall-text-early-delivery";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,9 +43,26 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (input.dailyFeedId) {
+      const retryKey = await requestWallTextDailyTerminalReplacement({
+        dailyFeedId: input.dailyFeedId,
+        expectedRecoveryKey: input.recoveryKey,
+        failedJobId: input.failedJobId,
+        userId: input.userId,
+      });
+
+      // The worker will now complete and emit the normal reconciliation event.
+      // That event first exposes any successfully persisted creatives, then
+      // asks for only the remaining empty daily slots under this new retry key.
+      return json({
+        jobId: null,
+        ok: true,
+        replacementScheduled: retryKey !== null,
+      });
+    }
+
     const replacement = await enqueueTrendingWallTextRefill(profile, {
-      dailyFeedId: input.dailyFeedId,
-      recoveryKey: `${input.recoveryKey ?? input.dailyFeedId}:terminal:${input.failedJobId}`,
+      recoveryKey: `${input.recoveryKey ?? `profile:${input.businessProfileId}`}:terminal:${input.failedJobId}`,
       refillKey: `terminal:${input.failedJobId}`,
       targetActive: input.requestedCount,
     });
@@ -66,7 +84,7 @@ function parseInput(body: string) {
   try {
     const value = JSON.parse(body) as Record<string, unknown>;
     const businessProfileId = stringValue(value.businessProfileId);
-    const dailyFeedId = stringValue(value.dailyFeedId);
+    const dailyFeedId = optionalString(value.dailyFeedId);
     const errorCode = stringValue(value.errorCode);
     const failedJobId = stringValue(value.failedJobId);
     const recoveryKey = optionalString(value.recoveryKey);
@@ -74,8 +92,12 @@ function parseInput(body: string) {
     const businessProfileVersion = value.businessProfileVersion;
     const requestedCount = value.requestedCount;
     if (
-      !isUuid(businessProfileId) || !isUuid(dailyFeedId) || !isUuid(failedJobId) ||
-      !userId || !["wall_text_render_fit_rejected", "content_retry_exhausted"].includes(errorCode) ||
+      !isUuid(businessProfileId) || (dailyFeedId !== null && !isUuid(dailyFeedId)) || !isUuid(failedJobId) ||
+      !userId || ![
+        "wall_text_render_fit_rejected",
+        "content_retry_exhausted",
+        "model_output_refusal",
+      ].includes(errorCode) ||
       !Number.isInteger(businessProfileVersion) || typeof businessProfileVersion !== "number" || businessProfileVersion < 1 ||
       !Number.isInteger(requestedCount) || typeof requestedCount !== "number" || requestedCount < 1 || requestedCount > 50
     ) return null;

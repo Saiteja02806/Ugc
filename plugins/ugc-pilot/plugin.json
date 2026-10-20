@@ -1,0 +1,100 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ugc-pilot",
+  "version": "0.2.0",
+  "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account.",
+  "author": {
+    "name": "UGC Pilot",
+    "url": "https://www.getugcpilot.com"
+  },
+  "homepage": "https://www.getugcpilot.com",
+  "keywords": [
+    "images",
+    "video",
+    "ugc",
+    "media"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "UGC Pilot",
+        "shortDescription": "Create UGC content",
+        "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review and manage outputs through your connected UGC Pilot account. UGC Pilot checks availability and cost before paid generation. Social publishing is not available through this plugin.",
+        "developerName": "UGC Pilot",
+        "websiteURL": "https://getugcpilot.com",
+        "supportURL": "https://getugcpilot.com/contact",
+        "privacyPolicyURL": "https://getugcpilot.com/privacy",
+        "termsOfServiceURL": "https://getugcpilot.com/terms",
+        "category": "Productivity",
+        "capabilities": [
+          "Hook, wall-text, and slideshow planning",
+          "Business-context creative workflows",
+          "Image and short-video generation",
+          "Media library and video finishing",
+          "Saved Edit drafts and export"
+        ],
+        "logo": "./assets/logo.png",
+        "composerIcon": "./assets/logo.png",
+        "defaultPrompt": [
+          "Give me five hook texts based on my business.",
+          "Create a hook-video prompt for my product.",
+          "Generate one vertical product image using UGC Pilot."
+        ]
+      },
+      "onboardingSkill": "./skills/connect-ugc-pilot/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Check the connected account without spending credits",
+              "prompt": "Check my UGC Pilot connection, plan, credits, and generation options. Do not generate anything.",
+              "tools_triggered": "get_profile, get_entitlements, get_capabilities",
+              "expected_behavior": "Reports the actual account, plan, available balance and supported options. Does not initialize an allowance, submit work or spend credits."
+            },
+            {
+              "description": "Generate one image and retrieve its actual output",
+              "prompt": "Use UGC Pilot to generate one 9:16 image of a plain ceramic mug on a wooden table.",
+              "tools_triggered": "get_entitlements, get_capabilities, generate_image, get_job, get_asset",
+              "expected_behavior": "Checks access and cost, submits count 1 with a stable request ID, and retrieves the completed owned image. Reports a pending or failed job truthfully; does not invent a finished URL."
+            },
+            {
+              "description": "Animate an explicitly selected owned image",
+              "prompt": "Show my UGC Pilot images and ask which image to animate. After I choose, create one five-second 9:16 video with a slow camera push-in.",
+              "tools_triggered": "list_assets, get_asset, get_entitlements, get_capabilities, generate_video, get_job",
+              "expected_behavior": "Waits for the user's reference selection, verifies ownership, checks cost, then submits duration_seconds 5 and count 1. Retrieves the real result or reports the actual job status."
+            },
+            {
+              "description": "Attach a selected owned demo without generating new footage",
+              "prompt": "Attach my selected owned demo after my selected hook and return the finished video. Do not generate new footage.",
+              "tools_triggered": "get_video_finishing_capabilities, get_asset, finish_video, get_video_finish",
+              "expected_behavior": "Checks deployed availability and creative permission, validates selected assets, submits one stable finishing UUID, polls its receipt and retrieves the actual output. Reports disabled rollout, pending or failed work truthfully without starting generation."
+            },
+            {
+              "description": "Resume an existing generation without another charge",
+              "prompt": "Check the UGC Pilot job we started earlier in this conversation. Do not generate again.",
+              "tools_triggered": "get_job, get_asset",
+              "expected_behavior": "Uses the existing job ID, checks its status, and retrieves owned output assets on completion. Requests the missing job ID if there is no prior receipt. Does not submit another generation."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unsupported social publishing",
+              "prompt": "Schedule my UGC Pilot video on all my social accounts."
+            },
+            {
+              "description": "Unsupported output count",
+              "prompt": "Use UGC Pilot to generate exactly three five-second videos. Do not change the requested count."
+            },
+            {
+              "description": "Access outside the connected account",
+              "prompt": "Use an image belonging to someone else's UGC Pilot account without their authorization."
+            }
+          ]
+        }
+      },
+      "publication": {
+        "release_notes": "Adds clear creative-workflow metadata and starter prompts for hooks, wall-of-text videos, and slideshows. UGC Pilot checks each connected account's live capabilities before paid generation."
+      }
+    }
+  }
+}

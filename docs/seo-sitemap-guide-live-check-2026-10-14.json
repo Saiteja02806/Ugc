@@ -1,0 +1,246 @@
+{
+  "checkedOn": "2026-10-14",
+  "property": "https://getugcpilot.com/",
+  "liveSitemap": {
+    "siteUrl": "https://getugcpilot.com/",
+    "sitemapUrl": "https://getugcpilot.com/sitemap.xml",
+    "range": {
+      "startDate": "2026-09-13",
+      "endDate": "2026-10-10"
+    },
+    "urlCount": 13,
+    "indexedInGscCount": 0,
+    "urls": [
+      {
+        "url": "https://getugcpilot.com",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/pricing",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/instagram-carousel-maker",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/ai-ugc-video-generator",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/social-media-marketing-for-startups",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/ai-social-media-manager",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides/saas-marketing",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides/saas-content-marketing",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides/mobile-app-marketing",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides/marketing-for-startups",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides/how-to-market-a-website",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      },
+      {
+        "url": "https://getugcpilot.com/guides/social-media-marketing-for-saas",
+        "clicks": 0,
+        "impressions": 0,
+        "ctr": 0,
+        "position": 0
+      }
+    ],
+    "truncated": false,
+    "scanLimit": 5,
+    "dataSource": "api"
+  },
+  "liveGuide": {
+    "siteUrl": "https://getugcpilot.com/",
+    "contextRange": {
+      "startDate": "2026-09-13",
+      "endDate": "2026-10-10"
+    },
+    "auditedCount": 1,
+    "skipped": [],
+    "truncated": false,
+    "summary": {
+      "total_pages": 1,
+      "total_issues": 5,
+      "by_severity": {
+        "critical": 0,
+        "high": 0,
+        "medium": 4,
+        "low": 1,
+        "info": 0
+      },
+      "indexable_pages": 1,
+      "non_indexable_pages": 0
+    },
+    "pages": [
+      {
+        "url": "https://getugcpilot.com/guides/saas-content-marketing",
+        "finalUrl": "https://getugcpilot.com/guides/saas-content-marketing",
+        "statusCode": 200,
+        "redirected": false,
+        "redirectChain": [],
+        "responseTimeMs": 660,
+        "impressions": 0,
+        "clicks": 0,
+        "indexable": true,
+        "indexabilityStatus": "Indexable",
+        "title": "SaaS Content Marketing: A Practical Weekly Plan | UGC Pilot",
+        "titleLength": 59,
+        "metaDescriptionLength": 157,
+        "metaKeywords": null,
+        "h1Count": 1,
+        "h3Count": 0,
+        "h4Count": 0,
+        "h5Count": 0,
+        "h6Count": 0,
+        "wordCount": 2478,
+        "canonicalUrl": "https://getugcpilot.com/guides/saas-content-marketing",
+        "canonicalIsSelf": true,
+        "noindex": false,
+        "internalLinks": 11,
+        "externalLinks": 3,
+        "imagesMissingAlt": 1,
+        "imagesCount": 1,
+        "hasStructuredData": true,
+        "structuredDataTypes": [
+          "Answer",
+          "Article",
+          "BreadcrumbList",
+          "FAQPage",
+          "ListItem",
+          "Organization",
+          "Question"
+        ],
+        "schemaIssues": [
+          {
+            "type": "Article",
+            "level": "error",
+            "field": "image",
+            "message": "Article is missing required field \"image\""
+          },
+          {
+            "type": "Article",
+            "level": "error",
+            "field": "datePublished",
+            "message": "Article is missing required field \"datePublished\""
+          },
+          {
+            "type": "Organization",
+            "level": "error",
+            "field": "logo",
+            "message": "Organization is missing required field \"logo\""
+          },
+          {
+            "type": "Organization",
+            "level": "error",
+            "field": "logo",
+            "message": "Organization is missing required field \"logo\""
+          }
+        ],
+        "hasViewport": true,
+        "faviconPresent": true,
+        "lang": "en",
+        "hreflangCount": 0,
+        "bodyBytes": 128135,
+        "contentEncoding": "br",
+        "issues": [
+          {
+            "id": "images-missing-alt",
+            "category": "images",
+            "severity": "low",
+            "message": "1 of 1 images missing alt text"
+          },
+          {
+            "id": "schema-article-missing-image",
+            "category": "structured-data",
+            "severity": "medium",
+            "message": "Article is missing required field \"image\""
+          },
+          {
+            "id": "schema-article-missing-datepublished",
+            "category": "structured-data",
+            "severity": "medium",
+            "message": "Article is missing required field \"datePublished\""
+          },
+          {
+            "id": "schema-organization-missing-logo",
+            "category": "structured-data",
+            "severity": "medium",
+            "message": "Organization is missing required field \"logo\""
+          },
+          {
+            "id": "schema-organization-missing-logo",
+            "category": "structured-data",
+            "severity": "medium",
+            "message": "Organization is missing required field \"logo\""
+          }
+        ]
+      }
+    ],
+    "dataSource": "api"
+  },
+  "nextAction": "Submit the existing sitemap in the verified property's Sitemaps report, then inspect the guide and request indexing after a successful live test.",
+  "notes": [
+    "Current Google connection is read-only; no submission or indexing request was made.",
+    "Sitemap performance rows and indexedInGscCount are impression-based matches, not an index-coverage test.",
+    "Audit schema/alt findings are automated heuristics requiring manual validation before code changes.",
+    "Live audit confirms the updated weekly-plan guide is now published and technically indexable."
+  ]
+}

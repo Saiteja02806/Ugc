@@ -22,6 +22,12 @@ variable "enable_carousel_worker" {
   default     = false
 }
 
+variable "enable_carousel_edit_worker" {
+  description = "Enable the independent warm interactive Carousel edit service after its queue and image are ready."
+  type        = bool
+  default     = false
+}
+
 variable "worker_image_uri" {
   description = "Artifact Registry image URI for the worker container."
   type        = string
@@ -65,15 +71,15 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum request-based Cloud Run instances. Use 0 to eliminate idle worker CPU cost."
+  description = "Minimum generation instances. Zero scales idle generation down; interactive edits use their separate warm service."
   type        = number
   default     = 0
 }
 
 variable "max_instance_count" {
-  description = "Maximum concurrent Carousel workers. Keep at 1 until Carousel idea reservation is transactionally safe for parallel writers."
+  description = "Bounded parallel Carousel generation instances, matched to the queue dispatch limit. Increase only after production concurrency verification."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "request_timeout_seconds" {

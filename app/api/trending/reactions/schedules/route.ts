@@ -16,15 +16,19 @@ import { ReactionScheduleRequestSchema } from "@/lib/trending/reaction-schedulin
 import { scheduleReactionWithDependencies } from "@/lib/trending/reaction-scheduling-flow";
 import type { ScheduleCreateInput } from "@/lib/scheduling/types";
 import { markDailyTrendingSlotDecided } from "@/lib/trending/unified-daily-feed-db";
+import { hasTikTokBetaAccess } from "@/lib/social/tiktok-beta-access";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   let userId: string;
+  let user: Awaited<ReturnType<typeof requireFirebaseUser>>;
 
   try {
-    userId = (await requireFirebaseUser(request)).uid;
+    user = await requireFirebaseUser(request);
+    userId = user.uid;
   } catch (error) {
     return authError(error);
   }
@@ -72,7 +76,11 @@ export async function POST(request: Request) {
 
     const input: ScheduleCreateInput = {
       caption: parsed.data.caption ?? "",
-      idempotencyKey: `reaction-trending-schedule:${creative.assignmentId}`,
+      // One identity per explicit scheduling intent; retries keep that identity.
+      // Retain the old key for clients open before the website rollout.
+      idempotencyKey: parsed.data.requestKey
+        ? `reaction-trending:${creative.assignmentId}:${parsed.data.requestKey}`
+        : `reaction-trending-schedule:${creative.assignmentId}`,
       metadata: {
         mediaMode: "single_video",
         reactionAssignmentId: creative.assignmentId,
@@ -89,14 +97,31 @@ export async function POST(request: Request) {
       title: creative.title,
       useDefaultScheduleTime: parsed.data.useDefaultScheduleTime,
     };
+    const allowTikTokTargets = hasTikTokBetaAccess(user);
+    const allowYouTubeTargets = hasYouTubeBetaAccess(user);
     const result = await scheduleReactionWithDependencies({
       connectionIds: parsed.data.targets.map((target) => target.connectionId),
       input,
       userId,
     }, {
-      create: createUserSchedule,
-      publish: scheduleRenderedPost,
-      update: updateUserSchedule,
+      create: (params) =>
+        createUserSchedule({
+          ...params,
+          allowTikTokTargets,
+          allowYouTubeTargets,
+        }),
+      publish: (params) =>
+        scheduleRenderedPost({
+          ...params,
+          allowTikTokTargets,
+          allowYouTubeTargets,
+        }),
+      update: (params) =>
+        updateUserSchedule({
+          ...params,
+          allowTikTokTargets,
+          allowYouTubeTargets,
+        }),
     });
     return json({ ...result, ok: true });
   } catch (error) {

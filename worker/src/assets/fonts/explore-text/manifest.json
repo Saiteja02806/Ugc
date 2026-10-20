@@ -1,0 +1,89 @@
+{
+  "revision": "1d0e46c7933245c8180fe83e47917961c913bbdb",
+  "files": {
+    "inter": {
+      "source": "Inter[opsz,wght].ttf",
+      "sourceSha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+      "weights": {
+        "400": {
+          "family": "UGCExploreInterW400",
+          "ttfSha256": "59b7873f7a7f5dbf6e137cfd2a8eb7442b3de0beb4a010afde8090bcb902fd90",
+          "woff2Sha256": "f68a1f15cd7e06d16b2a08c0fc0cba6aeaa85c32f813cfb09b6cd90cb3957ff7"
+        },
+        "500": {
+          "family": "UGCExploreInterW500",
+          "ttfSha256": "df541ec0e1ba4950a6ab858f69a50a4af833b82676b4bde12eab9bcd4eaf46fe",
+          "woff2Sha256": "bd6c3b23abc8264ce86a10f80a29c34a475c59b60cb820d91d2de4a88c0150e6"
+        },
+        "700": {
+          "family": "UGCExploreInterW700",
+          "ttfSha256": "ee2204beedc7c06de9201e6933782d96c05dc7baa49266a7722d57b3fe506c66",
+          "woff2Sha256": "e131bc4368fdd5171f872d69fe889bd1916028cfd740b2feb01ceb96ae91e7be"
+        }
+      }
+    },
+    "dmsans": {
+      "source": "DMSans[opsz,wght].ttf",
+      "sourceSha256": "8cd08d97e89c24d0aa92edd2f0f4c8ee6195eee9b7c9f154865a58b02f0c1c0d",
+      "weights": {
+        "400": {
+          "family": "UGCExploreDMSansW400",
+          "ttfSha256": "44968ac664d5ba9a7ea3cec36c18fdb3f28980eb537c3ff6484d5c8f5d36ad5f",
+          "woff2Sha256": "53257bea9c67330bfcb825cf1045b9495b3b1c90da3474485e52ad2de26c4705"
+        },
+        "500": {
+          "family": "UGCExploreDMSansW500",
+          "ttfSha256": "bbfa2030891e99e97cf041044cd0dddb55b6b18a41a36df71dd5031b9af467e4",
+          "woff2Sha256": "d4569f9ea3e0de18b0a9594e9d73b66c8a7d54e58ab8a87559715867588a4ee4"
+        },
+        "700": {
+          "family": "UGCExploreDMSansW700",
+          "ttfSha256": "ce24fd90b892e229ee790fb748507931ebb7858b358407d9f1dc09d8352dd4d0",
+          "woff2Sha256": "aaa42cff56acec9e7badd69a940406fdee3ff937d3777abe597c165c556efc89"
+        }
+      }
+    },
+    "robotocondensed": {
+      "source": "RobotoCondensed[wght].ttf",
+      "sourceSha256": "dace262afcee68a5276f200d8026c57221735c0118ab5fda8c2c0d3dc409a8d0",
+      "weights": {
+        "400": {
+          "family": "UGCExploreRobotoCondensedW400",
+          "ttfSha256": "5bbb16d2eb1703cb46bda56b0bcd5355600633de5bbd7f69da4fd29f7f1c5013",
+          "woff2Sha256": "957c1f17f3afc9550b7c98ada1d5dd8d7b5f572bb92a814c0fb536b9c05cbe8b"
+        },
+        "500": {
+          "family": "UGCExploreRobotoCondensedW500",
+          "ttfSha256": "549f4423f857585ac2379794d2ac53a8b9b1faf602c4a0cddb7f5d1fe7eb693b",
+          "woff2Sha256": "daac37f97fde0223d678068cd673786e4efd155337ab585ec558101ec7915465"
+        },
+        "700": {
+          "family": "UGCExploreRobotoCondensedW700",
+          "ttfSha256": "52671769a4b76384bc480e2640a4d86cc0c95fb1a84d71439f1477aff65cd3d4",
+          "woff2Sha256": "a77bbe1bef601949bc6e57d084ae9213dc9c481acc96da106e07a93f72d42244"
+        }
+      }
+    },
+    "montserrat": {
+      "source": "Montserrat[wght].ttf",
+      "sourceSha256": "0f7b311b2f3279e4eef9b2f968bcdbab6e28f4daeb1f049f4f278a902bcd82f7",
+      "weights": {
+        "400": {
+          "family": "UGCExploreMontserratW400",
+          "ttfSha256": "daa12fdf2c4a8044acca421e72652a882e2749b9fcbca80d7528ca7f09cb50bd",
+          "woff2Sha256": "fc048b344a4e39f23a88200f3bf19f9a6e2b36b173187c529724cf297968ad3b"
+        },
+        "500": {
+          "family": "UGCExploreMontserratW500",
+          "ttfSha256": "c7c41f365a8dd1c7954f3d0c503b90b4034aea0c1928d7c639835b32f35cc9ef",
+          "woff2Sha256": "a245e9c98133e0333a4bef73e305fe8ec79b7754151e9923b464bb45b41332d1"
+        },
+        "700": {
+          "family": "UGCExploreMontserratW700",
+          "ttfSha256": "02bdd7d6edd743ae3f83815741fa992aa5ab56505e8ecbed8c4f43e39a7484c5",
+          "woff2Sha256": "c80a03656775ac841f0da57b49750ab8228962fc765fa4e7a0f2580dbb9d87ef"
+        }
+      }
+    }
+  }
+}

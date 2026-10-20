@@ -10,10 +10,129 @@ import {
 import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { toContentPlanProviderRetry } from "./lib/content-plan-provider-retry.js";
+import { ProviderInsufficientCreditsError, ProviderOperationTerminalError } from "./lib/generation-provider.js";
 import { EmptyWallTextContentPlanResponseError } from "./lib/wall-text-content-plan.js";
 import { toWallTextContentPlanRetry } from "./jobs/generate-wall-text-content-plan.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
 import type { BackgroundJobRow } from "./types.js";
+
+test("persists terminal provider reasons instead of JOB_FAILED without retrying the paid request", async () => {
+  for (const failureCode of ["INPUT_PREPROCESSING.SAFETY.THIRD_PARTY", "THIRD_PARTY.UNAVAILABLE"]) {
+    const job = createJob();
+    const commands: string[] = [];
+    const store = createJobStore(job);
+    let handlerCalls = 0;
+    let savedCode: string | undefined;
+    store.markFailed = (async (params) => {
+      savedCode = params.errorCode;
+      job.claim_token = null;
+      job.status = "failed";
+      return { ...job };
+    }) as SupabaseJobStore["markFailed"];
+
+    await processWorkerMessage({
+      config: createConfig(),
+      dependencies: {
+        async runJob() {
+          handlerCalls += 1;
+          throw new ProviderOperationTerminalError("Runway task failed: provider rejection", { failureCode });
+        },
+      },
+      message: createMessage(),
+      queue: createQueue(commands),
+      store,
+    });
+
+    assert.equal(savedCode, failureCode.includes("SAFETY") ? "PROVIDER_CONTENT_MODERATION" : "provider_operation_failed");
+    assert.equal(job.status, "failed");
+    assert.equal(handlerCalls, 1);
+    assert.equal(commands.filter((name) => name === "DeleteMessageCommand").length, 1);
+    assert.equal(commands.filter((name) => name === "ChangeMessageVisibilityCommand").length, 0);
+  }
+});
+
+test("checkpoint processing accepts the guarded ID-only response", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  const updateStage = store.updateJobStage.bind(store);
+  store.updateJobStage = async params => {
+    const updated = await updateStage(params);
+    return updated ? { id: updated.id } : null;
+  };
+  let continued = false;
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob(_job, context) {
+      await context.checkpoint({ stage: "Rendering slide 5", progress: 50, status: "rendering" });
+      // The local store's completion helper expects processing; the checkpoint
+      // contract itself allows rendering/uploading status in the real database.
+      job.status = "processing";
+      continued = true; return { ok: true };
+    } },
+  });
+  assert.equal(continued, true); assert.equal(job.status, "completed");
+});
+
+test("provider credit exhaustion fails once with its billing code and removes delivery instead of requeuing", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  let savedCode: string | undefined;
+  let handlerCalls = 0;
+  store.markFailed = (async params => {
+    savedCode = params.errorCode;
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob() {
+      handlerCalls += 1;
+      throw new ProviderInsufficientCreditsError(new Error("429 You have no credits remaining. request-private"));
+    } },
+  });
+  assert.equal(savedCode, "PROVIDER_INSUFFICIENT_CREDITS");
+  assert.equal(job.status, "failed");
+  assert.equal(handlerCalls, 1);
+  assert.equal(commands.filter(command => command === "DeleteMessageCommand").length, 1);
+  assert.equal(commands.filter(command => command === "ChangeMessageVisibilityCommand").length, 0);
+});
+
+test("cancellation during a guarded checkpoint stops the handler before output completion", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  store.updateJobStage = async () => { job.status = "cancel_requested"; return null; };
+  let continued = false;
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob(_job, context) {
+      await context.checkpoint({ stage: "Rendering slide 5", status: "rendering" });
+      continued = true; return { ok: true };
+    } },
+  });
+  assert.equal(continued, false); assert.equal(job.status, "cancelled");
+  assert.equal(commands.filter(command => command === "DeleteMessageCommand").length, 1);
+});
+
+test("lost ownership during a guarded checkpoint cannot complete or fail the new owner's job", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  store.updateJobStage = async () => { job.claim_token = "new-owner-claim"; return null; };
+  store.markFailed = async params => {
+    assert.notEqual(params.claimToken, job.claim_token);
+    return null; // The real store predicates the failure update on the claim.
+  };
+  let continued = false;
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob(_job, context) {
+      await context.checkpoint({ stage: "Rendering slide 5", status: "rendering" });
+      continued = true; return { ok: true };
+    } },
+  });
+  assert.equal(continued, false);
+  assert.equal(job.status, "processing"); assert.equal(job.claim_token, "new-owner-claim");
+});
 
 test("only one delivery can claim and execute a background job", async () => {
   const job = createJob();
@@ -313,7 +432,10 @@ test("requeues an empty Wall Text model response without losing the plan", async
 
   assert.equal(job.status, "queued");
   assert.equal(job.attempt_count, 1);
-  assert.match(job.error_message ?? "", /returned no content/);
+  assert.match(
+    job.error_message ?? "",
+    /will resume from its last saved chunk/,
+  );
   assert.equal(
     commands.filter((name) => name === "DeleteMessageCommand").length,
     0,
@@ -396,6 +518,59 @@ test("retries an atomic completion failure without losing the saved output", asy
     commands.filter((name) => name === "DeleteMessageCommand").length,
     0,
   );
+});
+
+test("Carousel completion dispatches reconciliation independently without claiming or waiting for feed admission", async () => {
+  const job = createJob(); job.job_type = "generate_carousel"; job.user_id = "owner";
+  const store = createJobStore(job);
+  store.claimTrendingFeedReconciliation = async () => { throw new Error("must not claim inside rendering request"); };
+  const dispatched: string[] = [];
+  const commands: string[] = [];
+  await processWorkerMessage({ config: { ...createConfig(), allowedJobTypes: ["generate_carousel"] },
+    dependencies: { runJob: async () => ({ ok: true }),
+      enqueueTrendingReconciliation: async params => { dispatched.push(params.sourceJobId); },
+      reconcileTrendingFeed: async () => { throw new Error("must not block rendering"); } },
+    message: createMessage("generate_carousel"), queue: createQueue(commands), store });
+  assert.deepEqual(dispatched, [job.id]);
+  assert.equal(job.status, "completed");
+  assert.ok(commands.includes("DeleteMessageCommand"));
+});
+
+test("terminal Carousel failure dispatches feed recovery without holding the render request", async () => {
+  const job = createJob(); job.job_type = "generate_carousel";
+  const store = createJobStore(job);
+  store.markFailed = (async () => {
+    job.claim_token = null; job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  store.claimTrendingFeedReconciliation = async () => { throw new Error("must not claim inside failed generation"); };
+  const dispatched: string[] = [];
+  const commands: string[] = [];
+  await processWorkerMessage({ config: createConfig(["generate_carousel"]),
+    dependencies: { runJob: async () => { throw new Error("Copy does not fit"); },
+      enqueueTrendingReconciliation: async params => { dispatched.push(params.sourceJobId); } },
+    message: createMessage("generate_carousel"), queue: createQueue(commands), store });
+  assert.deepEqual(dispatched, [job.id]);
+  assert.equal(job.status, "failed");
+  assert.ok(commands.includes("DeleteMessageCommand"));
+});
+
+test("a failed independent dispatch preserves terminal output and leaves durable recovery available", async () => {
+  const job = createJob(); job.job_type = "generate_carousel";
+  const store = createJobStore(job);
+  let synchronousClaims = 0;
+  store.claimTrendingFeedReconciliation = async () => {
+    synchronousClaims += 1;
+    return { attempt_count: 1, source_job_id: job.id, user_id: job.user_id ?? "" };
+  };
+  const commands: string[] = [];
+  await processWorkerMessage({ config: createConfig(["generate_carousel"]),
+    dependencies: { runJob: async () => ({ ok: true }),
+      enqueueTrendingReconciliation: async () => { throw new Error("Cloud Tasks temporarily unavailable"); } },
+    message: createMessage("generate_carousel"), queue: createQueue(commands), store });
+  assert.equal(job.status, "completed");
+  assert.equal(synchronousClaims, 0);
+  assert.ok(commands.includes("DeleteMessageCommand"));
 });
 
 test("defers an early duplicate delivery until the stored retry time", async () => {

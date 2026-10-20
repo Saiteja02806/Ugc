@@ -1,6 +1,10 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
+import {
+  getTikTokDirectPostBlock,
+  resolveTikTokDirectPostAuditStatus,
+} from "./tiktok-direct-post-policy.js";
 import type { TikTokTargetPublishSettings } from "./social-publish-settings.js";
 
 const DEFAULT_MAX_STATUS_POLLS = 18;
@@ -24,7 +28,7 @@ export type TikTokPublishInitialization = {
 
 export type TikTokPublishResult = {
   platformPostId: string;
-  platformPostUrl: null;
+  platformPostUrl: string | null;
   publishId: string;
 };
 
@@ -61,6 +65,13 @@ type TikTokPublishStatus = {
   request_log_id?: string | null;
   status?: string;
   uploaded_bytes?: number;
+};
+
+type TikTokVideoQuery = {
+  videos?: Array<{
+    id?: number | string;
+    share_url?: string;
+  }>;
 };
 
 type DownloadedTikTokVideo = {
@@ -108,6 +119,11 @@ export async function publishTikTokVideo(params: {
     creatorInfo.privacy_level_options,
     params.settings,
   );
+
+  if (!publishId) {
+    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel, creatorInfo);
+  }
+
   validateVideoDuration(
     params.videoDurationSeconds,
     creatorInfo.max_video_post_duration_sec,
@@ -153,7 +169,11 @@ export async function publishTikTokVideo(params: {
         accessToken: params.accessToken,
         publishId,
       });
-      const completed = getCompletedTikTokResult(currentStatus, publishId);
+      const completed = await getCompletedTikTokResult(
+        currentStatus,
+        params.accessToken,
+        publishId,
+      );
 
       if (completed) {
         return completed;
@@ -181,7 +201,7 @@ export async function publishTikTokVideo(params: {
     publishId,
   });
 
-  return buildTikTokPublishResult(finalStatus, publishId);
+  return buildTikTokPublishResult(finalStatus, params.accessToken, publishId);
 }
 
 export async function publishTikTokPhotoCarousel(params: {
@@ -212,6 +232,8 @@ export async function publishTikTokPhotoCarousel(params: {
   let publishId = params.publishId ?? null;
 
   if (!publishId) {
+    assertTikTokDirectPostAuditAllowsPrivacy(privacyLevel, creatorInfo);
+
     for (const imageUrl of params.imageUrls) {
       assertVerifiedPullUrl(imageUrl);
     }
@@ -220,6 +242,7 @@ export async function publishTikTokPhotoCarousel(params: {
       "/v2/post/publish/content/init/",
       params.accessToken,
       {
+        is_aigc: params.settings?.containsSyntheticMedia !== false,
         media_type: "PHOTO",
         post_info: {
           auto_add_music: true,
@@ -265,7 +288,7 @@ export async function publishTikTokPhotoCarousel(params: {
     publishId,
   });
 
-  return buildTikTokPublishResult(finalStatus, publishId);
+  return buildTikTokPublishResult(finalStatus, params.accessToken, publishId);
 }
 
 async function queryCreatorInfo(accessToken: string) {
@@ -675,26 +698,79 @@ function normalizeUploadedBytes(value: number | undefined, totalBytes: number) {
   return value;
 }
 
-function getCompletedTikTokResult(
+async function getCompletedTikTokResult(
   status: TikTokPublishStatus,
+  accessToken: string,
   publishId: string,
 ) {
   return status.status === "PUBLISH_COMPLETE"
-    ? buildTikTokPublishResult(status, publishId)
+    ? buildTikTokPublishResult(status, accessToken, publishId)
     : null;
 }
 
-function buildTikTokPublishResult(
+async function buildTikTokPublishResult(
   status: TikTokPublishStatus,
+  accessToken: string,
   publishId: string,
-): TikTokPublishResult {
+): Promise<TikTokPublishResult> {
   const publicPostId = status.publicaly_available_post_id?.[0];
+  const platformPostId = publicPostId ? String(publicPostId) : publishId;
 
   return {
-    platformPostId: publicPostId ? String(publicPostId) : publishId,
-    platformPostUrl: null,
+    platformPostId,
+    platformPostUrl: publicPostId
+      ? await getTikTokPublishedPostUrl({
+          accessToken,
+          publicPostId: platformPostId,
+        })
+      : null,
     publishId,
   };
+}
+
+async function getTikTokPublishedPostUrl(params: {
+  accessToken: string;
+  publicPostId: string;
+}) {
+  try {
+    const result = await postTikTokJson<TikTokVideoQuery>(
+      "/v2/video/query/?fields=id%2Cshare_url",
+      params.accessToken,
+      {
+        filters: { video_ids: [params.publicPostId] },
+      },
+    );
+    const matchedVideo = result.videos?.find(
+      (video) => String(video.id) === params.publicPostId,
+    );
+
+    return getTrustedTikTokShareUrl(matchedVideo?.share_url);
+  } catch (error) {
+    // Publishing has already succeeded. A missing video.list grant, a delayed
+    // public listing, or a transient lookup failure must not retry the post.
+    logger.warn("Could not load TikTok published-post URL", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      publicPostId: params.publicPostId,
+    });
+    return null;
+  }
+}
+
+function getTrustedTikTokShareUrl(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    const isTikTokHost =
+      hostname === "tiktok.com" || hostname.endsWith(".tiktok.com");
+
+    return url.protocol === "https:" && isTikTokHost ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function assertTikTokStatusDidNotFail(status: TikTokPublishStatus) {
@@ -779,6 +855,26 @@ function getMediaTransferMode(): TikTokMediaTransferMode {
     : "FILE_UPLOAD";
 }
 
+function assertTikTokDirectPostAuditAllowsPrivacy(
+  privacyLevel: string,
+  creatorInfo: TikTokCreatorInfo,
+) {
+  const block = getTikTokDirectPostBlock({
+    audited: resolveTikTokDirectPostAuditStatus(process.env.TIKTOK_DIRECT_POST_AUDITED),
+    privacyLevel,
+    privacyLevels: creatorInfo.privacy_level_options ?? [],
+  });
+  if (block) {
+    throw new TikTokPublishError(
+      block.message,
+      block.code,
+      null,
+      null,
+      true,
+    );
+  }
+}
+
 function assertVerifiedPullUrl(videoUrl: string) {
   const host = new URL(videoUrl).hostname.toLowerCase();
   const verifiedHosts = new Set(
@@ -802,6 +898,9 @@ function assertVerifiedPullUrl(videoUrl: string) {
 function isTikTokActionRequiredError(code: string) {
   return [
     "access_token_invalid",
+    "direct_post_audit_required",
+    "private_account_required",
+    "account_privacy_unavailable",
     "invalid_branded_content_visibility",
     "privacy_level_option_mismatch",
     "scope_not_authorized",

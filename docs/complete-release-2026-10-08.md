@@ -1,0 +1,15 @@
+# Complete release — 8 October 2026
+
+This release reconciles all intentional changes in the original UGC checkout onto main 0572a958a09e8b5280ca0664304f77acbe4cc7ff. It includes the Explore format split and classic sidebar, existing-video import/editing, user-provided Wall of text covers and left landing-hero video, AI influencer naming, six quick starts, subtitle Serif black box renderer/fonts/previews, native Trending feed improvements, and the final already-deployed plugin/SEO source and documentation. Current production ownership, canonical private media, generation billing, provider model availability, history/recovery, OAuth consent and dependency fixes are preserved.
+
+The original dirty checkout is preserved. The reviewable release checkout is .release-worktrees/complete-release-20261007. The per-path inventory records exact original and integrated Git blob hashes and explains retained newer production files.
+
+Excluded migration aliases: supabase/migrations/20261003045336_character_gemini_3_pro_image.sql is replaced by the production canonical 20261003045651 migration; the local delta to supabase/migrations/20261005045851_character_shared_generation_credits.sql is not replayed because canonical character_shared_generation_credits was already applied as 20261005082254. Existing history is preserved. No requested feature is deferred.
+
+Secrets/local .env files, CLI authentication, Terraform private state, .tmp receipts, node_modules, .next, worker/dist, browser captures and original landing_page inputs stay local. Only reviewed versioned media outputs are shipped. These ignored files are excluded by the existing Git/deployment ignore rules; no private values are included in the release.
+
+Validation: production build; Explore 443 checks plus 40 final reference/request regressions; worker 310 checks; Trending 66 checks; MCP/OAuth/storage suite; plugin archive validation; scoped UI lint. Root and worker production dependency audits report zero vulnerabilities. Browser checks verify the three workflows, actual selected video playback, old workflow visual references, source import, edit and schedule drafts, hidden routes, mobile layout, and no provider/account writes.
+
+Deployment status at initial commit: staged release not yet promoted. Only the two reviewed new schema migrations are planned. Renderer and generation workers will use the exact release commit/digest before the website is promoted; the MCP project is released from the same candidate. Final production checks use getugcpilot.com and mcp.getugcpilot.com. Authenticated paid generation is not claimed from offline fixtures.
+
+Clean Vercel installation exposed an obsolete root index.ts Higgsfield paid-generation example and its npm script, accidentally retained from the main baseline despite the earlier provider-retirement decision. Both are removed; the supported Runway generation routes and GET-only historical recovery remain intact. App TypeScript checks remain fully enabled. The worker image built from c85b414 is unchanged by this web-only correction; final deployment evidence records separate web and worker source commits.

@@ -1,0 +1,121 @@
+{
+  "mainComposition": "AI Character v5 — Brand Motion",
+  "comps": 5,
+  "layers": 46,
+  "textLayers": 11,
+  "fontNames": [
+    "Geist-SemiBold",
+    "Geist-Medium"
+  ],
+  "nativeWordAnimators": 11,
+  "independentOriginalExamples": 7,
+  "cleanSubjectSource": "User-supplied transparent PNG, copied unchanged",
+  "preservedSources": [
+    {
+      "name": "V5 MEDIA — bedroom",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/bedroom.png",
+      "sha256": "d1f2068382d9bd662828c5fd20b67261e8463c6870d3f3ea51a6c6ab50f9d1a7",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — presenter",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/presenter.png",
+      "sha256": "afe912897e2dd7ee2ce8c85a609748b22bb030ebca772f9ac4f71c32e5b4f0e7",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — selfie",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/selfie.png",
+      "sha256": "ec2c6fd8734087963476be26d7e0389a5101e180647e101bb8ee260ee81d9326",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — kitchen",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/kitchen.png",
+      "sha256": "91a6cbbcade247495356cc0ae1bbc2b126a10ac48583c2619c1ae4ec6f5cf1cf",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — glasses",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/glasses.png",
+      "sha256": "847acff75687a2745e5bbdb5330509e3d42c11183ab12d941f5fdf46ad759a3b",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — office",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/office.png",
+      "sha256": "02a407e49997ac8824cf96b1bce98f79ce2b1b5849f8c4343b2cd8dfe75ae5eb",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — standing",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/standing.png",
+      "sha256": "a3d67009229abf87cc840ece82b64e049c477afd67950ff915d323db4efa6c73",
+      "matchesOriginal": true
+    },
+    {
+      "name": "V5 MEDIA — supplied clean subject",
+      "path": "C:/Users/chund/OneDrive/Desktop/UGC/design/explore-character-motion/Media/v5/standing-transparent.png",
+      "sha256": "5449bd5a87482f6e31582eb38c9b93832e5d76419d0d0f358b8b0833272c35d8",
+      "matchesOriginal": true
+    }
+  ],
+  "alignedFinalRow": [
+    {
+      "name": "ALL SEVEN — independent bedroom",
+      "height": 329.9999848937984,
+      "top": 36.0000075531008,
+      "bottom": 365.9999924468992,
+      "naturalAspect": true
+    },
+    {
+      "name": "ALL SEVEN — independent presenter",
+      "height": 329.9999848937984,
+      "top": 36.0000075531008,
+      "bottom": 365.9999924468992,
+      "naturalAspect": true
+    },
+    {
+      "name": "ALL SEVEN — independent selfie",
+      "height": 329.9999848937984,
+      "top": 36.0000075531008,
+      "bottom": 365.9999924468992,
+      "naturalAspect": true
+    },
+    {
+      "name": "ALL SEVEN — independent kitchen",
+      "height": 330.0000115966802,
+      "top": 35.99999420165989,
+      "bottom": 366.0000057983401,
+      "naturalAspect": true
+    },
+    {
+      "name": "ALL SEVEN — independent glasses",
+      "height": 330.0000115966802,
+      "top": 35.99999420165989,
+      "bottom": 366.0000057983401,
+      "naturalAspect": true
+    },
+    {
+      "name": "ALL SEVEN — independent office",
+      "height": 329.99999694824237,
+      "top": 36.000001525878815,
+      "bottom": 365.9999984741212,
+      "naturalAspect": true
+    },
+    {
+      "name": "ALL SEVEN — independent standing",
+      "height": 329.9999848937984,
+      "top": 36.0000075531008,
+      "bottom": 365.9999924468992,
+      "naturalAspect": true
+    }
+  ],
+  "seamMeanChannelDifference": 0.8832947530864198,
+  "publicMovieMatchesDelivery": true,
+  "publicPosterMatchesDelivery": true,
+  "textEditVerifiedInTemporaryDuplicate": true,
+  "missingFonts": 0,
+  "missingFootage": 0,
+  "typeScriptPassed": true
+}

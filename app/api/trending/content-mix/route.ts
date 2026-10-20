@@ -13,7 +13,9 @@ import {
   TRENDING_CONTENT_MIX_LIMITS,
   type TrendingContentMix,
 } from "@/lib/trending/content-mix";
+import { type TrendingSlideshowStyleMix } from "@/lib/trending/slideshow-style-mix";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
+import { TRENDING_SLIDESHOW_ONLY_ENABLED } from "@/lib/trending/format-policy";
 import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
 import {
   getDailyTrendingFeedForDate,
@@ -33,11 +35,20 @@ const ContentMixSchema = z
     carousel: z.number().int().min(0).max(100),
     hook_video: z.number().int().min(0).max(100),
     reaction: z.number().int().min(0).max(100),
+    slideshow_style_mix: z
+      .object({
+        helpful_tips: z.number().int().min(0).max(100),
+        product_stories_cta: z.number().int().min(0).max(100),
+      })
+      .strict(),
     timezone: z.string().trim().min(1).max(100).optional(),
     wall_text: z.number().int().min(0).max(100),
   })
   .strict()
   .superRefine((value, context) => {
+    if (TRENDING_SLIDESHOW_ONLY_ENABLED && value.carousel !== 100) {
+      context.addIssue({ code: "custom", message: "Trending currently generates slideshows only. Keep Slideshows at 100%." });
+    }
     if (
       value.carousel +
         value.wall_text +
@@ -48,6 +59,16 @@ const ContentMixSchema = z
       context.addIssue({
         code: "custom",
         message: "The four content percentages must total 100%.",
+      });
+    }
+    if (
+      value.slideshow_style_mix.helpful_tips +
+        value.slideshow_style_mix.product_stories_cta !==
+      100
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Helpful tips and Product stories + CTA must total 100%.",
       });
     }
   });
@@ -70,6 +91,8 @@ export async function GET(request: Request) {
     });
 
     return json({
+      // In slideshow-only mode the format mix remains fixed, but the nested
+      // slideshow-style mixer is still safe to adjust for future packs.
       editable: true,
       entitlement,
       limits: { ...TRENDING_CONTENT_MIX_LIMITS },
@@ -145,12 +168,20 @@ export async function PUT(request: Request) {
       reaction: parsed.data.reaction,
       wall_text: parsed.data.wall_text,
     };
+    const slideshowStyleMix: TrendingSlideshowStyleMix = {
+      helpfulTips: parsed.data.slideshow_style_mix.helpful_tips,
+      productStoriesCta: parsed.data.slideshow_style_mix.product_stories_cta,
+    };
     const timezone = normalizeTrendingTimezone(
       parsed.data.timezone ?? profile.trendingTimezone,
     );
     const localDate = getTrendingLocalDate(timezone);
     const [savedPreference, currentFeed] = await Promise.all([
-      saveTrendingContentMixPreference({ mix, userId: auth.userId }),
+      saveTrendingContentMixPreference({
+        mix,
+        slideshowStyleMix,
+        userId: auth.userId,
+      }),
       getDailyTrendingFeedForDate({ localDate, userId: auth.userId }),
     ]);
     const dailyFeed = await ensureUnifiedTrendingDailyFeed({

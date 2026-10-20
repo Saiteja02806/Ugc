@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { BillingAccessError } from "@/lib/billing/subscription-db";
 
 const BACKGROUND_JOBS_TABLE = "background_jobs";
 const UUID_PATTERN =
@@ -28,6 +29,7 @@ export type BackgroundJobStatus =
   | "waiting_external_service";
 
 export type BackgroundJobType =
+  | "generate_audio"
   | "analytics_sync"
   | "carousel_content_plan_generation"
   | "carousel_generation"
@@ -168,6 +170,18 @@ type BackgroundJobsDatabase = {
         };
         Returns: Json;
       };
+      mcp_create_reserved_generation_job: {
+        Args: {
+          p_amount: number;
+          p_fingerprint: string;
+          p_idempotency_key: string;
+          p_input_json: Json;
+          p_job_type: "generate_image" | "generate_hook_video";
+          p_queue_name: string;
+          p_user_id: string;
+        };
+        Returns: Json;
+      };
       claim_video_render_execution_slot: {
         Args: {
           p_claim_token: string;
@@ -205,6 +219,10 @@ type BackgroundJobsDatabase = {
       };
       recover_background_job: {
         Args: { p_job_id: string };
+        Returns: BackgroundJobRow[];
+      };
+      recover_missing_queued_background_job: {
+        Args: { p_job_id: string; p_expected_updated_at: string };
         Returns: BackgroundJobRow[];
       };
       retry_background_job: {
@@ -397,6 +415,55 @@ export async function createBackgroundJobWithCreationResult(
   };
 }
 
+export class McpGenerationJobError extends Error {
+  constructor(public code: "IDEMPOTENCY_CONFLICT" | "INSUFFICIENT_CREDITS" | "PLAN_REQUIRED", message: string) {
+    super(message);
+  }
+}
+
+/** Atomically reserve credits and create one MCP generation job in Postgres. */
+export async function createReservedMcpGenerationJob(params: {
+  amount: number;
+  fingerprint: string;
+  idempotencyKey: string;
+  input: Record<string, Json | undefined>;
+  jobType: "generate_image" | "generate_hook_video";
+  queueName: string;
+  userId: string;
+}) {
+  const { data, error } = await getSupabaseServerClient().rpc("mcp_create_reserved_generation_job", {
+    p_amount: params.amount,
+    p_fingerprint: params.fingerprint,
+    p_idempotency_key: params.idempotencyKey,
+    p_input_json: toJsonObject(params.input),
+    p_job_type: params.jobType,
+    p_queue_name: params.queueName,
+    p_user_id: params.userId,
+  });
+
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("mcp_generation_idempotency_conflict") ||
+        message.includes("mcp_generation_reservation_conflict") ||
+        message.includes("mcp_generation_job_conflict")) {
+      throw new McpGenerationJobError("IDEMPOTENCY_CONFLICT", "This request ID already belongs to different work.");
+    }
+    if (message.includes("insufficient_billing_credits")) {
+      throw new McpGenerationJobError("INSUFFICIENT_CREDITS", "There are not enough credits for this generation.");
+    }
+    if (message.includes("paid_subscription_required")) {
+      throw new McpGenerationJobError("PLAN_REQUIRED", "An active Starter or Growth subscription is required.");
+    }
+    throw new Error(`Could not reserve MCP generation job: ${error.message}`);
+  }
+
+  if (!isBackgroundJobCreationResult(data)) {
+    throw new Error("Could not create or reuse MCP generation job: invalid database response.");
+  }
+
+  return { created: data.created, job: mapBackgroundJob(data.job as BackgroundJobRow) };
+}
+
 function isCreateOrGetBackgroundJobRpcUnavailable(code: string | undefined) {
   return code === "42883" || code === "PGRST202";
 }
@@ -499,16 +566,24 @@ export async function getBackgroundJobForUser(params: {
 
 export async function listBackgroundJobsForUser(params: {
   activeOnly?: boolean;
+  exploreFormat?: "hook" | "wall_text" | "slideshow";
   jobType?: BackgroundJobType;
+  projectId?: string;
+  completedOnly?: boolean;
+  jobTypes?: BackgroundJobType[];
+  statuses?: BackgroundJobStatus[];
+  after?: { createdAt: string; id: string };
   limit?: number;
   userId: string;
 }) {
+  if (params.jobTypes?.length === 0 || params.statuses?.length === 0) return [];
   const limit = Math.max(1, Math.min(params.limit ?? 50, 100));
   let query = getSupabaseServerClient()
     .from(BACKGROUND_JOBS_TABLE)
     .select("*")
     .eq("user_id", params.userId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
 
   if (params.activeOnly) {
@@ -527,6 +602,18 @@ export async function listBackgroundJobsForUser(params: {
   if (params.jobType) {
     query = query.eq("job_type", params.jobType);
   }
+
+  if (params.jobTypes) query = query.in("job_type", params.jobTypes);
+  if (params.statuses) query = query.in("status", params.statuses);
+  if (params.after) {
+    // This cursor comes from the verified MCP signature, never arbitrary SQL.
+    query = query.or(`created_at.lt.${params.after.createdAt},and(created_at.eq.${params.after.createdAt},id.lt.${params.after.id})`);
+  }
+
+  if (params.exploreFormat) query = query.eq("input_json->>exploreFormat", params.exploreFormat);
+
+  if (params.projectId) query = query.eq("project_id", params.projectId);
+  if (params.completedOnly) query = query.eq("status", "completed");
 
   const { data, error } = await query;
 
@@ -636,6 +723,20 @@ export async function retryBackgroundJob(params: {
   );
 
   if (error) {
+    if (error.message.includes("insufficient_billing_credits")) {
+      throw new BillingAccessError("You do not have enough AI credits to retry this generation.");
+    }
+    if (error.message.includes("billing_retry_already_committed") ||
+      error.message.includes("billing_retry_reservation_conflict")) {
+      throw new BillingAccessError("This generation's credit reservation cannot be retried. Start a new generation instead.", 409);
+    }
+    if (error.message.includes("paid_subscription_required") ||
+      error.message.includes("complimentary_generation_access_required")) {
+      throw new BillingAccessError("This generation requires active access to its original credit plan. Update billing before retrying.");
+    }
+    if (error.message.includes("credit_balance_missing")) {
+      throw new BillingAccessError("Your generation credits could not be verified. Try again.", 503);
+    }
     throw new Error(`Could not retry background job: ${error.message}`);
   }
 
@@ -674,6 +775,15 @@ export async function recoverBackgroundJob(jobId: string) {
     throw new Error(`Could not recover background job: ${error.message}`);
   }
 
+  return data?.[0] ? mapBackgroundJob(data[0]) : null;
+}
+
+export async function recoverMissingQueuedBackgroundJob(job: BackgroundJobRecord) {
+  const { data, error } = await getSupabaseServerClient().rpc(
+    "recover_missing_queued_background_job",
+    { p_job_id: job.id, p_expected_updated_at: job.updatedAt },
+  );
+  if (error) throw new Error(`Could not recover missing queued job: ${error.message}`);
   return data?.[0] ? mapBackgroundJob(data[0]) : null;
 }
 

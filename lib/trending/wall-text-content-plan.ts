@@ -1,13 +1,18 @@
 import type { WebsiteBusinessAnalysis } from "@/lib/website-analysis/schema";
+import {
+  buildBusinessFactSnapshot,
+  type BusinessFactSnapshot,
+} from "../business-profiles/fact-catalog.ts";
 
-export const WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5-mini";
+export const WALL_TEXT_CONTENT_PLAN_MODEL = "gpt-5.6-luna";
 export const WALL_TEXT_CONTENT_PLAN_PROMPT_VERSION =
-  "wall-text-content-plan-five-context-v6-compact-chunks";
+  "wall-text-content-plan-reader-profiles-v19-four-copy-fixes";
 export const WALL_TEXT_CONTENT_PLAN_TARGET_COUNT = 200;
 export const WALL_TEXT_CONTENT_PLAN_BRIEF_COUNT = 40;
 export const WALL_TEXT_CONTENT_PLAN_ITEMS_PER_BRIEF = 5;
 
 export type WallTextPlanningContext = {
+  approvedFactSnapshot: BusinessFactSnapshot;
   brandTone: string | null;
   campaignPurposes: string[];
   category: string | null;
@@ -17,6 +22,10 @@ export type WallTextPlanningContext = {
   painPoints: string[];
   targetAudience: string[];
   valueProps: string[];
+  wallTextReaders: {
+    primary: string | null;
+    secondary: string | null;
+  };
 };
 
 export function buildWallTextContentPlanDescription(
@@ -46,7 +55,15 @@ export function buildWallTextContentPlanDescription(
 export function buildWallTextPlanningContext(
   analysis: WebsiteBusinessAnalysis,
 ): WallTextPlanningContext {
+  const targetAudience = unique(analysis.targetAudience);
+  const primaryReader = clean(analysis.wallTextPrimaryReader) ||
+    targetAudience[0] || null;
+  const secondaryReaderCandidate = clean(analysis.wallTextSecondaryReader) ||
+    targetAudience.find((reader) => !sameNormalizedText(reader, primaryReader)) ||
+    null;
+
   return {
+    approvedFactSnapshot: buildBusinessFactSnapshot(analysis),
     brandTone: clean(analysis.brandTone) || null,
     campaignPurposes: unique(analysis.campaignPurposes ?? []),
     category: clean(analysis.category) || null,
@@ -54,8 +71,14 @@ export function buildWallTextPlanningContext(
     mainProblem: clean(analysis.mainProblem) || null,
     mainPromise: clean(analysis.mainPromise) || null,
     painPoints: unique(analysis.painPoints),
-    targetAudience: unique(analysis.targetAudience),
+    targetAudience,
     valueProps: unique(analysis.valueProps),
+    wallTextReaders: {
+      primary: primaryReader,
+      secondary: sameNormalizedText(primaryReader, secondaryReaderCandidate)
+        ? null
+        : secondaryReaderCandidate,
+    },
   };
 }
 
@@ -65,6 +88,14 @@ function clean(value: string | null | undefined) {
 
 function includesNormalized(value: string, candidate: string) {
   return value.toLocaleLowerCase().includes(candidate.toLocaleLowerCase());
+}
+
+function sameNormalizedText(
+  left: string | null,
+  right: string | null,
+) {
+  if (!left || !right) return false;
+  return clean(left).toLocaleLowerCase() === clean(right).toLocaleLowerCase();
 }
 
 function unique(values: readonly string[]) {

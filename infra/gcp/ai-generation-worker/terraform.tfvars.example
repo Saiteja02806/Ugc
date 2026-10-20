@@ -9,6 +9,14 @@ environment = "prod"
 # - you are ready to test AI generation intentionally.
 enable_ai_generation_worker = false
 
+# Audio is additive. Enable only after its reviewed migration, private bucket,
+# account allowance and worker secret access have been verified.
+enable_audio_generation             = false
+private_audio_bucket_name           = ""
+elevenlabs_voice_api_key_secret_id   = ""
+audio_generation_public_enabled     = false
+audio_generation_allowed_user_ids   = ""
+
 # Example after running npm run worker:gcp:image:push -- --cloud-build:
 # worker_image_uri = "us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker:worker-gcp-20260718143000"
 worker_image_uri = ""
@@ -16,7 +24,17 @@ worker_image_uri = ""
 worker_service_account_email = "ugc-worker-sa@ugcsaas.iam.gserviceaccount.com"
 service_name                 = "ugc-ai-generation-worker"
 queue_name                   = "ai-generation"
-worker_job_types             = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,test_worker_job"
+worker_job_types             = "generate_audio,generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,test_worker_job"
+openai_reaction_model        = "gpt-5.6-luna"
+openai_reaction_reasoning_effort = "medium"
+
+# Required before adding reaction_generation to worker_job_types. Use the
+# dedicated Reaction renderer's exact Cloud Run task endpoint, not the app or
+# generic background-job endpoint. The audience may remain empty to use the
+# endpoint origin.
+reaction_render_tasks_queue   = "ugc-reaction-render"
+reaction_render_task_url      = "https://ugc-reaction-render-worker-<service-id>-uc.a.run.app/tasks/jobs"
+reaction_render_task_audience = ""
 
 worker_visibility_timeout_seconds = 1800
 # Start only when Cloud Tasks has work. Twenty is the burst ceiling; keep
@@ -34,13 +52,19 @@ gcp_storage_public_base_url = "https://storage.googleapis.com/ugcsaas-media"
 
 openai_api_key_secret_id = "openai-api-key"
 openai_image_model       = "gpt-image-2"
-gemini_image_model       = "gemini-3.1-flash-image"
-gemini_omni_model        = "gemini-omni-flash-preview"
+gemini_image_model       = "gemini-nano-banana-2.1"
+gemini_omni_model        = "gemini-omni-1.1-flash"
+
 gemini_api_key_secret_id = "gemini-api-key"
 runwayml_api_secret_id   = "runwayml-api-secret"
-runway_daily_credit_limit = 100
+openrouter_api_key_secret_id = "" # Set to openrouter-api-key after creating the funded inference key secret.
+reapi_api_key_secret_id = "" # Set to reapi-api-key after storing a funded ReAPI key; retain OpenRouter for recovery.
+higgsfield_credentials_secret_id = "" # Secret Manager ID containing key-id:key-secret.
+runway_daily_credit_limit = 5000
 internal_app_url          = "https://getugcpilot.com"
 scheduling_secret_id     = "ugc-internal-scheduling-secret"
 
 worker_version    = "worker-gcp"
 worker_git_commit = "unknown"
+# Optional ElevenLabs pilot. Secret values belong in Secret Manager, not this file.
+elevenlabs_api_key_secret_id      = ""

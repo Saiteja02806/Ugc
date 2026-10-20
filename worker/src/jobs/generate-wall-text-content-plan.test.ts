@@ -26,6 +26,7 @@ function fixture() {
         items.push(...chunk.items);
         return chunk.items;
       },
+      recordWallTextFailureDiagnostic: async () => {},
       getWallTextPlanPublication: async ({ itemCount }: { itemCount: number }) => ({
         id: `123e4567-e89b-42d3-a456-${itemCount.toString().padStart(12, "0")}`,
       }),
@@ -131,4 +132,45 @@ test("does not notify readers when the fenced save rejects an obsolete worker", 
   }), /wall_text_planner_claim_lost/);
   assert.equal(f.items.length, 0);
   assert.equal(notifications, 0);
+});
+
+test("records private planner evidence before retrying a transient model error", async () => {
+  const f = fixture();
+  const diagnostics: unknown[] = [];
+  f.context.store.recordWallTextFailureDiagnostic = async (value: unknown) => {
+    diagnostics.push(value);
+  };
+  const transient = Object.assign(new Error("Request timed out."), {
+    name: "APIConnectionTimeoutError",
+    request_id: "req_private",
+    status: 500,
+  });
+
+  await assert.rejects(
+    runGenerateWallTextContentPlanJob(f.job, f.context, {
+      generateChunk: async () => {
+        throw transient;
+      },
+    }),
+    RetryableJobError,
+  );
+
+  assert.deepEqual(diagnostics, [{
+    backgroundJobId: "job",
+    contentPlanId: "plan",
+    details: {
+      candidateRejections: [],
+      errorName: "APIConnectionTimeoutError",
+      finishReason: null,
+      providerErrorCode: null,
+      providerErrorType: null,
+      providerRequestId: "req_private",
+      providerStatus: 500,
+    },
+    errorCode: "wall_text_provider_transient",
+    errorMessage: "Request timed out.",
+    retryable: true,
+    stage: "planner",
+    userId: "user",
+  }]);
 });

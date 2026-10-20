@@ -18,6 +18,7 @@ import {
   CAROUSEL_IMAGE_EXTENSIONS,
   assertCarouselRolePoolMinimums,
   classifyCarouselRoleSourcePath,
+  getCarouselRoleSourceRetirement,
   selectExactDuplicateWinners,
   summarizeCarouselRoleAssets,
   toPosixPath,
@@ -82,11 +83,25 @@ for (const filePath of discoveredFiles) {
     continue;
   }
 
+  const sourceFileSha256 = await sha256File(filePath);
+  const retirement = getCarouselRoleSourceRetirement({
+    relativePath: classification.relativePath,
+    sourceFileSha256,
+  });
+  if (retirement) {
+    exclusions.push({
+      ...retirement,
+      relativePath: classification.relativePath,
+      sourceFileSha256,
+    });
+    continue;
+  }
+
   candidates.push({
     ...classification,
     extension,
     filePath,
-    sourceFileSha256: await sha256File(filePath),
+    sourceFileSha256,
   });
 }
 
@@ -149,6 +164,8 @@ const manifest = {
     license:
       "User supplied and confirmed these assets are cleared for use on 2026-08-17.",
     marketingStatic: "Excluded from V1 by user instruction.",
+    retiredSources:
+      "User-retired source paths and exact SHA-256 copies are excluded by scripts/carousel-role-library-retirements.json.",
     roleAuthority:
       "The top-level category_role bucket is authoritative; nested folder names never override it.",
     thumbnailRendition: `${THUMB_WIDTH}x${THUMB_HEIGHT} WebP, cover crop, attention position`,

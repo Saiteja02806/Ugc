@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "date": "2026-10-19",
+  "reason": "User reviewed and rejected incomplete background tracks. Keep videos and all other audio available.",
+  "items": [
+    {"ordinal": 3, "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7", "audioSha256": "2feef130a568eb09ac9f1c96a214483114fddb6ddab835b720d76b594952eb3a"},
+    {"ordinal": 13, "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913", "audioSha256": "ddc787f09d72393923f25b11754faa68628a806720a34743835983eb2cc983da"},
+    {"ordinal": 59, "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b", "audioSha256": "447acaea41190bc4f20eae1ccd9596f59c227f28ff976ac820578398ff0ac9b0"}
+  ]
+}

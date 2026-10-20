@@ -1,0 +1,74 @@
+.editorRoot { display: grid; min-width: 0; gap: 16px; align-items: start; container: clip-tools / inline-size; }
+.editorHeader { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; }
+.advancedEntry { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.editorRoot .controlGrid { display: grid; width: 100%; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.editorRoot .controlGrid > .textControlSection,
+.editorRoot .controlGrid > .utilityControlSection,
+.editorRoot .controlGrid > [data-editor-section="trim"] { grid-column: auto; grid-row: auto; min-width: 0; }
+.trimSection { padding: 14px 16px; border-color: color-mix(in srgb, var(--border) 86%, var(--primary)); background: var(--card-muted); }
+.trimBody { display: grid; min-width: 0; gap: 14px; margin-top: 14px; }
+.trimTimingFields { display: grid; width: fit-content; max-width: 100%; grid-template-columns: repeat(2, minmax(0, 88px)); gap: 10px; }
+.trimTimingFields label { display: grid; min-width: 0; gap: 5px; color: var(--foreground); font-size: 12px; font-weight: 500; }
+.trimTimingFields label > span { color: var(--muted); font-size: 10px; font-weight: 400; }
+.trimTimingFields input { width: 100%; min-width: 0; height: 34px; background: var(--card); padding: 6px 8px; }
+.trimSelection { margin: 0; color: var(--muted); font-size: 12px; }
+.trimSelection strong { margin-left: 4px; color: var(--foreground); }
+.textControlSection { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.remixControlSection { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.textControlSection :global(textarea[aria-label="Overlay text"]),
+.textControlSection :global(textarea[aria-label="Wall of text"]) { min-height: 96px; max-height: 180px; resize: vertical; }
+.textTiming { display: grid; width: fit-content; max-width: 100%; grid-template-columns: repeat(2, minmax(0, 104px)); gap: 10px; }
+.utilityControlSection { display: grid; min-width: 0; gap: 14px; }
+.styleDock { min-width: 0; }
+.stylePanel { margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-muted); }
+.stylePanel > summary { color: var(--foreground); font-size: 13px; font-weight: 600; cursor: pointer; }
+.stylePanel > div { display: grid; min-width: 0; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.stylePanel :global(select), .stylePanel :global(input) { min-width: 0; max-width: 100%; }
+.stylePanel :global(select) { height: 34px; padding: 5px 8px; font-size: 12px; }
+.stylePanel :global(input[type="color"]) { width: 40px; height: 34px; padding: 4px; }
+.stylePanel :global(label) { display: grid; min-width: 0; gap: 6px; }
+.positionColor { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 12px; }
+.stylePanel > div > .fontControls { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; }
+.fontControls select { height: 32px; }
+.stylePanel :global(button) { width: auto; }
+.actionBar { display: flex; width: 100%; min-width: 0; align-items: center; flex-wrap: wrap; gap: 8px; order: 2; }
+.actionBar > .saveAction { margin-left: auto; }
+.nextAction { display: flex; border-left: 1px solid var(--border); margin-left: 4px; padding-left: 12px; }
+.actionBar button { min-height: 44px; }
+@media (max-width: 599px) {
+  .actionBar { gap: 8px; }
+  .actionBar > button { flex: 1; padding-inline: 12px; }
+  .nextAction { flex-basis: 100%; justify-content: flex-end; border-left: 0; border-top: 1px solid var(--border); margin: 4px 0 0; padding: 8px 0 0; }
+}
+@media (max-width: 359px) {
+  .actionBar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .actionBar > button, .actionBar > .saveAction, .nextAction button { width: 100%; margin-left: 0; }
+}
+@container clip-tools (min-width: 580px) {
+  .editorRoot .controlGrid { grid-template-columns: minmax(0, 1fr) 240px; }
+  .editorRoot .controlGrid > [data-editor-section="trim"] { grid-column: 1 / -1; grid-row: 1; }
+  .editorRoot .controlGrid > .textControlSection { grid-column: 1; grid-row: 2; }
+  .editorRoot .controlGrid > .utilityControlSection { grid-column: 2; grid-row: 2; }
+  .trimBody { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .trimTimingFields { grid-column: 2; grid-row: 1; }
+  .trimBody > :global([aria-label="Clip trim timeline"]) { grid-column: 1; grid-row: 1; }
+  .editorRoot[data-remix-priority="true"] .controlGrid { grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 14px; }
+  .editorRoot[data-remix-priority="true"] .controlGrid > .remixControlSection { grid-column: 1; grid-row: 1; }
+  .editorRoot[data-remix-priority="true"] .controlGrid > [data-editor-section="trim"] { grid-column: 2; grid-row: 1; }
+  .editorRoot[data-remix-priority="true"] .controlGrid > .manualTextSection { grid-column: 1; grid-row: 2; }
+  .editorRoot[data-remix-priority="true"] .controlGrid > .utilityControlSection { grid-column: 2; grid-row: 2; }
+  .editorRoot[data-remix-priority="true"] .stylePanel > div { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .editorRoot[data-remix-priority="true"] .stylePanel > div > label:first-child,
+  .editorRoot[data-remix-priority="true"] .stylePanel > div > div { grid-column: auto; }
+  .editorRoot[data-remix-priority="true"] .trimBody { grid-template-columns: minmax(0, 1fr); }
+  .editorRoot[data-remix-priority="true"] .trimTimingFields { grid-column: 1; grid-row: 1; }
+  .editorRoot[data-remix-priority="true"] .trimBody > :global([aria-label="Clip trim timeline"]) { grid-column: 1; grid-row: 2; }
+}
+@media (max-width: 479px) {
+  .trimSection, .textControlSection, .remixControlSection, .stylePanel { padding: 12px; }
+  .textTiming { grid-template-columns: repeat(2, minmax(0, 96px)); }
+}
+.editorRoot[data-wall-mode="text"] .controlGrid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.editorRoot .stylePanel > div > .fontControls { grid-column: 1 / -1; }
+.editorRoot[data-wall-mode="text"] .controlGrid > .remixControlSection,
+.editorRoot[data-wall-mode="text"] .controlGrid > .textControlSection { grid-column: 1; grid-row: auto; }

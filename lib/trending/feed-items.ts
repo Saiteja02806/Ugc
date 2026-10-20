@@ -72,7 +72,8 @@ export type TrendingHookTextContent = {
     | "hook-overlay-v1"
     | "hook-overlay-v2"
     | "hook-overlay-v3"
-    | "hook-overlay-v4-fixed-type";
+    | "hook-overlay-v4-fixed-type"
+    | "hook-overlay-v5-56px";
   value: string;
 };
 

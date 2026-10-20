@@ -101,6 +101,18 @@ export function canExtendDailyCarouselRefill(params: {
   );
 }
 
+/** A dispatched reservation keeps its immutable identity after failure.
+ * Only an undispatched preparation or a fresh successor can be prepared again. */
+export function shouldWaitForDailyCarouselSuccessor(params: {
+  hasExistingBatch: boolean;
+  hasTerminalFailure: boolean;
+  replacedPartialBatch: boolean;
+  generations: readonly { triggerRunId: string | null }[];
+}) {
+  return params.hasExistingBatch && params.hasTerminalFailure &&
+    !params.replacedPartialBatch && params.generations.some(generation => Boolean(generation.triggerRunId));
+}
+
 export function hasTerminalDailyCarouselGenerationFailure(params: {
   generations: readonly {
     status: string;

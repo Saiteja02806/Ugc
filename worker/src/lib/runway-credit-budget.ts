@@ -1,4 +1,5 @@
 const DEFAULT_RUNWAY_DAILY_CREDIT_LIMIT = 100;
+export const RUNWAY_SEEDREAM_1K_IMAGE_CREDITS = 5;
 
 const RUNWAY_VIDEO_CREDITS_PER_SECOND = {
   aleph2: 28,
@@ -9,6 +10,27 @@ const RUNWAY_VIDEO_CREDITS_PER_SECOND = {
 const RUNWAY_HOOK_VIDEO_DURATION_SECONDS = 4;
 
 type RunwayVideoModel = keyof typeof RUNWAY_VIDEO_CREDITS_PER_SECOND;
+
+export function estimateRunwayKlingCredits(durationSeconds: number) {
+  // Kling 3.0 Standard with native audio: 13 Runway credits per second.
+  return durationSeconds * 13;
+}
+
+export function estimateRunwayWanCredits(resolution: "480p" | "720p" | "1080p", durationSeconds: number) {
+  // WAN 3.0 reference inputs do not add a separate charge.
+  return { "480p": 5, "720p": 10, "1080p": 20 }[resolution] * durationSeconds;
+}
+
+export function estimateRunwaySeedanceCredits(
+  resolution: "480p" | "720p",
+  durationSeconds: number,
+  referenceVideoDurationSeconds = 0,
+) {
+  // Seedance 2.5: output 20/30 credits/sec, input video 10/15, minimum 80.
+  const outputRate = resolution === "480p" ? 20 : 30;
+  const inputRate = resolution === "480p" ? 10 : 15;
+  return Math.max(80, outputRate * durationSeconds + inputRate * Math.ceil(referenceVideoDurationSeconds));
+}
 
 type RunwayUsageReader = {
   retrieve(): PromiseLike<{
@@ -83,7 +105,7 @@ export async function assertRunwayDailyCreditBudget(
       0,
     ),
   );
-  const estimatedCreditsFromDailyGenerations = (
+  const hookCreditsFromDailyGenerations = (
     Object.keys(RUNWAY_VIDEO_CREDITS_PER_SECOND) as RunwayVideoModel[]
   ).reduce((total, model) => {
     const dailyGenerations = Math.max(
@@ -96,7 +118,14 @@ export async function assertRunwayDailyCreditBudget(
       dailyGenerations *
         estimateRunwayVideoCredits(model, RUNWAY_HOOK_VIDEO_DURATION_SECONDS)
     );
-  }, 0);
+  }, 0) + Math.max(0, organization.usage.models.seedream5_pro?.dailyGenerations ?? 0) * RUNWAY_SEEDREAM_1K_IMAGE_CREDITS;
+  // Seedance counters do not include duration/quality; use its minimum as a
+  // lag fallback, with detailed usage remaining authoritative when larger.
+  const estimatedCreditsFromDailyGenerations = hookCreditsFromDailyGenerations +
+    Math.max(0, organization.usage.models.seedance2_5?.dailyGenerations ?? 0) * 80 +
+    Math.max(0, organization.usage.models["kling3.0_standard"]?.dailyGenerations ?? 0) * estimateRunwayKlingCredits(3) +
+    Math.max(0, organization.usage.models.wan3?.dailyGenerations ?? 0) * estimateRunwayWanCredits("480p", 2);
+
   const usedCredits = Math.max(
     reportedCredits,
     estimatedCreditsFromDailyGenerations,

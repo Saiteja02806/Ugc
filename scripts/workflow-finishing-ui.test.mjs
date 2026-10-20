@@ -1,0 +1,862 @@
+import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
+import assert from "node:assert/strict";
+import { createScheduleCacheFixture } from "./scheduling-cache-test-helpers.mjs";
+import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import test from "node:test";
+import vm from "node:vm";
+import ts from "typescript";
+import * as finishClient from "../lib/explore/workflow-finishing-client.ts";
+import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
+import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
+import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
+import * as defaultMusicClient from "../lib/explore/workflow-default-music-client.ts";
+import * as referenceAudioPreview from "../lib/explore/reference-audio-preview.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
+
+const load = (path, imports, globals = {}) => {
+  const exported = {};
+  const code = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  vm.runInNewContext(code, { exports: exported, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, Error, ...globals });
+  return exported;
+};
+const tick = () => new Promise(setImmediate);
+const source = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
+const output = { id: randomUUID(), status: "ready", collection: "video", url: "https://storage.googleapis.com/test/finished.mp4" };
+function harness({ saved = null, lost = false, completed = false, subtitles = false, style = "clean", backgroundMusic = false, musicUnavailable = false, kind = "hook", placement = "bottom", pending = false, uncertain = false, terminalUncertain = false, archiveFailure = false, recovery = [], scope, demoSource = null, outputFailures = 0, reuseUnchangedSource = false, fastStatus = false, captionTranscript = null, composition, demoAudioAssetId = null, onArchivedRead } = {}) {
+  let cursor = 0, pendingFailure = lost;
+  const slots = [], effects = [], calls = [], musicReads = [], uploads = [], store = new Map(), timers = new Map(), listeners = new Map();
+  const intervals = [], document = { visibilityState: "visible", addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) };
+  const musicAssetId = randomUUID();
+  const storageKey = finishClient.finishStorageKey("owner", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
+  if (saved) store.set(storageKey, JSON.stringify(saved));
+  if (recovery.length) store.set(finishClient.finishRecoveryStorageKey(storageKey), JSON.stringify(recovery));
+  let priorCompleted = false;
+  const props = { ownerId: "owner", enabled: true, kind, source, demo: null, demoSource, demoAudio: null, playback: "once", scope, reuseUnchangedSource, fastStatus, composition, demoAudioAssetId, options: { subtitles, style, backgroundMusic, placement }, onRestoreOptions(value) { props.options = value; } };
+  const jobId = randomUUID(); let cancelled = false;
+  const react = {
+    useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
+    useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
+    useCallback(fn, deps) { const i = cursor++; if (!slots[i] || deps.some((v, n) => !Object.is(v, slots[i].deps[n]))) slots[i] = { deps, fn }; return slots[i].fn; },
+    useEffect(fn, deps) { const i = cursor++; const prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
+  };
+  const testModule = load("components/explore/use-workflow-finishing.ts", {
+    "@/lib/http/read-deadline": { withReadDeadline },
+    react, "@/lib/explore/workflow-finishing-client": finishClient,
+    "@/lib/explore/workflow-default-music-client": defaultMusicClient,
+    "@/lib/explore/reference-audio-preview": referenceAudioPreview,
+    "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
+    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (id, _token, options) => { assert.equal(id, output.id); assert.ok(options.signal instanceof AbortSignal); if (outputFailures-- > 0) throw new Error("temporary output lookup failure"); return output; } },
+    "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _limit, owner, options) => {
+      assert.equal(owner, "owner"); assert.equal(kind, "audio"); assert.equal(options.purpose, "explore-demo");
+      assert.equal(file.name, "default-background.mp3"); uploads.push(file); return { asset: { id: musicAssetId } };
+    } },
+  }, {
+    crypto: { randomUUID },
+    AbortSignal,
+    window: { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
+    document,
+    localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (archiveFailure && key === finishClient.finishRecoveryStorageKey(storageKey)) throw new Error("recovery storage unavailable"); store.set(key, value); }, removeItem: key => store.delete(key) },
+    navigator: { locks: { request: async (_key, _opts, run) => run({}) } },
+    setInterval: (fn, delay) => { intervals.push(delay); const id = randomUUID(); timers.set(id, fn); return id; }, clearInterval: id => timers.delete(id),
+    fetch: async (url, init) => {
+      if (url === "/api/explore/default-music") {
+        musicReads.push({ url, ...init });
+        return musicUnavailable ? Response.json({ error: "Default background music is not configured yet." }, { status: 503 }) : new Response("offline-music", { headers: { "Content-Type": "audio/mpeg", "X-Explore-Music-Loopable": "true" } });
+      }
+      calls.push({ url, ...init });
+      if (url === `/api/jobs/${jobId}/cancel`) { cancelled = true; return Response.json({ok:true}); }
+      if (init.method === "POST" && pendingFailure) { pendingFailure = false; throw new Error("lost response"); }
+      const requestedKey = init.method === "GET" ? new URL(url, "https://app.test").searchParams.get("requestKey") : null;
+      const activeEntry = JSON.parse(store.get(storageKey) ?? "null");
+      const archivedEntry = JSON.parse(store.get(finishClient.finishRecoveryStorageKey(storageKey)) ?? "[]").find(entry => entry.requestKey === requestedKey);
+      const entry = init.method === "POST" ? JSON.parse(init.body) : requestedKey === activeEntry?.requestKey ? activeEntry : archivedEntry;
+      if (archivedEntry) onArchivedRead?.(store, finishClient.finishRecoveryStorageKey(storageKey));
+      if (init.method === "POST" && !pending) completed = true;
+      const oldUncertainty = terminalUncertain && entry.requestKey === saved?.requestKey && !priorCompleted;
+      const outcome = oldUncertainty || uncertain && init.method === "POST" ? "uncertain" : priorCompleted && entry.requestKey === saved?.requestKey ? "completed" : pending ? cancelled ? "cancelled" : "pending" : captionTranscript ? "captions_ready" : completed || init.method === "POST" ? "completed" : "unconfirmed";
+      return Response.json({ ok: true, receiptVersion: 1, requestKey: entry.requestKey, jobId, outcome, status: oldUncertainty ? "failed" : outcome === "completed" ? "completed" : outcome === "cancelled" ? "cancelled" : "queued", mediaAssetId: outcome === "completed" ? output.id : null, ...(captionTranscript ? { captionTranscript } : {}), message: "Saved output." });
+    },
+  });
+  return { props, calls, musicReads, uploads, musicAssetId, jobId, store, storageKey, timers, listeners, intervals, completePrior() { priorCompleted = true; }, visibility(value) { document.visibilityState = value; },
+    poll() { for (const run of timers.values()) run(); }, event(name) { listeners.get(name)?.(); },
+    render() { cursor = 0; const view = testModule.useWorkflowFinishing(props); while (effects.length) effects.shift()(); return view; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
+}
+
+test("recovered captions require the exact current opening, demo and audio before reuse", async () => {
+  const demo = { ...source, id: randomUUID() }, audioId = randomUUID();
+  const captionTranscript = { schemaVersion: 1, provider: "elevenlabs", model: "scribe_v2", language: "en", durationMs: 10000, words: [{ text: "outreach", startMs: 5100, endMs: 5600 }] };
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demo.id, demoAudioAssetId: audioId, demoAudioPlayback: "repeat", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean", placement: "bottom", version: 2 }, captionPreview: true } };
+  const h = harness({ saved, scope: "caption-preview", demoSource: demo, captionTranscript });
+  h.props.captionPreview = true; h.props.demoAudioSource = { id: audioId, status: "ready", collection: "audio" }; h.props.playback = "repeat";
+  h.render(); await tick(); await tick();
+  assert.equal(h.render().transcript.words[0].text, "outreach");
+  assert.equal(h.render().captionDraft.demoAssetId, demo.id); assert.equal(h.render().output, null);
+  for (const [field, replacement] of [["source", null], ["source", { ...source, id: randomUUID() }], ["demoSource", null], ["demoSource", { ...demo, id: randomUUID() }], ["demoAudioSource", null], ["playback", "once"]]) {
+    const previous = h.props[field]; h.props[field] = replacement;
+    assert.equal(h.render().transcript, null, `Hide words when ${field} changes`);
+    assert.equal(h.render().captionDraft, null);
+    h.props[field] = previous;
+  }
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0); h.unmount();
+});
+
+test("custom whole-video export snapshots the exact owned track and playback without default lookup", async () => {
+  const musicId = randomUUID(), demoAudioId = randomUUID();
+  const h = harness({ backgroundMusic: true, demoAudioAssetId: demoAudioId });
+  h.props.options = { ...h.props.options, backgroundAssetId: musicId, backgroundPlayback: "repeat" };
+  h.props.backgroundSource = { id: musicId }; h.props.backgroundPlayback = "repeat";
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const request = h.calls.find(call => call.method === "POST"); const payload = JSON.parse(request.body);
+  assert.equal(payload.draft.backgroundAssetId, musicId); assert.equal(payload.draft.backgroundPlayback, "repeat");
+  assert.equal(payload.draft.demoAudioAssetId, demoAudioId); assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).musicSelection, musicId); h.unmount();
+});
+
+test("returning to default music cannot recover an earlier custom-track render or reuse its audio", async () => {
+  const oldId = randomUUID();
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), musicSelection: oldId,
+    draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: oldId, backgroundPlayback: "repeat", subtitles: null } };
+  const h = harness({ saved, completed: true, backgroundMusic: true }); h.props.onRestoreOptions = undefined;
+  h.props.options = { ...h.props.options, backgroundAssetId: null };
+  h.render(); await tick(); assert.equal(h.render().output, null);
+  h.render().action.onAction(); await tick();
+  const payload = JSON.parse(h.calls.find(call => call.method === "POST").body);
+  assert.equal(payload.draft.backgroundAssetId, h.musicAssetId); assert.notEqual(payload.draft.backgroundAssetId, oldId);
+  assert.equal(h.musicReads.length, 1); h.unmount();
+});
+
+test("terminal transcription uncertainty permits independent edits and preserves the original recovery identity", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean", placement: "bottom" } } };
+  for (const mode of ["different-source", "subtitles-off", "unchanged-source-reuse"]) {
+    const h = harness({ saved, terminalUncertain: true, reuseUnchangedSource: mode === "unchanged-source-reuse" });
+    h.render(); await tick(); let view = h.render();
+    assert.equal(view.action.disabled, true); assert.equal(view.action.cancel, undefined);
+    assert.match(view.action.error, /another video or turn off subtitles/);
+    assert.equal(h.timers.size, 0, "A terminal request does not poll forever");
+    // Style-only changes do not create a new transcription for the same audio.
+    h.props.options = { ...h.props.options, style: "bold-box" };
+    view = h.render(); assert.equal(view.action.disabled, true);
+    view.action.onAction(); await tick();
+    assert.equal(h.calls.some(call => call.method === "POST"), false);
+    if (mode === "different-source") h.props.source = { ...source, id: randomUUID() };
+    else h.props.options = { ...h.props.options, subtitles: false };
+    view = h.render(); assert.equal(view.action.disabled, false);
+    view.action.onAction(); await tick(); view = h.render();
+    const archived = finishClient.readFinishRecovery(h.store.get(finishClient.finishRecoveryStorageKey(h.storageKey)), "owner", "hook");
+    assert.deepEqual(archived, [saved]); assert.equal(view.action.recoveryAvailable, true);
+    const posts = h.calls.filter(call => call.method === "POST");
+    if (mode === "unchanged-source-reuse") { assert.equal(posts.length, 0); assert.equal(view.output.id, source.id); assert.equal(h.store.has(h.storageKey), false); }
+    else {
+      assert.equal(posts.length, 1);
+      const next = JSON.parse(posts[0].body);
+      assert.notEqual(next.requestKey, saved.requestKey); assert.equal(next.draft.sourceAssetId, h.props.source.id);
+      assert.equal(Boolean(next.draft.subtitles), mode === "different-source");
+    }
+    h.completePrior(); view.action.refresh(); await tick(); await tick(); view = h.render();
+    assert.ok(h.calls.some(call => call.method === "GET" && call.url.includes(saved.requestKey)));
+    assert.match(view.action.message, /earlier finished video is saved in Creative Assets/);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, posts.length);
+    h.unmount();
+  }
+});
+
+test("recovery storage failure cannot replace an uncertain request or dispatch a new render", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean" } } };
+  const h = harness({ saved, terminalUncertain: true, archiveFailure: true });
+  h.render(); await tick(); h.render(); h.props.options = { ...h.props.options, subtitles: false };
+  h.render().action.onAction(); await tick();
+  assert.match(h.render().action.error, /recovery storage unavailable/);
+  assert.equal(h.calls.some(call => call.method === "POST"), false);
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, saved.requestKey);
+  assert.equal(finishClient.canLeaveUncertainFinish({ requestKey: randomUUID(), outcome: "uncertain", terminal: true }, saved, source.id, false), false, "A stale status cannot authorize replacing a different active request");
+  assert.throws(() => finishClient.readFinishRecovery(JSON.stringify([{ ...saved, ownerId: "another-owner" }]), "owner", "hook"), /another workflow/);
+  h.unmount();
+});
+
+test("uncertain finishing responses automatically recover the same request without submitting again", async () => {
+  const h = harness({ uncertain: true, fastStatus: true });
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const uncertain = h.render();
+  assert.equal(uncertain.status.outcome, "uncertain"); assert.equal(uncertain.output, null);
+  assert.equal(h.timers.size, 1); assert.equal(h.intervals.at(-1), 1000);
+  const request = JSON.parse(h.calls[0].body);
+  h.poll(); h.poll(); await tick();
+  assert.equal(h.render().output.id, output.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.equal(h.calls.filter(call => call.method === "GET").length, 1, "overlapping status reads are skipped");
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, request.requestKey);
+  assert.equal(h.timers.size, 0); h.unmount();
+});
+
+test("fast foreground checks pause while hidden and ordinary workflow polling remains unchanged", async () => {
+  for (const fastStatus of [false, true]) {
+    const h = harness({ pending: true, fastStatus });
+    h.render(); await tick(); h.render().action.onAction(); await tick(); h.render();
+    assert.equal(h.intervals.at(-1), fastStatus ? 1000 : 4000);
+    h.visibility("hidden"); h.poll(); await tick();
+    assert.equal(h.calls.filter(call => call.method === "GET").length, fastStatus ? 0 : 1);
+    h.visibility("visible"); h.event("visibilitychange"); await tick();
+    assert.equal(h.calls.filter(call => call.method === "GET").length, fastStatus ? 1 : 2);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    h.unmount(); assert.equal(h.timers.size, 0); assert.equal(h.listeners.size, 0);
+  }
+});
+
+test("background status checks keep the action state steady; explicit refresh still indicates work", async () => {
+  const h = harness({ pending: true, fastStatus: true });
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const before = h.render(); assert.equal(before.action.busy, false); assert.equal(before.action.disabled, true);
+  assert.equal(before.action.processing, true, "The worker remains active between quiet status reads");
+  h.poll();
+  assert.equal(h.render().action.busy, false, "Polling must not flash a loading label");
+  await tick(); assert.equal(h.render().action.busy, false); assert.equal(h.render().action.disabled, true);
+  assert.equal(h.render().action.processing, true);
+  h.event("focus"); assert.equal(h.render().action.busy, false); await tick();
+  h.render().action.refresh(); assert.equal(h.render().action.busy, true); await tick();
+  assert.equal(h.render().action.busy, false); assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  h.unmount();
+});
+
+test("a completed output lookup recovers automatically without another render", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const h = harness({ kind, outputFailures: 1 }); h.render(); await tick();
+    h.render().action.onAction(); await tick();
+    const interrupted = h.render();
+    assert.equal(interrupted.status.outcome, "completed"); assert.equal(interrupted.output, null);
+    assert.match(interrupted.action.message, /Loading your finished video/);
+    assert.equal(interrupted.action.disabled, true); assert.equal(h.timers.size, 1);
+    assert.equal(interrupted.action.processing, true, "Loading the saved output is still preparation");
+    const originalRequest = h.calls[0].body;
+    h.poll(); await tick();
+    assert.equal(h.render().output.id, output.id); assert.equal(h.timers.size, 0);
+    assert.equal(h.render().action.processing, false);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).requestKey, JSON.parse(originalRequest).requestKey);
+    h.unmount(); assert.equal(h.listeners.size, 0);
+  }
+});
+
+test("returning to the browser retries a pending or missing output lookup", async () => {
+  for (const event of ["focus", "online", "visibilitychange"]) {
+    const h = harness({ outputFailures: 1 }); h.render(); await tick(); h.render().action.onAction(); await tick();
+    h.render(); h.event(event); await tick();
+    assert.equal(h.render().output.id, output.id);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
+  }
+});
+
+test("an unchanged owned opening avoids rendering and still honors an existing pending receipt", async () => {
+  const h = harness({ reuseUnchangedSource: true }); h.render(); await tick(); h.render().action.onAction(); await tick();
+  assert.equal(h.render().output.id, source.id); assert.equal(h.calls.length, 0); assert.equal(h.store.size, 0); h.unmount();
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  const recovered = harness({ saved, pending: true, reuseUnchangedSource: true }); recovered.render(); await tick();
+  assert.equal(recovered.render().output, null); assert.equal(recovered.render().action.disabled, true);
+  assert.equal(recovered.calls.length, 1); assert.equal(recovered.calls[0].method, "GET"); recovered.unmount();
+});
+
+test("owned demo audio is sent once in the final join, preserves playback and invalidates a changed track", async () => {
+  const h = harness();
+  const demo = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 8 };
+  const audio = { id: randomUUID(), status: "ready", collection: "audio" };
+  h.props.demoSource = demo; h.props.demoAudioSource = audio; h.props.playback = "repeat";
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const request = h.calls.find(call => call.method === "POST");
+  const draft = JSON.parse(request.body).draft;
+  assert.equal(draft.demoAssetId, demo.id);
+  assert.equal(draft.demoAudioAssetId, audio.id);
+  assert.equal(draft.demoAudioPlayback, "repeat");
+  assert.equal(h.uploads.length, 0);
+  assert.equal(h.render().output.id, output.id);
+  h.props.demoAudioSource = { ...audio, id: randomUUID() };
+  assert.equal(h.render().output, null);
+  h.unmount();
+});
+
+test("recovered format joins require the same demo audio selection and playback, including removal", async () => {
+  const demo = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 8 };
+  const audio = { id: randomUUID(), status: "ready", collection: "audio" };
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demo.id, demoAudioAssetId: audio.id, demoAudioPlayback: "repeat", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  for (const selection of ["same", "changed", "removed", "playback"]) {
+    const h = harness({ saved, completed: true, scope: `format-demo:hook:${source.id}`, demoSource: demo });
+    h.props.demoAudioSource = selection === "removed" ? null : selection === "changed" ? { ...audio, id: randomUUID() } : audio;
+    h.props.playback = selection === "playback" ? "once" : "repeat";
+    h.render(); await tick();
+    assert.equal(h.render().output?.id ?? null, selection === "same" ? output.id : null, selection);
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+    h.unmount();
+  }
+});
+
+test("choosing another unchanged ready video after a completed edit reuses it without rendering again", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  const h = harness({ saved, completed: true, reuseUnchangedSource: true });
+  h.render(); await tick();
+  const replacement = { ...source, id: randomUUID() };
+  h.props.source = replacement;
+  assert.equal(h.render().output, null);
+  h.render().action.onAction(); await tick();
+  assert.equal(h.render().output.id, replacement.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  h.unmount();
+});
+
+test("single-video reuse never discards owned demo audio or accepts a nonready audio source", async () => {
+  for (const status of ["ready", "uploading"]) {
+    const h = harness({ reuseUnchangedSource: true });
+    h.props.demoSource = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 5 };
+    h.props.demoAudioSource = { id: randomUUID(), status, collection: "audio" };
+    h.render(); await tick(); h.render().action.onAction(); await tick();
+    if (status === "ready") assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    else { assert.equal(h.calls.length, 0); assert.match(h.render().action.error, /ready owned demo audio/); }
+    h.unmount();
+  }
+});
+
+test("a status timeout preserves the original request and never submits a replacement", async () => {
+  const controller = new AbortController();
+  const client = load("lib/explore/workflow-finishing-client.ts", {
+    "../http/read-deadline.ts": { withReadDeadline },
+    "../../worker/src/lib/explore-finishing-contract.ts": await import("../worker/src/lib/explore-finishing-contract.ts"),
+    "../../worker/src/subtitles/contracts.ts": await import("../worker/src/subtitles/contracts.ts"),
+  }, { AbortSignal: { timeout(ms) { assert.equal(ms, 30_000); return controller.signal; } } });
+  const saved = { requestKey: randomUUID() };
+  let call;
+  const result = client.requestFinish({ token: async () => "owner-token", assertActive() {}, fetch(url, options) {
+    call = { url, options };
+    return new Promise((_, reject) => options.signal.addEventListener("abort", () => reject(new Error("timeout")), { once: true }));
+  } }, saved);
+  await tick(); controller.abort();
+  await assert.rejects(result, /request is preserved/);
+  assert.equal(call.options.method, "GET"); assert.equal(call.options.body, undefined);
+  assert.equal(call.url, `/api/explore/finishes?requestKey=${saved.requestKey}`);
+});
+
+test("all styles persist exact interrupted requests and changing style requires a new applied export", async () => {
+  for (const style of SUBTITLE_STYLES) {
+    const h = harness({style,subtitles:true,lost:true});
+    h.render(); await tick(); h.render().action.onAction(); await tick();
+    const first = h.calls.find(c => c.method === "POST");
+    assert.equal(JSON.parse(first.body).draft.subtitles.style, style);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).draft.subtitles.style, style);
+    h.props.options.style = style === "clean" ? "karaoke" : "clean";
+    h.render().action.onAction(); await tick();
+    assert.equal(h.calls.filter(c => c.method === "POST")[1].body, first.body);
+    assert.equal(h.render().output, null);
+    h.render().action.onAction(); await tick();
+    assert.equal(JSON.parse(h.calls.at(-1).body).draft.subtitles.style, h.props.options.style);
+    assert.equal(h.render().output.id, output.id);
+    h.unmount();
+  }
+});
+
+test("cancellation targets the owned pending job and rechecks the same durable request", async () => {
+  const h = harness({pending:true}); h.render(); await tick(); h.render().action.onAction(); await tick();
+  const request = h.calls.find(c => c.method === "POST");
+  const saved = h.store.get(h.storageKey);
+  assert.equal(h.render().action.disabled, true);
+  h.render().action.cancel(); await tick(); await tick();
+  const cancel = h.calls.find(c => c.url === `/api/jobs/${h.jobId}/cancel`);
+  assert.equal(cancel.method, "POST"); assert.equal(cancel.headers.Authorization, "Bearer owner-token");
+  assert.equal(h.calls.filter(c => c.url === "/api/explore/finishes" && c.method === "POST").length, 1);
+  assert.equal(h.store.get(h.storageKey), saved); assert.equal(JSON.parse(request.body).requestKey, JSON.parse(saved).requestKey);
+  assert.equal(h.render().action.cancel, undefined); h.unmount();
+});
+
+test("both workflows persist and submit each position, retain exact interrupted requests and invalidate changed exports", async () => {
+  for (const kind of ["hook", "phone"]) for (const placement of ["bottom", "middle", "top"]) {
+    const h = harness({ kind, placement, subtitles: true, lost: true });
+    h.render(); await tick(); h.render().action.onAction(); await tick();
+    const first = h.calls.find(c => c.method === "POST");
+    assert.equal(JSON.parse(first.body).draft.subtitles.placement, placement);
+    assert.equal(JSON.parse(h.store.get(h.storageKey)).draft.subtitles.placement, placement);
+    h.props.options.placement = placement === "middle" ? "top" : "middle";
+    h.render().action.onAction(); await tick();
+    assert.equal(h.calls.filter(c => c.method === "POST")[1].body, first.body);
+    assert.equal(h.render().output, null, "saved output must not pretend to use changed position");
+    h.render().action.onAction(); await tick();
+    assert.equal(JSON.parse(h.calls.at(-1).body).draft.subtitles.placement, h.props.options.placement);
+    assert.equal(h.render().output.id, output.id);
+    h.unmount();
+  }
+});
+
+test("owned demo assets are composed without reuploading, retries preserve their identity and replacement invalidates the output", async () => {
+  const h = harness({ lost: true });
+  const demoId = randomUUID();
+  h.props.demoSource = { id: demoId, status: "ready", collection: "video", durationSeconds: 12 };
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const first = h.calls.find(call => call.method === "POST");
+  assert.equal(JSON.parse(first.body).draft.sourceAssetId, source.id);
+  assert.equal(JSON.parse(first.body).draft.demoAssetId, demoId);
+  assert.equal(h.uploads.length, 0);
+  h.render().action.onAction(); await tick();
+  assert.equal(h.calls.filter(call => call.method === "POST")[1].body, first.body);
+  assert.equal(h.render().output.id, output.id);
+  h.props.demoSource = { ...h.props.demoSource, id: randomUUID() };
+  assert.equal(h.render().output, null);
+  h.render().action.onAction(); await tick();
+  assert.equal(JSON.parse(h.calls.at(-1).body).draft.demoAssetId, h.props.demoSource.id);
+  assert.notEqual(JSON.parse(h.calls.at(-1).body).requestKey, JSON.parse(first.body).requestKey);
+  h.unmount();
+});
+
+test("recovering a composition accepts only its saved demo identity without starting another export", async () => {
+  const demoId = randomUUID();
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demoId, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null } };
+  const h = harness({ saved, completed: true });
+  const restored = [];
+  h.props.demoSource = { id: demoId, status: "ready", collection: "video", durationSeconds: 12 };
+  h.props.onRestoreDraft = draft => restored.push(draft);
+  h.render(); await tick(); await tick();
+  assert.equal(restored[0].demoAssetId, demoId);
+  assert.equal(h.render().output.id, output.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  h.props.demoSource = { ...h.props.demoSource, id: randomUUID() };
+  assert.equal(h.render().output, null);
+  h.unmount();
+});
+
+test("reload restores each position and legacy omission defaults to Bottom without rewriting the durable request", async () => {
+  for (const kind of ["hook", "phone"]) for (const placement of [undefined, "bottom", "middle", "top"]) {
+    const draft = { version: 1, kind, sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null,
+      demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once",
+      subtitles: { language: "en", style: "editorial", ...(placement ? { placement } : {}) } };
+    const saved = { version: 1, ownerId: "owner", kind, requestKey: randomUUID(), draft };
+    const h = harness({ kind, saved, completed: true }); h.render(); await tick();
+    assert.equal(h.props.options.placement, placement ?? "bottom");
+    assert.equal(h.render().output.id, output.id);
+    assert.equal(h.calls.some(c => c.method === "POST"), false);
+    assert.deepEqual(JSON.parse(h.store.get(h.storageKey)), saved);
+    h.props.options = { ...h.props.options, placement: (placement ?? "bottom") === "middle" ? "top" : "middle" };
+    assert.equal(h.render().output, null); h.unmount();
+  }
+});
+
+test("background OFF never fetches or uploads music and always submits a null background", async () => {
+  const h = harness(); h.render(); await tick(); h.render().action.onAction(); await tick();
+  assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  assert.equal(JSON.parse(h.calls[0].body).draft.backgroundAssetId, null); h.unmount();
+});
+
+test("an owned prepared demo joins by asset ID without downloading or reuploading its video", async () => {
+  const demo = { ...source, id: randomUUID(), durationSeconds: 4 };
+  const h = harness({ demoSource: demo, scope: "format-demo:hook:opening" });
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const draft = JSON.parse(h.calls.find(call => call.method === "POST").body).draft;
+  assert.equal(draft.sourceAssetId, source.id); assert.equal(draft.demoAssetId, demo.id);
+  assert.equal(draft.subtitles, null); assert.equal(draft.backgroundAssetId, null);
+  assert.equal(draft.demoAudioAssetId, null); assert.equal(h.uploads.length, 0);
+  assert.equal(h.render().output.id, output.id);
+  h.props.demoSource = { ...demo, id: randomUUID() };
+  assert.equal(h.render().output, null, "replacing the demo invalidates the schedule output");
+  h.unmount();
+});
+
+test("restoring a merged demo verifies the exact demo and framing without a new render", async () => {
+  const demo = { ...source, id: randomUUID() };
+  const framing = { version: 1, width: .5, height: 1, points: [[0, .25, 0]] };
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: demo.id, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null, demoFraming: framing } };
+  const h = harness({ saved, completed: true, demoSource: demo, scope: "format-demo:hook:opening" });
+  h.props.demoFraming = framing; h.render(); await tick();
+  assert.equal(h.render().output.id, output.id); assert.equal(h.calls.some(c => c.method === "POST"), false);
+  h.props.demoSource = null; assert.equal(h.render().output, null);
+  h.props.demoSource = demo; h.props.demoFraming = null; assert.equal(h.render().output, null);
+  h.unmount();
+});
+
+test("invalid framing context blocks Apply before music, uploads, storage writes or dispatch", async () => {
+  const h=harness({backgroundMusic:true}); h.render();await tick();
+  h.props.demoFramingError="Video shape changed. Record framing again.";
+  const view=h.render();assert.equal(view.action.disabled,true);assert.match(view.action.error,/shape changed/);
+  view.action.onAction();await tick();
+  assert.equal(h.musicReads.length,0);assert.equal(h.uploads.length,0);assert.equal(h.calls.length,0);assert.equal(h.store.size,0);
+  h.props.demoFramingError=null;assert.equal(h.render().action.disabled,false);h.unmount();
+});
+
+test("background ON snapshots owned approved audio only on Apply; retry retains that exact ID", async () => {
+  const h = harness({ backgroundMusic: true, lost: true }); h.render(); await tick();
+  assert.equal(h.musicReads.length, 0); h.render().action.onAction(); await tick(); await tick();
+  let view = h.render(); assert.match(view.action.error, /lost response/);
+  const first = JSON.parse(h.calls[0].body).draft;
+  assert.equal(first.backgroundAssetId, h.musicAssetId); assert.equal(first.backgroundPlayback, "repeat");
+  assert.equal(first.demoAudioAssetId, null); assert.equal(h.musicReads[0].headers.Authorization, "Bearer owner-token");
+  view.action.onAction(); await tick();
+  assert.equal(h.calls[1].body, h.calls[0].body); assert.equal(h.musicReads.length, 1); assert.equal(h.uploads.length, 1);
+  h.props.options = { ...h.props.options, backgroundMusic: false }; view = h.render(); assert.equal(view.output, null);
+  view.action.onAction(); await tick();
+  assert.equal(JSON.parse(h.calls.at(-1).body).draft.backgroundAssetId, null); assert.equal(h.musicReads.length, 1); h.unmount();
+});
+
+test("missing approved default fails before uploading or dispatching any finishing job", async () => {
+  const h = harness({ backgroundMusic: true, musicUnavailable: true }); h.render(); await tick(); h.render().action.onAction(); await tick(); await tick();
+  assert.match(h.render().action.error, /not configured/); assert.equal(h.calls.length, 0); assert.equal(h.uploads.length, 0); assert.equal(h.store.size, 0); h.unmount();
+});
+
+test("an explicitly chosen background track bypasses default music and keeps its playback on retry", async () => {
+  const h = harness({ backgroundMusic: true, lost: true });
+  h.props.backgroundSource = { id: randomUUID(), status: "ready", collection: "audio" };
+  h.props.backgroundPlayback = "once";
+  h.render(); await tick(); h.render().action.onAction(); await tick();
+  const first = JSON.parse(h.calls[0].body).draft;
+  assert.equal(first.backgroundAssetId, h.props.backgroundSource.id);
+  assert.equal(first.backgroundPlayback, "once");
+  assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  h.render().action.onAction(); await tick();
+  assert.equal(h.calls[1].body, h.calls[0].body);
+  assert.equal(h.render().output.id, output.id);
+  h.props.backgroundSource = { ...h.props.backgroundSource, id: randomUUID() };
+  assert.equal(h.render().output, null, "A different soundtrack invalidates the prepared output");
+  h.unmount();
+});
+
+test("reload restores the music switch and turning it OFF invalidates the saved music-bearing output", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: randomUUID(), backgroundPlayback: "repeat", subtitles: null } };
+  const h = harness({ saved, completed: true }); h.render(); await tick(); let view = h.render();
+  assert.equal(h.props.options.backgroundMusic, true); assert.equal(view.output.id, output.id); assert.equal(h.musicReads.length, 0); assert.equal(h.uploads.length, 0);
+  h.props.options = { ...h.props.options, backgroundMusic: false }; view = h.render(); assert.equal(view.output, null); h.unmount();
+});
+test("Apply edits is enabled only after hydration and a saved source; lost responses retain the exact request", async () => {
+  const h = harness({ lost: true });
+  assert.equal(h.render().action.disabled, true);
+  await tick(); let view = h.render(); assert.equal(view.action.disabled, false);
+  view.action.onAction(); await tick(); view = h.render(); assert.match(view.action.error, /lost response/);
+  const first = h.calls[0]; assert.equal(first.method, "POST"); assert.ok(h.store.get(h.storageKey));
+  view.action.onAction(); await tick(); view = h.render();
+  assert.equal(h.calls[1].body, first.body); assert.equal(h.calls[1].headers["Idempotency-Key"], first.headers["Idempotency-Key"]);
+  assert.equal(view.output.id, output.id);
+  view.action.onAction(); await tick(); h.render();
+  assert.equal(h.calls.filter(c => c.method === "POST").length, 2); assert.equal(h.calls.at(-1).method, "GET");
+  h.unmount();
+});
+test("reload reads the owned saved finish, restores subtitle controls and offers its actual output without resubmitting", async () => {
+  const saved = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft: { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "active-word", placement: "bottom" } } };
+  const h = harness({ saved, completed: true }); h.render(); await tick(); const view = h.render();
+  assert.equal(h.calls.length, 1); assert.equal(h.calls[0].method, "GET");
+  assert.equal(h.props.options.subtitles, true); assert.equal(h.props.options.style, "active-word"); assert.equal(view.output.id, output.id);
+  h.props.options = { subtitles: true, style: "bold-box" }; assert.equal(h.render().output, null);
+  h.unmount();
+});
+test("a missing source or malformed recovery record cannot create a replacement finishing job", async () => {
+  for (const malformed of [false, true]) {
+    const h = harness(); h.props.source = null;
+    if (malformed) h.store.set(h.storageKey, "broken-json");
+    h.render(); await tick(); const view = h.render(); assert.equal(view.action.disabled, true);
+    view.action.onAction(); await tick(); assert.equal(h.calls.length, 0); h.unmount();
+  }
+});
+
+test("a lost upload completion response is recovered through GET and never deletes committed media", async () => {
+  for (const recoverable of [true, false]) {
+    const calls = [];
+    class FakeImage { naturalWidth = 720; naturalHeight = 1280; set src(_) { queueMicrotask(() => this.onload?.()); } }
+    const upload = load("lib/ai-studio/reference-media-upload.ts", { "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "owner-token" } }, {
+      window: { Image: FakeImage }, URL: { createObjectURL: () => "blob:fixture", revokeObjectURL() {} },
+      fetch: async (url, init) => {
+        calls.push({ url, ...init });
+        if (url === "/api/media/create-upload-url") return Response.json({ ok: true, assetId: "asset-1", key: "owned/key", uploadUrl: "https://storage.googleapis.com/test/upload" });
+        if (url.endsWith("/upload")) return new Response("", { status: 200 });
+        if (url === "/api/media/complete-upload") throw new Error("lost completion response");
+        if (url === "/api/media/asset-1") return Response.json(recoverable ? { ok: true, asset: { id: "asset-1", status: "ready", collection: "image" } } : { ok: false });
+        throw new Error("Unexpected request");
+      },
+    });
+    const attempt = upload.uploadAIStudioReferenceMedia({ type: "image/png", name: "image.png", size: 100 }, "image", undefined, "owner");
+    if (recoverable) assert.equal((await attempt).asset.id, "asset-1"); else await assert.rejects(attempt, /lost completion/);
+    assert.equal(calls.some(c => c.method === "DELETE"), false); assert.equal(calls.at(-1).cache, "no-store");
+  }
+});
+
+function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport, draftId, onScheduled } = {}) {
+  const cache = createScheduleCacheFixture("owner");
+  let cursor = 0, pendingFailure = lost;
+  const slots = [], effects = [], calls = [], store = new Map();
+  const storageKey = `ugc-explore:schedule:v1:owner:${kind}${draftId ? `:${draftId}` : ""}`;
+  if (saved) store.set(storageKey, JSON.stringify(saved));
+  const connectionId = saved?.input.targets[0].connectionId ?? randomUUID();
+  const props = { enabled: true, ownerId: "owner", kind, source, demo: null, demoAudio: null, playback: "once", scheduleTimezone: "Asia/Calcutta", scheduleDraft: { connectionId, platform: "instagram", caption: "My caption", date: "2099-12-01", time: "15:30" }, children: value => value, draftId, onScheduled };
+  const youtubeId = randomUUID();
+  if (multiple) props.scheduleDraft = { ...props.scheduleDraft, platforms: ["instagram", "youtube"], connectionIds: { instagram: connectionId, youtube: youtubeId } };
+  const react = {
+    useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
+    useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
+    useCallback(fn, deps) { const i = cursor++; if (!slots[i] || deps.some((v, n) => !Object.is(v, slots[i].deps[n]))) slots[i] = { deps, fn }; return slots[i].fn; },
+    useEffect(fn, deps) { const i = cursor++; const prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
+  };
+  const jsx = (type, value) => ({ type, props: value });
+  const Editor = () => null;
+  const testModule = load("components/explore/workflow-finishing-boundary.tsx", {
+    "@/lib/explore/schedule-repeat-intent": repeatIntent,
+    react, "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: Symbol("Fragment") },
+    "@tanstack/react-query": { useQueryClient: () => cache.queryClient },
+    "@/lib/scheduling/account-data-query": cache.api,
+    "next/dynamic": { default: (_loader, options) => { assert.equal(options.ssr, false); return Editor; } },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: () => ({ action: {}, output: finished }) },
+    "@/lib/explore/workflow-schedule-client": scheduleClient,
+    "./talking-head-pending-composition": { useTalkingHeadPendingComposition: () => ({}) },
+    "./use-workflow-background-music": { useWorkflowBackgroundMusic: () => ({ source: null, playback: "repeat", selectionError: null }) },
+    "@/lib/explore/format-demo": { trimmedDemoFraming: (framing) => framing },
+    "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
+    "@/lib/explore/workflow-schedule-transport": scheduleTransport, "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },
+    "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); return value.connections; } },
+    "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owner-token"; } },
+  }, {
+    crypto: { randomUUID },
+    localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (storageFails) throw new Error("storage unavailable"); store.set(key, value); }, removeItem: key => store.delete(key) },
+    navigator: { locks: locks ? { request: async (_key, _opts, run) => run({}) } : undefined },
+    fetch: async (url, init) => {
+      calls.push({ url, ...init });
+      assert.equal(init.cache, "no-store"); assert.equal(init.headers.Authorization, "Bearer owner-token");
+      if (transport) { const response = await transport(url, init); if (response) return response; }
+      if (url === "/api/social/connections") return Response.json({ ok: true, connections: [{ id: connectionId, platform: "instagram" }, ...(multiple ? [{ id: youtubeId, platform: "youtube" }] : [])].map(account => ({...account, status: "connected", platformAccountName: null, platformAccountUsername: null, supportsBackgroundRefresh: true, scopes: account.platform === "instagram" ? ["instagram_business_content_publish"] : ["https://www.googleapis.com/auth/youtube.upload"]})) });
+      if (url === "/api/account/publishing-preferences?schema=3") return Response.json({ok:true,preferences:{containsSyntheticMedia:true,youtubePrivacyStatus:"private",youtubeMadeForKids:false,youtubeNotifySubscribers:false}});
+      if (url === "/api/schedules?configOnly=1") return Response.json({ ok: true, minimumScheduleLeadMinutes: 5 });
+      if (init.method === "POST") {
+        const input = JSON.parse(init.body);
+        assert.equal(JSON.parse(store.get(storageKey)).input.idempotencyKey, input.idempotencyKey, "persist before POST");
+        if (pendingFailure) { pendingFailure = false; throw new Error("lost schedule response"); }
+        return Response.json({ ok: true, schedule: { id: saved?.scheduleId ?? randomUUID(), mediaAssetId: input.source.id, idempotencyKey: input.idempotencyKey, status: "scheduled", targets: input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) } });
+      }
+      if (url === "/api/schedules") return Response.json({ ok: true, schedules: [] });
+      if (saved?.scheduleId && url === `/api/schedules/${saved.scheduleId}`) return Response.json({ ok: true, schedule: { id: saved.scheduleId, mediaAssetId: saved.input.source.id, idempotencyKey: saved.input.idempotencyKey, status: "scheduled", targets: [{ socialConnectionId: connectionId, platform: "instagram" }] } });
+      throw new Error(`Unexpected schedule request ${url}`);
+    },
+  });
+  const submission = { caption: "My caption", scheduledSource: { kind: "media_asset", id: finished?.id ?? output.id }, targets: [{ connectionId, platform: "instagram", settings: { shareToFeed: true } }], scheduledFor: "2099-12-01T10:00:00.000Z", scheduledDate: "2099-12-01", scheduledTime: "15:30", timezone: "Asia/Calcutta" };
+  if (multiple) submission.targets.push({ connectionId: youtubeId, platform: "youtube", settings: { containsSyntheticMedia:true,madeForKids:false,notifySubscribers:false,privacyStatus: "private" } });
+  return { calls, props, store, storageKey, submission, cache, setFinished(value) { finished = value; }, render() {
+    cursor = 0; const tree = testModule.WorkflowFinishingBoundary(props); while (effects.length) effects.shift()();
+    return { view: tree.props.children[0].props.value, editor: tree.props.children[1]?.props ?? null };
+  }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
+}
+
+test("the original simple form submits directly once for Hook and Phone workflows", async () => {
+  for(const kind of ["hook","phone"]) for(const multiple of [false,true]) {
+    const h=schedulingHarness({kind,multiple}); h.render(); await tick(); const screen=h.render();
+    assert.equal(h.calls.length,0); assert.equal(screen.editor,null); assert.equal(screen.view.scheduleReview,undefined);
+    screen.view.schedule.onAction(); screen.view.schedule.onAction(); await tick();
+    const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,1);
+    const actual=JSON.parse(posts[0].body); assert.equal(actual.source.id,output.id); assert.equal(actual.caption,h.props.scheduleDraft.caption);
+    assert.equal(actual.scheduledFor,h.submission.scheduledFor); assert.deepEqual(actual.targets,h.submission.targets);
+    assert.equal(h.render().view.schedule.message,"Post scheduled");
+    assert.equal(h.cache.data().schedules.length, 1);
+    assert.equal(h.cache.queryClient.getQueryState(h.cache.key).isInvalidated, true);
+    assert.equal(h.cache.foreign().schedules[0].id, "foreign-post"); h.unmount();
+  }
+});
+
+test("draft-scoped scheduling marks completion only after a verified schedule acknowledgement",async()=>{
+  let completed=0;const h=schedulingHarness({draftId:randomUUID(),onScheduled:()=>completed++});
+  h.render();await tick();assert.equal(completed,0);h.render().view.schedule.onAction();await tick();
+  assert.equal(completed,1);assert.equal(h.calls.filter(call=>call.method==="POST").length,1);h.unmount();
+});
+
+test("a rejected old time is corrected in the same form with the same request identity", async () => {
+  for(const kind of ["hook","phone"]) {
+    const saved={version:1,owner:"owner",kind,timeRejected:true,input:{caption:"Original",source:{kind:"media_asset",id:output.id},targets:[{platform:"instagram",connectionId:randomUUID()}],caption:"Old",timezone:"Asia/Calcutta",scheduledFor:"2026-10-13T22:40:00.000Z",idempotencyKey:`explore:${randomUUID()}`}};
+    const h=schedulingHarness({kind,saved}); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    const actual=JSON.parse(h.calls.find(call=>call.method === "POST").body); assert.equal(actual.idempotencyKey,saved.input.idempotencyKey);
+    assert.equal(actual.scheduledFor,h.submission.scheduledFor); assert.equal(h.render().view.schedule.error,null); h.unmount();
+  }
+});
+
+test("late hydration status or error cannot overwrite a corrected accepted schedule", async () => {
+  for (const kind of ["hook", "phone"]) for (const response of ["absent", "accepted-old", "failed"]) {
+    const saved = { version: 1, owner: "owner", kind, timeRejected: true, input: { caption: "Earlier request", source: { kind: "media_asset", id: output.id }, targets: [{ connectionId: randomUUID(), platform: "instagram" }], scheduledFor: "2026-10-13T22:40:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
+    let reads = 0, complete;
+    const h = schedulingHarness({ kind, saved, transport: async (url, init) => url === "/api/schedules" && !init.method && ++reads === 1 ? new Promise(resolve => { complete = resolve; }) : null });
+    h.render(); await tick();
+    assert.ok(complete);
+    assert.equal(h.calls.some(call => call.method === "POST"), false, "Hydration stays read-only");
+    h.render().view.schedule.onAction(); await tick();
+    const confirmedReceipt = h.store.get(h.storageKey);
+    assert.ok(JSON.parse(confirmedReceipt).scheduleId);
+    assert.equal(h.render().view.schedule.message, "Post scheduled");
+    if (response === "failed") complete(Response.json({ ok: false, message: "Earlier status lookup failed" }, { status: 500 }));
+    else if (response === "accepted-old") complete(Response.json({ ok: true, schedules: [{ id: randomUUID(), mediaAssetId: output.id, idempotencyKey: saved.input.idempotencyKey, status: "scheduled", targets: saved.input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) }] }));
+    else complete(Response.json({ ok: true, schedules: [] }));
+    await tick();
+    const screen = h.render();
+    assert.equal(screen.view.schedule.message, "Post scheduled");
+    assert.equal(screen.view.schedule.error, null);
+    assert.equal(h.store.get(h.storageKey), confirmedReceipt, "A late read cannot restore the superseded draft or schedule ID");
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+    h.unmount();
+  }
+});
+
+test("a corrected request with an uncertain server failure clears old time help and preserves exact replay", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const saved = { version: 1, owner: "owner", kind, timeRejected: true, input: { caption: "Earlier request", source: { kind: "media_asset", id: output.id }, targets: [{ connectionId: randomUUID(), platform: "instagram" }], scheduledFor: "2026-10-13T22:40:00.000Z", timezone: "Asia/Calcutta", idempotencyKey: `explore:${randomUUID()}` } };
+    let reads = 0, complete, posts = 0;
+    const h = schedulingHarness({ kind, saved, transport: async (url, init) => {
+      if (url === "/api/schedules" && !init.method && ++reads === 1) return new Promise(resolve => { complete = resolve; });
+      if (init.method === "POST" && ++posts === 1) return Response.json({ ok: false, message: "Could not create this schedule right now." }, { status: 500 });
+      return null;
+    } });
+    h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    let screen = h.render();
+    assert.match(screen.view.schedule.error, /Could not schedule your post/);
+    assert.match(screen.view.schedule.message, /Scheduling was interrupted/);
+    assert.doesNotMatch(screen.view.schedule.message, /time was rejected|Choose a future time/);
+    const pendingReceipt = h.store.get(h.storageKey), firstPost = h.calls.find(call => call.method === "POST");
+    assert.equal(JSON.parse(pendingReceipt).timeRejected, undefined, "A 500 cannot permit changing the durable request");
+    assert.equal(JSON.parse(firstPost.body).scheduledFor, h.submission.scheduledFor);
+    complete(Response.json({ ok: false, message: "Earlier status lookup failed" }, { status: 500 })); await tick();
+    screen = h.render();
+    assert.match(screen.view.schedule.error, /Could not schedule your post/);
+    assert.match(screen.view.schedule.message, /Scheduling was interrupted/);
+    assert.equal(h.store.get(h.storageKey), pendingReceipt);
+    h.props.scheduleDraft = { ...h.props.scheduleDraft, caption: "New visible caption", time: "18:45" };
+    h.render().view.schedule.onAction(); await tick();
+    const mutations = h.calls.filter(call => call.method === "POST");
+    assert.equal(mutations.length, 2);
+    assert.equal(mutations[1].body, firstPost.body, "Uncertainty can only replay the original corrected confirmation");
+    assert.equal(h.render().view.schedule.message, "Post scheduled");
+    h.unmount();
+  }
+});
+
+test("accepted schedules recover silently after a lost response in Hook and Phone workflows", async () => {
+  for (const kind of ["hook", "phone"]) {
+    let accepted;
+    const h = schedulingHarness({ kind, transport: async (url, init) => {
+      if (url === "/api/schedules" && init.method === "POST") {
+        const input = JSON.parse(init.body);
+        accepted = { id: randomUUID(), mediaAssetId: input.source.id, idempotencyKey: input.idempotencyKey, status: "scheduled", targets: input.targets.map(t => ({ socialConnectionId: t.connectionId, platform: t.platform })) };
+        throw new Error("Lost response after acceptance");
+      }
+      if (url === "/api/schedules" && !init.method) return Response.json({ ok: true, schedules: accepted ? [accepted] : [] });
+    } });
+    h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    const action = h.render().view.schedule;
+    assert.equal(action.error, null); assert.equal(action.message, "Post scheduled"); assert.equal(action.label, "Schedule another post");
+    assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
+  }
+});
+
+test("lost acknowledgements replay the exact durable request despite visible edits", async () => {
+  for(const kind of ["hook","phone"]) {
+    const h=schedulingHarness({kind,lost:true,multiple:true}); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    assert.match(h.render().view.schedule.error,/Could not schedule your post/);
+    assert.equal(h.render().view.schedule.label,"Try again");
+    const first=h.calls.find(call=>call.method === "POST"); h.props.scheduleDraft={...h.props.scheduleDraft,caption:"Changed",time:"18:45"};
+    h.render().view.schedule.onAction(); await tick();
+    const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].body,first.body);
+    assert.equal(h.render().view.schedule.label,"Schedule another post"); h.unmount();
+  }
+});
+
+test("reload is read-only and can resume the saved request without loaded video", async () => {
+  const saved={version:1,owner:"owner",kind:"hook",input:{caption:"Original",source:{kind:"media_asset",id:output.id},targets:[{connectionId:randomUUID(),platform:"instagram"}],scheduledFor:"2099-12-01T10:00:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
+  const h=schedulingHarness({saved,finished:null}); h.render(); await tick(); const screen=h.render();
+  assert.equal(h.calls.length,1); assert.equal(h.calls[0].method,undefined); assert.equal(screen.view.schedule.disabled,false);
+  screen.view.schedule.onAction(); await tick(); assert.deepEqual(JSON.parse(h.calls.find(call=>call.method === "POST").body),saved.input); h.unmount();
+});
+
+test("confirmed requests restore read-only and open another intent without posting", async () => {
+  const saved={version:1,owner:"owner",kind:"hook",scheduleId:randomUUID(),input:{caption:"Original",source:{kind:"media_asset",id:output.id},targets:[{connectionId:randomUUID(),platform:"instagram"}],scheduledFor:"2099-12-01T10:00:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
+  const h=schedulingHarness({saved}); h.render(); await tick(); const screen=h.render(); assert.equal(screen.view.schedule.disabled,false);
+  screen.view.schedule.onAction(); await tick(); assert.equal(h.calls.some(call=>call.method === "POST"),false); h.unmount();
+});
+
+test("Hook and Phone can explicitly schedule the same finished video an hour later", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const h = schedulingHarness({ kind }); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    const before = JSON.parse(h.store.get(h.storageKey));
+    const repeat = h.render().view.schedule;
+    assert.equal(repeat.label, "Schedule another post"); assert.equal(repeat.disabled, false);
+    repeat.onAction(); repeat.onAction(); await tick();
+    assert.equal(h.calls.filter(c => c.method === "POST").length, 1);
+    assert.equal(h.store.has(h.storageKey), false);
+    assert.equal(JSON.parse(h.store.get(`${h.storageKey}:confirmed:${encodeURIComponent(before.input.idempotencyKey)}`)).scheduleId, before.scheduleId);
+    h.props.scheduleDraft = { ...h.props.scheduleDraft, time: "16:30" };
+    h.render().view.schedule.onAction(); await tick();
+    const posts = h.calls.filter(c => c.method === "POST").map(c => JSON.parse(c.body));
+    assert.equal(posts.length, 2); assert.deepEqual(posts[1].source, posts[0].source);
+    assert.notEqual(posts[1].idempotencyKey, posts[0].idempotencyKey);
+    assert.equal(Date.parse(posts[1].scheduledFor) - Date.parse(posts[0].scheduledFor), 3600000);
+    assert.equal(h.cache.data().schedules.length, 2); h.unmount();
+  }
+});
+
+test("a delayed old Hook schedule response cannot replace a newer intent", async () => {
+  let complete;
+  const h = schedulingHarness({ transport: async (_url, init) => {
+    if (init?.method === "POST" && !complete) return new Promise(resolve => { complete = resolve; });
+  } });
+  h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+  const first = JSON.parse(h.store.get(h.storageKey));
+  const replacementKey = `explore:${randomUUID()}`;
+  h.store.set(h.storageKey, JSON.stringify({ ...first, input: { ...first.input, idempotencyKey: replacementKey, scheduledFor: "2099-12-01T11:00:00.000Z", scheduledTime: "16:30" } }));
+  complete(Response.json({ ok: true, schedule: { id: randomUUID(), mediaAssetId: output.id, idempotencyKey: first.input.idempotencyKey, status: "scheduled", targets: first.input.targets.map(target => ({ socialConnectionId: target.connectionId, platform: target.platform })) } }));
+  await tick();
+  assert.equal(JSON.parse(h.store.get(h.storageKey)).input.idempotencyKey, replacementKey);
+  assert.equal(h.cache.data().schedules.length, 0, "A stale acknowledgement must not enter the current calendar cache"); h.unmount();
+});
+
+test("unavailable accounts, failed storage and missing locks block schedule submission", async () => {
+  for(const mode of ["account","storage","locks"]) {
+    const h=schedulingHarness({storageFails:mode === "storage",locks:mode !== "locks"});
+    if(mode === "account") h.props.scheduleDraft.connectionId=randomUUID();
+    h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    assert.ok(h.render().view.schedule.error); assert.equal(h.calls.some(call=>call.method === "POST"),false); h.unmount();
+  }
+});
+
+test("Talking Head caption/export snapshots keep independent clip edits and demo audio without per-clip renders", async () => {
+  const demo = { id: randomUUID(), status: "ready", collection: "video", durationSeconds: 90 };
+  const editing = { version: 1, format: "hook", trimStartMs: 1000, trimEndMs: 3000, originalVolume: .6, musicVolume: .3, text: null };
+  const composition = { version: 1, sourceEditing: editing, demoEditing: { ...editing, trimEndMs: 6000 }, sourceAudioAssetId: randomUUID(), sourceAudioPlayback: "repeat" };
+  const demoAudioAssetId = randomUUID();
+  const h = harness({ subtitles: true, demoSource: demo, composition, demoAudioAssetId });
+  h.props.playback = "repeat"; h.render(); await tick(); h.render().action.onAction(); await tick(); h.render();
+  const body = JSON.parse(h.calls.find(call => call.method === "POST").body).draft;
+  assert.deepEqual(body.composition, composition);
+  assert.equal(body.demoAudioAssetId, demoAudioAssetId); assert.equal(body.demoAudioPlayback, "repeat");
+  assert.equal(body.demoAssetId, demo.id); assert.equal(body.sourceAssetId, source.id);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.equal(body.subtitles.version, 2); h.unmount();
+});
+
+
+test("checking an earlier completed request preserves a concurrently archived request", async () => {
+  const draft = { version: 1, kind: "hook", sourceAssetId: source.id, demoAssetId: null, demoAudioAssetId: null, demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: { language: "en", style: "clean" } };
+  const old = { version: 1, ownerId: "owner", kind: "hook", requestKey: randomUUID(), draft };
+  const concurrent = { ...old, requestKey: randomUUID() };
+  let added = false;
+  const h = harness({ recovery: [old], completed: true, onArchivedRead(store, key) {
+    if (!added) { added = true; store.set(key, JSON.stringify([old, concurrent])); }
+  } });
+  h.render(); await tick(); h.render().action.refresh(); await tick(); await tick();
+  assert.deepEqual(finishClient.readFinishRecovery(h.store.get(finishClient.finishRecoveryStorageKey(h.storageKey)), "owner", "hook"), [concurrent]);
+  assert.equal(h.calls.some(call => call.method === "POST"), false);
+  h.unmount();
+});
+
+
+test("an explicitly rejected schedule can use the newly prepared video with a new request identity", async () => {
+  const saved={version:1,owner:"owner",kind:"hook",timeRejected:true,input:{caption:"Original",source:{kind:"media_asset",id:output.id},targets:[{connectionId:randomUUID(),platform:"instagram"}],scheduledFor:"2026-10-13T22:40:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
+  const newOutput={...output,id:randomUUID()}; const h=schedulingHarness({saved,finished:newOutput}); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+  const actual=JSON.parse(h.calls.find(call=>call.method === "POST").body); assert.equal(actual.source.id,newOutput.id); assert.notEqual(actual.idempotencyKey,saved.input.idempotencyKey); h.unmount();
+});
+
+test("a rejection accepted in another tab prevents a replacement scheduling mutation", async () => {
+  let accepted=false;
+  const saved={version:1,owner:"owner",kind:"hook",timeRejected:true,input:{caption:"Original",source:{kind:"media_asset",id:output.id},targets:[{connectionId:randomUUID(),platform:"instagram"}],scheduledFor:"2026-10-13T22:40:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
+  const h=schedulingHarness({saved,finished:{...output,id:randomUUID()},transport:async(url,init)=> accepted && url === "/api/schedules" && !init.method ? Response.json({ok:true,schedules:[{id:randomUUID(),mediaAssetId:output.id,idempotencyKey:saved.input.idempotencyKey,status:"scheduled",targets:saved.input.targets.map(target=>({socialConnectionId:target.connectionId,platform:target.platform}))}]}) : null});
+  h.render(); await tick(); accepted=true; h.render().view.schedule.onAction(); await tick(); assert.equal(h.calls.some(call=>call.method === "POST"),false); assert.ok(JSON.parse(h.store.get(h.storageKey)).scheduleId); h.unmount();
+});
+
+test("changing video or schedule during account validation blocks stale submission", async () => {
+  for(const field of ["video","caption","time","account"]) {
+    let complete;
+    const h=schedulingHarness({transport:async(url)=>url === "/api/schedules?configOnly=1" ? new Promise(resolve=>{complete=resolve;}) : null});
+    h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
+    if(field === "video") h.setFinished({...output,id:randomUUID()}); else h.props.scheduleDraft={...h.props.scheduleDraft,[field === "account" ? "connectionId" : field]:field === "time" ? "16:30" : "changed"};
+    h.render(); complete(Response.json({ok:true,minimumScheduleLeadMinutes:5})); await tick();
+    assert.equal(h.calls.some(call=>call.method === "POST"),false); assert.match(h.render().view.schedule.error,/video or schedule changed/); h.unmount();
+  }
+});

@@ -1,0 +1,76 @@
+{
+  "mainComp": "AI Character v4 — Create Yours",
+  "comps": 5,
+  "layers": 40,
+  "textLayers": 11,
+  "numericAndPathKeys": 257,
+  "masks": 1,
+  "expressions": 0,
+  "expressionErrors": [],
+  "fonts": [
+    "Bahnschrift-Bold",
+    "SegoeUI"
+  ],
+  "sources": [
+    {
+      "name": "bedroom",
+      "naturalDimensions": [
+        941,
+        1672
+      ],
+      "unchanged": true
+    },
+    {
+      "name": "presenter",
+      "naturalDimensions": [
+        941,
+        1672
+      ],
+      "unchanged": true
+    },
+    {
+      "name": "selfie",
+      "naturalDimensions": [
+        941,
+        1672
+      ],
+      "unchanged": true
+    },
+    {
+      "name": "kitchen",
+      "naturalDimensions": [
+        744,
+        1336
+      ],
+      "unchanged": true
+    },
+    {
+      "name": "glasses",
+      "naturalDimensions": [
+        744,
+        1336
+      ],
+      "unchanged": true
+    },
+    {
+      "name": "office",
+      "naturalDimensions": [
+        768,
+        1360
+      ],
+      "unchanged": true
+    },
+    {
+      "name": "standing",
+      "naturalDimensions": [
+        941,
+        1672
+      ],
+      "unchanged": true
+    }
+  ],
+  "project": "Explore AI Character — Create Yours v4.aep",
+  "preview": "Preview/v4/ai-character-v4.mp4",
+  "fullDecodeVerified": true,
+  "editableTextChangeVerified": true
+}

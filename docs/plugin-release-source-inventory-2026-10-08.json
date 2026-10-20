@@ -1,0 +1,174 @@
+{
+  "baseCommit": "9390357231e31cfb72cdb67df6098d5b3c87aa4d",
+  "releaseRoot": "C:\\Users\\chund\\.codex\\worktrees\\plugin-readiness\\UGC",
+  "files": [
+    {
+      "path": "app/connect-ai/connect-ai.module.css",
+      "sha256": "5843a043d2ce31163bcf33753acaa735b60c906c7f9c4e7c9f078918cfe3a798"
+    },
+    {
+      "path": "app/connect-ai/page.tsx",
+      "sha256": "9a31bf358b7e248a71b016a789354167febc4cdbd471d6ddfc914776e3cf8a9a"
+    },
+    {
+      "path": "app/mcp/route.ts",
+      "sha256": "6eb084563946b0f66a1c75b8283369ae06d720fcf6f93e87bc4af7f95f6689aa"
+    },
+    {
+      "path": "app/oauth/authorize/consent-brand-mark.tsx",
+      "sha256": "293c11f770e68f57f4d95177b21bf8584e87bafae0ffa699de4e0f2502158fd6"
+    },
+    {
+      "path": "app/oauth/authorize/oauth-consent-view.tsx",
+      "sha256": "7237addec93040c2a69d29db905b3fccd4354553e42010e106f6e8a0e65aab1e"
+    },
+    {
+      "path": "app/oauth/authorize/oauth-consent.module.css",
+      "sha256": "c3f9b21b36cc3fcdc1a5829d1b0bafcae56291ceda21019aa63cea16da93dc94"
+    },
+    {
+      "path": "app/oauth/authorize/oauth-consent.tsx",
+      "sha256": "7fc635c460d7225107d5e78828bbc24fb22681c201997740d74ef782f212468c"
+    },
+    {
+      "path": "app/privacy/page.tsx",
+      "sha256": "bcad7b800244f13fd060ca5bb63469d2f7eb580766641e115e7c34724ba6b92f"
+    },
+    {
+      "path": "components/mcp-onboarding/connect-ai-panel.tsx",
+      "sha256": "eb8c83c0dbcc397265ebbe2c062d233285183db17ec281707d7ad5569d2562b6"
+    },
+    {
+      "path": "docs/plugin-review-materials-2026-10-08.md",
+      "sha256": "306c73dde5cf79b8e8873a89e262e5ce794bcc547020cb9d175153ca69507bfe"
+    },
+    {
+      "path": "lib/billing/subscription-db.ts",
+      "sha256": "9b2e26a0bc1cb47af2b1af272ec8d17c2864201eea8aca571cb4afb6e8e3241b"
+    },
+    {
+      "path": "lib/mcp/generation-tools.ts",
+      "sha256": "a776fdfc4ae627ca9e67fac627998f024e8bc4b36b17ff1d40e42f56f9c3043f"
+    },
+    {
+      "path": "lib/mcp/mutation-tools.ts",
+      "sha256": "03f1ba6a4eb52ab9f2d01539befa5b48d3f39413f6039f80f48ffeeb0d48ba0e"
+    },
+    {
+      "path": "lib/mcp/read-tools.ts",
+      "sha256": "d6aeec43120bfb00fe937f129f0ff6d0b85310b9def8088bc5feabd1f87769b8"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "0d6978dcf4fdfbce7781e21e09d3b02dd57187cd84fbb552824cce6dda2b35e2"
+    },
+    {
+      "path": "package.json",
+      "sha256": "3a31ef9380f21b1f51d01bc8631349e3a98fab424f640916f22b17b6d65d0435"
+    },
+    {
+      "path": "plugins/ugc-pilot/.claude-plugin/plugin.json",
+      "sha256": "b975f03a869dca437e2f3aa27f205e9d3a5613e9fc49d8601d5ded0d109137c1"
+    },
+    {
+      "path": "plugins/ugc-pilot/.codex-plugin/plugin.json",
+      "sha256": "05df11d6817c48882c5efe9c4c7b74c61905a5938fbc8d76e3abb1b47cbee86b"
+    },
+    {
+      "path": "plugins/ugc-pilot/.mcp.json",
+      "sha256": "3318d752bdf18b1afc653d91bc5ae485979b3711507fb52b2ad5ebc72fdf3a72"
+    },
+    {
+      "path": "plugins/ugc-pilot/assets/logo.png",
+      "sha256": "44a9e46f81ff6618d620647510c31e1c625f426c10ce8b50c8dae248522f7d36"
+    },
+    {
+      "path": "plugins/ugc-pilot/evaluation-cases.json",
+      "sha256": "1200bc770700da006e78104eb4090d8d9ecd34b8981cbe5f71a5a3be7b2a4281"
+    },
+    {
+      "path": "plugins/ugc-pilot/mcp.json",
+      "sha256": "5f21bb3408bbdb4fb3d3327c0abb5cd16eee087816347aefdd3b569d1295790d"
+    },
+    {
+      "path": "plugins/ugc-pilot/plugin.json",
+      "sha256": "6ba3058f50bc6265c83a75c70e312d92c16d9d4abfcce1bba24ce56c8142afd1"
+    },
+    {
+      "path": "plugins/ugc-pilot/README.md",
+      "sha256": "9d13a899e85018b5a606227096d44e94496cbdf299f785d7e146bdacee506fc2"
+    },
+    {
+      "path": "plugins/ugc-pilot/skills/connect-ugc-pilot/references/client-setup.md",
+      "sha256": "79f5a5cec9754a21d560b05436f26437ce17a8de8a494dbf4eac548797813747"
+    },
+    {
+      "path": "plugins/ugc-pilot/skills/connect-ugc-pilot/SKILL.md",
+      "sha256": "d7db25048c45da624085b903a69af7bb4a6576d8c3da9dff0b0f437986920dc5"
+    },
+    {
+      "path": "plugins/ugc-pilot/skills/create-ugc-media/SKILL.md",
+      "sha256": "b39c2d371a1dec8b55dff38537e37910a13087c0c5cf46cb41bea380e7a52035"
+    },
+    {
+      "path": "plugins/ugc-pilot/skills/manage-ugc-media/SKILL.md",
+      "sha256": "2839c508efcf1477a44f0c36e8046a67a1c202588ea2ce8178ea2e5f17241403"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.0.zip",
+      "sha256": "f7d363d5f297cc7a04f34bf5c0e2c8d428e3920773df0807183c6b5423df23b5"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.0.zip.sha256",
+      "sha256": "f46713fc2529c197e904a5966a8b27bf80eb80978da1627632d8ca28c4420b8e"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.1.zip",
+      "sha256": "037c35c4d1866fd17e267a9cffa4ed20cd12c4c4c766825af39923a1dfa2b830"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-0.1.1.zip.sha256",
+      "sha256": "ce9772908f55990cee18d3436fbbf6ca1411b1f739fb3b28bdab77aea16a5d60"
+    },
+    {
+      "path": "public/downloads/ugc-pilot-setup.md",
+      "sha256": "21769674043a75b7cde4c64075e7c02cffc299ceba0709e8700378540e0cc0f3"
+    },
+    {
+      "path": "scripts/build-ugc-pilot-plugin.py",
+      "sha256": "5e314ae7dd3c48e688ed320a6318f99a1ebfe73e6e8b4b43c37b67c930dbcbba"
+    },
+    {
+      "path": "scripts/mcp-plugin-schemas/mcp.json",
+      "sha256": "9f06ed166b570e4868eb51de0afd413409d9edac166706f7046e1c5d701e1c0e"
+    },
+    {
+      "path": "scripts/mcp-plugin-schemas/plugin.json",
+      "sha256": "85ef49078f4673536aa594bef558161bcd0315e1101d6559ca4025b56e4b2e0d"
+    },
+    {
+      "path": "scripts/test-mcp-generation-tools.mjs",
+      "sha256": "b252519c6dad789d20781eeb16eec93a9cd7f29e8c29ded0bb409f59355d297c"
+    },
+    {
+      "path": "scripts/test-mcp-read-tools.mjs",
+      "sha256": "b3cfd53fb0b63d2d47d5a8833887237928010bcce26e4bf482c399101dacb161"
+    },
+    {
+      "path": "scripts/validate-ugc-pilot-plugin.mjs",
+      "sha256": "6ccfb66f8d2970393f61bd3b85e4a662093a7fe999a316bf9b57a6ae00793828"
+    },
+    {
+      "path": "scripts/validate-ugc-pilot-plugin.test.mjs",
+      "sha256": "0a86a4e8cae25f03983ec0fd639cc9f2e1810def9329d2da174969368848432f"
+    },
+    {
+      "path": "worker/package-lock.json",
+      "sha256": "242311e8cabc2e5395e119e0ebf9978aad7a5c7671e9c7b1a1fa4a6c78833015"
+    },
+    {
+      "path": "worker/package.json",
+      "sha256": "3b94fcd9bdfd5dabf60e45f2c4aa856293885ca6d9f6a4d86b23ac9752773352"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import {
   getMissingVercelGcpCredentialEnvVars,
 } from "../gcp/credentials.ts";
 import type {
+  CreateSignedDownloadUrlParams,
   CreateSignedPutUrlParams,
   GetStorageObjectParams,
   ObjectStorageProvider,
@@ -173,15 +174,21 @@ async function createSignedPutUrl(params: CreateSignedPutUrlParams) {
   const config = getStorageConfig();
   const cleanKey = cleanGcsKey(params.key);
   const file = getStorageClient(config).bucket(config.bucket).file(cleanKey);
-  const extensionHeaders = params.cacheControl
-    ? { "cache-control": params.cacheControl }
-    : undefined;
+  const extensionHeaders: Record<string, string> = {};
+  if (params.cacheControl) extensionHeaders["cache-control"] = params.cacheControl;
+  if (params.maxBytes !== undefined) {
+    if (!Number.isSafeInteger(params.maxBytes) || params.maxBytes <= 0) {
+      throw new Error("Invalid signed upload byte limit.");
+    }
+    extensionHeaders["x-goog-content-length-range"] = `1,${params.maxBytes}`;
+  }
+  if (params.createOnly) extensionHeaders["x-goog-if-generation-match"] = "0";
 
   const [url] = await file.getSignedUrl({
     action: "write",
     contentType: params.contentType,
     expires: Date.now() + (params.expiresInSeconds ?? 600) * 1000,
-    ...(extensionHeaders ? { extensionHeaders } : {}),
+    ...(Object.keys(extensionHeaders).length > 0 ? { extensionHeaders } : {}),
     version: "v4",
   });
 
@@ -203,6 +210,25 @@ async function headObject(params: StorageObjectKeyParams) {
   } catch (error) {
     throw normalizeGcsError(error, cleanKey);
   }
+}
+
+async function createSignedDownloadUrl(params: CreateSignedDownloadUrlParams) {
+  const expiresInSeconds = params.expiresInSeconds ?? 300;
+  if (!Number.isSafeInteger(expiresInSeconds) || expiresInSeconds < 1 || expiresInSeconds > 600) {
+    throw new Error("Invalid download URL lifetime.");
+  }
+  if (!/^[a-z0-9][a-z0-9._-]{0,119}$/i.test(params.fileName)) {
+    throw new Error("Invalid download filename.");
+  }
+  const config = getStorageConfig();
+  const file = getStorageClient(config).bucket(config.bucket).file(cleanGcsKey(params.key));
+  const [url] = await file.getSignedUrl({
+    action: "read",
+    version: "v4",
+    expires: Date.now() + expiresInSeconds * 1000,
+    promptSaveAs: params.fileName,
+  });
+  return url;
 }
 
 async function getObject(
@@ -407,6 +433,7 @@ export const gcsStorageProvider: ObjectStorageProvider = {
   buildDirectUrl,
   buildPublicUrl,
   createSignedPutUrl,
+  createSignedDownloadUrl,
   headObject,
   getObject,
   deleteObject,

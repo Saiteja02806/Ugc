@@ -1,7 +1,12 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { gatewayRetryFetch } from "@/lib/supabase/gateway-retry-fetch";
 
+import {
+  getActiveComplimentaryPlanGrant,
+  resolveBillingAccess,
+} from "./complimentary-plan-grants";
 import {
   FREE_TRIAL_CONTENT_DAYS,
   FREE_TRIAL_DAILY_CONTENT_PIECES,
@@ -29,8 +34,8 @@ export type FreeTrialEntitlement = {
   dailyContentPieces: number;
   daysRemaining: number;
   expiresAt: string | null;
-  instagramSchedulesLimit: number;
-  instagramSchedulesRemaining: number;
+  instagramSchedulesLimit: number | null;
+  instagramSchedulesRemaining: number | null;
   instagramSchedulesUsed: number;
   startedAt: string | null;
   status: FreeTrialStatus;
@@ -84,7 +89,7 @@ export async function getFreeTrialEntitlement(
 
   if (usageResult.error) {
     throw new Error(
-      `Could not load free trial schedule usage: ${usageResult.error.message}`,
+      `Could not load free trial schedule usage (HTTP ${usageResult.status}): ${usageResult.error.message || usageResult.statusText}`,
     );
   }
 
@@ -106,10 +111,9 @@ export async function getFreeTrialEntitlement(
   const contentDaysRemaining =
     status === "active" ? Math.max(contentDaysLimit - contentDaysUsed, 0) : 0;
   const usage = Math.max(0, usageResult.count ?? 0);
-  const scheduleLimit = positiveInteger(
-    trial?.instagram_schedule_limit,
-    FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT,
-  );
+  const scheduleLimit = trial?.instagram_schedule_limit == null
+    ? FREE_TRIAL_INSTAGRAM_SCHEDULE_LIMIT
+    : positiveInteger(trial.instagram_schedule_limit, 5);
 
   return {
     contentDaysLimit,
@@ -129,15 +133,22 @@ export async function getFreeTrialEntitlement(
     expiresAt: trial?.expires_at ?? null,
     instagramSchedulesLimit: scheduleLimit,
     instagramSchedulesRemaining:
-      status === "active" ? Math.max(scheduleLimit - usage, 0) : 0,
+      status === "active"
+        ? scheduleLimit === null
+          ? null
+          : Math.max(scheduleLimit - usage, 0)
+        : 0,
     instagramSchedulesUsed: usage,
     startedAt: trial?.started_at ?? null,
     status,
   };
 }
 
-export async function assertFreeTrialContentAccess(userId: string) {
-  const activeSubscription = await getActivePaidSubscription(userId);
+export async function assertFreeTrialContentAccess(
+  userId: string,
+  options: { existingFeedId?: string } = {},
+) {
+  const activeSubscription = await getActiveProductPlanAccess(userId);
 
   if (activeSubscription) {
     return {
@@ -152,14 +163,38 @@ export async function assertFreeTrialContentAccess(userId: string) {
 
   if (trial.status !== "active") {
     throw new FreeTrialAccessError(
-      "Your 3-day free trial has ended. Upgrade to generate more content.",
+      "Your free trial has ended. Upgrade to generate more content.",
       "free_trial_content_expired",
     );
   }
 
   if (trial.contentDaysRemaining <= 0) {
+    // The last daily pack consumes its quota when it is reserved, before its
+    // asynchronous generation finishes. Resume only that owner's saved trial
+    // pack; this allowance must never authorize creating another pack.
+    if (options.existingFeedId && trial.startedAt && trial.expiresAt) {
+      const { data: feed, error } = await getClient()
+        .from(DAILY_TRENDING_FEEDS_TABLE)
+        .select("daily_limit")
+        .eq("id", options.existingFeedId)
+        .eq("user_id", userId)
+        .eq("plan_key", "free")
+        .gte("created_at", trial.startedAt)
+        .lt("created_at", trial.expiresAt)
+        .maybeSingle();
+      if (error) {
+        throw new Error(`Could not verify the allocated trial pack: ${error.message}`);
+      }
+      if (feed && Number.isInteger(feed.daily_limit) && feed.daily_limit > 0) {
+        return {
+          paid: false as const,
+          planKey: null,
+          trial: { ...trial, dailyContentPieces: feed.daily_limit },
+        };
+      }
+    }
     throw new FreeTrialAccessError(
-      "Your 3-day free trial content allowance has been used. Upgrade to generate more content.",
+      "Your free trial content allowance has been used. Upgrade to generate more content.",
       "free_trial_content_days_exhausted",
     );
   }
@@ -168,7 +203,7 @@ export async function assertFreeTrialContentAccess(userId: string) {
 }
 
 export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
-  if (await getActivePaidSubscription(userId)) {
+  if (await getActiveProductPlanAccess(userId)) {
     return;
   }
 
@@ -176,14 +211,17 @@ export async function assertFreeTrialInstagramSchedulingAccess(userId: string) {
 
   if (trial.status !== "active") {
     throw new FreeTrialAccessError(
-      "Your 3-day free trial has ended. Upgrade to schedule another Instagram post.",
+      "Your free trial has ended. Upgrade to schedule another Instagram post.",
       "free_trial_schedule_expired",
     );
   }
 
-  if (trial.instagramSchedulesRemaining <= 0) {
+  if (
+    trial.instagramSchedulesRemaining !== null &&
+    trial.instagramSchedulesRemaining <= 0
+  ) {
     throw new FreeTrialAccessError(
-      "Your free trial allows up to 5 Instagram posts in total, including future dates. Upgrade to schedule more.",
+      `Your free trial allows up to ${trial.instagramSchedulesLimit} Instagram posts in total, including future dates. Upgrade to schedule more.`,
       "free_trial_schedule_limit_reached",
     );
   }
@@ -217,29 +255,48 @@ function getClient(): SupabaseClient {
   }
 
   client ??= createClient(url, key, {
+    global: { fetch: gatewayRetryFetch },
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
   return client;
 }
 
-async function getActivePaidSubscription(userId: string) {
-  const { data, error } = await getClient()
-    .from("billing_subscriptions")
-    .select("plan_key")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
+async function getActiveProductPlanAccess(userId: string) {
+  const [subscriptionResult, complimentaryGrant] = await Promise.all([
+    getClient()
+      .from("billing_subscriptions")
+      .select("plan_key")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("last_event_at", { ascending: false })
+      .limit(10),
+    getActiveComplimentaryPlanGrant(userId),
+  ]);
 
-  if (error) {
-    throw new Error(`Could not load subscription access: ${error.message}`);
+  if (subscriptionResult.error) {
+    throw new Error(
+      `Could not load subscription access: ${subscriptionResult.error.message}`,
+    );
   }
 
-  return data
+  const activeSubscription = (subscriptionResult.data ?? []).find(
+    (subscription) => subscription.plan_key === "growth",
+  ) ?? subscriptionResult.data?.[0] ?? null;
+  const dodoPlanKey =
+    activeSubscription?.plan_key === "growth"
+      ? "growth"
+      : activeSubscription?.plan_key === "starter"
+        ? "starter"
+        : null;
+  const access = resolveBillingAccess({
+    complimentaryPlanKey: complimentaryGrant?.planKey ?? null,
+    dodoPlanKey,
+  });
+
+  return access.accessSource !== "free"
     ? {
-        planKey:
-          data.plan_key === "growth" ? ("growth" as const) : ("starter" as const),
+        planKey: access.planKey,
       }
     : null;
 }

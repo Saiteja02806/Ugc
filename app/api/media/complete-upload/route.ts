@@ -7,6 +7,8 @@ import {
 import { getAllowedContentTypes, getMaxUploadBytes } from "@/lib/media/media-upload";
 import { isMediaRatio } from "@/lib/media/types";
 import { headStorageObject } from "@/lib/storage/storage";
+import { isPrivateUserMedia } from "@/lib/media/media-delivery";
+import { privateMediaHead } from "@/lib/media/private-media-storage";
 
 export const runtime = "nodejs";
 
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const object = await headStorageObject({ key });
+    const object = isPrivateUserMedia(asset) ? await privateMediaHead(key) : await headStorageObject({ key });
     const objectType = object.ContentType?.split(";", 1)[0]?.trim().toLowerCase() || "";
     const objectSize = object.ContentLength ?? 0;
 
@@ -71,17 +73,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const width = toPositiveInteger(body?.width);
-    const height = toPositiveInteger(body?.height);
+    const isAudio = asset.collection === "audio";
+    const width = isAudio ? null : toPositiveInteger(body?.width);
+    const height = isAudio ? null : toPositiveInteger(body?.height);
 
-    if (!width || !height) {
+    if (!isAudio && (!width || !height)) {
       return Response.json(
         { ok: false, error: "Media width and height are required." },
         { status: 400 },
       );
     }
 
-    const ratio = isMediaRatio(body?.ratio) ? body.ratio : getRatio(width, height);
+    const ratio = isAudio ? "other" : isMediaRatio(body?.ratio) ? body.ratio : getRatio(width!, height!);
     const durationSeconds =
       asset.collection === "image"
         ? null
@@ -93,7 +96,17 @@ export async function POST(request: Request) {
 
     if (asset.collection !== "image" && durationSeconds === null) {
       return Response.json(
-        { ok: false, error: "Video duration is required." },
+        { ok: false, error: `${isAudio ? "Audio" : "Video"} duration is required.` },
+        { status: 400 },
+      );
+    }
+
+    // Demo background tracks can be longer than the video and are fitted by
+    // the finishing worker. Keep the existing Create-reference upload cap.
+    const maxAudioSeconds = ["explore-demo", "music-library"].includes(asset.project_id ?? "") ? 600 : 30;
+    if (isAudio && durationSeconds! > maxAudioSeconds) {
+      return Response.json(
+        { ok: false, error: `Audio ${maxAudioSeconds === 600 ? "background tracks" : "references"} must be ${maxAudioSeconds} seconds or shorter.` },
         { status: 400 },
       );
     }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import {
@@ -13,7 +14,13 @@ import {
   prepareTrendingWallTextIdeas,
   TrendingWallTextPreparationError,
 } from "@/lib/trending/trending-wall-text-feed";
-import { classifyWallTextGenerationFailure } from "@/lib/trending/wall-text-generation-failure";
+import { recordWallTextFailureDiagnostic } from "@/lib/trending/wall-text-db";
+import {
+  classifyWallTextGenerationFailure,
+  getWallTextFailurePrivateMessage,
+  WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
+  wasWallTextFailureDiagnosticRecorded,
+} from "@/lib/trending/wall-text-generation-failure";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +30,7 @@ const MAX_BODY_LENGTH = 4_096;
 type PrepareWallTextInput = {
   businessProfileId?: unknown;
   businessProfileVersion?: unknown;
+  dailyFeedId?: unknown;
   earlyPlanId?: unknown;
   recoveryIteration?: unknown;
   recoveryKey?: unknown;
@@ -60,6 +68,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (!isWallTextEnabled()) {
+      return json({ ideaCount: 0, ok: true, skipped: "trending_format_disabled" });
+    }
     const profile = await getBusinessProfileForUser(input.userId);
 
     if (
@@ -70,7 +81,8 @@ export async function POST(request: Request) {
       return json({ ok: false, error: "Business Profile changed." }, 409);
     }
 
-    const ideas = await prepareTrendingWallTextIdeas(profile, {
+    const result = await prepareTrendingWallTextIdeas(profile, {
+      dailyFeedId: input.dailyFeedId,
       earlyPlanId: input.earlyPlanId,
       mode: input.refillKey ? "refill" : "initial",
       recoveryIteration: input.recoveryIteration,
@@ -79,19 +91,53 @@ export async function POST(request: Request) {
       requestKey: input.requestKey,
     });
 
-    return json({ ideaCount: ideas.length, ok: true });
+    // A daily delivery owns a fixed set of feed slots. Returning a smaller
+    // historical-library count must never settle that delivery as complete.
+    if (input.dailyFeedId && result.ideaCount !== input.requestedCount) {
+      throw new TrendingWallTextPreparationError(
+        `Wall-of-text daily delivery prepared ${result.ideaCount} of ${input.requestedCount} required items.`,
+        409,
+        WALL_TEXT_DAILY_DELIVERY_SHORTFALL,
+      );
+    }
+
+    return json({ ideaCount: result.ideaCount, ok: true });
   } catch (error) {
+    const failure = classifyWallTextGenerationFailure(error);
+    if (!wasWallTextFailureDiagnosticRecorded(error)) {
+      try {
+        await recordWallTextFailureDiagnostic({
+          details: failure.diagnostic,
+          errorCode: failure.errorCode,
+          errorMessage: getWallTextFailurePrivateMessage(error),
+          requestKey: input.requestKey,
+          retryable: failure.retryable,
+          userId: input.userId,
+        });
+      } catch (diagnosticError) {
+        console.error("Could not record private Wall-of-text preparation diagnostic", {
+          error: diagnosticError instanceof Error
+            ? diagnosticError.message
+            : String(diagnosticError),
+          requestKey: input.requestKey,
+        });
+      }
+    }
+
     if (error instanceof TrendingWallTextPreparationError) {
       return json(
-        { error: error.message, errorCode: error.code, ok: false },
+        {
+          error: "Wall-of-text preparation is temporarily unavailable.",
+          errorCode: error.code,
+          ok: false,
+        },
         error.status,
       );
     }
 
-    const failure = classifyWallTextGenerationFailure(error);
     console.error("Background Wall-of-text preparation failed", {
       errorCode: failure.errorCode,
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: getWallTextFailurePrivateMessage(error),
       errorName: error instanceof Error ? error.name : typeof error,
       recoveryIteration: input.recoveryIteration,
       recoveryKey: input.recoveryKey,
@@ -101,7 +147,9 @@ export async function POST(request: Request) {
     });
     return json(
       {
-        error: failure.publicMessage,
+        // This endpoint is worker-only, but retaining a generic body ensures a
+        // future caller cannot receive model, database, or provider details.
+        error: "Wall-of-text preparation is temporarily unavailable.",
         errorCode: failure.errorCode,
         ok: false,
       },
@@ -114,6 +162,7 @@ function parseInput(rawBody: string) {
   try {
     const input = JSON.parse(rawBody) as PrepareWallTextInput;
     const businessProfileId = getString(input.businessProfileId);
+    const dailyFeedId = getOptionalString(input.dailyFeedId);
     const earlyPlanId = getOptionalString(input.earlyPlanId);
     const recoveryKey = getOptionalString(input.recoveryKey);
     const refillKey = getOptionalString(input.refillKey);
@@ -159,6 +208,7 @@ function parseInput(rawBody: string) {
       ? {
           businessProfileId,
           businessProfileVersion,
+          dailyFeedId,
           earlyPlanId,
           recoveryIteration,
           recoveryKey,

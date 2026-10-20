@@ -107,7 +107,7 @@ test("uses the ten-piece free-trial allowance and repairs an already-created sma
   );
   assert.match(
     unifiedFeedDatabase,
-    /assertFreeTrialContentAccess\(userId\)[\s\S]*freeTrialAccess\.trial\?\.dailyContentPieces/,
+    /assertFreeTrialContentAccess\(userId, options\)[\s\S]*freeTrialAccess\.trial\?\.dailyContentPieces/,
   );
 });
 
@@ -323,6 +323,21 @@ test("derives feed status from slots so stale failure metadata cannot hide ready
   );
 });
 
+test("keeps ready cards visible while surfacing an explicit retry for failed slots", () => {
+  assert.match(
+    unifiedFeed,
+    /const hasFailedSlots = existingPlan\.slots\.some\([\s\S]*slot\.state === "failed"/,
+  );
+  assert.match(
+    unifiedFeed,
+    /state === "failed" \|\| hasFailedSlots[\s\S]*getPublicDailyFeedFailure/,
+  );
+  assert.match(
+    feedRoute,
+    /requestUrl\.searchParams\.get\("retryFailed"\) === "1"[\s\S]*failedFeed\?\.failure[\s\S]*restartFailedDailyTrendingFeedSlots/,
+  );
+});
+
 test("preserves a current ready Hook during refills and reopens only stale current slots", () => {
   assert.match(
     hookAssignmentIntegrityMigration,
@@ -529,7 +544,7 @@ test("retires a daily slot after a swipe and never schedules a replacement", () 
   );
 });
 
-test("keeps an existing daily pack immutable after an authenticated mix update", () => {
+test("keeps an existing daily pack immutable while allowing the slideshow-style mixer", () => {
   assert.match(contentMixRoute, /requireFirebaseUser\(request\)/);
   assert.match(contentMixRoute, /wall_text: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
   assert.match(contentMixRoute, /hook_video: z\.number\(\)\.int\(\)\.min\(0\)\.max\(100\)/);
@@ -537,7 +552,10 @@ test("keeps an existing daily pack immutable after an authenticated mix update",
   assert.doesNotMatch(contentMixRoute, /replanDailyTrendingUnboundSlots/);
   assert.match(contentMixRoute, /applied: currentFeed \? "next_day" : "today"/);
   assert.match(contentMixRoute, /Today's complete pack stays unchanged/);
-  assert.match(contentMixRoute, /editable: true/);
+  assert.match(
+    contentMixRoute,
+    /slideshow-style mixer is still safe to adjust for future packs[\s\S]+editable: true/,
+  );
   assert.doesNotMatch(contentMixRoute, /entitlement\.planKey === "free"/);
   assert.doesNotMatch(contentMixRoute, /fixed daily mix/);
 });

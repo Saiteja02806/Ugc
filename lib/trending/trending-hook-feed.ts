@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import { createHash } from "node:crypto";
 
@@ -26,6 +27,10 @@ import {
   releaseUnattachedTrendingHookGenerationChunk,
 } from "@/lib/trending/trending-hook-generation-runs";
 import { getHookPerformanceSignals } from "@/lib/trending/hook-performance";
+import {
+  HOOK_TEXT_LAYOUT_VERSION,
+  PREVIOUS_HOOK_TEXT_LAYOUT_VERSION,
+} from "@/lib/trending/hook-text-layout";
 import { listHookVideoBrowseInventory } from "@/lib/trending/hook-video-sources";
 import {
   getHookVideoTextPosition,
@@ -49,6 +54,7 @@ export async function prepareTrendingHookIdeas(
     targetActive?: number;
   } = {},
 ) {
+  assertTrendingFormatGenerationEnabled("hook_video");
   let mode = options.mode ?? "initial";
   const targetActive = Math.max(Math.trunc(options.targetActive ?? 6), 1);
   const source = await resolveTrendingVideoSource({
@@ -414,7 +420,7 @@ function toHookCopyJobCandidate(
   };
 }
 
-function toHookSourceRecord(
+export function toHookSourceRecord(
   idea: TrendingHookIdeaRecord,
   textPosition: HookVideoTextPosition | null,
 ): TrendingHookVideoSourceRecord {
@@ -441,7 +447,9 @@ function toHookSourceRecord(
       placement: textPosition ? "catalog" : "default",
       position: textPosition,
       styleVersion:
-        idea.overlayLayoutVersion === "hook-overlay-layout-v2-fixed"
+        idea.overlayLayoutVersion === HOOK_TEXT_LAYOUT_VERSION
+          ? "hook-overlay-v5-56px"
+          : idea.overlayLayoutVersion === PREVIOUS_HOOK_TEXT_LAYOUT_VERSION
           ? "hook-overlay-v4-fixed-type"
           : "hook-overlay-v3",
       value: idea.hookText,

@@ -1,4 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { getConnectionsRevision } from "../social/connection-revision";
+import { invalidateConnectionAnalytics } from "../social/connection-cache-events";
 
 import { getCurrentUserIdToken } from "../firebase/auth";
 import type { SocialConnection, SocialPlatform } from "../social/types";
@@ -93,6 +95,10 @@ export async function loadAccountSocialConnections(
         );
       }
 
+      const previous = queryClient.getQueryData<SocialConnection[]>(getAccountSocialConnectionsQueryKey(accountId));
+      if (previous && getConnectionsRevision(previous) !== getConnectionsRevision(data.connections)) {
+        invalidateConnectionAnalytics(queryClient, accountId);
+      }
       return data.connections;
     },
     queryKey: getAccountSocialConnectionsQueryKey(accountId),
@@ -245,6 +251,7 @@ export function removeAccountSocialConnection(
   accountId: string,
   connectionId: string,
 ) {
+  invalidateConnectionAnalytics(queryClient, accountId);
   queryClient.setQueryData<SocialConnection[]>(
     getAccountSocialConnectionsQueryKey(accountId),
     (current) => current?.filter((connection) => connection.id !== connectionId),

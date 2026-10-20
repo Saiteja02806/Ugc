@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wall overlay copy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "overlay_text",
+    "format",
+    "evidence_status"
+  ],
+  "properties": {
+    "overlay_text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "format": {
+      "enum": [
+        "paragraph",
+        "stacked_list",
+        "pov_story",
+        "contrast",
+        "short_statement"
+      ]
+    },
+    "evidence_status": {
+      "enum": [
+        "verified",
+        "user_stated",
+        "illustrative"
+      ]
+    },
+    "context_note": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    }
+  }
+}

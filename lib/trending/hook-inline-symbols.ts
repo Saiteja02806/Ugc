@@ -6,6 +6,10 @@
  */
 export const HOOK_INLINE_SYMBOLS = ["cross", "check"] as const;
 
+// Keep this value aligned with Lucide's strokeWidth used by the browser
+// preview. The worker applies its SVG scale to this 24x24 icon geometry.
+export const HOOK_INLINE_SYMBOL_STROKE_WIDTH = 2.8;
+
 export type HookInlineSymbol = (typeof HOOK_INLINE_SYMBOLS)[number];
 
 export type HookInlineToken =

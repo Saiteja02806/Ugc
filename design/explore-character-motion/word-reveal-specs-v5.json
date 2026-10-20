@@ -1,0 +1,79 @@
+[
+  {
+    "comp": "V5 SCENE — Imagine and discover",
+    "layer": "CAPTION — imagine",
+    "start": 0,
+    "end": 0.68,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Imagine and discover",
+    "layer": "CAPTION — AI character",
+    "start": 0.18,
+    "end": 0.9,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Imagine and discover",
+    "layer": "CAPTION — find your",
+    "start": 2.24,
+    "end": 2.85,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Imagine and discover",
+    "layer": "CAPTION — inspiration",
+    "start": 2.43,
+    "end": 3.05,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Make it yours",
+    "layer": "CAPTION — build a character",
+    "start": 5.55,
+    "end": 6.24,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Make it yours",
+    "layer": "CAPTION — that is yours",
+    "start": 5.81,
+    "end": 6.5,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Make it yours",
+    "layer": "GRAPHIC TYPE — YOURS — outline to fill",
+    "start": 6.14,
+    "end": 6.89,
+    "fill": true
+  },
+  {
+    "comp": "V5 SCENE — Personal and business",
+    "layer": "CAPTION — for yourself",
+    "start": 8.55,
+    "end": 9.21,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Personal and business",
+    "layer": "CAPTION — for your business",
+    "start": 10.29,
+    "end": 11.03,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Create yours",
+    "layer": "CAPTION — invitation",
+    "start": 12.8,
+    "end": 13.52,
+    "fill": false
+  },
+  {
+    "comp": "V5 SCENE — Create yours",
+    "layer": "CAPTION — brand",
+    "start": 13.09,
+    "end": 13.7,
+    "fill": false
+  }
+]

@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+__pycache__/
+*.pyc
 
 # next.js
 /.next/
@@ -44,10 +46,18 @@
 /ugc-home-*.png
 /ugcpilot_logo__1.png
 
+# Local-only Tinder / UGCPilot prototype files. The production demo lives in
+# app/try-ugcpilot, app/api/try-ugcpilot, lib/try-ugcpilot, and public/try-ugcpilot.
+/tinder/
+
 # local visual QA and generated review artifacts
 /.codex-artifacts/
 /.codex-audits/
 /artifacts/
+/output/
+/outputs/
+# Production demo media is stored under the configured GCS release prefix.
+/public/try-ugcpilot/media/
 /edit-screen-audit/
 /onboarding-flow-audit/
 /landing_page/
@@ -58,6 +68,14 @@
 /local-landing-page.png
 /desktop.ini
 /folderico-*.ico
+
+# Generated motion-review images and After Effects recovery copies.
+# Keep these on disk; retain editable projects, source media and final exports.
+/design/explore-character-motion/Preview/**/*.png
+/design/explore-character-motion/Preview/**/*.jpg
+/design/explore-character-motion/Auto-Save/*.aep
+/design/explore-hook-motion/Auto-Save/*.aep
+/design/explore-phone-motion/Auto-Save/*.aep
 
 # debug
 npm-debug.log*
@@ -90,3 +108,6 @@ crash.*.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Node's local bytecode cache is not release source.
+/node-compile-cache/

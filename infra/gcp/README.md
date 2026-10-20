@@ -28,7 +28,9 @@ must never be used as frontend state.
 - `ai-generation-worker/`: request-based AI generation, Hook/Wall copy, media
   analysis, and analytics synchronization jobs. It scales from zero to its
   Terraform maximum only while Cloud Tasks has work to deliver.
-- `carousel-worker/`: Carousel generation jobs.
+- `carousel-worker/`: Carousel generation and interactive slideshow edit jobs.
+  One minimum instance stays warm to avoid an edit waiting for a cold start;
+  the one-job concurrency limit remains. This incurs idle instance charges.
 - `video-render-worker/`: a request-based compatibility receiver plus the
   authoritative one-shot `ugc-video-render-job` for edit,
   schedule-combination, and wall-text renders. A Job starts for one render and
@@ -57,6 +59,10 @@ The foundation creates:
 Rate and concurrency limits live in `foundation/cloud-tasks.tf` and should be
 kept below downstream provider quotas.
 
+The app service account also requires `roles/cloudtasks.taskDeleter`, scoped
+to `ugc-social-publish-scheduler`, to cancel or reschedule future social posts.
+The project-level enqueuer role alone does not grant task deletion.
+
 ## Required app environment
 
 ```text
@@ -66,6 +72,7 @@ GCP_CLOUD_TASKS_LOCATION=us-central1
 GCP_CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL=ugc-scheduler-sa@ugcsaas.iam.gserviceaccount.com
 GCP_AI_GENERATION_TASK_URL=<Cloud Run service URL>
 GCP_CAROUSEL_TASK_URL=<Cloud Run service URL>
+GCP_CAROUSEL_EDIT_TASK_URL=<dedicated Carousel edit Cloud Run service URL>
 GCP_MEDIA_PROCESSING_TASK_URL=<Cloud Run service URL>
 GCP_SOCIAL_PUBLISH_TASK_URL=<Cloud Run service URL>
 # Must be the internal app launcher, not the legacy video worker service.
@@ -78,6 +85,19 @@ GCP_STORAGE_PUBLIC_BASE_URL=https://storage.googleapis.com/ugcsaas-media
 For an app hosted outside GCP, also configure the `ugc-app-sa` credential using
 `GOOGLE_CLOUD_CREDENTIALS_JSON`, or the split client-email/private-key values.
 Never commit credentials.
+
+Slideshow hook/image edits use `ugc-carousel-edit` and the dedicated
+`ugc-carousel-edit-worker`, with one warm instance and one concurrent request.
+Generation retains its existing serial queue/worker. Terminal generation jobs
+enqueue authenticated feed admission into `ugc-trending-reconciliation`; the
+database outbox and recovery scheduler retain failed deliveries.
+
+Release the screenshot metadata migration and provision both new queues plus
+the edit service before assigning `GCP_CAROUSEL_EDIT_TASK_URL` and releasing the
+web changes. Deploy the independent reconciliation API before updating the
+generation worker to dispatch to it. Keep the generation worker able to handle
+older edit deliveries already on `ugc-carousel` until they drain. The edit
+service adds one warm instance; do not raise shared generation concurrency.
 
 ## Existing production release order
 

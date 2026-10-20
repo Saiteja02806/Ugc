@@ -1,4 +1,7 @@
+import { getGeneratedVideoHistoryMetadata } from "@/lib/ai-studio/generated-video-history-metadata";
+import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
+import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
 import {
   listMediaAssets,
   serializeMediaAsset,
@@ -40,21 +43,45 @@ export async function GET(request: Request) {
     const rows = await listMediaAssets({
       collection,
       sourceTypes,
+      projectId: searchParams.get("projectId") || undefined,
       userId: user.uid,
     });
+
+    const visibleAssets = rows
+      .filter((row) =>
+        isMediaAssetVisibleInMediaList({
+          metadata: row.metadata,
+          sourceType: row.source_type,
+          status: row.status,
+        }, purpose),
+      )
+      .map(serializeMediaAsset);
+    const generatedJobIds = visibleAssets
+      .filter((asset) => asset.sourceType === "generated_video" || asset.sourceType === "generated_image")
+      .map((asset) => asset.sourceRecordId ?? "");
+    const generatedJobs = await getBackgroundJobsByIds(generatedJobIds);
+    const generatedJobMetadata = new Map(
+      generatedJobs
+        .filter(
+          (job) =>
+            (job.jobType === "generate_hook_video" || job.jobType === "generate_image") && job.userId === user.uid,
+        )
+        .map((job) => [
+          job.id,
+          job.jobType === "generate_hook_video" ? getGeneratedVideoHistoryMetadata(job.input) : getGeneratedImageHistoryMetadata(job.input),
+        ]),
+    );
 
     return Response.json(
       {
         ok: true,
-        assets: rows
-          .filter((row) =>
-            isMediaAssetVisibleInMediaList({
-              metadata: row.metadata,
-              sourceType: row.source_type,
-              status: row.status,
-            }, purpose),
-          )
-          .map(serializeMediaAsset),
+        assets: visibleAssets.map((asset) => {
+          const metadata = generatedJobMetadata.get(asset.sourceRecordId ?? "");
+
+          return metadata
+            ? { ...asset, metadata: { ...asset.metadata, ...metadata } }
+            : asset;
+        }),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

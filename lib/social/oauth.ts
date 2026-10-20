@@ -38,6 +38,12 @@ import {
   type SocialPlatform,
   type SocialProvider,
 } from "@/lib/social/types";
+import {
+  INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+  isInstagramProfessionalAccountProviderError,
+  isInstagramProfessionalAccountType,
+  requiresInstagramProfessionalAccount,
+} from "@/lib/social/instagram-professional-account";
 
 type Json = Record<string, unknown>;
 
@@ -188,6 +194,14 @@ type TikTokTokenResponse = {
   token_type?: string;
 };
 
+type GoogleTokenRefreshResponse = {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+  expires_in?: number;
+  token_type?: string;
+};
+
 class TikTokTokenRequestError extends Error {
   constructor(
     message: string,
@@ -197,6 +211,17 @@ class TikTokTokenRequestError extends Error {
   ) {
     super(message);
     this.name = "TikTokTokenRequestError";
+  }
+}
+
+class GoogleTokenRefreshError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "GoogleTokenRefreshError";
   }
 }
 
@@ -239,8 +264,10 @@ export type SocialOAuthTraceContext = {
 
 const STATE_TTL_MINUTES = 10;
 const TIKTOK_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
+const GOOGLE_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const TIKTOK_TOKEN_REFRESH_STALE_SECONDS = 120;
+const GOOGLE_TOKEN_REFRESH_STALE_SECONDS = 120;
 let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
 
 export async function createSocialAuthorization(params: {
@@ -339,7 +366,6 @@ export async function createSocialAuthorization(params: {
     case "youtube":
       authorizationUrl = buildYouTubeAuthorizationUrl({
         codeVerifier: codeVerifier ?? "",
-        forceConsent: params.forceConsent === true,
         redirectUri,
         state,
       });
@@ -513,13 +539,15 @@ export async function listSocialConnections(
     throw new Error("Could not load social connections.");
   }
 
-  const connections = await Promise.all(
-    (data ?? []).map((connection) =>
-      hydrateInstagramConnectionProfile(connection, trace),
-    ),
-  );
+  return (data ?? []).map(mapSocialConnection);
+}
 
-  return connections.map(mapSocialConnection);
+/** Owned background work; display reads deliberately never hydrate profiles. */
+export async function refreshSocialConnectionProfilesForOwner(userId: string) {
+  const { data, error } = await getClient().from("social_connections").select("*")
+    .eq("user_id", userId).is("revoked_at", null).eq("platform", "instagram");
+  if (error) throw new Error("Could not load account profiles for refresh.");
+  for (const connection of data ?? []) await hydrateInstagramConnectionProfile(connection);
 }
 
 async function getSocialOAuthReconnectTarget(params: {
@@ -637,7 +665,10 @@ export async function getSocialConnectionCredentialForOwner(params: {
     hasTikTokPublishScope(data.scopes) &&
     isTokenExpiring(data.expires_at, TIKTOK_TOKEN_REFRESH_SKEW_MS)
       ? await refreshTikTokConnection({ connection: data, ...params })
-      : data;
+      : data.platform === "youtube" &&
+          isTokenExpiring(data.expires_at, GOOGLE_TOKEN_REFRESH_SKEW_MS)
+        ? await refreshYouTubeConnection({ connection: data, ...params })
+        : data;
 
   return {
     accessToken: decryptSecret(connection.access_token_ciphertext),
@@ -859,6 +890,187 @@ async function refreshTikTokConnection(params: {
       "tiktok_refresh_failed",
     );
   }
+}
+
+async function refreshYouTubeConnection(params: {
+  connection: SocialConnectionRow;
+  connectionId: string;
+  userId: string;
+}) {
+  if (!params.connection.refresh_token_ciphertext) {
+    throw new SocialOAuthError(
+      "Reconnect YouTube before loading channel analytics.",
+      409,
+      "youtube_refresh_required",
+    );
+  }
+
+  const claimToken = randomUUID();
+  let claimedConnection: SocialConnectionRow | null = null;
+
+  for (let attempt = 0; attempt < 3 && !claimedConnection; attempt += 1) {
+    const claim = await getClient().rpc(
+      "claim_social_connection_token_refresh",
+      {
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_stale_after_seconds: GOOGLE_TOKEN_REFRESH_STALE_SECONDS,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (claim.error) {
+      throw new SocialOAuthError(
+        "Could not safely refresh YouTube right now.",
+        502,
+        "youtube_refresh_claim_failed",
+      );
+    }
+
+    claimedConnection = claim.data?.[0] ?? null;
+
+    if (!claimedConnection && attempt < 2) {
+      await delay(300 * (attempt + 1));
+      const latest = await getClient()
+        .from("social_connections")
+        .select("*")
+        .eq("id", params.connectionId)
+        .eq("user_id", params.userId)
+        .maybeSingle();
+
+      if (latest.error) {
+        throw new SocialOAuthError(
+          "Could not reload the YouTube connection.",
+          502,
+          "youtube_refresh_read_failed",
+        );
+      }
+
+      if (
+        latest.data &&
+        !isTokenExpiring(
+          latest.data.expires_at,
+          GOOGLE_TOKEN_REFRESH_SKEW_MS,
+        )
+      ) {
+        return latest.data;
+      }
+    }
+  }
+
+  if (!claimedConnection) {
+    throw new SocialOAuthError(
+      "YouTube is already refreshing. Try again in a moment.",
+      409,
+      "youtube_refresh_in_progress",
+    );
+  }
+
+  try {
+    const refreshToken = decryptSecret(
+      claimedConnection.refresh_token_ciphertext ?? "",
+    );
+    const refreshed = await requestGoogleTokenRefresh(refreshToken);
+    const completed = await getClient().rpc(
+      "complete_social_connection_token_refresh",
+      {
+        p_access_token_ciphertext: encryptSecret(refreshed.accessToken),
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_expires_at: refreshed.expiresAt,
+        p_refresh_expires_at: claimedConnection.refresh_expires_at,
+        p_refresh_token_ciphertext:
+          claimedConnection.refresh_token_ciphertext,
+        p_scopes: claimedConnection.scopes,
+        p_status: "connected",
+        p_token_type: refreshed.tokenType,
+        p_user_id: params.userId,
+      },
+    );
+
+    if (completed.error || !completed.data?.[0]) {
+      throw new SocialOAuthError(
+        "Could not save the refreshed YouTube connection.",
+        502,
+        "youtube_refresh_save_failed",
+      );
+    }
+
+    return completed.data[0];
+  } catch (error) {
+    const errorCode =
+      error instanceof GoogleTokenRefreshError
+        ? error.code
+        : error instanceof SocialOAuthError
+          ? error.code
+          : "youtube_refresh_failed";
+
+    try {
+      await getClient().rpc("release_social_connection_token_refresh", {
+        p_claim_token: claimToken,
+        p_connection_id: params.connectionId,
+        p_error_code: errorCode,
+        p_user_id: params.userId,
+      });
+    } catch {
+      // The stale refresh lease expires automatically if release cannot persist.
+    }
+
+    if (
+      error instanceof GoogleTokenRefreshError &&
+      ["invalid_grant", "invalid_request", "unauthorized_client"].includes(
+        error.code,
+      )
+    ) {
+      throw new SocialOAuthError(
+        "Reconnect YouTube before loading channel analytics.",
+        409,
+        "youtube_refresh_required",
+      );
+    }
+
+    if (error instanceof SocialOAuthError) {
+      throw error;
+    }
+
+    throw new SocialOAuthError(
+      "YouTube could not refresh this connection right now.",
+      502,
+      "youtube_refresh_failed",
+    );
+  }
+}
+
+async function requestGoogleTokenRefresh(refreshToken: string) {
+  const body = new URLSearchParams({
+    client_id: getEnv("GOOGLE_CLIENT_ID"),
+    client_secret: getEnv("GOOGLE_CLIENT_SECRET"),
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    body,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    method: "POST",
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | GoogleTokenRefreshResponse
+    | null;
+  const expiresIn = getPositiveInteger(payload?.expires_in);
+
+  if (!response.ok || !payload?.access_token || !expiresIn) {
+    throw new GoogleTokenRefreshError(
+      payload?.error_description || "Google token refresh failed.",
+      payload?.error || "google_refresh_failed",
+      response.status,
+    );
+  }
+
+  return {
+    accessToken: payload.access_token,
+    expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    tokenType: payload.token_type ?? "Bearer",
+  };
 }
 
 async function requestTikTokTokenRefresh(refreshToken: string) {
@@ -1241,6 +1453,15 @@ async function exchangeInstagramCode(
   });
 
   if (!shortResponse.ok || !shortData?.access_token) {
+    if (isInstagramProfessionalAccountProviderError(shortData)) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "exchange_authorization_code",
+      );
+    }
+
     throw new SocialOAuthError(
       "Instagram did not complete the account connection.",
       502,
@@ -1249,11 +1470,10 @@ async function exchangeInstagramCode(
     );
   }
 
-  const longData = await exchangeInstagramLongLivedToken(
+  const tokenData = await exchangeInstagramLongLivedToken(
     shortData.access_token,
     trace,
-  ).catch(() => null);
-  const tokenData = longData?.access_token ? longData : shortData;
+  );
   logSocialOAuthTrace(trace, "normalize_token_permissions", {
     permissionsShape: getSafeValueShape(shortData.permissions),
     scopeShape: getSafeValueShape(shortData.scope),
@@ -1300,6 +1520,15 @@ async function exchangeInstagramLongLivedToken(
   });
 
   if (!response.ok || !data?.access_token) {
+    if (isInstagramProfessionalAccountProviderError(data)) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "exchange_authorization_code",
+      );
+    }
+
     throw new SocialOAuthError(
       "Instagram did not provide a long-lived access token.",
       502,
@@ -1454,7 +1683,7 @@ async function fetchInstagramAccount(
     fallbackAccountIdPresent: Boolean(fallbackAccountId),
     profileRequestStarted: true,
   });
-  const response = await fetch(profileUrl);
+  const response = await fetch(profileUrl, { signal: AbortSignal.timeout(8_000) });
   const payload = (await response.json().catch(() => null)) as {
     account_type?: string;
     error?: unknown;
@@ -1475,22 +1704,28 @@ async function fetchInstagramAccount(
   });
 
   if (!response.ok || !payload?.id) {
-    if (fallbackAccountId) {
-      return {
-        id: fallbackAccountId,
-        metadata: {
-          profileLookupFailed: true,
-          profilePictureSyncedAt: new Date().toISOString(),
-        },
-        name: "Instagram account",
-        username: null,
-      };
+    if (isInstagramProfessionalAccountProviderError(payload)) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "fetch_instagram_profile",
+      );
     }
 
     throw new SocialOAuthError(
       "Could not load the authorized Instagram account.",
       502,
       "account_lookup_failed",
+      "fetch_instagram_profile",
+    );
+  }
+
+  if (!isInstagramProfessionalAccountType(payload.account_type)) {
+    throw new SocialOAuthError(
+      "Instagram requires a Creator or Business account for publishing.",
+      422,
+      INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
       "fetch_instagram_profile",
     );
   }
@@ -1621,7 +1856,7 @@ async function upsertSocialConnection(params: {
     access_token_ciphertext: encryptSecret(params.tokenSet.accessToken),
     expires_at: expiresAt,
     last_error_code: null,
-    metadata: params.account.metadata ?? {},
+    metadata: { ...(params.account.metadata ?? {}), authorizationRevision: randomUUID() },
     platform: params.platform,
     platform_account_name: params.account.name ?? null,
     platform_account_username: params.account.username ?? null,
@@ -1750,14 +1985,12 @@ function buildInstagramAuthorizationUrl(params: {
 
 function buildYouTubeAuthorizationUrl(params: {
   codeVerifier: string;
-  forceConsent: boolean;
   redirectUri: string;
   state: string;
 }) {
   return buildYouTubeOAuthAuthorizationUrl({
     clientId: getEnv("GOOGLE_CLIENT_ID"),
     codeVerifierChallenge: createPkceCodeChallenge(params.codeVerifier),
-    forceConsent: params.forceConsent,
     redirectUri: params.redirectUri,
     state: params.state,
   });
@@ -1867,6 +2100,10 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
       : effectiveStatus;
 
   return {
+    authorizationRevision: getMetadataString(row.metadata, "authorizationRevision") ?? undefined,
+    profileNeedsRefresh: row.platform === "instagram" && row.revoked_at === null &&
+      !isInstagramProfileFresh(row.metadata) && !isInstagramProfileBackoffActive(row.metadata) &&
+      !requiresInstagramProfessionalAccount({ lastErrorCode: row.last_error_code, metadata: row.metadata }),
     connectedAt: row.connected_at,
     expiresAt: row.expires_at,
     id: row.id,
@@ -1874,9 +2111,15 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
     platformAccountId: row.platform_account_id,
     platformAccountName: row.platform_account_name,
     platformAccountUsername: row.platform_account_username,
-    profilePictureUrl: getInstagramProfilePictureUrl(row.metadata),
+    profilePictureUrl: getSocialProfilePictureUrl(row.platform, row.metadata),
     provider: row.provider,
     refreshExpiresAt: row.refresh_expires_at,
+    requiresInstagramProfessionalAccount:
+      row.platform === "instagram" &&
+      requiresInstagramProfessionalAccount({
+        lastErrorCode: row.last_error_code,
+        metadata: row.metadata,
+      }),
     scopes: row.scopes,
     status,
     supportsBackgroundRefresh:
@@ -1892,14 +2135,34 @@ async function hydrateInstagramConnectionProfile(
   row: SocialConnectionRow,
   trace?: SocialOAuthTraceContext,
 ): Promise<SocialConnectionRow> {
+  const professionalAccountRequirementRecorded =
+    row.last_error_code ===
+      INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR ||
+    row.metadata.professionalAccountRequired === true;
+  const storedAccountType = getMetadataString(row.metadata, "accountType");
+  const storedAccountTypeRequiresProfessional =
+    storedAccountType !== null &&
+    !isInstagramProfessionalAccountType(storedAccountType);
+
   if (
     row.platform !== "instagram" ||
-    isInstagramProfileFresh(row.metadata)
+    professionalAccountRequirementRecorded ||
+    (!storedAccountTypeRequiresProfessional &&
+      (isInstagramProfileFresh(row.metadata) || isInstagramProfileBackoffActive(row.metadata)))
   ) {
     return row;
   }
 
   try {
+    if (storedAccountTypeRequiresProfessional) {
+      throw new SocialOAuthError(
+        "Instagram requires a Creator or Business account for publishing.",
+        422,
+        INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+        "fetch_instagram_profile",
+      );
+    }
+
     const account = await fetchInstagramAccount(
       decryptSecret(row.access_token_ciphertext),
       row.platform_account_id,
@@ -1908,6 +2171,9 @@ async function hydrateInstagramConnectionProfile(
     const metadata = {
       ...row.metadata,
       ...account.metadata,
+      professionalAccountRequired: false,
+      profileLookupFailed: false,
+      profileLookupRetryAt: null,
     };
     const patch = {
       metadata,
@@ -1922,7 +2188,7 @@ async function hydrateInstagramConnectionProfile(
       .from("social_connections")
       .update(patch)
       .eq("id", row.id)
-      .eq("user_id", row.user_id);
+      .eq("user_id", row.user_id).filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at);
 
     if (error) {
       logSocialOAuthTrace(trace, "connected_accounts_api_response", {
@@ -1935,15 +2201,67 @@ async function hydrateInstagramConnectionProfile(
       ...row,
       ...patch,
     };
-  } catch {
+  } catch (error) {
+    const professionalAccountRequired =
+      (error instanceof SocialOAuthError &&
+        error.code === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR) ||
+      requiresInstagramProfessionalAccount({
+        lastErrorCode: row.last_error_code,
+        metadata: row.metadata,
+      });
+
     logSocialOAuthTrace(trace, "connected_accounts_api_response", {
       instagramProfileHydrated: false,
+      professionalAccountRequired,
     });
-    return row;
+
+    if (!professionalAccountRequired) {
+      // Failed provider lookups must not retry every navigation/job.
+      const metadata = { ...row.metadata, profileLookupRetryAt: new Date(Date.now() + 15 * 60_000).toISOString() };
+      await getClient().from("social_connections").update({ metadata })
+        .eq("id", row.id).eq("user_id", row.user_id).filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at);
+      return row;
+    }
+
+    const patch = {
+      last_error_code: INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR,
+      metadata: {
+        ...row.metadata,
+        professionalAccountRequired: true,
+      },
+      status: "error" as const,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: saveError } = await getClient()
+      .from("social_connections")
+      .update(patch)
+      .eq("id", row.id)
+      .eq("user_id", row.user_id).filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at);
+
+    if (saveError) {
+      logSocialOAuthTrace(trace, "connected_accounts_api_response", {
+        databaseErrorCode: saveError.code,
+        instagramEligibilitySaved: false,
+      });
+    }
+
+    return {
+      ...row,
+      ...patch,
+    };
   }
 }
 
+function isInstagramProfileBackoffActive(metadata: Json) {
+  const retryAt = getMetadataString(metadata, "profileLookupRetryAt");
+  return retryAt !== null && Date.parse(retryAt) > Date.now();
+}
+
 function isInstagramProfileFresh(metadata: Json) {
+  if (metadata.profileLookupFailed === true) {
+    return false;
+  }
+
   const syncedAt = getMetadataString(metadata, "profilePictureSyncedAt");
 
   if (!syncedAt) {
@@ -1958,8 +2276,11 @@ function isInstagramProfileFresh(metadata: Json) {
   );
 }
 
-function getInstagramProfilePictureUrl(metadata: Json) {
-  const value = getMetadataString(metadata, "profilePictureUrl");
+function getSocialProfilePictureUrl(platform: SocialPlatform, metadata: Json) {
+  const value = getMetadataString(
+    metadata,
+    platform === "tiktok" ? "avatarUrl" : "profilePictureUrl",
+  );
 
   if (!value) {
     return null;

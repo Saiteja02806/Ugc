@@ -203,8 +203,15 @@ const workerRenderSpecSource = readFileSync(
   new URL("../../worker/src/lib/wall-text-render-spec.ts", import.meta.url),
   "utf8",
 );
-const workerRenderEngineSource = readFileSync(
-  new URL("../../worker/src/lib/render-engine.ts", import.meta.url),
+const workerOverlayRendererSource = readFileSync(
+  new URL("../../worker/src/lib/wall-text-overlay-renderer.ts", import.meta.url),
+  "utf8",
+);
+const compactArialBoldV13Migration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20261001042901_allow_wall_text_v13_50px_typography.sql",
+    import.meta.url,
+  ),
   "utf8",
 );
 const fontMeasurementSource = readFileSync(
@@ -217,6 +224,10 @@ const overlaySource = readFileSync(
 );
 const editorSource = readFileSync(
   new URL("../../components/trending/trending-creative-editor.tsx", import.meta.url),
+  "utf8",
+);
+const workspaceSource = readFileSync(
+  new URL("../../components/trending/trending-workspace.tsx", import.meta.url),
   "utf8",
 );
 const rootLayoutSource = readFileSync(
@@ -449,17 +460,21 @@ test("does not retain the superseded multi-pass Wall generator", () => {
   assert.match(generatorSource, /must never use a two-line Hook rule/i); */
 });
 
-test("uses one batched GPT-5 mini Writer request per normal ten-candidate chunk", () => {
-  assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5-mini"/);
-  assert.match(generatorSource, /reasoning_effort: "low"/);
+test("uses Luna Writer and Reviewer passes for every normal ten-candidate chunk", () => {
+  assert.match(generatorSource, /const DEFAULT_MODEL = "gpt-5\.6-luna"/);
+  assert.match(generatorSource, /const DEFAULT_WRITER_REASONING_EFFORT = "medium"/);
+  assert.match(generatorSource, /const DEFAULT_REVIEW_REASONING_EFFORT = "medium"/);
+  assert.match(generatorSource, /OPENAI_WALL_TEXT_WRITER_REASONING_EFFORT/);
+  assert.match(generatorSource, /OPENAI_WALL_TEXT_REVIEW_MODEL/);
+  assert.match(generatorSource, /OPENAI_WALL_TEXT_REVIEW_REASONING_EFFORT/);
   assert.match(
     generatorSource,
     /const business = buildWallTextBusinessContext\(params\.business\)/,
   );
   assert.equal(
     generatorSource.match(/chat\.completions\.parse/g)?.length,
-    1,
-    "the batch generator must make exactly one AI request",
+    2,
+    "the batch generator must make one Writer and one Reviewer request",
   );
   assert.match(generatorSource, /candidateIndex:[\s\S]+text: z\.string/);
   assert.doesNotMatch(generatorSource, /formatId: EligibleWallTextFormatIdSchema/);
@@ -474,7 +489,10 @@ test("uses one batched GPT-5 mini Writer request per normal ten-candidate chunk"
       generatorSource.indexOf("if (attempt === MAX_WRITER_RETRIES)"),
     "valid candidates must be persisted before a failed candidate exhausts repair",
   );
-  assert.doesNotMatch(generatorSource, /reviewer|embeddings?/i);
+  assert.match(generatorSource, /requestReviewer/);
+  assert.doesNotMatch(generatorSource, /readableWithinClip/);
+  assert.match(generatorSource, /oneCentralThought/);
+  assert.match(generatorSource, /naturalSpokenLanguage/);
   assert.match(
     promptSource,
     /natural continuous Wall-of-Text language[\s\S]+do not insert newline characters/i,
@@ -539,7 +557,23 @@ test("carries an early-delivery plan through the worker and bypasses the histori
   );
   assert.match(
     feedSource,
-    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*!options\.dailyFeedId &&\s*areTrendingWallTextCreativesCurrent\(existing\)/,
+  );
+  assert.match(
+    feedSource,
+    /mode === "initial" &&\s*!options\.earlyPlanId &&\s*!options\.dailyFeedId &&\s*existing\.length > 0/,
+  );
+  assert.match(
+    workerPreparationClient,
+    /dailyFeedId\?: string \| null/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /const dailyFeedId = getOptionalString\(input\.dailyFeedId\);/,
+  );
+  assert.match(
+    internalPreparationRoute,
+    /input\.dailyFeedId && result\.ideaCount !== input\.requestedCount/,
   );
 });
 
@@ -670,10 +704,12 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(layoutEngineSource, /blocks,/);
   assert.match(layoutEngineSource, /fontSizePx: fontSize/);
   assert.match(layoutEngineSource, /lineHeightPx,/);
-  assert.match(layoutEngineSource, /textBox: params\.layout\.textBox/);
+  assert.match(layoutEngineSource, /textBox: finalLayout\.textBox/);
+  assert.match(layoutEngineSource, /let textBox = params\.layout\.textBox/);
   assert.match(layoutEngineSource, /maximumWidth = getWallTextSafeLineWidth\(textBoxWidth\)/);
   assert.match(visualStyleSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
-  assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 52/);
+  assert.match(visualStyleSource, /WALL_TEXT_RASTER_EDGE_GUARD = 2/);
+  assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 50/);
   assert.match(visualStyleSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(visualStyleSource, /WALL_TEXT_V12_OUTLINE_WIDTH = 3/);
   assert.match(visualStyleSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
@@ -685,6 +721,7 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
     /maximumTextWidth = getWallTextSafeLineWidth\(textBoxWidth\)/,
   );
   assert.match(workerRenderSpecSource, /WALL_TEXT_INLINE_SAFE_PADDING = 15/);
+  assert.match(workerRenderSpecSource, /WALL_TEXT_RASTER_EDGE_GUARD = 2/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_OUTLINE_WIDTH = 4/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_V12_OUTLINE_WIDTH = 3/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_PREVIOUS_ARIAL_BOLD_OUTLINE_WIDTH = 4/);
@@ -692,8 +729,8 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
   assert.match(workerRenderSpecSource, /WALL_TEXT_V7_SHADOW_OPACITY = 0\.3/);
   assert.match(workerRenderSpecSource, /WALL_TEXT_AVENIR_NEXT_DEMI_BOLD_OUTLINE_WIDTH = 2/);
   assert.match(
-    workerRenderEngineSource,
-    /textBox\.width \* WALL_TEXT_RENDER_WIDTH\)[\s\S]+WALL_TEXT_INLINE_SAFE_PADDING \* 2/,
+    workerOverlayRendererSource,
+    /getWallTextRasterSafeLineWidth\([\s\S]+textBox\.width \* WALL_TEXT_RENDER_WIDTH/,
   );
   assert.match(overlaySource, /boxSizing: "border-box"[\s\S]+paddingInline/);
   assert.match(editorSource, /boxSizing: "border-box"[\s\S]+paddingInline/);
@@ -705,6 +742,95 @@ test("measures new final Wall lines with packaged Arial Bold before saving autho
     layoutEngineSource,
     /widths\.some\(\(width\) => width >= maximumWidth\)/,
   );
+});
+
+test("rejects an edge-touching V9 line before it can reach the PNG renderer", () => {
+  const loaderPath = new URL(
+    "../../scripts/next-server-only-test-loader.mjs",
+    import.meta.url,
+  ).href;
+  const validationUrl = new URL(
+    "wall-text-render-validation.ts",
+    import.meta.url,
+  ).href;
+  const visualStyleUrl = new URL(
+    "wall-text-visual-style.ts",
+    import.meta.url,
+  ).href;
+  const lines = [
+    "A customer question",
+    "interrupts the caption, and the",
+    "half-written note waits in",
+    "drafts. Use UGCPilot's",
+    "completed, business-aware",
+    "post drafts to publish one",
+    "finished Instagram post",
+    "before closing each day.",
+  ];
+  const script = `
+    const [validation, visualStyle] = await Promise.all([
+      import(${JSON.stringify(validationUrl)}),
+      import(${JSON.stringify(visualStyleUrl)}),
+    ]);
+    const textBox = {
+      height: 480 / 1920,
+      width: 780 / 1080,
+      x: 150 / 1080,
+      y: 800 / 1920,
+    };
+    const lines = ${JSON.stringify(lines)};
+    const content = {
+      finalLayout: {
+        blocks: [{ lines, role: "text" }],
+        fontFamily: "Arial",
+        fontSizePx: 52,
+        fontWeight: 700,
+        lineHeightPx: 57.2,
+        textBox,
+        version: "wall-text-final-layout-v9",
+      },
+      formatId: "freeform",
+      fullText: lines.join(" "),
+      kind: "wall_text",
+      layoutVersion: "wall-text-overlay-v13",
+      pattern: "freeform",
+      renderFontSize: 52,
+      renderSafetyVersion: "wall-text-inner-safe-v3",
+      segments: [
+        { lines: lines.slice(0, 3), role: "lead" },
+        { lines: lines.slice(3, 6), role: "support" },
+        { lines: lines.slice(6), role: "closing" },
+      ],
+      sourceContent: { kind: "text", text: lines.join(" ") },
+    };
+    let rejected = false;
+    try {
+      await validation.validateWallTextRenderFit(content);
+    } catch (error) {
+      rejected = error?.code === validation.WALL_TEXT_RENDER_FIT_REJECTED;
+    }
+    process.stdout.write(JSON.stringify({
+      safeWidth: visualStyle.getWallTextSafeLineWidth(780),
+      rejected,
+    }));
+  `;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--import",
+      loaderPath,
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      script,
+    ],
+    { encoding: "utf8", stdio: "pipe" },
+  );
+  const result = JSON.parse(output) as { rejected: boolean; safeWidth: number };
+
+  assert.equal(result.safeWidth, 748);
+  assert.equal(result.rejected, true);
 });
 
 test("runs the final render-fit gate before generated Wall copy reaches storage", () => {
@@ -891,7 +1017,7 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
   assert.equal(result.rejected, true);
   assert.equal(result.fit.valid, true);
   assert.equal(result.forcedWrongSizeRejected, true);
-  assert.equal(result.fit.fontSize, 52);
+  assert.equal(result.fit.fontSize, 50);
   assert.ok(result.fit.maximumLineWidth + 8 < 750);
   assert.equal(result.appliedRenderFont, result.fit.fontSize);
   assert.equal(result.appliedFinalFont, result.fit.fontSize);
@@ -902,9 +1028,9 @@ test("rejects the reported overflow and synchronizes the measured font fit", () 
 
 test("uses packaged Arial Bold glyphs at 700 for new Wall content while retaining prior typography", () => {
   assert.match(visualStyleSource, /WALL_TEXT_FONT_WEIGHT = 700/);
-  assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 52/);
+  assert.match(visualStyleSource, /WALL_TEXT_FIXED_FONT_SIZE = 50/);
   assert.match(visualStyleSource, /WALL_TEXT_MINIMUM_FONT_SIZE = 44/);
-  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 52/);
+  assert.match(visualStyleSource, /WALL_TEXT_MAXIMUM_FONT_SIZE = 50/);
   assert.match(layoutEngineSource, /font: `Arial Bold \$\{fontSize\}`/);
   assert.match(layoutEngineSource, /getVerifiedWallTextArialBoldFontPath/);
   assert.match(layoutEngineSource, /fontWeight: WALL_TEXT_FONT_WEIGHT/);
@@ -977,18 +1103,30 @@ test("uses packaged Arial Bold glyphs at 700 for new Wall content while retainin
     approvedBTypographyMigration,
     /wall-text-overlay-v13[\s\S]+wall-text-final-layout-v9[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 700[\s\S]+fontSizePx'\)::integer = 52[\s\S]+business-profile-wall-text-v9/,
   );
+  assert.match(
+    compactArialBoldV13Migration,
+    /wall-text-overlay-v13[\s\S]+wall-text-final-layout-v9[\s\S]+fontFamily' = 'Arial'[\s\S]+fontWeight'\)::integer = 700[\s\S]+fontSizePx'\)::integer = 50[\s\S]+business-profile-wall-text-v9/,
+  );
 });
 
-test("keeps the Wall editor save gate aligned with the V13 24-40 word contract", () => {
-  assert.match(editorSource, /wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS \|\|[\s\S]+wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
-  assert.match(editorSource, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS\}–\$\{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS\} words and fit the measured 5–8-line layout/);
+test("separates authored Wall edit validation from generated copy limits", () => {
+  const manualCopySource = readFileSync(new URL("./wall-text-manual-copy.ts", import.meta.url), "utf8");
+  assert.match(editorSource, /validateWallTextManualCopy\(content\.content\.fullText\)/);
+  assert.match(editorSource, /maxLength=\{WALL_TEXT_MANUAL_MAX_CHARACTERS\}/);
+  assert.match(manualCopySource, /WALL_TEXT_MANUAL_MAX_CHARACTERS = 600/);
+  assert.match(manualCopySource, /if \(!normalized\) throw new Error/);
+  assert.match(textLogicSource, /textMode === "manual"[\s\S]+validateManualWallTextContent\(content\);[\s\S]+return;/);
+  assert.match(textLogicSource, /minimumWords =[\s\S]+MIN_CURRENT_GENERATION_WALL_TEXT_WORDS/);
+  assert.match(textLogicSource, /maximumWords =[\s\S]+MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
+  assert.match(textLogicSource, /wordCount < minimumWords \|\| wordCount > maximumWords/);
   assert.match(textLogicSource, /MIN_SHORT_WALL_TEXT_WORDS = 15/);
   assert.doesNotMatch(editorSource, /exact limit is checked against the selected clip/);
 });
 
 test("keeps measured finalLayout lines as the current Wall source of truth", () => {
   assert.match(promptSource, /do not insert newline characters/i);
-  assert.match(promptSource, /requiredWordRange[\s\S]+targetWords/i);
+  assert.match(promptSource, /requiredWordRange[\s\S]+Write naturally anywhere within it/i);
+  assert.doesNotMatch(promptSource, /targetWords/);
   assert.match(promptSource, /Do not return[\s\S]+final visual lines/i);
   assert.match(layoutEngineSource, /createWallTextFinalLayout[\s\S]+blocks,/);
   assert.match(overlaySource, /getWallTextRenderBlocks\(content\)/);
@@ -1002,31 +1140,51 @@ test("keeps measured finalLayout lines as the current Wall source of truth", () 
   );
 });
 
-test("V13 uses candidate-specific word budgets and measured fit instead of clip-time limits", () => {
-  const currentValidation = textLogicSource.match(
-    /content\.layoutVersion === "wall-text-overlay-v6"[\s\S]+?MAX_CURRENT_GENERATION_WALL_TEXT_WORDS[\s\S]+?\n    return;/,
-  )?.[0] ?? "";
-
+test("uses layout-based word budgets without reading-time rejection", () => {
   assert.match(layoutEngineSource, /deriveWallTextSpatialBudget/);
-  assert.doesNotMatch(layoutEngineSource, /temporalMaximum|durationSeconds\s*\*\s*4\.3/);
-  assert.match(layoutEngineSource, /const maxWords = Math\.min\(ABSOLUTE_MAXIMUM_WORDS, spatialMaximum\)/);
+  assert.match(layoutEngineSource, /durationSeconds\?: number/);
+  assert.match(layoutEngineSource, /getWallTextGenerationWordBudget/);
   assert.match(formatsSource, /preferredWordRange/);
   assert.doesNotMatch(formatsSource, /hardWordRange/);
   assert.match(
     promptSource,
-    /requiredWordRange is the exact allowed range[\s\S]+not clip duration[\s\S]+measured 5-8 line fit/i,
+    /server will verify a measured 5-8 line fit/i,
   );
-  assert.doesNotMatch(promptSource, /CODE-DERIVED READABILITY BUDGETS/);
-  assert.doesNotMatch(generatorSource, /targetWords\s*-\s*4/);
-  assert.match(currentValidation, /MIN_CURRENT_GENERATION_WALL_TEXT_WORDS[\s\S]+MAX_CURRENT_GENERATION_WALL_TEXT_WORDS/);
-  assert.doesNotMatch(
-    currentValidation,
-    /durationSeconds\s*\*|estimateWallTextReadingSeconds|longer than the/,
-  );
+  assert.doesNotMatch(generatorSource, /reading_time|readableWithinClip|readingRule|WALL_TEXT_READING_CUSHION_RATIO/);
+  assert.match(generatorSource, /semicolon_story/);
+  assert.match(feedSource, /durationSeconds: candidate\.durationSeconds/);
   assert.match(feedSource, /promptVersion: WALL_TEXT_PROMPT_VERSION/);
 });
 
-test("V9 fits thirty natural words in the wider measured reading column", () => {
+test("keeps Wall video buffering distinct from a failed preview", () => {
+  assert.match(
+    workspaceSource,
+    /const WALL_VIDEO_LOAD_TIMEOUT_MS = 12_000/,
+  );
+  assert.match(workspaceSource, /preload="auto"/);
+  assert.match(
+    workspaceSource,
+    /onCanPlay=\{\(event\) => markVideoReady\(event\.currentTarget\)\}/,
+  );
+  assert.match(
+    workspaceSource,
+    /onLoadedData=\{\(event\) => markVideoReady\(event\.currentTarget\)\}/,
+  );
+  assert.match(
+    workspaceSource,
+    /const videoLoadKey = `\$\{previewUrl\}:\$\{videoRetryKey\}`/,
+  );
+  assert.match(
+    workspaceSource,
+    /!isVideoError[\s\S]+!isVideoReady[\s\S]+Loading video…/,
+  );
+  assert.match(
+    workspaceSource,
+    /isVideoError[\s\S]+Video could not load\.[\s\S]+Retry video/,
+  );
+});
+
+test("uses the general word budget for a compact natural Wall message", () => {
   const loaderPath = new URL(
     "../../scripts/next-server-only-test-loader.mjs",
     import.meta.url,
@@ -1035,7 +1193,7 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
   const feedLogicUrl = new URL("wall-text-feed-logic.ts", import.meta.url).href;
   const textLogicUrl = new URL("wall-text-text-logic.ts", import.meta.url).href;
   const original =
-    "A full day can seem clear until small tasks use every open gap. When those quiet demands become visible, the next useful choice becomes easier to make without guessing again.";
+    "After a rushed dinner, tracking every ingredient feels like one chore too many when the day has already felt full, especially when the kitchen is still waiting and tomorrow is already on your mind.";
   const script = `
     const [engine, feed, logic] = await Promise.all([
       import(${JSON.stringify(engineUrl)}),
@@ -1050,12 +1208,12 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
     });
     logic.validateWallTextContent(result.content, 6);
     const budget = await engine.deriveWallTextSpatialBudget({
-      formatId: "hidden_cause",
+      durationSeconds: 6,
       layout,
     });
     process.stdout.write(JSON.stringify({ budget, content: result.content }));
   `;
-  assert.equal(original.split(/\s+/u).length, 30);
+  assert.equal(original.split(/\s+/u).length, 34);
   const output = execFileSync(
     process.execPath,
     [
@@ -1070,8 +1228,11 @@ test("V9 fits thirty natural words in the wider measured reading column", () => 
     { encoding: "utf8", stdio: "pipe" },
   );
   const result = JSON.parse(output) as {
+    budget: { maxWords: number; minWords: number };
     content: { finalLayout: { blocks: Array<{ lines: string[] }> } };
   };
+  assert.equal(result.budget.maxWords, 48);
+  assert.equal(result.budget.minWords, 24);
   const lines = result.content.finalLayout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(lines.join(" "), original);
@@ -1099,18 +1260,18 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
       const lines = result.content.finalLayout.blocks.flatMap(b => b.lines);
       assert.equal(lines.join(' '), text);
       assert.equal(lines.length, expectedLines);
-      assert.equal(result.content.renderFontSize, 52);
-      assert.equal(result.content.finalLayout.fontSizePx, 52);
+      assert.equal(result.content.renderFontSize, 50);
+      assert.equal(result.content.finalLayout.fontSizePx, 50);
       const fit = await validation.validateWallTextRenderFit(result.content);
-      assert.equal(fit.fontSize, 52);
+      assert.equal(fit.fontSize, 50);
       for (const [index, line] of lines.entries()) {
         const measured = await sharp({ text: {
-          dpi: 72, font: 'Arial Bold 52',
+          dpi: 72, font: 'Arial Bold 50',
           fontfile: await font.getVerifiedWallTextArialBoldFontPath(),
           text: line, rgba: true, wrap: 'none',
         }}).metadata();
         assert.equal(fit.lineWidths[index], measured.width);
-        assert.ok(measured.width + 8 < 750);
+        assert.ok(measured.width + 8 < 748);
       }
       // Just too short for these lines: the old validator would reduce size.
       const tooShort = {
@@ -1126,25 +1287,27 @@ test("fixed Wall typography grows lines and rejects overflow without shrinking",
       content: { kind: 'text', text: 'Welcome to the other side of work where your day gets derailed before lunch, meetings move, priorities flip, and somehow everything still gets done because your tasks adjust in real time instead of you constantly trying to catch up while new requests keep arriving, deadlines move, teams need answers, and the plan changes again before anyone can make progress.' },
       formatId: 'freeform', layout,
     }), error =>
-      error.code === 'wall_text_render_fit_rejected' && /fixed 52px/.test(error.message));
+      error.code === 'wall_text_render_fit_rejected' && /fixed 50px/.test(error.message));
     await assert.rejects(engine.createAuthoritativeWallTextContent({
       content: { kind: 'text', text: Array(50).fill('responsibilities').join(' ') + '.' },
       formatId: 'freeform', layout,
     }), error =>
-      error.code === 'wall_text_render_fit_rejected' && /fixed 52px/.test(error.message));
+      error.code === 'wall_text_render_fit_rejected' && /fixed 50px/.test(error.message));
     const generatedPrompt = prompt.buildWallTextGenerationPrompt({
       business: {}, candidates: [
-        { candidateIndex: 0, targetWords: 18, maxWords: 50 },
-        { candidateIndex: 1, targetWords: 32, maxWords: 28 },
+        { candidateIndex: 0, maxWords: 50 },
+        { candidateIndex: 1, maxWords: 28 },
       ],
     });
     const candidates = JSON.parse(generatedPrompt.split('CANDIDATES: REQUIRED WORD RANGES AND ABSOLUTE SAFETY CEILINGS\\n')[1].split('\\n\\nGLOBAL RULES')[0]);
-    assert.deepEqual(candidates[0].requiredWordRange, { minimum: 24, maximum: 40 });
-    assert.equal(candidates[0].targetWords, 24);
-    assert.equal(candidates[0].maxWords, 40);
+    assert.deepEqual(candidates[0].requiredWordRange, { minimum: 24, maximum: 48 });
+    assert.equal(candidates[0].targetWords, undefined);
+    assert.equal(candidates[0].maxWords, 48);
     assert.deepEqual(candidates[1].requiredWordRange, { minimum: 24, maximum: 28 });
-    assert.equal(candidates[1].targetWords, 28);
-    assert.equal((await engine.deriveWallTextSpatialBudget({ layout })).targetWords, 32);
+    assert.equal(candidates[1].targetWords, undefined);
+    const durationBudget = await engine.deriveWallTextSpatialBudget({ durationSeconds: 6, layout });
+    assert.equal(durationBudget.minWords, 24);
+    assert.equal(durationBudget.maxWords, 48);
   `;
   execFileSync(process.execPath, [
     "--import", loaderPath, "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
@@ -1195,7 +1358,7 @@ test("balances the reported Wall example into readable measured lines", () => {
 
   assert.equal(layout.fontFamily, "Arial");
   assert.equal(layout.fontWeight, 700);
-  assert.equal(layout.lineHeightPx, 57.2);
+  assert.equal(layout.lineHeightPx, 55);
   const lines = layout.blocks.flatMap((block) => block.lines);
   assert.ok(lines.length >= 5 && lines.length <= 8);
   assert.equal(

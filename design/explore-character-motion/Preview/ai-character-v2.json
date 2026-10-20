@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "frames": 288,
+  "duration": 12,
+  "source": "ai-character-v2-master-final.mp4",
+  "video": "ai-character-v2.mp4",
+  "project": "../Explore AI Character — Build Use Grow v2.aep",
+  "poster": "ai-character-v2.webp",
+  "bytes": 770941,
+  "sha256": "363c20e3975a88f92cc0fa0b4b9015fea6a667ed88cfe5b7dd2d78ec9a318cba",
+  "silent": true,
+  "fastStart": true,
+  "fullDecodeVerified": true,
+  "chapters": [
+    {
+      "start": 0,
+      "end": 3,
+      "text": "Build your AI character"
+    },
+    {
+      "start": 3,
+      "end": 6.5,
+      "text": "Use it in your content"
+    },
+    {
+      "start": 6.5,
+      "end": 9.5,
+      "text": "Grow your presence"
+    },
+    {
+      "start": 9.5,
+      "end": 12,
+      "text": "Return to character assembly"
+    }
+  ],
+  "reviewTimes": [
+    0,
+    0.3,
+    0.65,
+    1.4,
+    2.6,
+    2.88,
+    3,
+    3.12,
+    3.5,
+    4.8,
+    6.2,
+    6.38,
+    6.5,
+    6.62,
+    6.95,
+    7.8,
+    9.2,
+    9.38,
+    9.5,
+    9.62,
+    10.2,
+    10.7,
+    11.5,
+    11.958333333333334
+  ]
+}

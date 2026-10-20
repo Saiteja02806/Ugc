@@ -99,6 +99,8 @@ if (!options.yes) {
   );
 }
 
+let googleAuth;
+
 const existingJob = await getExistingJob(request.jobEndpoint);
 const endpoint = existingJob ? request.updateEndpoint : request.collectionEndpoint;
 const method = existingJob ? "PATCH" : "POST";
@@ -123,8 +125,6 @@ console.log(
   `${existingJob ? "Updated" : "Created"} Cloud Scheduler job ${configuredJob.name || request.jobPath}`,
 );
 console.log(JSON.stringify(plan, null, 2));
-
-let googleAuth;
 
 function getGoogleAuth() {
   if (googleAuth) return googleAuth;

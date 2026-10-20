@@ -85,7 +85,43 @@ variable "queue_name" {
 variable "worker_job_types" {
   description = "Comma-separated job types allowed for this worker service."
   type        = string
-  default     = "generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
+  default     = "generate_audio,generate_avatar,generate_image,generate_hook_video,generate_trending_hook_copy,hook_text_generation,wall_text_content_plan_generation,wall_text_generation,media_analysis,analytics_sync,carousel_content_plan_generation,paid_trending_prebuild,reaction_generation,test_worker_job"
+}
+
+variable "elevenlabs_api_key_secret_id" {
+  description = "Optional Secret Manager secret ID injected as ELEVENLABS_API_KEY. Empty keeps existing worker deployments independent of ElevenLabs."
+  type        = string
+  default     = ""
+}
+
+variable "enable_audio_generation" {
+  description = "Enable Audio jobs only after the audio migration, private bucket, app credentials, and provider allowance are ready."
+  type        = bool
+  default     = false
+}
+
+variable "private_audio_bucket_name" {
+  description = "Separate GCP audio bucket with uniform access and public access prevention enforced. Never the public media bucket."
+  type        = string
+  default     = ""
+}
+
+variable "elevenlabs_voice_api_key_secret_id" {
+  description = "Existing Secret Manager secret for Audio generation. Values must be provisioned separately."
+  type        = string
+  default     = ""
+}
+
+variable "audio_generation_public_enabled" {
+  description = "Allow eligible paid users after production verification; otherwise only the explicitly invited accounts."
+  type        = bool
+  default     = false
+}
+
+variable "audio_generation_allowed_user_ids" {
+  description = "Comma-separated invited Firebase owner IDs for a bounded Audio rollout."
+  type        = string
+  default     = ""
 }
 
 variable "worker_visibility_timeout_seconds" {
@@ -154,6 +190,28 @@ variable "openai_api_key_secret_id" {
   default     = "openai-api-key"
 }
 
+variable "openai_reaction_model" {
+  description = "OpenAI model used by the Reaction Reel brief planner."
+  type        = string
+  default     = "gpt-5.6-luna"
+
+  validation {
+    condition     = trimspace(var.openai_reaction_model) != ""
+    error_message = "openai_reaction_model must not be empty."
+  }
+}
+
+variable "openai_reaction_reasoning_effort" {
+  description = "Reasoning effort used by the Reaction Reel brief planner."
+  type        = string
+  default     = "medium"
+
+  validation {
+    condition     = contains(["low", "medium"], lower(trimspace(var.openai_reaction_reasoning_effort)))
+    error_message = "openai_reaction_reasoning_effort must be low or medium."
+  }
+}
+
 variable "openai_image_model" {
   description = "OpenAI image generation model used by generate_image and generate_avatar."
   type        = string
@@ -163,13 +221,13 @@ variable "openai_image_model" {
 variable "gemini_image_model" {
   description = "Gemini image generation model used by worker image-generation flows."
   type        = string
-  default     = "gemini-3.1-flash-image"
+  default     = "gemini-nano-banana-2.1"
 }
 
 variable "gemini_omni_model" {
   description = "Gemini multimodal model used by worker analysis flows."
   type        = string
-  default     = "gemini-omni-flash-preview"
+  default     = "gemini-omni-1.1-flash"
 }
 
 variable "gemini_api_key_secret_id" {
@@ -179,15 +237,34 @@ variable "gemini_api_key_secret_id" {
 }
 
 variable "runwayml_api_secret_id" {
-  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Runway hook-video fallback."
+  description = "Secret Manager secret ID injected as RUNWAYML_API_SECRET for Seedream images, Seedance 2.5 and legacy Runway hook generation."
+
+  type    = string
+  default = "runwayml-api-secret"
+}
+
+variable "higgsfield_credentials_secret_id" {
+  description = "Optional Secret Manager secret ID injected as HF_CREDENTIALS for read-only recovery of historical Higgsfield requests."
   type        = string
-  default     = "runwayml-api-secret"
+  default     = ""
+}
+
+variable "openrouter_api_key_secret_id" {
+  description = "Optional Secret Manager secret ID injected as OPENROUTER_API_KEY for historical video-job recovery."
+  type        = string
+  default     = ""
+}
+
+variable "reapi_api_key_secret_id" {
+  description = "Secret Manager secret ID injected as REAPI_API_KEY for new Seedance 2.5 Less Restriction and WAN 3.0 jobs."
+  type        = string
+  default     = ""
 }
 
 variable "runway_daily_credit_limit" {
   description = "Maximum Runway credits the worker may spend during one UTC calendar day."
   type        = number
-  default     = 100
+  default     = 5000
 
   validation {
     condition     = var.runway_daily_credit_limit > 0 && floor(var.runway_daily_credit_limit) == var.runway_daily_credit_limit
@@ -201,7 +278,7 @@ variable "internal_app_url" {
   # The www host redirects to this canonical host. Cloud Tasks must target the
   # canonical origin directly because it does not preserve this API POST on
   # the redirect chain.
-  default     = "https://getugcpilot.com"
+  default = "https://getugcpilot.com"
 }
 
 variable "scheduling_secret_id" {

@@ -1,0 +1,311 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wall video direction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "production_mode",
+    "visual_direction",
+    "ready_video_prompt",
+    "negative_prompt",
+    "motion_timeline",
+    "overlay_render_spec",
+    "duration_plan",
+    "audio_plan",
+    "quality_notes"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "ready",
+        "needs_upstream_copy"
+      ]
+    },
+    "production_mode": {
+      "enum": [
+        "clean_plate_plus_overlay",
+        "footage_prompt_only"
+      ]
+    },
+    "visual_direction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Visual direction",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format_mode",
+        "scene"
+      ],
+      "properties": {
+        "format_mode": {
+          "enum": [
+            "close_selfie",
+            "moving_selfie",
+            "everyday_activity",
+            "lifestyle_pov",
+            "environment_only",
+            "lifestyle_montage",
+            "product_demo_hybrid"
+          ]
+        },
+        "scene": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "ready_video_prompt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "negative_prompt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "motion_timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "start_seconds",
+          "end_seconds",
+          "action"
+        ],
+        "properties": {
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "overlay_render_spec": {
+      "anyOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Exact overlay plan",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exact_text",
+            "start_seconds",
+            "end_seconds",
+            "position",
+            "baked_into_generated_footage"
+          ],
+          "properties": {
+            "exact_text": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "start_seconds": {
+              "const": 0
+            },
+            "end_seconds": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "position": {
+              "enum": [
+                "upper",
+                "central",
+                "lower",
+                "reference"
+              ]
+            },
+            "baked_into_generated_footage": {
+              "const": false
+            },
+            "typography": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "screen_anchored": {
+              "const": true
+            },
+            "fixed_across_cuts": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "duration_plan": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Duration plan",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duration_seconds",
+        "reading_note"
+      ],
+      "properties": {
+        "duration_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reading_note": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "audio_plan": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "quality_notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ready"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "ready_video_prompt": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "motion_timeline": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ready"
+          },
+          "production_mode": {
+            "const": "clean_plate_plus_overlay"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "overlay_render_spec": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "Exact overlay plan",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "exact_text",
+              "start_seconds",
+              "end_seconds",
+              "position",
+              "baked_into_generated_footage"
+            ],
+            "properties": {
+              "exact_text": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "start_seconds": {
+                "const": 0
+              },
+              "end_seconds": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "position": {
+                "enum": [
+                  "upper",
+                  "central",
+                  "lower",
+                  "reference"
+                ]
+              },
+              "baked_into_generated_footage": {
+                "const": false
+              },
+              "typography": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "screen_anchored": {
+                "const": true
+              },
+              "fixed_across_cuts": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "needs_upstream_copy"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "ready_video_prompt": {
+            "type": "null"
+          },
+          "motion_timeline": {
+            "maxItems": 0
+          },
+          "overlay_render_spec": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

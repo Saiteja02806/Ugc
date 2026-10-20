@@ -1,0 +1,166 @@
+{
+  "items": [
+    {
+      "referenceId": "explore-slideshow-fitness-1e937e8be4486b45",
+      "slideId": "slide-1-4f04e98471a9",
+      "sourceSha256": "4f04e98471a975f8161518e827745bfef2e671597b1952adb184c8231fdb8a28",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "5 ways to make quick\nprogress in the gym",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-82f920de67e28907",
+      "slideId": "slide-1-21b667e5d417",
+      "sourceSha256": "21b667e5d417547822cd5440df46101c7953dbd00ce26918873cb934600e5c93",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I don’t feel like going to\nthe gym today”",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-6762e151a53d2f5c",
+      "slideId": "slide-1-d3145a5df6ea",
+      "sourceSha256": "d3145a5df6ea377bbab3cb2c4a5a6fd17dc78e1c69ee5ad2a04807d3363d52f9",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "5 ways to make quick\nprogress in the gym",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-fitness-6762e151a53d2f5c",
+      "slideId": "slide-3-b646002e9837",
+      "sourceSha256": "b646002e9837a6a57a01949422ac64220b9cf1024cd55b6af3b25c6c5756aebf",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "2. Lift heavy",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-study-4d7bd8101ccf9198",
+      "slideId": "slide-2-7c1d7b0cce29",
+      "sourceSha256": "7c1d7b0cce290af11bf6e6c49b845b323f06ef6a842533ad0920db7115dffeb7",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Cause having a good\ngrades make me feel\nsooo goood!!!!",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-interior-design-133d4797a0a1424b",
+      "slideId": "slide-4-006e9317cfb5",
+      "sourceSha256": "006e9317cfb5eaa62f77349abc536c3d8b0123466d0ed5afd334681e9f6eece0",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "and this",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-interior-design-133d4797a0a1424b",
+      "slideId": "slide-8-4a2474b4e575",
+      "sourceSha256": "4a2474b4e57529fb2ca93b728f44e57cf82902681dc6b110767d5ad809afe1e1",
+      "status": "no_text",
+      "blocks": [],
+      "notes": "Original room photograph inspected visually; no visible post text. Empty OCR result confirmed."
+    },
+    {
+      "referenceId": "explore-slideshow-relationship-3bb7ddf23cd0ef2b",
+      "slideId": "slide-4-f3da4d41fbce",
+      "sourceSha256": "f3da4d41fbced8a234a6ec2e6c8a92e0d253bd4186568f6dc1ad74ed27005c84",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "3. he says \"no\" sometimes\n\ni thought:\n\n\"does he not want to make\nme happy?\n\ni realized:\n\nhe just has boundaries and\nself-respect",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-calory-tracking-7c60bfaf6dbdf900",
+      "slideId": "slide-1-09581e4f10ce",
+      "sourceSha256": "09581e4f10ce260412a18876cb839125a30bb07633fa1fdb7bb7dd6eb89de54c",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "What I eat in a day\nwhen living alone",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-calory-tracking-161a2ed4a2f1c64f",
+      "slideId": "slide-2-91a6c5942c98",
+      "sourceSha256": "91a6c5942c98ee5b9ed78c31f3c77a8ec6ed3f107a74541451b83f19f444db15",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Breakfast\n\ngrapes, egg, bread, cheese, date, avocado",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-calory-tracking-db582602ad18c075",
+      "slideId": "slide-3-b6d14dc37977",
+      "sourceSha256": "b6d14dc3797790a323a72007bfc3d3c6ac25a11d35aecf3e2c02f2df8469ec23",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Lunch\n\nchicken, rice, peas, cucumber, green onions,\nsesame seeds",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    },
+    {
+      "referenceId": "explore-slideshow-calory-tracking-341c772318097c7c",
+      "slideId": "slide-6-8f6def22fddd",
+      "sourceSha256": "8f6def22fddd10e24db89a24df5c87646d4ec8beda8a55b7a670ed6dea958083",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Dessert\n\nbanana, grape",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "notes": "Original slide inspected visually during accuracy audit. Restored visible post copy missed entirely by local OCR; reference wording, capitalization and line breaks retained. Incidental worksheet/table/scenery text excluded."
+    }
+  ]
+}

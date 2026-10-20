@@ -1,0 +1,54 @@
+[
+  {
+    "path": "public/explore/covers/create-hook-v6",
+    "files": [
+      {
+        "path": "public/explore/covers/create-hook-v6.mp4",
+        "sha256": "c5d68a126f04db703db453792d25539f1388423f9ea51ed274a8e9e56f6a0f1a"
+      },
+      {
+        "path": "public/explore/covers/create-hook-v6.webp",
+        "sha256": "546641229b4aa3d4d1b90f8d9ee268bbf867b0cd7d321f17d03c105210da403c"
+      }
+    ]
+  },
+  {
+    "path": "public/explore/covers/recreate-v2",
+    "files": [
+      {
+        "path": "public/explore/covers/recreate-v2.mp4",
+        "sha256": "f67cb0494cac37ec2781a50756967c9576a97a51ae10d8c445a48c235ceb525d"
+      },
+      {
+        "path": "public/explore/covers/recreate-v2.webp",
+        "sha256": "ddc019f5192d391ae6b6a8bea02cdbb283b1c415e880fad83fe9429433e69134"
+      }
+    ]
+  },
+  {
+    "path": "public/explore/covers/creator-phone-v7",
+    "files": [
+      {
+        "path": "public/explore/covers/creator-phone-v7.mp4",
+        "sha256": "b6bcc67f52ce2913619dd43665213f99679a0cdd30ebf91644cfdab231a040f6"
+      },
+      {
+        "path": "public/explore/covers/creator-phone-v7.webp",
+        "sha256": "464b99294eb29590b1c7b1fcff993c313d4076472ae57bf79afa1ad5406df65b"
+      }
+    ]
+  },
+  {
+    "path": "public/explore/characters/ai-character-create-yours-v5",
+    "files": [
+      {
+        "path": "public/explore/characters/ai-character-create-yours-v5.mp4",
+        "sha256": "32d89eaaadc709c71147cde866f15cdd5106404a7fa3bd096019be351e8ed04c"
+      },
+      {
+        "path": "public/explore/characters/ai-character-create-yours-v5.webp",
+        "sha256": "e1b690d91fd22d3a0bc0ce9675cf618cbd9c5dfb776925dab7e1e2287d92c437"
+      }
+    ]
+  }
+]

@@ -8,6 +8,7 @@ import {
   type WallTextSegmentRole,
 } from "./wall-text-types.ts";
 import { WALL_TEXT_GENERATION_WORD_RANGE } from "./wall-text-copy-policy.ts";
+import { validateManualWallTextContent } from "./wall-text-manual-copy.ts";
 import type { WebsiteBusinessAnalysis } from "../website-analysis/schema.ts";
 import {
   MAX_WALL_TEXT_VIDEO_DURATION_SECONDS,
@@ -17,7 +18,7 @@ import {
 const MAX_WALL_TEXT_IDEA_COUNT = 50;
 export const WALL_TEXT_PREFERRED_MIN_WORDS = 18;
 export const WALL_TEXT_PREFERRED_MAX_WORDS = 21;
-export const MAX_WALL_TEXT_WORDS = 24;
+export const MAX_WALL_TEXT_WORDS = WALL_TEXT_GENERATION_WORD_RANGE.maximum;
 export const MAX_CURRENT_WALL_TEXT_WORDS = 50;
 // V11 is the current generation and reflow contract. Keep the broader 15–50
 // range above only for historical cards while they are read.
@@ -194,16 +195,8 @@ export function getWallTextLinePolicy(
   );
 }
 
-export function getWallTextWordPolicy(
-  durationSeconds: number,
-): WallTextWordPolicy {
-  const durationLimitedMaximum = Math.floor(
-    (durationSeconds - 0.24) * SOCIAL_OVERLAY_READING_WORDS_PER_SECOND,
-  );
-  const maximum = Math.min(
-    MAX_WALL_TEXT_WORDS,
-    Math.max(MIN_SHORT_WALL_TEXT_WORDS, durationLimitedMaximum),
-  );
+export function getWallTextWordPolicy(): WallTextWordPolicy {
+  const maximum = MAX_WALL_TEXT_WORDS;
   const minimum =
     maximum >= MIN_WALL_TEXT_WORDS
       ? MIN_WALL_TEXT_WORDS
@@ -350,8 +343,12 @@ export function validateGeneratedWallTextIdeas(params: {
 
 export function validateWallTextContent(
   content: TrendingWallTextContent,
-  durationSeconds: number,
+  _durationSeconds: number,
 ) {
+  if (content.finalLayout?.textMode === "manual") {
+    validateManualWallTextContent(content);
+    return;
+  }
   const wordCount = countWords(content.fullText);
   if (
     content.layoutVersion === "wall-text-overlay-v6" ||
@@ -414,9 +411,11 @@ export function validateWallTextContent(
     }
     if (
       content.layoutVersion === "wall-text-overlay-v13" &&
-      content.finalLayout.fontSizePx !== 52
+      ![50, 52].includes(content.finalLayout.fontSizePx)
     ) {
-      throw new Error("Wall-of-text V13 must use the fixed 52px font size.");
+      throw new Error(
+        "Wall-of-text V13 must use the approved 50px font size or the preserved 52px legacy size.",
+      );
     }
     if (
       lines.length < MIN_WALL_TEXT_RENDERED_LINES ||
@@ -440,13 +439,13 @@ export function validateWallTextContent(
     return;
   }
   if (content.layoutVersion === "wall-text-overlay-v5") {
-    const maximum = Math.min(50, Math.max(16, Math.round(durationSeconds * 4)));
-    const minimum = Math.max(12, maximum - 8);
+    const maximum = 50;
+    const minimum = 12;
     const blocks = content.finalLayout?.blocks;
 
     if (wordCount < minimum || wordCount > maximum) {
       throw new Error(
-        `Wall-of-text copy must contain ${minimum}-${maximum} words for a ${durationSeconds.toFixed(1)}-second clip.`,
+        `Wall-of-text copy must contain ${minimum}-${maximum} words.`,
       );
     }
     if (!content.formatId || !content.sourceContent || !blocks?.length) {
@@ -460,19 +459,10 @@ export function validateWallTextContent(
     if (CTA_PATTERNS.some((pattern) => pattern.test(content.fullText))) {
       throw new Error("Wall-of-text copy must not contain a call to action.");
     }
-    const readingSeconds = estimateWallTextReadingSeconds(
-      content.fullText,
-      blocks.length,
-    );
-    if (readingSeconds > durationSeconds + 0.15) {
-      throw new Error(
-        `Wall-of-text copy needs about ${readingSeconds.toFixed(1)} seconds to read, longer than the ${durationSeconds.toFixed(1)}-second clip.`,
-      );
-    }
     return;
   }
 
-  const wordPolicy = getWallTextWordPolicy(durationSeconds);
+  const wordPolicy = getWallTextWordPolicy();
   const lineCount = content.segments.reduce(
     (total, segment) => total + segment.lines.length,
     0,
@@ -480,7 +470,7 @@ export function validateWallTextContent(
 
   if (wordCount < wordPolicy.minimum || wordCount > wordPolicy.maximum) {
     throw new Error(
-      `Wall-of-text copy must contain ${wordPolicy.minimum}–${wordPolicy.maximum} words for a ${durationSeconds.toFixed(1)}-second clip.`,
+      `Wall-of-text copy must contain ${wordPolicy.minimum}–${wordPolicy.maximum} words.`,
     );
   }
 
@@ -532,16 +522,6 @@ export function validateWallTextContent(
   validateSegmentRoles(content.segments);
   validateSemanticLines(content.segments);
 
-  const readingSeconds = estimateWallTextReadingSeconds(
-    content.fullText,
-    content.segments.length,
-  );
-
-  if (readingSeconds > durationSeconds + 0.15) {
-    throw new Error(
-      `Wall-of-text copy needs about ${readingSeconds.toFixed(1)} seconds to read, longer than the ${durationSeconds.toFixed(1)}-second clip.`,
-    );
-  }
 }
 
 export function estimateWallTextReadingSeconds(

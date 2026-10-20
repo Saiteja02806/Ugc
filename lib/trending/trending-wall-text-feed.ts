@@ -1,4 +1,5 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "./format-policy";
 
 import { createHash, randomUUID } from "node:crypto";
 
@@ -10,6 +11,12 @@ import {
 } from "@/lib/trending/wall-layout-engine";
 import { getBackfillWallTextFormatId } from "@/lib/trending/wall-formats";
 import { WALL_TEXT_PROMPT_VERSION } from "@/lib/trending/wall-prompt";
+import {
+  buildWallTextFactGroundingAssignments,
+  parseWallTextFactGrounding,
+  selectWallTextGroundingFact,
+  serializeWallTextFactGrounding,
+} from "@/lib/trending/wall-text-grounding";
 import {
   generateBusinessTrendingWallTextIdeas,
   getTrendingWallTextModelName,
@@ -27,6 +34,7 @@ import {
   listActiveTrendingWallTextIdeas,
   listUsedWallTextBackgroundAssetIds,
   listTrendingWallTextCreatives,
+  listUnassignedWallTextCreatives,
   listWallTextDuplicateSignatures,
   listWallTextOverlayAssetsByIds,
   listWallTextOverlayAssetsForMediaAssetIds,
@@ -35,11 +43,14 @@ import {
   needsTrendingWallTextCreativeRefresh,
   parseWallTextContent,
   parseWallTextLayout,
+  publishTrendingWallTextAssignments,
+  recordWallTextFailureDiagnostic,
   recordWallTextGenerationChunkFailure,
   replaceTrendingWallTextCreativeCopy,
   reserveWallTextGenerationBatch,
   saveWallTextGenerationCandidate,
   terminalizeWallTextStaleLayoutFailures,
+  updateWallTextGenerationAssignmentGrounding,
   type WallTextCreativeRow,
 } from "@/lib/trending/wall-text-db";
 import {
@@ -49,8 +60,9 @@ import {
 } from "@/lib/trending/wall-text-types";
 import {
   classifyWallTextGenerationFailure,
+  getWallTextFailurePrivateMessage,
   isWallTextRenderFitFailure,
-  WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
+  markWallTextFailureDiagnosticRecorded,
   WALL_TEXT_RENDER_FIT_REJECTED,
 } from "@/lib/trending/wall-text-generation-failure";
 import {
@@ -84,6 +96,7 @@ export async function enqueueTrendingWallTextRefill(
     targetActive?: number;
   } = {},
 ) {
+  assertTrendingFormatGenerationEnabled("wall_text");
   const targetActive = Math.max(
     Math.trunc(options.targetActive ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET),
     1,
@@ -169,6 +182,7 @@ export async function prepareTrendingWallTextIdeas(
   profile: BusinessProfileRecord,
   options: {
     earlyPlanId?: string | null;
+    dailyFeedId?: string | null;
     mode?: "initial" | "refill";
     recoveryIteration?: number | null;
     recoveryKey?: string | null;
@@ -176,6 +190,7 @@ export async function prepareTrendingWallTextIdeas(
     requestKey?: string;
   } = {},
 ) {
+  assertTrendingFormatGenerationEnabled("wall_text");
   let mode = options.mode ?? "initial";
   const requestedCount = Math.min(
     Math.max(Math.trunc(options.requestedCount ?? DEFAULT_WALL_TEXT_ACTIVE_TARGET), 1),
@@ -250,24 +265,28 @@ export async function prepareTrendingWallTextIdeas(
   if (
     mode === "initial" &&
     !options.earlyPlanId &&
+    !options.dailyFeedId &&
     areTrendingWallTextCreativesCurrent(existing)
   ) {
-    return ensureTrendingWallTextAssignments({
+    const ideas = await ensureTrendingWallTextAssignments({
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
       creatives: existing.filter(isTrendingWallTextCreativeCurrent),
       userId: profile.userId,
     });
+    return { ideaCount: ideas.length };
   }
 
   if (
     mode === "initial" &&
+    !options.earlyPlanId &&
+    !options.dailyFeedId &&
     existing.length > 0
   ) {
     const inventory =
       selectedInventory ?? (await listWallTextVideoAssetInventory());
 
-    return backfillExistingTrendingWallTextIdeas(
+    const ideas = await backfillExistingTrendingWallTextIdeas(
       profile,
       existing,
       inventory,
@@ -278,6 +297,7 @@ export async function prepareTrendingWallTextIdeas(
         requestKey: options.requestKey,
       },
     );
+    return { ideaCount: ideas.length };
   }
 
   const [
@@ -377,6 +397,23 @@ export async function prepareTrendingWallTextIdeas(
     );
   }
 
+  // There is intentionally no minimum fact count. A smaller catalog safely
+  // cycles across requested cards, but a *new* business-specific Wall batch
+  // cannot honestly be created without a single approved fact. Existing
+  // legacy reservations continue through their historical Reviewer path in
+  // completeReservedWallTextGeneration below.
+  const groundingByCandidateIndex = buildWallTextFactGroundingAssignments({
+    analysis: profile.context,
+    candidateIndexes: generationSources.map((candidate) => candidate.candidateIndex),
+  });
+  if (groundingByCandidateIndex.size === 0) {
+    throw new TrendingWallTextPreparationError(
+      "Business Context needs at least one approved pain, audience, capability, differentiator, or outcome before Wall-of-text can be generated.",
+      409,
+      "wall_text_business_context_needed",
+    );
+  }
+
   const historicalSignatures = await listWallTextDuplicateSignatures({
     businessProfileId: profile.id,
     userId: profile.userId,
@@ -399,6 +436,7 @@ export async function prepareTrendingWallTextIdeas(
               selectionWeight: 1,
             };
       const budget = await deriveWallTextSpatialBudget({
+        durationSeconds: candidate.durationSeconds,
         layout: candidate.layout,
       });
       return { assignment, budget, candidate };
@@ -420,7 +458,9 @@ export async function prepareTrendingWallTextIdeas(
         : null,
     maxWords: budget.maxWords,
     sourceKind: candidate.sourceKind,
-    targetWords: budget.targetWords,
+    // target_words is retained for the reservation RPC, not as a writing goal.
+    targetWords: budget.maxWords,
+    grounding: groundingByCandidateIndex.get(candidate.candidateIndex) ?? null,
   }));
   const requestHash = createHash("sha256")
     .update(JSON.stringify(requestDescriptor), "utf8")
@@ -438,6 +478,13 @@ export async function prepareTrendingWallTextIdeas(
     assignments: candidateBudgets.map(({ assignment, budget, candidate }) => ({
       assignment,
       durationSeconds: candidate.durationSeconds,
+      ...(groundingByCandidateIndex.has(candidate.candidateIndex)
+        ? {
+            focus: serializeWallTextFactGrounding(
+              groundingByCandidateIndex.get(candidate.candidateIndex)!,
+            ),
+          }
+        : {}),
       ...(candidate.sourceKind === "instagram_reel"
         ? {
             instagramAudioFitMode: candidate.instagramAudioFitMode,
@@ -455,7 +502,7 @@ export async function prepareTrendingWallTextIdeas(
       maxWords: budget.maxWords,
       overlayMediaAssetId: candidate.entry.id,
       sourceKind: candidate.sourceKind,
-      targetWords: budget.targetWords,
+      targetWords: budget.maxWords,
     })),
     businessProfileId: profile.id,
     businessProfileVersion: profile.profileVersion,
@@ -508,36 +555,70 @@ async function completeReservedWallTextGeneration(params: {
     Awaited<ReturnType<typeof getWallTextGenerationReservation>>
   >;
 }) {
+  // Recover a save whose publication was interrupted before writing more copy.
+  if (params.reservation.assignments.some((assignment) => assignment.status === "completed")) {
+    await publishReservedWallTextGeneration(params);
+  }
   const unfinished = params.reservation.assignments.filter(
     (assignment) => assignment.status !== "completed",
   );
 
-  if (unfinished.length > 0) {
-    const privateContextsByAssignment = await getWallTextPrivateCreativeContexts({
-      assignments: unfinished,
-      userId: params.profile.userId,
-    });
-    const assets = await listWallTextOverlayAssetsByIds(
-      unfinished.map((assignment) => assignment.overlay_media_asset_id),
+  // Terminal failures retire their plan items. Check this before loading
+  // reserved-only contexts so replays request replacement rather than retrying
+  // the same retired idea as an infrastructure failure.
+  if (unfinished.some((assignment) => assignment.status === "failed")) {
+    throw new WallTextCandidateRepairExhaustedError(
+      "A Wall-of-text chunk exhausted its content-repair attempts.",
     );
-    const availableAssetIds = new Set(assets.map((asset) => asset.id));
-    if (
-      unfinished.some(
-        (assignment) =>
-          !availableAssetIds.has(assignment.overlay_media_asset_id) ||
-           (assignment.source_kind === "instagram_reel" &&
-             (!assignment.instagram_reel_template_id ||
-               !assignment.instagram_reel_template_version ||
-               !assignment.instagram_reference_text ||
-              !assignment.instagram_reference_text_hash ||
-              !assignment.instagram_locked_audio_asset_id ||
-              !assignment.instagram_audio_fit_mode)),
-      )
-    ) {
-      throw new TrendingWallTextPreparationError(
-        "A reserved Wall-of-text background is no longer available.",
-        409,
+  }
+
+  if (unfinished.length > 0) {
+    let privateContextsByAssignment: Awaited<
+      ReturnType<typeof getWallTextPrivateCreativeContexts>
+    >;
+    try {
+      privateContextsByAssignment = await getWallTextPrivateCreativeContexts({
+        assignments: unfinished,
+        userId: params.profile.userId,
+      });
+      const assets = await listWallTextOverlayAssetsByIds(
+        unfinished.map((assignment) => assignment.overlay_media_asset_id),
       );
+      const availableAssetIds = new Set(assets.map((asset) => asset.id));
+      if (
+        unfinished.some(
+          (assignment) =>
+            !availableAssetIds.has(assignment.overlay_media_asset_id) ||
+            (assignment.source_kind === "instagram_reel" &&
+              (!assignment.instagram_reel_template_id ||
+                !assignment.instagram_reel_template_version ||
+                !assignment.instagram_reference_text ||
+                !assignment.instagram_reference_text_hash ||
+                !assignment.instagram_locked_audio_asset_id ||
+                !assignment.instagram_audio_fit_mode)),
+        )
+      ) {
+        throw new TrendingWallTextPreparationError(
+          "A reserved Wall-of-text background is no longer available.",
+          409,
+        );
+      }
+    } catch (error) {
+      const failure = classifyWallTextGenerationFailure(error, "reservation");
+      try {
+        await recordWallTextFailureDiagnostic({
+          details: failure.diagnostic,
+          errorCode: failure.errorCode,
+          errorMessage: getWallTextFailurePrivateMessage(error),
+          requestKey: params.requestKey,
+          retryable: failure.retryable,
+          userId: params.profile.userId,
+        });
+        markWallTextFailureDiagnosticRecorded(error);
+      } catch (recordError) {
+        console.error("Could not persist private Wall-of-text reservation diagnostic:", recordError);
+      }
+      throw error;
     }
 
     const reservedByLocalIndex = new Map(
@@ -548,11 +629,6 @@ async function completeReservedWallTextGeneration(params: {
 
     for (const chunk of chunks) {
       const chunkId = chunk[0]!.chunk_id;
-      if (chunk.some((assignment) => assignment.status === "failed")) {
-        throw new WallTextCandidateRepairExhaustedError(
-          "A Wall-of-text chunk exhausted its single content-repair attempt.",
-        );
-      }
       const claimToken = await claimWallTextGenerationChunk({
         chunkId,
         userId: params.profile.userId,
@@ -560,13 +636,13 @@ async function completeReservedWallTextGeneration(params: {
       if (!claimToken) continue;
 
       try {
-        await generateBusinessTrendingWallTextIdeas({
-          business: params.profile.context,
-          candidates: chunk.map((assignment) => {
+        const candidates = await Promise.all(
+          chunk.map(async (assignment) => {
             const layout = parseWallTextLayout(assignment.layout_json);
             const privateCreativeContext = privateContextsByAssignment.get(
               assignment.id,
             );
+            let grounding = parseWallTextFactGrounding(assignment.focus_json);
             if (!layout) {
               throw new Error("Reserved Wall-of-text placement is invalid.");
             }
@@ -575,8 +651,26 @@ async function completeReservedWallTextGeneration(params: {
                 "Reserved Wall-of-text content-plan context is unavailable.",
               );
             }
+            const selectedFactId =
+              privateCreativeContext.planningBrief?.selectedFactId;
+            if (grounding && selectedFactId) {
+              const selectedGrounding = selectWallTextGroundingFact(
+                grounding,
+                selectedFactId,
+              );
+              if (selectedGrounding.assignedFact.id !== grounding.assignedFact.id) {
+                await updateWallTextGenerationAssignmentGrounding({
+                  assignmentId: assignment.id,
+                  batchId: assignment.batch_id,
+                  focus: serializeWallTextFactGrounding(selectedGrounding),
+                  userId: params.profile.userId,
+                });
+              }
+              grounding = selectedGrounding;
+            }
             return {
               candidateIndex: assignment.batch_candidate_index,
+              ...(grounding ? { grounding } : {}),
               privateCreativeContext: privateCreativeContext,
               durationSeconds: Number(assignment.duration_seconds),
               layout,
@@ -589,15 +683,19 @@ async function completeReservedWallTextGeneration(params: {
               targetWords: assignment.target_words,
             };
           }),
+        );
+        await generateBusinessTrendingWallTextIdeas({
+          business: params.profile.context,
+          candidates,
           historicalSignatures: runtimeSignatures,
           onChunkAccepted: async (ideas) => {
-            await Promise.all(
-              ideas.map((idea) => {
+            const saves = await Promise.allSettled(
+              ideas.map(async (idea) => {
                 const reserved = reservedByLocalIndex.get(idea.candidateIndex);
                 if (!reserved) {
                   throw new Error("Reserved Wall-of-text candidate is missing.");
                 }
-                return saveWallTextGenerationCandidate({
+                const creative = await saveWallTextGenerationCandidate({
                   assignmentId: reserved.id,
                   claimToken,
                   contentHash: idea.duplicateSignature.contentHash,
@@ -609,27 +707,48 @@ async function completeReservedWallTextGeneration(params: {
                   text: idea.content,
                   userId: params.profile.userId,
                 });
+                await publishTrendingWallTextAssignments({
+                  businessProfileId: params.profile.id,
+                  businessProfileVersion: params.profile.profileVersion,
+                  creatives: [creative],
+                  userId: params.profile.userId,
+                });
               }),
             );
+            // Wait for every accepted save/publication before releasing the
+            // chunk claim. One timeout must not cancel its successful siblings.
+            const rejected = saves.find((save) => save.status === "rejected");
+            if (rejected?.status === "rejected") throw rejected.reason;
             runtimeSignatures.push(
               ...ideas.map((idea) => idea.duplicateSignature),
             );
           },
         });
       } catch (error) {
-        const failure =
-          error instanceof WallTextCandidateRepairExhaustedError
-            ? {
-                errorCode: WALL_TEXT_CONTENT_RETRY_EXHAUSTED,
-                retryable: false,
-              }
-            : classifyWallTextGenerationFailure(error);
+        const failure = classifyWallTextGenerationFailure(error);
+        try {
+          await recordWallTextFailureDiagnostic({
+            details: failure.diagnostic,
+            errorCode: failure.errorCode,
+            errorMessage: getWallTextFailurePrivateMessage(error),
+            generationChunkId: chunkId,
+            requestKey: params.requestKey,
+            retryable: failure.retryable,
+            userId: params.profile.userId,
+          });
+          markWallTextFailureDiagnosticRecorded(error);
+        } catch (diagnosticError) {
+          // Keep the established chunk-state path intact during a rolling
+          // deployment if the diagnostics migration has not reached this
+          // application instance yet.
+          console.error("Could not persist private Wall-of-text diagnostic:", diagnosticError);
+        }
         try {
           await recordWallTextGenerationChunkFailure({
             claimToken,
             chunkId,
             errorCode: failure.errorCode,
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage: getWallTextFailurePrivateMessage(error),
             retryable: failure.retryable,
             userId: params.profile.userId,
           });
@@ -641,17 +760,41 @@ async function completeReservedWallTextGeneration(params: {
     }
   }
 
-  const creatives = await listTrendingWallTextCreatives({
+  return publishReservedWallTextGeneration(params);
+}
+
+async function publishReservedWallTextGeneration(params: {
+  profile: BusinessProfileRecord;
+  requestKey: string;
+}) {
+  const reservation = await getWallTextGenerationReservation({
+    requestKey: params.requestKey,
+    userId: params.profile.userId,
+  });
+  if (!reservation) throw new Error("Wall-of-text generation reservation is unavailable.");
+  const completedIds = new Set(reservation.assignments.flatMap((assignment) =>
+    assignment.status === "completed" && assignment.wall_text_creative_id
+      ? [assignment.wall_text_creative_id] : [],
+  ));
+  if (completedIds.size === 0) return { ideaCount: 0 };
+  const allCreatives = await listTrendingWallTextCreatives({
+    creativeIds: [...completedIds],
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
     userId: params.profile.userId,
   });
-  return ensureTrendingWallTextAssignments({
+  const creatives = allCreatives.filter((creative) =>
+    completedIds.has(creative.id) && isTrendingWallTextCreativeCurrent(creative),
+  );
+  await publishTrendingWallTextAssignments({
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
     creatives,
     userId: params.profile.userId,
   });
+  // Count this reservation's published cards, including cards already decided
+  // by the user. Historical active cards cannot satisfy or inflate this count.
+  return { ideaCount: creatives.length };
 }
 
 function groupReservedAssignmentsByChunk<
@@ -709,22 +852,50 @@ export async function getTrendingWallTextFeedProvider(
     const availableSourceMediaAssetIds = readyMediaAssets
       .filter((asset) => asset.mime_type.startsWith("video/"))
       .map((asset) => asset.id);
-    const [creatives, ideas] = await Promise.all([
-      listTrendingWallTextCreatives({
-        backgroundAssetIds,
+    const creatives = await listTrendingWallTextCreatives({
+      backgroundAssetIds,
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      userId: profile.userId,
+    });
+    // Also recover older failed jobs and a crash between saving and publishing.
+    // Only absent assignments are repaired; existing user decisions are final.
+    try {
+      const unassigned = await listUnassignedWallTextCreatives({
         businessProfileId: profile.id,
         businessProfileVersion: profile.profileVersion,
+        creatives,
         userId: profile.userId,
-      }),
-      listActiveTrendingWallTextIdeas({
-        availableSourceMediaAssetIds,
-        backgroundAssetIds,
-        businessProfileId: profile.id,
-        businessProfileVersion: profile.profileVersion,
-        pinnedAssignmentIds: options.pinnedAssignmentIds,
-        userId: profile.userId,
-      }),
-    ]);
+      });
+      for (let offset = 0; offset < unassigned.length; offset += 10) {
+        const publications = await Promise.allSettled(
+          unassigned.slice(offset, offset + 10).map((creative) =>
+            publishTrendingWallTextAssignments({
+              businessProfileId: profile.id,
+              businessProfileVersion: profile.profileVersion,
+              creatives: [creative],
+              userId: profile.userId,
+            }),
+          ),
+        );
+        for (const publication of publications) {
+          if (publication.status === "rejected") {
+            console.error("Could not publish a saved Wall-of-text card:", publication.reason);
+          }
+        }
+      }
+    } catch (error) {
+      // Repair availability must not hide the cards that are already ready.
+      console.error("Could not reconcile saved Wall-of-text cards:", error);
+    }
+    const ideas = await listActiveTrendingWallTextIdeas({
+      availableSourceMediaAssetIds,
+      backgroundAssetIds,
+      businessProfileId: profile.id,
+      businessProfileVersion: profile.profileVersion,
+      pinnedAssignmentIds: options.pinnedAssignmentIds,
+      userId: profile.userId,
+    });
 
     if (
       source.selection &&
@@ -791,7 +962,7 @@ export class TrendingWallTextPreparationError extends Error {
   }
 }
 
-function toWallTextSourceRecord(
+export function toWallTextSourceRecord(
   idea: Awaited<ReturnType<typeof listActiveTrendingWallTextIdeas>>[number],
 ): TrendingWallTextSourceRecord {
   return {

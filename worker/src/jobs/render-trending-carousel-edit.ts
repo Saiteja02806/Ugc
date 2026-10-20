@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { renderCarouselManualSlide } from "../lib/carousel-manual-render.js";
+import { CAROUSEL_MANUAL_TEXT_VERSION, parseCarouselManualTextStyle, type CarouselManualTextStyle } from "../lib/carousel-manual-text.js";
 import { getErrorMessage, logger } from "../logger.js";
 import {
   CAROUSEL_RENDERER_VERSION,
@@ -5,6 +8,7 @@ import {
   type CarouselNormalizedTextPosition,
 } from "../lib/carousel-render-slide.js";
 import { getCarouselRenderStyle } from "../lib/carousel-render-style.js";
+import { getCarouselEditHookFontSize } from "../lib/carousel-edit-cover-typography.js";
 import {
   CAROUSEL_STRUCTURE_2_RENDERER_VERSION,
   renderCarouselStructure2SlideWithDiagnostics as defaultRenderCarouselStructure2Slide,
@@ -23,9 +27,9 @@ import type {
 import type { WorkerJobOutput } from "./index.js";
 
 const TRENDING_CAROUSEL_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v1`;
+  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v4-body-copy`;
 const TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v1`;
+  `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v4`;
 
 type TrendingCarouselEditJobInput = {
   carouselId: string;
@@ -36,6 +40,7 @@ type TrendingCarouselEditJobInput = {
 
 type EditableCarouselSlide = {
   backgroundAssetId: string | null;
+  backgroundCrop?: "centre";
   backgroundUrl: string;
   ctaText: string;
   headline: string;
@@ -43,16 +48,19 @@ type EditableCarouselSlide = {
   slideNumber: number;
   subtext: string;
   textPosition: CarouselNormalizedTextPosition;
+  textStyle?: CarouselManualTextStyle | null;
   visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 type RenderTrendingCarouselEditDependencies = {
+  renderCarouselManualSlide: typeof renderCarouselManualSlide;
   renderCarouselSlide: typeof defaultRenderCarouselSlide;
   renderCarouselStructure2Slide: typeof defaultRenderCarouselStructure2Slide;
   uploadRenderedCarouselSlide: typeof defaultUploadRenderedCarouselSlide;
 };
 
 const defaultDependencies: RenderTrendingCarouselEditDependencies = {
+  renderCarouselManualSlide,
   renderCarouselSlide: defaultRenderCarouselSlide,
   renderCarouselStructure2Slide: defaultRenderCarouselStructure2Slide,
   uploadRenderedCarouselSlide: defaultUploadRenderedCarouselSlide,
@@ -147,6 +155,7 @@ export async function runRenderTrendingCarouselEditJob(
       orderedOriginalSlides.map((slide) => [slide.slide_number, slide]),
     );
     const renderedSlides: Array<{
+      renderFingerprint: string;
       renderedS3Key: string;
       renderedUrl: string;
       slideNumber: number;
@@ -160,10 +169,23 @@ export async function runRenderTrendingCarouselEditJob(
         );
       }
 
+      const renderFingerprint = createHash("sha256").update(JSON.stringify({
+        version: generation.structure_id === "structure_2"
+          ? TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION : TRENDING_CAROUSEL_EDIT_RENDERER_VERSION,
+        format: generation.format,
+        sourceRendererVersion: generation.renderer_version,
+        originalSlide,
+        editedSlide,
+        ...(editedSlide.textStyle ? { manualTextRendererVersion: CAROUSEL_MANUAL_TEXT_VERSION } : {}),
+        textStyle: originalTextStyle,
+        plannedSlide: plannedSlideByNumber.get(editedSlide.slideNumber) ?? null,
+      })).digest("hex");
       return {
         editedSlide,
         originalSlide,
-        reusableRender: getReusableOriginalRender(originalSlide, editedSlide),
+        renderFingerprint,
+        reusableRender: getReusablePreviousRender(edit, editedSlide.slideNumber, renderFingerprint) ??
+          getReusableOriginalRender(originalSlide, editedSlide),
       };
     });
     const slideRenderCount = editSlidesWithSource.filter(
@@ -174,11 +196,13 @@ export async function runRenderTrendingCarouselEditJob(
     for (const {
       editedSlide,
       originalSlide,
+      renderFingerprint,
       reusableRender,
     } of editSlidesWithSource) {
       if (reusableRender) {
         renderedSlides.push({
           ...reusableRender,
+          renderFingerprint,
           slideNumber: editedSlide.slideNumber,
         });
         logger.info("Trending Carousel edit slide reused", {
@@ -197,13 +221,29 @@ export async function runRenderTrendingCarouselEditJob(
       }
 
       const rendered =
-        generation.structure_id === "structure_2"
+        editedSlide.textStyle
+          ? await dependencies.renderCarouselManualSlide({ assetUrl: editedSlide.backgroundUrl, slide: { ...editedSlide, renderFormat: generation.format } })
+          : generation.structure_id === "structure_2"
           ? await dependencies.renderCarouselStructure2Slide({
               assetUrl: editedSlide.backgroundUrl,
               format: generation.format,
-              spec: createStructure2EditRenderSpec(originalSlide, editedSlide),
+              spec: {
+                ...createStructure2EditRenderSpec(originalSlide, editedSlide),
+                coverFontSize: getCarouselEditHookFontSize({
+                  ...editedSlide,
+                  originalHeadline: originalSlide.headline,
+                  originalSubtext: originalSlide.subtext ?? "",
+                  sourceRendererVersion: generation.renderer_version,
+                }),
+              },
             })
           : await dependencies.renderCarouselSlide({
+              coverFontSize: getCarouselEditHookFontSize({
+                ...editedSlide,
+                originalHeadline: originalSlide.headline,
+                originalSubtext: originalSlide.subtext ?? "",
+                sourceRendererVersion: generation.renderer_version,
+              }),
               assetUrl: editedSlide.backgroundUrl,
               format: generation.format,
               normalizedTextPosition: editedSlide.textPosition,
@@ -239,6 +279,7 @@ export async function runRenderTrendingCarouselEditJob(
       });
 
       renderedSlides.push({
+        renderFingerprint,
         renderedS3Key: uploaded.key,
         renderedUrl: uploaded.url,
         slideNumber: editedSlide.slideNumber,
@@ -378,6 +419,7 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
             ? slide.backgroundAssetId.trim()
             : null,
         backgroundUrl: getHttpUrl(slide.backgroundUrl, "backgroundUrl"),
+        backgroundCrop: slide.backgroundCrop === "centre" ? "centre" as const : undefined,
         ctaText: getOptionalString(slide.ctaText, 120),
         headline: getOptionalString(slide.headline, 180),
         slideId: getRequiredString(slide.slideId, "slideId"),
@@ -387,6 +429,7 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
           x: getUnitNumber(textPosition.x, "textPosition.x"),
           y: getUnitNumber(textPosition.y, "textPosition.y"),
         },
+        textStyle: parseCarouselManualTextStyle(slide.textStyle),
         visualRole: getNullableChoice(
           slide.visualRole,
           ["hook", "human", "product_asset", "static"] as const,
@@ -471,6 +514,20 @@ function parsePlannedSlide(value: Json): PlannedCarouselSlide {
   };
 }
 
+function getReusablePreviousRender(edit: TrendingCreativeEditRow, slideNumber: number, fingerprint: string) {
+  const output = edit.render_output_json;
+  if (!output || typeof output !== "object" || Array.isArray(output) || !Array.isArray(output.slides)) return null;
+  for (const value of output.slides) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    if (value.slideNumber !== slideNumber || value.renderFingerprint !== fingerprint) continue;
+    if (typeof value.renderedS3Key !== "string" || !value.renderedS3Key.trim()) return null;
+    try {
+      return { renderedS3Key: value.renderedS3Key, renderedUrl: getHttpUrl(value.renderedUrl, "cached renderedUrl") };
+    } catch { return null; }
+  }
+  return null;
+}
+
 function getReusableOriginalRender(
   original: CarouselSlideRow,
   edited: EditableCarouselSlide,
@@ -487,6 +544,7 @@ function getReusableOriginalRender(
   );
 
   if (
+    edited.textStyle ||
     edited.backgroundAssetId !== original.category_image_asset_id ||
     edited.ctaText !== (original.cta_text ?? "") ||
     edited.headline !== original.headline ||
@@ -521,6 +579,22 @@ function getOriginalNormalizedTextPosition(
 }
 
 function createFallbackPlannedSlide(slide: CarouselSlideRow): PlannedCarouselSlide {
+  if (slide.slide_number === 1) {
+    return {
+      body: null,
+      ctaText: null,
+      headline: slide.headline?.trim() || slide.subtext?.trim() || null,
+      imageDirection: slide.image_direction ?? "",
+      layoutPreset: "middle-statement",
+      listItems: [],
+      slideNumber: 1,
+      slideType: "hook",
+      subtext: null,
+      textMode: "single_statement",
+      textPosition: "center",
+    };
+  }
+
   const hasSupport = Boolean(slide.subtext?.trim());
 
   return {
@@ -547,11 +621,7 @@ function createFallbackPlannedSlide(slide: CarouselSlideRow): PlannedCarouselSli
       "solution",
     ),
     subtext: slide.subtext,
-    textMode: slide.cta_text
-      ? "cta_takeaway"
-      : hasSupport
-        ? "headline_body"
-        : "single_statement",
+    textMode: hasSupport ? "headline_body" : "single_statement",
     textPosition: getChoice(
       slide.text_position,
       ["bottom", "center", "top"] as const,
@@ -564,9 +634,29 @@ function applyEditToPlannedSlide(
   original: PlannedCarouselSlide,
   edited: EditableCarouselSlide,
 ): PlannedCarouselSlide {
+  if (edited.slideNumber === 1) {
+    return {
+      ...original,
+      body: null,
+      ctaText: null,
+      headline: edited.headline.trim() || edited.subtext.trim() || null,
+      listItems: [],
+      slideNumber: 1,
+      subtext: null,
+      textMode: "single_statement",
+      textPosition: "center",
+    };
+  }
+
   const isBodyOnly =
-    original.textMode === "body_only" || original.textMode === "single_statement";
-  const bodyOnlyCopy = edited.headline || edited.subtext || null;
+    original.textMode === "body_only" || original.textMode === "single_statement" ||
+    (!original.headline && original.textMode !== "checklist" && original.textMode !== "question_list");
+  // Generated body-only slides also use the legacy headline column to carry
+  // their complete copy. Resolve the submitted fields just as the editor does:
+  // an empty subtext is not a deletion while headline still contains the body.
+  // Comparing subtext with the normalized plan mistook background-only edits
+  // for text deletion and rendered every body slide without its copy.
+  const bodyOnlyCopy = edited.subtext.trim() || edited.headline.trim() || null;
 
   return {
     ...original,
@@ -624,7 +714,9 @@ function createStructure2EditRenderSpec(
       edited.backgroundAssetId ??
       getRequiredString(original.category_image_asset_id, "category_image_asset_id"),
     assetUrl: edited.backgroundUrl,
+    backgroundCrop: edited.backgroundCrop,
     ctaText: edited.ctaText || null,
+    headline: edited.slideNumber === 1 ? null : edited.subtext ? edited.headline || null : undefined,
     layoutVariant: isProduct
       ? "story_product_reveal"
       : getChoice(
@@ -644,9 +736,12 @@ function createStructure2EditRenderSpec(
     slideNumber: edited.slideNumber,
     storyFormatId: original.story_format_id,
     storyRole,
-    storyText: edited.subtext
-      ? `${edited.headline} ${edited.subtext}`
-      : edited.headline,
+    storyText:
+      edited.slideNumber === 1
+        ? edited.headline.trim() || edited.subtext.trim()
+        : edited.subtext
+          ? edited.subtext
+          : edited.headline,
     textPosition:
       edited.textPosition.y < 0.42
         ? "upper"

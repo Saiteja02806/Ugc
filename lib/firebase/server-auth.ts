@@ -43,10 +43,23 @@ export class FirebaseAuthRequestError extends Error {
 }
 
 export async function requireFirebaseUser(request: Request) {
+  const user = await requireFirebaseIdentity(request);
+  if (!user.emailVerified) {
+    throw new FirebaseAuthRequestError(
+      "Verify your email before using this feature.",
+      403,
+    );
+  }
+  return user;
+}
+
+// Only email verification may use an authenticated, unverified identity.
+// Product endpoints must continue calling requireFirebaseUser above.
+export async function requireFirebaseIdentity(request: Request) {
   const idToken = getBearerToken(request);
 
   if (!idToken) {
-    throw new FirebaseAuthRequestError("Sign in before rendering this video.");
+    throw new FirebaseAuthRequestError("Sign in to continue.");
   }
 
   const e2eTestUser = getEditRenderE2ETestUser(idToken);
@@ -96,17 +109,10 @@ async function lookupFirebaseUser(apiKey: string, idToken: string) {
     throw new FirebaseAuthRequestError("Your sign-in session could not be verified.");
   }
 
-  if (!firebaseUser.emailVerified) {
-    throw new FirebaseAuthRequestError(
-      "Verify your email before using this feature.",
-      403,
-    );
-  }
-
   return {
     displayName: firebaseUser.displayName ?? null,
     email: firebaseUser.email ?? null,
-    emailVerified: true,
+    emailVerified: Boolean(firebaseUser.emailVerified),
     photoURL: firebaseUser.photoUrl ?? null,
     providerIds: Array.from(
       new Set(

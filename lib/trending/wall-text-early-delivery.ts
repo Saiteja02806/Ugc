@@ -59,6 +59,35 @@ export async function admitWallTextDailyDelivery(params: {
   return { kind: "job" as const, job: await dispatchQueuedBackgroundJobForRecovery(job) };
 }
 
+/**
+ * A terminal copy rejection must not retry the same daily delivery intent:
+ * its rejected plan items have deliberately been retired. Rotate that intent
+ * before the worker completes so the reconciliation outbox can attach the
+ * valid partial work and request only the still-empty slots.
+ */
+export async function requestWallTextDailyTerminalReplacement(params: {
+  dailyFeedId: string;
+  expectedRecoveryKey: string | null;
+  failedJobId: string;
+  userId: string;
+}) {
+  const { data, error } = await getClient().rpc(
+    "request_wall_text_daily_terminal_replacement_v1",
+    {
+      p_expected_recovery_key: params.expectedRecoveryKey,
+      p_failed_job_id: params.failedJobId,
+      p_feed_id: params.dailyFeedId,
+      p_user_id: params.userId,
+    },
+  );
+  if (error) {
+    throw new Error(
+      `Could not rotate terminal Wall-of-text delivery: ${error.message}`,
+    );
+  }
+  return typeof data === "string" && data ? data : null;
+}
+
 /** The same durable event is handled here from the worker and the recovery scan. */
 export async function reconcileWallTextPlanPublications(params: {
   limit?: number;
@@ -98,17 +127,17 @@ async function reconcilePublication(event: Publication) {
   const profile = await getBusinessProfileForUser(event.user_id);
   if (!plan || plan.status === "superseded" || !profile?.trendingTimezone ||
     profile.id !== plan.business_profile_id || profile.profileVersion !== plan.business_profile_version) return;
-  try {
-    await getTrendingPlanEntitlement(event.user_id);
-  } catch (error) {
-    if (error instanceof FreeTrialAccessError) return;
-    throw error;
-  }
   const existing = await getDailyTrendingFeedForDate({
     localDate: getTrendingLocalDate(profile.trendingTimezone), userId: event.user_id,
   });
   if (!existing || existing.feed.businessProfileId !== profile.id ||
     existing.feed.businessProfileVersion !== profile.profileVersion) return;
+  try {
+    await getTrendingPlanEntitlement(event.user_id, { existingFeedId: existing.feed.id });
+  } catch (error) {
+    if (error instanceof FreeTrialAccessError) return;
+    throw error;
+  }
   const wallSlots = existing.slots.filter(slot => slot.format === "wall_text");
   if (!wallSlots.some(slot => slot.state !== "decided" && !slot.assignmentId)) return;
   const provider = await getTrendingWallTextFeedProvider(profile, {
@@ -130,6 +159,7 @@ async function reconcilePublication(event: Publication) {
 }
 
 export async function resumeIncompleteWallTextPlans(limit = 10) {
+  if (!isWallTextEnabled()) return [];
   const { data, error } = await getClient().rpc("list_wall_text_plans_needing_resume", { p_limit: limit });
   if (error) throw new Error(`Could not list incomplete Wall-of-text plans: ${error.message}`);
   const results = [];

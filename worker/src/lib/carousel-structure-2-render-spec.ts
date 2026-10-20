@@ -32,7 +32,13 @@ export type CarouselStructure2VisualRole =
 export type CarouselStructure2RenderSpec = {
   assetId: string;
   assetUrl: string;
+  // Explicit manual image replacement, derived by the save service.
+  backgroundCrop?: "centre";
   ctaText: string | null;
+  // Intentional edits adopt the current fixed cover typography.
+  coverFontSize?: 72;
+  // Undefined means a legacy single-story render; null is a new body-only slide.
+  headline?: string | null;
   layoutVariant: CarouselStructure2LayoutVariant;
   productVisualEligibility: CarouselStructure2ProductVisualEligibility;
   slideNumber: number;
@@ -84,6 +90,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
     }
 
     const presentation = resolvePresentation({
+      slideNumber: slide.slideNumber,
       storyRole: slide.storyRole,
       visualRole: asset.asset_role,
     });
@@ -92,6 +99,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
       assetId: asset.asset_id,
       assetUrl: asset.base_url,
       ctaText: slide.ctaText,
+      headline: slide.headline,
       layoutVariant: presentation.layoutVariant,
       productVisualEligibility: slide.productVisualEligibility,
       slideNumber: slide.slideNumber,
@@ -107,6 +115,7 @@ export function buildCarouselStructure2RenderSpecs(params: {
 }
 
 function resolvePresentation(params: {
+  slideNumber: number;
   storyRole: CarouselStructure2StoryRole;
   visualRole: CarouselStructure2VisualRole;
 }): Pick<

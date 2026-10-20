@@ -1,0 +1,231 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { ExploreFinishError, isExploreUuid } from "../lib/explore-finishing-contract.js";
+import { ExploreFinishingStore } from "../lib/explore-finishing-store.js";
+import type { ExploreFinishReceipt } from "../lib/explore-finishing-store.js";
+import { ExploreFinishingStorage } from "../lib/explore-finishing-storage.js";
+import { isPrivateMedia } from "../lib/private-media.js";
+import { finishExploreVideo } from "../lib/explore-video-finishing.js";
+import { RetryableJobError } from "../retryable-job-error.js";
+import type { BackgroundJobRow } from "../types.js";
+import type { WorkerJobContext } from "./index.js";
+import { configuredScribeProvider, type ScribeTranscriptionProvider } from "../subtitles/elevenlabs-provider.js";
+import { parsePlacement, parseStyle } from "../subtitles/contracts.js";
+import { getAssetReferenceSoundtrack, getExplorePairedReference, referenceAudioBaseStorageKey } from "../lib/explore-reference-soundtrack.js";
+import { verifyReferenceAudioFile } from "../lib/explore-reference-audio-render.js";
+import { finalizeExploreVideoSchedule } from "../lib/schedule-finalization.js";
+
+export type ExploreFinishingDependencies = {
+  store: Pick<ExploreFinishingStore,"read"|"asset"|"claimSpeech"|"saveSpeech"|"finalize"> & Partial<Pick<ExploreFinishingStore,"hasPendingSchedule">>;
+  storage: Pick<ExploreFinishingStorage,"existing"|"download"|"upload">;
+  finish: typeof finishExploreVideo;
+  /** Explicitly chosen/configured provider; never fall back to another paid API. */
+  transcription?: ScribeTranscriptionProvider;
+  finalizeSchedule?: typeof finalizeExploreVideoSchedule;
+};
+
+async function recoverPendingSchedule(deps: ExploreFinishingDependencies, receipt: ExploreFinishReceipt) {
+  try {
+    if (await deps.store.hasPendingSchedule?.(receipt.user_id, receipt.request_key)) {
+      await (deps.finalizeSchedule ?? finalizeExploreVideoSchedule)({ userId: receipt.user_id, requestKey: receipt.request_key });
+    }
+  } catch {
+    // Output is already stored and finalized. Retry enters completed recovery,
+    // never FFmpeg or transcription again; the periodic outbox is independent.
+    throw new RetryableJobError("Your video is saved. Its schedule confirmation will be recovered without rendering again.",
+      { code: "explore_schedule_finalization_pending", retryAfterSeconds: 30 });
+  }
+}
+
+async function finalizeStoredOutput(deps: ExploreFinishingDependencies, receipt: ExploreFinishReceipt, claimToken: string, output: Record<string,unknown>) {
+  try { await deps.store.finalize(receipt,claimToken,output); }
+  catch (error) {
+    if (error instanceof ExploreFinishError && error.status !== 503) throw error;
+    throw new RetryableJobError("The finished video is stored; its saved-media record will be recovered without generating it again.",{ code:"explore_finish_finalization_pending",retryAfterSeconds:30 });
+  }
+}
+
+export async function runFinishExploreVideoJob(job: BackgroundJobRow, context: Pick<WorkerJobContext,"checkpoint">, dependencies?: ExploreFinishingDependencies) {
+  const input = job.input_json && typeof job.input_json === "object" && !Array.isArray(job.input_json) ? job.input_json : {};
+  if (job.job_type !== "render_demo_video" || !job.user_id || !isExploreUuid(input.requestKey) || input.version !== 1 ||
+      input.userId !== job.user_id || typeof input.fingerprint !== "string" || !isExploreUuid(input.outputAssetId) || !job.claim_token ||
+      job.project_id !== "explore" || job.idempotency_key !== `explore-finish:${input.requestKey}`) throw new ExploreFinishError("Invalid owned finishing job.",409);
+  const deps: ExploreFinishingDependencies = dependencies ?? { store:new ExploreFinishingStore(),storage:new ExploreFinishingStorage(),finish:finishExploreVideo };
+  const receipt = await deps.store.read(job.user_id,input.requestKey);
+  if (!receipt || receipt.job_id !== job.id || receipt.fingerprint !== input.fingerprint || receipt.output_asset_id !== input.outputAssetId) throw new ExploreFinishError("The finishing request does not belong to this job.",409);
+  // Completed asset recovery is owner checked too; return a durable media ID,
+  // not an unverified URL from a previous worker delivery.
+  if (receipt.status === "completed") {
+    await deps.store.asset(job.user_id,receipt.output_asset_id,"video");
+    await recoverPendingSchedule(deps, receipt);
+    return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
+  }
+  if (receipt.draft.captionPreview && receipt.transcript) return { captionsReady: true, requestKey: receipt.request_key };
+  const recovered = receipt.draft.captionPreview ? null : await deps.storage.existing(receipt);
+  if (recovered) {
+    await context.checkpoint({ status:"uploading_output",stage:"saving_finished_video",progress:95 });
+    await finalizeStoredOutput(deps,receipt,job.claim_token,recovered);
+    await recoverPendingSchedule(deps, receipt);
+    return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
+  }
+  // Already stored output and subtitles-off jobs do not depend on ASR secrets.
+  if (receipt.draft.subtitles && !deps.transcription && !dependencies) deps.transcription = configuredScribeProvider();
+  if (receipt.draft.subtitles && !deps.transcription) throw new ExploreFinishError("Subtitle transcription needs an explicitly configured provider before processing.",503);
+  const { draft } = receipt;
+  // Reject unknown styles before a paid claim; each approved style uses its
+  // matching renderer and font checks without silently substituting a preview.
+  const subtitleStyle = draft.subtitles ? parseStyle(draft.subtitles.style) : null;
+  const subtitlePlacement = draft.subtitles ? parsePlacement(draft.subtitles.placement) : null;
+  // Verify ALL selected sources before downloading or making provider claims.
+  const selections = [
+    { id:draft.sourceAssetId,collection:"video" as const,max:250*1024*1024 },
+    ...(draft.demoAssetId ? [{ id:draft.demoAssetId,collection:"video" as const,max:250*1024*1024 }] : []),
+    ...(draft.demoAudioAssetId ? [{ id:draft.demoAudioAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
+    ...(draft.backgroundAssetId ? [{ id:draft.backgroundAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
+    ...(draft.composition?.sourceAudioAssetId ? [{ id:draft.composition.sourceAudioAssetId,collection:"audio" as const,max:50*1024*1024 }] : []),
+  ];
+  const assets = await Promise.all(selections.map(selection => deps.store.asset(job.user_id!,selection.id,selection.collection)));
+  const referenceSoundtrack = getAssetReferenceSoundtrack(assets[0].metadata);
+  const reference = referenceSoundtrack ? getExplorePairedReference(referenceSoundtrack.referenceId) : null;
+  // An applied soundtrack must never be reused as the clean speech layer.
+  const cleanKey = (asset: typeof assets[number]) => {
+    const soundtrack = getAssetReferenceSoundtrack(asset.metadata);
+    if (!soundtrack?.cleanStorageKey) {
+      if (soundtrack && asset.source_type !== "generated_video") throw new ExploreFinishError("This reference video is missing its saved audio base.", 409);
+      return null;
+    }
+    if (soundtrack.cleanStorageKey !== referenceAudioBaseStorageKey(asset.id)) throw new ExploreFinishError("The saved audio base belongs to another video.", 409);
+    return soundtrack.cleanStorageKey;
+  };
+  const sourceCleanKey = reference ? cleanKey(assets[0]) : null;
+  const demoHasReferenceMusic = reference && draft.demoAssetId && getAssetReferenceSoundtrack(assets[1]?.metadata) && !cleanKey(assets[1]);
+  const directory = await mkdtemp(join(tmpdir(),"ugc-explore-finish-"));
+  const controller = new AbortController();
+  let checkpointFailure: unknown;
+  let checking = false;
+  let checkInFlight: Promise<void> | undefined;
+  let watch: ReturnType<typeof setInterval> | undefined;
+  let currentStage: Parameters<WorkerJobContext["checkpoint"]>[0] = { status:"processing",stage:"downloading_owned_media",progress:10 };
+  const checkpoint: WorkerJobContext["checkpoint"] = async stage => {
+    await checkInFlight;
+    controller.signal.throwIfAborted();
+    currentStage = stage;
+    await context.checkpoint(stage);
+  };
+  try {
+    await checkpoint(currentStage);
+    // Preserve the actual current stage while checking cancellation/ownership;
+    // a long transcription must not be relabelled as rendering every 5 seconds.
+    watch = setInterval(() => {
+      if (checking || controller.signal.aborted) return;
+      checking = true;
+      checkInFlight = context.checkpoint(currentStage).catch(error => {
+        checkpointFailure = error; controller.abort(error);
+      }).finally(() => { checking = false; checkInFlight = undefined; });
+    }, 5000);
+    // At most five inputs, all already owner-checked and individually bounded.
+    // Wait for every stream to settle before deleting this worker directory.
+    let downloadFailure: unknown;
+    const downloads = await Promise.allSettled(assets.map(async (asset,index) => {
+      try {
+        const key = reference && selections[index].collection === "video" ? cleanKey(asset) ?? asset.storage_key : asset.storage_key;
+        await deps.storage.download(key,join(directory,`source-${index}`),selections[index].max,
+          isPrivateMedia(asset.metadata) ? "private_user_media" : "primary",controller.signal);
+      } catch (error) {
+        downloadFailure ??= error; controller.abort(error); throw error;
+      }
+    }));
+    if (downloads.some(result => result.status === "rejected")) throw downloadFailure;
+    const referenceAudioPath = reference ? join(directory, "reference.mp3") : undefined;
+    if (reference && referenceAudioPath) {
+      await deps.storage.download(reference.audioStorageKey, referenceAudioPath, 50 * 1024 ** 2, "primary", controller.signal);
+      await verifyReferenceAudioFile(referenceAudioPath, reference.audioSha256);
+    }
+    controller.signal.throwIfAborted();
+    await checkpoint({ status:"rendering",stage:"composing_explore_video",progress:30 });
+    let i=1;
+    const demoPath = draft.demoAssetId ? join(directory,`source-${i++}`) : undefined;
+    const demoAudioPath = draft.demoAudioAssetId ? join(directory,`source-${i++}`) : undefined;
+    const backgroundMusicPath = draft.backgroundAssetId ? join(directory,`source-${i++}`) : undefined;
+    const sourceAudioPath = draft.composition?.sourceAudioAssetId ? join(directory,`source-${i++}`) : undefined;
+    // Single-clip edit drafts only contain explicitly selected owned audio;
+    // automatic default music is added by non-editing composition requests.
+    // Keep that clip audio in the clean base before applying its paired track.
+    // Generic final/join music must still yield to the registered soundtrack.
+    const clipBackgroundMusicPath = !reference || (draft.editing && !draft.demoAssetId) ? backgroundMusicPath : undefined;
+    const referenceVolume = referenceSoundtrack ? draft.composition?.sourceEditing?.musicVolume ?? draft.editing?.musicVolume ?? referenceSoundtrack.volume : undefined;
+    const tools = { ffmpeg:process.env.FFMPEG_PATH || "ffmpeg",ffprobe:process.env.FFPROBE_PATH || "ffprobe",
+      fontsDir:process.env.SUBTITLE_FONTS_DIR || fileURLToPath(new URL("../../assets/fonts/",import.meta.url)) };
+    const result = await deps.finish({ sourcePath:join(directory,"source-0"),demoPath,demoAudioPath,
+      backgroundMusicPath: clipBackgroundMusicPath, signal:controller.signal,
+      ...(draft.captionPreview ? { captionPreview: true } : {}),
+      ...(reference ? { referenceAudioPath, referenceAudioVolume: referenceVolume, sourceOriginalVolume: sourceCleanKey ? undefined : 0,
+        ...(demoHasReferenceMusic ? { demoOriginalVolume: 0 } : {}) } : {}),
+        ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
+        ...(draft.sourceFraming ? { sourceFraming: draft.sourceFraming } : {}),
+        ...(draft.editing ? { editing: draft.editing } : {}),
+        ...(draft.composition ? { clipComposition: { ...draft.composition, sourceAudioPath } } : {}),
+      ...(demoAudioPath ? { demoAudioPlayback:draft.demoAudioPlayback } : {}),
+      ...(clipBackgroundMusicPath ? { backgroundMusicPlayback:draft.backgroundPlayback } : {}),workDir:join(directory,"render"),tools,
+      ...(draft.subtitles && subtitleStyle && subtitlePlacement ? { subtitles:{ ...draft.subtitles,style:subtitleStyle,placement:subtitlePlacement,loadTranscript:async (speech) => {
+        await checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
+        const duration = Math.ceil(speech.durationMs);
+        const provider = deps.transcription!;
+        const prepared = await provider.prepare(speech.audioPath,duration,controller.signal);
+        if (prepared.sourceHash !== speech.sourceHash) throw new ExploreFinishError("The speech file changed before transcription.",409);
+        const claim = await deps.store.claimSpeech(receipt,job.claim_token!,speech.sourceHash,duration,provider.id);
+        if (claim.state === "ready") {
+          await checkpoint({status:"rendering",stage:"rendering_video_subtitles",progress:65});
+          return claim.transcript;
+        }
+        if (claim.state === "uncertain") throw new ExploreFinishError("The transcription may already have been submitted. It will not be submitted again automatically.",409,"provider_submission_uncertain");
+        await checkpoint({ status:"waiting_external_service",stage:"transcribing_composed_audio",progress:55 });
+        const transcript = await prepared.submit();
+        // Durable transcript is saved BEFORE caption rendering or output upload.
+        const savedTranscript = await deps.store.saveSpeech(receipt,speech.sourceHash,duration,transcript,provider.id);
+        await checkpoint({status:"rendering",stage:"rendering_video_subtitles",progress:65});
+        return savedTranscript;
+      } } } : {}),
+    });
+    if (watch) { clearInterval(watch); watch = undefined; }
+    await checkInFlight;
+    if (checkpointFailure) throw checkpointFailure;
+    if (draft.captionPreview) {
+      await context.checkpoint({ status:"processing",stage:"captions_ready",progress:100 });
+      return { captionsReady: true, requestKey: receipt.request_key };
+    }
+    await context.checkpoint({ status:"uploading_output",stage:"uploading_finished_video",progress:85 });
+    let output: Record<string,unknown>;
+    try {
+      output = await deps.storage.upload(receipt,result.outputPath,{ durationSeconds:result.durationMs/1000,width:result.width,height:result.height,
+        ratio:assets[0].ratio || "other",
+        ...(reference && result.referenceAudioBasePath ? { referenceAudioBasePath: result.referenceAudioBasePath } : {}),
+        metadata:{ sourceHashes:result.sourceHashes,segments:result.segments,
+          ...(reference ? { referenceSoundtrack: { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: referenceVolume, cleanStorageKey: referenceAudioBaseStorageKey(receipt.output_asset_id) } } : {}),
+          demoAudioTiming:result.demoAudioTiming,backgroundMusicTiming:result.backgroundMusicTiming,subtitleStyle:result.subtitleStyle,subtitlePlacement:result.subtitlePlacement,subtitleWordCount:result.subtitleWordCount,
+          subtitleRenderVersion:result.subtitleRenderVersion,subtitleAudioTimeline:"final-composition-v1",
+          ...(draft.demoFraming ? { demoFraming: draft.demoFraming } : {}),
+          ...(draft.sourceFraming ? { sourceFraming: draft.sourceFraming } : {}) } });
+    }
+    catch (error) {
+      if (error instanceof ExploreFinishError) throw error;
+      // The write may have succeeded before its response was lost. A retry
+      // first checks the deterministic object and its owned provenance. If it
+      // must recompose, the transcript is already durable, never resubmitted.
+      throw new RetryableJobError("The output upload is unconfirmed; the same owned output will be checked before retrying.",{ code:"explore_finish_upload_uncertain",retryAfterSeconds:30 });
+    }
+    await context.checkpoint({ status:"uploading_output",stage:"saving_finished_video",progress:95 });
+    await finalizeStoredOutput(deps,receipt,job.claim_token,output);
+    await recoverPendingSchedule(deps, receipt);
+    return { mediaAssetId:receipt.output_asset_id,requestKey:receipt.request_key };
+  } catch (error) {
+    throw checkpointFailure ?? error;
+  } finally {
+    if (watch) clearInterval(watch);
+    await checkInFlight;
+    // Only this newly-created worker directory. Never touch uploaded sources.
+    if (resolve(directory).startsWith(resolve(tmpdir()) + "/") || resolve(directory).startsWith(resolve(tmpdir()) + "\\")) await rm(directory,{ recursive:true,force:true });
+  }
+}

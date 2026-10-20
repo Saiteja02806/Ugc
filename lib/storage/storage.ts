@@ -27,6 +27,12 @@ export async function createSignedPutUrl(params: CreateSignedPutUrlParams) {
   return gcsStorageProvider.createSignedPutUrl(params);
 }
 
+export async function createSignedDownloadUrl(
+  params: Parameters<ObjectStorageProvider["createSignedDownloadUrl"]>[0],
+) {
+  return gcsStorageProvider.createSignedDownloadUrl(params);
+}
+
 export async function headStorageObject(
   params: Parameters<ObjectStorageProvider["headObject"]>[0],
 ) {

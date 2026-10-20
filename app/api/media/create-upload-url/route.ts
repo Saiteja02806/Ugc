@@ -8,6 +8,7 @@ import {
   MEDIA_UPLOAD_EXPIRES_IN_SECONDS,
 } from "@/lib/media/media-upload";
 import { isMediaCollection } from "@/lib/media/types";
+import { assertPrivateMediaWritesDisabled } from "@/lib/media/private-media-storage";
 import {
   createSignedPutUrl,
   getMissingStorageEnvVars,
@@ -27,11 +28,12 @@ type CreateUploadBody = {
 export async function POST(request: Request) {
   try {
     const user = await requireFirebaseUser(request);
+    assertPrivateMediaWritesDisabled();
     const body = (await request.json().catch(() => null)) as CreateUploadBody | null;
 
     if (!body || !isMediaCollection(body.collection)) {
       return Response.json(
-        { ok: false, error: "Choose Influencers, Videos, or Images before uploading." },
+        { ok: false, error: "Choose a valid media collection before uploading." },
         { status: 400 },
       );
     }

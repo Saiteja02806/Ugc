@@ -5,6 +5,7 @@ import { updateBusinessProfileTrendingTimezone } from "@/lib/business-profiles/d
 import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import { getPublicDailyFeedState } from "@/lib/trending/daily-feed-status";
 import { loadTrendingFormat } from "@/lib/trending/format-isolation";
+import { getTrendingDailyPlanForRuntime, isTrendingFormatEnabled } from "@/lib/trending/format-policy";
 import {
   ensureTrendingDailyFeed,
   readTrendingDailyFeed,
@@ -20,6 +21,10 @@ import {
   getTrendingDailyPackReadiness,
   type TrendingDailyPackReadiness,
 } from "@/lib/trending/daily-pack-readiness";
+import {
+  getProfilePinnedToDailyFeed,
+  isDailyFeedPinnedToHistoricalProfile,
+} from "@/lib/trending/daily-feed-profile-version";
 import {
   getAdditionalTrendingSlotsForUpgrade,
   getReservedTrendingDailyLimit,
@@ -92,6 +97,11 @@ type PublicTrendingDailyFeedFailure = {
   message: string;
 };
 
+/**
+ * Daily Trending feeds are immutable delivery snapshots. The active profile
+ * can advance during the day, but the existing pack must continue resolving
+ * assignments that were created under its saved version.
+ */
 export async function readUnifiedTrendingDailyFeed(params: {
   includeHookVideos: boolean;
   includeWallText: boolean;
@@ -103,23 +113,26 @@ export async function readUnifiedTrendingDailyFeed(params: {
     params.timezone ?? params.profile.trendingTimezone,
   );
   const localDate = getTrendingLocalDate(timezone);
-  const [preference, existingPlan] = await Promise.all([
+  const [preference, storedPlan] = await Promise.all([
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
+  const existingPlan = storedPlan ? getTrendingDailyPlanForRuntime(storedPlan) : null;
   let entitlement: TrendingPlanEntitlement;
   let trialAccessBlocked = false;
 
   try {
-    entitlement = await getTrendingPlanEntitlement(params.userId);
+    entitlement = await getTrendingPlanEntitlement(params.userId, {
+      existingFeedId: existingPlan?.feed.id,
+    });
   } catch (error) {
-    if (!(error instanceof FreeTrialAccessError) || !existingPlan) {
+    if (!(error instanceof FreeTrialAccessError) || !storedPlan) {
       throw error;
     }
 
     // A trial ending stops new preparation, without hiding content that was
     // already generated in the current daily pack.
-    entitlement = getExistingFeedEntitlement(existingPlan.feed);
+    entitlement = getExistingFeedEntitlement(storedPlan.feed);
     trialAccessBlocked = true;
   }
   const effectivePreference = resolveTrendingContentMixPreference({
@@ -142,6 +155,16 @@ export async function readUnifiedTrendingDailyFeed(params: {
       timezone,
     });
   }
+
+  // A local-day feed is a delivered snapshot. Once Business Context advances,
+  // its already-reserved slots must keep querying the version recorded on the
+  // feed. Querying the new version makes valid v12 assignments look absent
+  // and can lead a later reconciliation to detach them.
+  const feedProfile = getProfilePinnedToDailyFeed(
+    params.profile,
+    existingPlan.feed,
+  );
+  const isHistoricalFeed = feedProfile.profileVersion !== params.profile.profileVersion;
 
   const upgradeSlots = getAdditionalTrendingSlotsForUpgrade({
     currentPlanDailyLimit: entitlement.dailyLimit,
@@ -167,7 +190,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
       ? loadTrendingFormat({
           load: () => readTrendingDailyFeed({
           dailyLimitOverride: reservedAllocation.carousel,
-          profile: params.profile,
+          profile: feedProfile,
           timezone,
           userId: params.userId,
           }),
@@ -176,7 +199,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
         })
       : Promise.resolve(null),
     params.includeHookVideos && reservedAllocation.hook_video > 0
-      ? getTrendingHookFeedProvider(params.profile, {
+      ? getTrendingHookFeedProvider(feedProfile, {
           pinnedAssignmentIds: pinnedHookAssignmentIds,
         })
       : Promise.resolve(
@@ -188,7 +211,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
           ),
         ),
     params.includeWallText && reservedAllocation.wall_text > 0
-      ? getTrendingWallTextFeedProvider(params.profile, {
+      ? getTrendingWallTextFeedProvider(feedProfile, {
           pinnedAssignmentIds: pinnedWallTextAssignmentIds,
         })
       : Promise.resolve(
@@ -201,8 +224,8 @@ export async function readUnifiedTrendingDailyFeed(params: {
       ),
     reservedAllocation.reaction > 0
       ? getTrendingReactionFeedProvider({
-          businessProfileId: params.profile.id,
-          businessProfileVersion: params.profile.profileVersion,
+          businessProfileId: feedProfile.id,
+          businessProfileVersion: feedProfile.profileVersion,
           pinnedAssignmentIds: pinnedReactionAssignmentIds,
           userId: params.userId,
         })
@@ -254,8 +277,15 @@ export async function readUnifiedTrendingDailyFeed(params: {
     items,
     readiness: responseReadiness,
   });
+  // A ready card must stay visible when another reserved slot fails, but the
+  // response still needs to expose the explicit, slot-preserving recovery
+  // action. `feed.state` remains ready so the deck does not regress to a full
+  // failure screen.
+  const hasFailedSlots = existingPlan.slots.some(
+    (slot) => slot.state === "failed",
+  );
   const failure =
-    state === "failed"
+    state === "failed" || hasFailedSlots
       ? getPublicDailyFeedFailure({
           error: existingPlan.feed.lastError,
           slots: existingPlan.slots,
@@ -284,6 +314,7 @@ export async function readUnifiedTrendingDailyFeed(params: {
     }),
     requiresPreparation:
       !trialAccessBlocked &&
+      !isHistoricalFeed &&
       (upgradeSlots > 0 ||
         shouldPrepareDailyFeed({
           dailyLimit: existingPlan.feed.dailyLimit,
@@ -462,11 +493,23 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
   }
 
   const localDate = getTrendingLocalDate(timezone);
-  const [entitlement, preference, existingPlan] = await Promise.all([
-    getTrendingPlanEntitlement(params.userId),
+  const [preference, existingPlan] = await Promise.all([
     getTrendingContentMixPreference(params.userId),
     getDailyTrendingFeedForDate({ localDate, userId: params.userId }),
   ]);
+
+  if (
+    existingPlan &&
+    isDailyFeedPinnedToHistoricalProfile(existingPlan.feed, params.profile)
+  ) {
+    // Do not call ensure_daily_trending_feed_plan, reconciliation, attachment,
+    // or a writer against the new profile version for a pre-existing pack.
+    // The read path above uses the feed's version and remains safe to display.
+    return readUnifiedTrendingDailyFeed(params);
+  }
+  const entitlement = await getTrendingPlanEntitlement(params.userId, {
+    existingFeedId: existingPlan?.feed.id,
+  });
   const effectivePreference = resolveTrendingContentMixPreference({
     planKey: entitlement.planKey,
     preference,
@@ -502,7 +545,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       upgradeSlots,
     }),
   };
-  const initialPlan = await ensureDailyTrendingFeedPlan({
+  const storedInitialPlan = await ensureDailyTrendingFeedPlan({
     businessProfileId: params.profile.id,
     businessProfileVersion: params.profile.profileVersion,
     entitlement: reservedEntitlement,
@@ -512,6 +555,7 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     timezone,
     userId: params.userId,
   });
+  const initialPlan = getTrendingDailyPlanForRuntime(storedInitialPlan);
   const reservedAllocation = countReservedSlots(initialPlan.slots);
   const [carouselProvider, hookProvider, wallTextProvider, reactionProvider] =
     await loadProviders({
@@ -520,6 +564,9 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
       includeWallText: params.includeWallText,
       markItemsShown: params.markItemsShown,
       profile: params.profile,
+      slideshowStyleMix: initialPlan.feed.slideshowStyleMixEnabled
+        ? initialPlan.feed.slideshowStyleMix
+        : undefined,
       slots: initialPlan.slots,
       timezone,
       userId: params.userId,
@@ -543,10 +590,11 @@ export async function ensureUnifiedTrendingDailyFeed(params: {
     wallTextAssignmentIds: wallTextProvider.items.map((item) => item.assignmentId),
   });
 
-  const attachedPlan = await getDailyTrendingFeed(
+  const storedAttachedPlan = await getDailyTrendingFeed(
     initialPlan.feed.id,
     params.userId,
   );
+  const attachedPlan = getTrendingDailyPlanForRuntime(storedAttachedPlan);
   const missingByFormat = countMissingSlots(attachedPlan.slots);
   const preparationResults = await prepareMissingFormats({
     currentCounts: {
@@ -803,6 +851,7 @@ async function loadProviders(params: {
   includeWallText: boolean;
   markItemsShown?: boolean;
   profile: BusinessProfileRecord;
+  slideshowStyleMix?: DailyTrendingFeedRecord["slideshowStyleMix"];
   slots: DailyTrendingFeedSlotRecord[];
   timezone: string;
   userId: string;
@@ -827,6 +876,7 @@ async function loadProviders(params: {
           dailyLimitOverride: params.allocation.carousel,
           markItemsShown: params.markItemsShown,
           profile: params.profile,
+          slideshowStyleMix: params.slideshowStyleMix,
           timezone: params.timezone,
           userId: params.userId,
           }),
@@ -898,7 +948,7 @@ async function prepareMissingFormats(params: {
   >();
   const tasks: Promise<void>[] = [];
 
-  if (params.includeHookVideos && params.missingByFormat.hook_video > 0) {
+  if (isTrendingFormatEnabled("hook_video") && params.includeHookVideos && params.missingByFormat.hook_video > 0) {
     tasks.push(
       prepareTrendingHookIdeas(params.profile, {
         mode: "refill",
@@ -918,7 +968,7 @@ async function prepareMissingFormats(params: {
     );
   }
 
-  if (params.includeWallText && params.missingByFormat.wall_text > 0) {
+  if (isTrendingFormatEnabled("wall_text") && params.includeWallText && params.missingByFormat.wall_text > 0) {
     tasks.push(
       enqueueTrendingWallTextRefill(params.profile, {
         dailyFeedId: params.wallTextDailyFeedKey,
@@ -953,7 +1003,7 @@ async function prepareMissingFormats(params: {
     );
   }
 
-  if (params.missingByFormat.reaction > 0) {
+  if (isTrendingFormatEnabled("reaction") && params.missingByFormat.reaction > 0) {
     // The planner and renderer make final owner-scoped MP4s in the worker.
     // The raw catalog is never treated as a browser-side Trending fallback.
     tasks.push(
@@ -1021,7 +1071,7 @@ export function getPublicDailyFeedFailure(params: {
     };
   }
 
-  if (params.error === HOOK_SOURCE_UNAVAILABLE_MESSAGE) {
+  if (isTrendingFormatEnabled("hook_video") && params.error === HOOK_SOURCE_UNAVAILABLE_MESSAGE) {
     return {
       code: "hook_source_unavailable",
       message: HOOK_SOURCE_UNAVAILABLE_MESSAGE,
@@ -1109,7 +1159,7 @@ function buildFormatAvailability(params: {
     MissingFormatPreparationResult
   >;
 }): TrendingFeedProviderAvailability[] {
-  return (["carousel", "wall_text", "hook_video", "reaction"] as const).map((format) => {
+  return (["carousel", "wall_text", "hook_video", "reaction"] as const).filter(isTrendingFormatEnabled).map((format) => {
     if (params.allocation[format] === 0) {
       return { format, reason: "Disabled in the saved content mix.", state: "ready" as const };
     }

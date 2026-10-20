@@ -1,0 +1,16 @@
+{
+  "source": "landing_page/heeo_Section/left_side.mp4",
+  "sourceSha256": "fb0876187acace43d16d1deed6f08992de6ee2b8e8699a64dfd2c719bac5bb23",
+  "width": 720,
+  "height": 1280,
+  "duration": 6.5,
+  "frames": 156,
+  "fps": "24/1",
+  "bytes": 2351212,
+  "sha256": "8a82e747f78f506f8512583c950835db716caa68b6fa70923410f57c91cfe2f6",
+  "posterTime": 0,
+  "silent": true,
+  "fastStart": true,
+  "fullDecodeVerified": true,
+  "encodedVideoUnchanged": true
+}

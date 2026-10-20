@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { logger } from "../logger.js";
+import { workerMediaReadUrl } from "../lib/private-media.js";
+import {
+  TIKTOK_ACCOUNT_PRIVACY_UNAVAILABLE_MESSAGE,
+  TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE,
+} from "../lib/tiktok-direct-post-policy.js";
 import {
   GoogleOAuthError,
   refreshGoogleAccessToken,
@@ -30,7 +35,10 @@ import {
   refreshTikTokAccessToken,
   TikTokOAuthError,
 } from "../lib/tiktok-oauth.js";
-import { prepareInstagramCarouselImages } from "../lib/social-carousel-media.js";
+import {
+  prepareInstagramCarouselImages,
+  prepareTikTokCarouselImages,
+} from "../lib/social-carousel-media.js";
 import {
   publishYouTubeVideo,
   YouTubePublishError,
@@ -100,6 +108,7 @@ export async function runPublishSocialPostJob(
   job: BackgroundJobRow,
   context: {
     prepareInstagramCarouselImages?: typeof prepareInstagramCarouselImages;
+    prepareTikTokCarouselImages?: typeof prepareTikTokCarouselImages;
     publishers?: Partial<SocialPublishers>;
     store: SupabaseJobStore;
   },
@@ -216,6 +225,21 @@ export async function runPublishSocialPostJob(
           targetId: payload.targetId,
         });
       }
+    }
+
+    const scheduledTimestamp = Date.parse(scheduledAt);
+    const now = Date.now();
+
+    if (!Number.isFinite(scheduledTimestamp)) {
+      throw new Error("Publish target has an invalid scheduled time.");
+    }
+
+    if (scheduledTimestamp > now) {
+      throw new DeferredJobError("Waiting for the scheduled publish time.", {
+        code: "social_publish_not_due",
+        now,
+        retryAfterSeconds: Math.ceil((scheduledTimestamp - now) / 1_000),
+      });
     }
 
     validatePublishContext(publishContext);
@@ -344,7 +368,7 @@ export async function runPublishSocialPostJob(
             })
           : sourceCarouselImageUrls;
       const videoMedia = publishContext.media;
-      const publishToInstagram = (token: string) =>
+      const publishToInstagram = async (token: string) =>
         carouselImageUrls
           ? publishers.instagramCarousel({
               accessToken: token,
@@ -365,7 +389,7 @@ export async function runPublishSocialPostJob(
               shareToFeed: getInstagramTargetPublishSettings(
                 publishContext.target.settings,
               ).shareToFeed,
-              videoUrl: requireVideoMedia(videoMedia).url,
+              videoUrl: await workerMediaReadUrl(requireVideoMedia(videoMedia), job.user_id!),
             });
       const persistInstagramContainer = async (containerId: string) => {
         operation = await saveProviderOperationOrThrow({
@@ -415,11 +439,21 @@ export async function runPublishSocialPostJob(
         platformPostUrl: result.permalink,
       };
     } else if (publishContext.target.platform === "tiktok") {
-      const carouselImageUrls = publishContext.carousel?.slides.map(
+      const sourceCarouselImageUrls = publishContext.carousel?.slides.map(
         (slide) => slide.rendered_url,
       );
+      // A resumed provider operation already owns its media. Do not upload new
+      // copies or initialize a second post while waiting for its result.
+      const carouselImageUrls = sourceCarouselImageUrls
+        ? operation?.provider_operation_id
+          ? sourceCarouselImageUrls
+          : await (context.prepareTikTokCarouselImages ?? prepareTikTokCarouselImages)({
+              imageUrls: sourceCarouselImageUrls,
+              libraryItemId: publishContext.carousel!.item.id,
+            })
+        : undefined;
       const videoMedia = publishContext.media;
-      const publishToTikTok = (token: string) =>
+      const publishToTikTok = async (token: string) =>
         carouselImageUrls
           ? publishers.tiktokCarousel({
               accessToken: token,
@@ -461,7 +495,7 @@ export async function runPublishSocialPostJob(
               videoDurationSeconds:
                 requireVideoMedia(videoMedia).duration_seconds,
               videoMimeType: requireVideoMedia(videoMedia).mime_type,
-              videoUrl: requireVideoMedia(videoMedia).url,
+              videoUrl: await workerMediaReadUrl(requireVideoMedia(videoMedia), job.user_id!),
             });
       const persistTikTokInitialization = async (params: {
         initialization: {
@@ -547,7 +581,7 @@ export async function runPublishSocialPostJob(
         settings: getYouTubeTargetPublishSettings(
           publishContext.target.settings,
         ),
-        videoUrl: videoMedia.url,
+        videoUrl: await workerMediaReadUrl(videoMedia, job.user_id),
       });
 
       publishedResult = {
@@ -620,8 +654,8 @@ export async function runPublishSocialPostJob(
     };
   } catch (error) {
     if (error instanceof DeferredJobError) {
-      // Account-lane backpressure is expected when the service is scaled. It
-      // must not mark a target failed or spend one of its provider attempts.
+      // Scheduled waits and account-lane backpressure do not fail the target
+      // or spend a provider attempt.
       throw error;
     }
 
@@ -656,6 +690,9 @@ export async function runPublishSocialPostJob(
     const retryDecision = getSocialPublishRetryDecision({
       attemptCount: job.attempt_count,
       errorMessage,
+      maxAttempts: Math.min(job.max_attempts, getIntegerEnv(
+        "SOCIAL_PUBLISH_MAX_ATTEMPTS", DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS, 1, 10,
+      )),
       providerRetryAfterSeconds: failure.retryAfterSeconds,
       retryable: failure.retryable,
     });
@@ -1468,7 +1505,7 @@ function getSocialPublishFailure(error: unknown, fallbackMessage: string) {
         occurredAt: new Date().toISOString(),
         status: error.status,
       },
-      retryable: null,
+      retryable: error.code === "file_format_check_failed" ? false : null,
       retryAfterSeconds: null,
       userMessage: getTikTokUserMessage(error.code, error.message),
     };
@@ -1539,6 +1576,9 @@ function getGenericSocialPublishUserMessage(
 }
 
 function getTikTokUserMessage(code: string, fallbackMessage: string) {
+  if (code === "file_format_check_failed") {
+    return "TikTok rejected this post's media format. Its images need publishing preparation before you retry.";
+  }
   if (["access_token_invalid", "account_mismatch", "invalid_grant", "invalid_refresh_token", "refresh_token_expired", "scope_not_authorized"].includes(code)) {
     return "Reconnect TikTok to continue publishing.";
   }
@@ -1548,7 +1588,7 @@ function getTikTokUserMessage(code: string, fallbackMessage: string) {
   }
 
   if (code === "url_ownership_unverified") {
-    return "TikTok could not access this video source. Try preparing the post again.";
+    return "TikTok could not verify this post's media source. Contact support before retrying.";
   }
 
   if (code === "reached_active_user_cap") {
@@ -1563,8 +1603,19 @@ function getTikTokUserMessage(code: string, fallbackMessage: string) {
     return "This video is longer than the selected TikTok account allows.";
   }
 
-  if (code === "unaudited_client_can_only_post_to_private_accounts") {
-    return "TikTok currently allows this app to publish only with Only me visibility.";
+  if (
+    code === "unaudited_client_can_only_post_to_private_accounts" ||
+    code === "private_account_required"
+  ) {
+    return TIKTOK_PRIVATE_ACCOUNT_REQUIRED_MESSAGE;
+  }
+
+  if (code === "account_privacy_unavailable") {
+    return TIKTOK_ACCOUNT_PRIVACY_UNAVAILABLE_MESSAGE;
+  }
+
+  if (code === "direct_post_audit_required") {
+    return "TikTok public posting will be available after the app's Direct Post audit is approved.";
   }
 
   return fallbackMessage.toLowerCase().includes("timed out")

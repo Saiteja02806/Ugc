@@ -8,6 +8,7 @@ type QueueConfig = {
 };
 
 const jobQueueConfig = {
+  generate_audio: { queueName: "ai-generation" },
   analytics_sync: {
     queueName: "ai-generation",
   },
@@ -80,7 +81,7 @@ const jobQueueConfig = {
     queueName: "video-render",
   },
   render_trending_carousel_edit: {
-    queueName: "carousel",
+    queueName: "carousel-edit",
   },
   render_wall_text_video: {
     queueName: "video-render",

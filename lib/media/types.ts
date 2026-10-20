@@ -1,4 +1,4 @@
-export const mediaCollections = ["influencer", "video", "image"] as const;
+export const mediaCollections = ["influencer", "video", "image", "audio"] as const;
 export const mediaSourceTypes = [
   "upload",
   "influencer_upload",

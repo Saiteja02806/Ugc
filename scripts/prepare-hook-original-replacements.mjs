@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+const workspace=process.cwd(),root=path.resolve('outputs/hook-reference-audit-2026-10-19');
+const audit=JSON.parse(fs.readFileSync(path.join(root,'audit.json')));
+const verification=JSON.parse(fs.readFileSync(path.join(root,'reverification.json')));
+const sources=['.tmp/hook-reference-release-checks.json','.tmp/hook-reference-addition-release-checks.json','.tmp/hook-new-batch/checks.json'].map(f=>JSON.parse(fs.readFileSync(f)));
+const hash=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const within=(parent,child)=>{const relative=path.relative(parent,child);return relative&&!relative.startsWith('..')&&!path.isAbsolute(relative);};
+const replacements=[];
+for(const row of audit.items.filter(r=>r.receipt)){
+ const check=verification.checks.find(r=>r.id===row.id&&r.outputSha256===row.receipt.outputSha256);if(!check)throw Error('Fresh verification missing');
+ const matches=sources.filter(s=>s.checks.some(c=>c.id===row.id));if(matches.length!==1)throw Error('Ambiguous original source batch');
+ const batch=matches[0],source=batch.checks.find(c=>c.id===row.id),sourceRoot=fs.realpathSync(batch.source),folder=fs.realpathSync(path.join(sourceRoot,source.folder));
+ if(!within(sourceRoot,folder))throw Error('Source folder escapes import root');
+ const files=fs.readdirSync(folder).filter(f=>/\.mp4$/i.test(f));if(files.length!==1)throw Error('Ambiguous original MP4 in '+folder);
+ const targetPath=fs.realpathSync(path.join(folder,files[0]));if(!within(folder,targetPath)||fs.lstatSync(targetPath).isSymbolicLink())throw Error('Unsafe original target');
+ const current=hash(targetPath);if(current!==row.sourceSha256)throw Error('Original import video differs from reviewed bytes: '+row.ordinal);
+ if(hash(row.receipt.outputPath)!==row.receipt.outputSha256)throw Error('Corrected video changed since review');
+ const backupPath=path.join(root,'original-import-backups',String(row.ordinal).padStart(3,'0'),files[0]);if(!within(workspace,backupPath))throw Error('Unsafe backup target');
+ const siblings=fs.readdirSync(folder).filter(f=>f!==files[0]&&fs.statSync(path.join(folder,f)).isFile()).map(file=>({file,sha256:hash(path.join(folder,file))}));
+ replacements.push({ordinal:row.ordinal,id:row.id,sourceRoot,sourceFolder:source.folder,targetPath,originalSha256:row.sourceSha256,correctedPath:row.receipt.outputPath,correctedSha256:row.receipt.outputSha256,backupPath,siblings});
+}
+if(replacements.length!==18)throw Error('Expected18 replacements');
+const keep=audit.items.find(r=>r.ordinal===18),keepBatch=sources.find(b=>b.checks.some(c=>c.id===keep.id)),keepFolder=path.join(keepBatch.source,keepBatch.checks.find(c=>c.id===keep.id).folder);
+const keepFiles=fs.readdirSync(keepFolder).filter(f=>/\.mp4$/i.test(f));if(keepFiles.length!==1)throw Error('Ambiguous Hook18 original');
+const keepPath=fs.realpathSync(path.join(keepFolder,keepFiles[0]));if(hash(keepPath)!==keep.sourceSha256)throw Error('Hook18 original changed');
+const plan={version:1,scope:'Replace 18 original import MP4s only, retaining filenames and preserving all sibling audio/text',hook18:'leave_unchanged',protectedHook18:{path:keepPath,sha256:keep.sourceSha256},createdAt:new Date().toISOString(),replacements};
+fs.writeFileSync(path.join(root,'original-replacement-plan.json'),JSON.stringify(plan,null,2)+'\n');
+console.log(JSON.stringify({replacements:replacements.length,roots:[...new Set(replacements.map(r=>r.sourceRoot))],planPath:path.join(root,'original-replacement-plan.json'),changedFiles:false},null,2));

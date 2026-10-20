@@ -1,0 +1,14 @@
+.refreshAccounts.refreshAccounts {
+  width: 148px;
+  max-width: 100%;
+  min-height: 36px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .refreshAccounts.refreshAccounts { min-height: 44px; }
+}

@@ -22,7 +22,8 @@ import {
   type RenderableScheduleAsset,
 } from "@/lib/scheduling/render-asset-resolution";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
-import { getLockedHookAudioForVideo } from "@/lib/trending/hook-audio-db";
+import { resolveHookAudioForComposition } from "@/lib/trending/hook-audio-db";
+import { HOOK_COMPOSITION_AUDIO_RENDER_VERSION } from "@/lib/trending/hook-audio-matcher";
 import {
   attachHookVideoLibraryRenderJob,
   claimHookVideoLibraryRender,
@@ -35,6 +36,7 @@ import type { HookTextLayoutVersion } from "@/lib/trending/hook-text-layout";
 import { resolveTrendingTextColor } from "@/lib/trending/text-color";
 
 const COMBINATION_RENDER_JOB_TYPE = "render_schedule_combination" as const;
+const HOOK_INLINE_SYMBOL_RENDER_VERSION = "hook-inline-symbol-render-v2";
 const videoRatios = new Set<MediaRatio>(["9:16", "1:1", "4:5", "16:9"]);
 type CombinationRenderRatio = "9:16" | "1:1" | "4:5" | "16:9";
 type HookVideoComposition = Awaited<
@@ -101,18 +103,41 @@ export async function queueSavedHookVideoRender(params: {
     );
   }
 
-  const hookAudio =
-    composition.source.sourceKind === "catalog"
-      ? await getLockedHookAudioForVideo({
-          hookVideoId: composition.source.id,
-        })
-      : null;
+  const compositionDurationSeconds = getCompositionDurationSeconds({
+    demoDurationSeconds: composition.demo.duration_seconds,
+    hookDurationSeconds:
+      composition.draft.trimEnd !== null
+        ? composition.draft.trimEnd - composition.draft.trimStart
+        : composition.source.durationSeconds,
+  });
+  let hookAudio: Awaited<ReturnType<typeof resolveHookAudioForComposition>> =
+    null;
+
+  if (
+    composition.source.sourceKind === "catalog" &&
+    compositionDurationSeconds !== null
+  ) {
+    try {
+      hookAudio = await resolveHookAudioForComposition({
+        compositionDurationSeconds,
+        draftId: composition.draft.id,
+        hookVideoId: composition.source.id,
+        suggestionId: composition.draft.selectedHookId,
+        userId,
+      });
+    } catch (error) {
+      // Audio is additive to a completed saved Hook video. Do not prevent the
+      // asset from reaching the library if its soundtrack cannot be resolved.
+      console.warn("Could not resolve saved Hook composition audio:", error);
+    }
+  }
 
   if (hookAudio && !isTrustedStorageUrl(hookAudio.audioUrl)) {
-    throw new HookVideoLibraryRenderError(
-      "The approved Hook sound is not available for rendering.",
-      409,
-    );
+    console.warn("Skipping an untrusted saved Hook composition audio URL.", {
+      audioAssetId: hookAudio.audioAssetId,
+      draftId: composition.draft.id,
+    });
+    hookAudio = null;
   }
 
   const editedHookContent =
@@ -130,7 +155,9 @@ export async function queueSavedHookVideoRender(params: {
     demoUpdatedAt: resolvedDemo.asset.updated_at,
     demoVideoId: resolvedDemo.asset.id,
     hookAudioAssetId: hookAudio?.audioAssetId ?? null,
+    hookAudioFitMode: hookAudio?.fitMode ?? null,
     hookAudioUrl: hookAudio?.audioUrl ?? null,
+    hookCompositionAudioRenderVersion: HOOK_COMPOSITION_AUDIO_RENDER_VERSION,
     hookSourceVersion:
       composition.source.sourceKind === "catalog"
         ? composition.source.storageKey
@@ -138,6 +165,7 @@ export async function queueSavedHookVideoRender(params: {
     hookText: composition.draft.hookText,
     hookTextColor,
     hookTextFontSize: composition.hookRenderSpec.fontSize,
+    hookInlineSymbolRenderVersion: HOOK_INLINE_SYMBOL_RENDER_VERSION,
     hookTextLayoutVersion: composition.hookRenderSpec.version,
     hookTextLines: composition.hookRenderSpec.lines,
     hookTextPosition,
@@ -299,11 +327,14 @@ function createCompositionFingerprint(value: {
   demoUpdatedAt: string;
   demoVideoId: string;
   hookAudioAssetId: string | null;
+  hookAudioFitMode: "loop" | "trim" | null;
   hookAudioUrl: string | null;
+  hookCompositionAudioRenderVersion: string;
   hookSourceVersion: string;
   hookText: string;
   hookTextColor: string;
   hookTextFontSize: number | null;
+  hookInlineSymbolRenderVersion: string;
   hookTextLayoutVersion: HookTextLayoutVersion;
   hookTextLines: string[];
   hookTextPosition: { x: number; y: number } | null;
@@ -313,4 +344,22 @@ function createCompositionFingerprint(value: {
   ratio: CombinationRenderRatio;
 }) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function getCompositionDurationSeconds(params: {
+  demoDurationSeconds: number | null;
+  hookDurationSeconds: number | null;
+}) {
+  if (
+    params.demoDurationSeconds === null ||
+    params.hookDurationSeconds === null ||
+    !Number.isFinite(params.demoDurationSeconds) ||
+    !Number.isFinite(params.hookDurationSeconds) ||
+    params.demoDurationSeconds <= 0 ||
+    params.hookDurationSeconds <= 0
+  ) {
+    return null;
+  }
+
+  return params.demoDurationSeconds + params.hookDurationSeconds;
 }

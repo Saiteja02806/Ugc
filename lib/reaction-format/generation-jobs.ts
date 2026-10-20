@@ -1,7 +1,12 @@
 import "server-only";
+import { assertTrendingFormatGenerationEnabled } from "@/lib/trending/format-policy";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  buildBusinessFactSnapshot,
+  type BusinessFactSnapshot,
+} from "@/lib/business-profiles/fact-catalog";
 import type { BusinessProfileRecord } from "@/lib/business-profiles/db";
 import { shouldDeliverCarouselJobMessage } from "@/lib/jobs/background-job-delivery-logic";
 import { sendBackgroundJobMessageWithBestEffortAttachment } from "@/lib/jobs/background-job-message-delivery";
@@ -12,6 +17,7 @@ import {
   getBackgroundJobById,
   listBackgroundJobsForUser,
   markBackgroundJobFailed,
+  type Json,
   type BackgroundJobRecord,
 } from "@/lib/jobs/background-jobs";
 import { retryAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
@@ -64,9 +70,27 @@ export async function enqueueTrendingReactionRefill(
     requestedCount: number;
   },
 ): Promise<ReactionRefillResult> {
+  assertTrendingFormatGenerationEnabled("reaction");
   const requestedCount = Math.max(1, Math.min(12, Math.trunc(params.requestedCount)));
   const currentActiveCount = Math.max(0, Math.trunc(params.currentActiveCount));
+  const generationContext = buildReactionGenerationContext(profile);
+
+  // There is deliberately no minimum catalog size: one approved fact can
+  // ground any number of slots by cycling deterministically. But a V2
+  // business-generation job with zero facts would create a generic meme that
+  // looks like marketing without a factual basis, so do not enqueue it.
+  if (generationContext.factSnapshot.facts.length === 0) {
+    return {
+      kind: "coverage_shortfall",
+      message: "Reaction Reels need at least one approved Business Context fact. Add a real customer pain, audience, capability, or differentiator, then apply the draft before generating more.",
+      missingCount: requestedCount,
+      readyCount: currentActiveCount,
+      requestedCount,
+    };
+  }
+
   const requestPrefix = getReactionRequestPrefix(profile, params.dailyFeedKey);
+  const requestKey = `${requestPrefix}active-${currentActiveCount}:need-${requestedCount}`;
   const existingJobs = await listBackgroundJobsForUser({
     jobType: REACTION_GENERATION_JOB_TYPE,
     limit: 100,
@@ -75,17 +99,17 @@ export async function enqueueTrendingReactionRefill(
   const coverageShortfall = getCompletedReactionCoverageShortfall({
     jobs: existingJobs,
     profile,
-    requestPrefix,
+    requestKey,
   });
   if (coverageShortfall) return coverageShortfall;
 
-  const requestKey = `${requestPrefix}active-${currentActiveCount}:need-${requestedCount}`;
   const creation = await createBackgroundJobWithCreationResult({
     idempotencyKey: `reaction-generation:${profile.userId}:${requestKey}`,
     input: {
       businessProfileId: profile.id,
       businessProfileVersion: profile.profileVersion,
-      generationContext: buildReactionGenerationContext(profile),
+      generationContext: toJsonReactionGenerationContext(generationContext),
+      generationOrigin: "business_generation",
       projectId: profile.projectId,
       requestKey,
       requestedCount,
@@ -209,12 +233,12 @@ function getReactionCatalogClient() {
 }
 
 export function getCompletedReactionCoverageShortfall(params: {
-  jobs: readonly BackgroundJobRecord[];
+  jobs: readonly Pick<BackgroundJobRecord, "input" | "jobType" | "output" | "status">[];
   profile: Pick<BusinessProfileRecord, "id" | "profileVersion">;
-  requestPrefix: string;
+  requestKey: string;
 }): Extract<ReactionRefillResult, { kind: "coverage_shortfall" }> | null {
   for (const job of params.jobs) {
-    if (job.status !== "completed" || !isMatchingReactionCoverageJob(job, params.profile, params.requestPrefix)) {
+    if (job.status !== "completed" || !isMatchingReactionCoverageJob(job, params.profile, params.requestKey)) {
       continue;
     }
     const output = asRecord(job.output);
@@ -227,16 +251,22 @@ export function getCompletedReactionCoverageShortfall(params: {
       requestedCount === null ||
       readyCount === null ||
       failedCount !== 0 ||
-      readyCount < 1 ||
+      readyCount < 0 ||
       readyCount >= requestedCount ||
       shortfallCount !== requestedCount - readyCount
     ) {
       continue;
     }
     const missingCount = requestedCount - readyCount;
+    const shortfallReason = output?.shortfallReason;
     return {
       kind: "coverage_shortfall",
-      message: `Prepared ${readyCount} of ${requestedCount} Reaction Reels; ${missingCount} more need approved catalog coverage.`,
+      message:
+        readyCount === 0 && shortfallReason === "reaction_catalog_capacity_exhausted"
+          ? "No additional Reaction Reels can be prepared until the approved catalog has a renderable alpha clip and background."
+          : readyCount === 0
+          ? "No Reaction Reels can be prepared until the approved catalog has a renderable alpha clip and background."
+          : `Prepared ${readyCount} of ${requestedCount} Reaction Reels; ${missingCount} more need approved catalog coverage.`,
       missingCount,
       readyCount,
       requestedCount,
@@ -245,19 +275,61 @@ export function getCompletedReactionCoverageShortfall(params: {
   return null;
 }
 
-function buildReactionGenerationContext(profile: BusinessProfileRecord) {
+export const REACTION_GROUNDING_CONTEXT_VERSION = "reaction-grounding-v2" as const;
+
+export type ReactionGenerationContextSnapshot = {
+  audience: readonly string[];
+  commonSituations: readonly string[];
+  contextVersion: typeof REACTION_GROUNDING_CONTEXT_VERSION;
+  desiredOutcomes: readonly string[];
+  factSnapshot: BusinessFactSnapshot;
+  pains: readonly string[];
+  productName: string | null;
+};
+
+export function buildReactionGenerationContext(profile: BusinessProfileRecord): ReactionGenerationContextSnapshot {
   const analysis = profile.context;
   return {
     audience: dedupe([...(analysis.targetAudience ?? []), ...(analysis.categories ?? []), analysis.category ?? ""]),
     commonSituations: dedupe([...(analysis.painPoints ?? []), analysis.mainProblem ?? ""]),
+    contextVersion: REACTION_GROUNDING_CONTEXT_VERSION,
     desiredOutcomes: dedupe([...(analysis.valueProps ?? []), analysis.mainPromise ?? ""]),
+    factSnapshot: buildBusinessFactSnapshot(analysis),
     pains: dedupe([...(analysis.painPoints ?? []), analysis.productSummary ?? ""]),
-    productName: analysis.businessName ?? null,
+    productName: truncateByCodePoint(trimPostgresSpace(analysis.businessName ?? ""), 160) || null,
+  };
+}
+
+function toJsonReactionGenerationContext(context: ReactionGenerationContextSnapshot): Json {
+  return {
+    audience: [...context.audience],
+    commonSituations: [...context.commonSituations],
+    contextVersion: context.contextVersion,
+    desiredOutcomes: [...context.desiredOutcomes],
+    factSnapshot: {
+      claimsToAvoid: [...context.factSnapshot.claimsToAvoid],
+      facts: context.factSnapshot.facts.map((fact) => ({ ...fact })),
+      version: context.factSnapshot.version,
+    },
+    pains: [...context.pains],
+    productName: context.productName,
   };
 }
 
 function dedupe(values: readonly string[]) {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(0, 12);
+  // Keep V2 field values byte-for-byte compatible with the existing
+  // reaction_context_string_list_v1 SQL helper, which uses btrim's default
+  // ASCII-space behavior. The business-profile schema already trims normal
+  // user input; this avoids a rare legacy-data mismatch at job creation.
+  return [...new Set(values.map(trimPostgresSpace).filter(Boolean))].slice(0, 12);
+}
+
+function truncateByCodePoint(value: string, limit: number) {
+  return Array.from(value).slice(0, limit).join("");
+}
+
+function trimPostgresSpace(value: string) {
+  return value.replace(/^ +| +$/gu, "");
 }
 
 function isMatchingReactionGenerationJob(
@@ -266,6 +338,7 @@ function isMatchingReactionGenerationJob(
   requestKey: string,
 ) {
   const input = job.input;
+  const expectedContext = buildReactionGenerationContext(profile);
   return (
     job.jobType === REACTION_GENERATION_JOB_TYPE &&
     job.userId === profile.userId &&
@@ -274,23 +347,74 @@ function isMatchingReactionGenerationJob(
       input && typeof input === "object" && !Array.isArray(input) &&
       input.businessProfileId === profile.id &&
       input.businessProfileVersion === profile.profileVersion &&
+      (input.generationOrigin === undefined || input.generationOrigin === "business_generation") &&
+      hasMatchingReactionGenerationContext(input.generationContext, expectedContext) &&
       input.requestKey === requestKey,
     )
   );
 }
 
+export function hasMatchingReactionGenerationContext(
+  value: unknown,
+  expected: ReturnType<typeof buildReactionGenerationContext>,
+) {
+  const input = asRecord(value);
+  return Boolean(
+    input &&
+    hasMatchingStringList(input.audience, expected.audience) &&
+    hasMatchingStringList(input.commonSituations, expected.commonSituations) &&
+    input.contextVersion === expected.contextVersion &&
+    hasMatchingStringList(input.desiredOutcomes, expected.desiredOutcomes) &&
+    hasMatchingFactSnapshot(input.factSnapshot, expected.factSnapshot) &&
+    hasMatchingStringList(input.pains, expected.pains) &&
+    (input.productName ?? null) === expected.productName,
+  );
+}
+
+function hasMatchingStringList(value: unknown, expected: readonly string[]) {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((entry, index) => entry === expected[index])
+  );
+}
+
+function hasMatchingFactSnapshot(value: unknown, expected: BusinessFactSnapshot) {
+  const snapshot = asRecord(value);
+  if (
+    !snapshot ||
+    snapshot.version !== expected.version ||
+    !hasMatchingStringList(snapshot.claimsToAvoid, expected.claimsToAvoid) ||
+    !Array.isArray(snapshot.facts) ||
+    snapshot.facts.length !== expected.facts.length
+  ) {
+    return false;
+  }
+
+  return snapshot.facts.every((fact, index) => {
+    const expectedFact = expected.facts[index];
+    const persistedFact = asRecord(fact);
+    return (
+      persistedFact &&
+      persistedFact.id === expectedFact.id &&
+      persistedFact.text === expectedFact.text &&
+      persistedFact.type === expectedFact.type
+    );
+  });
+}
+
 function isMatchingReactionCoverageJob(
-  job: BackgroundJobRecord,
+  job: Pick<BackgroundJobRecord, "input" | "jobType" | "output" | "status">,
   profile: Pick<BusinessProfileRecord, "id" | "profileVersion">,
-  requestPrefix: string,
+  requestKey: string,
 ) {
   const input = asRecord(job.input);
   return (
     job.jobType === REACTION_GENERATION_JOB_TYPE &&
     input?.businessProfileId === profile.id &&
     input.businessProfileVersion === profile.profileVersion &&
-    typeof input.requestKey === "string" &&
-    input.requestKey.startsWith(requestPrefix)
+    (input.generationOrigin === undefined || input.generationOrigin === "business_generation") &&
+    input.requestKey === requestKey
   );
 }
 
@@ -298,7 +422,10 @@ function getReactionRequestPrefix(
   profile: Pick<BusinessProfileRecord, "profileVersion">,
   dailyFeedKey: string,
 ) {
-  return `reaction-v1:${dailyFeedKey}:profile-${profile.profileVersion}:`;
+  // v2 retires terminal v1 catalog-capacity jobs. The worker now repeats
+  // existing clips only after fresh rotation is exhausted, so a prior v1
+  // shortfall must not block a new durable refill request.
+  return `reaction-v2:${dailyFeedKey}:profile-${profile.profileVersion}:`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

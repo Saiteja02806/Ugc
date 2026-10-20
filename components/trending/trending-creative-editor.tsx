@@ -1,4 +1,11 @@
 "use client";
+import localFont from "next/font/local";
+import { CarouselManualText, CarouselTextControls } from "./carousel-text-controls";
+import { createCarouselManualLayout, resolveCarouselManualTextStyle } from "@/lib/carousel/manual-text";
+import { applyCarouselBodyTextEdit, getCarouselTextOverflowSlides, type CarouselTextEditScope } from "@/lib/trending/carousel-body-text-edit";
+import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
+import { getCarouselEditHookFontSize } from "@/lib/carousel/edit-cover-typography";
+import { CAROUSEL_BODY_FONT_WEIGHT, CAROUSEL_COVER_FONT_WEIGHT, CAROUSEL_HEADING_FONT_WEIGHT, CAROUSEL_STATEMENT_FONT_WEIGHT, CAROUSEL_HOOK_LINE_HEIGHT, CAROUSEL_TEXT_OUTLINE_WIDTH } from "@/lib/carousel/cover-typography";
 
 import {
   Check,
@@ -25,6 +32,11 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { CarouselDraggableOverlay } from "@/components/trending/carousel-draggable-overlay";
+import { CarouselSlideImageSection, type CarouselSlideImagePreview } from "@/components/trending/carousel-slide-image-section";
+import { applyCarouselSlideImage, restoreOriginalCarouselBackground } from "@/lib/trending/carousel-slide-image-selection";
+import { WallTextSavedImage } from "@/components/trending/wall-text-saved-image";
+import { WallTextEditOverlay, WallTextWidthControl } from "@/components/trending/wall-text-edit-overlay";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,13 +64,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { MediaAsset } from "@/lib/media/types";
 import {
   clampNormalizedTextPosition,
   createHookEditContent,
   createWallTextEditContent,
+  updateWallTextEditBox,
   type NormalizedTextPosition,
   type TrendingCarouselEditContent,
   type TrendingCarouselEditSlide,
@@ -93,15 +105,29 @@ import {
 } from "@/lib/trending/text-color";
 import {
   getWallTextEditorTypography,
+  getWallTextLetterSpacing,
+  getWallTextReviewCardCappedDimension,
+  getWallTextProportionalPreviewDimension,
   WALL_TEXT_INLINE_SAFE_PADDING,
   WALL_TEXT_LINE_HEIGHT_FACTOR,
+  WALL_TEXT_SECTION_GAP,
+  WALL_TEXT_OUTLINE_WIDTH,
+  WALL_TEXT_RASTER_EDGE_GUARD,
 } from "@/lib/trending/wall-text-visual-style";
-import {
-  MAX_CURRENT_GENERATION_WALL_TEXT_WORDS,
-  MIN_CURRENT_GENERATION_WALL_TEXT_WORDS,
-} from "@/lib/trending/wall-text-text-logic";
+import { getWallTextManualBlocks, validateWallTextManualCopy, WALL_TEXT_MANUAL_MAX_CHARACTERS } from "@/lib/trending/wall-text-manual-copy";
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
+
+// Keep the existing catalogue for saved edits and generation context, while
+// keeping the Hook library picker out of the customer editor.
+const CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE = false;
+
+const carouselInter = localFont({
+  src: "../../worker/src/assets/fonts/Inter-VariableFont_wght.ttf",
+  display: "swap",
+  variable: "--font-carousel-inter",
+  weight: "100 900",
+});
 
 type CreativeAssetGroup = {
   createdAt: string;
@@ -196,6 +222,7 @@ export function TrendingCreativeEditor({
   const [initialContent, setInitialContent] =
     useState<TrendingCreativeEditContent | null>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [textEditScope, setTextEditScope] = useState<CarouselTextEditScope>("body");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +236,9 @@ export function TrendingCreativeEditor({
   const [productAssets, setProductAssets] = useState<CarouselProductAsset[]>([]);
   const [productAssetsLoading, setProductAssetsLoading] = useState(false);
   const [productAssetsUploading, setProductAssetsUploading] = useState(false);
+  const [slideImageUploading, setSlideImageUploading] = useState(false);
+  const [slideImagePreview, setSlideImagePreview] = useState<CarouselSlideImagePreview | null>(null);
+  const slideImageBusyRef = useRef(false);
   const [productAssetsError, setProductAssetsError] = useState<string | null>(
     null,
   );
@@ -244,8 +274,12 @@ export function TrendingCreativeEditor({
     setError(null);
     groupRequestRef.current += 1;
     setActiveSlideIndex(0);
+    setTextEditScope("body");
     setProtectedHookPreviewUrl(null);
     setProductAssets([]);
+    slideImageBusyRef.current = false;
+    setSlideImageUploading(false);
+    setSlideImagePreview(null);
     setProductAssetsError(null);
     setHyperHookAssets([]);
     setHyperHookAssetsError(null);
@@ -413,7 +447,7 @@ export function TrendingCreativeEditor({
   }, [item]);
 
   const loadCarouselHyperHooks = useCallback(async () => {
-    if (!item || item.format !== "carousel") {
+    if (!CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE || !item || item.format !== "carousel") {
       return;
     }
 
@@ -422,7 +456,7 @@ export function TrendingCreativeEditor({
 
     try {
       const token = await requireToken();
-      const response = await fetch("/api/trending/carousel-hyper-hooks", {
+      const response = await fetch(`/api/trending/carousel-hyper-hooks?carouselId=${encodeURIComponent(item.creativeId)}`, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -636,6 +670,7 @@ export function TrendingCreativeEditor({
               ...slide,
               backgroundAssetId: asset.id,
               backgroundUrl: asset.url,
+              backgroundCrop: undefined,
               visualRole: "hook",
             }
           : slide,
@@ -786,6 +821,7 @@ export function TrendingCreativeEditor({
             ...slide,
             backgroundAssetId: asset.id,
             backgroundUrl: asset.url,
+            backgroundCrop: undefined,
             visualRole: "product_asset",
           };
         }
@@ -859,7 +895,7 @@ export function TrendingCreativeEditor({
   }
 
   async function saveEdit() {
-    if (!item || !content || !edit || saving) {
+    if (!item || !content || !edit || saving || slideImageBusyRef.current || productAssetsUploading) {
       return;
     }
 
@@ -925,13 +961,13 @@ export function TrendingCreativeEditor({
     <Dialog
       open={Boolean(item)}
       onOpenChange={(open) => {
-        if (!open && !saving) {
+        if (!open && !saving && !slideImageBusyRef.current) {
           onClose();
         }
       }}
     >
       <DialogContent
-        showCloseButton={!saving}
+        showCloseButton={!saving && !slideImageUploading}
         className="grid max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl"
       >
         <DialogHeader className="border-b border-border bg-card px-5 py-4 pr-14 sm:px-6">
@@ -943,8 +979,9 @@ export function TrendingCreativeEditor({
           </div>
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
-            Your current design and media stay unchanged unless you choose a
-            Hook library image, app screenshot, or Creative Assets video.
+            {item?.format === "carousel"
+              ? "Edit text, choose backgrounds from your library, upload slide images, or choose app screenshots."
+              : "Edit your text and choose a Creative Assets video."}
           </DialogDescription>
         </DialogHeader>
 
@@ -956,6 +993,7 @@ export function TrendingCreativeEditor({
           ) : content && item ? (
             <div className="grid min-h-[590px] gap-0 lg:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)]">
               <div className="border-b border-border bg-muted/25 p-5 lg:border-b-0 lg:border-r sm:p-6">
+                <div className={content.format === "carousel" ? "lg:sticky lg:top-6" : undefined}>
                 <EditorPreview
                   content={content}
                   edit={edit}
@@ -964,29 +1002,54 @@ export function TrendingCreativeEditor({
                   item={item}
                   sourcePreview={sourcePreview}
                   activeSlideIndex={activeSlideIndex}
-                  onContentChange={setContent}
+                  slideImagePreview={slideImagePreview}
+                  textEditScope={textEditScope}
+                  onContentChange={next => { if (!saving && !slideImageBusyRef.current) setContent(next); }}
                 />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
                   <Move className="size-3.5" aria-hidden="true" />
-                  {content.format === "carousel" &&
-                  content.slides[activeSlideIndex]?.structureId ===
-                    "structure_2"
-                    ? "Press the text and drag it vertically in the frame."
-                    : "Press the text and drag it anywhere in the frame."}
+                  Press the text and drag it anywhere in the frame.
+                </div>
                 </div>
               </div>
 
               <div className="min-w-0 p-5 sm:p-6">
-                <EditorFields
+                <fieldset disabled={saving || slideImageUploading} className="contents"><EditorFields
                   activeSlideIndex={activeSlideIndex}
                   content={content}
+                  textEditScope={textEditScope}
+                  onTextEditScopeChange={setTextEditScope}
                   onActiveSlideIndexChange={setActiveSlideIndex}
                   onContentChange={setContent}
-                />
+                /></fieldset>
 
                 {content.format === "carousel" ? (
                   <>
-                    <HyperHookLibrarySection
+                    {content.slides[activeSlideIndex] ? <CarouselSlideImageSection
+                      key={item.assignmentId}
+                      slide={content.slides[activeSlideIndex]}
+                      slides={content.slides}
+                      renderLibrarySlidePreview={(slideId, asset) => {
+                        const previewContent = applyCarouselSlideImage(content, slideId, asset);
+                        return previewContent ? <EditorPreview content={previewContent} edit={null} initialContent={null} item={item} sourcePreview={null} fallbackHookPreviewUrl={null} activeSlideIndex={content.slides.findIndex(slide => slide.slideId === slideId)} onContentChange={() => {}} /> : null;
+                      }}
+                      disabled={saving || productAssetsUploading}
+                      onBusyChange={(busy) => { slideImageBusyRef.current = busy; setSlideImageUploading(busy); }}
+                      onPreviewChange={setSlideImagePreview}
+                      onUploaded={(slideId, asset) => setContent(current => applyCarouselSlideImage(current, slideId, asset))}
+                      onLibraryApply={choice => setContent(current => {
+                        const assets = new Map(choice.assets.map(asset => [asset.id, asset]));
+                        return choice.assignments.reduce((next, assignment) => {
+                          const asset = assets.get(assignment.assetId);
+                          return asset ? applyCarouselSlideImage(next, assignment.slideId, asset) : next;
+                        }, current);
+                      })}
+                      onRestore={(slideId) => setContent(current => current?.format === "carousel" ? {
+                        ...current, slides: current.slides.map(slide => slide.slideId === slideId ? restoreOriginalCarouselBackground(slide) : slide),
+                      } : current)}
+                    /> : null}
+                    <fieldset disabled={saving || slideImageUploading} className="contents">
+                    {CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE ? <HyperHookLibrarySection
                       assets={hyperHookAssets}
                       content={content}
                       error={hyperHookAssetsError}
@@ -997,7 +1060,7 @@ export function TrendingCreativeEditor({
                       onOpen={() => setHyperHookFolderOpen(true)}
                       onRestore={restoreCarouselHookBackground}
                       onRetry={() => void loadCarouselHyperHooks()}
-                    />
+                    /> : null}
                     <AppScreenshotsSection
                       activeSlideIndex={activeSlideIndex}
                       assets={productAssets}
@@ -1023,6 +1086,7 @@ export function TrendingCreativeEditor({
                         if (file) void uploadProductAsset(file);
                       }}
                     />
+                    </fieldset>
                   </>
                 ) : (
                   <CreativeAssetsSection
@@ -1062,7 +1126,7 @@ export function TrendingCreativeEditor({
           <Button
             type="button"
             variant="outline"
-            disabled={saving}
+            disabled={saving || slideImageUploading}
             onClick={onClose}
           >
             Cancel
@@ -1075,6 +1139,7 @@ export function TrendingCreativeEditor({
               loading ||
               saving ||
               productAssetsUploading ||
+              slideImageUploading ||
               Boolean(loadingGroupId)
             }
             onClick={() => void saveEdit()}
@@ -1095,7 +1160,7 @@ export function TrendingCreativeEditor({
   );
 }
 
-function EditorPreview({
+export function EditorPreview({
   activeSlideIndex,
   content,
   edit,
@@ -1104,6 +1169,8 @@ function EditorPreview({
   item,
   onContentChange,
   sourcePreview,
+  slideImagePreview = null,
+  textEditScope = "slide",
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
@@ -1112,6 +1179,8 @@ function EditorPreview({
   initialContent: TrendingCreativeEditContent | null;
   item: TrendingFeedItem;
   onContentChange: (content: TrendingCreativeEditContent) => void;
+  slideImagePreview?: CarouselSlideImagePreview | null;
+  textEditScope?: CarouselTextEditScope;
   sourcePreview: {
     thumbnailUrl: string | null;
     title: string;
@@ -1119,14 +1188,17 @@ function EditorPreview({
   } | null;
 }) {
   if (content.format === "carousel" && item.format === "carousel") {
-    const slide =
+    const confirmedSlide =
       content.slides[
         Math.min(activeSlideIndex, Math.max(content.slides.length - 1, 0))
       ];
 
-    if (!slide) {
+    if (!confirmedSlide) {
       return null;
     }
+    const previewPending = slideImagePreview?.slideId === confirmedSlide.slideId;
+    const slide = previewPending ? { ...confirmedSlide, backgroundUrl: slideImagePreview.url,
+      backgroundCrop: "centre" as const, visualRole: confirmedSlide.originalVisualRole } : confirmedSlide;
 
     const initialSlide =
       initialContent?.format === "carousel"
@@ -1140,16 +1212,22 @@ function EditorPreview({
     });
     const showExactRender = Boolean(
       exactRenderedUrl &&
+        !previewPending &&
         initialSlide &&
         !hasCarouselSlidePreviewChanged(initialSlide, slide),
     );
+    const isCover = slide.slideNumber === 1;
     const isStructure2 = slide.structureId === "structure_2";
     const structure2Layout = isStructure2
       ? createStructure2EditorLayout(slide)
       : null;
-    const previewPosition =
-      structure2Layout?.storyPosition ?? slide.textPosition;
-    const supportingText = slide.subtext || slide.ctaText;
+    const manualLayout = slide.textStyle ? createCarouselManualLayout(slide) : null;
+    const movementLayout = createCarouselManualLayout({ ...slide, textStyle: { ...resolveCarouselManualTextStyle(slide), canvasEdgePlacement: true } });
+    const previewPosition = manualLayout?.position ?? structure2Layout?.storyPosition ?? slide.textPosition;
+    const supportingText = slide.subtext;
+    const hasHeading = isStructure2
+      ? Boolean(slide.headline.trim() && supportingText)
+      : slide.hasHeading ?? Boolean(supportingText && slide.headline.trim());
 
     return (
       <div
@@ -1158,9 +1236,11 @@ function EditorPreview({
         }
         className={cn(
           "relative mx-auto w-full max-w-[340px] overflow-hidden rounded-xl border border-border bg-foreground-strong [container-type:inline-size]",
+          carouselInter.variable,
           slide.renderFormat === "1:1" ? "aspect-square" : "aspect-[4/5]",
         )}
       >
+        {previewPending ? <Badge className="absolute right-2 top-2 z-20" role="status">Uploading image…</Badge> : null}
         {showExactRender ? (
           // The immutable rendered asset is the source of truth until a field changes.
           // eslint-disable-next-line @next/next/no-img-element
@@ -1173,28 +1253,22 @@ function EditorPreview({
         ) : (
           <CarouselEditorBackground slide={slide} />
         )}
-        <DraggableOverlay
+        <CarouselDraggableOverlay
           ariaLabel={`Move text for slide ${slide.slideNumber}`}
-          bounds={
-            isStructure2
-              ? { maxX: 0.5, maxY: 0.88, minX: 0.5, minY: 0.12 }
-              : undefined
-          }
+          key={slide.slideId}
+          enabled={!showExactRender}
+          format={slide.renderFormat}
+          structureId={slide.structureId}
+          bounds={movementLayout.bounds}
+          layoutFits={movementLayout.fits}
           position={previewPosition}
           onPositionChange={(textPosition) =>
-            onContentChange({
-              ...content,
-              slides: content.slides.map((entry) =>
-                entry.slideId === slide.slideId
-                  ? {
-                      ...entry,
-                      textPosition: isStructure2
-                        ? { x: 0.5, y: textPosition.y }
-                        : textPosition,
-                    }
-                  : entry,
-              ),
-            })
+            onContentChange(applyCarouselBodyTextEdit(content, { ...confirmedSlide, textPosition: {
+              x: Math.abs(textPosition.x - movementLayout.bounds.minX) < .00001 ? 0 : Math.abs(textPosition.x - movementLayout.bounds.maxX) < .00001 ? 1 : textPosition.x,
+              y: Math.abs(textPosition.y - movementLayout.bounds.minY) < .00001 ? 0 : Math.abs(textPosition.y - movementLayout.bounds.maxY) < .00001 ? 1 : textPosition.y,
+            },
+              textStyle: { ...resolveCarouselManualTextStyle(confirmedSlide), canvasEdgePlacement: true },
+            }, textEditScope))
           }
         >
           {showExactRender ? (
@@ -1204,27 +1278,20 @@ function EditorPreview({
             >
               {slide.headline}
             </span>
-          ) : structure2Layout ? (
-            <Structure2StoryText layout={structure2Layout} />
+          ) : manualLayout ? <CarouselManualText slide={slide} /> : isCover ? (
+            <CarouselCoverText primaryText={slide.headline.trim() || supportingText} fontSize={getCarouselEditHookFontSize(slide)} />
           ) : (
             <div className="w-[82cqw] text-center">
-              {slide.headline.trim() ? (
+              {slide.headline.trim() && hasHeading ? (
                 <CarouselOutlinedText kind="headline" text={slide.headline} />
               ) : null}
-              {supportingText ? (
-                <CarouselOutlinedText kind="body" text={supportingText} />
-              ) : null}
+              {getCarouselBodyBlocks(supportingText || (!hasHeading ? slide.headline : "")).map((text, index) => (
+                <CarouselOutlinedText key={index} kind={hasHeading ? "body" : "statement"} text={text} />
+              ))}
+              {slide.ctaText.trim() ? <CarouselOutlinedText kind={hasHeading ? "body" : "statement"} text={slide.ctaText} /> : null}
             </div>
           )}
-        </DraggableOverlay>
-        {!showExactRender && structure2Layout?.cta ? (
-          <Structure2CtaText
-            layout={{
-              ...structure2Layout.cta,
-              renderHeight: structure2Layout.renderHeight,
-            }}
-          />
-        ) : null}
+        </CarouselDraggableOverlay>
       </div>
     );
   }
@@ -1255,10 +1322,7 @@ function EditorPreview({
 
   if (content.format === "wall_text" && item.format === "wall_text") {
     const box = content.layout.textBox;
-    const center = {
-      x: box.x + box.width / 2,
-      y: box.y + box.height / 2,
-    };
+    const useSharedPng = process.env.NEXT_PUBLIC_WALL_TEXT_SHARED_PNG === "true" && Boolean(content.content.finalLayout);
 
     return (
       <VerticalVideoPreview
@@ -1266,31 +1330,21 @@ function EditorPreview({
         title={sourcePreview?.title ?? item.creative.title}
         url={sourcePreview?.url ?? item.creative.previewUrl}
       >
-        <DraggableOverlay
-          ariaLabel="Move Wall-of-text copy"
-          bounds={{
-            maxX: 1 - content.layout.safeArea.right - box.width / 2,
-            maxY: 1 - content.layout.safeArea.bottom - box.height / 2,
-            minX: content.layout.safeArea.left + box.width / 2,
-            minY: content.layout.safeArea.top + box.height / 2,
+        {useSharedPng ? <WallTextSavedImage
+          assignmentId={item.assignmentId} creativeId={item.creativeId} revision={edit?.revision ?? 0}
+          text={content.content.fullText}
+          draft={JSON.stringify(content) === JSON.stringify(initialContent) ? undefined : {
+            fullText: content.content.fullText, textColor: content.textColor, textBox: box,
           }}
-          position={center}
-          onPositionChange={(position) =>
-            onContentChange({
-              ...content,
-              layout: {
-                ...content.layout,
-                textBox: {
-                  ...box,
-                  x: position.x - box.width / 2,
-                  y: position.y - box.height / 2,
-                },
-              },
-            })
-          }
+        /> : null}
+        <WallTextEditOverlay
+          layout={content.layout}
+          onBoxChange={(textBox) => onContentChange(updateWallTextEditBox(content, textBox))}
         >
-          <WallTextOverlayText content={content} />
-        </DraggableOverlay>
+          {useSharedPng ? (
+            <div aria-label="Drag to move text" style={{ width: `${box.width * 100}cqw`, height: `${box.height * 100 * 16 / 9}cqw` }} />
+          ) : <WallTextOverlayText content={content} />}
+        </WallTextEditOverlay>
       </VerticalVideoPreview>
     );
   }
@@ -1303,7 +1357,7 @@ const STRUCTURE_2_SAFE_X = 72;
 const STRUCTURE_2_SAFE_TOP = 84;
 const STRUCTURE_2_SAFE_BOTTOM = 92;
 const STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER = 34;
-const CAROUSEL_FIXED_EDITOR_FONT_SIZE = 44;
+const CAROUSEL_FIXED_EDITOR_FONT_SIZE = CAROUSEL_BODY_FONT_SIZE;
 
 type Structure2EditorTextLayout = {
   blockHeight: number;
@@ -1321,11 +1375,6 @@ type Structure2EditorBounds = {
 };
 
 type Structure2EditorLayout = {
-  cta: {
-    bounds: Structure2EditorBounds;
-    text: Structure2EditorTextLayout;
-  } | null;
-  renderHeight: number;
   story: Structure2EditorTextLayout;
   storyBounds: Structure2EditorBounds;
   storyPosition: NormalizedTextPosition;
@@ -1364,6 +1413,7 @@ function hasCarouselSlidePreviewChanged(
     initial.ctaText !== current.ctaText ||
     initial.headline !== current.headline ||
     initial.subtext !== current.subtext ||
+    JSON.stringify(initial.textStyle ?? null) !== JSON.stringify(current.textStyle ?? null) ||
     initial.textPosition.x !== current.textPosition.x ||
     initial.textPosition.y !== current.textPosition.y ||
     initial.visualRole !== current.visualRole
@@ -1388,157 +1438,46 @@ function CarouselEditorBackground({
     );
   }
 
-  const isProduct = slide.visualRole === "product_asset";
-  const layoutVariant = isProduct
-    ? "story_product_reveal"
-    : slide.storyLayoutVariant ?? "story_overlay_only";
-  const position = getStructure2TextPosition(slide.textPosition.y);
-
   return (
-    <>
-      {isProduct ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={slide.backgroundUrl || slide.renderedUrl}
-            alt=""
-            draggable={false}
-            className="absolute -inset-5 size-[calc(100%+2.5rem)] scale-110 object-cover blur-xl brightness-[.54] saturate-[.82]"
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={slide.backgroundUrl || slide.renderedUrl}
-            alt=""
-            draggable={false}
-            className="absolute inset-[4.5%] size-[91%] object-contain"
-          />
-        </>
-      ) : (
-        // Carousel library backgrounds are normalized to the render aspect ratio.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={slide.backgroundUrl || slide.renderedUrl}
-          alt=""
-          draggable={false}
-          className="absolute inset-0 size-full object-cover"
-        />
-      )}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: getStructure2ReadabilityBackground({
-            layoutVariant,
-            position,
-          }),
-        }}
-      />
-      {layoutVariant === "story_product_reveal" ? (
-        <div className="pointer-events-none absolute inset-[4%] rounded-[3cqw] border border-white/20" />
-      ) : null}
-    </>
+    // App screenshots use the same full-frame centre crop as the saved render.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={slide.backgroundUrl || slide.renderedUrl}
+      alt=""
+      draggable={false}
+      className="absolute inset-0 size-full object-cover"
+    />
   );
 }
 
-function Structure2StoryText({ layout }: { layout: Structure2EditorLayout }) {
-  return (
-    <div
-      className="text-center"
-      style={{
-        color: "#ffffff",
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
-        fontSize: `${layout.story.fontSize / 10.8}cqw`,
-        fontWeight: 600,
-        letterSpacing: 0,
-        lineHeight: layout.story.lineHeight / layout.story.fontSize,
-        paintOrder: "stroke fill",
-        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
-        width: `${layout.storyBounds.width / 10.8}cqw`,
-      }}
-    >
-      {layout.story.lines.map((line, index) => (
-        <span
-          key={`${index}:${line}`}
-          className="block whitespace-nowrap"
-        >
-          <HookInlineSymbols text={line} />
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function Structure2CtaText({
-  layout,
-}: {
-  layout: NonNullable<Structure2EditorLayout["cta"]> & {
-    renderHeight: number;
-  };
-}) {
-  return (
-    <div
-      className="pointer-events-none absolute flex flex-col items-center justify-center text-center text-white"
-      style={{
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
-        fontSize: `${layout.text.fontSize / 10.8}cqw`,
-        fontWeight: 600,
-        height: `${(layout.bounds.height / layout.renderHeight) * 100}%`,
-        left: `${(layout.bounds.x / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
-        letterSpacing: 0,
-        lineHeight: layout.text.lineHeight / layout.text.fontSize,
-        paintOrder: "stroke fill",
-        top: `${(layout.bounds.y / layout.renderHeight) * 100}%`,
-        WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
-        width: `${(layout.bounds.width / STRUCTURE_2_RENDER_WIDTH) * 100}%`,
-      }}
-    >
-      {layout.text.lines.map((line, index) => (
-        <span
-          key={`${index}:${line}`}
-          className="block whitespace-nowrap"
-        >
-          {line}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 function createStructure2EditorLayout(
   slide: TrendingCarouselEditSlide,
 ): Structure2EditorLayout {
   const height = getStructure2RenderHeight(slide.renderFormat);
+  const isCover = slide.slideNumber === 1;
   const maximumTextWidth = STRUCTURE_2_RENDER_WIDTH - STRUCTURE_2_SAFE_X * 2;
   const treatment = "overlay" as const;
   const story = fitStructure2EditorText({
-    maximumLines: 12,
+    fontSize: isCover ? getCarouselEditHookFontSize(slide) : CAROUSEL_FIXED_EDITOR_FONT_SIZE,
+    maximumLines: isCover ? 4 : 10,
     maximumWidth:
       maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
     value:
-      (slide.subtext
-        ? `${slide.headline} ${slide.subtext}`
-        : slide.headline) || "Add a headline",
+      (isCover
+        ? slide.headline || slide.subtext
+        : slide.subtext
+          ? `${slide.headline} ${slide.subtext}`
+          : slide.headline) || "Add a headline",
   });
-  const cta = slide.ctaText
-    ? fitStructure2EditorText({
-        maximumLines: 6,
-        maximumWidth:
-          maximumTextWidth - STRUCTURE_2_DIRECT_TEXT_SIDE_BUFFER * 2,
-        value: slide.ctaText,
-      })
-    : null;
   const storyWidth = story.maximumLineWidth;
   const storyHeight = story.blockHeight;
-  const ctaHeight = cta?.blockHeight ?? 0;
-  const ctaWidth = cta?.maximumLineWidth ?? 0;
-  const textBlockHeight = storyHeight + (cta ? 46 + ctaHeight : 0);
   const storyTop = resolveStructure2StoryTop({
-    blockHeight: textBlockHeight,
+    blockHeight: storyHeight,
     height,
     maximumBottom: height - STRUCTURE_2_SAFE_BOTTOM,
     position: getStructure2TextPosition(slide.textPosition.y),
   });
-  const ctaTop = cta ? storyTop + storyHeight + 46 : null;
   const storyBounds = {
     height: storyHeight,
     width: storyWidth,
@@ -1547,19 +1486,6 @@ function createStructure2EditorLayout(
   };
 
   return {
-    cta:
-      cta && ctaTop !== null
-        ? {
-            bounds: {
-              height: ctaHeight,
-              width: ctaWidth,
-              x: Math.round((STRUCTURE_2_RENDER_WIDTH - ctaWidth) / 2),
-              y: ctaTop,
-            },
-            text: cta,
-          }
-        : null,
-    renderHeight: height,
     story,
     storyBounds,
     storyPosition: {
@@ -1571,12 +1497,13 @@ function createStructure2EditorLayout(
 }
 
 function fitStructure2EditorText(params: {
+  fontSize?: number;
   maximumLines: number;
   maximumWidth: number;
   value: string;
 }): Structure2EditorTextLayout {
   const value = params.value.trim().replace(/\s+/gu, " ");
-  const fontSize = CAROUSEL_FIXED_EDITOR_FONT_SIZE;
+  const fontSize = params.fontSize ?? CAROUSEL_FIXED_EDITOR_FONT_SIZE;
   const lines = wrapStructure2EditorWords(
     value || "Add a headline",
     params.maximumWidth,
@@ -1665,31 +1592,11 @@ function resolveStructure2StoryTop(params: {
   );
 }
 
-function getStructure2ReadabilityBackground({
-  layoutVariant,
-  position,
-}: {
-  layoutVariant: NonNullable<TrendingCarouselEditSlide["storyLayoutVariant"]>;
-  position: ReturnType<typeof getStructure2TextPosition>;
-}) {
-  if (layoutVariant === "story_pill_overlay") {
-    return "rgba(0,0,0,.10)";
-  }
-
-  if (layoutVariant === "story_product_reveal") {
-    return "linear-gradient(to bottom,rgba(0,0,0,.68),rgba(0,0,0,.04) 34%,rgba(0,0,0,.06) 70%,rgba(0,0,0,.70))";
-  }
-
-  const topOpacity = position === "upper" ? 0.66 : 0.2;
-  const bottomOpacity = position === "lower" ? 0.72 : 0.42;
-  return `linear-gradient(to bottom,rgba(0,0,0,${topOpacity}),rgba(0,0,0,.04) 48%,rgba(0,0,0,${bottomOpacity}))`;
-}
-
 function CarouselOutlinedText({
   kind,
   text,
 }: {
-  kind: "body" | "headline";
+  kind: "body" | "headline" | "statement";
   text: string;
 }) {
   return (
@@ -1697,16 +1604,20 @@ function CarouselOutlinedText({
       className={cn(
         "mx-auto max-w-[78cqw] text-center",
         kind === "headline"
-          ? "text-[4.074cqw] font-semibold leading-[1.04]"
-          : "mt-[2.2cqw] text-[4.074cqw] font-semibold leading-[1.05] text-white",
+          ? "leading-[1.04]"
+          : "leading-[1.16] text-white",
       )}
       style={{
-        fontFamily: 'var(--font-geist-sans), Geist, Arial, Helvetica, sans-serif',
+        fontFamily: 'var(--font-carousel-inter), Inter, Arial, sans-serif',
+        fontWeight: kind === "headline" ? CAROUSEL_HEADING_FONT_WEIGHT : kind === "statement" ? CAROUSEL_STATEMENT_FONT_WEIGHT : CAROUSEL_BODY_FONT_WEIGHT,
+        fontSize: `${(kind === "headline" ? CAROUSEL_HEADING_FONT_SIZE : CAROUSEL_BODY_FONT_SIZE) / 10.8}cqw`,
+        marginTop: kind !== "headline" ? `${CAROUSEL_TEXT_BLOCK_GAP / 10.8}cqw` : undefined,
+        whiteSpace: "pre-line",
         letterSpacing: 0,
-        ...(kind === "body"
+        ...(kind !== "headline"
           ? {
               paintOrder: "stroke fill",
-              WebkitTextStroke: "0.370cqw rgba(0, 0, 0, 0.72)",
+              WebkitTextStroke: `${CAROUSEL_TEXT_OUTLINE_WIDTH / 10.8}cqw rgba(0, 0, 0, 0.72)`,
             }
           : {}),
       }}
@@ -1719,6 +1630,34 @@ function CarouselOutlinedText({
         text
       )}
     </p>
+  );
+}
+
+function CarouselCoverText({
+  primaryText,
+  fontSize = CAROUSEL_HOOK_FONT_SIZE,
+}: {
+  primaryText: string;
+  fontSize?: number;
+}) {
+  return (
+    <div className="mx-auto w-[78cqw] text-center">
+      <p
+        className="text-white"
+        style={{
+          fontFamily: 'var(--font-carousel-inter), Inter, Arial, sans-serif',
+          fontWeight: CAROUSEL_COVER_FONT_WEIGHT,
+          lineHeight: CAROUSEL_HOOK_LINE_HEIGHT,
+          paintOrder: "stroke fill",
+          WebkitTextStroke: `${CAROUSEL_TEXT_OUTLINE_WIDTH / 10.8}cqw rgba(0, 0, 0, 0.72)`,
+          fontSize: `${fontSize / 10.8}cqw`,
+          whiteSpace: "pre-line",
+          letterSpacing: 0,
+        }}
+      >
+        {primaryText}
+      </p>
+    </div>
   );
 }
 
@@ -1789,27 +1728,39 @@ function WallTextOverlayText({
 }) {
   const isPendingAuthoritativeLayout = !content.content.finalLayout;
   const typography = getWallTextEditorTypography(content.content);
+  const letterSpacing = getWallTextLetterSpacing(content.content);
+  const previewDimension = isPendingAuthoritativeLayout || content.content.finalLayout?.textMode === "manual"
+    ? getWallTextProportionalPreviewDimension : getWallTextReviewCardCappedDimension;
 
   return (
     <div
       className="flex flex-col justify-center text-center [paint-order:stroke_fill]"
       style={{
         boxSizing: "border-box",
-        WebkitTextStroke: `${typography.outlineWidth / 10.8}cqw #000`,
+        WebkitTextStroke: `${previewDimension(typography.outlineWidth)} #000`,
         color: content.textColor,
         fontFamily: typography.fontFamily,
-        fontSize: `${typography.fontSize / 10.8}cqw`,
+        fontSize: previewDimension(typography.fontSize),
         fontWeight: typography.fontWeight,
-        letterSpacing: `${-0.2 / 10.8}cqw`,
-        paddingInline: `${WALL_TEXT_INLINE_SAFE_PADDING / 10.8}cqw`,
-        textShadow: `0 0.111111cqw 0.185185cqw rgba(0, 0, 0, ${typography.shadowOpacity})`,
+        letterSpacing:
+          letterSpacing === 0 ? "normal" : previewDimension(letterSpacing),
+        paddingInline: previewDimension(WALL_TEXT_INLINE_SAFE_PADDING +
+          (isPendingAuthoritativeLayout ? WALL_TEXT_OUTLINE_WIDTH + WALL_TEXT_RASTER_EDGE_GUARD / 2 : 0)),
+        textShadow:
+          typography.shadowOpacity > 0
+            ? `0 ${previewDimension(1.2)} ${previewDimension(2)} rgb(0 0 0 / ${typography.shadowOpacity})`
+            : "none",
         width: `${content.layout.textBox.width * 100}cqw`,
       }}
     >
       {isPendingAuthoritativeLayout ? (
-        <p className="m-0 whitespace-normal" style={{ lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR }}>
-          {content.content.fullText}
-        </p>
+        getWallTextManualBlocks(content.content.fullText).map((block, index) => (
+          <p key={index} className="m-0 whitespace-pre-wrap" style={{
+            lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
+            marginBottom: previewDimension(block.gapAfterPx ?? 0),
+            overflowWrap: "anywhere",
+          }}>{block.lines.join("\n")}</p>
+        ))
       ) : getWallTextRenderBlocks(content.content).map((segment, segmentIndex) => (
         <p
           key={`${segment.role}-${segmentIndex}`}
@@ -1817,6 +1768,8 @@ function WallTextOverlayText({
           style={{
             lineHeight: WALL_TEXT_LINE_HEIGHT_FACTOR,
             whiteSpace: "nowrap",
+            marginBottom: segmentIndex < getWallTextRenderBlocks(content.content).length - 1
+              ? previewDimension(segment.gapAfterPx ?? WALL_TEXT_SECTION_GAP) : 0,
           }}
         >
           {segment.lines.map((line, lineIndex) => (
@@ -2043,20 +1996,26 @@ function DraggableOverlay({
   );
 }
 
-function EditorFields({
+export function EditorFields({
   activeSlideIndex,
   content,
   onActiveSlideIndexChange,
   onContentChange,
+  textEditScope = "slide",
+  onTextEditScopeChange,
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
   onActiveSlideIndexChange: (index: number) => void;
   onContentChange: (content: TrendingCreativeEditContent) => void;
+  textEditScope?: CarouselTextEditScope;
+  onTextEditScopeChange?: (scope: CarouselTextEditScope) => void;
 }) {
   if (content.format === "carousel") {
     const slide = content.slides[activeSlideIndex];
     if (!slide) return null;
+    const overflowSlides = getCarouselTextOverflowSlides(content);
+    const individualBodyStyle = Boolean(slide.textStyle && resolveCarouselManualTextStyle(slide).bodyStyleMode === "individual");
 
     const updateSlide = (
       field: "ctaText" | "headline" | "subtext",
@@ -2065,7 +2024,7 @@ function EditorFields({
       onContentChange({
         ...content,
         slides: content.slides.map((entry, index) =>
-          index === activeSlideIndex ? { ...entry, [field]: value } : entry,
+          index === activeSlideIndex ? { ...entry, [field]: value, textStyle: entry.textStyle || value.includes("\n") ? resolveCarouselManualTextStyle(entry) : entry.textStyle } : entry,
         ),
       });
 
@@ -2106,43 +2065,50 @@ function EditorFields({
         <FieldGroup className="mt-5">
           <Field>
             <FieldLabel htmlFor="trending-carousel-headline">
-              Headline
+              {slide.slideNumber === 1 ? "Hook" : slide.hasHeading === false && !slide.subtext ? "Text" : "Headline (optional)"}
             </FieldLabel>
-            <Input
+            <textarea
               id="trending-carousel-headline"
+              rows={3}
+              className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
               value={slide.headline}
               maxLength={180}
               onChange={(event) => updateSlide("headline", event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">Press Enter for a new line. Use Text width below to adjust wrapping.</p>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="trending-carousel-subtext">
-              Supporting text
-            </FieldLabel>
-            <Input
-              id="trending-carousel-subtext"
-              value={slide.subtext}
-              maxLength={360}
-              onChange={(event) => updateSlide("subtext", event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="trending-carousel-cta">
-              Call to action
-            </FieldLabel>
-            <Input
-              id="trending-carousel-cta"
-              value={slide.ctaText}
-              maxLength={120}
-              onChange={(event) => updateSlide("ctaText", event.target.value)}
-            />
-            <FieldDescription>
-              {slide.structureId === "structure_2"
-                ? "Rendered as the bottom action label."
-                : "Rendered when Supporting text is empty."}
-            </FieldDescription>
-          </Field>
+          {slide.slideNumber !== 1 ? (
+            <Field>
+              <FieldLabel htmlFor="trending-carousel-subtext">
+                Supporting text
+              </FieldLabel>
+              <textarea
+                id="trending-carousel-subtext"
+                className="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                value={slide.subtext}
+                maxLength={360}
+                onChange={(event) => updateSlide("subtext", event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Press Enter for a new line, or leave a blank line between thoughts.</p>
+            </Field>
+          ) : null}
+          {slide.slideNumber === content.slides.length || slide.ctaText ? (
+            <Field>
+              <FieldLabel htmlFor="trending-carousel-cta">CTA (optional)</FieldLabel>
+              <Input id="trending-carousel-cta" value={slide.ctaText} maxLength={120} onChange={(event) => updateSlide("ctaText", event.target.value)} />
+            </Field>
+          ) : null}
         </FieldGroup>
+        {slide.slideNumber !== 1 && content.slides.length > 2 && onTextEditScopeChange ? <div className="mt-4 rounded-lg border border-border px-3 py-2">
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="accent-primary" checked={textEditScope === "body" && !individualBodyStyle} onChange={event => {
+            onTextEditScopeChange(event.target.checked ? "body" : "slide");
+            if (event.target.checked && individualBodyStyle) onContentChange({ ...content, slides: content.slides.map(entry => entry.slideId === slide.slideId ? { ...entry, textStyle: { ...resolveCarouselManualTextStyle(entry), bodyStyleMode: "shared" } } : entry) });
+          }} />Apply styling to all body slides</label>
+          <p className="mt-1 text-xs text-muted-foreground">{individualBodyStyle ? "Custom layout kept. Other slides’ shared changes will not replace it. Turn on to include this slide again." : textEditScope === "body" ? "Shares style and position across body slides, keeping individual custom layouts. Copy, images and hook stay separate." : "Only this slide changes. Its custom styling will be kept."}</p>
+          <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => onContentChange(applyCarouselBodyTextEdit(content, { ...slide, textStyle: { ...resolveCarouselManualTextStyle(slide), canvasEdgePlacement: true } }, "body", true))}>Use this layout on shared body slides</Button>
+        </div> : null}
+        <CarouselTextControls slide={slide} onChange={next => onContentChange(applyCarouselBodyTextEdit(content, next, textEditScope))} />
+        {overflowSlides.length ? <div role="alert" className="mt-3 rounded-lg border border-destructive p-3 text-xs"><p>Review text fit on {overflowSlides.length === 1 ? "slide" : "slides"} {overflowSlides.map(entry => entry.slideNumber).join(", ")}. Copy has not been shortened or resized automatically.</p><div className="mt-1 flex flex-wrap gap-2">{overflowSlides.map(entry => <Button key={entry.slideId} type="button" variant="outline" size="sm" onClick={() => { onTextEditScopeChange?.("slide"); onActiveSlideIndexChange(content.slides.findIndex(item => item.slideId === entry.slideId)); }}>Review slide {entry.slideNumber}</Button>)}</div></div> : null}
       </div>
     );
   }
@@ -2186,7 +2152,7 @@ function EditorFields({
         <textarea
           id="trending-wall-text"
           value={content.content.fullText}
-          maxLength={600}
+          maxLength={WALL_TEXT_MANUAL_MAX_CHARACTERS}
           rows={7}
           onChange={(event) =>
             onContentChange({
@@ -2196,8 +2162,7 @@ function EditorFields({
                   event.target.value,
                   content.content,
                 ),
-                // Keep the user's in-progress whitespace while deriving the
-                // normalized preview segments. The API normalizes on save.
+                // Keep in-progress whitespace and the author's explicit breaks.
                 fullText: event.target.value,
               },
             })
@@ -2205,9 +2170,21 @@ function EditorFields({
           className="min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
         <FieldDescription>
-          Use {MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–{MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words. The preview keeps a fixed font size
-          while you type. Saving balances the final 5–8 lines inside the same
-          text area.
+          Your line breaks and paragraph spacing are kept. Long lines wrap to
+          fit the text area at the fixed font size. Lists and short phrases are
+          welcome; the complete text must fit inside the preview.
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="trending-wall-width">Text width</FieldLabel>
+        <WallTextWidthControl
+          id="trending-wall-width"
+          layout={content.layout}
+          onBoxChange={(textBox) => onContentChange(updateWallTextEditBox(content, textBox))}
+        />
+        <FieldDescription>
+          Drag the side handles or use the slider to adjust wrapping. Drag the
+          text to move it. A little padding stays on both sides of the video.
         </FieldDescription>
       </Field>
       <TextColorPicker
@@ -3180,6 +3157,7 @@ function toPatchPayload(
         slideNumber: slide.slideNumber,
         subtext: slide.subtext,
         textPosition: slide.textPosition,
+        textStyle: slide.textStyle ?? null,
       })),
     };
   }
@@ -3206,6 +3184,9 @@ function toPatchPayload(
 }
 
 function validateContent(content: TrendingCreativeEditContent) {
+  if (content.format === "carousel") {
+    for (const slide of content.slides) if (slide.textStyle && !createCarouselManualLayout(slide).fits) return `Slide ${slide.slideNumber}: reduce the font size or shorten the text to fit.`;
+  }
   if (content.format === "hook_video") {
     try {
       createHookTextLayout(content.hookText, {
@@ -3221,14 +3202,10 @@ function validateContent(content: TrendingCreativeEditContent) {
   }
 
   if (content.format === "wall_text") {
-    const normalized = content.content.fullText.replace(/\s+/gu, " ").trim();
-    const wordCount = normalized.split(/\s+/u).filter(Boolean).length;
-    if (
-      !normalized ||
-      wordCount < MIN_CURRENT_GENERATION_WALL_TEXT_WORDS ||
-      wordCount > MAX_CURRENT_GENERATION_WALL_TEXT_WORDS
-    ) {
-      return `Wall-of-text copy must contain ${MIN_CURRENT_GENERATION_WALL_TEXT_WORDS}–${MAX_CURRENT_GENERATION_WALL_TEXT_WORDS} words and fit the measured 5–8-line layout.`;
+    try {
+      validateWallTextManualCopy(content.content.fullText);
+    } catch (error) {
+      return error instanceof Error ? error.message : "Review the overlay copy before saving.";
     }
   }
 
@@ -3262,17 +3239,6 @@ function getProductAssetEligibleSlideIndexes(
   return content.slides.flatMap((slide, index) =>
     isProductAssetEligibleSlide(slide) ? [index] : [],
   );
-}
-
-function restoreOriginalCarouselBackground(
-  slide: TrendingCarouselEditContent["slides"][number],
-) {
-  return {
-    ...slide,
-    backgroundAssetId: slide.originalBackgroundAssetId,
-    backgroundUrl: slide.originalBackgroundUrl,
-    visualRole: slide.originalVisualRole,
-  };
 }
 
 function isReadyVideoAsset(asset: MediaAsset) {

@@ -3,6 +3,7 @@
 import { Sparkles, Video, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { isTrendingFormatEnabled } from "@/lib/trending/format-policy";
 
 export type TrendingMode = "carousels" | "hook_videos";
 
@@ -41,7 +42,7 @@ export function TrendingModeSelector({
       role="tablist"
       aria-label="Trending creative mode"
     >
-      {modes.map(({ Icon, label, value: modeValue }) => {
+      {modes.filter((mode) => mode.value === "carousels" || isTrendingFormatEnabled("hook_video")).map(({ Icon, label, value: modeValue }) => {
         const selected = value === modeValue;
 
         return (

@@ -1,0 +1,41 @@
+export type ProductExample = {
+  title: string;
+  introduction: string;
+  input: string;
+  output: readonly string[];
+  review: readonly string[];
+  limits: string;
+};
+
+export const productExamples = {
+  carousel: {
+    title: "Plan a carousel that explains one product action",
+    introduction: "Illustrative brief: a tutor app groups lesson notes by student. This is a planning example, not a generated carousel or customer result. Replace its feature with what your product actually does.",
+    input: "Audience: independent tutors. Question: how can I keep one student's lesson notes together? Feature: notes grouped by student. Message: organize notes before planning the next lesson. Evidence: a genuine screen recording or supplied screenshot with sample data.",
+    output: [
+      "Cover: Keep each student's lesson notes together.",
+      "Situation: Notes from different lessons can become hard to follow.",
+      "Action: Use a separate group for each student.",
+      "Example: Show one genuine group containing that student's sample lesson notes.",
+      "Next step: Review the group before preparing the next lesson.",
+    ],
+    review: ["Check the slides explain the same idea in a useful order.", "Keep words readable on a phone and verify any product imagery.", "Review claims and the caption before choosing a supported connected destination."],
+    limits: "An outline is not a rendered carousel. Review the actual images produced by the workflow and its current export and publishing options. Do not imply improved learning outcomes or time savings without evidence.",
+  },
+  video: {
+    title: "Write a usable short-video brief",
+    introduction: "Illustrative prompt for a short opening: show curiosity about a product action, then demonstrate the real product in a separate edit. It is a direction to try, not a generated asset or promise of fidelity.",
+    input: "Three-second vertical smartphone close-up of an adult creator looking at a phone. 0–1s: focused gaze. 1–2s: one brow lifts and the head tilts slightly. 2–3s: hold a curious smile. Soft window light, consistent face, hands and phone. No baked-in words, dialogue, music or cuts.",
+    output: ["A short opening that can introduce a relevant viewer question.", "A separate real product recording showing the action the opening refers to.", "Exact headline text added in the editor, with captions if the final video contains speech."],
+    review: ["Check the current model's supported duration, format, references and credit estimate before submission.", "Watch the result for inconsistent hands, props, motion or unintended lettering.", "Review the full edited opening and demonstration together before publishing."],
+    limits: "AI footage can contain visual errors and is not evidence of a real testimonial or feature. The AI-client plugin's generation tools produce footage, not a finished product-demo edit. Exact overlays and final composition require an editor or the applicable website workflow.",
+  },
+  manager: {
+    title: "Give one customer question a manageable weekly plan",
+    introduction: "Illustrative question: what can our small product team explain between launches? Choose one answer that helps the intended audience, then create only the formats that add something useful.",
+    input: "Reader: a founder without a new feature announcement. Question: what can I post this week? Useful answer: take one real customer question, demonstrate the answer and offer a practical next step. Evidence: the actual product action and a reviewed explanation.",
+    output: ["Monday: collect a real question, remove personal details and write its answer.", "Tuesday: record or prepare one demonstration of that answer.", "Wednesday: make a carousel if the decisions need separate steps.", "Thursday: review the media, words, claims and phone preview; publish only to a supported destination you choose.", "Friday: record useful replies or follow-up questions and pick the next explanation."],
+    review: ["Keep the same factual context while adapting the wording to each format.", "Approve the complete output before choosing an account and publishing time.", "Distinguish a completed signup from a button click when measuring results."],
+    limits: "This is an editorial schedule, not a promise that every format is created automatically each day. Trending and Explore serve different workflows. Supported publishing destinations depend on account access and current product availability; your team retains the final decision.",
+  },
+} satisfies Record<string, ProductExample>;

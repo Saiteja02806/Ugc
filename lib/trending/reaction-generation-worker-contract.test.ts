@@ -5,6 +5,16 @@ import test from "node:test";
 const migration = readProjectFile(
   "supabase/migrations/20260906180000_add_durable_reaction_generation_worker.sql",
 );
+const provenanceMigration = readProjectFile(
+  "supabase/migrations/20260911120000_harden_reaction_generation_provenance.sql",
+);
+const groundingMigration = readProjectFile(
+  "supabase/migrations/20260914120000_add_reaction_grounding_context_v2.sql",
+);
+const repetitionMigration = readProjectFile(
+  "supabase/migrations/20260924185333_allow_reaction_clip_repeat_after_catalog_exhaustion.sql",
+);
+const factCatalog = readProjectFile("lib/business-profiles/fact-catalog.ts");
 const splitRenderMigration = readProjectFile(
   "supabase/migrations/20260909140000_split_reaction_reel_render_workers.sql",
 );
@@ -18,6 +28,12 @@ const workerProcessor = readProjectFile("worker/src/processor.ts");
 const queueConfig = readProjectFile("lib/queues/config.ts");
 const aiWorkerVariables = readProjectFile(
   "infra/gcp/ai-generation-worker/variables.tf",
+);
+const aiWorkerTerraform = readProjectFile(
+  "infra/gcp/ai-generation-worker/main.tf",
+);
+const aiWorkerExample = readProjectFile(
+  "infra/gcp/ai-generation-worker/terraform.tfvars.example",
 );
 const reactionRenderWorker = readProjectFile(
   "infra/gcp/reaction-render-worker/main.tf",
@@ -52,6 +68,21 @@ test("plans Reactions on the AI worker and renders each item on a dedicated scal
   assert.match(reactionRenderWorker, /min_instance_count = var\.min_instance_count/);
   assert.match(reactionRenderWorker, /max_instance_count = var\.max_instance_count/);
   assert.match(reactionRenderWorker, /value = "reaction_render"/);
+});
+
+test("refuses a Reaction-enabled AI worker without its dedicated task endpoint", () => {
+  assert.match(
+    aiWorkerTerraform,
+    /worker_job_types[\s\S]+reaction_generation[\s\S]+reaction_render_task_url/,
+  );
+  assert.match(
+    aiWorkerTerraform,
+    /\^https:\/\/\[\^\/\?\#\]\+\/tasks\/jobs\$/,
+  );
+  assert.match(
+    aiWorkerExample,
+    /reaction_render_task_url\s*=\s*"https:\/\/ugc-reaction-render-worker-/,
+  );
 });
 
 test("persists the immutable plan before any Reaction video render", () => {
@@ -101,13 +132,48 @@ test("uses the canonical semantic shapes and terminally records individual rende
   assert.match(splitRenderMigration, /when v_ready_count < v_run\.requested_count/);
 });
 
-test("reserves active clips and reports a catalog shortfall without another refill", () => {
+test("repeats clips only after fresh rotation and active-card alternatives are exhausted", () => {
   assert.match(workerStore, /getReservedReactionClipIds/);
   assert.match(workerJob, /reservedClipIds/);
+  assert.match(workerJob, /getReactionCatalogAvailability/);
+  const reactionGenerator = readProjectFile("worker/src/lib/reaction-generation.ts");
+  assert.match(reactionGenerator, /unreservedClips\.length > 0 \? unreservedClips : renderableClips/);
   assert.match(migration, /pg_advisory_xact_lock/);
-  assert.match(migration, /reaction_generation_plan_clip_reserved/);
+  assert.match(repetitionMigration, /reaction_generation_plan_clip_reserved/);
+  assert.match(repetitionMigration, /planned\.clip_asset_id = alternative\.id/);
+  assert.match(repetitionMigration, /A single request never repeats a clip/);
+  assert.match(repetitionMigration, /REVOKE ALL ON FUNCTION public\.persist_reaction_generation_plan_v1[\s\S]+FROM PUBLIC, anon, authenticated/);
+  assert.match(repetitionMigration, /GRANT EXECUTE ON FUNCTION public\.persist_reaction_generation_plan_v1[\s\S]+TO service_role, postgres/);
   assert.match(enqueue, /getCompletedReactionCoverageShortfall/);
+  assert.match(enqueue, /reaction-v2:/);
   assert.match(enqueue, /Prepared \$\{readyCount\} of \$\{requestedCount\} Reaction Reels/);
+});
+
+test("binds every business Reaction plan to profile context and quarantines QA output", () => {
+  assert.match(provenanceMigration, /reaction_generation_context_v1/);
+  assert.match(provenanceMigration, /validate_reaction_generation_background_job_v1/);
+  assert.match(provenanceMigration, /validate_reaction_creative_origin_v1/);
+  assert.match(provenanceMigration, /reaction_generation_creative_run_required/);
+  assert.match(provenanceMigration, /reaction_generation_origin_mismatch/);
+  assert.match(provenanceMigration, /validate_reaction_generation_plan_provenance_v1/);
+  assert.match(provenanceMigration, /reaction_generation_plan_provenance_invalid/);
+  assert.match(provenanceMigration, /reaction_generation_context_mismatch/);
+  assert.match(provenanceMigration, /generation_origin text not null default 'business_generation'/);
+  assert.match(provenanceMigration, /generation_origin = 'internal_qa'/);
+  assert.match(provenanceMigration, /state = 'completed_skipped'/);
+  assert.match(provenanceMigration, /business_profiles as profile/);
+  assert.match(readProjectFile("lib/trending/reaction-feed.ts"), /generation_origin.*business_generation/);
+  assert.match(workerJob, /run\.generation_context/);
+});
+
+test("keeps V2 fact snapshot normalization identical across the app and database", () => {
+  assert.match(factCatalog, /BUSINESS_FACT_WHITESPACE/);
+  assert.match(factCatalog, /Array\.from\(normalized\)\.slice\(0, 360\)\.join/);
+  assert.match(groundingMigration, /reaction_business_fact_text_v1/);
+  assert.match(groundingMigration, /U&'\[\\0009-\\000D\\0020\\00A0/);
+  assert.match(groundingMigration, /reaction_business_fact_string_list_v1/);
+  assert.match(groundingMigration, /group by value[\s\S]*?order by min\(ordinality\)[\s\S]*?limit 6/);
+  assert.match(groundingMigration, /public\.reaction_business_fact_text_v1\(value\) as text/);
 });
 
 test("retries only a catalog-blocked Reaction request after assets become active", () => {

@@ -46,8 +46,8 @@ test("does not block the deck while a decision is being saved", () => {
   assert.match(workspace, /enqueueDecision/);
 });
 
-test("returns only validated Locked Hook audio to the authenticated preview", () => {
-  assert.match(previewSession, /getLockedHookAudioForVideo/);
+test("returns only validated Locked or matched Hook audio to the authenticated preview", () => {
+  assert.match(previewSession, /resolveHookAudioForPreview/);
   assert.match(previewSession, /body\.sourceKind === "catalog"/);
   assert.match(previewSession, /isTrustedStorageUrl\(hookAudio\.audioUrl\)/);
   assert.match(previewSession, /hookAudio,[\s\S]+previewUrl/);
@@ -143,7 +143,7 @@ test("keeps Hook feed and editor typography aligned with the final semibold outl
     editor.match(/function HookOverlayText[\s\S]+?function WallTextOverlayText/)?.[0] ??
     "";
 
-  assert.match(card, /hookFontSize = 52/);
+  assert.match(card, /hookFontSize = HOOK_TEXT_FIXED_FONT_SIZE/);
   assert.match(hookLayout, /HOOK_TEXT_FONT_WEIGHT = 600/);
   assert.match(hookLayout, /HOOK_TEXT_OUTLINE_WIDTH = 5/);
   assert.match(textOverlay, /HookInlineSymbols/);

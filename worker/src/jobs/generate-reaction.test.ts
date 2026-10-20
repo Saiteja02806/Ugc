@@ -6,6 +6,7 @@ import {
   validateReactionBriefBatch,
 } from "../lib/reaction-generation.js";
 import type { SupabaseJobStore } from "../lib/supabase.js";
+import { DeferredJobError } from "../retryable-job-error.js";
 import type { BackgroundJobRow } from "../types.js";
 import { runGenerateReactionJob } from "./generate-reaction.js";
 
@@ -115,7 +116,11 @@ test("persists the plan then dispatches one durable render job per Reaction item
   const attachedTaskNames: string[] = [];
   const store = {
     async ensureReactionGenerationRun() {
-      return { brief_payload: {}, id: "run-1" };
+      return {
+        brief_payload: {},
+        generation_context: { audience: [], commonSituations: [], desiredOutcomes: [], pains: [], productName: null },
+        id: "run-1",
+      };
     },
     async listActiveReactionCatalog() {
       return {
@@ -185,6 +190,214 @@ test("persists the plan then dispatches one durable render job per Reaction item
   assert.equal(output.queuedRenderCount, 1);
   assert.deepEqual(deliveries, ["525da1b7-35a6-4964-91a5-41c9641ed512"]);
   assert.deepEqual(attachedTaskNames, ["reaction-render-525da1b7-35a6-4964-91a5-41c9641ed512"]);
+});
+
+test("uses the persisted canonical profile context when planning", async () => {
+  const canonicalContext = {
+    audience: ["Meal logging adults"],
+    commonSituations: ["Logging meals feels tedious"],
+    desiredOutcomes: ["Faster everyday logging"],
+    pains: ["Meal logging feels tedious"],
+    productName: "Canary Meal Logger",
+  };
+  let plannedContext: unknown;
+  const store = {
+    async ensureReactionGenerationRun() {
+      return { brief_payload: null, generation_context: canonicalContext, id: "run-canonical" };
+    },
+    async listActiveReactionCatalog() {
+      return {
+        backgrounds: [{
+          context_tags: ["office"], foreground_placement: "bottom_center", id: "background-canonical",
+          source_storage_key: "reaction/backgrounds/canonical.jpg", status: "active",
+        }],
+        clips: [{
+          composition: "bust", duration_seconds: 6, foreground_anchor: "bottom_center",
+          foreground_height_percent: 0.5, has_alpha: true, id: "clip-canonical", reactions: ["shock"],
+          source_storage_key: "reaction/clips/canonical.mov", status: "active", subject_count: "one",
+        }],
+      };
+    },
+    async getReactionClipPresentationHistory() { return new Map(); },
+    async getReservedReactionClipIds() { return new Set(); },
+    async persistReactionGenerationPlan() { return []; },
+    async createReactionGenerationRenderJobs() { return []; },
+  } as unknown as SupabaseJobStore;
+
+  await runGenerateReactionJob(createJob(), {
+    checkpoint: async () => undefined,
+    dependencies: {
+      planReactionGeneration: async (params) => {
+        plannedContext = params.context;
+        return {
+          briefPayload: {
+            availability: { availableReactionPalette: [], generationRule: "test", recentlyShownIntents: [] },
+            briefs: [],
+            promptVersion: "test",
+            selectionVersion: "test",
+            shortfallCount: 0,
+          },
+          items: [],
+          shortfallCount: 0,
+        };
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(plannedContext, canonicalContext);
+});
+
+test("repeats a catalog clip after every clip is already reserved", async () => {
+  let plannedClipIds: readonly string[] = [];
+  let renderJobsCreated = false;
+  const store = {
+    async ensureReactionGenerationRun() {
+      return {
+        brief_payload: null,
+        generation_context: { audience: [], commonSituations: [], desiredOutcomes: [], pains: [] },
+        id: "run-catalog-shortfall",
+      };
+    },
+    async listActiveReactionCatalog() {
+      return {
+        backgrounds: [{
+          context_tags: ["office"], foreground_placement: "bottom_center", id: "background-1",
+          source_storage_key: "reaction/backgrounds/background-1.jpg", status: "active",
+        }],
+        clips: [{
+          composition: "bust", duration_seconds: 6, foreground_anchor: "bottom_center",
+          foreground_height_percent: 0.5, has_alpha: true, id: "clip-1", reactions: ["shock"],
+          source_storage_key: "reaction/clips/clip-1.mov", status: "active", subject_count: "one",
+        }],
+      };
+    },
+    async getReactionClipPresentationHistory() {
+      return new Map([["clip-1", { lastShownAt: "2026-09-24T00:00:00.000Z", shownCount: 2 }]]);
+    },
+    async getReservedReactionClipIds() { return new Set(["clip-1"]); },
+    async persistReactionGenerationPlan() { return []; },
+    async createReactionGenerationRenderJobs() {
+      renderJobsCreated = true;
+      return [];
+    },
+  } as unknown as SupabaseJobStore;
+
+  const output = await runGenerateReactionJob(createJob(), {
+    checkpoint: async () => undefined,
+    dependencies: {
+      planReactionGeneration: async (params) => {
+        plannedClipIds = params.clips.map((clip) => clip.id);
+        return {
+          briefPayload: {
+            availability: { availableReactionPalette: [], generationRule: "test", recentlyShownIntents: [] },
+            briefs: [],
+            promptVersion: "test",
+            selectionVersion: "test",
+            shortfallCount: 0,
+          },
+          items: [],
+          shortfallCount: 0,
+        };
+      },
+    },
+    store,
+  });
+
+  assert.deepEqual(plannedClipIds, ["clip-1"]);
+  assert.equal(renderJobsCreated, true);
+  assert.deepEqual(output, {
+    generationRunId: "run-catalog-shortfall",
+    promptVersion: "reaction-brief-batch-v3-grounded",
+    queuedRenderCount: 0,
+    requestedCount: 1,
+    status: "rendering",
+  });
+});
+
+test("defers after a concurrent planner reserves the selected clip", async () => {
+  let renderJobsCreated = 0;
+  const store = {
+    async ensureReactionGenerationRun() {
+      return {
+        brief_payload: null,
+        generation_context: { audience: [], commonSituations: [], desiredOutcomes: [], pains: [] },
+        id: "run-race",
+      };
+    },
+    async listActiveReactionCatalog() {
+      return {
+        backgrounds: [{
+          context_tags: ["office"], foreground_placement: "bottom_center", id: "background-race",
+          source_storage_key: "reaction/backgrounds/race.jpg", status: "active",
+        }],
+        clips: [{
+          composition: "bust", duration_seconds: 6, foreground_anchor: "bottom_center",
+          foreground_height_percent: 0.5, has_alpha: true, id: "clip-race", reactions: ["shock"],
+          source_storage_key: "reaction/clips/race.mov", status: "active", subject_count: "one",
+        }],
+      };
+    },
+    async getReactionClipPresentationHistory() { return new Map(); },
+    async getReservedReactionClipIds() { return new Set(); },
+    async persistReactionGenerationPlan() {
+      throw new Error("Could not persist Reaction generation plan: reaction_generation_plan_clip_reserved");
+    },
+    async createReactionGenerationRenderJobs() {
+      renderJobsCreated += 1;
+      return [];
+    },
+  } as unknown as SupabaseJobStore;
+
+  await assert.rejects(
+    runGenerateReactionJob(createJob(), {
+      checkpoint: async () => undefined,
+      dependencies: {
+        planReactionGeneration: async () => ({
+          briefPayload: {
+            availability: { availableReactionPalette: [], generationRule: "test", recentlyShownIntents: [] },
+            briefs: [],
+            promptVersion: "test",
+            selectionVersion: "test",
+            shortfallCount: 0,
+          },
+          items: [{
+            backgroundAssetId: "background-1",
+            caption: "When the task finally makes sense",
+            clipAssetId: "clip-1",
+            content: {
+              caption: "When the task finally makes sense",
+              emotion: "surprise",
+              languageFormat: "when",
+              lines: ["When the task", "finally makes sense"],
+              semantic: {
+                expectation: "The task stays confusing",
+                reality: "It finally makes sense",
+                structure: "expectation_reality",
+              },
+              visualContextTags: ["office"],
+              visualTreatment: "outlined_text",
+            },
+            durationSeconds: 6,
+            primaryReaction: "shock",
+            renderPlan: {
+              foreground: { anchor: "bottom_center", heightPercent: 0.5 },
+              text: { lines: ["When the task", "finally makes sense"], treatment: "outlined_text" },
+            },
+            slotIndex: 0,
+            title: "Reaction Reel · shock",
+          }],
+          shortfallCount: 0,
+        }),
+      },
+      store,
+    }),
+    (error: unknown) =>
+      error instanceof DeferredJobError &&
+      error.code === "reaction_generation_plan_clip_reserved" &&
+      error.retryAfterSeconds === 10,
+  );
+  assert.equal(renderJobsCreated, 0);
 });
 
 function createJob(): BackgroundJobRow {

@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { usePublishingPreferencesDefault } from "@/components/scheduling/use-publishing-preferences-default";
+import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { getBrowserTimeZone, getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { SocialAccountAvatar } from "@/components/social/social-account-avatar";
 import {
@@ -30,23 +33,27 @@ import {
   loadAccountSocialConnections,
 } from "@/lib/scheduling/account-data-query";
 import {
+  getConfirmedScheduleTargetSettings,
   getDefaultScheduleTargetSettings,
   getScheduleTargetSettingsError,
+  getTikTokPublishingAgreement,
   type ScheduleTargetSettings,
   type TikTokScheduleCapabilityState,
 } from "@/lib/scheduling/platform-settings";
 import {
   DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   getEarliestScheduleTimestamp,
+  getZonedDateTimeParts,
   resolveZonedDateTime,
   ScheduleTimeError,
   SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import {
-  getTikTokPrivacyLabel,
   type TikTokPublishCapabilities,
 } from "@/lib/social/tiktok-publishing";
+import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
+import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +64,7 @@ type TikTokCapabilitiesResponse =
 type PublishingSettings = ScheduleTargetSettings;
 
 export type HookVideoScheduleSelection = {
+  caption: string;
   scheduledDate: string;
   scheduledTime: string;
   targets: Array<{
@@ -78,10 +86,10 @@ export type VideoPreparationState =
   | { status: "preparing" }
   | { message: string; status: "failed" };
 
-const platformDetails: Record<SocialPlatform, { label: string }> = {
-  instagram: { label: "Instagram" },
-  tiktok: { label: "TikTok" },
-  youtube: { label: "YouTube" },
+const platformDetails: Record<SocialPlatform, { label: string; order: number }> = {
+  instagram: { label: "Instagram", order: 0 },
+  tiktok: { label: "TikTok", order: 1 },
+  youtube: { label: "YouTube", order: 2 },
 };
 
 export function HookVideoScheduleDrawer({
@@ -98,26 +106,36 @@ export function HookVideoScheduleDrawer({
   summary: HookVideoScheduleSummary;
 }) {
   const { user } = useAuth();
+  const tiktokBetaEnabled = hasTikTokUiAccess(user);
+  const youtubeBetaEnabled = hasYouTubeBetaAccess(user);
+  const publishingAccountLabel = getPublishingAccountLabel(
+    tiktokBetaEnabled,
+    youtubeBetaEnabled,
+  );
   const queryClient = useQueryClient();
   const accountId = user?.uid ?? "signed-out";
-  const initialDateTime = useMemo(() => getInitialDateTime(), []);
-  const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    [],
-  );
+  const publishingPreferences = usePublishingPreferencesDefault(user?.uid ?? null);
+  const defaultTimezone = useAccountTimeZone();
+  const [timezoneOverride, setTimezone] = useState<string | null>(null);
+  const timezone = timezoneOverride ?? defaultTimezone;
+  const initialDateTime = getInitialDateTime(DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES, timezone);
   const [stage, setStage] = useState<"details" | "review">("details");
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [selectedConnectionIds, setSelectedConnectionIds] = useState<string[]>([]);
-  const [settings, setSettings] = useState<Record<string, PublishingSettings>>({});
+  const [settingsOverrides, setSettings] = useState<Record<string, PublishingSettings>>({});
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokScheduleCapabilityState>
   >({});
-  const [scheduledDate, setScheduledDate] = useState(initialDateTime.date);
-  const [scheduledTime, setScheduledTime] = useState(initialDateTime.time);
+  const [manualScheduledDate, setScheduledDate] = useState(initialDateTime.date);
+  const [manualScheduledTime, setScheduledTime] = useState(initialDateTime.time);
+  const [caption, setCaption] = useState("");
   const [hasManualScheduleTime, setHasManualScheduleTime] = useState(false);
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
+  const automaticDateTime = getInitialDateTime(minimumScheduleLeadMinutes, timezone);
+  const scheduledDate = hasManualScheduleTime ? manualScheduledDate : automaticDateTime.date;
+  const scheduledTime = hasManualScheduleTime ? manualScheduledTime : automaticDateTime.time;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -148,11 +166,7 @@ export function HookVideoScheduleDrawer({
         Number.isFinite(configuredLeadValue)
         ? Math.max(1, Math.ceil(configuredLeadValue))
         : DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES;
-      const nextDateTime = getInitialDateTime(configuredLeadMinutes);
-
       setMinimumScheduleLeadMinutes(configuredLeadMinutes);
-      setScheduledDate(nextDateTime.date);
-      setScheduledTime(nextDateTime.time);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not load connected accounts."));
     } finally {
@@ -166,17 +180,66 @@ export function HookVideoScheduleDrawer({
     return () => window.clearTimeout(timer);
   }, [loadConnections]);
 
-  // Keep every provider in state so legacy schedules and provider-specific
-  // validation remain intact. New Reel scheduling only exposes Instagram.
+  // Keep every provider in state so legacy schedules remain intact. The
+  // verified beta account can select its approved publishing targets.
   const visibleConnections = useMemo(
     () =>
       connections.filter(
-        (connection) => connection.platform === "instagram",
+        (connection) =>
+          connection.platform === "instagram" ||
+          (tiktokBetaEnabled && connection.platform === "tiktok") ||
+          (youtubeBetaEnabled && connection.platform === "youtube"),
       ),
-    [connections],
+    [connections, tiktokBetaEnabled, youtubeBetaEnabled],
   );
   const selectedConnections = visibleConnections.filter((connection) =>
     selectedConnectionIds.includes(connection.id),
+  );
+  const settings = useMemo(() => Object.fromEntries(
+    connections.map((connection) => {
+      const capability = tiktokCapabilities[connection.id];
+      return [connection.id, {
+      ...getDefaultScheduleTargetSettings(connection.platform),
+      ...(connection.platform !== "instagram"
+        ? { containsSyntheticMedia: publishingPreferences.containsSyntheticMedia }
+        : {}),
+      ...(connection.platform === "tiktok" ? {
+        privacyLevel: publishingPreferences.tiktokPrivacyLevel,
+        allowComment: publishingPreferences.tiktokAllowComments,
+        brandOrganic: publishingPreferences.tiktokBrandOrganic,
+        commercialContentDisclosureEnabled: publishingPreferences.tiktokBrandOrganic,
+      } : {}),
+      ...(connection.platform === "youtube" ? {
+        privacyStatus: publishingPreferences.youtubePrivacyStatus,
+        madeForKids: publishingPreferences.youtubeMadeForKids,
+        notifySubscribers: publishingPreferences.youtubeNotifySubscribers,
+      } : {}),
+      ...settingsOverrides[connection.id],
+      ...(connection.platform === "tiktok" && capability?.status === "ready" ? {
+        ...(capability.capabilities.interactions.commentsDisabled ? { allowComment: false } : {}),
+        ...(capability.capabilities.interactions.duetsDisabled ? { allowDuet: false } : {}),
+        ...(capability.capabilities.interactions.stitchesDisabled ? { allowStitch: false } : {}),
+      } : {}),
+      }];
+    }),
+  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.tiktokBrandOrganic, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, settingsOverrides, tiktokCapabilities]);
+  const usesPublishingPreferences = selectedConnections.some(
+    (connection) => connection.platform !== "instagram",
+  );
+  const preferencesPending = usesPublishingPreferences && publishingPreferences.loading;
+  const preferencesUnavailable = usesPublishingPreferences && Boolean(publishingPreferences.error);
+  const tiktokPublishingAgreement = getTikTokPublishingAgreement({
+    connections: selectedConnections,
+    settings,
+  });
+  // Sort only the display copy; selection, settings and submission stay intact.
+  const orderedConnections = useMemo(
+    () =>
+      [...visibleConnections].sort(
+        (left, right) =>
+          platformDetails[left.platform].order - platformDetails[right.platform].order,
+      ),
+    [visibleConnections],
   );
   const connectedCount = visibleConnections.filter(
     (connection) => connection.status === "connected",
@@ -241,9 +304,7 @@ export function HookVideoScheduleDrawer({
         ? current
         : {
             ...current,
-            [connection.id]: getDefaultScheduleTargetSettings(
-              connection.platform,
-            ),
+            [connection.id]: {},
           },
     );
 
@@ -271,6 +332,7 @@ export function HookVideoScheduleDrawer({
   }
 
   function continueToReview() {
+    if (preferencesPending || preferencesUnavailable) return;
     const validationError = getValidationError({
       scheduledDate,
       scheduledTime,
@@ -280,6 +342,7 @@ export function HookVideoScheduleDrawer({
       minimumScheduleLeadMinutes,
       timezone,
       useDefaultScheduleTime,
+      requireTikTokMusicConfirmation: false,
     });
 
     if (validationError) {
@@ -291,16 +354,49 @@ export function HookVideoScheduleDrawer({
     setStage("review");
   }
 
+  function getScheduleSettings() {
+    return Object.fromEntries(
+      selectedConnections.map((connection) => {
+        return [
+          connection.id,
+          getConfirmedScheduleTargetSettings(connection.platform, settings[connection.id]),
+        ];
+      }),
+    ) as Record<string, PublishingSettings>;
+  }
+
+  function requestScheduleConfirmation() {
+    void confirmSchedule();
+  }
+
   async function confirmSchedule() {
+    if (preferencesPending || preferencesUnavailable) return;
+    const confirmedSettings = getScheduleSettings();
+    const validationError = getValidationError({
+      scheduledDate,
+      scheduledTime,
+      selectedConnections,
+      settings: confirmedSettings,
+      tiktokCapabilities,
+      minimumScheduleLeadMinutes,
+      timezone,
+      useDefaultScheduleTime,
+      requireTikTokMusicConfirmation: true,
+    });
+
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
     const selection: HookVideoScheduleSelection = {
+      caption,
       scheduledDate,
       scheduledTime,
       targets: selectedConnections.map((connection) => ({
         connectionId: connection.id,
         platform: connection.platform,
-        settings:
-          settings[connection.id] ??
-          getDefaultScheduleTargetSettings(connection.platform),
+        settings: confirmedSettings[connection.id],
       })),
       timezone,
       useDefaultScheduleTime,
@@ -331,7 +427,7 @@ export function HookVideoScheduleDrawer({
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-overlay [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
-        className="max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[520px]"
+        className="max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2">
@@ -356,7 +452,7 @@ export function HookVideoScheduleDrawer({
               <DialogDescription className="mt-1 text-xs">
                 {stage === "review"
                   ? "Confirm the destination and publish time."
-                  : "Choose an account and optionally a publish time."}
+                  : "Choose an account, caption, and optionally a publish time."}
               </DialogDescription>
             </div>
           </div>
@@ -373,118 +469,198 @@ export function HookVideoScheduleDrawer({
           </Button>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-6">
           {stage === "details" ? (
             <>
-              <section aria-labelledby="schedule-accounts-heading">
-                <div className="flex items-center justify-between gap-3">
-                  <h4 id="schedule-accounts-heading" className="text-xs font-semibold text-foreground-strong">
-                    Accounts
-                  </h4>
-                  <span className="flex items-center gap-2 text-xs font-medium text-muted">
-                    {loading ? "Loading" : `${connectedCount} connected`}
-                    {!loading ? (
-                      <Link
-                        href="/settings#instagram-publishing"
-                        className="font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        Manage
-                      </Link>
-                    ) : null}
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="mt-3 space-y-2">
-                    {[0, 1, 2].map((item) => (
-                      <Skeleton key={item} className="h-14 rounded-[12px]" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {visibleConnections.map((connection) => (
-                      <ConnectionRow
-                        key={connection.id}
-                        connection={connection}
-                        selected={selectedConnectionIds.includes(connection.id)}
-                        settings={
-                          settings[connection.id] ??
-                          getDefaultScheduleTargetSettings(connection.platform)
-                        }
-                        tiktokCapability={tiktokCapabilities[connection.id]}
-                        onSettingChange={(key, value) =>
-                          updateSetting(connection.id, key, value)
-                        }
-                        onToggle={() => toggleConnection(connection)}
-                      />
-                    ))}
-                    {visibleConnections.length === 0 ? (
-                      <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
-                        <p className="text-xs font-medium text-muted">
-                          No Instagram account connected.
-                        </p>
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+                <section className="min-w-0" aria-labelledby="schedule-accounts-heading">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 id="schedule-accounts-heading" className="text-xs font-semibold text-foreground-strong">
+                      Destinations
+                    </h4>
+                    <span className="flex items-center gap-2 text-xs font-medium text-muted">
+                      {loading ? "Loading" : `${connectedCount} connected`}
+                      {!loading ? (
                         <Link
                           href="/settings#instagram-publishing"
-                          className="mt-2 inline-flex text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                          className="font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
-                          Connect an account
+                          Manage
                         </Link>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </span>
                   </div>
-                )}
-              </section>
 
-              <section className="mt-5 border-t border-border pt-4" aria-labelledby="schedule-time-heading">
-                <h4 id="schedule-time-heading" className="text-xs font-semibold text-foreground-strong">
-                  Date and time
-                </h4>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <label className="text-xs font-semibold text-muted">
-                    Date
-                    <input
-                      name="scheduled-date"
-                      type="date"
-                      autoComplete="off"
-                      min={getLocalDate(new Date())}
-                      value={scheduledDate}
-                      onChange={(event) => {
-                        setHasManualScheduleTime(true);
-                        setScheduledDate(event.target.value);
-                      }}
-                      className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold text-muted">
-                    Time
-                    <input
-                      name="scheduled-time"
-                      type="time"
-                      autoComplete="off"
-                      step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
-                      value={scheduledTime}
-                      onChange={(event) => {
-                        setHasManualScheduleTime(true);
-                        setScheduledTime(event.target.value);
-                      }}
-                      className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  </label>
+                  {loading ? (
+                    <div className="mt-3 grid grid-cols-1 gap-2.5">
+                      {[0, 1, 2].map((item) => (
+                        <Skeleton key={item} className="h-14 rounded-[12px]" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-1 gap-2.5">
+                      {orderedConnections.map((connection) => (
+                        <ConnectionRow
+                          key={connection.id}
+                          connection={connection}
+                          selected={selectedConnectionIds.includes(connection.id)}
+                          onToggle={() => toggleConnection(connection)}
+                        >
+                          {connection.platform === "tiktok" &&
+                          selectedConnectionIds.includes(connection.id) ? (
+                            <TikTokPublishingDetails
+                              connection={connection}
+                              settings={settings[connection.id] ?? getDefaultScheduleTargetSettings("tiktok")}
+                              tiktokCapability={tiktokCapabilities[connection.id]}
+                              onSettingChange={(key, value) => updateSetting(connection.id, key, value)}
+                              onRetry={() => void loadTikTokCapabilities(connection.id)}
+                            />
+                          ) : null}
+                        </ConnectionRow>
+                      ))}
+                      {visibleConnections.length === 0 ? (
+                        <div className="rounded-[12px] border border-dashed border-border-strong px-3 py-5 text-center">
+                          <p className="text-xs font-medium text-muted">
+                            No {publishingAccountLabel} account connected.
+                          </p>
+                          <Link
+                            href="/settings#instagram-publishing"
+                            className="mt-2 inline-flex text-xs font-semibold text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                          >
+                            Connect an account
+                          </Link>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </section>
+
+                <div className="min-w-0 space-y-5">
+                  <section className="border-t border-border pt-4" aria-labelledby="schedule-caption-heading">
+                    <label className="block text-xs font-semibold text-muted">
+                      <span id="schedule-caption-heading">
+                        Caption <span className="font-medium">(optional)</span>
+                      </span>
+                      <span className="mt-1 block text-[11px] font-medium leading-4 text-muted">
+                        This appears with the published post, separately from the text in your Hook Video.
+                      </span>
+                      <textarea
+                        name="caption"
+                        rows={4}
+                        maxLength={5000}
+                        value={caption}
+                        onChange={(event) => setCaption(event.target.value)}
+                        placeholder="Write a caption for this post..."
+                        className="mt-2 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground-strong outline-none placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="mt-1 block text-right text-[11px] font-medium text-muted">
+                        {caption.length}/5000
+                      </span>
+                    </label>
+                  </section>
+
+                  <section className="border-t border-border pt-4" aria-labelledby="schedule-time-heading">
+                    <h4 id="schedule-time-heading" className="text-xs font-semibold text-foreground-strong">
+                      Publish time
+                    </h4>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <label className="text-xs font-semibold text-muted">
+                        Date
+                        <input
+                          name="scheduled-date"
+                          type="date"
+                          autoComplete="off"
+                          min={getZonedDateTimeParts(Date.now(), timezone).date}
+                          value={scheduledDate}
+                          onChange={(event) => {
+                            setHasManualScheduleTime(true);
+                            setTimezone(timezone);
+                            setScheduledTime(scheduledTime);
+                            setScheduledDate(event.target.value);
+                          }}
+                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </label>
+                      <label className="text-xs font-semibold text-muted">
+                        Time
+                        <input
+                          name="scheduled-time"
+                          type="time"
+                          autoComplete="off"
+                          step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
+                          value={scheduledTime}
+                          onChange={(event) => {
+                            setHasManualScheduleTime(true);
+                            setTimezone(timezone);
+                            setScheduledDate(scheduledDate);
+                            setScheduledTime(event.target.value);
+                          }}
+                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        />
+                      </label>
+                    </div>
+                    <label className="mt-3 block text-xs font-semibold text-muted">
+                      Time zone
+                      <select
+                        name="schedule-timezone"
+                        value={timezone}
+                        onChange={(event) => setTimezone(event.target.value)}
+                        className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      >
+                        {getSchedulingTimeZoneOptions(timezone).map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}
+                      </select>
+                    </label>
+                    <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
+                      {useDefaultScheduleTime
+                        ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
+                            minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+                          } after you confirm. Edit either value to choose a specific time.`
+                        : `${timezone}. Schedule at least ${minimumScheduleLeadMinutes} ${
+                            minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
+                          } ahead.`}
+                    </p>
+                  </section>
                 </div>
-                <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
-                  {useDefaultScheduleTime
-                    ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
-                        minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
-                      } after you confirm. Edit either value to choose a specific time.`
-                    : `${timezone}. Schedule at least ${minimumScheduleLeadMinutes} ${
-                        minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
-                      } ahead.`}
-                </p>
-              </section>
+              </div>
+
+              {selectedConnections.some(
+                (connection) => connection.platform === "youtube",
+              ) ? (
+                <section className="mt-6 border-t border-border pt-4" aria-labelledby="schedule-publishing-details-heading">
+                  <div>
+                    <h4 id="schedule-publishing-details-heading" className="text-xs font-semibold text-foreground-strong">
+                      YouTube destinations
+                    </h4>
+                    <p className="mt-1 text-[11px] font-medium leading-4 text-muted">
+                      Uses your saved publishing defaults.
+                    </p>
+                  </div>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    {selectedConnections
+                      .filter((connection) => connection.platform === "youtube")
+                      .map((connection) => (
+                        <YouTubePublishingDetails
+                          key={connection.id}
+                          connection={connection}
+                          settings={
+                            settings[connection.id] ??
+                            getDefaultScheduleTargetSettings("youtube")
+                          }
+                          onSettingChange={(key, value) =>
+                            updateSetting(connection.id, key, value)
+                          }
+                        />
+                      ))}
+                  </div>
+                </section>
+              ) : null}
             </>
           ) : (
             <ScheduleReview
-              connections={selectedConnections}
+              connections={orderedConnections.filter((connection) =>
+                selectedConnectionIds.includes(connection.id),
+              )}
+              caption={caption}
               scheduledDate={scheduledDate}
               scheduledTime={scheduledTime}
               summary={summary}
@@ -494,6 +670,13 @@ export function HookVideoScheduleDrawer({
             />
           )}
 
+          {usesPublishingPreferences && (publishingPreferences.loading || publishingPreferences.error) ? (
+            <p role={publishingPreferences.loading ? "status" : "alert"} className="mt-4 text-xs leading-5 text-muted">
+              {publishingPreferences.loading ? "Loading your publishing defaults…" : publishingPreferences.error}
+            </p>
+          ) : null}
+          {preferencesUnavailable ? <Button type="button" variant="outline" size="sm" onClick={publishingPreferences.retry} className="mt-2">Retry loading defaults</Button> : null}
+          <a href="/settings#preferences" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-xs font-semibold text-muted underline underline-offset-4 hover:text-foreground-strong">Change default settings</a>
           {errorMessage ? (
             <p role="alert" className="mt-4 border-l-2 border-error px-3 py-1 text-sm font-semibold leading-5 text-error">
               {errorMessage}
@@ -537,12 +720,19 @@ export function HookVideoScheduleDrawer({
         </div>
 
         <footer className="border-t border-border bg-background px-4 py-3 sm:px-5">
+          {stage === "review" && tiktokPublishingAgreement ? (
+            <p className="mb-2 text-xs leading-5 text-muted">
+              {tiktokPublishingAgreement}
+            </p>
+          ) : null}
           <Button
             type="button"
             size="lg"
-            onClick={stage === "details" ? continueToReview : () => void confirmSchedule()}
+            onClick={stage === "details" ? continueToReview : requestScheduleConfirmation}
             disabled={
               loading ||
+              preferencesPending ||
+              preferencesUnavailable ||
               submitting ||
               (stage === "review" && !canConfirmPreparation)
             }
@@ -565,25 +755,20 @@ export function HookVideoScheduleDrawer({
           </Button>
         </footer>
       </DialogContent>
+
     </Dialog>
   );
 }
 
-// Provider-specific controls remain here for legacy/internal schedule targets.
-// The current picker only passes Instagram connections into this component.
 function ConnectionRow({
+  children,
   connection,
   selected,
-  settings,
-  tiktokCapability,
-  onSettingChange,
   onToggle,
 }: {
+  children?: ReactNode;
   connection: SocialConnection;
   selected: boolean;
-  settings: PublishingSettings;
-  tiktokCapability: TikTokScheduleCapabilityState | undefined;
-  onSettingChange: (key: string, value: boolean | string) => void;
   onToggle: () => void;
 }) {
   const { label } = platformDetails[connection.platform];
@@ -609,61 +794,40 @@ function ConnectionRow({
           </span>
         </span>
       </label>
-
-      {selected && connection.platform === "tiktok" ? (
-        <div className="border-t border-border px-3 py-3">
-          {!tiktokCapability ||
-          tiktokCapability.status === "idle" ||
-          tiktokCapability.status === "loading" ? (
-            <p className="flex items-center gap-2 text-xs font-semibold text-muted">
-              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-              Loading TikTok visibility
-            </p>
-          ) : tiktokCapability.status === "error" ? (
-            <p className="text-xs font-semibold leading-5 text-error">
-              {tiktokCapability.message}
-            </p>
-          ) : (
-            <label className="text-xs font-semibold text-muted">
-              Visibility
-              <select
-                value={typeof settings.privacyLevel === "string" ? settings.privacyLevel : ""}
-                onChange={(event) => onSettingChange("privacyLevel", event.target.value)}
-                className="mt-1.5 h-9 w-full rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Choose visibility</option>
-                {tiktokCapability.capabilities.privacyLevels.map((privacyLevel) => (
-                  <option key={privacyLevel} value={privacyLevel}>
-                    {getTikTokPrivacyLabel(privacyLevel)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-      ) : null}
-
-      {selected && connection.platform === "youtube" ? (
-        <div className="border-t border-border px-3 py-3">
-          <label className="text-xs font-semibold text-muted">
-            Visibility
-            <select
-              value={typeof settings.privacyStatus === "string" ? settings.privacyStatus : "private"}
-              onChange={(event) => onSettingChange("privacyStatus", event.target.value)}
-              className="mt-1.5 h-9 w-full rounded-control border border-border bg-card px-2.5 text-xs font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            >
-              <option value="private">Private</option>
-              <option value="unlisted">Unlisted</option>
-              <option value="public">Public</option>
-            </select>
-          </label>
-        </div>
-      ) : null}
+      {children}
     </div>
   );
 }
 
+function TikTokPublishingDetails({ connection, tiktokCapability, onRetry }: {
+  connection: SocialConnection;
+  settings: PublishingSettings;
+  tiktokCapability: TikTokScheduleCapabilityState | undefined;
+  onSettingChange: (key: string, value: boolean | string) => void;
+  onRetry: () => void;
+}) {
+  if (!tiktokCapability || tiktokCapability.status === "idle" || tiktokCapability.status === "loading") return <p role="status" className="px-3 py-2 text-xs text-muted">Checking TikTok account settings…</p>;
+  if (tiktokCapability.status === "error") return <div className="px-3 py-2 text-xs text-error"><p role="alert">{connection.platformAccountName || 'TikTok'}: {tiktokCapability.message}</p><Button type="button" size="sm" variant="outline" onClick={onRetry}>Retry TikTok account</Button></div>;
+  return null;
+}
+
+function YouTubePublishingDetails({ connection, settings }: {
+  connection: SocialConnection;
+  settings: PublishingSettings;
+  onSettingChange: (key: string, value: boolean | string) => void;
+}) {
+  const privacyStatus = typeof settings.privacyStatus === 'string' ? settings.privacyStatus : 'public';
+  return <p className="text-xs text-muted">{connection.platformAccountName || 'YouTube'} · {getYouTubePrivacyLabel(privacyStatus)}</p>;
+}
+
+function getYouTubePrivacyLabel(value: string) {
+  if (value === "public") return "Public";
+  if (value === "unlisted") return "Unlisted";
+  return "Private";
+}
+
 function ScheduleReview({
+  caption,
   connections,
   minimumScheduleLeadMinutes,
   scheduledDate,
@@ -672,6 +836,7 @@ function ScheduleReview({
   timezone,
   useDefaultScheduleTime,
 }: {
+  caption: string;
   connections: SocialConnection[];
   minimumScheduleLeadMinutes: number;
   scheduledDate: string;
@@ -712,6 +877,14 @@ function ScheduleReview({
           </div>
         </dl>
       </div>
+      {caption.trim() ? (
+        <div className="border-b border-border py-4">
+          <p className="text-xs font-semibold text-muted">Caption</p>
+          <p className="mt-2 whitespace-pre-wrap text-xs font-medium leading-5 text-foreground-strong">
+            {caption}
+          </p>
+        </div>
+      ) : null}
       <div className="pt-4">
         <p className="text-xs font-semibold text-muted">Accounts</p>
         <div className="mt-2 space-y-2">
@@ -745,6 +918,7 @@ function getValidationError(params: {
   tiktokCapabilities: Record<string, TikTokScheduleCapabilityState>;
   timezone: string;
   useDefaultScheduleTime: boolean;
+  requireTikTokMusicConfirmation: boolean;
 }) {
   if (params.selectedConnections.length === 0) {
     return "Choose at least one connected account.";
@@ -761,6 +935,7 @@ function getValidationError(params: {
     connections: params.selectedConnections,
     settings: params.settings,
     tiktokCapabilities: params.tiktokCapabilities,
+    requireTikTokMusicConfirmation: params.requireTikTokMusicConfirmation,
   });
 
   if (settingsError) {
@@ -796,23 +971,35 @@ function getValidationError(params: {
   return null;
 }
 
+function getPublishingAccountLabel(
+  tiktokBetaEnabled: boolean,
+  youtubeBetaEnabled: boolean,
+) {
+  if (tiktokBetaEnabled && youtubeBetaEnabled) {
+    return "Instagram, TikTok, or YouTube";
+  }
+
+  if (tiktokBetaEnabled) {
+    return "Instagram or TikTok";
+  }
+
+  if (youtubeBetaEnabled) {
+    return "Instagram or YouTube";
+  }
+
+  return "Instagram";
+}
+
 function getInitialDateTime(
   minimumLeadMinutes = DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
+  timezone = getBrowserTimeZone(),
 ) {
-  const date = new Date(
+  return getZonedDateTimeParts(
     getEarliestScheduleTimestamp({
       minimumLeadMinutes,
     }),
+    timezone,
   );
-
-  return {
-    date: getLocalDate(date),
-    time: `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`,
-  };
-}
-
-function getLocalDate(date: Date) {
-  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
 }
 
 function formatScheduleDate(value: string) {

@@ -1,0 +1,106 @@
+name: MCP contract tests
+
+on:
+  pull_request:
+    paths:
+      - "app/mcp/**"
+      - "app/oauth/**"
+      - "lib/mcp/**"
+      - "lib/library/**"
+      - "app/api/library/**"
+      - "lib/explore/slideshow-api.ts"
+      - "scripts/slideshow-api.test.mjs"
+      - "lib/edit/**"
+      - "lib/audio/**"
+      - "app/api/audio/**"
+      - "worker/src/lib/audio-media.ts"
+      - "next.config.ts"
+      - "app/api/edit/**"
+      - "components/edit/**"
+      - "supabase/migrations/*edit_draft*"
+      - "lib/explore/workflow-finishing*.ts"
+      - "lib/explore/*reference*"
+      - "lib/explore/remix*"
+      - "lib/explore/recreate*"
+      - "lib/explore/hook-video-library.ts"
+      - "lib/explore/wall-text-video-library.ts"
+      - "lib/explore/imported-catalog.json"
+      - "worker/src/lib/explore-reference-soundtrack.ts"
+      - "worker/src/lib/explore-paired-reference-catalog.json"
+      - "scripts/remix-text-db.test.mjs"
+      - "plugins/ugc-pilot/**"
+      - "lib/media/**"
+      - "lib/billing/**"
+      - "lib/jobs/**"
+      - "lib/queues/**"
+      - "lib/storage/**"
+      - "lib/ai-studio/generation-settings.ts"
+      - "worker/package*.json"
+      - "worker/Dockerfile"
+      - "scripts/*mcp*"
+      - "scripts/*ugc-pilot*"
+      - "supabase/migrations/*mcp*"
+      - "package*.json"
+      - ".github/workflows/mcp-contract-tests.yml"
+  push:
+    branches: [main, "codex/mcp-**"]
+    paths:
+      - "app/mcp/**"
+      - "app/oauth/**"
+      - "lib/mcp/**"
+      - "lib/library/**"
+      - "app/api/library/**"
+      - "lib/explore/slideshow-api.ts"
+      - "scripts/slideshow-api.test.mjs"
+      - "lib/edit/**"
+      - "lib/audio/**"
+      - "app/api/audio/**"
+      - "worker/src/lib/audio-media.ts"
+      - "next.config.ts"
+      - "app/api/edit/**"
+      - "components/edit/**"
+      - "supabase/migrations/*edit_draft*"
+      - "lib/explore/workflow-finishing*.ts"
+      - "lib/explore/*reference*"
+      - "lib/explore/remix*"
+      - "lib/explore/recreate*"
+      - "lib/explore/hook-video-library.ts"
+      - "lib/explore/wall-text-video-library.ts"
+      - "lib/explore/imported-catalog.json"
+      - "worker/src/lib/explore-reference-soundtrack.ts"
+      - "worker/src/lib/explore-paired-reference-catalog.json"
+      - "scripts/remix-text-db.test.mjs"
+      - "plugins/ugc-pilot/**"
+      - "lib/media/**"
+      - "lib/billing/**"
+      - "lib/jobs/**"
+      - "lib/queues/**"
+      - "lib/storage/**"
+      - "lib/ai-studio/generation-settings.ts"
+      - "worker/package*.json"
+      - "worker/Dockerfile"
+      - "scripts/*mcp*"
+      - "scripts/*ugc-pilot*"
+      - "supabase/migrations/*mcp*"
+      - "package*.json"
+      - ".github/workflows/mcp-contract-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:mcp
+      - run: node --test scripts/validate-ugc-pilot-plugin.test.mjs
+      - run: python3 scripts/test-ugc-pilot-plugin-build.py
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm ci --legacy-peer-deps --prefix worker
+      - run: npm audit --omit=dev --audit-level=high --prefix worker

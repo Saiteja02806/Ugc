@@ -32,6 +32,40 @@ type PublishMediaSourceType =
   | "generated_video"
   | "upload";
 
+for (const platform of ["instagram", "tiktok", "youtube"] as const) {
+  test(`does not publish an early-delivered ${platform} job`, async () => {
+    await withEncryptionKey(async () => {
+      const scheduledFor = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+      const fixture = createPublishStore(createOperation({ platform }), { platform, scheduledFor });
+      const unexpectedPublish = async () => {
+        assert.fail("Provider must not be contacted before the chosen time.");
+      };
+      await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+        store: fixture.store,
+        publishers: {
+          instagram: unexpectedPublish, instagramCarousel: unexpectedPublish,
+          tiktok: unexpectedPublish, tiktokCarousel: unexpectedPublish,
+          youtube: unexpectedPublish,
+        },
+      }), (error: unknown) => error instanceof DeferredJobError &&
+        error.code === "social_publish_not_due" && Date.parse(error.retryAt) <= Date.parse(scheduledFor));
+      assert.deepEqual(fixture.calls, []);
+      assert.equal(fixture.operation.status, "pending");
+    });
+  });
+}
+
+test("a cancelled future post completes cleanup without publishing or deferring", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), {
+      targetStatus: "cancelled", scheduledFor: new Date(Date.now() + 60 * 60_000).toISOString(),
+    });
+    const output = await runPublishSocialPostJob(createPublishJob(), { store: fixture.store });
+    assert.equal(output.cancelled, true);
+    assert.deepEqual(fixture.calls, []);
+  });
+});
+
 test("persists provider initialization before completing a publish", async () => {
   await withEncryptionKey(async () => {
     const fixture = createPublishStore(createOperation());
@@ -137,11 +171,15 @@ test("publishes saved carousel slides to TikTok without requiring video media", 
     );
 
     const output = await runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async ({ imageUrls, libraryItemId }) => {
+        assert.equal(libraryItemId, "4d41918d-2997-4f02-a301-5f14a76eb767");
+        return imageUrls.map((url) => url.replace(/\.webp$/, ".jpg"));
+      },
       publishers: {
         async tiktokCarousel(params) {
           assert.deepEqual(params.imageUrls, [
-            "https://cdn.example.com/slide-1.webp",
-            "https://cdn.example.com/slide-2.webp",
+            "https://cdn.example.com/slide-1.jpg",
+            "https://cdn.example.com/slide-2.jpg",
           ]);
           await params.onPublishInitialized?.({
             creatorNickname: "Test creator",
@@ -162,6 +200,60 @@ test("publishes saved carousel slides to TikTok without requiring video media", 
     assert.equal(output.platformPostId, "tiktok-photo-post-1");
     assert.equal(fixture.operation.provider_operation_id, "tiktok-photo-publish-1");
     assert.equal(fixture.operation.provider_operation_kind, "tiktok_publish");
+  });
+});
+
+test("resuming an accepted TikTok photo post skips preparation and preserves its publish ID", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok", status: "initialized", provider_operation_kind: "tiktok_publish", provider_operation_id: "existing-photos" }), { carousel: true, platform: "tiktok" });
+    await runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async () => { assert.fail("An existing post must not upload new media."); },
+      publishers: { async tiktokCarousel(params) {
+        assert.equal(params.publishId, "existing-photos");
+        return { platformPostId: "existing-post", platformPostUrl: null, publishId: "existing-photos" };
+      } }, store: fixture.store,
+    });
+    assert.equal(fixture.operation.platform_post_id, "existing-post");
+  });
+});
+
+test("failed TikTok preparation never calls the publishing API", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok" }), { carousel: true, platform: "tiktok", allowFailure: true });
+    let providerCalls = 0;
+    await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async () => { throw new Error("Could not download carousel slide 1 for TikTok (404)."); },
+      publishers: { async tiktokCarousel() { providerCalls++; throw new Error("Unexpected publish"); } }, store: fixture.store,
+    }));
+    assert.equal(providerCalls, 0);
+    assert.equal(fixture.operation.provider_operation_id, null);
+  });
+});
+
+test("TikTok format rejections fail with an actionable message instead of scheduling unchanged retries", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok" }), { carousel: true, platform: "tiktok", allowFailure: true });
+    await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async ({ imageUrls }) => imageUrls,
+      publishers: { async tiktokCarousel() { throw new TikTokPublishError("TikTok publishing failed: file_format_check_failed.", "file_format_check_failed", "format-log", null, false); } },
+      store: fixture.store,
+    }), error => error instanceof TikTokPublishError);
+    assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-failed"]);
+    assert.equal(fixture.targetErrorCode, "tiktok_file_format_check_failed");
+    assert.match(fixture.targetErrorMessage, /media format/);
+    assert.doesNotMatch(fixture.targetErrorMessage, /video|automatically/);
+  });
+});
+
+test("the final worker attempt fails the target instead of advertising an impossible fourth retry", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation(), { allowFailure: true });
+    const job = { ...createPublishJob(), attempt_count: 2, max_attempts: 3 };
+    await assert.rejects(runPublishSocialPostJob(job, {
+      publishers: { async instagram() { throw new Error("Instagram API request failed: HTTP 503."); } },
+      store: fixture.store,
+    }), error => error instanceof Error && !(error instanceof RetryableJobError));
+    assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-failed"]);
   });
 });
 
@@ -474,6 +566,55 @@ test("marks TikTok permission failures as action required", async () => {
     assert.equal(providerError.status, 403);
   });
 });
+
+test("explains TikTok slideshow URL verification failures without asking users to regenerate media", async () => {
+  await withEncryptionKey(async () => {
+    const fixture = createPublishStore(createOperation({ platform: "tiktok" }), {
+      allowFailure: true,
+      carousel: true,
+      platform: "tiktok",
+    });
+
+    await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+      prepareTikTokCarouselImages: async ({ imageUrls }) => imageUrls,
+      publishers: {
+        async tiktokCarousel() {
+          throw new TikTokPublishError(
+            "Unverified media URL",
+            "url_ownership_unverified",
+            "log-photo-url",
+            403,
+            true,
+          );
+        },
+      },
+      store: fixture.store,
+    }), (error) => error instanceof TikTokPublishError && error.code === "url_ownership_unverified");
+
+    assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-action-required"]);
+    assert.equal(fixture.targetErrorCode, "tiktok_url_ownership_unverified");
+    assert.equal(fixture.targetErrorMessage, "TikTok could not verify this post's media source. Contact support before retrying.");
+    assert.equal(getJsonRecord(fixture.targetMetadata.providerError).logId, "log-photo-url");
+  });
+});
+
+for (const code of ["private_account_required", "unaudited_client_can_only_post_to_private_accounts"]) {
+  test(`explains both TikTok privacy requirements for ${code} without automatic retry`, async () => {
+    await withEncryptionKey(async () => {
+      const fixture = createPublishStore(createOperation({ platform: "tiktok" }), { allowFailure: true, platform: "tiktok" });
+      await assert.rejects(runPublishSocialPostJob(createPublishJob(), {
+        publishers: { async tiktok() {
+          throw new TikTokPublishError("Original diagnostic", code, "log-private", 403, true);
+        } },
+        store: fixture.store,
+      }), error => error instanceof TikTokPublishError && error.code === code);
+      assert.deepEqual(fixture.calls, ["claim-operation", "release-operation", "target-action-required"]);
+      assert.match(fixture.targetErrorMessage ?? "", /private account and Only me/);
+      assert.match(fixture.targetErrorMessage ?? "", /Only me alone is not enough/);
+      assert.equal(getJsonRecord(fixture.targetMetadata.providerError).logId, "log-private");
+    });
+  });
+}
 
 test("marks expired Instagram authorization as action required with a safe message", async () => {
   await withEncryptionKey(async () => {
@@ -846,6 +987,7 @@ function createPublishStore(
     denyClaim?: boolean;
     failTargetPublished?: boolean;
     mediaSourceType?: PublishMediaSourceType;
+    scheduledFor?: string;
     platform?: "instagram" | "tiktok" | "youtube";
     targetStatus?: "cancelled" | "failed" | "scheduled";
     withInstagramRefresh?: boolean;
@@ -862,6 +1004,7 @@ function createPublishStore(
     options.mediaSourceType,
     options.carousel,
   );
+  if (options.scheduledFor) context.target.scheduled_for = options.scheduledFor;
   let targetMetadata: Record<string, Json> = {};
   let targetErrorCode: string | null = null;
   let targetErrorMessage = "";
@@ -1131,11 +1274,15 @@ function createPublishContext(
     },
     media: carousel ? null : {
       collection: "video",
+      deleted_at: null,
       duration_seconds: 12,
+      metadata: {},
       mime_type: "video/mp4",
       source_type: mediaSourceType,
       status: "ready",
+      storage_key: "videos/final.mp4",
       url: "https://cdn.example.com/final.mp4",
+      user_id: "user-test",
     },
     post: {
       caption: "Test caption",

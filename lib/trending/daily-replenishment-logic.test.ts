@@ -15,6 +15,7 @@ import {
   isCarouselGenerationAvailableOnDate,
   rotateDailyCarouselAngles,
   selectAssignableDailyCarouselCandidates,
+  shouldWaitForDailyCarouselSuccessor,
 } from "./daily-replenishment-logic.ts";
 
 const visibleSlides = [
@@ -31,6 +32,17 @@ const visibleSlides = [
     subtext: "Automate the repeatable steps.",
   },
 ];
+
+test("terminal dispatched batches wait for an authorized successor without replaying their reservation", () => {
+  const failedDispatchedBatch = { hasExistingBatch: true, hasTerminalFailure: true,
+    replacedPartialBatch: false, generations: [{ triggerRunId: "failed-job" }, { triggerRunId: null }] };
+  assert.equal(shouldWaitForDailyCarouselSuccessor(failedDispatchedBatch), true);
+  assert.equal(shouldWaitForDailyCarouselSuccessor({ ...failedDispatchedBatch, replacedPartialBatch: true, generations: [] }), false);
+  assert.equal(shouldWaitForDailyCarouselSuccessor({ ...failedDispatchedBatch, generations: [{ triggerRunId: null }] }), false,
+    "an interrupted undispatched preparation retains exact-item recovery");
+  assert.equal(shouldWaitForDailyCarouselSuccessor({ ...failedDispatchedBatch, hasTerminalFailure: false }), false,
+    "active siblings may continue their normal preparation");
+});
 
 test("requests ten new carousels when all ten were completed before the new day", () => {
   assert.deepEqual(

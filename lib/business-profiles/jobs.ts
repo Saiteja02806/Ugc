@@ -23,12 +23,21 @@ export async function enqueueBusinessProfileSetupJob(params: {
             operation: "business_profile_setup",
             userId: params.userId,
           }
-        : {
-            intakeType: params.input.intakeType,
-            manual: params.input.manual,
-            operation: "business_profile_setup",
-            userId: params.userId,
-          };
+        : "description" in params.input
+          ? {
+              businessName: params.input.businessName,
+              description: params.input.description,
+              experience: params.input.experience,
+              intakeType: params.input.intakeType,
+              operation: "business_profile_setup",
+              userId: params.userId,
+            }
+          : {
+              intakeType: params.input.intakeType,
+              manual: params.input.manual,
+              operation: "business_profile_setup",
+              userId: params.userId,
+            };
 
   return createAndDispatchBackgroundJob({
     idempotencyKey: `business-profile-setup:${params.idempotencyKey}`,

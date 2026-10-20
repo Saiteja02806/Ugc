@@ -1,31 +1,38 @@
 import OpenAI, { toFile } from "openai";
 
 import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
-import type { AIStudioImageRatio } from "./image-output.js";
+import { getAIStudioImageDimensions, type AIStudioImageRatio } from "./image-output.js";
+import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
+export const SLIDESHOW_IMAGE_MODEL = "gpt-image-2.5-sunburst";
+export const SLIDESHOW_FLARE_IMAGE_MODEL = "gpt-image-2.5-flare";
 
 let openaiClient: OpenAI | null = null;
 
 export async function generateOpenAiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio = "9:16",
-  referenceImageUrl?: string,
+  referenceImageUrl?: string | string[],
+  modelOverride?: typeof SLIDESHOW_IMAGE_MODEL | typeof SLIDESHOW_FLARE_IMAGE_MODEL,
+  nativeAspectRatio = false,
 ) {
   const client = getOpenAIClient();
-  const model = process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL;
+  const model = modelOverride || process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL;
   const result = referenceImageUrl
     ? await client.images.edit({
-        image: await downloadReferenceImage(referenceImageUrl),
-        input_fidelity: "high",
+        image: Array.isArray(referenceImageUrl)
+          ? await Promise.all((await downloadReferenceImageContext(referenceImageUrl)).map((image, index) => referenceImageFile(image, `reference-${index + 1}`)))
+          : await downloadReferenceImage(referenceImageUrl),
+        ...(model === "gpt-image-1" || model === "gpt-image-1.5" ? { input_fidelity: "high" as const } : {}),
         model,
         prompt,
-        size: getProviderImageSize(aspectRatio),
+        size: getProviderImageSize(aspectRatio, nativeAspectRatio),
       })
     : await client.images.generate({
         model,
         prompt,
-        size: getProviderImageSize(aspectRatio),
+        size: getProviderImageSize(aspectRatio, nativeAspectRatio),
       });
   const imageBase64 = result.data?.[0]?.b64_json;
 
@@ -41,38 +48,21 @@ export async function generateOpenAiImageBuffer(
 }
 
 async function downloadReferenceImage(url: string) {
-  let response: Response;
-
-  try {
-    response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-  } catch (error) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-      { cause: error },
-    );
-  }
-
-  if (!response.ok) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image could not be downloaded.",
-    );
-  }
-
-  const contentType = response.headers.get("content-type")?.split(";", 1)[0] ?? "image/png";
-  const extension =
-    contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
-  const buffer = Buffer.from(await response.arrayBuffer());
-
-  if (buffer.length === 0 || buffer.length > 25 * 1024 * 1024) {
-    throw new ProviderRequestNotSubmittedError(
-      "The uploaded reference image is empty or too large.",
-    );
-  }
-
-  return toFile(buffer, `reference.${extension}`, { type: contentType });
+  return referenceImageFile(await downloadReferenceImageBytes(url), "reference");
 }
 
-function getProviderImageSize(aspectRatio: AIStudioImageRatio) {
+function referenceImageFile({ buffer, contentType }: { buffer: Buffer; contentType: string }, name: string) {
+  const extension =
+    contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
+
+  return toFile(buffer, `${name}.${extension}`, { type: contentType });
+}
+
+function getProviderImageSize(aspectRatio: AIStudioImageRatio, nativeAspectRatio: boolean) {
+  if (nativeAspectRatio) {
+    const { width, height } = getAIStudioImageDimensions(aspectRatio);
+    return `${width}x${height}`;
+  }
   if (aspectRatio === "1:1") {
     return "1024x1024" as const;
   }

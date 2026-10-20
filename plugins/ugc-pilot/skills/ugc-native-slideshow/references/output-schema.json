@@ -1,0 +1,866 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UGC Native Slideshow Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "slides"
+  ],
+  "properties": {
+    "format": {
+      "enum": [
+        "personal_shift",
+        "story_confession",
+        "quick_tips",
+        "educational_method",
+        "fitness_routine",
+        "product_assisted",
+        "goal_based_routine"
+      ]
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 2,
+      "items": [
+        {
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "Semantic slide",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "role",
+                "presentation_mode",
+                "visual_intent"
+              ],
+              "properties": {
+                "role": {
+                  "enum": [
+                    "cover",
+                    "body",
+                    "result",
+                    "cta"
+                  ]
+                },
+                "presentation_mode": {
+                  "enum": [
+                    "cover",
+                    "outlined_story",
+                    "pill_story",
+                    "numbered_shift",
+                    "minimal_statement",
+                    "educational_method",
+                    "routine_explanation",
+                    "cta"
+                  ]
+                },
+                "hook": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subline": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "headline": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body_1": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body_2": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "example": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "why": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "cue": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "product_reference": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "visual_intent": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "cover"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "hook"
+                    ],
+                    "properties": {
+                      "hook": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "outlined_story"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "body_1"
+                    ],
+                    "properties": {
+                      "body_1": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "pill_story"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "body_1"
+                    ],
+                    "properties": {
+                      "body_1": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "numbered_shift"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "headline",
+                      "body_1"
+                    ],
+                    "properties": {
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "body_1": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "minimal_statement"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "headline"
+                    ],
+                    "properties": {
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "educational_method"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "headline",
+                      "body_1",
+                      "example"
+                    ],
+                    "properties": {
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "body_1": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "example": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "routine_explanation"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "headline",
+                      "why",
+                      "cue"
+                    ],
+                    "properties": {
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "why": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "cue": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "cta"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "headline"
+                    ],
+                    "properties": {
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "role": {
+                        "const": "cover"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "cover"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "role": {
+                        "const": "cta"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "presentation_mode": {
+                        "const": "cta"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "role": {
+                        "enum": [
+                          "body",
+                          "result"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "presentation_mode": {
+                        "enum": [
+                          "outlined_story",
+                          "pill_story",
+                          "numbered_shift",
+                          "minimal_statement",
+                          "educational_method",
+                          "routine_explanation"
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "properties": {
+                "role": {
+                  "const": "cover"
+                },
+                "presentation_mode": {
+                  "const": "cover"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "additionalItems": {
+        "allOf": [
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "Semantic slide",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "role",
+              "presentation_mode",
+              "visual_intent"
+            ],
+            "properties": {
+              "role": {
+                "enum": [
+                  "cover",
+                  "body",
+                  "result",
+                  "cta"
+                ]
+              },
+              "presentation_mode": {
+                "enum": [
+                  "cover",
+                  "outlined_story",
+                  "pill_story",
+                  "numbered_shift",
+                  "minimal_statement",
+                  "educational_method",
+                  "routine_explanation",
+                  "cta"
+                ]
+              },
+              "hook": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "subline": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "headline": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "body_1": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "body_2": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "example": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "why": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cue": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "product_reference": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "visual_intent": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "cover"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "hook"
+                  ],
+                  "properties": {
+                    "hook": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "outlined_story"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "body_1"
+                  ],
+                  "properties": {
+                    "body_1": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "pill_story"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "body_1"
+                  ],
+                  "properties": {
+                    "body_1": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "numbered_shift"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "headline",
+                    "body_1"
+                  ],
+                  "properties": {
+                    "headline": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    "body_1": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "minimal_statement"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "headline"
+                  ],
+                  "properties": {
+                    "headline": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "educational_method"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "headline",
+                    "body_1",
+                    "example"
+                  ],
+                  "properties": {
+                    "headline": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    "body_1": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    "example": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "routine_explanation"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "headline",
+                    "why",
+                    "cue"
+                  ],
+                  "properties": {
+                    "headline": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    "why": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    "cue": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "cta"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "headline"
+                  ],
+                  "properties": {
+                    "headline": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "cover"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "cover"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "cta"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "presentation_mode": {
+                      "const": "cta"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "enum": [
+                        "body",
+                        "result"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "presentation_mode": {
+                      "enum": [
+                        "outlined_story",
+                        "pill_story",
+                        "numbered_shift",
+                        "minimal_statement",
+                        "educational_method",
+                        "routine_explanation"
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "properties": {
+              "role": {
+                "enum": [
+                  "body",
+                  "result",
+                  "cta"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

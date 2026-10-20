@@ -7,6 +7,7 @@ import { shouldPollForSubscriptionActivation } from "@/lib/billing/activation-st
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 export type BillingSubscription = {
+  accessSource: "complimentary" | "dodo" | "free";
   billingInterval: "monthly" | "yearly" | null;
   cancelAtPeriodEnd: boolean;
   connectedInstagramAccounts: number;
@@ -17,9 +18,11 @@ export type BillingSubscription = {
   currentPeriodStart: string | null;
   dailyContentPieces: number | "Limited";
   displayName: "Free" | "Starter" | "Growth";
+  freeGenerationCredits?: { granted: number; remaining: number; reserved: number; used: number };
   instagramAccounts: number;
   imageGenerationCreditCost: number;
   isActive: boolean;
+  isDodoManaged: boolean;
   planKey: "free" | "starter" | "growth";
   sharedMonthlyCredits: number;
   status:
@@ -38,8 +41,8 @@ export type BillingSubscription = {
     dailyContentPieces: number;
     daysRemaining: number;
     expiresAt: string | null;
-    instagramSchedulesLimit: number;
-    instagramSchedulesRemaining: number;
+    instagramSchedulesLimit: number | null;
+    instagramSchedulesRemaining: number | null;
     instagramSchedulesUsed: number;
     startedAt: string | null;
     status: "active" | "expired" | "unavailable";
@@ -55,6 +58,8 @@ export function getBillingSubscriptionQueryKey(userId: string) {
 
 export function useBillingSubscription(options?: {
   activationPolling?: boolean;
+  refreshOnFocus?: boolean;
+  freshOnMount?: boolean;
 }) {
   const { loading, user } = useAuth();
 
@@ -68,9 +73,10 @@ export function useBillingSubscription(options?: {
       shouldPollForSubscriptionActivation(query.state.data?.status)
         ? 2_000
         : false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: options?.freshOnMount ? "always" : true,
+    refetchOnWindowFocus: options?.refreshOnFocus ? "always" : false,
     retry: 1,
-    staleTime: options?.activationPolling ? 0 : 30 * 60 * 1_000,
+    staleTime: options?.activationPolling || options?.freshOnMount ? 0 : 30 * 60 * 1_000,
   });
 }
 

@@ -1,0 +1,34 @@
+.panel { display: grid; width: 100%; max-width: 760px; min-width: 0; gap: 14px; margin-inline: auto; }
+.panel[hidden], .actions[hidden] { display: none; }
+.form { container: workflow-schedule / inline-size; display: flex; flex-direction: column; gap: 20px; width: 100%; min-width: 0; padding: 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.contentField { width: 100%; max-width: 640px; }
+.form > h2 { margin: 0; color: var(--foreground-strong); font-size: 25px; font-weight: 650; line-height: 1.3; letter-spacing: -.025em; }
+.form > h2 + p { margin-top: -12px; }
+.form label, .form > div > span:first-child { color: var(--foreground); }
+.form textarea[name="postCaption"] { min-height: 96px; height: 96px; padding: 12px 14px; resize: vertical; background: var(--background); font-size: 14px; line-height: 1.6; }
+.form [aria-label="Posting platforms"] { width: 100%; max-width: 640px; gap: 10px; }
+.form [data-platform] { display: flex; min-height: 76px; height: 76px; flex-direction: column; gap: 8px; padding: 10px 6px; text-align: center; }
+.form [data-platform] > svg:first-child { width: 22px; height: 22px; }
+.form [data-platform] > span { max-width: 100%; white-space: nowrap; }
+.form [data-platform] > svg:last-child:not(:first-child) { width: 14px; height: 14px; }
+.form [data-schedule-date-time] { width: 100%; max-width: 480px; gap: 14px; }
+.form [data-schedule-date-time] input { height: 44px; padding-inline: 12px; background: var(--background); font-size: 14px; font-variant-numeric: tabular-nums; }
+.form > p:last-child { margin-top: -12px; }
+.summary { display: grid; gap: 5px; min-width: 0; padding: 16px 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.summary h3 { margin: 0; color: var(--muted); font-size: 11px; font-weight: 500; }
+.summary p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+.summary p.summaryDestination { color: var(--foreground); font-size: 14px; font-weight: 550; }
+.actions { width: 100%; display: grid; gap: 12px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); }
+.actionRow { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 10px 12px; }
+.backButton { grid-column: 1; grid-row: 2; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; height: auto; gap: 6px; padding-inline: 10px; font-size: 13px; line-height: 20px; white-space: normal; }
+.reviewAction { display: contents; }
+.actionHelp { grid-column: 1 / -1; grid-row: 1; max-width: none; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.reviewButton { grid-column: 2; grid-row: 2; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; height: auto; gap: 6px; padding-inline: 10px; font-size: 13px; line-height: 20px; white-space: normal; }
+@media (min-width: 1024px) and (min-height: 620px) {
+  .actions { position: sticky; bottom: 0; z-index: 3; padding-bottom: 6px; background: var(--card); }
+  .form :is(input, textarea, select) { scroll-margin-block: 16px 150px; }
+}
+@media (max-height: 760px) { .form { gap: 16px; padding: 22px; } .form > h2 { font-size: 22px; } .form textarea[name="postCaption"] { min-height: 80px; height: 80px; } .summary { padding: 12px 18px; } }
+@media (max-width: 767px) { .form { gap: 16px; padding: 18px; } .form > h2 { font-size: 22px; } .form [data-platform] { font-size: 12px; } .form textarea[name="postCaption"], .form [data-schedule-date-time] input { font-size: 16px; } }
+@media (max-width: 479px) { .form [data-schedule-date-time] { gap: 10px; } }
+@container workflow-schedule (max-width: 280px) { .backButton { grid-column: 1 / -1; } .reviewButton { grid-column: 1 / -1; grid-row: 3; } }

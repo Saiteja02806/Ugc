@@ -1,0 +1,391 @@
+{
+  "researched_at": "2026-10-09",
+  "purpose": "Directional US keyword research for reader problems matching Hook video, Wall of text, and Slideshows.",
+  "limitations": [
+    "Provider estimates do not establish site traffic, customer demand, current Google rankings, or conversion forecasts.",
+    "October 2026 is incomplete; current estimates and October history values must not be described as finalized monthly results.",
+    "Provider difficulty methods differ; do not interpret the discrepant faceless reels scores as easy ranking evidence.",
+    "Missing keywords are unavailable data, not zero searches.",
+    "The add text to video Serpstat row has an unexpected Russian language label and is excluded from English prioritization."
+  ],
+  "total_cost_usd": 0.01116,
+  "calls": [
+    {
+      "provider": "Serpstat",
+      "endpoint": "serpstat.google.keywords.volume",
+      "regional_database": "g_us",
+      "inputs": [
+        "instagram reel hooks",
+        "video hook generator",
+        "faceless reels",
+        "faceless instagram reels",
+        "text overlay video",
+        "add text to video",
+        "instagram slideshow",
+        "instagram carousel maker",
+        "ai influencer generator",
+        "product demo video",
+        "saas content marketing",
+        "repurpose video"
+      ],
+      "response": {
+        "call_id": "4f2cfd5c165a4d72b7a30831395e09d1",
+        "status": 200,
+        "endpoint_id": "serpstat.google.keywords.volume",
+        "replayed": null,
+        "body": {
+          "id": "workflow-content-20261009",
+          "result": {
+            "data": [
+              {
+                "region_queries_count": 720,
+                "region_queries_count_wide": 0,
+                "cost": 6.768982,
+                "concurrency": 2,
+                "keyword": "saas content marketing",
+                "found_results": 132,
+                "types": [
+                  "related_search",
+                  "also_asks",
+                  "ai_overview"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "youtube",
+                  "reddit"
+                ],
+                "right_spelling": null,
+                "difficulty": 6,
+                "lang": "en",
+                "suggestions_count": 25,
+                "keywords_count": 48,
+                "intents": [
+                  "informational"
+                ]
+              },
+              {
+                "region_queries_count": 390,
+                "region_queries_count_wide": 480,
+                "cost": 0.7765069999999998,
+                "concurrency": 24,
+                "keyword": "instagram carousel maker",
+                "found_results": 116,
+                "types": [
+                  "ai_overview",
+                  "related_search",
+                  "video"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "youtube",
+                  "reddit"
+                ],
+                "right_spelling": null,
+                "difficulty": null,
+                "lang": "en",
+                "suggestions_count": 35,
+                "keywords_count": 5,
+                "intents": [
+                  "informational"
+                ]
+              },
+              {
+                "region_queries_count": 18100,
+                "region_queries_count_wide": 210,
+                "cost": 0.6065107197566995,
+                "concurrency": 48,
+                "keyword": "faceless reels",
+                "found_results": 126000,
+                "types": [
+                  "ai_overview",
+                  "also_asks",
+                  "related_search"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "facebook",
+                  "instagram",
+                  "reddit",
+                  "youtube",
+                  "linkedin"
+                ],
+                "right_spelling": null,
+                "difficulty": 3,
+                "lang": "en",
+                "suggestions_count": 33,
+                "keywords_count": 3,
+                "intents": [
+                  "informational"
+                ]
+              },
+              {
+                "region_queries_count": 880,
+                "region_queries_count_wide": 0,
+                "cost": 1.218338,
+                "concurrency": 12,
+                "keyword": "instagram slideshow",
+                "found_results": 109,
+                "types": [
+                  "ai_overview",
+                  "also_asks",
+                  "video"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "reddit",
+                  "youtube",
+                  "pinterest",
+                  "instagram"
+                ],
+                "right_spelling": null,
+                "difficulty": 24,
+                "lang": "en",
+                "suggestions_count": 547,
+                "keywords_count": 777,
+                "intents": [
+                  "informational"
+                ]
+              },
+              {
+                "region_queries_count": 1,
+                "region_queries_count_wide": 0,
+                "cost": 0,
+                "concurrency": 0,
+                "keyword": "repurpose video",
+                "found_results": 0,
+                "types": [],
+                "geo_names": [],
+                "social_domains": [],
+                "right_spelling": null,
+                "difficulty": 5,
+                "lang": "en",
+                "suggestions_count": 5,
+                "keywords_count": 43,
+                "intents": []
+              },
+              {
+                "region_queries_count": 1600,
+                "region_queries_count_wide": 0,
+                "cost": 26.982458,
+                "concurrency": 21,
+                "keyword": "add text to video",
+                "found_results": 304000,
+                "types": [
+                  "ai_overview",
+                  "also_asks",
+                  "related_search",
+                  "video"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "instagram",
+                  "facebook",
+                  "reddit",
+                  "youtube",
+                  "stack-overflow"
+                ],
+                "right_spelling": null,
+                "difficulty": 36,
+                "lang": "ru",
+                "suggestions_count": 1110,
+                "keywords_count": 2676,
+                "intents": [
+                  "informational"
+                ]
+              },
+              {
+                "region_queries_count": 210,
+                "region_queries_count_wide": 0,
+                "cost": 4.534685170592977,
+                "concurrency": 36,
+                "keyword": "product demo video",
+                "found_results": 70,
+                "types": [
+                  "also_asks",
+                  "video",
+                  "related_search"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "reddit",
+                  "youtube"
+                ],
+                "right_spelling": null,
+                "difficulty": 9,
+                "lang": "en",
+                "suggestions_count": 167,
+                "keywords_count": 194,
+                "intents": [
+                  "informational"
+                ]
+              },
+              {
+                "region_queries_count": 140,
+                "region_queries_count_wide": 0,
+                "cost": 1.05,
+                "concurrency": 9,
+                "keyword": "text overlay video",
+                "found_results": 80,
+                "types": [
+                  "related_search",
+                  "video",
+                  "also_asks"
+                ],
+                "geo_names": [],
+                "social_domains": [
+                  "reddit",
+                  "facebook",
+                  "pinterest",
+                  "youtube",
+                  "vimeo"
+                ],
+                "right_spelling": null,
+                "difficulty": 5,
+                "lang": "en",
+                "suggestions_count": 179,
+                "keywords_count": 588,
+                "intents": [
+                  "informational"
+                ]
+              }
+            ],
+            "summary_info": {
+              "page": 1,
+              "left_lines": 4663878
+            }
+          }
+        },
+        "cost_usd": 0.004,
+        "served_via": null,
+        "whose_error": null,
+        "hint": null,
+        "did_you_mean": null,
+        "error": null,
+        "detail": null
+      }
+    },
+    {
+      "provider": "SE Ranking",
+      "endpoint": "seranking.google.keywords.volume",
+      "regional_database": "us",
+      "inputs": [
+        "faceless reels",
+        "add text to video",
+        "product demo video",
+        "instagram slideshow"
+      ],
+      "response": {
+        "call_id": "4787ec05a2c848fd9676201158297b2c",
+        "status": 201,
+        "endpoint_id": "seranking.google.keywords.volume",
+        "replayed": null,
+        "body": [
+          {
+            "is_data_found": true,
+            "keyword": "product demo video",
+            "volume": 170,
+            "cpc": 5.19,
+            "difficulty": 23,
+            "intents": [
+              "I"
+            ],
+            "competition": 0.43,
+            "history_trend": {
+              "2025-12-01": 320,
+              "2026-01-01": 320,
+              "2026-02-01": 260,
+              "2026-03-01": 260,
+              "2026-04-01": 260,
+              "2026-05-01": 210,
+              "2026-06-01": 210,
+              "2026-07-01": 210,
+              "2026-08-01": 170,
+              "2026-09-01": 170,
+              "2026-10-01": 170
+            }
+          },
+          {
+            "is_data_found": true,
+            "keyword": "instagram slideshow",
+            "volume": 160,
+            "cpc": 1.06,
+            "difficulty": 25,
+            "intents": [
+              "I"
+            ],
+            "competition": 0.12,
+            "history_trend": {
+              "2025-12-01": 260,
+              "2026-01-01": 330,
+              "2026-02-01": 80,
+              "2026-03-01": 60,
+              "2026-04-01": 160,
+              "2026-05-01": 180,
+              "2026-06-01": 160,
+              "2026-07-01": 160,
+              "2026-08-01": 70,
+              "2026-09-01": 180,
+              "2026-10-01": 160
+            }
+          },
+          {
+            "is_data_found": true,
+            "keyword": "faceless reels",
+            "volume": 18100,
+            "cpc": 0.6,
+            "difficulty": 75,
+            "intents": [
+              "I"
+            ],
+            "competition": 0.48,
+            "history_trend": {
+              "2025-11-01": 200,
+              "2025-12-01": 330,
+              "2026-01-01": 920,
+              "2026-02-01": 1300,
+              "2026-03-01": 3600,
+              "2026-04-01": 5400,
+              "2026-05-01": 6600,
+              "2026-06-01": 8100,
+              "2026-07-01": 8100,
+              "2026-08-01": 12100,
+              "2026-09-01": 12100,
+              "2026-10-01": 18100
+            }
+          },
+          {
+            "is_data_found": true,
+            "keyword": "add text to video",
+            "volume": 220,
+            "cpc": 0.59,
+            "difficulty": 21,
+            "intents": [
+              "I"
+            ],
+            "competition": 0.22,
+            "history_trend": {
+              "2025-12-01": 720,
+              "2026-01-01": 740,
+              "2026-02-01": 590,
+              "2026-03-01": 540,
+              "2026-04-01": 500,
+              "2026-05-01": 480,
+              "2026-06-01": 390,
+              "2026-07-01": 320,
+              "2026-08-01": 1300,
+              "2026-09-01": 1300,
+              "2026-10-01": 220
+            }
+          }
+        ],
+        "cost_usd": 0.00716,
+        "served_via": null,
+        "whose_error": null,
+        "hint": null,
+        "did_you_mean": null,
+        "error": null,
+        "detail": null
+      }
+    }
+  ]
+}

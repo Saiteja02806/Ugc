@@ -62,3 +62,28 @@ trigger or requeue exhausted historical jobs. New-job collection and a locally
 viewable recovered file can be verified independently of that database change.
 Readiness, production source identities and live checks are recorded after
 rollout, separately from compilation and mocked tests.
+
+## Production rollout evidence
+
+Website deployment `dpl_J5VPdeKsEj7cdB8mCfNQo7fyopqC` reached READY and the
+`getugcpilot.com`/`www.getugcpilot.com` aliases at main commit
+`d2482db372899ab780a2687ae78dcb3b7b9b3441`. Live Hook picker showed Omni10,
+Seedance30 and WAN10. Subsequent root release-check/documentation changes do
+not modify application or worker code; their website deployment is verified
+separately in the final release receipt under ignored `outputs/`.
+
+Cloud Build `1aab48f0-e152-4530-974a-4c227521c51c` built worker source
+`40f07befe6171ab543bbf6cfd91fff197b6b4b00` into digest
+`sha256:e9d074c9bd15cede21768fec014c4c866a23307a11a6ae9c6a094a54c38edfca`.
+Revision `ugc-ai-generation-worker-uploadfix-40f07bef` receives 100% of
+production generation traffic; startup records matching build/runtime commit
+and `workerReleaseVerified: true`. Its ingress remains internal. A direct
+external version request therefore returns 404; the corrected read-only
+release checker requires the active ready revision, pinned image and exact
+revision's verified startup record. It does not accept unrelated/older logs.
+
+The delivery CI initially caught one stale recovery fixture which expected the
+disabled feature to run. The fixture now enables the gate explicitly only in
+its test, restores it afterward, and tests that the default-off path cannot call
+either recovery or credit RPCs or dispatch a job. The corrected delivery CI
+passed. No production database recovery or paid generation occurred.

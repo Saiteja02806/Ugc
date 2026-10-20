@@ -1,5 +1,22 @@
 # Explore context and UI decision record
 
+## 2026-10-20 Generation worker rollout acceptance
+
+- Production now routes 100% of AI-generation traffic to
+  `ugc-ai-generation-worker-uploadfix-40f07bef`, image digest
+  `sha256:e9d074c9bd15cede21768fec014c4c866a23307a11a6ae9c6a094a54c38edfca`.
+  Its baked and runtime commit both equal `40f07befe6171ab543bbf6cfd91fff197b6b4b00`;
+  its verified startup confirms the release guard passed. Later changes to the
+  root release-check script/tests do not change this worker source tree.
+- Cloud Run ingress is `internal`. An external `/version` 404 alone does not
+  establish stale code. Keep ingress restricted: the release checker requires
+  one ready revision at 100%, a pinned image digest, and that exact revision's
+  verified startup identity after revision creation. Publicly reachable workers
+  still use `/version`. Do not weaken acceptance to service readiness alone.
+- Live production Hook picker showed Omni10, Seedance30 and WAN10. These UI
+  checks and successful existing-task collection are separate from a fresh paid
+  generation or a measured customer upload throughput test.
+
 ## 2026-10-20 Reference upload latency and Omni image capacity
 
 - Upload audit found a sequential local metadata-read/authentication path and

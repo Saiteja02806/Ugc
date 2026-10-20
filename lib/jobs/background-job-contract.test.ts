@@ -254,6 +254,9 @@ test("historical pending failures explain saved-request recovery after attempts 
 });
 
 test("completed ReAPI collection has one explicit recovery after exhaustion without opening other failures", () => {
+  const previous = process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+  process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY = "true";
+  try {
   const input = { provider: "reapi", model: "seedance_2_5" };
   const job = { attemptCount: 3, maxAttempts: 3, errorCode: "PROVIDER_OUTPUT_COLLECTION_FAILED",
     jobType: "generate_hook_video", status: "failed", input } as unknown as BackgroundJobRecord;
@@ -264,6 +267,25 @@ test("completed ReAPI collection has one explicit recovery after exhaustion with
   assert.equal(isRetryableBackgroundJob({ ...job, input: { ...input, providerOutputRecovery: "collection-only-v1" } }), false);
   for (const errorCode of ["PROVIDER_TIMEOUT", "provider_submission_uncertain", "PROVIDER_CONTENT_MODERATION"])
     assert.equal(isRetryableBackgroundJob({ ...job, errorCode }), false);
+  } finally {
+    if (previous === undefined) delete process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+    else process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY = previous;
+  }
+});
+
+test("exhausted provider recovery stays disabled until its schema rollout is approved", () => {
+  const previous = process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+  delete process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+  try {
+    const job = { jobType: "generate_hook_video", status: "failed", attemptCount: 3, maxAttempts: 3,
+      errorCode: "PROVIDER_OUTPUT_COLLECTION_FAILED", input: { provider: "reapi", model: "seedance_2_5" },
+    } as unknown as BackgroundJobRecord;
+    assert.equal(isRetryableBackgroundJob(job), false);
+    assert.equal(isRetryableBackgroundJob({ ...job, attemptCount: 1 }), false);
+    assert.doesNotMatch(getPublicBackgroundJob(job).error?.message ?? "", /Retry to recover/);
+  } finally {
+    if (previous !== undefined) process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY = previous;
+  }
 });
 
 test("video-specific historical detection leaves Wall privacy and other jobs unchanged", () => {

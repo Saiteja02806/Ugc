@@ -110,6 +110,21 @@ service adds one warm instance; do not raise shared generation concurrency.
 5. Run authenticated production smoke tests and verify app/worker source SHA
    parity on `https://www.getugcpilot.com`.
 
+For video-result delivery, run
+`node scripts/check-generation-worker-release.mjs <exact-reviewed-worker-sha>`
+before declaring the worker rollout complete. It is read-only and fails when
+traffic is split, the `/version` endpoint is missing, or the image's baked SHA
+and runtime SHA disagree with the reviewed commit. A successful Vercel build
+or a newly staged zero-traffic worker revision does not pass this check.
+Record the website deployment SHA separately. A later web-only commit can
+legitimately differ from the worker SHA; never substitute it for verifying the
+worker source changes required by a generation release.
+
+Keep `ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY=false` until the separately
+approved completed-output recovery migration is installed and verified. This
+gate affects exhausted historical collection recovery, not the collector fix
+for new video jobs. Do not enable it to work around a deferred database change.
+
 ## Infrastructure bootstrap apply order
 
 1. Apply the Supabase migrations in timestamp order.

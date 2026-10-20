@@ -1,5 +1,20 @@
 # Explore context and UI decision record
 
+## 2026-10-20 Deferred recovery migration and delivery release checks
+
+- User explicitly chose to leave Supabase unchanged. The completed-output
+  recovery migration was canceled; do not apply it or recover exhausted jobs
+  until that decision changes. Gate the recovery action with server-side
+  `ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY`, default false. While off, ReAPI
+  collection failures must not fall through to a funded ordinary retry.
+- Production still served `ugc-ai-generation-worker-hookfix2-fac61da3` after
+  the new worker was staged and its traffic activation was interrupted. A ready
+  website and a zero-traffic revision do not establish successful video delivery.
+- Run `scripts/check-generation-worker-release.mjs <reviewed-worker-sha>` before
+  declaring worker rollout complete. The video-delivery CI suite exercises the
+  CDN collector, saved-operation/no-POST recovery, billing admission and image
+  limits without provider credentials. See `docs/video-delivery-prevention-2026-10-20.md`.
+
 ## 2026-10-20 Seedance delivery recurrence and independent image limits
 
 - Two completed ReAPI Seedance tasks remain failed in app result collection.
@@ -2982,3 +2997,20 @@ catalogue/release records rather than copying counts from historical audits.
 - Shared image pickers use small public previews, 24 initial entries, no hidden-tab downloads and a one-minute owner-scoped metadata window. Multi-reference Add images accepts a batch with bounded uploads and existing limits.
 - Trending body-only slide edits now resolve copy from the same submitted fields as the editor; renderer version advances so cached blank renders are not reused. Previously saved blank images require a new save/render. Earlier deployed quota-history behavior is retained by basing this release on main 283afc17.
 - These are release preparation decisions. Production acceptance is recorded separately after deployment; successful local checks alone are not live acceptance.
+
+### Hook Your videos scheduling shortcut — 20 October 2026
+
+- User approved only a **Schedule video** shortcut in Hook's **Your videos**
+  overview. It sits in a shared footer below both clip cards, aligned right on
+  wider screens and full width on narrow screens. It is hidden during focused
+  clip editing. No background audio shortcut was requested or added.
+- The overview and existing Demo button share the same rendered action,
+  disabled conditions and `requestSchedule` handler. Opening-only, demo-only
+  and combined compositions retain the existing preparation and Schedule form;
+  this shortcut does not submit or publish a post.
+- Local validation: 169 existing source-workspace, demo-state and common-editor
+  checks passed, plus TypeScript, targeted ESLint and whitespace checks. The
+  common-editor suite needs the existing next-server-only test loader for its
+  extensionless imports. Browser access to the local preview timed out, so fresh
+  visual acceptance remains pending. This change has not been deployed or
+  verified on production.

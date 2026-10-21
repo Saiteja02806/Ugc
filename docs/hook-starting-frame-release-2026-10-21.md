@@ -63,6 +63,22 @@ during these checks.
 
 ## Rollout
 
+The first PR run passed video delivery and migration guards and built the main
+UGC preview, but its MCP audit found newly published SDK advisories. Updated the
+root server/core to 2.3.1 and transitive SDK override to 1.32.1. Both root and
+worker production audits now report zero vulnerabilities; worker dependencies
+were already clean. Enabled the patched SDK's optional 10,000-element tool-input
+limit and shared 64 KiB transport/route body cap. Real in-memory transport tests
+reject excess input before tool execution and accept two maximal framing tracks
+plus all 20 overlays. The upgrade alone would not enable this protection; see
+the [official advisory](https://github.com/modelcontextprotocol/typescript-sdk/security/advisories/GHSA-46jr-4wx8-v453).
+
+The historical `trending-release-web-3f35202` Vercel project has only its own
+vercel.app domain and already had an ERROR production deployment; its preview
+fails Firebase configuration. It does not own getugcpilot.com or the Trending
+screen route. Its unrelated configuration is not changed by this release. The
+live website target is `ugc`; the separate MCP target is `ugc-mcp`.
+
 Publish the complete source, require CI, and stage the website without assigning
 production domains. Deploy the matching worker source and verify its pinned
 image plus exact revision startup identity before promoting the new entry.

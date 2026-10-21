@@ -5,6 +5,7 @@ import { getMcpResource } from "@/lib/mcp/config";
 import { readLimitedBody, requestWithBody } from "@/lib/mcp/http";
 import { clientLogRef } from "@/lib/mcp/logging";
 import { mcpHandler } from "@/lib/mcp/server";
+import { MCP_MAX_REQUEST_BYTES } from "@/lib/mcp/transport-limits";
 import {
   includesToolsListRequest,
   withToolSecuritySchemes,
@@ -48,7 +49,7 @@ async function handle(request: Request) {
     if (request.method === "POST") {
       // Tools receive metadata and asset IDs; media bytes use signed uploads.
       // Bound the actual stream even when Content-Length is absent or false.
-      const body = await readLimitedBody(request, 64 * 1024);
+      const body = await readLimitedBody(request, MCP_MAX_REQUEST_BYTES);
       if (request.headers.get("content-type")?.includes("application/json")) {
         try {
           mirrorToolAuth = includesToolsListRequest(JSON.parse(body));

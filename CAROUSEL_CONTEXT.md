@@ -1,5 +1,37 @@
 # Carousel System Context
 
+## 2026-10-21 Manual Explore slideshow fidelity recurrence
+
+- Manual Explore audit visually verifies latest v3 Flare batch uses the laptop
+  scene in both output positions and has no screenshot attachment. Earlier v3
+  Sunburst output has the attachment but invents its UI. Automatic Trending
+  allocation/planning/matching/rendering is unchanged by this investigation.
+- Local shared missing-screenshot preflight now scopes negation to the placement
+  action, so “use my screenshot, do not change anything else” cannot bypass
+  client/API checks before billing. This guard is not a visual-fidelity solution.
+- Proposed image-aware conversation should maintain a per-slide edit plan and
+  route precise assets/text to compositing/layers, generative scene edits to
+  isolated image requests. Chat/planner/compositor are not implemented here;
+  current one-box rewrite and v2/v3 durable retries remain the implementation.
+- 71 local regressions, build/types and isolated browser checks pass; existing
+  stored images inspected, no new paid generation or deployment. Authenticated
+  production acceptance remains pending. Evidence and design:
+  `docs/slideshow-workflow-recreation-audit-2026-10-21.md`.
+
+## 2026-10-21 Trending defaults to Structure 2
+
+- Supersedes the initial 50/50 default from 14 October: unsaved Trending
+  slideshow preferences now use 0% Helpful tips (Structure 1) and 100% Product
+  stories + CTA (Structure 2). Existing Adjust controls remain editable.
+- The shared application default is used by the preference API fallback and
+  dialog initialization. Migration `20261021131000` aligns defaults on account
+  preferences and both daily feed tables. It does not update existing rows,
+  override saved choices, or rewrite generated/reserved feed snapshots.
+- Local allocation/editor and isolated PGlite migration checks: 20 passed,
+  including all-Structure-2 Starter/Growth packs, saved-mix preservation and
+  later percentage changes. Production migration/deployment and signed-in
+  acceptance remain pending; this entry does not claim the default is live.
+
 ## 2026-10-20 Complete removal of two rejected source images
 
 - User explicitly superseded historical preservation for source assets

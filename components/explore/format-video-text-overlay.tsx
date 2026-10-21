@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatTextLayout, formatTextLineRuns, formatInlineSymbolPaths, positionFormatText, type ExploreFormatText } from "@/worker/src/lib/explore-format-edit";
+import { exploreEmojiUrl } from "@/worker/src/lib/explore-emoji";
 
 import "./explore-text-fonts.css";
 
@@ -31,8 +32,9 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
       {layout.lines.map((line, index) => {
         const y = layout.y + index * layout.lineHeight + layout.fontSize;
         const runs = formatTextLineRuns(line, text, layout);
-        return runs.some(run => run.symbol) ? <g key={index}>{runs.map((run, i) => run.symbol
+        return runs.some(run => run.symbol || run.artwork) ? <g key={index}>{runs.map((run, i) => run.symbol
           ? <svg key={i} data-format-inline-symbol={run.symbol} x={run.x} y={y - layout.fontSize} width={layout.fontSize} height={layout.fontSize} viewBox="0 0 24 24" stroke="none">{formatInlineSymbolPaths(run.symbol).map((path, j) => <path key={j} {...path} />)}</svg>
+          : run.artwork ? <image key={i} data-format-emoji={run.artwork} aria-label={run.value} href={exploreEmojiUrl(run.artwork)} x={run.x} y={y - layout.fontSize} width={layout.fontSize} height={layout.fontSize} />
           : <text key={i} x={run.x} y={y} textAnchor="start">{run.value}</text>)}</g>
           : <text key={index} x={layout.x} y={y}>{line}</text>;
       })}

@@ -1,3 +1,5 @@
+import { exploreEmojiId } from "./explore-emoji.ts";
+
 /** Shared preview/export artwork for semantic marks. Authored Unicode stays
  * unchanged; these small SVG paths cannot inherit a caption's monochrome fill. */
 export type FormatInlineSymbol = "cross" | "check" | "check-box" | "arrow-right";
@@ -14,17 +16,22 @@ export function formatInlineSymbol(value: string): FormatInlineSymbol | undefine
   return value.includes("\ufe0e") || !Object.hasOwn(symbols, key) ? undefined : symbols[key];
 }
 export function needsFormatEmojiFallback(value: string) {
-  return !value.includes("\ufe0e") && /\p{Emoji_Presentation}|\ufe0f|\u20e3/u.test(value);
+  return !value.includes("\ufe0e") && (/\p{Emoji_Presentation}|\ufe0f|\u20e3/u.test(value) || /\p{Extended_Pictographic}/u.test(value) && /\p{Cn}/u.test(value));
 }
-export type FormatInlineRun = { value: string; symbol?: FormatInlineSymbol; emoji?: true };
+export type FormatInlineRun = { value: string; symbol?: FormatInlineSymbol; emoji?: true; artwork?: string };
 export function formatInlineRuns(text: string): FormatInlineRun[] {
   const runs: FormatInlineRun[] = [];
   for (const value of formatTextGraphemes(text)) {
-    const symbol = formatInlineSymbol(value), emoji = needsFormatEmojiFallback(value), previous = runs.at(-1);
+    const symbol = formatInlineSymbol(value), artwork = symbol ? undefined : exploreEmojiId(value);
+    const emoji = !!artwork || needsFormatEmojiFallback(value), previous = runs.at(-1);
     if (!symbol && !emoji && previous && !previous.symbol && !previous.emoji) previous.value += value;
-    else runs.push({ value, ...(symbol ? { symbol } : {}), ...(emoji ? { emoji: true as const } : {}) });
+    else runs.push({ value, ...(symbol ? { symbol } : {}), ...(emoji ? { emoji: true as const } : {}), ...(artwork ? { artwork } : {}) });
   }
   return runs;
+}
+export function formatTextEmojiError(value: string) {
+  const unsupported = formatInlineRuns(value).find(run => run.emoji && !run.symbol && !run.artwork);
+  return unsupported ? `This emoji is not supported yet: ${unsupported.value}. Choose another emoji before exporting.` : null;
 }
 export function measureFormatInlineText(value: string, size: number, measure: (value: string) => number) {
   return formatInlineRuns(value).reduce((width, run) => width + (run.symbol || run.emoji ? size : measure(run.value)), 0);

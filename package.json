@@ -4,9 +4,8 @@
   "private": true,
   "scripts": {
     "test:trending-history": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/next-server-only-test-loader.mjs --test --test-concurrency=1 lib/trending/post-review-history.test.ts lib/trending/quota-review-history.test.ts lib/trending/quota-review-history-server.test.mjs lib/trending/creative-edit-history-access.test.mjs",
-
     "test:reapi-video": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/ai-studio/openrouter-video-api.test.mjs lib/ai-studio/audio-generation-api.test.mjs lib/ai-studio/reference-media-flow.test.ts lib/jobs/background-job-contract.test.ts && node --experimental-test-module-mocks --test worker/dist/lib/reapi-video.test.js worker/dist/jobs/generate-hook-video.test.js worker/dist/lib/generation-provider.test.js worker/src/jobs/generate-hook-video.reapi.test.mjs worker/src/jobs/generate-hook-video.openrouter.test.mjs worker/src/jobs/generate-hook-video.test.mjs",
-    "test:explore-text-fonts": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --test scripts/explore-text-fonts.test.mjs scripts/explore-format-edit.test.mjs scripts/explore-clip-live-controls.test.mjs scripts/format-edit-draft.test.mjs && node scripts/explore-text-fonts.browser.cjs",
+    "test:explore-text-fonts": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --test scripts/explore-emoji-render.test.mjs scripts/hook-remix-emoji-render.test.mjs scripts/explore-text-fonts.test.mjs scripts/explore-format-edit.test.mjs scripts/explore-clip-live-controls.test.mjs scripts/format-edit-draft.test.mjs && node scripts/explore-text-fonts.browser.cjs",
     "test:workflow-video-references": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=2 lib/ai-studio/video-generation-api.test.mjs lib/ai-studio/reference-media-flow.test.ts lib/explore/generation-video-reference.test.mjs scripts/explore-format-generation-ui.test.mjs scripts/explore-format-reference-upload.test.mjs worker/src/lib/gemini-omni-video.test.mjs worker/src/jobs/generate-hook-video.test.mjs worker/src/jobs/generate-hook-video.openrouter.test.mjs worker/dist/lib/video-reference-input.test.js worker/dist/jobs/generate-hook-video.test.js",
     "test:explore-reference-audio": "npm run worker:build && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=2 scripts/explore-reference-audio*.test.mjs scripts/explore-finishing-job.test.mjs scripts/explore-finishing-storage.test.mjs scripts/explore-unchanged-hook-source.test.mjs scripts/explore-format-common-editor.test.mjs scripts/explore-format-demo-state.test.mjs lib/ai-studio/video-generation-api.test.mjs worker/src/jobs/generate-hook-video.test.mjs",
     "test:trending-publishing-preferences": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/scheduling/publishing-preferences.test.mjs lib/scheduling/publishing-preferences-ui.test.mjs lib/scheduling/platform-settings.test.ts lib/trending/trending-platform-scheduling-ui.test.mjs lib/social/platform-visibility.test.mjs scripts/publishing-preferences-db.test.mjs && node scripts/trending-publishing-preferences.browser.cjs",
@@ -21,7 +20,7 @@
     "test:openrouter-video": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/ai-studio/openrouter-video-api.test.mjs lib/explore/video-generation-link.test.ts && npm run worker:build && node --experimental-test-module-mocks --test worker/dist/lib/openrouter-seedance-video.test.js worker/dist/lib/openrouter-wan-video.test.js worker/dist/jobs/generate-hook-video.test.js worker/dist/lib/generation-provider.test.js worker/dist/lib/kling-video.test.js worker/dist/lib/runway-seedance-video.test.js worker/src/jobs/generate-hook-video.openrouter.test.mjs",
     "test:trending-publishing": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/trending-platform-scheduling-ui.test.mjs lib/trending/trending-platform-scheduling.test.mjs lib/trending/reaction-scheduling-flow.test.ts lib/trending/wall-text-scheduling-contract.test.ts lib/trending/wall-text-pending-scheduling-contract.test.ts lib/trending/hook-video-scheduling.test.ts lib/scheduling/target-scheduling.test.ts lib/scheduling/render-finalization-policy.test.ts",
     "posttest:analytics": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/analytics/social-snapshot.test.mjs lib/analytics/social-snapshot-policy.test.ts lib/analytics/publish-date-chart.test.ts lib/social/tiktok-beta-access.test.ts lib/social/youtube-beta-access.test.ts lib/social/tiktok-direct-post-audit.test.ts lib/social/general-availability.test.mjs",
-    "test:analytics-loading": "npm run test:analytics && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/analytics/routes.test.mjs lib/analytics/publishing-activity.test.mjs lib/social/connection-loading.test.mjs lib/social/connection-cache-events.test.mjs lib/jobs/async-process-migration-contract.test.ts lib/scheduling/scheduling-database-contract.test.ts lib/auth/account-isolation-contract.test.ts lib/social/oauth-reconnect-policy.test.ts scripts/analytics-snapshots-db.test.mjs && npm run worker:build && node --test worker/dist/jobs/sync-analytics.test.js",
+    "test:analytics-loading": "npm run test:analytics && node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/analytics/routes.test.mjs lib/analytics/publishing-activity.test.mjs lib/social/connection-loading.test.mjs lib/social/connection-cache-events.test.mjs lib/jobs/async-process-migration-contract.test.ts lib/scheduling/scheduling-database-contract.test.ts lib/auth/account-isolation-contract.test.ts lib/social/oauth-reconnect-policy.test.ts scripts/analytics-snapshots-db.test.mjs scripts/check-analytics-storage.test.mjs && npm run worker:build && node --test worker/dist/jobs/sync-analytics.test.js",
     "test:analytics-loading:browser": "node scripts/analytics-loading.browser.cjs",
     "test:wall-text:behavior": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/wall-text-generation-behavior.test.mjs lib/trending/wall-text-grounding-persistence.test.mjs lib/trending/wall-text-publication-db-behavior.test.mjs lib/trending/wall-text-reading-budget-behavior.test.mjs",
     "posttest:wall-text": "npm run test:wall-text:behavior && npm run test:wall-text:conditions && npm run test:wall-text:manual",
@@ -33,6 +32,7 @@
     "test:trending-revisit-preview": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/wall-text-preview-revisit.test.mjs",
     "test:trending-slide-images": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/carousel-slide-images.test.mjs lib/trending/carousel-slide-image-upload.test.mjs",
     "test:trending-edit-latency": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/trending/carousel-slide-images.test.mjs lib/trending/carousel-slide-image-upload.test.mjs lib/trending/carousel-edit-refresh.test.ts lib/trending/carousel-edit-render-status.test.ts lib/trending/carousel-edit-database-reads.test.mjs lib/trending/carousel-edit-status-route.test.mjs lib/trending/carousel-edit-library-readiness.test.mjs lib/trending/creative-edit-history-access.test.mjs lib/scheduling/render-finalization-policy.test.ts && npm run worker:build && node --test --test-concurrency=1 worker/dist/processor.test.js worker/dist/jobs/render-trending-carousel-edit.test.js worker/dist/lib/supabase-job-stage.test.js && node scripts/trending-slide-upload.browser.cjs",
+    "prebuild": "node scripts/check-hook-frame-runtime.mjs",
     "build": "next build",
     "test:onboarding-background": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/onboarding-background-db.test.mjs lib/business-profiles/onboarding-rollout.test.ts",
     "test:onboarding-concurrency": "node --test scripts/onboarding-background-concurrency.test.mjs",
@@ -172,15 +172,15 @@
     "test:image-generation": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/ai-studio/image-generation-api.test.mjs lib/ai-studio/generation-settings.test.ts lib/characters/generation.test.mjs && npm run worker:build && node --test worker/dist/lib/openrouter-seedream-image.test.js worker/dist/lib/seedream-image.test.js worker/dist/lib/gemini-image.test.js worker/dist/lib/generation-provider.test.js worker/dist/lib/runway-credit-budget.test.js worker/dist/lib/image-output.test.js worker/dist/lib/provider-env.test.js && node --experimental-test-module-mocks --test worker/src/jobs/generate-image.test.mjs worker/src/jobs/generate-character-image.test.mjs",
     "production:create-content-render:canary": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/test-production-create-content-render-canary.mjs",
     "higgsfield:example": "node --env-file=.env.local --experimental-strip-types index.ts",
-    "test:scheduling-ui": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/scheduling/schedule-refresh-policy.test.ts lib/scheduling/schedule-workspace-status.test.mjs lib/scheduling/scheduling-database-contract.test.ts lib/scheduling/schedule-action-policy.test.ts lib/scheduling/published-post-link.test.ts lib/auth/account-isolation-contract.test.ts lib/scheduling/secondary-clip-media.test.ts scripts/schedule-editor-inline.test.mjs",
-    "test:trending-history": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/next-server-only-test-loader.mjs --test --test-concurrency=1 lib/trending/post-review-history.test.ts lib/trending/quota-review-history.test.ts lib/trending/quota-review-history-server.test.mjs lib/trending/creative-edit-history-access.test.mjs"
+    "test:scheduling-ui": "node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/scheduling/schedule-refresh-policy.test.ts lib/scheduling/schedule-workspace-status.test.mjs lib/scheduling/scheduling-database-contract.test.ts lib/scheduling/schedule-action-policy.test.ts lib/scheduling/published-post-link.test.ts lib/auth/account-isolation-contract.test.ts lib/scheduling/secondary-clip-media.test.ts scripts/schedule-editor-inline.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource/inter": "^5.2.8",
     "@google-cloud/storage": "8.2.0",
     "@google/genai": "^2.10.0",
-    "@modelcontextprotocol/server": "2.1.0",
+    "@higgsfield/client": "^0.2.6",
+    "@modelcontextprotocol/server": "2.3.1",
     "@runwayml/sdk": "4.20.1",
     "@supabase/supabase-js": "^2.108.2",
     "@tanstack/react-query": "^5.101.4",
@@ -202,8 +202,7 @@
     "sharp": "0.35.5",
     "tailwind-merge": "^3.6.0",
     "tw-animate-css": "^1.4.0",
-    "zod": "^4.4.3",
-    "@higgsfield/client": "^0.2.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
@@ -225,7 +224,7 @@
     "gaxios": {
       "uuid": "11.1.1"
     },
-    "@modelcontextprotocol/sdk": "1.31.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@grpc/grpc-js": "1.13.6",
     "proxy-addr": "2.0.8",
     "source-map-js": "1.2.2"

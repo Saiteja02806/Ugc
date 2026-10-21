@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
-const migration = await readFile(new URL("../supabase/migrations/20261020054237_analytics_account_snapshots.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/migrations/20261020181748_analytics_account_snapshots.sql", import.meta.url), "utf8");
 const id = "00000000-0000-4000-8000-000000000001";
 const ready = (views = 0) => ({ connectionId: id, status: "ready", lastSyncedAt: "2026-10-20T01:00:00Z", videos: [], metrics: { views } });
 const failed = { connectionId: id, status: "error", lastSyncedAt: null, message: "Provider unavailable" };

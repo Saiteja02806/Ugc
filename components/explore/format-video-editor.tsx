@@ -26,7 +26,7 @@ import { formatVideoFromAsset, type FormatVideoSource } from "@/lib/explore/form
 import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-contract";
-import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
+import { formatTextEmojiError, formatTextLayout, formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { prepareFormatEditForExport, readFormatEditDraft } from "@/lib/explore/format-edit-draft";
 import { fullDurationWallText } from "@/lib/explore/wall-text-editor";
 import { fullDurationSingleHookText } from "@/lib/explore/hook-text-timing";
@@ -167,6 +167,7 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   try { parseExploreFormatEdit(exportEditing); } catch (error) { validation = error instanceof Error ? error.message : "Review your edits."; }
   if (editing.trimEndMs > duration * 1000 + 50) validation = "Keep the trim range inside this video.";
   if (textLayouts.some(layout => !layout.fits)) validation = "Your text does not fit. Reduce its size or move it higher.";
+  validation ??= overlays.map(text => formatTextEmojiError(text.value)).find(Boolean) ?? null;
   if (format === "wall_text" && !overlays.some(text => text.value.trim())) validation = "Add your wall of text before saving.";
   const restore = useCallback((draft: ExploreFinishDraft) => {
     if (localDraftExists.current || !draft.editing || draft.editing.format !== format || draft.sourceAssetId !== video.mediaAssetId) return;

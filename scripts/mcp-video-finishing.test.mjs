@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as inlineSymbols from "../worker/src/lib/explore-inline-symbols.ts";
 import { z } from "zod";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "../lib/mcp/read-tools.ts";
 
@@ -16,7 +17,7 @@ function load(file, imports = {}, globals = {}) {
 }
 const fontMetrics = JSON.parse(readFileSync(new URL("../worker/src/lib/explore-text-font-metrics.json", import.meta.url), "utf8"));
 const fonts = load("worker/src/lib/explore-text-fonts.ts", { "./explore-text-font-metrics.json": fontMetrics });
-const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": load("worker/src/lib/explore-inline-symbols.ts"),
+const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": inlineSymbols,
 
   "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"),
   "./explore-text-fonts.ts": fonts,

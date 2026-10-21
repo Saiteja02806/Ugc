@@ -1,0 +1,3 @@
+Emoji artwork: Twemoji, by Twitter, Inc. and other contributors. https://github.com/jdecked/twemoji/tree/b6b55fef1e8636b540a6d016a4729ca8cdf2e60b
+Licensed CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Artwork is bundled unchanged in a compressed lookup file; variation-selector aliases are normalized for lookup only. Original caption Unicode is preserved.

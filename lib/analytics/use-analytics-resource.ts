@@ -53,9 +53,12 @@ export function useAnalyticsResource<T>(params: {
   useEffect(() => {
     if (previousRequest.current === refreshRequest) return;
     previousRequest.current = refreshRequest;
+    // Refresh must also retry a failed initial GET. Without snapshot data the
+    // POST is disabled, so incrementing its counter alone cannot recover.
+    if (active) void client.invalidateQueries({ queryKey: key, exact: true });
     // Commit the request event before changing the external query observer.
     setManual({ request: refreshRequest, scope: active ? scope : null });
-  }, [refreshRequest, active, scope]);
+  }, [refreshRequest, active, scope, client, key]);
   const force = manual.request === refreshRequest && manual.scope === scope;
   const snapshot = useQuery({
     queryKey: key, enabled: active, staleTime: params.staleTime, gcTime: 30 * 60_000,

@@ -1,6 +1,6 @@
 # Social analytics loading and caching
 
-Implemented locally on 20 October 2026. Production rollout and authenticated production acceptance are outstanding. See [the investigation](analytics-loading-investigation-2026-10-20.md) for the original evidence.
+Implemented on 20 October 2026. The production web deployment is now `094e586455c2b686f6ee543c8e692d6fb88d6229`. Its required database migration was missing until the production repair at 18:17:48 UTC on 20 October; see [the empty-data incident](analytics-empty-data-repair-2026-10-20.md). Authenticated browser acceptance remains outstanding. See [the original investigation](analytics-loading-investigation-2026-10-20.md) for the loading evidence.
 
 - Connected accounts have their own observed, owner-scoped query. Accounts render independently of insights, content, activity and refresh dispatch. Loading/error lists are distinct from confirmed empty lists.
 - `listSocialConnections` reads stored rows only. The connections API queues stale Instagram profile renewal with Next.js `after`, through a durable `connection_profiles` job. Profiles have an eight-second request deadline, 24-hour freshness and 15-minute failure backoff. Concurrent credential changes prevent old profile lookups from overwriting new connections.
@@ -29,9 +29,9 @@ Local verification on 20 October 2026: `test:analytics-loading` passed 180 check
 
 ## Rollout order
 
-1. Apply `supabase/migrations/20261020054237_analytics_account_snapshots.sql`. The new web code requires its table/function and reports a storage error if they are missing.
+1. Apply `supabase/migrations/20261020181748_analytics_account_snapshots.sql` before releasing dependent web code. Applied in production on 20 October 2026; the local filename matches the actual remote migration ledger version. The web code requires its table/function and reports a storage error if they are missing. Run `node --env-file=.env.local scripts/check-analytics-storage.mjs kltxwijhluawgveykfbt` with the intended environment to verify both through the service API before release. This check does not change account data.
 2. Deploy the compatible worker accepting `connection_profiles`. No new profile jobs are emitted until the updated web application is live.
 3. Deploy the updated web application, including its internal analytics handler. Avoid mixing an old internal handler with new refresh requests: the old handler does not write the new snapshots or enforce revisions. If releases cannot be coordinated, stage the compatible internal handler before enabling the new browser/read path.
 4. Verify an authenticated account at `https://www.getugcpilot.com`: warm navigation, hard reload, first sync, queue/provider failure, every platform, ranges, reconnect/disconnect, another tab, hidden-tab resume and owner switch. Measure account/snapshot display and queue wait separately before tuning infrastructure.
 
-No production migration, worker release or web deployment was performed by this implementation task.
+The original implementation task did not deploy. The follow-up repair applied the missing production migration and verified database/API/application snapshot reads. A separate local fix makes Refresh retry an initially failed snapshot GET; that browser code still needs release. No web or worker deployment was performed by the repair task.

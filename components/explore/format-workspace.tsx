@@ -47,9 +47,11 @@ import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import { filterReferences, interleaveReferenceCategories, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
 import { alignReferenceLimit, referenceBatchSize } from "@/lib/explore/reference-pagination";
 import { cn } from "@/lib/utils";
+import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 
 const ImagePanel = dynamic(() => import("@/components/workspace/ugc-chat-workspace").then(module => module.ImageGenerationStudioPanel));
 const VideoPanel = dynamic(() => import("@/components/video/video-generation-workspace").then(module => module.VideoGenerationStudioPanel));
+const HookStartingFrameWorkspace = dynamic(() => import("@/components/explore/hook-starting-frame-workspace").then(module => module.HookStartingFrameWorkspace));
 const FormatVideoEditor = dynamic(() => import("@/components/explore/format-video-editor").then(module => module.FormatVideoEditor));
 const FormatSlideshowEditor = dynamic(() => import("@/components/explore/format-slideshow-editor").then(module => module.FormatSlideshowEditor));
 const WallSchedulePreview = dynamic(() => import("@/components/explore/wall-schedule-preview").then(module => module.WallSchedulePreview));
@@ -58,6 +60,8 @@ const TITLES = { hook: "Hook video", wall_text: "Wall of text", slideshow: "Slid
 type SavedOutput = { id: string; kind: "media_asset" | "library_item"; url: string; title: string; slides?: string[] };
 
 type FormatWorkspaceProps = {
+  /** Free preparation preview only. Paid image/video admission is not enabled. */
+  hookStartingFramePreparationEnabled?: boolean;
   format: RecreateFormat; previewReferences?: RecreateReference[]; finishingEnabled?: boolean; slideshowSavingEnabled?: boolean; previewVideo?: AIStudioVideoResult; previewAssets?: MediaAsset[];
   previewText?: ReferenceText | null;
   /** Development fixture only; never replaces a production workflow control. */
@@ -71,7 +75,7 @@ export function FormatWorkspace(props: FormatWorkspaceProps) {
   const { user } = useAuth();
   return <OwnedFormatWorkspace key={user?.uid ?? "signed-out"} {...props} />;
 }
-function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = false, slideshowSavingEnabled = false, previewVideo, previewAssets, previewSlideshow, previewText, previewFinalVideo, previewFinalSlideshow, previewContextBanner }: FormatWorkspaceProps) {
+function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = false, slideshowSavingEnabled = false, hookStartingFramePreparationEnabled = false, previewVideo, previewAssets, previewSlideshow, previewText, previewFinalVideo, previewFinalSlideshow, previewContextBanner }: FormatWorkspaceProps) {
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const localPreview = previewReferences !== undefined;
@@ -150,6 +154,12 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const [slideshowRegenerationImage, setSlideshowRegenerationImage] = useState<AIStudioImageResult | null>(null);
 
   const [referenceSelectionRevision, setReferenceSelectionRevision] = useState(0);
+  const [startingFrame, setStartingFrame] = useState<HookStartingFrameSelection | null>(null);
+  const [hookPreparation, setHookPreparation] = useState<{ referenceId: string; draftId: string } | null>(() => {
+    const id = searchParams.get("hookFrameDraft"), referenceId = searchParams.get("refId");
+    return hookStartingFramePreparationEnabled && format === "hook" && searchParams.get("hookRecreation") === "starting_image" &&
+      isExploreUuid(id) && referenceId ? { referenceId, draftId: id! } : null;
+  });
   const reportBusy = useCallback((busy: boolean) => setGenerating(busy), []);
   const [previewReference, setPreviewReference] = useState<RecreateReference | null>(null);
   const [previewSlide, setPreviewSlide] = useState(0);
@@ -366,7 +376,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
 
   function selectReference(next: RecreateReference, fromUpload = false) {
     if (generating || source.busy || slideshowSaving || slideshowUploadBusy && !fromUpload) return;
-    setSlideshowRegenerationImage(null); slideshowEditor.current?.startNewSlide();
+    setStartingFrame(null); setSlideshowRegenerationImage(null); slideshowEditor.current?.startNewSlide();
     setReference(next); setSlideIndex(0); setSlideSelection(null);
     setReferenceSelectionRevision(value => value + 1);
     setStep("create"); setView("references"); setEditExpanded(false); setShowGenerationResults(false);
@@ -379,6 +389,12 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     }
     revealOnMobile("controls");
     const params = new URLSearchParams(window.location.search);
+    if (format === "hook" && hookStartingFramePreparationEnabled && !localPreview) {
+      const previousId = params.get("hookFrameDraft");
+      const draftId = params.get("refId") === next.id && isExploreUuid(previousId) ? previousId! : crypto.randomUUID();
+      setHookPreparation({ referenceId: next.id, draftId });
+      params.set("hookFrameDraft", draftId); params.set("hookRecreation", "starting_image");
+    }
     for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate", "slide"]) params.delete(key);
     params.set("refId", next.id);
     if (format !== "slideshow") {
@@ -407,9 +423,23 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
 
   function clearStyleReference() {
     if (generating) return;
-    setReference(null); setSlideSelection(null);
+    setReference(null); setSlideSelection(null); setHookPreparation(null); setStartingFrame(null);
     const params = new URLSearchParams(window.location.search);
-    for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate", "slide"]) params.delete(key);
+    for (const key of ["refType", "refId", "sourceUrl", "exploreRecreate", "slide", "hookFrameDraft", "hookRecreation"]) params.delete(key);
+    window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
+  }
+  function closeHookPreparation() {
+    setHookPreparation(null);
+    const params = new URLSearchParams(window.location.search); params.delete("hookRecreation");
+    window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
+  }
+  function useHookStartingFrame(selection: HookStartingFrameSelection) {
+    if (generating || !hookStartingFramePreparationEnabled || format !== "hook" || selection.ownerId !== user?.uid ||
+      hookPreparation?.draftId !== selection.draftId || reference?.id !== selection.referenceId) return;
+    setStartingFrame(selection); setHookPreparation(null); source.setMode("generate");
+    setStep("create"); setView("references"); revealOnMobile("controls");
+    const params = new URLSearchParams(window.location.search);
+    for (const name of ["sourceUrl", "refType", "exploreRecreate", "hookRecreation"]) params.delete(name);
     window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
   }
   function regenerateSlide(_index: number, image?: AIStudioImageResult) {
@@ -419,12 +449,14 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   }
   const contextBanner = format !== "slideshow" ? undefined : <SlideshowReferencePicker reference={reference} slideIndex={activeSlideIndex} selectedSlideIds={selectedSlideIds} disabled={generating} localPreview={localPreview} onPreview={() => { setPreviewSlide(activeSlideIndex); setPreviewReference(reference); }} onRemove={clearStyleReference} onSelectionChange={selectSlideContext} onBusy={setSlideshowUploadBusy} onUpload={next => { selectReference(next, true); setStep("create"); }} />;
   const recreateView = {
-    contextBanner: localPreview && previewContextBanner && reference?.pairedAudio ? <div data-music-layout-review>{previewContextBanner}</div> : format !== "slideshow" && reference?.pairedAudio ? <p className="text-xs leading-5 text-muted">Reference audio: {reference.pairedAudio.title}. It will play across your entire video, including the demo.</p> : contextBanner,
+    contextBanner: localPreview && previewContextBanner && reference?.pairedAudio ? <div data-music-layout-review>{previewContextBanner}</div> : contextBanner,
     referenceImageUrl: format === "slideshow" && !slideshowUploadBusy ? sourceImage : undefined,
     referenceImageUrls: format === "slideshow" && !slideshowUploadBusy ? sourceImages : undefined,
     slideshowSlideCount: format === "slideshow" && !slideshowRegenerationImage && sourceImages.length ? sourceImages.length : undefined,
     referenceImageAssetId: format === "slideshow" ? slideshowRegenerationImage?.mediaAssetId ?? slideshowRegenerationImage?.id : undefined,
-    styleVideo: format !== "slideshow" && reference?.videoUrl ? { id: reference.id, selectionRevision: referenceSelectionRevision, url: reference.videoUrl, name: reference.title, duration: reference.durationSeconds ?? null, generationPrompt: reference.generationPrompt } : undefined,
+    styleVideo: !startingFrame && format !== "slideshow" && reference?.videoUrl ? { id: reference.id, selectionRevision: referenceSelectionRevision, url: reference.videoUrl, name: reference.title, duration: reference.durationSeconds ?? null, generationPrompt: reference.generationPrompt } : undefined,
+    startingFrame: format === "hook" ? startingFrame ?? undefined : undefined,
+    onClearStartingFrame: clearStyleReference,
     referenceTitle: reference?.title, onClearReference: clearStyleReference, preview: localPreview,
     emptyContent: <div className={styles.emptyResult}><span className={styles.emptyIcon}>{format === "slideshow" ? <Images aria-hidden="true" /> : <Film aria-hidden="true" />}</span><h2 className="text-lg font-semibold">{format === "slideshow" ? "Your images will appear here" : "Your video will appear here"}</h2><p className="max-w-sm text-sm leading-6 text-muted">{format === "slideshow" ? "Choose a reference and describe your changes in Create." : "Add your instructions in Create. You can use a style example or attach your own image or video."} Your generation will appear here, ready to edit.</p><Button type="button" variant="outline" onClick={browseReferences}>Browse references</Button></div>,
     workflow: { format, controlsTarget, controlsActive: step === "create" && (format === "slideshow" || source.mode === "generate"), resultsTarget, actionsTarget: createActionsTarget, onBusyChange: reportBusy,
@@ -481,7 +513,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
       <div ref={mainArea} id={`${workflowControlsId}-preview`} role="region" aria-label="Workflow preview" className={classic ? cn(creation.main, styles.classicMain, presentation.preview) : styles.main}>
         <nav hidden={step !== "create" || editExpanded} className={styles.resultTabs} aria-label="Creation views">{(["references", "results"] as const).map(value => <button key={value} type="button" aria-pressed={view === value} onClick={() => { setEditExpanded(false); setShowGenerationResults(false); setView(value); }} className={cn(styles.resultTab, view === value && styles.active)}>{value === "references" ? "References" : resultLabel}</button>)}</nav>
         {format === "hook" ? <section hidden={!clipStageVisible} className={cn(styles.results, styles.clipStage)} data-editing={editExpanded} aria-label="Clip previews and editor">
-          <header className={styles.clipStageHeader}><div><h2 className="text-base font-semibold">{editExpanded ? `Edit ${editTarget === "demo" ? "demo video" : "hook video"}` : "Your videos"}</h2><p className={editExpanded ? "sr-only" : "mt-1 text-xs leading-5 text-muted"}>{editExpanded ? "Changes apply to this clip only." : "Preview and edit each clip before combining them."}</p></div>{!editExpanded && step === "create" && source.mode === "generate" ? <Button type="button" variant="outline" onClick={() => setShowGenerationResults(true)}>Generated videos</Button> : null}<div ref={setClipActionsTarget} hidden={!editExpanded} className={styles.clipActions} aria-label="Clip edit action" /></header>
+          <header className={styles.clipStageHeader}><div><h2 className="text-base font-semibold">{editExpanded ? `Edit ${editTarget === "demo" ? "demo video" : "hook video"}` : "Your videos"}</h2><p className={editExpanded ? "sr-only" : "mt-1 text-xs leading-5 text-muted"}>{editExpanded ? "Changes apply to this clip only." : "Preview and edit each clip before combining them."}</p></div><div hidden={editExpanded} className={styles.clipStageActions}>{step === "create" && source.mode === "generate" ? <Button type="button" variant="outline" onClick={() => setShowGenerationResults(true)}>Generated videos</Button> : null}<div ref={setOverviewScheduleTarget} className="contents [&>button]:w-auto" /></div><div ref={setClipActionsTarget} hidden={!editExpanded} className={styles.clipActions} aria-label="Clip edit action" /></header>
           <div className={styles.clipScrollArea} tabIndex={0} role="region" aria-label="Clip preview and editing controls">
           <div className={styles.clipEditorBody} data-editing={editExpanded}>
             <div className={styles.clipPreviews} data-has-demo={demoSelected} data-has-clips={Boolean(selectedVideo || demoSelected)}>
@@ -501,7 +533,6 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
             <div ref={setEditControlsTarget} tabIndex={-1} className={cn(styles.editControls, styles.clipTools)} hidden={!editExpanded} aria-label="Selected clip editing tools" />
           </div>
           </div>
-          <div ref={setOverviewScheduleTarget} hidden={editExpanded} className="flex flex-none justify-end border-t border-border pt-4 [&>button]:w-full sm:[&>button]:w-auto" aria-label="Video scheduling" />
         </section> : <div ref={setEditResultsTarget} hidden={!(step === "edit" || slideshowOverviewVisible) || format === "wall_text" && !selectedVideo} className={cn(styles.results, styles.savedPreview)} />}
         {format === "wall_text" && step === "edit" && !selectedVideo ? (
           <section aria-label="Wall of text edit setup" className={styles.emptyResult}>
@@ -532,6 +563,8 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     <Suspense fallback={null}><div className="contents">
     {controlsTarget && resultsTarget ? format === "slideshow" ? <ImagePanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditCost={subscription.data?.imageGenerationCreditCost ?? 1} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : <VideoPanel active accessState={accessState} accessMessage={localPreview ? "Preview · generation disabled" : getAIStudioAccessMessage(accessState)} creditsPerSecond={subscription.data?.videoGenerationCreditsPerSecond} creditsRemaining={subscription.data?.creditsRemaining ?? null} recreateView={recreateView} /> : null}
     </div></Suspense>
+    {hookStartingFramePreparationEnabled && format === "hook" && hookPreparation && reference?.id === hookPreparation.referenceId ?
+      <HookStartingFrameWorkspace key={`${user?.uid}:${hookPreparation.draftId}:${reference.id}`} reference={reference} ownerId={user?.uid ?? null} draftId={hookPreparation.draftId} onClose={closeHookPreparation} onUseStartingFrame={useHookStartingFrame} /> : null}
     {format !== "slideshow" && selectedVideo ? <FormatVideoEditor key={`${user?.uid}:${selectedVideo.id}`} format={format} fullDurationHookText={format === "hook"} showSoundControls={format !== "hook"} prepareInSequence={format === "hook"} video={selectedVideo} remixReference={clipReference} remixReferences={references} previewText={previewText} localPreview={localPreview} active={format === "wall_text" ? step === "edit" : (clipStageVisible && (!editExpanded || editTarget === "opening"))} editingActive={format === "wall_text" ? step === "edit" : (editExpanded && editTarget === "opening")} onEdit={() => openClipEditor("opening")} previewActions={changeOpeningAction} controlsTarget={editControlsTarget} actionsTarget={format === "wall_text" ? editActionsTarget : clipActionsTarget} resultsTarget={editResultsTarget} enabled={finishingEnabled && !localPreview} pendingSource={source.busy} prepareRequest={backgroundScheduling ? 0 : scheduleRequest} onClipStateChange={reportOpeningClip} onPreparationChange={reportOpeningPreparation} onPreviewChange={reportOpeningPreview} backLabel={format === "wall_text" ? "Back to Create" : "Back to videos"} onBackToPreview={format === "wall_text" ? chooseOpeningInCreate : showClipPreviews} onDirty={markDirty} onSaved={acceptOpening} onContinue={format === "wall_text" ? requestSchedule : () => { setEditExpanded(false); setStep("demo"); }} continueLabel={format === "wall_text" ? "Schedule video" : "Back to videos"} /> : null}
     {format === "hook" ? <FormatDemoSection key={`demo:${user?.uid}:${format}:${contentDemoId ?? "workflow"}`} contentDemoId={contentDemoId} format={format} videoId={selectedVideo?.mediaAssetId ?? selectedVideo?.id ?? (isExploreUuid(editVideoId) ? editVideoId : null)} opening={openingOutput} openingRevision={openingRevision} finalVideo={localPreview && previewFinalVideo ? { ...previewFinalVideo, kind: "media_asset" } : scheduleOutput?.kind === "media_asset" ? { ...scheduleOutput, kind: "media_asset" } : null} active={step === "demo"} scheduleActive={step === "schedule"} scheduleResultsTarget={scheduleResultsTarget} prepareRequest={backgroundScheduling ? 0 : scheduleRequest} backgroundScheduling={backgroundScheduling} openingClipState={openingClipState} onPendingCompositionChange={reportPendingComposition} openingPreparation={openingPreparation} openingPreview={openingPreview?.segment.id === (selectedVideo?.mediaAssetId ?? selectedVideo?.id) ? openingPreview : null} sourcePreview={selectedVideo ? { name: selectedVideo.title, url: selectedVideo.url, duration: selectedVideo.durationSeconds } : importedPreview} editActive={clipStageVisible && editExpanded && editTarget === "demo"} editPreviewActive={clipStageVisible && (!editExpanded || editTarget === "demo")} editControlsTarget={editControlsTarget} editActionsTarget={clipActionsTarget} editResultsTarget={demoEditResultsTarget} onEdit={() => openClipEditor("demo")} onEditDone={applyDemoEdits} enabled={finishingEnabled && !localPreview} pendingSource={source.busy} controlsTarget={demoControlsTarget} actionsTarget={demoActionsTarget} resultsTarget={demoResultsTarget} onDirty={markDemoDirty} localPreview={localPreview} onSelectionChange={reportDemoSelection} onFinalRequiredChange={setFinalPassRequired} onSaved={acceptOutput} onSkip={() => { setDemoSelected(false); setSavedOutput(openingOutput); setEditExpanded(false); setStep("schedule"); }} onContinue={requestSchedule} overviewScheduleTarget={overviewScheduleTarget} previewAssets={localPreview ? previewAssets : undefined} /> : null}
     {format === "slideshow" ? <FormatSlideshowEditor libraryItemId={searchParams.get("slideshowId")} key={`${user?.uid}:slideshow`} reference={reference} legacyReferences={references} previewText={previewText} previewImages={localPreview && reference?.id === previewSlideshow?.referenceId ? previewSlideshow?.images : undefined} controllerRef={slideshowEditor} slideIndex={activeSlideIndex} active={step === "edit"} previewActive={step === "edit" || slideshowOverviewVisible} previewActions={slideshowOverviewVisible ? <Button type="button" variant="outline" onClick={() => setShowGenerationResults(true)}>Generated slides</Button> : null} onEdit={() => { setStep("edit"); revealOnMobile("controls"); }} generationBusy={generating} controlsTarget={editControlsTarget} actionsTarget={editActionsTarget} resultsTarget={editResultsTarget} localPreview={localPreview} savingEnabled={slideshowSavingEnabled} onDirty={markDirty} onSaved={acceptOutput} onContinue={() => { setStep("schedule"); revealOnMobile("controls"); }} onRegenerate={regenerateSlide} onBusyChange={reportSlideshowBusy} onBackToPreview={() => { setShowGenerationResults(false); setStep("create"); setView("results"); revealOnMobile("preview"); }} onGoToCreate={() => { setSlideshowRegenerationImage(null); setStep("create"); revealOnMobile("controls"); }} /> : null}

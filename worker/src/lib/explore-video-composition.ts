@@ -8,7 +8,9 @@ import { record, SubtitleError } from "../subtitles/contracts.js";
 import { runMediaCommand } from "../subtitles/media.js";
 import { EXPLORE_BACKGROUND_AUDIO_MAX_BYTES, EXPLORE_BACKGROUND_AUDIO_MAX_DURATION_MS, planExploreBackgroundAudio, type ExploreBackgroundPlayback } from "./explore-background-audio.js";
 import { demoFramingExpression, parseDemoFraming, type DemoFraming } from "./explore-finishing-contract.js";
-import { parseExploreFormatEdit, type ExploreFormatEdit } from "./explore-format-edit.js";
+import { formatTextOverlays, parseExploreFormatEdit, type ExploreFormatEdit } from "./explore-format-edit.js";
+import { formatInlineRuns } from "./explore-inline-symbols.js";
+import { EXPLORE_EMOJI_ATTRIBUTION } from "./explore-emoji.js";
 import { prepareExploreFormatEditFilter } from "./explore-format-render.js";
 
 type CompositionTools = { ffmpeg: string; ffprobe: string };
@@ -217,6 +219,8 @@ export async function composeExploreVideo(options: {
   audioOnly?: boolean;
   /** Internal modern export: ASS/fonts live in the sibling subtitles directory. */
   burnSubtitles?: boolean;
+  /** Internal attribution survives independent clip preparation and assembly. */
+  emojiArtworkAttribution?: boolean;
   signal?: AbortSignal;
 }, formatEdit?: { editing: ExploreFormatEdit; fontsDir: string }) {
   options.signal?.throwIfAborted();
@@ -295,7 +299,8 @@ export async function composeExploreVideo(options: {
   } else args.push("-filter_complex", filter);
   if (options.audioOnly) args.push("-map", "[audio]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
   else args.push("-map", formatFilter ? "[v]" : "[video]", "-map", formatFilter ? "[a]" : "[audio]", "-t", String(targetDurationMs / 1000),
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", options.burnSubtitles ? "20" : "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", "composed.mp4");
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", options.burnSubtitles ? "20" : "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-movflags", "+faststart",
+    ...(options.emojiArtworkAttribution || editing && formatTextOverlays(editing).some(text => formatInlineRuns(text.value).some(run => run.artwork)) ? ["-metadata", `comment=${EXPLORE_EMOJI_ATTRIBUTION}`] : []), "composed.mp4");
   if (options.subtitleScope && !options.audioOnly && !options.burnSubtitles) args.push("-map", "[speech]", "-vn", "-t", String(measuredDurationMs / 1000), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "speech.wav");
   const rendered = await runMediaCommand(options.tools.ffmpeg, args, { cwd: workDir, signal: options.signal, timeoutMs: 180_000 });
   if (options.burnSubtitles && /Glyph.*not found|failed to find.*glyph|fontselect: failed/iu.test(rendered.stderr)) throw new SubtitleError("FONT_UNAVAILABLE", "The selected fonts cannot render this transcript language.");

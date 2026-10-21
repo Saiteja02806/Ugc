@@ -16,12 +16,15 @@ type ReapiVideoInput = {
   aspectRatio: "9:16" | "16:9";
   durationSeconds: number;
   resolution: "480p" | "720p" | "1080p";
+  startingFrameImageUrl?: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
   referenceAudioUrls?: string[];
   referenceAudioDurationSeconds?: number[];
   referenceVideoUrl?: string;
   referenceVideoDurationSeconds?: number;
+  referenceVideoMode?: "edit";
+  generateAudio?: boolean;
 };
 type ReapiOperation = {
   providerOperationId?: string;
@@ -34,16 +37,30 @@ type ReapiOptions = { apiKey?: string; fetchImpl?: typeof fetch; pollIntervalMs?
 /** New requests only. Legacy provider adapters and fingerprints stay frozen. */
 export function buildReapiVideoRequest(input: ReapiVideoInput) {
   const seedance = input.model === "seedance_2_5";
+  const startingFrame = input.startingFrameImageUrl !== undefined;
+  const editing = input.referenceVideoMode === "edit";
+  // https://reapi.ai/docs/seedance-2-5: timed references turn frame roles
+  // into general references. This path must contain exactly one first frame.
+  if (startingFrame && (!seedance || !isHttpsUrl(input.startingFrameImageUrl!) ||
+    input.referenceImageUrl !== undefined || (input.referenceImageUrls?.length ?? 0) > 0 ||
+    (input.referenceAudioUrls?.length ?? 0) > 0 || (input.referenceAudioDurationSeconds?.length ?? 0) > 0 ||
+    input.referenceVideoUrl !== undefined || input.referenceVideoDurationSeconds !== undefined || input.referenceVideoMode !== undefined)) {
+    throw new ProviderRequestNotSubmittedError("Starting-frame animation requires Seedance 2.5 and one HTTPS starting image without other image, video or audio references.");
+  }
+  if (input.referenceVideoMode !== undefined && (!editing || !seedance || !input.referenceVideoUrl)) {
+    throw new ProviderRequestNotSubmittedError("Source editing on ReAPI requires Seedance 2.5 and a source video.");
+  }
   if (!seedance && input.model !== "wan_3_0") throw new ProviderRequestNotSubmittedError("Choose Seedance 2.5 or WAN 3.0 for this generation route.");
   const minDuration = seedance ? 4 : 2;
-  if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < minDuration || input.durationSeconds > 30) {
-    throw new ProviderRequestNotSubmittedError(`Choose a whole-number output duration from ${minDuration} to 30 seconds.`);
+  if (!Number.isInteger(input.durationSeconds) || input.durationSeconds < minDuration || input.durationSeconds > (startingFrame ? 15 : 30)) {
+    throw new ProviderRequestNotSubmittedError(`Choose a whole-number output duration from ${minDuration} to ${startingFrame ? 15 : 30} seconds.`);
   }
   if (!(seedance ? ["480p", "720p"] : ["480p", "720p", "1080p"]).includes(input.resolution) ||
       !["9:16", "16:9"].includes(input.aspectRatio)) {
     throw new ProviderRequestNotSubmittedError("Choose a supported video quality and aspect ratio.");
   }
   const prompt = input.prompt.trim();
+  if (input.generateAudio !== undefined && typeof input.generateAudio !== "boolean") throw new ProviderRequestNotSubmittedError("Choose a valid sound setting.");
   if (!prompt || prompt.length > 10_000) throw new ProviderRequestNotSubmittedError("Add a video prompt of 1–10000 characters.");
   const images = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
   const audio = input.referenceAudioUrls ?? [];
@@ -56,6 +73,9 @@ export function buildReapiVideoRequest(input: ReapiVideoInput) {
   }
   const minReferenceDuration = seedance ? 2 : 1;
   const maxReferenceDuration = seedance ? 30 : 15;
+  if (editing && (!Number.isFinite(input.referenceVideoDurationSeconds) || input.referenceVideoDurationSeconds! < 4 || input.referenceVideoDurationSeconds! > 30)) {
+    throw new ProviderRequestNotSubmittedError("Seedance editing requires a source video from 4 to 30 seconds. A longer output setting does not lengthen the source.");
+  }
   const audioDurations = input.referenceAudioDurationSeconds ?? [];
   if (audioDurations.length !== audio.length || audioDurations.some(seconds => !Number.isFinite(seconds) || seconds < minReferenceDuration || seconds > maxReferenceDuration) ||
       (input.referenceVideoUrl && (!Number.isFinite(input.referenceVideoDurationSeconds) || input.referenceVideoDurationSeconds! < minReferenceDuration || input.referenceVideoDurationSeconds! > maxReferenceDuration))) {
@@ -66,13 +86,16 @@ export function buildReapiVideoRequest(input: ReapiVideoInput) {
   }
   return {
     model: seedance ? REAPI_SEEDANCE_MODEL : REAPI_WAN_MODEL,
-    prompt, duration: input.durationSeconds, size: input.aspectRatio,
+    // Editing follows the source's timeline and shape. The integer duration in
+    // our job remains its app-credit estimate, never a fixed provider duration.
+    prompt, duration: editing ? -1 : input.durationSeconds, size: editing || startingFrame ? "adaptive" : input.aspectRatio,
     resolution: seedance ? input.resolution : input.resolution.toUpperCase(),
     // The user explicitly selected ReAPI's Less Restriction Seedance route.
     // WAN uses its moderated route; never retry on a different review channel.
     content_filter: !seedance,
-    ...(seedance ? { generate_audio: true, output_format: "mp4", ...(media.length ? { omni_reference_task_type: "reference" } : {}) }
-      : { audio: true, ...(media.length ? { generation_type: "reference" } : {}) }),
+    ...(seedance ? { generate_audio: input.generateAudio ?? !startingFrame, output_format: "mp4", ...(!startingFrame && media.length ? { omni_reference_task_type: editing ? "edit" : "reference" } : {}) }
+      : { audio: input.generateAudio ?? true, ...(media.length ? { generation_type: "reference" } : {}) }),
+    ...(startingFrame ? { image_with_roles: [{ url: input.startingFrameImageUrl!, role: "first_frame" as const }] } : {}),
     ...(images.length ? { image_urls: images } : {}),
     ...(audio.length ? { audio_urls: audio } : {}),
     ...(input.referenceVideoUrl ? { video_urls: [input.referenceVideoUrl] } : {}),

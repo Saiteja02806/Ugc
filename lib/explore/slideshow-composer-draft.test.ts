@@ -13,3 +13,20 @@ test("explicit screenshot requests require an attachment; ordinary edits and exc
   for (const prompt of ["Place my uploaded screenshot inside the laptop.", "Use the provided screen image inside this desktop.", "Keep my actual screenshot inside the device."]) assert.equal(requiresScreenshotAttachment(prompt), true);
   for (const prompt of ["Change the heading to Start a SaaS.", "Do not use my uploaded screenshot.", "Create a screenshot of a white dashboard."]) assert.equal(requiresScreenshotAttachment(prompt), false);
 });
+
+test("preservation instructions cannot negate a separate screenshot placement action", () => {
+  for (const prompt of [
+    "Use my uploaded screenshot inside the laptop, do not change anything else.",
+    "Do not change the laptop, place my screenshot in its screen.",
+    "Use my screenshot and keep the rest without changes.",
+    "Never change the font and use the provided screen image inside the laptop.",
+    "Don't use a generated dashboard, use my supplied screenshot.",
+  ]) assert.equal(requiresScreenshotAttachment(prompt), true, prompt);
+  for (const prompt of [
+    "Do not use my uploaded screenshot, keep the existing screen.",
+    "Don't use my screenshot.",
+    "Don’t use my screenshot.",
+    "Never add my provided screen image.",
+    "I do not want to use my uploaded screenshot.",
+  ]) assert.equal(requiresScreenshotAttachment(prompt), false, prompt);
+});

@@ -9,7 +9,7 @@ import { createWallScheduleComposition } from "../lib/explore/wall-pending-compo
 function load(path, imports) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, URLSearchParams, queueMicrotask, window: imports.window, ResizeObserver: imports.ResizeObserver, requestAnimationFrame: fn => fn(), require(name) {
+  vm.runInNewContext(code, { exports, URLSearchParams, queueMicrotask, crypto: globalThis.crypto, window: imports.window, ResizeObserver: imports.ResizeObserver, requestAnimationFrame: fn => fn(), require(name) {
     if (name in imports) return imports[name];
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
@@ -23,7 +23,7 @@ const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influen
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow } = {}) {
+function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
   const slots = [], effects = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
@@ -47,7 +47,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
       slots[i] = next;
       effects.push(() => { previous?.cleanup?.(); next.cleanup = callback(); });
     },
-  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
+  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview|HookStartingFrameWorkspace)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
@@ -70,7 +70,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   const mod = load("components/explore/format-workspace.tsx", imports);
   return { source, accept, queries, tokens, reads, params: () => params, resize(count) { columns = count; resizeCallback?.(); }, render() {
     cursor = 0;
-    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined, previewFinalSlideshow: finalSlideshow });
+    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined, previewFinalSlideshow: finalSlideshow, hookStartingFramePreparationEnabled: keyframeEnabled });
     for (const commit of effects.splice(0)) commit();
     return tree;
   } };
@@ -1034,5 +1034,44 @@ test("sample slideshow props cannot become outputs in the live workflow or anoth
   for (const [format, local] of [["slideshow", false], ["hook", true], ["wall_text", true]]) {
     const h = harness(format, "", { local, finalSlideshow });
     assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null);
+  }
+});
+
+test("Hook Recreate opens free starting-frame preparation only behind its release gate and reopens the same draft", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  for (const keyframeEnabled of [false, true]) {
+    const h = harness("hook", "", { local: false, selected: null, catalogue: [reference], keyframeEnabled });
+    h.source.mode = "generate";
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    let prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    if (!keyframeEnabled) { assert.equal(prep, undefined); assert.equal(h.params().has("hookFrameDraft"), false); continue; }
+    assert.equal(prep.props.reference.id, reference.id); assert.equal(prep.props.ownerId, "owner");
+    const id = prep.props.draftId;
+    assert.match(id, /^[\da-f-]{36}$/i); assert.equal(h.params().get("hookRecreation"), "starting_image");
+    prep.props.onClose(); assert.equal(h.params().has("hookRecreation"), false);
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), false);
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    assert.equal(prep.props.draftId, id, "Closing and reopening preserves the image preparation");
+    assert.equal(h.reads.length, 0, "Preparing does not submit or collect a generated video");
+  }
+});
+
+test("Wall, Slideshows and locked local fixtures do not enter Hook preparation", () => {
+  for (const [format, local] of [["wall_text", false], ["slideshow", false], ["hook", true]]) {
+    const reference = { id: "example", format, title: "Example", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+    const h = harness(format, "", { local, selected: null, catalogue: [reference], keyframeEnabled: true });
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), false);
+    assert.equal(h.params().has("hookFrameDraft"), false);
+  }
+});
+
+test("an explicit Hook preparation reload restores only a valid draft ID with the release gate enabled", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  const id = "00000000-0000-4000-8000-000000000001";
+  for (const [keyframeEnabled, draftId, expected] of [[true, id, true], [false, id, false], [true, "broken", false]]) {
+    const h = harness("hook", `refId=hook-first&hookFrameDraft=${draftId}&hookRecreation=starting_image`, { local: false, selected: null, catalogue: [reference], keyframeEnabled });
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), expected);
   }
 });

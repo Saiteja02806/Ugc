@@ -25,7 +25,10 @@ import {
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
 import { getGenerationReferenceSoundtrack } from "@/worker/src/lib/explore-reference-soundtrack";
-import { PERSON_REFERENCE_INSTRUCTIONS, personReferenceRoles } from "@/lib/explore/person-reference";
+import { personReferenceRoles } from "@/lib/explore/person-reference";
+import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
+import { buildHookAnimationPrompt } from "@/lib/explore/hook-keyframe-motion";
+import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
 
 import { getExploreVideoPromptMaxLength, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS } from "@/lib/explore/format-generation-prompt";
 import { resolveGalleryGenerationVideo } from "@/lib/explore/generation-video-reference";
@@ -54,6 +57,7 @@ type GenerateVideoRequest = {
   avatarImageUrl?: unknown;
   referenceImageUrls?: unknown;
   imageReferencePurpose?: unknown;
+  generateAudio?: unknown;
   referenceAudioUrls?: unknown;
   referenceAudioAssetIds?: unknown;
   hookIdea?: unknown;
@@ -71,9 +75,14 @@ type GenerateVideoRequest = {
   referenceUrl?: unknown;
   durationSeconds?: unknown;
   resolution?: unknown;
+  startingFrameAssetId?: unknown;
+  startingFrameJobId?: unknown;
 };
 
 function referenceSoundtrackInput(body: GenerateVideoRequest | null) {
+  // New explicit sound controls own the entire soundtrack. Do not overwrite
+  // requested speech with automatically paired gallery music.
+  if (body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text") return {};
   const reference = getGenerationReferenceSoundtrack({ referenceId: body?.referenceId, referenceType: body?.referenceType, exploreFormat: body?.exploreFormat });
   return reference ? { referenceSoundtrack: { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 } } : {};
 }
@@ -178,6 +187,27 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     | GenerateVideoRequest
     | null;
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
+  const usesStartingFrame = body?.startingFrameAssetId !== undefined || body?.startingFrameJobId !== undefined;
+  if (usesStartingFrame) {
+    if (process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION !== "true") {
+      return NextResponse.json({ ok: false, error: "Starting-frame animation is not available yet." }, { status: 404 });
+    }
+    if (body?.exploreFormat !== "hook" || body.model !== "seedance_2_5" ||
+      typeof body.startingFrameAssetId !== "string" || !UUID_PATTERN.test(body.startingFrameAssetId) ||
+      typeof body.startingFrameJobId !== "string" || !UUID_PATTERN.test(body.startingFrameJobId)) {
+      return NextResponse.json({ ok: false, error: "Choose a generated Hook starting image and Seedance 2.5 before animating." }, { status: 400 });
+    }
+    if (body.avatarImageUrl || (Array.isArray(body.referenceImageUrls) && body.referenceImageUrls.length) ||
+      body.imageReferencePurpose !== undefined || body.referenceVideoUrl || body.referenceVideoAssetId ||
+      body.referenceVideoDurationSeconds != null || body.referenceVideoMode !== undefined || body.useGalleryVideoReference === true ||
+      (Array.isArray(body.referenceAudioUrls) && body.referenceAudioUrls.length) ||
+      (Array.isArray(body.referenceAudioAssetIds) && body.referenceAudioAssetIds.length) || body.referenceUrl) {
+      return NextResponse.json({ ok: false, error: "Animate only the approved starting image. Remove source videos, person photos and audio references; use Sound on for generated audio." }, { status: 400 });
+    }
+    if (typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) || body.durationSeconds < 4 || body.durationSeconds > 15) {
+      return NextResponse.json({ ok: false, error: "Choose a whole-number starting-frame duration from 4 to 15 seconds." }, { status: 400 });
+    }
+  }
   if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
     return NextResponse.json({ ok: false, error: "Choose 1, 2, 3 or 4 videos." }, { status: 400 });
   }
@@ -225,14 +255,14 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
   const useGalleryVideoReference = body?.useGalleryVideoReference === true;
   if ((body?.useGalleryVideoReference !== undefined && typeof body.useGalleryVideoReference !== "boolean") ||
-      (body?.referenceVideoMode !== undefined && body.referenceVideoMode !== "edit")) {
+      (body?.referenceVideoMode !== undefined && body.referenceVideoMode !== "edit" && body.referenceVideoMode !== "reference")) {
     return NextResponse.json({ error: "Choose a supported video reference mode.", ok: false }, { status: 400 });
   }
-  const referenceVideoMode = body?.referenceVideoMode === "edit" || (useGalleryVideoReference && model === "google_omni") ||
-    Boolean(body?.exploreFormat && model === "google_omni" && referenceVideoUrl && referenceImageUrls.length)
+  const referenceVideoMode = body?.referenceVideoMode === "edit" || (body?.referenceVideoMode === undefined && ((useGalleryVideoReference && model === "google_omni") ||
+    Boolean(body?.exploreFormat && model === "google_omni" && referenceVideoUrl && referenceImageUrls.length)))
     ? "edit" : undefined;
-  if (referenceVideoMode && (!body?.exploreFormat || model !== "google_omni" || (!referenceVideoUrl && !useGalleryVideoReference))) {
-    return NextResponse.json({ error: "Use Google Omni in a video workflow to edit a video with image references.", ok: false }, { status: 400 });
+  if (referenceVideoMode && (!body?.exploreFormat || (model !== "google_omni" && model !== "seedance_2_5") || (!referenceVideoUrl && !useGalleryVideoReference))) {
+    return NextResponse.json({ error: "Use Seedance 2.5 or Google Omni with a source video to edit footage. This model only supports reference-guided creation here.", ok: false }, { status: 400 });
   }
   if (useGalleryVideoReference) {
     if (!body?.exploreFormat || model !== "google_omni" && model !== "seedance_2_5" && model !== "wan_3_0") {
@@ -254,7 +284,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     }
   }
   const isFormatVideoReference = Boolean(body?.exploreFormat && referenceVideoUrl && model === "google_omni");
-  const durationSeconds = referenceVideoMode ? Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
+  const durationSeconds = referenceVideoMode ? model === "seedance_2_5" ? Math.ceil(referenceVideoDurationSeconds ?? 4) : Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
     : isFormatVideoReference ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
   if (!referenceVideoMode && !isFormatVideoReference && body?.durationSeconds !== undefined && (
@@ -272,6 +302,32 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
   if (!isAIStudioVideoModelAvailable(model)) {
     return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} is temporarily unavailable. Choose another video model.`, ok: false }, { status: 503 });
+  }
+  let startingFrame: Awaited<ReturnType<typeof resolveApprovedHookStartingFrame>> | undefined;
+  if (usesStartingFrame) {
+    try {
+      startingFrame = await resolveApprovedHookStartingFrame({
+        assetId: body!.startingFrameAssetId as string,
+        imageJobId: body!.startingFrameJobId as string,
+        ownerId: user.uid,
+      });
+      if ((body?.referenceId !== undefined && body.referenceId !== startingFrame.referenceId) ||
+        (body?.referenceType !== undefined && body.referenceType !== "hook")) {
+        return NextResponse.json({ ok: false, error: "The starting image belongs to a different Hook reference. Choose it again." }, { status: 400 });
+      }
+      // The provider animates the generated full-scene asset, not the source
+      // video's frame. Verify that actual output's stored shape before billing.
+      const { width, height, ratio } = startingFrame.output;
+      const validDimensions = typeof width === "number" && typeof height === "number" &&
+        Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0;
+      const imageRatio = validDimensions ? width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : null : null;
+      if (!imageRatio || ratio !== imageRatio || aspectRatio !== imageRatio) {
+        return NextResponse.json({ ok: false, error: "Starting-frame animation keeps the approved image's shape. Choose its matching aspect ratio." }, { status: 400 });
+      }
+    } catch (error) {
+      const status = error instanceof Error && "status" in error && typeof error.status === "number" && [400, 404, 409, 503].includes(error.status) ? error.status : 503;
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Could not verify the approved starting image. No generation was started." }, { status });
+    }
   }
   const isExploreRecreate =
     (body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId)) ||
@@ -304,7 +360,20 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
   const personPhotos = body?.imageReferencePurpose === "person";
   const imageRoles = personPhotos ? personReferenceRoles(referenceImageUrls as string[]) : undefined;
-  const generationPrompt = personPhotos ? `${PERSON_REFERENCE_INSTRUCTIONS}\n\n${prompt}` : prompt;
+  const soundWorkflow = body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text";
+  if (body?.generateAudio !== undefined && typeof body.generateAudio !== "boolean") {
+    return NextResponse.json({ error: "Choose Sound on or Sound off before generating.", ok: false }, { status: 400 });
+  }
+  const generateAudio = soundWorkflow ? body?.generateAudio === true : undefined;
+  const inputInstructions = startingFrame ? { intent: "animate_starting_frame", instructions: "" } : buildExploreGenerationInstructions({ model, personPhotos,
+    imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
+  let generationPrompt: string;
+  try {
+    generationPrompt = startingFrame ? buildHookAnimationPrompt({ directions: prompt, durationSeconds, generateAudio: generateAudio === true })
+      : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
+  }
 
   if (
     (audioUrlsInput !== undefined && !Array.isArray(audioUrlsInput)) ||
@@ -323,7 +392,10 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (body?.exploreFormat && referenceAudioUrls.length && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
   }
-  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS)) {
+  if (referenceVideoMode && model === "seedance_2_5" && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds < 4 || referenceVideoDurationSeconds > 30)) {
+    return NextResponse.json({ error: "Seedance editing requires a source video from 4 to 30 seconds. Choosing a longer output does not lengthen the source. Use a longer source or choose Create from reference.", ok: false }, { status: 400 });
+  }
+  if (referenceVideoMode && model === "google_omni" && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS)) {
     return NextResponse.json({ error: "Use a reference video up to 10 seconds.", ok: false }, { status: 400 });
   }
   if (isFormatVideoReference && !referenceVideoMode && (referenceImageUrls.length || !referenceVideoDurationSeconds || referenceVideoDurationSeconds > 3)) {
@@ -407,7 +479,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
-  if (model === "seedance_2_5" && body?.durationSeconds !== undefined && (
+  if (model === "seedance_2_5" && !referenceVideoMode && body?.durationSeconds !== undefined && (
     typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) ||
     body.durationSeconds < 4 || body.durationSeconds > 30
   )) {
@@ -445,7 +517,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   const promptLengthError = getAIStudioPromptLengthError(
     prompt,
-    getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined, personPhotos }),
+    startingFrame ? 6_000 : getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined, personPhotos, imageCount: referenceImageUrls.length, generateAudio }),
   );
 
   if (promptLengthError) {
@@ -524,6 +596,12 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
   // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
   const provider = model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
+  const startingFrameInput = startingFrame ? {
+    startingFrameAssetId: startingFrame.assetId,
+    startingFrameJobId: startingFrame.imageJobId,
+    startingFrameImageUrl: startingFrame.imageUrl,
+    startingFrameReceipt: startingFrame.receipt as unknown as Json,
+  } : {};
   const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );
@@ -535,6 +613,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       inputs: Array.from({ length: quantity }, (_, index) => ({
         aspectRatio, avatarImageUrl, referenceImageUrls, referenceAudioUrls,
         ...(imageRoles ? { personReference: imageRoles } : {}),
+        ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
         ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
         ...(referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds } : {}),
         ...(referenceVideoAssetId ? { referenceVideoAssetId } : {}),
@@ -545,10 +624,11 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         promptMode: "direct", projectId,
         referenceVideoDurationSeconds, referenceVideoUrl,
         ...(referenceVideoMode ? { referenceVideoMode } : {}),
-        referenceId: typeof body?.referenceId === "string" ? body.referenceId : null,
-        referenceType: useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
+        referenceId: startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
+        referenceType: startingFrame ? "hook" : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
         referenceUrl: useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
         ...referenceSoundtrackInput(body),
+        ...startingFrameInput,
         resolution, userId: user.uid, videoId: crypto.randomUUID(),
       })),
     });
@@ -581,6 +661,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           avatarImageUrl,
           referenceImageUrls,
           ...(imageRoles ? { personReference: imageRoles } : {}),
+          ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
           referenceAudioUrls,
           ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
           ...(referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds } : {}),
@@ -597,12 +678,13 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           referenceVideoUrl,
           ...(referenceVideoMode ? { referenceVideoMode } : {}),
           referenceId:
-            typeof body?.referenceId === "string" ? body.referenceId : null,
+            startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
           referenceType:
-            useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
+            startingFrame ? "hook" : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
           referenceUrl:
             useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
           ...referenceSoundtrackInput(body),
+          ...startingFrameInput,
           resolution,
           userId: user.uid,
           videoId,

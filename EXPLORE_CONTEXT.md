@@ -1,5 +1,364 @@
 # Explore context and UI decision record
 
+## 2026-10-21 Complete bundled emoji rendering for Hook/shared video overlays
+
+- User requested resolving the remaining emoji cases and questioned whether the
+  Remix copy step was wrong. Verified AI output → Add to hook → JSON draft uses
+  unchanged Unicode. Copying was already correct; drawing text into MP4 frames
+  depended on different OS fonts. Do not change the Remix prompt, its contextual
+  emoji policy, business personalization, credits or accepted request identities.
+- Replace general video-overlay emoji font fallback with a pinned, local Twemoji
+  17.0.3 vector pack, used by BOTH the React overlay preview and worker PNG/MP4.
+  It resolves all 3,944 fully-qualified Emoji 17 RGI sequences and their official
+  qualification variants. All 4,009 bundled graphics actually rasterize. Keep
+  previously approved red cross/arrow and green check artwork/Unicode selectors.
+- Native textareas remain ordinary editable Unicode; their OS emoji appearance
+  is distinct from the authoritative composited preview/export. Do not introduce
+  emoji token markup, another AI step, per-emoji controls or a changed user flow.
+  Whole graphemes include skin tones, flags, keycaps and joined sequences.
+- Public preview assets have bounded manifest IDs and version+content-hash URLs;
+  serve only bundled SVG with immutable caching. Root trace includes the compressed
+  pack; worker Docker already copies assets/. Export embeds exact artwork bytes,
+  verifies the pack hash, needs no font/CDN/network call and fails on missing data.
+  Preserve Twemoji/Unicode licenses; emoji exports carry attribution metadata.
+- Unsupported emoji-like sequences/reserved future pictographs have a clear
+  validation error before new render reservation and in the editor/export. Do
+  not silently split, replace, remove or accept a broken font fallback. Existing
+  saved text and accepted receipts remain readable/recoverable; no global hash
+  bump, automatic regeneration or modification of old/scheduled MP4s.
+- Actual local MP4 tests cover broad emoji, old/new fonts and presets, draft
+  recovery, final Hook/demo composition, colors, attribution and source integrity.
+  Laptop/mobile browser previews load all sample artwork and preserve save/reopen.
+  This also applies to Wall/demo callers of the shared video overlay. Slideshow
+  added-text, Trending and speech subtitles remain separate scope; do not claim
+  this implementation fixed their general emoji paths.
+- Release now needs the updated website/preview-asset endpoint AND both render
+  targets. The other chat has explicit user authorization to include this task's
+  work; avoid a competing deployment. Local checks and production acceptance
+  remain distinct. Details: `docs/hook-emoji-rendering-2026-10-21.md`.
+
+## 2026-10-21 Hook Remix emoji recurrence: production renderer release gap
+
+- User asked whether ALL emojis are now correct. A fresh live service/job read
+  still shows the old active revision/digest below; rollout remains pending.
+  Expanded local actual-MP4 inspection of 16 samples finds the four explicit
+  cross/check marks colored, while the 12 font-fallback samples (faces, fire,
+  rocket, heart, skin tone, person ZWJ, flag, keycap, hundred, sparkle, party)
+  are monochrome; flag/person sequences also look wrong. This is Windows
+  fallback evidence, NOT proof of the Linux production font output. Docker's
+  Linux daemon is unavailable, so same-container coverage remains unverified.
+  Preserve the targeted symbol fix, but do not call it an all-emoji fix. Full
+  coverage requires a separate bounded emoji-support contract and actual
+  glyph/color/sequence verification, not merely checking Unicode in SVG.
+  Evidence: `.tmp/hook-emoji-coverage-20261021/coverage.json` and
+  `local-mp4-emoji-sample.png` in the same directory.
+- The user again reports white cross/tick glyphs in remixed Hook text. Fresh
+  production reads confirm the active `ugc-video-render-worker` revision is
+  `ugc-video-render-worker-hookfix2-fac61da3` at 100% traffic, pinned digest
+  `96afdde1f42c980281c3b68182ad91874c41c997d9d20219bd472f8d0f15a36d`.
+  `ugc-video-render-job` uses the same old digest. The service template contains
+  a newer image, but that is NOT evidence of the active traffic's code.
+- `fac61da3` lacks `explore-inline-symbols.ts`; its outlined glyphs inherit white
+  caption fill. The symbol fix was committed later in `c3bedc52`. Public production
+  Hook JavaScript already contains the colored-symbol preview implementation.
+  Shipping website code alone did not fix final exported MP4s.
+- Locally reconstructed the three relevant renderer modules from the active
+  source revision. The user's exact caption reproduces zero red/green pixels;
+  corrected code produces red cross/green tick in decoded MP4 frames. This is
+  a source reconstruction, not a new production render or paid generation.
+- Added an actual-media regression through `applyVideoTextRemix`, serialized
+  draft recovery, clip export and final Hook/demo composition. All four supported
+  cross/check pairs retain Unicode/colors and disappear before the demo. Existing
+  related 35 checks, worker build and scoped lint pass (36 checks with the new
+  regression). No new runtime fix was needed beyond the already committed artwork.
+- Release scope can be the four symbol/render modules on the active worker base,
+  deployed to BOTH render service and batch job; no website or migration change
+  is required for this symptom. Preserve existing accepted fingerprints/receipts:
+  old immutable MP4s need an explicit fresh export from the editable source and
+  existing remix, not another paid Remix/generation request. Do not globally bump
+  finishing fingerprints and invalidate recovery to force a new render.
+- Live browser redirects to sign-in; authenticated workflow acceptance remains
+  pending. No deployment or production media mutation in this investigation.
+  Details and reviewed release patch: `docs/hook-remix-emoji-production-gap-2026-10-21.md`.
+
+## 2026-10-21 Starting-frame handoff and local browser verification
+
+- Connected the dedicated owned image-generation job to result inspection and
+  Use as starting frame. It returns to the existing Hook video composer with a
+  Starting frame badge, source-bound motion directions and duration, and sound
+  OFF by default. Only Generate video submits animation; using an image does
+  not submit it. Original video/person/audio references are cleared from this
+  animation path. ReAPI receives image_with_roles with role first_frame,
+  adaptive size and a fixed duration; incompatible inputs/models fail before
+  credit reservation. This does not prove generated facial fidelity.
+- Image preparation uses canonical decoded frame zero followed by main person
+  photo and supporting views. Actual owned photo object headers are checked
+  before credits: 25 MiB per photo, 50 MiB combined including source PNG. Result
+  admission validates the completed owner job, exact receipt and generated
+  asset/dimensions. Uncertain requests recover by GET, not automatic resubmission.
+- Local desktop and mobile browser walkthroughs used actual components with a
+  development-only, nonspending result fixture. Fixed source-image URL cleanup,
+  opening focus/scroll, mobile header/footer clipping and misleading completed
+  primary action. Photo guide remains in the existing chooser popup. Screenshots
+  and limitations: docs/hook-keyframe-ui-review-2026-10-21.md. These are local
+  UI checks, not production or model-quality acceptance.
+- Production enablement still requires matching website/worker releases. No
+  database change or new paid generation is part of these checks.
+
+## 2026-10-21 Clarified generated-frame handoff
+
+- The user explicitly wants Generate starting image, a visible generated-image
+  preview, and a button named Use as starting frame. That button returns the
+  owned generated full-scene image to the existing video form's image box,
+  labelled Starting frame. The existing Generate video button is the separate
+  intentional video-generation action. A second standalone Animate screen is
+  unnecessary for this handoff and is superseded by this clarification.
+- Starting frame is a provider input role, not a promise made by the label or
+  prompt alone. Admission must validate its completed image-job provenance and
+  owner, reject incompatible models before billing, and freeze the first-frame
+  role in the provider request. Do not silently send it as a general appearance
+  reference. The original Hook video and person photos are used only to prepare
+  the still; they must not accompany the animation request.
+- Preserve the editable Hook motion directions, source-bound duration (Hook 15:
+  eight seconds) and sound OFF default in the handoff. Image and video creation
+  have separate visible credit estimates and deliberate actions. No inference
+  is triggered by choosing or approving a generated frame.
+- Local integration is in progress. Existing normal image/prompt-only Generate,
+  Wall of Text and accepted provider operations keep their existing contracts.
+  Do not enable the new production entry until this handoff is connected and
+  verified. Deployment approval is recorded; no new paid test is authorized.
+
+## 2026-10-21 Hook 15 duration and preparation UI code review
+
+- The user requested an eight-second Hook 15 prompt after accepting the reviewed
+  direction. Rechecked all 258 canonical frames: source is 8.634 seconds, with
+  its deliberate take change at frame 170. The new preview preserves both
+  chest-touch/open-palm cycles, one clean cut and the calm ending. The ID+SHA
+  rewrite now declares eight seconds; preview, visible duration and review page
+  use that value. Other variants still default to four seconds. Static review
+  totals are now 88 reviewed / 10 decision records; this does not qualify output.
+- A code-only UI pass found and fixed two state bugs: valid accepted photos can
+  be saved after a partial upload warning, and dismissal remains responsive
+  during uploads/influencer lookups. Closing invalidates late lookup responses
+  and aborts the read. Child upload cleanup already invalidates its callbacks.
+  Existing owned-photo validation and upload-pending save blocking remain.
+- Header and step navigation no longer shrink into the scrollable content;
+  prompt helper text uses the existing muted-foreground token. These are source
+  corrections, not screenshot-based responsive or accessibility acceptance.
+- Critical release gap: preparation still ends at Save preparation. Image
+  generation, explicit image approval and animation handoff are unimplemented.
+  Closing can return to the legacy video form; it must not be described as using
+  the saved starting frame. Keep the new entry gate OFF for production until
+  the handoff is implemented, or the user explicitly chooses a labelled preview.
+- Deployment is authorized, but the desired release of the incomplete step is
+  awaiting clarification. Browser use remains disabled after a fresh inventory;
+  no current UI screenshot or authenticated production acceptance was obtained.
+  No paid generation or production database mutation is authorized by this review.
+
+## 2026-10-21 Slideshow recreation recurrence and conversation design
+
+- Fresh owner-scoped production review finds the latest stored Explore slideshow
+  batch `6506f728-4364-4533-a69b-c4e03b53e265` (16 October, 20:45 IST) uses v3
+  Flare, but has no attachment despite requesting the provided screen image.
+  Both actual outputs use the laptop scene, including the cover slot. Earlier
+  v3 Sunburst batch `09e14462-478d-4a58-af80-d04a2cef4847` includes the screenshot
+  but still invents a light website. Do not treat reference delivery, v3 wording
+  or technical completion as visual acceptance.
+- Current local missing-screen preflight rejects that latest historical prompt.
+  A further reproduced bypass occurred when unrelated `do not`/`without` wording
+  appeared in the same sentence as a positive screen-placement request. Local
+  correction now scopes negation to the matching placement action. Client/API
+  share it; regression checks confirm no billing/queueing without the attachment.
+  This remains an English heuristic, not validated attachment-role understanding.
+- The user revisits a chat-based creation experience. Recommended direction:
+  one image-aware conversation maintaining a validated, revisioned plan, with
+  per-slide source identities/changes/preservation constraints. This is proposed,
+  not a replacement for the currently implemented one-box rewrite. Do not add
+  separate per-image forms or claim the existing text-only star sees references.
+- Precise screenshot/logo placement needs actual-asset compositing and screen
+  geometry; exact text needs editable layers. Compile only each slide's relevant
+  inputs/instructions for generative edits. Preserve v2/v3 retry fingerprints
+  through a new versioned contract. No planner/compositor/chat feature was built
+  by this investigation; those gaps remain open.
+- 71 distinct local checks, worker build, application types and the updated
+  real-component browser fixture pass. Scoped lint: zero errors, two pre-existing
+  fixture warnings. Stored outputs were visually checked; no new paid generation
+  or production writes/deployment. Production browser redirects to sign-in, so
+  final authenticated acceptance and fresh quality A/B remain pending.
+  See `docs/slideshow-workflow-recreation-audit-2026-10-21.md`.
+
+## 2026-10-21 Hook motion rewrite and prompt auto-fill: second local increment
+
+- User authorized agents to adapt all98 source-video prompts for the new
+  starting-image flow. Reused prior all-decoded observations, then verified all
+  98 canonical local video SHA-256/frame counts and visually rechecked sampled
+  sequences including frame0 and ending. Complex hand/prop/cut cases received
+  additional all-decoded contact-sheet inspection. Do not claim this pass
+  independently viewed every frame of every clip, or tested generated output.
+- All98 now have separately authored opening/action/camera/ending/continuity
+  plans in `hook-keyframe-motion-plans-a/b/c.json`. An independent prose and
+  visual spot review corrected already-started actions and flagged additional
+  hidden glasses placement. Final static state:87 sequence-reviewed four-second
+  adaptations,11 decision cases (Hooks15/19/22/28/39/51/57/64/72/83/84).
+  Bind by ID+SHA; display titles remain nonunique and historic ordinals differ.
+- The preparation screen auto-fills these action directions separately from
+  image instructions. Users can edit and restore them; edits and sound choice
+  persist in the owner/draft/source scope. Older drafts default to the suggestion.
+  Sound starts OFF and controls the full animation-prompt preview. Four seconds
+  is an adaptation; the original source's exact timing is not promised.
+- Image-stage instructions still bind scene Image1, main face Image2 and other
+  views afterward. Animation receives its approved image and explicit directions,
+  without source-video roles, portraits or a second face-swap command. The legacy
+  direct-video prompt helper remains untouched; these rewrites apply only to the
+  new gated preparation flow, not existing jobs or Wall/ordinary Generate paths.
+- Static source review and a displayed prompt preview are distinct from paid
+  admission. All98 legacy motion catalog entries remain blocked from animation
+  submission while image generation/approval and backend admission are pending.
+  A custom direction edit cannot reuse the old motion-readiness receipt, and
+  changing motion/sound does not invalidate a correctly approved still image.
+- Review artifact: `outputs/hook-motion-rewrite-2026-10-21/index.html`, generated
+  by `scripts/build-hook-motion-review.mjs`. It rehashes all98 canonical sources,
+  shows source videos/frame evidence beside adapted prompts and defaults to the
+  11 decision cases. It contains source footage, never a generated-result claim.
+- No paid generation, uploads, production DB changes, commits, pushes or
+  deployment. Feature gate remains off. Browser visual acceptance remains
+  pending: tool inventory now works but local browser use is disabled in Work.
+- Verification:216 targeted checks plus the loopback review-server check pass;
+  targeted lint and final Next webpack build including TypeScript pass. Review
+  receipts record4,276 inspected frame indices /9,751 decoded frames, including
+  complete contact-sheet inspection of32 complex videos. The read-only helper
+  at `http://127.0.0.1:8188/` allows only review page/videos/sheets, with working
+  byte ranges and no arbitrary project file access or writes. Its HTTP response
+  is verified; opening a Codex preview is not browser visual acceptance.
+
+## 2026-10-21 Hook starting-frame preparation: first local increment
+
+- User authorized incremental implementation and parallel prompt review, with
+  clarity before advancing. Hook only; starting image first, ending frames
+  deferred. No new paid test, production database mutation or deployment.
+- Added default-off `ENABLE_HOOK_STARTING_FRAME_PREPARATION` gate on the Hook page
+  and authenticated extraction endpoint. When opted in, Hook Recreate opens an
+  internal free preparation preview and preserves owner/draft/reference scope.
+  The current Generate path, Wall and Slideshows remain available as before.
+- Extract actual frame zero from active canonical release video, verify SHA-256,
+  preserve full display dimensions, bound download/decode/cache and verify the
+  returned PNG receipt in browser. Never use the poster or stale preview. No
+  object upload or media/database row is created for this extraction increment.
+- Reuse existing owned influencer history (ready `image` OR `influencer` media),
+  Explore-only reference uploads and main/supporting picker/photo guide. Builder
+  opens in another tab so the preparation remains. Selecting a new influencer
+  clears the previous person's support images. This preview cap is five person
+  photos; existing model reference capacities are unchanged.
+- Browser checkpoint persists IDs/hashes/instructions, never signed URLs or
+  blobs. Resolve ownership on restore. Source/photo/instruction changes invalidate
+  generated/approved image bindings. Output existence alone is not approval;
+  a face portrait itself is not a generated full-scene keyframe. Sound OFF default.
+- Added separate image-role compiler and 98-entry motion review inventory keyed
+  by canonical ID+SHA, rather than converting legacy video prompts in place.
+  All 98 still require motion review; six authored plans are review drafts only.
+  No paid animation route uses these drafts. Current numbered exceptions are
+  Hook19 window reveal, Hook15 two takes, Hook51 jump cut; display title Hook46
+  is duplicated. Older conversation numbers must not determine asset mutations.
+- This first increment ends at Save preparation. Image API/worker integration,
+  generated preview/explicit approval and fixed-duration first-frame animation
+  admission remain upcoming. Do not claim facial fidelity is solved or this flow
+  is production-accepted. Browser visual acceptance and paid quality testing are
+  distinct from offline checks. Implementation details and planned stages are in
+  `docs/hook-keyframe-recreation-plan-2026-10-21.md`.
+- Verification: 45 new and 170 existing targeted checks (215 unique) pass, along
+  with lint, TypeScript and the final Next webpack build. A real local FFmpeg
+  fixture confirms frame0/full dimensions; browser visual acceptance remains
+  pending because the browser tool could not start. No production acceptance
+  or generated-face quality claim follows from those offline checks.
+
+## 2026-10-21 Clarified Hook/Wall performance recreation target
+
+- User clarified that the body may be regenerated. The required output uses
+  the photo person's facial appearance/features/proportions while following the
+  source video's actions, emotions/expressions, position/pose and clothing.
+  Retain prior scene/camera guidance; do not infer permission to redesign the
+  scene. Exact preservation of every original body pixel is not an acceptance
+  requirement. This supersedes earlier recommendations premised on that need.
+- Treat identity fidelity and performance/clothing fidelity as separate checks.
+  Passing uploaded main/supporting photos establishes input construction only;
+  a task-mode label is not proof of either creative result.
+- Reference-guided recreation is a legitimate candidate under this clarified
+  target; do not declare reference mode inherently wrong or force every source
+  clip into edit mode. The previous strict source-edit prompt and explicit
+  reference declaration were misaligned. Match the clarified intent, explicit
+  @Video/@Image ownership and provider task settings before evaluation.
+- The two audited Seedance operations declared reference. The earlier separate
+  Omni test did use editing and failed the fidelity review. Do not conflate
+  prose asking to edit, the UI's Edit page, and a provider's edit parameter, or
+  present edit as an identity-lock switch.
+- Focus next on a reviewable request with explicit source-versus-identity roles
+  and measured facial/performance acceptance. More photos/UI changes alone are
+  not the next established remedy. Ask before paid inference; no automatic
+  source padding, backend switch, deployment or paid test authorized by this
+  advisory clarification. Source-duration investigation remains deferred.
+
+## 2026-10-20 Meaning of edit mode and main-photo evidence
+
+- Explain "confirmed" as verified from saved evidence, and API "contract" as
+  request fields/rules developers implement. Neither is a user-facing document
+  or a separate "conformal" feature. No new user upload format was requested.
+- The actual Seedance request carried five image URLs and a video URL. Main
+  first/supporting next is verified in stored metadata and prompt construction;
+  `personReference` is app metadata, not a dedicated ReAPI face-identity object.
+  Passing the photos correctly does not establish successful model conditioning.
+- BytePlus's own Seedance2.5 guide lists replacing the character in a referenced
+  video with the character from an image as an editing example. This supports
+  the intended task category, but does not qualify exact face-only identity or
+  unchanged source pixels. ReAPI's `omni_reference_task_type` is a declared
+  subtask and validation hint within the same model/API. Provider docs explicitly
+  say the model still classifies intent; it is not a dedicated face-swap switch.
+- Current app API/worker restrict `referenceVideoMode:edit` to Omni; ReAPI always
+  writes `reference`. An edit flag alone is therefore not a complete app fix.
+  Source/identity binding should use provider `@Video 1`/`@Image N` syntax,
+  and any supported task's prompt, media roles and parameters must agree.
+  Explicit tokens are a documented correction, not a proven fidelity solution.
+- Do not claim the prior model made no edits: latest samples removed captions.
+  Known request fields do not expose its internal processing or prove why its
+  facial appearance failed. BytePlus LAS `person_replace` is a separate service
+  with distinct access/asset/evaluation rules, not this ReAPI model's edit flag.
+- User requested research of the first three findings and deferred duration.
+  No generation-code change, provider call, paid test or deployment in this
+  research pass. Details: `docs/seedance-edit-mode-and-face-input-findings-2026-10-20.md`.
+
+## 2026-10-20 Latest Seedance face replacement audit
+
+- Completed provider task `task_01a1596a5eb3749d8606a7384e159cd2` independently
+  returns model `doubao-seedance-2.5-face`. Saved job and matching request
+  fingerprint reconstruct `content_filter:false`, `reference`, fixed duration4,
+  size9:16 and `generate_audio:true` on worker `hookfix2-fac61da3`. The task GET
+  does not expose the original filter/mode; distinguish provider confirmation
+  from deterministic request reconstruction rather than claim a raw POST log.
+- This latest task has uploaded `cdds.mp4` (3.1s) and five ready owned portraits,
+  main first plus four supporting views. The roles are correct and no image is
+  omitted. It differs from the earlier three-portrait `cdd.mp4` operation.
+- Sampled output removes the source captions but retains source-looking facial
+  appearance instead of matching the supplied face photos. It is a different
+  4.064s/24fps file, not the source3.1s/30fps file. Successful collection and more
+  images have not established facial-fidelity acceptance.
+- ReAPI's documented source-edit contract requires `edit`, `duration:-1`,
+  `size:adaptive` and a4–30s source. Current ReAPI adapter always declares
+  `reference`; only Omni has an app video-edit route. Do not describe short
+  reference generation as qualified source-preserving face replacement, or
+  silently pad the source/switch providers. Less Restriction is a content-filter
+  setting, not a face-replacement mode. Current roles omit provider @Image/@Video
+  tokens; explicit binding is another unvalidated input improvement, not a
+  demonstrated sole cause or solution. No paid test or deployment in this audit.
+- Evidence: `docs/seedance-latest-face-replacement-audit-2026-10-20.md`.
+- Causality clarification: four seconds is the documented minimum for this
+  provider's edit input, not an established facial-fidelity threshold. Both
+  poor outputs completed in reference mode, where their roughly three-second
+  inputs are allowed. Two similar short-source failures do not isolate duration
+  from task mode, conditioning, prompt or model behavior. No matched successful
+  four-second edit or controlled duration comparison exists. Do not claim that
+  extending/padding to four seconds fixes identity, or that short references
+  universally cannot change a face. Qualify the corrected edit flow before
+  using these cases to choose or reject a model.
+
 ## 2026-10-20 Generation worker rollout acceptance
 
 - Production now routes 100% of AI-generation traffic to
@@ -3040,9 +3399,11 @@ catalogue/release records rather than copying counts from historical audits.
 ### Hook Your videos scheduling shortcut — 20 October 2026
 
 - User approved only a **Schedule video** shortcut in Hook's **Your videos**
-  overview. It sits in a shared footer below both clip cards, aligned right on
-  wider screens and full width on narrow screens. It is hidden during focused
-  clip editing. No background audio shortcut was requested or added.
+  overview. After user feedback about excess scrolling, the separate footer
+  was removed. The button now sits in the existing overview header action row,
+  next to Generated videos when available, without a separate bordered panel or
+  bottom padding. It is hidden during focused clip editing. No background audio
+  shortcut was requested or added.
 - The overview and existing Demo button share the same rendered action,
   disabled conditions and `requestSchedule` handler. Opening-only, demo-only
   and combined compositions retain the existing preparation and Schedule form;
@@ -3053,3 +3414,210 @@ catalogue/release records rather than copying counts from historical audits.
   extensionless imports. Browser access to the local preview timed out, so fresh
   visual acceptance remains pending. This change has not been deployed or
   verified on production.
+
+### Hook / Wall generation sound and input roles — 21 October 2026, local
+
+- New Hook and Wall generation requests have an explicit **Sound off / on**
+  switch at the bottom-right of Your instructions. It defaults off for each
+  workflow/account and is frozen with a pending submission. This controls the
+  generated clip, not the gallery preview player's playback volume. Explicit
+  later editing music or Demo sound remains a separate user choice.
+- Server defaults missing workflow sound values to false and rejects malformed
+  values before reserving credits. Both admission paths persist `generateAudio`.
+  Seedance/ReAPI sends `generate_audio`; WAN/ReAPI sends `audio`. The current
+  direct Omni SDK route has no supported native sound flag: prompt instructions
+  plus a final local audio strip enforce silence, without promising provider
+  cost savings. OFF stream-copies video and removes every audio stream.
+- Explicit sound choices supersede automatic catalogue music, including ON:
+  provider-generated sound follows the prompt and explicitly selected audio
+  references. Do not replace requested speech with a gallery MP3. Legacy jobs
+  without this field keep their accepted fingerprints and soundtrack behavior.
+  Hooks 3, 13 and 59 rejected catalogue tracks remain disabled.
+- Person photos + video use the video for performance, expressions, pose,
+  clothing and scene; photos supply facial identity/proportions. Regenerating the
+  body is allowed. Photos + prompt without video create a new performance and
+  must not receive an instruction to preserve a nonexistent source. Other images
+  do not receive person-photo instructions. Seedance uses `@Image N` / `@Video 1`;
+  WAN uses `Image N` / `Video 1`. This clarifies inputs; facial fidelity remains
+  unproven until a separately approved visual generation test.
+- Pricing is route-specific. ReAPI WAN documentation explicitly says sound off
+  costs the same as on; Seedance documentation does not establish an independent
+  sound-off discount. Keep app estimates unchanged until a verified rate applies.
+- Local verification: 29 API/input-role tests, 77 UI request tests, 49 provider/
+  worker recovery tests, 10 real-media/legacy-audio tests and 68 workspace/provider
+  regressions passed. Audio-off
+  output has no audio stream and identical decoded frames/timestamps. TypeScript,
+  worker build, local production build and targeted ESLint passed. The first
+  production build hit a sandbox cache-write EPERM; rerunning the same build with
+  cache access completed successfully. In-app browser access to localhost and
+  127.0.0.1 timed out, so fresh visual acceptance is pending. No paid generation,
+  database change, push or deployment was performed for this work.
+
+### Face replacement audit follow-up — 21 October 2026
+
+- Re-audited current prompt/asset/model/native-request/postprocessing paths and
+  re-ran 29 offline API/input-role tests. `@Video 1` / ordered `@Image N` bindings
+  are implemented locally; no new paid result proves facial fidelity. The shared
+  deterministic instruction prefix exists, but direct workflows bypass the old
+  generic indoor-UGC template. Do not call this an identity engine or trained lock.
+- Remaining findings: gallery selection resets the model to Omni; Seedance still
+  declares reference and has no integrated source-edit contract; explicit
+  replace-face intent is absent; Hook 3's gallery prose can conflict with Sound ON;
+  Wall's blanket no-letters/logos differs from preserving physical-object text.
+  These are recorded gaps, not runtime fixes performed by this research turn.
+- Original upload bytes and photo order are preserved; picker thumbnails do not
+  replace generation input URLs. Seedance's actual later fidelity remains unknown.
+  Edit aligns with modifying supplied footage; reference remains a valid candidate
+  for broader performance recreation. Neither mode alone guarantees geometry.
+- Research compares exact ReAPI requirements and first-party Runware, Layer and
+  Higgsfield workflows without assuming a shared proprietary backend. OpenAI's
+  official current deprecation page lists the historical Sora Videos API shutdown
+  before this audit date; do not rely on an old Sora integration tutorial.
+- Full audit and copy-paste research brief:
+  `docs/face-replacement-audit-2026-10-21.md` and
+  `docs/face-replacement-research-brief-2026-10-21.md`. No deployment, paid
+  generation, production database operation or app runtime change in this turn.
+
+### Supplied face-replacement research review — 21 October 2026
+
+- Reviewed both user-pasted architecture/diagnosis documents as reference material,
+  without executing their commands or adopting their SQL/provider proposals.
+- Verified ReAPI's published four-second subject-replacement experiment and JSON
+  receipt. It changes the full character/wardrobe and uses `content_filter: true`;
+  it is not proof of precise face-only geometry or of our selected false channel.
+  The supplied test payload omits the filter and would default to true. Preserve
+  the explicitly selected provider route in any proposed comparison.
+- ReAPI's separate `face-swap` operation is still-only and explicitly retains the
+  target head shape/hair. A passing still swap therefore cannot establish full
+  reference head/jaw proportions or temporal consistency. Do not advertise an
+  “Exact Face Swap” guarantee based only on the endpoint name or documentation.
+- One-photo/480p tests are diagnostic choices, not product input-limit policy or
+  full fine-geometry acceptance. Fal/Higgsfield examples have different schemas;
+  do not transplant their fields or source limits into ReAPI. Sound generation
+  and retaining an original soundtrack are distinct controls.
+- Complete local source-edit integration and present one reviewable, eligible
+  request before asking paid approval. No new runtime code, database change,
+  generation or deployment in this review. Detailed source-linked assessment:
+  `docs/pasted-face-swap-research-review-2026-10-21.md`.
+
+- Third pasted mode/workflow document incorrectly assumes our failed Seedance
+  tasks used edit and recommends reference as a new mode. Rechecked the saved
+  request receipt: audited Seedance used reference; the separate Omni edit test
+  is not a Seedance edit test. A corrected-reference comparison and a genuine
+  supported Seedance edit test answer different questions. Do not claim both
+  Seedance modes have failed or that changing to reference is a first trial.
+  Four declared values and explanatory input-workflow categories are distinct;
+  auto is classification, not an additional face-replacement engine.
+
+### Seedance source-edit integration and new test preparation — 21 October 2026 (local only)
+
+- Hook and Wall now expose `Edit source video` versus `Create from reference`
+  when a source is attached. Editing is the initial source task; removing the
+  source leaves image/prompt creation available. Gallery selection preserves
+  the chosen model instead of silently resetting it to Omni. Saved submissions
+  retain their original input; no accepted task is rewritten by these changes.
+- New Seedance edits freeze ReAPI and send `omni_reference_task_type: edit`,
+  `duration: -1`, `size: adaptive`, `content_filter: false`, and the explicit
+  native sound setting. Main photo is `@Image 1`; every additional photo is
+  bound by number as another view of the same person; `@Video 1` supplies the
+  performance, scene, clothing, lighting and timing. Editing instructions
+  describe modifying footage rather than creating a new scene. No face-geometry
+  or pixel-preservation guarantee has been established by these code changes.
+- API and UI reject short Seedance edit sources (under 4 seconds), unsupported
+  edit models and excess inputs before credit admission. Worker validation
+  independently enforces the provider contract. Seedance edit app credits use
+  the verified source duration rounded up; provider automatic-duration reserves
+  and settlement are separate, with a 30-second provider output reservation.
+- Photo-only creation retains its own performance instructions. Reference
+  creation remains a separate choice; it must not be presented as a tested
+  exact replacement. Legacy jobs without the new edit declaration continue
+  their recorded reference contract and recovery fingerprints.
+- Sound remains OFF by default for Hook/Wall, reaches the native provider flag,
+  and is enforced by removing output audio without re-encoding its pictures.
+  Removed conflicting hardcoded silence from visual gallery performance prose:
+  the explicit sound choice now owns that instruction. Rejected Hook 3/13/59
+  soundtrack mappings remain disabled; this does not restore their tracks.
+- User supplied `csdss.mp4` (104 frames, 3.467 seconds) and six new portraits.
+  User explicitly approved a separate four-second test copy with a final-frame
+  hold. Offline preflight verifies all 104 retained decoded pictures exactly,
+  appends 16 copies of the last picture, strips audio, hashes originals and
+  copies all six photos without alteration. The frontal `Softly Lit Neutral
+  Bedroom Portrait.png` is main. Originals stay unchanged. Preparation script:
+  `scripts/prepare-seedance-face-edit-test.mjs`; ignored artifacts:
+  `outputs/seedance-edit-test-2026-10-21/`.
+- No paid submission, upload, production database change or deployment in this
+  implementation. Paid test needs the reviewable cost approval first. Local
+  mocked-provider tests establish routing, roles, billing boundaries, recovery,
+  timeline checks and actual silence, not facial fidelity or live acceptance.
+
+- The user later explicitly approved ONE four-second paid diagnostic using
+  these new assets. ReAPI accepted task
+  `task_01a15b20ef8b77bbaf8d7faf0606023e` with the corrected edit contract,
+  all six ordered portraits and sound OFF. One POST only; local durable receipt
+  under `outputs/seedance-edit-test-2026-10-21/paid-test-receipt.json` protects
+  against duplicate submission. Direct adapter test uses existing media storage
+  without application jobs, app-credit charges, database changes or deployment.
+  Provider output and visual acceptance are pending; recover this ID before
+  considering any further paid work.
+
+- That one accepted task subsequently COMPLETED and was collected locally.
+  Settled ReAPI usage is 1,281 credits (US$1.281), one paid POST, no database or
+  application-credit changes. Actual output is 720×1280, 24 fps, 89 frames,
+  3.709 seconds from the verified four-second source; current 0.25-second edit
+  timeline guard rejects the 0.291-second difference. Do not hide this mismatch
+  with output padding or confuse it with failed collection. Preserve the saved
+  provider result/receipt; no automatic regeneration is authorized.
+- All 89 decoded frames inspected: caption removed and silence confirmed;
+  source room/clothing/hair and reaction broadly retained, but reference-face
+  fidelity does NOT pass visual acceptance and exact performance timing is not
+  locked. Input-flow fixes have live acceptance evidence, not a solved-fidelity
+  claim. Generated output is
+  `outputs/seedance-edit-test-2026-10-21/seedance-generated-silent.mp4`;
+  audit/comparison artifacts are in the same directory. No deployment or second
+  paid attempt. Detailed observations are recorded in
+  `docs/seedance-source-edit-implementation-2026-10-21.md`.
+
+### Proposed Hook recreation through an approved starting image — 21 October 2026
+
+- User proposes replacing the direct video face-edit attempt with a staged
+  Recreate flow: extract source frame, choose/upload/build influencer, generate
+  and approve a new starting image, then animate it with the reviewed Hook action
+  prompt. Current work is research/design and a static audit; not implemented
+  runtime behavior, a new paid test or deployment.
+- Recommend actual first frame by default and optional deliberate frame selection;
+  cache by canonical trimmed-source hash/frame index. Posters are not necessarily
+  first frames. Starting image is required; ending image is optional for specific
+  final pose/loop needs, not an identity guarantee. Keep source hairstyle/clothes
+  unless explicitly changed; image approval precedes any billed animation.
+- Verified all 98 active release Hook prompts exist and match source SHA-256.
+  All 98 use original-video wording; 97 use source-duration wording. Reuse action
+  observations but author/review separate keyframe-image and self-contained
+  motion prompts. Missing/new hashes require review; do not call every legacy
+  prompt qualified for the new image-only input path.
+- The current image API restricts multi-reference image generation to Slideshows;
+  Hook needs a proper keyframe purpose/contract, not a Slideshow disguise.
+  Current ReAPI video adapter does not yet emit explicit first/last-frame roles.
+  Existing character identities/history and Build character flow can be reused.
+- ReAPI's new path must use `image_with_roles` with `first_frame` and optional
+  `last_frame`, adaptive shape, fixed output duration and the existing explicit
+  sound/filter choices. Omit original video URLs, generic image_urls and edit
+  declaration. Sending source video with frame roles changes their treatment to
+  reference guidance. Separate photos belong to image-editing stage; the approved
+  full-scene frame supplies appearance/composition to animation.
+- Keep prompt/photo-only Generate available separately. Default sound remains
+  OFF. Present two separate costs; no claim that an extra image stage or image-
+  to-video is automatically cheaper. Source clip need not be padded to four
+  seconds when only its extracted still is passed to a fixed-duration animation.
+- Detailed plan and wireframe:
+  `docs/hook-keyframe-recreation-plan-2026-10-21.md`. Offline prompt audit and
+  actual first/last stills from the hash-verified original test-source copy:
+  `outputs/keyframe-recreation-plan-2026-10-21/`. No AI image was generated here.
+
+- User confirmed the first iteration should use **only a starting frame**, then
+  they will test it before deciding further changes. Defer ending-frame controls,
+  requests and generation; earlier optional-ending recommendations are future
+  scope, not version-one requirements. Implementation sequence is Hook wizard +
+  free extraction/owned influencer selection, image-stage role/prompt/API + image
+  approval, separately adapted motion prompts, explicit fixed-duration first-frame
+  animation with sound OFF, then offline validation and user review. No new paid
+  test or deployment is authorized by this planning discussion.

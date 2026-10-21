@@ -56,6 +56,16 @@ async function main() {
     assert.equal(await prompt.inputValue(), rewritten); unavailable = false; await page.getByRole('button', { name: 'Retry recovery', exact: true }).click(); await page.waitForFunction(() => document.querySelector('[data-testid="attached"]')?.textContent === 'Explore screenshot.png');
     console.log('PASS owner/source isolation and unavailable-image recovery block unsafe submission without losing text');
     await page.getByRole('button', { name: 'Clear attachments', exact: true }).click(); assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    await prompt.fill('Use my uploaded screenshot inside the laptop, do not change anything else.');
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    await prompt.fill('Do not change the laptop, place my screenshot in its screen.');
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    await page.getByRole('button', { name: 'Attach screenshot', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isEnabled(), true);
+    await page.getByRole('button', { name: 'Clear attachments', exact: true }).click();
+    await prompt.fill('Do not use my uploaded screenshot, keep the existing screen.');
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isEnabled(), true);
+    await prompt.fill('Use my uploaded screenshot inside the laptop, do not change anything else.');
     await page.setViewportSize({width:390,height:844}); await page.screenshot({path:path.join(out,'composer-mobile.png'),fullPage:true});
     assert.deepEqual(errors, []); console.log('PASS missing-screenshot submission guard');
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

@@ -111,12 +111,118 @@ function harness(format, { reference = true, referenceUrls, slideshowSlideCount,
     return null;
   }
   const render = () => { let tree; do { stateChanged = false; rendering = true; cursor = 0; refCursor = 0; effectCursor = 0; tree = Panel(props); rendering = false; } while (stateChanged); return { composer: find(tree, "AiStudioComposer"), output: find(tree, "AiStudioResults") }; };
-  return { events, controls, results, requests, errors, readyVideos, selectedVersions, autoVersions, stored, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
+  return { events, controls, results, requests, errors, readyVideos, selectedVersions, autoVersions, stored, selectStartingFrame(selection) { props.recreateView.startingFrame = selection; return render(); }, selectGallery(video) { props.recreateView.styleVideo = video; return render(); }, clearGallery() { props.recreateView.onClearReference(); return render(); }, flushEffects: async () => { for (const effect of effects.splice(0)) effect(); await new Promise(resolve => setImmediate(resolve)); }, render, ...render() };
 }
 
 function resultNodes(tree) {
   return Array.isArray(tree) ? tree.flatMap(resultNodes) : tree && typeof tree === "object" ? [tree, ...resultNodes(tree.props?.children)] : [];
 }
+
+function chooseSourceTask(h, value) {
+  const selector = resultNodes(h.render().composer.props.promptSupplement).find(node => node.type === "select" && node.props["aria-label"] === "Source video task");
+  assert.ok(selector);
+  selector.props.onChange({ target: { value } });
+}
+
+test("Hook and Wall submit source edits with six ordered photos and return to image-only creation when the source is removed", async () => {
+  for (const format of ["hook", "wall_text"]) {
+    const h = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
+    const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
+    setting("Video model").props.onChange("seedance_2_5");
+    const photos = Array.from({ length: 6 }, (_, i) => ({ kind: "image", asset: { id: `face-${i}`, url: `https://owned.test/face-${i}.png`, title: "Face" } }));
+    h.render().composer.props.referenceControls.props.onImagesChange(photos);
+    h.render().composer.props.referenceControls.props.onChange({ kind: "video", asset: { id: "source", url: "https://owned.test/source.mp4", durationSeconds: 4, fileSizeBytes: 1000 } }, "video");
+    let composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false); assert.equal(composer.props.estimatedCredits, 16);
+    assert.equal(composer.props.referenceControls.props.preserveVideoTiming, true);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.referenceVideoMode, "edit");
+    assert.equal(h.requests[0].body.model, "seedance_2_5"); assert.equal(h.requests[0].body.generateAudio, false);
+    assert.deepEqual(h.requests[0].body.referenceImageUrls, photos.map(photo => photo.asset.url));
+    const create = harness(format, { seedanceEnabled: true, reference: false, captureRequests: true });
+    create.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.onChange("seedance_2_5");
+    create.render().composer.props.referenceControls.props.onImagesChange(photos);
+    composer = create.render().composer;
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(create.requests[0].body.referenceVideoMode, undefined);
+    assert.equal(create.requests[0].body.referenceVideoUrl, null);
+  }
+});
+
+test("short Seedance editing and unsupported WAN editing cannot submit until the user explicitly chooses reference creation", async () => {
+  for (const format of ["hook", "wall_text"]) for (const model of ["seedance_2_5", "wan_3_0"]) {
+    const h = harness(format, { seedanceEnabled: true, wanEnabled: true, reference: false, captureRequests: true });
+    h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.onChange(model);
+    h.selectGallery({ id: "short", url: "https://owned.test/short.mp4", duration: 3.467 });
+    let composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, true);
+    assert.match(composer.props.accessMessage, model === "seedance_2_5" ? /4–30 second source/ : /Choose Seedance 2.5 or Google Omni/);
+    await composer.props.onSubmit({ preventDefault() {} }); assert.equal(h.requests.length, 0);
+    chooseSourceTask(h, "reference"); composer = h.render().composer;
+    assert.equal(composer.props.generateDisabled, false);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0].body.referenceVideoMode, "reference"); assert.equal(h.requests[0].body.model, model);
+  }
+});
+
+test("Hook and Wall default to Sound off and submit the explicitly toggled choice with or without a source", async () => {
+  for (const format of ["hook", "wall_text"]) for (const reference of [false, true]) for (const enabled of [false, true]) {
+    const h = harness(format, { reference, captureRequests: true });
+    let composer = h.render().composer;
+    assert.equal(composer.props.promptAction.props.role, "switch");
+    assert.equal(composer.props.promptAction.props["aria-checked"], false);
+    if (enabled) { composer.props.promptAction.props.onClick(); composer = h.render().composer; }
+    assert.equal(composer.props.promptAction.props["aria-checked"], enabled);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].body.generateAudio, enabled);
+    assert.equal(h.requests[0].body.exploreFormat, format);
+  }
+  assert.equal(harness("studio").composer.props.promptAction, undefined);
+});
+
+test("approved Hook starting-frame handoff clears old references and submits only owned image IDs plus motion and explicit sound", async () => {
+  for (const sound of [false, true]) {
+    const h = harness("hook", { seedanceEnabled: true, reference: false, captureRequests: true });
+    const controls = h.render().composer.props.referenceControls.props;
+    controls.onImagesChange([{ kind: "image", asset: { id: "old-photo", url: "https://owned.test/old.png" } }]);
+    controls.onChange({ kind: "video", asset: { id: "old-clip", url: "https://owned.test/old.mp4", durationSeconds: 4, fileSizeBytes: 1000 } }, "video");
+    const selection = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-15", sourceSha256: "a".repeat(64),
+      assetId: "approved-scene", jobId: "owned-image-job", url: "https://owned.test/approved.png", width: 720, height: 1280,
+      durationSeconds: 8, motionInstructions: "Open both palms, glance sideways, then end with a faint smile.", generateAudio: sound };
+    let composer = h.selectStartingFrame(selection).composer;
+    assert.equal(h.requests.length, 0, "Using a frame never generates a video automatically");
+    assert.equal(composer.props.referenceControls.props["aria-label"], "Starting frame");
+    assert.equal(composer.props.prompt, selection.motionInstructions);
+    assert.equal(composer.props.promptAction.props["aria-checked"], sound);
+    assert.match(composer.props.settingsSummary, /Seedance 2\.5.*8s/);
+    const settings = composer.props.settings.props.children;
+    const duration = settings.find(node => node?.props?.ariaLabel === "Video duration");
+    assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), Array.from({ length: 12 }, (_, i) => i + 4));
+    duration.props.onChange("30");
+    assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "8");
+    assert.deepEqual(Array.from(settings.find(node => node?.type === "AiStudioRatioPicker").props.allowedRatios), ["9:16"]);
+    assert.equal(composer.props.generateDisabled, false);
+    await composer.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1);
+    const body = h.requests[0].body;
+    assert.equal(body.startingFrameAssetId, selection.assetId); assert.equal(body.startingFrameJobId, selection.jobId);
+    assert.equal(body.referenceId, "hook-15"); assert.equal(body.model, "seedance_2_5");
+    assert.equal(body.durationSeconds, 8); assert.equal(body.generateAudio, sound); assert.equal(body.prompt, selection.motionInstructions);
+    for (const key of ["avatarImageUrl", "referenceImageUrls", "referenceVideoUrl", "referenceAudioUrls", "referenceVideoMode", "useGalleryVideoReference"]) {
+      assert.equal(key in body, false, `${key} must not accompany first-frame animation`);
+    }
+  }
+});
+
+test("a different account's starting frame cannot replace the current person's video inputs", () => {
+  const h = harness("hook", { reference: false, seedanceEnabled: true });
+  const composer = h.selectStartingFrame({ ownerId: "other-owner", draftId: "draft", referenceId: "other", assetId: "other-image", jobId: "other-job",
+    url: "https://owned.test/other.png", width: 720, height: 1280, durationSeconds: 8, motionInstructions: "Other owner's instructions", generateAudio: true }).composer;
+  assert.equal(composer.props.referenceControls.type, "FormatGenerationReferences");
+  assert.notEqual(composer.props.prompt, "Other owner's instructions");
+  assert.equal(h.requests.length, 0);
+});
 
 test("slideshow sends the text-box rewrite through the existing generation request without per-slide plans", async () => {
   for (const editAfterRewrite of [false, true]) {
@@ -220,6 +326,7 @@ for (const format of ["hook", "wall_text"]) {
     const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
     h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 12);
     setting("Video model").props.onChange("seedance_2_5");
+    chooseSourceTask(h, "reference");
     setting("Video duration").props.onChange(17);
     const audio = { kind: "audio", asset: { id: "seedance-audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 3, fileSizeBytes: 1000 } };
     h.render().composer.props.referenceControls.props.onChange(audio, "audio");
@@ -230,7 +337,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests.length, 1);
     const input = h.requests[0].body;
     assert.equal(input.exploreFormat, format); assert.equal(input.model, "seedance_2_5");
-    assert.equal(input.useGalleryVideoReference, true); assert.equal(input.referenceVideoMode, undefined);
+    assert.equal(input.useGalleryVideoReference, true); assert.equal(input.referenceVideoMode, "reference");
     assert.equal(input.durationSeconds, 17); assert.deepEqual(input.referenceAudioUrls, [audio.asset.url]);
     assert.deepEqual(input.referenceAudioAssetIds, [audio.asset.id]);
   });
@@ -317,7 +424,7 @@ for (const format of ["hook", "wall_text"]) {
       .find(node => node?.type === "div" && node.props.children[1]?.type === "output").props.children[1].props.children[1].props.children;
     assert.equal(durationText(), "Reading…");
     h.render().composer.props.referenceControls.props.onStyleVideoDurationChange("https://example.test/style.mp4", 7.54);
-    assert.equal(durationText(), "8 sec");
+    assert.equal(durationText(), "7.54 sec");
     assert.equal(h.render().composer.props.estimatedCredits, 32);
     await h.render().composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.durationSeconds, 8);
@@ -361,7 +468,7 @@ for (const format of ["hook", "wall_text"]) {
     h.clearGallery();
     assert.equal(h.render().composer.props.referenceControls.props.videoSelection, null, "Removing gallery guidance must not restore the earlier upload");
   });
-  test(`${format}: clicking the same gallery card again replaces a later upload and selects compatible model quality`, async () => {
+  test(`${format}: clicking the same gallery card again replaces a later upload and preserves the chosen model`, async () => {
     const h = harness(format, { reference: false, wanEnabled: true, captureRequests: true });
     const setting = label => h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === label);
     setting("Video model").props.onChange("wan_3_0");
@@ -369,15 +476,17 @@ for (const format of ["hook", "wall_text"]) {
     setting("Video duration").props.onChange(30);
     const gallery = { id: `${format}-repeat`, url: "https://example.test/repeat.mp4", name: "Repeated reference", duration: 6, selectionRevision: 1 };
     h.selectGallery(gallery);
-    assert.equal(setting("Video model").props.value, "google_omni");
-    assert.equal(setting("Video quality").props.value, "720p");
+    assert.equal(setting("Video model").props.value, "wan_3_0");
+    assert.equal(setting("Video quality").props.value, "480p");
+    chooseSourceTask(h, "reference");
+    setting("Video duration").props.onChange(5);
     h.render().composer.props.referenceControls.props.onChange({ kind: "video", asset: { id: "new-upload", url: "https://owned-media.test/new.mp4", durationSeconds: 4, title: "New upload" } }, "video");
     h.render();
     h.selectGallery({ ...gallery, selectionRevision: 2 });
     await h.render().composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.referenceId, gallery.id);
     assert.equal(h.requests[0].body.referenceVideoUrl, null);
-    assert.equal(h.requests[0].body.resolution, "720p");
+    assert.equal(h.requests[0].body.resolution, "480p");
     h.clearGallery();
     assert.equal(setting("Video duration").props.value, 5);
   });
@@ -411,7 +520,7 @@ for (const format of ["hook", "wall_text"]) {
     const images = Array.from({ length: 3 }, (_, index) => ({ kind: "image", asset: { id: `image-${index}`, url: `https://owned-media.test/image-${index}.png`, title: `Image ${index}` } }));
     for (const image of images) h.render().composer.props.referenceControls.props.onChange(image, "image");
     let controls = h.render().composer.props.referenceControls.props;
-    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 5);
+    assert.equal(controls.imageSelections.length, 3); assert.equal(controls.maxImages, 10);
     controls.onImagesChange(images.filter(image => image.asset.id !== "image-1"));
     controls = h.render().composer.props.referenceControls.props;
     assert.equal(controls.imageSelections.length, 2); assert.ok(controls.styleVideo);
@@ -497,6 +606,7 @@ for (const format of ["hook", "wall_text"]) {
     const model = h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model");
     assert.equal(model.props.options.find(option => option.value === "wan_3_0").disabled, false);
     model.props.onChange("wan_3_0");
+    chooseSourceTask(h, "reference");
     let composer = h.render().composer;
     composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.onChange(3);
     composer = h.render().composer;
@@ -506,7 +616,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.model, "wan_3_0");
     assert.equal(h.requests[0].body.durationSeconds, 3);
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
-    assert.equal(h.requests[0].body.referenceVideoMode, undefined);
+    assert.equal(h.requests[0].body.referenceVideoMode, "reference");
   });
   test(`${format}: WAN submits image, video and audio together and preserves them when changing models`, async () => {
     const h = harness(format, { wanEnabled: true, captureRequests: true, reference: false });
@@ -516,6 +626,7 @@ for (const format of ["hook", "wall_text"]) {
     const video = { kind: "video", asset: { id: "video", url: "https://owned.test/motion.mp4", title: "Motion", durationSeconds: 14, fileSizeBytes: 32 * 1024 ** 2 } };
     const audio = { kind: "audio", asset: { id: "audio", url: "https://owned.test/voice.mp3", title: "Voice", durationSeconds: 15, fileSizeBytes: 15 * 1024 ** 2 } };
     for (const ref of [image, video, audio]) h.render().composer.props.referenceControls.props.onChange(ref, ref.kind);
+    chooseSourceTask(h, "reference");
     setting("Video duration").props.onChange(3);
     setting("Video model").props.onChange("google_omni");
     let composer = h.render().composer;
@@ -532,13 +643,14 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceVideoUrl, video.asset.url);
     assert.deepEqual(h.requests[0].body.referenceAudioUrls, [audio.asset.url]);
     assert.equal(h.requests[0].body.durationSeconds, 3);
-    assert.equal(h.requests[0].body.referenceVideoMode, undefined);
+    assert.equal(h.requests[0].body.referenceVideoMode, "reference");
   });
   test(`${format}: WAN blocks retained timed references that exceed its duration or upload limit`, async () => {
     for (const patch of [{ durationSeconds: 15.1 }, { fileSizeBytes: 32 * 1024 ** 2 + 1 }]) {
       const h = harness(format, { wanEnabled: true, captureRequests: true, reference: false });
       h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video model").props.onChange("wan_3_0");
       h.render().composer.props.referenceControls.props.onChange({ kind: "video", asset: { id: "long", url: "https://owned.test/long.mp4", durationSeconds: 15, fileSizeBytes: 32 * 1024 ** 2, ...patch } }, "video");
+      chooseSourceTask(h, "reference");
       const composer = h.render().composer;
       assert.equal(composer.props.generateDisabled, true); assert.match(composer.props.accessMessage, /up to (?:15 seconds|32 MB)/);
       await composer.props.onSubmit({ preventDefault() {} }); assert.equal(h.requests.length, 0);

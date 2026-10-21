@@ -18,7 +18,19 @@ async function main() {
   let css=(await postcss([require("@tailwindcss/postcss")()]).process(globals,{from:path.join(root,"app/globals.css")})).css;
   for(const file of ["format-workspace.module.css","format-video-editor.module.css","explore-text-fonts.css"]) css+="\n"+fs.readFileSync(path.join(root,"components/explore",file),"utf8").replace(/:global\(([^)]+)\)/g,"$1");
   css+="\nmain{max-width:1100px;margin:auto;padding:20px}h1{font-size:18px;margin-bottom:16px}.fixture{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px}.portrait{position:relative;aspect-ratio:9/16;overflow:hidden;border-radius:20px;background:#111}.portrait img{width:100%;height:100%;object-fit:cover;filter:brightness(.65)}.settings{display:flex;flex-direction:column;min-height:0;height:calc(100dvh - 110px)}.scroller{overflow:auto;min-height:0;padding:4px 8px 16px}footer{display:flex;gap:12px;padding:12px 0}footer button{padding:8px 16px;border-radius:10px;background:var(--primary);color:var(--primary-foreground)}@media(max-width:600px){main{padding:12px}.fixture{grid-template-columns:minmax(0,1fr);gap:16px}.portrait{width:170px;justify-self:center}.settings{height:560px}}";
-  const server=http.createServer((req,res)=>{if(req.url==="/bundle.js"){res.setHeader("Content-Type","text/javascript");return res.end(fs.readFileSync(path.join(out,"bundle.js")));}if(req.url.startsWith("/explore-text-fonts/")&&/^\/explore-text-fonts\/[a-z]+-(400|500|700)\.woff2$/.test(req.url)){res.setHeader("Content-Type","font/woff2");return res.end(fs.readFileSync(path.join(root,"public",req.url)));}if(req.url==="/background.png"){res.setHeader("Content-Type","image/png");return res.end(fs.readFileSync(path.join(root,"public/ai-studio/creator-references/creator-01.png")));}res.setHeader("Content-Type","text/html; charset=utf-8");res.end('<html class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>');});
+  const emojiManifest=JSON.parse(fs.readFileSync(path.join(root,"worker/src/lib/explore-emoji-manifest.json"),"utf8"));
+  const emojiArt=JSON.parse(require("node:zlib").gunzipSync(fs.readFileSync(path.join(root,"worker/src/assets/emoji",emojiManifest.version+".json.gz"))));
+  const server=http.createServer((req,res)=>{
+    if(req.url.startsWith("/api/explore/emoji/")) {
+      const match=req.url.match(/^\/api\/explore\/emoji\/([^/]+)\/([a-f0-9-]+)$/);
+      if(!match||match[1]!==emojiManifest.version+'-'+emojiManifest.packSha256.slice(0,12)||!Object.hasOwn(emojiArt,match[2])) {res.statusCode=404;return res.end();}
+      res.setHeader("Content-Type","image/svg+xml");return res.end(emojiArt[match[2]]);
+    }
+    if(req.url==="/bundle.js"){res.setHeader("Content-Type","text/javascript");return res.end(fs.readFileSync(path.join(out,"bundle.js")));}
+    if(req.url.startsWith("/explore-text-fonts/")&&/^\/explore-text-fonts\/[a-z]+-(400|500|700)\.woff2$/.test(req.url)){res.setHeader("Content-Type","font/woff2");return res.end(fs.readFileSync(path.join(root,"public",req.url)));}
+    if(req.url==="/background.png"){res.setHeader("Content-Type","image/png");return res.end(fs.readFileSync(path.join(root,"public/ai-studio/creator-references/creator-01.png")));}
+    res.setHeader("Content-Type","text/html; charset=utf-8");res.end('<html class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>');
+  });
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));let browser;
   try {
     let pw;try{pw=require("playwright");}catch{pw=require(path.join(process.env.USERPROFILE,".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));}
@@ -80,10 +92,26 @@ async function main() {
       assert.equal(await preview.locator('[data-format-inline-symbol="cross"] path').getAttribute('fill'),'#e53935');
       assert.equal(await preview.locator('[data-format-inline-symbol="check-box"] path').first().getAttribute('fill'),'#22a447');
       assert.equal(await preview.locator('[data-format-inline-symbol="check"] path').getAttribute('fill'),'#22c55e');
-      assert.ok((await preview.textContent()).includes('😂'));
+      assert.equal(await preview.locator('image[aria-label="😂"]').count(),1);
       await page.screenshot({path:path.join(out,`symbols-${viewport.width}.png`),fullPage:true});
     }
     console.log('PASS: preview cross/right-arrow red, checks green, face emoji retained and exact Unicode survives save/reopen on laptop/mobile.');
+
+    const emojiCopy='😂 😭 🔥 🚀\n❤️ 👍🏽 👩🏽‍💻 🇮🇳\n1️⃣ 💯 ✨ 🎉\n❌ ✅ ✔️ ☑️';
+    await page.getByRole('textbox',{name:'Overlay text',exact:true}).fill(emojiCopy);
+    await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
+    for(const viewport of [{width:1366,height:768},{width:390,height:844}]) {
+      await page.setViewportSize(viewport);
+      assert.equal(await page.getByRole('textbox',{name:'Overlay text',exact:true}).inputValue(),emojiCopy);
+      const images=page.locator('svg[aria-label="Text preview"] [data-format-emoji]');
+      assert.equal(await images.count(),12);
+      const loaded=await images.evaluateAll(nodes=>Promise.all(nodes.map(node=>new Promise(resolve=>{
+        const image=new Image();image.onload=()=>resolve(image.naturalWidth>0);image.onerror=()=>resolve(false);image.src=node.getAttribute('href');
+      }))));
+      assert.ok(loaded.every(Boolean),'Every preview glyph loads as actual bundled artwork');
+      await page.screenshot({path:path.join(out,`emojis-${viewport.width}.png`),fullPage:true});
+    }
+    console.log('PASS: faces, heart, skin tone, joined person, flag, keycap and symbols use bundled artwork and survive save/reopen at laptop/mobile widths.');
 
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
     await checkPresetSwitch(true);

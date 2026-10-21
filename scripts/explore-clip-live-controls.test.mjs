@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as formatEdit from "../worker/src/lib/explore-format-edit.ts";
+import * as emoji from "../worker/src/lib/explore-emoji.ts";
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
@@ -29,6 +30,7 @@ function harness(file, dependencies = {}) {
     if (name.endsWith(".css")) return styles;
     if (name === "react-dom") return { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) };
     if (name === "@/worker/src/lib/explore-format-edit") return formatEdit;
+    if (name === "@/worker/src/lib/explore-emoji") return emoji;
     if (name === "@/components/ui/button") return { Button: "button" };
     if (name === "lucide-react") return new Proxy({}, { get: (_, name) => name });
     throw Error(`Unexpected import ${name}`);
@@ -46,7 +48,7 @@ test("preview uses colored artwork for cross/arrow/check while retaining emoji a
   assert.deepEqual(symbols.map(node => node.props["data-format-inline-symbol"]), ["cross", "check-box", "arrow-right", "check"]);
   assert.equal(nodes(symbols[0]).find(node => node.type === "path").props.fill, "#e53935");
   assert.equal(nodes(symbols[1]).find(node => node.type === "path").props.fill, "#22a447");
-  assert.ok(nodes(tree).some(node => node.type === "text" && node.props.children === "😂"));
+  assert.ok(nodes(tree).some(node => node.type === "image" && node.props["aria-label"] === "😂" && node.props.href === emoji.exploreEmojiUrl("1f602")));
   assert.equal(text.value, "Features ❌\nMarketing ✅ → ✔️ 😂"); h.unmount();
 });
 

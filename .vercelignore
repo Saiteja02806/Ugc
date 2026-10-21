@@ -11,6 +11,7 @@ local-run-logs/
 node_modules/
 out/
 output/
+outputs/
 tmp/
 tmp-logs/
 worker/dist/

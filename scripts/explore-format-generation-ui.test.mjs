@@ -196,6 +196,12 @@ test("approved Hook starting-frame handoff clears old references and submits onl
     assert.equal(composer.props.prompt, selection.motionInstructions);
     assert.equal(composer.props.promptAction.props["aria-checked"], sound);
     assert.match(composer.props.settingsSummary, /Seedance 2\.5.*8s/);
+    const settings = composer.props.settings.props.children;
+    const duration = settings.find(node => node?.props?.ariaLabel === "Video duration");
+    assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), Array.from({ length: 12 }, (_, i) => i + 4));
+    duration.props.onChange("30");
+    assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "8");
+    assert.deepEqual(Array.from(settings.find(node => node?.type === "AiStudioRatioPicker").props.allowedRatios), ["9:16"]);
     assert.equal(composer.props.generateDisabled, false);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.length, 1);

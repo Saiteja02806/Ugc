@@ -79,6 +79,21 @@ fails Firebase configuration. It does not own getugcpilot.com or the Trending
 screen route. Its unrelated configuration is not changed by this release. The
 live website target is `ugc`; the separate MCP target is `ugc-mcp`.
 
+The final UI pass restricts starting-frame duration to the same 4–15 whole
+seconds accepted by admission and keeps its source-image ratio. Normal video
+creation is unchanged. The independently added Hook Remix emoji render test
+also passed and is included under the user's complete-worktree release scope.
+
+The user requested waiting for the concurrent emoji investigation. That task
+has completed and handed off its recurrence record and deployment evidence.
+The existing emoji runtime artwork is already in this source; include its new
+regression and both documentation changes. The combined rollout must update
+both `ugc-video-render-worker` active traffic and `ugc-video-render-job`, as well
+as the generation worker. Updating a service template alone is insufficient.
+Use the reviewed pinned image and verify the active revision's baked/runtime
+source identities and the batch job digest. Existing immutable exports are not
+rewritten and no paid regeneration is triggered.
+
 Publish the complete source, require CI, and stage the website without assigning
 production domains. Deploy the matching worker source and verify its pinned
 image plus exact revision startup identity before promoting the new entry.

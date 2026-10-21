@@ -539,7 +539,9 @@ export function VideoGenerationStudioPanel({
     (referenceImages.length > 0 || (sourceDuration != null && sourceDuration > 3))
     ? "Choose Seedance 2.5 or WAN 3.0 to create from this reference, or choose Edit source video with Google Omni." : null;
   const startingFrameError = startingFrame && model !== "seedance_2_5" ? "Starting-frame animation uses Seedance 2.5 through ReAPI. Select Seedance 2.5 before generating; no credits have been charged."
-    : startingFrame && (startingFrame.width / startingFrame.height < .54 || startingFrame.width / startingFrame.height > 1.82 || startingFrame.width === startingFrame.height) ? "Use a 9:16 or 16:9 starting image for this animation." : null;
+    : startingFrame && (startingFrame.width / startingFrame.height < .54 || startingFrame.width / startingFrame.height > 1.82 || startingFrame.width === startingFrame.height) ? "Use a 9:16 or 16:9 starting image for this animation."
+    : startingFrame && (!Number.isInteger(durationSeconds) || durationSeconds < 4 || durationSeconds > 15) ? "Starting-frame animation supports 4–15 whole seconds."
+    : startingFrame && aspectRatio !== (startingFrame.width > startingFrame.height ? "16:9" : "9:16") ? "Keep the starting image’s ratio to preserve its composition." : null;
   const generationReferenceError = startingFrameError ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
   const activeReferenceImageUrl = startingFrame?.url ?? uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null) ?? null;
   const promptMaxLength = getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(uploadedReferenceVideo || galleryVideoReference), referenceVideoMode: hasWorkflowVideoReference ? "edit" : undefined, format: workflowFormat === "slideshow" ? undefined : workflowFormat, personPhotos: Boolean(workflow && imagePurpose === "person" && referenceImages.length), imageCount: referenceImages.length, generateAudio: supportsWorkflowSound ? generateAudio : undefined });
@@ -1224,7 +1226,11 @@ export function VideoGenerationStudioPanel({
                 setResolution(value as AIStudioVideoResolution);
               }}
             />);
-  const durationSetting = hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" title="Editing follows the source timeline. App credits use the source duration estimate; Seedance rounds this up to a whole second." className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output><small className={creation.referenceTimingHint}>{sourceDuration ? `${Number(sourceDuration.toFixed(1))}s reference · source timing kept` : "Reading reference length…"}</small></div> : workflow ? (
+  const durationSetting = startingFrame ? <AiStudioSettingSelect ariaLabel="Video duration" fieldLabel="Duration" fieldLayout="classic" size="sm"
+    disabled={generationLocked && !recreateView?.preview || isGenerating} icon={<Clock3 className="size-3.5" aria-hidden="true" />}
+    options={Array.from({ length: 12 }, (_, index) => index + 4).map(seconds => ({ value: String(seconds), label: `${seconds} sec · ${seconds * creditsPerSecond} credits`, triggerLabel: `${seconds} sec` }))}
+    value={String(durationSeconds)} onChange={value => { const seconds = Number(value); if (Number.isInteger(seconds) && seconds >= 4 && seconds <= 15) { submissionKeyRef.current = null; setDurationSeconds(seconds as AIStudioVideoDuration); } }} />
+    : hasWorkflowVideoReference ? <div className={creation.settingField}><span>Duration</span><output aria-label="Reference video duration" aria-live="polite" title="Editing follows the source timeline. App credits use the source duration estimate; Seedance rounds this up to a whole second." className={creation.referenceDuration}><Clock3 className="size-3.5 shrink-0 text-muted" aria-hidden="true" /><span>{sourceDurationLabel}</span></output><small className={creation.referenceTimingHint}>{sourceDuration ? `${Number(sourceDuration.toFixed(1))}s reference · source timing kept` : "Reading reference length…"}</small></div> : workflow ? (
     <WorkflowDurationControl
       key={model}
       ariaLabel="Video duration"
@@ -1396,7 +1402,7 @@ export function VideoGenerationStudioPanel({
           Sound {generateAudio ? "on" : "off"}
         </button> : undefined}
         promptSupplement={workflow ? <>
-          {startingFrame ? <p className="mb-3 text-xs leading-5 text-muted">Starting-frame animation · Seedance 2.5 / ReAPI · {startingFrame.durationSeconds} seconds. Review the result for facial consistency.</p> : null}
+          {startingFrame ? <p className="mb-3 text-xs leading-5 text-muted">Starting-frame animation · Seedance 2.5 / ReAPI · {durationSeconds} seconds. Review the result for facial consistency.</p> : null}
           {hasVideoReference ? <div className="mb-3 space-y-1.5">
             <label className="flex flex-wrap items-center justify-between gap-2 text-sm">Use source video
               <select aria-label="Source video task" value={workflowSourceMode} disabled={isGenerating || Boolean(pendingSubmission)} onChange={event => {
@@ -1621,7 +1627,7 @@ export function VideoGenerationStudioPanel({
                 submissionKeyRef.current = null;
                 setAspectRatio(value as AIStudioVideoAspectRatio);
               }}
-              allowedRatios={["9:16", "16:9"]}
+              allowedRatios={startingFrame ? [startingFrame.width > startingFrame.height ? "16:9" : "9:16"] : ["9:16", "16:9"]}
               disabled={generationLocked && !recreateView?.preview || isGenerating}
             />
           </>

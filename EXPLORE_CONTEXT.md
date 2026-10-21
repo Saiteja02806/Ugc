@@ -1,5 +1,49 @@
 # Explore context and UI decision record
 
+## 2026-10-21 Hook Remix emoji recurrence: production renderer release gap
+
+- User asked whether ALL emojis are now correct. A fresh live service/job read
+  still shows the old active revision/digest below; rollout remains pending.
+  Expanded local actual-MP4 inspection of 16 samples finds the four explicit
+  cross/check marks colored, while the 12 font-fallback samples (faces, fire,
+  rocket, heart, skin tone, person ZWJ, flag, keycap, hundred, sparkle, party)
+  are monochrome; flag/person sequences also look wrong. This is Windows
+  fallback evidence, NOT proof of the Linux production font output. Docker's
+  Linux daemon is unavailable, so same-container coverage remains unverified.
+  Preserve the targeted symbol fix, but do not call it an all-emoji fix. Full
+  coverage requires a separate bounded emoji-support contract and actual
+  glyph/color/sequence verification, not merely checking Unicode in SVG.
+  Evidence: `.tmp/hook-emoji-coverage-20261021/coverage.json` and
+  `local-mp4-emoji-sample.png` in the same directory.
+- The user again reports white cross/tick glyphs in remixed Hook text. Fresh
+  production reads confirm the active `ugc-video-render-worker` revision is
+  `ugc-video-render-worker-hookfix2-fac61da3` at 100% traffic, pinned digest
+  `96afdde1f42c980281c3b68182ad91874c41c997d9d20219bd472f8d0f15a36d`.
+  `ugc-video-render-job` uses the same old digest. The service template contains
+  a newer image, but that is NOT evidence of the active traffic's code.
+- `fac61da3` lacks `explore-inline-symbols.ts`; its outlined glyphs inherit white
+  caption fill. The symbol fix was committed later in `c3bedc52`. Public production
+  Hook JavaScript already contains the colored-symbol preview implementation.
+  Shipping website code alone did not fix final exported MP4s.
+- Locally reconstructed the three relevant renderer modules from the active
+  source revision. The user's exact caption reproduces zero red/green pixels;
+  corrected code produces red cross/green tick in decoded MP4 frames. This is
+  a source reconstruction, not a new production render or paid generation.
+- Added an actual-media regression through `applyVideoTextRemix`, serialized
+  draft recovery, clip export and final Hook/demo composition. All four supported
+  cross/check pairs retain Unicode/colors and disappear before the demo. Existing
+  related 35 checks, worker build and scoped lint pass (36 checks with the new
+  regression). No new runtime fix was needed beyond the already committed artwork.
+- Release scope can be the four symbol/render modules on the active worker base,
+  deployed to BOTH render service and batch job; no website or migration change
+  is required for this symptom. Preserve existing accepted fingerprints/receipts:
+  old immutable MP4s need an explicit fresh export from the editable source and
+  existing remix, not another paid Remix/generation request. Do not globally bump
+  finishing fingerprints and invalidate recovery to force a new render.
+- Live browser redirects to sign-in; authenticated workflow acceptance remains
+  pending. No deployment or production media mutation in this investigation.
+  Details and reviewed release patch: `docs/hook-remix-emoji-production-gap-2026-10-21.md`.
+
 ## 2026-10-21 Starting-frame handoff and local browser verification
 
 - Connected the dedicated owned image-generation job to result inspection and

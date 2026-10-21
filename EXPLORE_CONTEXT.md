@@ -1,5 +1,21 @@
 # Explore context and UI decision record
 
+## 2026-10-21 Hosted first-frame decoder packaging
+
+- PR #79 reached production and Recreate opens the new preparation dialog.
+  Its authenticated free frame extraction failed with decoder-unavailable while
+  paid generation remained disabled; no inference or credit charge was submitted.
+  The hosted Linux prebuild had successfully run FFmpeg, so that alone did not
+  establish executable resolution inside the deployed function.
+- The Hook route trace contained the binary but not ffmpeg-static's native
+  module. Replace createRequire-based loading with a static package import and
+  explicitly externalize ffmpeg-static in Next configuration. Trace the native
+  module, package metadata and platform binary for both source extraction and
+  image admission; test the real hosted extraction again before claiming success.
+- The generation/render worker image is unchanged by this website packaging
+  correction. Keep its verified e9fc8fac source/image identity; no database or
+  paid provider action is part of the repair.
+
 ## 2026-10-21 Complete bundled emoji rendering for Hook/shared video overlays
 
 - User requested resolving the remaining emoji cases and questioned whether the

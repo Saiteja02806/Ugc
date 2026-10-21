@@ -6,6 +6,8 @@ const firebaseAuthHelperDomain =
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  // The package resolves its executable relative to its real installed module.
+  serverExternalPackages: ["ffmpeg-static"],
   experimental: {
     // Worker source keeps NodeNext .js imports; Webpack can also resolve its .ts source.
     extensionAlias: { ".js": [".js", ".ts"] },

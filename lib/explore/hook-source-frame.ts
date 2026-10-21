@@ -3,9 +3,9 @@ import "server-only";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import ffmpegStatic from "ffmpeg-static";
 
 import { buildPublicStorageUrl } from "../storage/storage.ts";
 import { getHookReferenceGalleryItems, type HookReferenceReleaseItem } from "../../worker/src/lib/explore-hook-reference-release.ts";
@@ -13,7 +13,6 @@ import { getHookReferenceGalleryItems, type HookReferenceReleaseItem } from "../
 const MAX_VIDEO_BYTES = 64 * 1024 ** 2;
 const MAX_FRAME_BYTES = 16 * 1024 ** 2;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-const require = createRequire(import.meta.url);
 
 export class HookSourceFrameError extends Error {
   constructor(message: string, public status = 503) {
@@ -91,7 +90,7 @@ export async function decodeHookFirstFrame(video: Uint8Array, ffmpegPath?: strin
   try {
     const sourcePath = join(directory, "source.mp4");
     await writeFile(sourcePath, video);
-    const binary = ffmpegPath ?? require("ffmpeg-static") as string | null;
+    const binary = ffmpegPath ?? ffmpegStatic;
     if (!binary) throw new HookSourceFrameError("Starting-frame preparation is not configured.");
     return await new Promise<Buffer>((resolve, reject) => {
       const process = spawn(binary, [

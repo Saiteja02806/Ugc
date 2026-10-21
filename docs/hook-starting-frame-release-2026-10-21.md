@@ -84,6 +84,12 @@ seconds accepted by admission and keeps its source-image ratio. Normal video
 creation is unchanged. The independently added Hook Remix emoji render test
 also passed and is included under the user's complete-worktree release scope.
 
+The website build now runs `check-hook-frame-runtime.mjs` before Next. It
+requires the platform's actual ffmpeg-static executable to exist and run, so
+a package installation that omitted the downloaded binary fails before release.
+The local Windows probe passes; the final hosted Linux build must pass this
+same preflight. The route file trace separately includes the platform binary.
+
 The user requested waiting for the concurrent emoji investigation. That task
 has completed and handed off its recurrence record and deployment evidence.
 The existing emoji runtime artwork is already in this source; include its new
@@ -93,6 +99,17 @@ as the generation worker. Updating a service template alone is insufficient.
 Use the reviewed pinned image and verify the active revision's baked/runtime
 source identities and the batch job digest. Existing immutable exports are not
 rewritten and no paid regeneration is triggered.
+
+The follow-up emoji implementation is now complete and supersedes the earlier
+symbol-only staging image. The shared video preview/export uses the same pinned
+local Twemoji pack. Its 128 focused checks, 3,944 fully qualified Emoji 17
+sequences, 5,216 qualification forms and all 4,009 rasterized graphics pass.
+Desktop/mobile component checks, the compiled asset-route smoke, worker build,
+TypeScript and the final Webpack build pass. This bounds support to the shipped
+set, not future/custom emoji or unrelated Slideshow/Trending/subtitle paths.
+Rebuild the worker image from the final source; do not promote the earlier
+e309dec6 image as containing this follow-up. Details and attribution are in
+`docs/hook-emoji-rendering-2026-10-21.md`.
 
 Publish the complete source, require CI, and stage the website without assigning
 production domains. Deploy the matching worker source and verify its pinned

@@ -5,6 +5,14 @@ on:
     paths:
       - "worker/src/jobs/generate-hook-video*"
       - "worker/src/lib/*video*"
+      - "worker/src/lib/explore-*"
+      - "worker/src/assets/emoji/**"
+      - "components/explore/format-video-text-overlay.tsx"
+      - "app/api/explore/emoji/**"
+      - "lib/explore/workflow-finishing-service.ts"
+      - "scripts/explore-emoji*"
+      - "scripts/hook-remix-emoji*"
+      - "scripts/prepare-explore-emoji*"
       - "worker/src/lib/generation-provider*"
       - "lib/jobs/**"
       - "lib/ai-studio/**"
@@ -20,6 +28,14 @@ on:
     paths:
       - "worker/src/jobs/generate-hook-video*"
       - "worker/src/lib/*video*"
+      - "worker/src/lib/explore-*"
+      - "worker/src/assets/emoji/**"
+      - "components/explore/format-video-text-overlay.tsx"
+      - "app/api/explore/emoji/**"
+      - "lib/explore/workflow-finishing-service.ts"
+      - "scripts/explore-emoji*"
+      - "scripts/hook-remix-emoji*"
+      - "scripts/prepare-explore-emoji*"
       - "worker/src/lib/generation-provider*"
       - "lib/jobs/**"
       - "lib/ai-studio/**"
@@ -44,8 +60,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix worker --legacy-peer-deps
       - run: npm run worker:build
       # Fixtures only: no provider credentials, production requests or paid generation.
       - run: node --experimental-test-module-mocks --test worker/dist/lib/reapi-video.test.js worker/dist/lib/generation-provider.test.js worker/src/jobs/generate-hook-video.reapi.test.mjs
       - run: node --import ./scripts/next-server-only-test-loader.mjs --experimental-test-module-mocks --experimental-transform-types --test lib/ai-studio/video-reference-policy.test.ts lib/ai-studio/reference-files.test.ts lib/ai-studio/video-generation-api.test.mjs lib/jobs/background-job-contract.test.ts lib/jobs/background-job-retry-route.test.mjs lib/jobs/generation-retry-credits.test.mjs
       - run: node --test scripts/completed-provider-output-recovery-db.test.mjs scripts/check-generation-worker-release.test.mjs
+      - run: node --experimental-transform-types --test scripts/explore-emoji-render.test.mjs scripts/hook-remix-emoji-render.test.mjs scripts/workflow-finishing-api.test.mjs

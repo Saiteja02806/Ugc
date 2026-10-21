@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION } from "@/worker/src/lib/explore-format-edit";
+import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION, formatTextEmojiError, formatTextOverlays } from "@/worker/src/lib/explore-format-edit";
 import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
@@ -115,6 +115,11 @@ export async function startWorkflowFinishingForOwner(owner: string, requestKey: 
   const fingerprint = fingerprintExploreFinish(draft);
   if (prior && (prior.fingerprint !== fingerprint || JSON.stringify(prior.draft) !== JSON.stringify(draft))) throw new ExploreFinishError("This request was already used for different edits.", 409);
   if (!prior) {
+    for (const edit of [draft.editing, draft.composition?.sourceEditing, draft.composition?.demoEditing]) {
+      if (!edit) continue;
+      const emojiError = formatTextOverlays(edit).map(text => formatTextEmojiError(text.value)).find(Boolean);
+      if (emojiError) throw new ExploreFinishError(emojiError);
+    }
     const runtime = videoFinishingRuntime();
     if ((draft.editing || draft.composition) && !runtime.editing) throw new ExploreFinishError("Format video editing is not enabled yet.", 503);
     if ((draft.demoFraming || draft.sourceFraming) && !runtime.framing) throw new ExploreFinishError("Demo framing is not enabled yet.", 503);

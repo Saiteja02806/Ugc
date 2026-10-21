@@ -5,6 +5,7 @@ import { createFormatTextSvg, formatTextLayout, formatTextOverlays, parseExplore
 import { runMediaCommand, type SubtitleTools } from "../subtitles/media.js";
 import { createOutlinedFormatTextSvg } from "./explore-text-outlines.js";
 import { formatInlineRuns, formatTextGraphemes, needsFormatEmojiFallback } from "./explore-inline-symbols.js";
+import { EXPLORE_EMOJI_ATTRIBUTION } from "./explore-emoji.js";
 
 
 /** Shared by standalone edits and composition. User text remains in local
@@ -57,6 +58,7 @@ export async function renderExploreFormatEdit(input: { sourcePath: string; width
   const outputPath = join(input.workDir, "format-edited.mp4");
   await runMediaCommand(input.tools.ffmpeg, ["-nostdin", "-hide_banner", "-loglevel", "error", "-n", "-protocol_whitelist", "file,pipe", "-i", input.sourcePath,
     ...captionImages.flatMap(file => ["-loop", "1", "-framerate", "30", "-i", file]),
-    "-filter_complex_script", "format-edit.filter", "-map", "[v]", "-map", "[a]", "-t", String(durationMs / 1000), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", outputPath], { cwd: input.workDir, signal: input.signal });
+    "-filter_complex_script", "format-edit.filter", "-map", "[v]", "-map", "[a]", "-t", String(durationMs / 1000), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart",
+    ...(formatTextOverlays(input.editing).some(text => formatInlineRuns(text.value).some(run => run.artwork)) ? ["-metadata", `comment=${EXPLORE_EMOJI_ATTRIBUTION}`] : []), outputPath], { cwd: input.workDir, signal: input.signal });
   return { outputPath, durationMs };
 }

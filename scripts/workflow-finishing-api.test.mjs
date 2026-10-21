@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as inlineSymbols from "../worker/src/lib/explore-inline-symbols.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -13,7 +14,7 @@ function load(file, imports = {}, globals = {}) {
   return exports;
 }
 const textFonts = load("worker/src/lib/explore-text-fonts.ts", { "./explore-text-font-metrics.json": { default: JSON.parse(readFileSync(new URL("../worker/src/lib/explore-text-font-metrics.json", import.meta.url), "utf8")) } });
-const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": load("worker/src/lib/explore-inline-symbols.ts"), "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"), "./explore-text-fonts.ts": textFonts });
+const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": inlineSymbols, "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"), "./explore-text-fonts.ts": textFonts });
 
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
@@ -144,6 +145,21 @@ test("Editorial queues through the same owned durable finishing boundary", async
   const h = harness({ draftChanges: { subtitles: { language: "en", style: "editorial", placement: "bottom" } } });
   assert.equal((await h.start()).status, 202);
   assert.ok(h.calls.indexOf("create") < h.calls.indexOf("dispatch"));
+});
+
+test("unsupported joined emoji is rejected before queueing new work while accepted receipt recovery stays intact", async () => {
+  const editing = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 1500, originalVolume: 1, musicVolume: 0,
+    text: { value: "😀\u200d😀", width: .8, y: .2, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 1500 } };
+  for (const draftChanges of [{ editing, subtitles: null }, { subtitles: null, composition: { version: 1, sourceEditing: editing, demoEditing: null, sourceAudioAssetId: null, sourceAudioPlayback: "once" } }]) {
+    const h = harness({ draftChanges, env: { EXPLORE_FORMAT_EDITING_ENABLED: "true" } });
+    const response = await h.start();
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /emoji is not supported/);
+    assert.equal(h.calls.includes("create"), false); assert.equal(h.calls.includes("dispatch"), false);
+    const accepted = harness({ prior: true, draftChanges, env: { EXPLORE_FORMAT_EDITING_ENABLED: "true" } });
+    assert.equal((await accepted.start()).status, 202);
+    assert.equal(accepted.calls.includes("create"), false);
+  }
 });
 
 test("rejects client-chosen owners, URLs, outputs, fingerprints, request mismatch and unsupported draft fields", async () => {

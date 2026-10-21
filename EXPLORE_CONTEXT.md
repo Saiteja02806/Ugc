@@ -1,5 +1,42 @@
 # Explore context and UI decision record
 
+## 2026-10-21 Complete bundled emoji rendering for Hook/shared video overlays
+
+- User requested resolving the remaining emoji cases and questioned whether the
+  Remix copy step was wrong. Verified AI output → Add to hook → JSON draft uses
+  unchanged Unicode. Copying was already correct; drawing text into MP4 frames
+  depended on different OS fonts. Do not change the Remix prompt, its contextual
+  emoji policy, business personalization, credits or accepted request identities.
+- Replace general video-overlay emoji font fallback with a pinned, local Twemoji
+  17.0.3 vector pack, used by BOTH the React overlay preview and worker PNG/MP4.
+  It resolves all 3,944 fully-qualified Emoji 17 RGI sequences and their official
+  qualification variants. All 4,009 bundled graphics actually rasterize. Keep
+  previously approved red cross/arrow and green check artwork/Unicode selectors.
+- Native textareas remain ordinary editable Unicode; their OS emoji appearance
+  is distinct from the authoritative composited preview/export. Do not introduce
+  emoji token markup, another AI step, per-emoji controls or a changed user flow.
+  Whole graphemes include skin tones, flags, keycaps and joined sequences.
+- Public preview assets have bounded manifest IDs and version+content-hash URLs;
+  serve only bundled SVG with immutable caching. Root trace includes the compressed
+  pack; worker Docker already copies assets/. Export embeds exact artwork bytes,
+  verifies the pack hash, needs no font/CDN/network call and fails on missing data.
+  Preserve Twemoji/Unicode licenses; emoji exports carry attribution metadata.
+- Unsupported emoji-like sequences/reserved future pictographs have a clear
+  validation error before new render reservation and in the editor/export. Do
+  not silently split, replace, remove or accept a broken font fallback. Existing
+  saved text and accepted receipts remain readable/recoverable; no global hash
+  bump, automatic regeneration or modification of old/scheduled MP4s.
+- Actual local MP4 tests cover broad emoji, old/new fonts and presets, draft
+  recovery, final Hook/demo composition, colors, attribution and source integrity.
+  Laptop/mobile browser previews load all sample artwork and preserve save/reopen.
+  This also applies to Wall/demo callers of the shared video overlay. Slideshow
+  added-text, Trending and speech subtitles remain separate scope; do not claim
+  this implementation fixed their general emoji paths.
+- Release now needs the updated website/preview-asset endpoint AND both render
+  targets. The other chat has explicit user authorization to include this task's
+  work; avoid a competing deployment. Local checks and production acceptance
+  remain distinct. Details: `docs/hook-emoji-rendering-2026-10-21.md`.
+
 ## 2026-10-21 Hook Remix emoji recurrence: production renderer release gap
 
 - User asked whether ALL emojis are now correct. A fresh live service/job read

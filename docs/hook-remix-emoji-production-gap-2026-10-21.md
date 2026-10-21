@@ -1,5 +1,12 @@
 # Hook Remix cross/tick production recurrence — 21 October 2026
 
+The later complete video-overlay implementation supersedes the symbol-only
+hotfix scope and font-fallback limitation below. See
+`docs/hook-emoji-rendering-2026-10-21.md`: bundled artwork now covers the full
+Emoji 17 RGI set; website plus both render targets need a coordinated rollout.
+The historical production reads/reproduction below remain evidence of the gap,
+not a claim of current deployment completion.
+
 The symptom is reproduced and the production release gap is confirmed. The
 existing fix works locally; production video rendering has not received it.
 This investigation did not deploy, submit generation, schedule or publish.

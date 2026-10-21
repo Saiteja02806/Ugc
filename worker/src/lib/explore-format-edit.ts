@@ -2,6 +2,7 @@ import { estimateEditOverlayLineWidth } from "./edit-overlay-render-spec.ts";
 import { exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, isExploreTextWeight, type ExploreTextFont, type ExploreTextWeight } from "./explore-text-fonts.ts";
 import { formatInlineRuns, formatInlineSymbolSvg, formatTextGraphemes, measureFormatInlineText } from "./explore-inline-symbols.ts";
 export { formatInlineSymbolPaths } from "./explore-inline-symbols.ts";
+export { formatTextEmojiError } from "./explore-inline-symbols.ts";
 
 export { EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily } from "./explore-text-fonts.ts";
 export type { ExploreTextFont, ExploreTextWeight } from "./explore-text-fonts.ts";

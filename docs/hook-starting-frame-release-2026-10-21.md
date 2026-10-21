@@ -1,5 +1,23 @@
 # Hook starting-frame release candidate — 21 October 2026
 
+## Hosted acceptance follow-up
+
+PR #79 was merged and its website/MCP builds promoted after all three worker
+targets were updated and verified. The production Recreate button opened the
+new dialog, but authenticated free frame extraction reported decoder unavailable.
+The Linux prebuild passed, so build-time executable availability was insufficient
+to establish correct packaged runtime resolution. Generation stayed disabled;
+no paid call or database action occurred.
+
+The website follow-up uses a static ffmpeg-static import and Next's
+serverExternalPackages configuration. Both Hook route traces must contain its
+native index/package files and executable. The worker image remains unchanged.
+Retest the live free extraction before declaring end-to-end preparation accepted.
+The website postbuild now enforces these trace/file checks for both routes;
+the prebuild still verifies that the platform executable can run. All seven
+decoder tests, five authenticated API checks, scoped lint, production build and
+the new postbuild checks pass locally before this follow-up deployment.
+
 ## User-visible flow
 
 Recreate opens Create your starting frame, with the canonical opening scene and

@@ -1,0 +1,75 @@
+import assert from "node:assert/strict";
+import { beforeEach, mock, test } from "node:test";
+import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeSnapshotKey } from "../../dist/lib/hook-keyframe-generation-contract.js";
+const local = file => new URL(file, import.meta.url);
+const calls = [], storedImage = Buffer.from("generated fixture pixels"); let existingOutput;
+mock.method(globalThis, "fetch", async () => assert.fail("No paid providers, database or storage network calls"));
+mock.module(local("../../dist/lib/private-media.js"), { namedExports: { resolveOwnedPrivateMediaUrl: async (url, owner) => { calls.push({ resolved: url, owner }); return url; } } });
+mock.module(local("../../dist/lib/openai-image.js"), { namedExports: { SLIDESHOW_IMAGE_MODEL: "gpt-fixture", SLIDESHOW_FLARE_IMAGE_MODEL: "flare-fixture", generateOpenAiImageBuffer: async () => assert.fail("Wrong provider") } });
+mock.module(local("../../dist/lib/gemini-image.js"), { namedExports: {
+  GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image", generateGemini3ProImageBuffer: async () => assert.fail("Wrong provider"),
+  generateGeminiImageBuffer: async (prompt, ratio, references) => { calls.push({ paid: { prompt, ratio, references } }); return { buffer: storedImage, model: "nano-fixture", requestId: "image-operation" }; },
+} });
+mock.module(local("../../dist/lib/seedream-image.js"), { namedExports: { SEEDREAM_5_PRO_IMAGE_MODEL: "seedream-fixture", generateSeedreamImageBuffer: async () => assert.fail("Wrong provider") } });
+mock.module(local("../../dist/lib/openrouter-seedream-image.js"), { namedExports: { generateOpenRouterSeedreamImage: async () => assert.fail("Wrong provider") } });
+mock.module(local("../../dist/lib/image-output.js"), { namedExports: {
+  AI_STUDIO_IMAGE_RATIO: "9:16", AI_STUDIO_IMAGE_RATIOS: ["9:16", "16:9", "4:5", "1:1"], getAIStudioImageDimensions: () => ({ width: 720, height: 1280 }),
+  prepareAIStudioImageOutput: async (buffer, ratio, options) => { calls.push({ prepare: { ratio, options } }); return buffer; },
+} });
+mock.module(local("../../dist/lib/storage.js"), { namedExports: {
+  getStoredObject: async key => existingOutput ? { key, url: `https://media.test/${key}` } : null,
+  downloadStoredObjectBuffer: async () => storedImage,
+  uploadBufferToStorage: async input => { calls.push({ upload: input.key }); return { key: input.key, url: `https://media.test/${input.key}` }; },
+} });
+const { runGenerateImageJob } = await import("../../dist/jobs/generate-image.js");
+const context = { checkpoint: async () => {}, store: {
+  reserveGenerationProviderOperation: async input => { calls.push({ reserve: input }); return { shouldSubmit: true, operation: { status: "reserved", metadata: {} } }; },
+  markGenerationProviderSucceeded: async () => {}, markGenerationOutputPersisted: async () => {},
+} };
+function job() {
+  const prompt = "Image 1 supplies the scene. Image 2 supplies the main face; Image 3 supplies supporting facial detail. Preserve the scene and edit facial appearance only.";
+  const partial = { ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111", referenceId: "hook-15", sourceSha256: "a".repeat(64),
+    sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) },
+    personImageAssetIds: ["22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"], instructions: "Keep the scene." };
+  const receipt = { ...partial, version: 1, purpose: "hook_starting_frame", promptVersion: 1, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(prompt) };
+  const scene = `https://media.test/${hookKeyframeSnapshotKey(receipt)}`;
+  return { id: "hook-image-job", user_id: "owner", project_id: "hook-starting-frame", input_json: {
+    generationId: "44444444-4444-4444-8444-444444444444", exploreFormat: "hook", model: "nano_banana_2", aspectRatio: "9:16", prompt,
+    referenceImageUrl: scene, referenceImageUrls: [scene, "https://media.test/main.png", "https://media.test/support.png"], hookKeyframe: receipt,
+  } };
+}
+const count = key => calls.filter(call => key in call).length;
+beforeEach(() => { calls.length = 0; existingOutput = false; });
+test("Hook image stage sends scene/main/support in exact order with only its compiled image instructions", async () => {
+  const input = job(), output = await runGenerateImageJob(input, context), received = calls.find(call => call.paid).paid;
+  assert.equal(received.prompt, input.input_json.prompt); assert.equal(received.ratio, "9:16"); assert.deepEqual(received.references, input.input_json.referenceImageUrls);
+  assert.deepEqual(calls.filter(call => call.resolved).map(call => ({ url: call.resolved, owner: call.owner })), input.input_json.referenceImageUrls.map(url => ({ url, owner: "owner" })));
+  assert.deepEqual(calls.find(call => call.prepare).prepare.options, { preserveComposition: true });
+  assert.deepEqual(output.hookKeyframe, input.input_json.hookKeyframe); assert.equal(output.model, "nano_banana_2"); assert.equal(output.effectivePrompt, received.prompt);
+  assert.equal(count("paid"), 1); assert.equal(count("reserve"), 1);
+});
+test("altered, incompatible or collided input roles fail before any provider reservation", async () => {
+  for (const change of [{ model: "gpt_image" }, { exploreFormat: "slideshow" }, { prompt: "Unbound prompt" }, { aspectRatio: "4:5" },
+    { hookKeyframe: null }, { slideshowReferenceContract: {} }, { characterSource: "ugc-pilot-characters" }, { additionalReferenceStartIndex: 2 },
+    { subjectReferenceIndex: 2 }, { slideshowBusinessContext: {} }, { regenerationReferenceIndex: 2 }]) {
+    const input = job(); Object.assign(input.input_json, change); await assert.rejects(runGenerateImageJob(input, context));
+  }
+  const foreign = job(); foreign.user_id = "other"; await assert.rejects(runGenerateImageJob(foreign, context));
+  const swapped = job(); swapped.input_json.referenceImageUrls.reverse(); await assert.rejects(runGenerateImageJob(swapped, context));
+  const stale = job(); stale.input_json.referenceImageUrls[0] = stale.input_json.referenceImageUrl = "https://media.test/unbound-scene.png";
+  await assert.rejects(runGenerateImageJob(stale, context));
+  assert.equal(count("reserve"), 0); assert.equal(count("paid"), 0);
+});
+test("complete Hook image provenance and ordered identity references are included in the durable provider fingerprint", async () => {
+  const input = job(); await runGenerateImageJob(input, context);
+  const original = calls.find(call => call.reserve).reserve.requestFingerprint;
+  const receipt = input.input_json.hookKeyframe; receipt.personImageAssetIds.reverse(); receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
+  const urls = input.input_json.referenceImageUrls; [urls[1], urls[2]] = [urls[2], urls[1]];
+  await runGenerateImageJob(input, context);
+  assert.notEqual(calls.filter(call => call.reserve).at(-1).reserve.requestFingerprint, original);
+});
+test("recovering an already stored starting image preserves its receipt without a second provider submission", async () => {
+  existingOutput = true; const input = job(), output = await runGenerateImageJob(input, context);
+  assert.deepEqual(output.hookKeyframe, input.input_json.hookKeyframe); assert.equal(output.generationId, input.input_json.generationId);
+  assert.equal(count("reserve"), 0); assert.equal(count("paid"), 0); assert.equal(count("upload"), 0);
+});

@@ -23,6 +23,7 @@ function App(){const{user}=useAuth();return <Account key={user.uid}/>};window.fi
 const id = n => `00000000-0000-4000-8000-00000000000${n}`;
 let holdInstagram = true, holdActivity = true, views = 7, needsRefresh = false, complete = false, postFails = false, ownerB = false;
 let authorizationRevision="consent-1";
+let snapshotFails=false;
 const held = [];
 const timestamp = () => new Date().toISOString();
 function accounts(platform) {
@@ -48,6 +49,7 @@ async function main(){
     if(url.pathname==="/api/social/connections")return json(res,{ok:true,connections:ownerB?[]:["instagram","tiktok","youtube"].map((platform,i)=>({id:id(i+1),platform,platformAccountId:platform+"-account",authorizationRevision,connectedAt:"2026-10-19T00:00:00Z",updatedAt:"2026-10-19T00:00:00Z",platformAccountName:platform==="instagram"?"Instagram Demo":platform==="tiktok"?"TikTok Demo":"YouTube Demo",platformAccountUsername:platform+"demo",status:"connected",scopes:[],profilePictureUrl:null}))});
     if(url.pathname.startsWith("/api/jobs/"))return json(res,{ok:true,job:job()});
     if(req.method==="POST")return postFails?json(res,{ok:false,message:"Queue unavailable"},502):json(res,{ok:true,data:data(url.pathname),job:job(),jobId:"job-1"});
+    if(snapshotFails&&url.pathname.startsWith("/api/analytics/")&&!url.pathname.includes("/activity"))return json(res,{ok:false,message:"Analytics storage unavailable"},502);
     if((holdInstagram&&url.pathname.includes("/instagram/"))||(holdActivity&&url.pathname.includes("/activity")))return held.push({res,url:url.pathname});
     respond(res,url.pathname);
   });
@@ -121,6 +123,15 @@ async function main(){
     await page.evaluate(()=>window.showWorkspace(true));await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     await advance(200);
     assert.equal(await page.evaluate(()=>window.postCount),postsBeforeRemount);
+    // A repaired initial storage failure must recover with Refresh, without a reload.
+    snapshotFails=true;
+    await page.evaluate(()=>window.showWorkspace(false));await page.getByText("Workspace closed",{exact:true}).waitFor();
+    await page.evaluate(()=>{window.client.removeQueries({queryKey:['account','owner-a','analytics']});window.showWorkspace(true)});
+    await page.getByText("Analytics storage unavailable",{exact:false}).first().waitFor();
+    const readsBeforeRepair=await page.evaluate(()=>window.calls['/api/analytics/instagram/content']);
+    snapshotFails=false;await page.getByRole("button",{name:"Refresh",exact:true}).click();
+    await page.waitForFunction(before=>window.calls['/api/analytics/instagram/content']>before,readsBeforeRepair);
+    await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     // A different authenticated owner gets a different QueryClient/screen.
     ownerB=true;await page.evaluate(()=>window.switchOwner('owner-b'));
     await page.waitForFunction(()=>window.currentOwner==='owner-b');
@@ -129,7 +140,7 @@ async function main(){
     assert.deepEqual(errors,[]);
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.accounts')));
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.snapshot')));
-    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,ownerIsolation:true,displayTimingsRecorded:true};
+    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
     write("results.json",JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
   }finally{if(browser)await browser.close();release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }

@@ -35,6 +35,9 @@ const object = (value: unknown): Record<string, unknown> => value && typeof valu
 /** Stored server provenance only. Audio URLs and storage paths supplied by a client are never used. */
 export function getAssetReferenceSoundtrack(metadata: unknown): ExploreReferenceSoundtrack | null {
   const raw = object(metadata), saved = object(object(raw.render).referenceSoundtrack);
+  // Explicit sound controls supersede automatic catalogue music, including
+  // during later editing of a silent generation or user-requested speech.
+  if (typeof raw.generateAudio === "boolean" || typeof object(raw.render).generateAudio === "boolean") return null;
   const reference = getExplorePairedReference(saved.referenceId ?? raw.exploreReferenceId);
   if (!reference) return null;
   // New silent outputs have no soundtrack. Retain explicit historical receipts

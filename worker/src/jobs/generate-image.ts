@@ -31,6 +31,7 @@ import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import { parseImageReferenceContext } from "../lib/image-reference-context.js";
 import { slideshowReferencePrompt, slideshowReferenceImagesPrompt } from "../lib/slideshow-reference-prompt.js";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "../lib/slideshow-generation-contract.js";
+import { isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -49,6 +50,7 @@ type GenerateImageInput = {
   additionalReferenceStartIndex?: number;
   regenerationReferenceIndex?: number;
   slideshowReferenceContract?: SlideshowReferenceContract;
+  hookKeyframe?: HookKeyframeGenerationReceipt;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -82,6 +84,15 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   const characterReferenceContext = promptDrivenCharacter && job.input_json.exploreFormat === undefined;
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
+  const hookKeyframe = job.input_json.hookKeyframe === undefined ? undefined : parseHookKeyframeGenerationReceipt(job.input_json.hookKeyframe);
+  if (job.input_json.hookKeyframe !== undefined && (!hookKeyframe || job.input_json.exploreFormat !== "hook" ||
+    job.input_json.slideshowReferenceContract !== undefined || job.input_json.slideshowGeneration !== undefined ||
+    job.input_json.slideshowBusinessContext !== undefined || job.input_json.subjectReferenceIndex !== undefined ||
+    job.input_json.additionalReferenceStartIndex !== undefined || job.input_json.regenerationReferenceIndex !== undefined ||
+    job.input_json.characterSource !== undefined || !isHookKeyframeImageInput({ receipt: hookKeyframe, ownerId: job.user_id,
+      model, aspectRatio: String(job.input_json.aspectRatio), prompt: prompt.trim(), referenceImageUrl, referenceImageUrls }))) {
+    throw new ProviderRequestNotSubmittedError("This Hook starting-image contract could not be verified.");
+  }
   const slideshowReferenceContract = job.input_json.slideshowReferenceContract === undefined ? undefined
     : parseSlideshowReferenceContract(job.input_json.slideshowReferenceContract, referenceImageUrls?.length ?? (referenceImageUrl ? 1 : 0));
   const slideshowGeneration = readSlideshowGenerationSlot(job.input_json.slideshowGeneration);
@@ -90,7 +101,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   if (job.input_json.slideshowGeneration !== undefined && (!slideshowGeneration || job.input_json.exploreFormat !== "slideshow")) throw new ProviderRequestNotSubmittedError("Invalid slideshow output position.");
   if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
   if (referenceImageUrls && characterReferenceContext && referenceImageUrls.length > 10) throw new ProviderRequestNotSubmittedError("Choose up to 10 influencer references.");
-  if (referenceImageUrls && !characterReferenceContext && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
+  if (referenceImageUrls && !characterReferenceContext && !hookKeyframe && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
   }
   if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
@@ -116,6 +127,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     prompt: prompt.trim(),
     referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
     referenceImageUrls,
+    ...(hookKeyframe ? { hookKeyframe } : {}),
     ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
     ...(additionalReferenceStartIndex === undefined ? {} : { additionalReferenceStartIndex }),
     ...(regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: regenerationReferenceIndex as number }),
@@ -177,6 +189,7 @@ export async function runGenerateImageJob(
     ...(input.slideshowReferenceContract ? { slideshowReferenceContract: input.slideshowReferenceContract } : {}),
     ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
     ...(input.slideshowBusinessContext ? { slideshowBusinessContext: input.slideshowBusinessContext } : {}),
+    ...(input.hookKeyframe ? { hookKeyframe: input.hookKeyframe } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -278,7 +291,7 @@ export async function runGenerateImageJob(
   const imageBuffer = await prepareAIStudioImageOutput(
     generatedImageBuffer,
     input.aspectRatio,
-    { preserveComposition: Boolean(input.slideshowReferenceContract) },
+    { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe) },
   );
 
   await context.checkpoint({
@@ -384,6 +397,7 @@ function buildOutput(
   return {
     fileSizeBytes: undefined,
     generationId: input.generationId,
+    ...(input.hookKeyframe ? { hookKeyframe: input.hookKeyframe } : {}),
     ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
     height: dimensions.height,
     key: uploaded.key,

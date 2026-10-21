@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     extensionAlias: { ".js": [".js", ".ts"] },
   },
   outputFileTracingIncludes: {
+    "/api/explore/hook-keyframe": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe"],
+    "/api/explore/hook-starting-frame": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe"],
     "/api/audio/transfer": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe", "./node_modules/ffprobe-static/bin/linux/x64/ffprobe", "./node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"],
     "/mcp": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe", "./node_modules/ffprobe-static/bin/linux/x64/ffprobe", "./node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe"],
     "/api/trending/**": ["./worker/src/assets/fonts/*.ttf", "./node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2"],

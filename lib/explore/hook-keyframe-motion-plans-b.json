@@ -1,0 +1,2617 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "referenceId": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "sourceSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+      "plan": {
+        "openingState": "The performer fills a tight close-up with watery eyes, brows raised inward and one hand diagonally across the mouth.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Look upward and sideways, blink slowly and let the trembling smile soften into a sad pout."
+          },
+          {
+            "phase": "middle",
+            "action": "Slide the fingertips from the lips across the cheek, briefly close the eyes and reopen them looking upward."
+          },
+          {
+            "phase": "ending",
+            "action": "Gently dab beneath the eye with the same fingertips and hold the small sad expression."
+          }
+        ],
+        "camera": "Keep the tight handheld close-up with gentle natural drift.",
+        "endingState": "The fingertips rest beneath the eye while the performer looks upward with a small sad pout.",
+        "constraints": [
+          "Keep the dabbing delicate; do not escalate into dramatic sobbing or add streams of tears.",
+          "Maintain continuous hand-to-cheek contact."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          15,
+          30,
+          45,
+          59,
+          74,
+          89,
+          104
+        ],
+        "frameCount": 105,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-f1b5421be14d24803539be89",
+      "sourceSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+      "plan": {
+        "openingState": "The performer looks toward screen-left with a furrowed brow and skeptical closed-mouth half-smile.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Bring the eyes toward the lens while lifting the hand from screen-left beside the cheek."
+          },
+          {
+            "phase": "middle",
+            "action": "Rotate the wrist until the palm faces upward and extend the open hand slightly toward the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the palm-up questioning gesture with a small head tilt, lifted brow and restrained skeptical smile."
+          }
+        ],
+        "camera": "Keep the portrait composition steady.",
+        "endingState": "The palm remains extended upward while the performer questions the lens with a furrowed brow.",
+        "constraints": [
+          "Do not cover the mouth or introduce eyeglasses.",
+          "Keep the gesture compact and anatomically continuous."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          7,
+          13,
+          20,
+          27,
+          34,
+          40,
+          47
+        ],
+        "frameCount": 48,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "sourceSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+      "plan": {
+        "openingState": "The upright performer looks just to screen-left of the lens with a neutral expression and both hands outside the picture.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Slightly part the lips, raise the brows and open the mouth into a restrained surprised look."
+          },
+          {
+            "phase": "middle",
+            "action": "Briefly close and reopen the eyes while retaining the parted lips and quiet sideways gaze."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the restrained expression with one last natural blink and minimal head movement."
+          }
+        ],
+        "camera": "Keep the portrait camera fixed.",
+        "endingState": "The performer remains upright with parted lips and a quiet sideways gaze.",
+        "constraints": [
+          "Keep the hands outside the picture.",
+          "Do not turn the subtle reaction into a wide-mouth gasp."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          27,
+          40,
+          53,
+          66,
+          80,
+          93
+        ],
+        "frameCount": 94,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "sourceSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+      "plan": {
+        "openingState": "The performer looks down toward the tablet angled across the screen-right foreground, with drawn-together brows and an open mouth.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Hold the surprised downward stare toward the tablet with a small head tilt."
+          },
+          {
+            "phase": "middle",
+            "action": "Close the mouth into a small knowing smile and glance sideways toward the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "Return the eyes to the tablet while retaining the small smile and relaxed head tilt."
+          }
+        ],
+        "camera": "Maintain the dim-room close framing with slight handheld drift.",
+        "endingState": "The performer looks down at the same tablet with a small knowing smile.",
+        "constraints": [
+          "Keep the tablet and its grip continuous.",
+          "Do not add a mouth-covering gesture."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          9,
+          18,
+          27,
+          35,
+          44,
+          53,
+          62
+        ],
+        "frameCount": 63,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "sourceSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+      "plan": {
+        "openingState": "The performer wears gradient sunglasses and holds their upper screen-left corner, with the mouth open.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Slide the sunglasses down the bridge of the nose to reveal very wide eyes, then pull them forward off the face."
+          },
+          {
+            "phase": "middle",
+            "action": "Hold the sunglasses below the chin in the same hand, then lower them out of view while keeping the eyes wide and mouth open."
+          },
+          {
+            "phase": "ending",
+            "action": "Glance slightly sideways, move closer to the lens and bring the same now-empty hand to the forehead as the lips briefly purse."
+          }
+        ],
+        "camera": "Move the close handheld viewpoint slightly closer near the ending.",
+        "endingState": "The sunglasses are off the face; fingertips touch the forehead in a tight, wide-eyed close-up.",
+        "constraints": [
+          "Remove the sunglasses down and forward; do not lift them onto the head.",
+          "Keep the sunglasses attached to the same hand while visible.",
+          "Do not replace the sunglasses with clear eyeglasses."
+        ]
+      },
+      "review": {
+        "status": "needs_decision",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115
+        ],
+        "frameCount": 116,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Independent integration review confirmed the visible actions but identified unresolved hidden prop placement; the four-second adaptation is not approved.",
+        "issues": [
+          "The sunglasses lower offscreen, then the same hand returns bare to the forehead. Hidden prop placement needs a continuity decision before animation; do not make the sunglasses disappear from the hand."
+        ],
+        "sourceFileSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "sourceSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+      "plan": {
+        "openingState": "The seated performer looks neutrally down at a tablet in a black keyboard case on screen-right, with the hands low.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Blink, turn the gaze to the lens, draw the brows together and lean slightly forward."
+          },
+          {
+            "phase": "middle",
+            "action": "Deepen the skeptical questioning look and raise the screen-right hand beside the face with the index finger extended."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the small cautioning finger gesture and puzzled, changing mouth expression while the other hand stays low near the keyboard."
+          }
+        ],
+        "camera": "Keep the tabletop portrait view steady as the performer leans toward it.",
+        "endingState": "The performer leans forward skeptically with the index finger raised beside the face and the tablet still in place.",
+        "constraints": [
+          "Keep the tablet as a physical object in the room.",
+          "Do not transition to a separate screen or browser view."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          19,
+          38,
+          57,
+          77,
+          96,
+          115,
+          134
+        ],
+        "frameCount": 135,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "sourceSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+      "plan": {
+        "openingState": "The performer wears over-ear headphones, with wide eyes looking upward toward screen-right and a food-topped utensil at the open mouth.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Lower the utensil out of view while keeping the mouth open and the eyes wide."
+          },
+          {
+            "phase": "middle",
+            "action": "Knit the brows and move the gaze toward the lens, then upward and sideways in disbelief."
+          },
+          {
+            "phase": "ending",
+            "action": "Bring the screen-right fingertips across the lips, pause briefly, then lower the hand as the viewpoint moves closer."
+          }
+        ],
+        "camera": "Keep a close handheld view and move slightly closer for the final reaction.",
+        "endingState": "The headphones remain on and the mouth is open, with the hand lowering beside the close face.",
+        "constraints": [
+          "Do not add another bite.",
+          "Keep the utensil continuous until it leaves the lower edge.",
+          "Remain with the performer rather than showing a separate screen."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          27,
+          40,
+          53,
+          66,
+          80,
+          93
+        ],
+        "frameCount": 94,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "sourceSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+      "plan": {
+        "openingState": "The performer is in three-quarter close-up wearing black eyeglasses, looking toward screen-left with wide eyes and parted lips.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise the screen-left hand to the outer corner of the eyeglasses and lift them over the forehead onto the head."
+          },
+          {
+            "phase": "middle",
+            "action": "Keep the mouth open and the gaze fixed sideways, then release the glasses and lower the same hand across the lips."
+          },
+          {
+            "phase": "ending",
+            "action": "Turn the eyes toward the lens and hold the covered-mouth reaction with the glasses resting on the head."
+          }
+        ],
+        "camera": "Maintain the close three-quarter portrait framing with small natural shifts.",
+        "endingState": "The hand covers the lips, eyes face the lens and the eyeglasses rest on top of the head.",
+        "constraints": [
+          "Lift the eyeglasses onto the head; do not lower them out of view.",
+          "Keep the same hand and frame continuous during contact."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138,
+          139,
+          140,
+          141
+        ],
+        "frameCount": 142,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "sourceSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+      "plan": {
+        "openingState": "The performer sits using a tablet keyboard, looking toward screen-right with both hands low near the keys.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise the brows, widen the eyes and open the mouth into delighted surprise while leaving the hands low."
+          },
+          {
+            "phase": "middle",
+            "action": "Look down, lift the screen-left index finger and make brief repeated downward taps toward the keyboard."
+          },
+          {
+            "phase": "ending",
+            "action": "Look up at the tablet again and hold the pleased open-mouth expression, with the index finger still pointing low toward the keys."
+          }
+        ],
+        "camera": "Keep the tabletop portrait composition steady.",
+        "endingState": "The delighted performer looks at the tablet with one index finger pointing low toward its keys.",
+        "constraints": [
+          "Keep the tablet and keyboard geometry continuous.",
+          "Do not cut to a separate gameplay or screen view."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          16,
+          31,
+          47,
+          62,
+          78,
+          93,
+          109
+        ],
+        "frameCount": 110,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+      "sourceSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+      "plan": {
+        "openingState": "The performer sits behind an open laptop, with one arm reaching toward screen-left and the other hand near the keyboard.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Bring the hands together, interlace the fingers, rotate the joined palms outward and extend both arms forward over the table."
+          },
+          {
+            "phase": "middle",
+            "action": "Keep the arms extended, close the eyes and tilt the head toward screen-right, then straighten and tilt gently toward screen-left."
+          },
+          {
+            "phase": "ending",
+            "action": "Draw the joined hands toward the chest, release the fingers and return both hands to the laptop keyboard to type."
+          }
+        ],
+        "camera": "Keep the tabletop view fixed throughout the continuous stretch.",
+        "endingState": "Both hands are at the keyboard and the performer has resumed working.",
+        "constraints": [
+          "Keep the movement calm and comfortable.",
+          "Maintain connected fingers until the release.",
+          "Remain in the same room and do not transition to a screen view."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          27,
+          40,
+          54,
+          67,
+          81,
+          94
+        ],
+        "frameCount": 95,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "sourceSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+      "plan": {
+        "openingState": "The performer sits behind an upright tablet on screen-right, staring at it with wide eyes and knitted brows; a yellow drink is held below the mouth.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise the transparent yellow tumbler to the lips with the screen-right hand and tip it to drink, keeping the gaze on the tablet."
+          },
+          {
+            "phase": "middle",
+            "action": "Complete the sip, lower the tumbler from the lips and gradually return it upright at chest level."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the upright drink at the chest, lean slightly forward and part the lips into a puzzled, stunned look toward the tablet."
+          }
+        ],
+        "camera": "Keep the seated tablet composition steady.",
+        "endingState": "The tumbler is upright at chest height while the performer stares toward the tablet with parted lips.",
+        "constraints": [
+          "Keep the liquid inside the tumbler.",
+          "Keep the drinking hand, rim-to-lip contact and glass shape continuous.",
+          "Do not create an extra sip or spill."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149,
+          150,
+          151,
+          152,
+          153,
+          154,
+          155,
+          156,
+          157,
+          158,
+          159,
+          160,
+          161,
+          162,
+          163,
+          164,
+          165,
+          166,
+          167
+        ],
+        "frameCount": 168,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "sourceSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+      "plan": {
+        "openingState": "The reclining performer already has the screen-left hand across the mouth and looks toward the lens with amused eyes.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Keep the hand across the lips as the eyes narrow into a restrained, disbelieving smile."
+          },
+          {
+            "phase": "middle",
+            "action": "Lift and pinch the brows slightly, making small head tilts and natural blinks while retaining the covered smile."
+          },
+          {
+            "phase": "ending",
+            "action": "Briefly close the eyes, reopen them and hold the same amused covered-mouth expression."
+          }
+        ],
+        "camera": "Retain the reclining selfie angle with gentle handheld drift.",
+        "endingState": "The performer remains reclined with the same hand covering a small smile.",
+        "constraints": [
+          "The mouth is already covered at the opening; do not repeat a hand-raising action.",
+          "Keep the expression restrained."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          10,
+          20,
+          30,
+          41,
+          51,
+          61,
+          71
+        ],
+        "frameCount": 72,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "sourceSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+      "plan": {
+        "openingState": "The performer wears clear eyeglasses, with a hand across the mouth and fingers curled under the chin, looking at the lens with an uneasy smile in the eyes.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Hold the covered-mouth pose with small eye and head movements, then close the eyes."
+          },
+          {
+            "phase": "middle",
+            "action": "Lower the hand away from the mouth and loosely lift it beside the temple, revealing a tight closed-lip smile."
+          },
+          {
+            "phase": "ending",
+            "action": "Reopen the eyes and retain the slightly pained, amused smile as the hand leaves the picture and the viewpoint shifts briefly."
+          }
+        ],
+        "camera": "Maintain the close handheld selfie with a brief small shift near the ending.",
+        "endingState": "The hand is outside the picture, eyeglasses remain on and a tight amused smile is visible.",
+        "constraints": [
+          "Do not remove the clear eyeglasses.",
+          "Use only the small hand release already described, without adding a new gesture."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          10,
+          20,
+          30,
+          41,
+          51,
+          61,
+          71
+        ],
+        "frameCount": 72,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "sourceSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "plan": {
+        "openingState": "The clear eyeglasses are held forward just above the face by the screen-right hand; eyes are partly closed and the mouth is rounded open.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Bring the glasses down and back onto the nose while keeping fingertips at their upper outer corner."
+          },
+          {
+            "phase": "middle",
+            "action": "Open the eyes toward the lens, knit the brows and maintain the rounded open-mouth incredulous expression."
+          },
+          {
+            "phase": "ending",
+            "action": "Blink briefly and make a small head movement, keeping the glasses on and fingertips touching their corner."
+          }
+        ],
+        "camera": "Maintain the tilted close composition with gentle natural drift.",
+        "endingState": "The glasses are on the nose, the same fingertips remain at the corner and the performer looks incredulously at the lens.",
+        "constraints": [
+          "Put the eyeglasses on; do not reverse the action into removing them.",
+          "Keep the same hand in contact with the frame throughout."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82
+        ],
+        "frameCount": 83,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "sourceSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+      "plan": {
+        "openingState": "The performer sits at the desk wearing over-ear headphones, looking slightly upward with fingers interlaced at chest height.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Turn the joined palms outward, extend both arms over the keyboard, then pull the hands back and release the fingers."
+          },
+          {
+            "phase": "middle",
+            "action": "Raise the screen-left hand over the head, gently tilt the head toward that side and rest the palm lightly on the hair with eyes closed; release that hand and repeat the gentle tilt using the opposite hand."
+          },
+          {
+            "phase": "ending",
+            "action": "Lift the second hand away, straighten the head, reopen the eyes and return both hands to the keyboard to type."
+          }
+        ],
+        "camera": "Keep the low desk-level camera fixed.",
+        "endingState": "The head is upright, headphones remain on and both hands are typing at the keyboard.",
+        "constraints": [
+          "Keep the stretching calm and focused rather than a surprised reaction.",
+          "Do not pull on or remove the headphones.",
+          "Keep both hand-to-head contacts light and continuous."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112
+        ],
+        "frameCount": 113,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "sourceSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+      "plan": {
+        "openingState": "The seated performer wears black eyeglasses, faces slightly toward screen-right and holds a confused, pursed-lip expression.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise both hands to the outer frame corners, pull the glasses forward off the face and lower them out of view."
+          },
+          {
+            "phase": "middle",
+            "action": "Keep looking toward screen-right, narrowing the eyes, tightening the brow and inclining the head slightly."
+          },
+          {
+            "phase": "ending",
+            "action": "Let the pursed lips open into an incredulous grimace, retaining the skeptical sideways gaze."
+          }
+        ],
+        "camera": "Keep the close portrait composition steady.",
+        "endingState": "The glasses are off and the performer looks sideways with narrowed eyes and an open incredulous grimace.",
+        "constraints": [
+          "Remove the eyeglasses forward and down, without putting them onto the head.",
+          "Do not add another hand gesture after lowering the glasses."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          26,
+          39,
+          53,
+          66,
+          79,
+          92
+        ],
+        "frameCount": 93,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "sourceSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+      "plan": {
+        "openingState": "The performer faces screen-left in close selfie view with a rounded open mouth and an index fingertip resting lightly on the lower lip.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Slowly bring the eyes and face toward the lens while keeping the fingertip on the lower lip."
+          },
+          {
+            "phase": "middle",
+            "action": "Widen the eyes and maintain the inward-raised brows and open-mouth incredulous expression."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the stare toward the lens with small head adjustments and the same fingertip still at the lower lip."
+          }
+        ],
+        "camera": "Maintain the close selfie angle with only subtle movement.",
+        "endingState": "The performer faces the lens with wide eyes, open mouth and fingertip touching the lower lip.",
+        "constraints": [
+          "Keep the fingertip contact continuous.",
+          "Do not turn the lip touch into a full mouth-cover or add another gesture."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          12,
+          24,
+          36,
+          47,
+          59,
+          71,
+          83
+        ],
+        "frameCount": 84,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+      "plan": {
+        "openingState": "The performer sits behind a partially open silver laptop with fingers interlaced in front of the chest.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Rotate the joined palms outward and extend both arms over the laptop, holding the stretch as the hands move a little toward screen-left."
+          },
+          {
+            "phase": "middle",
+            "action": "At a deliberate cut, show the screen-right arm arched overhead with its hand resting on the hair and the head tilted toward screen-left; hold the gentle neck stretch."
+          },
+          {
+            "phase": "ending",
+            "action": "Release the raised arm, lower it, look down and bring both hands toward the laptop to lift the lid slightly."
+          }
+        ],
+        "camera": "Keep the tabletop camera fixed on both sides of the deliberate cut.",
+        "endingState": "The raised arm is lowered and both hands are near the slightly lifted laptop lid.",
+        "constraints": [
+          "The cut is an intentional transition awaiting an explicit decision; do not silently turn it into an unexplained pose jump.",
+          "Keep the laptop as the same physical object."
+        ]
+      },
+      "review": {
+        "status": "needs_decision",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95
+        ],
+        "frameCount": 96,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only.",
+        "issues": [
+          "Choose whether to retain the visible jump cut between arm stretch and neck stretch or deliberately adapt it to a continuous movement; do not silently change the take structure."
+        ],
+        "sourceFileSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
+      "sourceSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+      "plan": {
+        "openingState": "The performer sits with both open hands beside the temples, looking down toward screen-right with an open-mouth amused expression.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Close the mouth into a tight smile, briefly close the eyes and bring the gaze toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "Lift both hands away from the temples and bring the palms inward toward the middle of the face."
+          },
+          {
+            "phase": "ending",
+            "action": "Cover the nose and mouth with the fingertips meeting at the bridge of the nose, then hold the overwhelmed amused pose with small eye closures and sideways glances."
+          }
+        ],
+        "camera": "Keep the seated tabletop framing steady.",
+        "endingState": "Both hands cover the nose and mouth, with the fingertips together near the nose bridge.",
+        "constraints": [
+          "Bring both hands inward together without merging fingers or changing which hand comes from each side.",
+          "Keep the reaction amused rather than distressed."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          15,
+          29,
+          44,
+          59,
+          74,
+          88,
+          103
+        ],
+        "frameCount": 104,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "sourceSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+      "plan": {
+        "openingState": "The performer looks skeptically toward the lens, brows tightly furrowed, with the screen-left hand resting at the chin and lower lip.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Maintain the skeptical stare and purse the lips briefly, keeping the hand at the lower lip."
+          },
+          {
+            "phase": "middle",
+            "action": "Narrow the eyes into a restrained disbelieving smile as the viewpoint moves closer."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold that small smile in the tighter close-up with only gentle finger and head adjustments."
+          }
+        ],
+        "camera": "Move the handheld close viewpoint progressively nearer without leaving the face.",
+        "endingState": "The same hand remains by the lower lip as a restrained skeptical smile holds in close-up.",
+        "constraints": [
+          "Keep the hand low at the lip rather than covering the eyes.",
+          "Do not move away to a room or bed view."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          11,
+          22,
+          33,
+          43,
+          54,
+          65,
+          76
+        ],
+        "frameCount": 77,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+      "plan": {
+        "openingState": "The reclining performer wears a secure white hair towel and looks at the lens with raised, pinched brows, wide eyes and pursed lips.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Move the handheld viewpoint closer while opening the mouth into a small disbelieving smile."
+          },
+          {
+            "phase": "middle",
+            "action": "Hold the closer expression and make subtle head adjustments with the brows still questioning."
+          },
+          {
+            "phase": "ending",
+            "action": "Let the smile soften slightly and remain in the close towel-wrapped portrait."
+          }
+        ],
+        "camera": "Move from a reclining selfie distance into a tighter face view.",
+        "endingState": "The towel stays secure while the performer holds a small disbelieving smile in close-up.",
+        "constraints": [
+          "Keep the hands outside the picture.",
+          "Do not shift away to the furniture or remove the towel."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          7,
+          14,
+          21,
+          28,
+          35,
+          42,
+          49
+        ],
+        "frameCount": 50,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "sourceSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+      "plan": {
+        "openingState": "The performer wears large thin metal eyeglasses, looks at the lens with wide eyes and open mouth, and holds a transparent pen beside the screen-left cheek.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Blink and glance sideways while narrowing the mouth briefly and opening it again in disbelief."
+          },
+          {
+            "phase": "middle",
+            "action": "Move slightly closer and raise the pen-holding screen-left hand toward the forehead, keeping the pen visible beside the fingers."
+          },
+          {
+            "phase": "ending",
+            "action": "Touch the forehead beside the eyeglass frame with those fingers and hold the wide-eyed, open-mouth expression."
+          }
+        ],
+        "camera": "Keep the handheld close angle and move a little closer near the ending.",
+        "endingState": "The pen-holding fingers touch the forehead beside the glasses, with the mouth open in disbelief.",
+        "constraints": [
+          "The eyeglasses stay on.",
+          "Keep the pen in the same hand throughout; do not turn it into a finger or another object.",
+          "Do not press the pen tip into the face."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138,
+          139
+        ],
+        "frameCount": 140,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "sourceSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+      "plan": {
+        "openingState": "The performer faces the lens with a neutral closed mouth in a close selfie view.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise the screen-left hand and spread the fingers across the mouth and lower nose."
+          },
+          {
+            "phase": "middle",
+            "action": "Keep the palm over the mouth, tilt the head a little and blink as the eyes soften into restrained amused surprise."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the covered-mouth pose with small natural head and eye movements."
+          }
+        ],
+        "camera": "Maintain the close selfie framing with slight handheld drift.",
+        "endingState": "The same palm covers the mouth and lower nose as the performer holds an amused, softly surprised look.",
+        "constraints": [
+          "Use a restrained amused reaction.",
+          "Keep the hand against the face after covering the mouth."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          26,
+          39,
+          53,
+          66,
+          79,
+          92
+        ],
+        "frameCount": 93,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-743919c25a4f61942184a81b",
+      "sourceSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+      "plan": {
+        "openingState": "The performer holds a red drink can low on screen-left, with rounded lips and eyes looking upward toward screen-left.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Lift the can slightly without drinking, open into a broad delighted smile and turn wide eyes toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "Lower the can fully below the picture and glance upward sideways again while retaining the delighted smile."
+          },
+          {
+            "phase": "ending",
+            "action": "Raise the now-empty screen-left hand across the nose and eyes, close the eyes as the fingers reach the forehead and hold the amused smile."
+          }
+        ],
+        "camera": "Maintain the close handheld composition with gentle drift.",
+        "endingState": "The eyes are closed behind the empty hand crossing the forehead and nose, with an amused smile below.",
+        "constraints": [
+          "Do not add a sip.",
+          "The can must leave below the picture before the empty hand returns; its hidden placement requires a continuity decision.",
+          "Do not make the can disappear while it is still visible in the hand."
+        ]
+      },
+      "review": {
+        "status": "needs_decision",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76
+        ],
+        "frameCount": 77,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only.",
+        "issues": [
+          "The can leaves below view before the same empty hand returns. Hidden placement is not visible; resolve continuity before approval rather than inventing a handoff."
+        ],
+        "sourceFileSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "sourceSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+      "plan": {
+        "openingState": "The close selfie performer looks slightly toward screen-left with raised inward-drawn brows and a mouth opening in astonishment.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Move closer and hold a wide open-mouth astonished expression."
+          },
+          {
+            "phase": "middle",
+            "action": "Let the expression become an amused disbelieving smile, then raise the screen-left hand across the forehead and briefly close the eyes."
+          },
+          {
+            "phase": "ending",
+            "action": "Slide the same hand down across the mouth and lower nose and retain the covered smile with the eyes mostly closed."
+          }
+        ],
+        "camera": "Move the handheld close viewpoint nearer during the initial reaction, then keep small natural shifts.",
+        "endingState": "The hand covers the mouth and lower nose, the eyes are mostly closed and the cheeks show an amused smile.",
+        "constraints": [
+          "Move the same hand continuously from forehead to lower face.",
+          "Do not freeze the hand at the forehead or add a second hand."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          26,
+          39,
+          53,
+          66,
+          79,
+          92
+        ],
+        "frameCount": 93,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "sourceSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+      "plan": {
+        "openingState": "The performer sits on a couch in a wider selfie view, smiling toward the lens with the hands below view.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Open the mouth, widen the eyes and move the viewpoint closer while raising the screen-left hand across the mouth and lower nose."
+          },
+          {
+            "phase": "middle",
+            "action": "Briefly close the eyes and glance sideways, then lower the hand out of view to reveal a closed-lip grin."
+          },
+          {
+            "phase": "ending",
+            "action": "Return the gaze toward the lens and open into a broad delighted smile."
+          }
+        ],
+        "camera": "Move from a wider couch selfie into a closer face view and maintain a gentle natural drift.",
+        "endingState": "The hand is lowered and a broad delighted smile faces the lens in the closer view.",
+        "constraints": [
+          "Keep the same hand through the cover-and-release.",
+          "Do not add a second mouth-covering cycle."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          8,
+          16,
+          24,
+          32,
+          40,
+          48,
+          56
+        ],
+        "frameCount": 57,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "sourceSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+      "plan": {
+        "openingState": "The performer faces the lens in a medium-close view with parted lips and hands low.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise the screen-left hand across the mouth and smile behind it, narrowing the eyes and wrinkling the nose with delight."
+          },
+          {
+            "phase": "middle",
+            "action": "Keep the covered smile with small head movement, then lower the hand forward toward the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "Briefly extend the index finger toward the lens and reach closer so the fingers enter the lower foreground, finishing with the hand low and the smile visible."
+          }
+        ],
+        "camera": "Keep the close camera position while the reaching hand moves into its foreground.",
+        "endingState": "The performer smiles toward the lens with the same hand low near the camera.",
+        "constraints": [
+          "Keep the fingers attached to the same hand as it reaches forward.",
+          "The foreground hand may briefly occlude the lower edge without replacing the whole scene."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          12,
+          23,
+          35,
+          46,
+          58,
+          69,
+          81
+        ],
+        "frameCount": 82,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "sourceSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+      "plan": {
+        "openingState": "The performer sits low with bent knees, holding a pink phone upright in the screen-left hand and the other arm arched over the head with fingertips at the forehead.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Keep staring at the phone with the mouth rounded wide open and make only small gaze and phone-angle adjustments."
+          },
+          {
+            "phase": "middle",
+            "action": "Tip the head slightly back while retaining the upright phone and overhead arm."
+          },
+          {
+            "phase": "ending",
+            "action": "Move the upper hand lower across the forehead toward the bridge of the nose and hold the stunned open-mouth pose."
+          }
+        ],
+        "camera": "Keep the low side view steady.",
+        "endingState": "The phone remains upright while the upper hand rests lower on the forehead and the head tips slightly back.",
+        "constraints": [
+          "Keep the phone in the same hand with its camera details stable.",
+          "Do not duplicate the phone or lower it out of view.",
+          "Keep the upper hand separate from the phone-holding hand."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63
+        ],
+        "frameCount": 64,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "sourceSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+      "plan": {
+        "openingState": "The performer looks upward toward screen-right with a small amused smile, with the watch-wearing screen-left hand below the mouth.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Raise the watch-wearing hand across the mouth and nose, glance sideways and smile behind the fingers."
+          },
+          {
+            "phase": "middle",
+            "action": "Move the viewpoint progressively closer, briefly close the eyes, then pull the viewpoint back while keeping the mouth covered."
+          },
+          {
+            "phase": "ending",
+            "action": "Lower the hand near the ending to reveal a soft closed-lip smile and a relaxed gaze."
+          }
+        ],
+        "camera": "Use a smooth handheld push closer followed by a pull back to the wider opening composition.",
+        "endingState": "The hand is lowered, the framing is wider again and a soft relaxed smile is visible.",
+        "constraints": [
+          "Keep the watch on the same wrist.",
+          "Retain the hand cover until after the pull back."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          25,
+          38,
+          51,
+          64,
+          76,
+          89
+        ],
+        "frameCount": 90,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "sourceSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+      "plan": {
+        "openingState": "The performer lies back on a pale blue pillow with an open downturned mouth, raised knitted brows, watery-looking narrowed eyes and screen-right fingertips beside one outer eye.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Lightly rub or press beside the outer eye while retaining the strained crying expression."
+          },
+          {
+            "phase": "middle",
+            "action": "Close the eyes, release the eye contact and lower that hand."
+          },
+          {
+            "phase": "ending",
+            "action": "Move the head and viewpoint forward and sideways as though lifting from the pillow, holding the strained expression through the ending."
+          }
+        ],
+        "camera": "Use a shaky close selfie perspective that moves forward and sideways in the latter part.",
+        "endingState": "The hand is lowered and the face is closer and shifted from its reclining position, still in the strained crying expression.",
+        "constraints": [
+          "Do not invent flowing tears.",
+          "Keep the initial touch beside the outer eye rather than pressing into the eyeball."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          10,
+          21,
+          31,
+          41,
+          51,
+          62,
+          72
+        ],
+        "frameCount": 73,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "sourceSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+      "plan": {
+        "openingState": "The performer wears over-ear headphones in a café and looks toward a laptop with wide eyes, knitted brows and an open mouth; one arm reaches toward the lens.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Keep the startled expression while moving the viewpoint back and down toward a wider tabletop composition."
+          },
+          {
+            "phase": "middle",
+            "action": "Let the viewpoint settle as the open laptop and pen become visible, then withdraw the extended arm and lower that hand toward the laptop trackpad."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the wide-eyed open-mouth reaction with small eye movements and a late blink, with the hand resting near the trackpad."
+          }
+        ],
+        "camera": "Retreat and lower the viewpoint into a wider table view before settling.",
+        "endingState": "The café tabletop, laptop and pen are visible, and the performer keeps the surprised expression with the hand low.",
+        "constraints": [
+          "Keep the headphones on and the laptop geometry continuous.",
+          "The newly revealed table and incidental people need an explicit scene-continuity decision before this plan is approved."
+        ]
+      },
+      "review": {
+        "status": "needs_decision",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90
+        ],
+        "frameCount": 91,
+        "reviewNote": "All decoded frame tiles re-inspected in ordered local contact sheets plus the actual opening and ending frame; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity. Structural decision remains unresolved; plan is a review draft only.",
+        "issues": [
+          "The moving viewpoint reveals table geometry and café patrons not fully supplied by the opening image. Review a wider approved starting image or accept deliberate reconstruction before approval."
+        ],
+        "sourceFileSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "sourceSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+      "plan": {
+        "openingState": "The performer faces the lens from a low selfie angle with very wide eyes, raised inward-drawn brows and an open mouth.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Hold the astonished stare, then raise the screen-left hand toward the mouth while blinking and glancing sharply toward screen-left."
+          },
+          {
+            "phase": "middle",
+            "action": "Bring the fingers fully across the lips and lower nose and return the wide-eyed gaze to the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "Hold the covered-mouth pose, close and reopen the eyes, and let the handheld viewpoint tilt briefly with a small light flare."
+          }
+        ],
+        "camera": "Keep the low-angle close selfie with a brief late tilt and natural flare from the changing light angle.",
+        "endingState": "The hand covers the lower face and the reopened eyes remain wide beneath lifted brows.",
+        "constraints": [
+          "Keep the same hand over the mouth through the ending.",
+          "Do not turn the light flare into new room lighting."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          17,
+          35,
+          52,
+          70,
+          87,
+          105,
+          122
+        ],
+        "frameCount": 123,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+        "visualQualification": "not_tested"
+      }
+    },
+    {
+      "referenceId": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "sourceSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+      "plan": {
+        "openingState": "The performer rests the chin on a sleeve-covered screen-left fist, head gently tilted toward the supporting hand, with a soft closed-lip smile.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "Retain the supported chin, smile softly toward the lens and blink slowly."
+          },
+          {
+            "phase": "middle",
+            "action": "Shift the eyes upward toward screen-right as if thinking, then briefly close them."
+          },
+          {
+            "phase": "ending",
+            "action": "Return the gaze toward the lens and hold the relaxed closed-lip smile, keeping the chin on the fist."
+          }
+        ],
+        "camera": "Keep the tabletop portrait framing steady while the ceiling fan continues turning.",
+        "endingState": "The chin remains supported and the relaxed smile faces the lens.",
+        "constraints": [
+          "Do not lift the supporting fist away.",
+          "Keep the performance calm rather than surprised."
+        ]
+      },
+      "review": {
+        "status": "static_reviewed",
+        "startingFrameIndex": 0,
+        "supportedDurationsSeconds": [
+          4
+        ],
+        "method": "canonical_frames_and_prior_notes",
+        "sampledFrameIndices": [
+          0,
+          13,
+          26,
+          39,
+          53,
+          66,
+          79,
+          92
+        ],
+        "frameCount": 93,
+        "reviewNote": "Eight ordered canonical decoded frames, including frame zero and the final frame, visually cross-checked against prior all-decoded-frame observations; authored action sequence explicitly for a four-second animation adaptation, not a claim of unchanged timing or generated facial fidelity.",
+        "issues": [],
+        "sourceFileSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+        "visualQualification": "not_tested"
+      }
+    }
+  ]
+}

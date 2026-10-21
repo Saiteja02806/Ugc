@@ -19,8 +19,8 @@ export type TrendingSlideshowStyleAllocation = Record<
 export type TrendingSlideshowStructureId = "structure_1" | "structure_2";
 
 export const DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX = {
-  helpfulTips: 50,
-  productStoriesCta: 50,
+  helpfulTips: 0,
+  productStoriesCta: 100,
 } as const satisfies TrendingSlideshowStyleMix;
 
 const STYLE_ORDER = [

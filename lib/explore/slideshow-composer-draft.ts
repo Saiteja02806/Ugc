@@ -17,9 +17,15 @@ export function readSlideshowComposerDraft(raw: string | null): SlideshowCompose
 /** Conservative preflight for an explicit uploaded-screen request, not a prompt interpreter. */
 export function requiresScreenshotAttachment(prompt: string) {
   return prompt.split(/[.!?;\n]/).some(clause => {
-    if (/\b(?:do not|don't|without|never)\b/i.test(clause)) return false;
-    return /\b(?:use|place|put|insert|keep|add|show|replace)\b/i.test(clause) &&
-      /\b(?:uploaded|attached|provided|supplied|my|given)\b/i.test(clause) &&
-      /\b(?:screenshot|screen\s+image)\b/i.test(clause);
+    const actions = [...clause.matchAll(/\b(?:use|place|put|insert|keep|add|show|replace)\b/gi)];
+    return actions.some((action, index) => {
+      const before = clause.slice(0, action.index);
+      // Negation belongs to this action, not unrelated preservation instructions
+      // such as "use my screenshot, do not change anything else".
+      if (/\b(?:do\s+not|don['’]t|never|without|not(?:\s+(?:want|need)\s+to)?)\s+(?:(?:ever|also|even|please)\s+)*$/i.test(before)) return false;
+      const request = clause.slice(action.index, actions[index + 1]?.index);
+      return /\b(?:uploaded|attached|provided|supplied|my|given)\b/i.test(request) &&
+        /\b(?:screenshot|screen\s+image)\b/i.test(request);
+    });
   });
 }

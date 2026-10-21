@@ -31,7 +31,8 @@ import picker from "@/components/explore/format-person-image-picker.module.css";
 type Kind = "image" | "video" | "audio";
 
 /** Optional generation guidance; imported editor footage uses the separate source picker. */
-export function FormatGenerationReferences({ selection, imageSelection, imageSelections, imagePurpose = "general", onImagePurposeChange, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true }: {
+export function FormatGenerationReferences({ selection, imageSelection, imageSelections, imagePurpose = "general", onImagePurposeChange, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true, heading = "Optional references" }: {
+  heading?: string;
   selection: AIStudioReferenceMedia | null;
   imageSelection?: AIStudioReferenceMedia | null;
   imageSelections?: AIStudioReferenceMedia[];
@@ -259,8 +260,8 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
   const catalogSelections = catalogImages.map(image => image.asset.fileName);
   const referenceKinds = (["image", "video", "audio"] as const).filter(kind => kind === "image" || kind === "video" && (videoInputEnabled || Boolean(styleVideo) || Boolean(selectedVideo)) || kind === "audio" && (audioInputEnabled || Boolean(selectedAudio)));
 
-  return <section aria-label="Optional generation references" className={cn(presentation.referenceGroup, presentation.classicReferences)}>
-    <div className={presentation.referenceHeading}><h3>Optional references</h3></div>
+  return <section aria-label={heading === "Optional references" ? "Optional generation references" : heading} className={cn(presentation.referenceGroup, presentation.classicReferences)}>
+    <div className={presentation.referenceHeading}><h3>{heading}</h3></div>
     <div className={creation.referenceGrid} data-workflow-reference-grid data-reference-columns={referenceKinds.length}>
       {referenceKinds.map(kind => {
         const selected = kind === "image" ? selectedImages[0] ?? null : kind === "video" ? selectedVideo : selectedAudio;

@@ -28,7 +28,7 @@ export const productExamples = {
     input: "Three-second vertical smartphone close-up of an adult creator looking at a phone. 0–1s: focused gaze. 1–2s: one brow lifts and the head tilts slightly. 2–3s: hold a curious smile. Soft window light, consistent face, hands and phone. No baked-in words, dialogue, music or cuts.",
     output: ["A short opening that can introduce a relevant viewer question.", "A separate real product recording showing the action the opening refers to.", "Exact headline text added in the editor, with captions if the final video contains speech."],
     review: ["Check the current model's supported duration, format, references and credit estimate before submission.", "Watch the result for inconsistent hands, props, motion or unintended lettering.", "Review the full edited opening and demonstration together before publishing."],
-    limits: "AI footage can contain visual errors and is not evidence of a real testimonial or feature. The AI-client plugin's generation tools produce footage, not a finished product-demo edit. Exact overlays and final composition require an editor or the applicable website workflow.",
+    limits: "AI footage can contain visual errors and is not evidence of a real testimonial or feature. Generating footage and finishing a product-demo edit are separate steps. Use the website editor or the connected client's supported finishing tools for demo composition and exact overlays; check current capabilities before requesting them.",
   },
   manager: {
     title: "Give one customer question a manageable weekly plan",

@@ -17,6 +17,7 @@ import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
 import { isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
 import styles from "@/components/explore/workflow-schedule-review.module.css";
+import { pollInForeground } from "@/lib/http/foreground-polling";
 
 async function authorized(owner: string, url: string, init?: RequestInit) {
   return requestWorkflowSchedule({ token: () => getCurrentUserIdToken(owner), fetch }, url, init);
@@ -76,15 +77,12 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   }, [owner, storageKey, accept]);
   useEffect(() => {
     if (!active || !saved || result?.preparation.state !== "preparing") return;
-    let stopped = false, checking = false;
-    const timer = setInterval(async () => {
-      if (checking) return;
-      checking = true;
+    let stopped = false;
+    const stop = pollInForeground({ poll: async () => {
       try { const value = await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(saved.input.requestKey)}`); if (!stopped) accept(saved, value); }
       catch (e) { if (!stopped) setError(e instanceof Error ? e.message : "Could not refresh preparation."); }
-      finally { checking = false; }
-    }, 5000);
-    return () => { stopped = true; clearInterval(timer); };
+    }, intervalMs: 5000 });
+    return () => { stopped = true; stop(); };
   }, [active, saved, result?.preparation.state, owner, accept]);
   const boundResult = saved?.signature === composition.signature ? result : null;
   const failedBeforePublishing = boundResult?.preparation.state === "failed" && boundResult.schedule?.targets.length === 0;

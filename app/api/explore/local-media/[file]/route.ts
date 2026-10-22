@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import catalog from "@/lib/explore/imported-catalog.json";
+import slideshowAdditions from "@/lib/explore/slideshow-reference-additions.json";
 
 export const runtime = "nodejs";
 
-const allowedFiles = new Set(catalog.items.flatMap((item) => [
+const allowedFiles = new Set([...catalog.items, ...slideshowAdditions.items].flatMap((item) => [
   item.posterFile,
   ...("videoFile" in item ? [item.videoFile] : []),
   ...item.slides.map((slide) => slide.file),

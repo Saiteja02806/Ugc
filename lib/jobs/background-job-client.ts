@@ -10,6 +10,7 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import type { CanonicalBackgroundJobType, PublicBackgroundJob } from "./background-job-contract";
 
 type JobResponse = { job: PublicBackgroundJob; ok: true };
@@ -26,7 +27,7 @@ export function useActiveBackgroundJobs({ enabled = true, exploreFormat }: {
 
   return useQuery({
     enabled: enabled && !loading && Boolean(user),
-    queryFn: () => fetchJobs(`/api/jobs?status=active&limit=100${exploreFormat ? `&exploreFormat=${exploreFormat}` : ""}`),
+    queryFn: ({ signal }) => fetchJobs(`/api/jobs?status=active&limit=100${exploreFormat ? `&exploreFormat=${exploreFormat}` : ""}`, user?.uid, signal),
     queryKey: ["background-jobs", user?.uid, "active", ...(exploreFormat ? [exploreFormat] : [])],
     staleTime: 0,
     refetchOnMount: "always",
@@ -123,8 +124,10 @@ export function useBackgroundJob(jobId: string | null) {
 
   return useQuery({
     enabled: !loading && Boolean(user && jobId),
-    queryFn: () => fetchJob(`/api/jobs/${encodeURIComponent(jobId || "")}`),
+    queryFn: ({ signal }) => fetchJob(`/api/jobs/${encodeURIComponent(jobId || "")}`, { signal }, user?.uid),
     queryKey: ["background-jobs", user?.uid, jobId],
+    staleTime: 0,
+    refetchOnWindowFocus: query => !terminalStatuses.has(query.state.data?.status ?? ""),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
 
@@ -139,8 +142,10 @@ export function useBackgroundJobs(jobIds: readonly string[]) {
   return useQueries({
     queries: jobIds.map((jobId) => ({
       enabled: !loading && Boolean(user && jobId),
-      queryFn: () => fetchJob(`/api/jobs/${encodeURIComponent(jobId)}`),
+      queryFn: ({ signal }: { signal: AbortSignal }) => fetchJob(`/api/jobs/${encodeURIComponent(jobId)}`, { signal }, user?.uid),
       queryKey: ["background-jobs", user?.uid, jobId],
+      staleTime: 0,
+      refetchOnWindowFocus: (query: { state: { data?: PublicBackgroundJob } }) => !terminalStatuses.has(query.state.data?.status ?? ""),
       refetchInterval: (query: {
         state: { data?: PublicBackgroundJob };
       }) => {
@@ -245,34 +250,41 @@ function subscribeToJobUrl(onStoreChange: () => void) {
   };
 }
 
-async function fetchJobs(url: string) {
-  const response = await authenticatedFetch(url);
-  const data = (await response.json()) as
-    | JobsResponse
-    | { error?: string; ok?: false };
+async function fetchJobs(url: string, ownerId?: string, signal?: AbortSignal) {
+  return withReadDeadline(async bounded => {
+    const response = await authenticatedFetch(url, { signal: bounded }, ownerId);
+    const data = (await response.json()) as
+      | JobsResponse
+      | { error?: string; ok?: false };
 
-  if (!response.ok || data.ok !== true) {
-    throw new Error(getApiError(data, "Could not load background jobs."));
-  }
+    if (!response.ok || data.ok !== true) {
+      throw new Error(getApiError(data, "Could not load background jobs."));
+    }
 
-  return data.jobs;
+    return data.jobs;
+  }, signal);
 }
 
-async function fetchJob(url: string, init?: RequestInit) {
-  const response = await authenticatedFetch(url, init);
-  const data = (await response.json()) as
-    | JobResponse
-    | { error?: string; ok?: false };
+async function fetchJob(url: string, init?: RequestInit, ownerId?: string) {
+  const read = async (signal?: AbortSignal) => {
+    const response = await authenticatedFetch(url, { ...init, signal }, ownerId);
+    const data = (await response.json()) as
+      | JobResponse
+      | { error?: string; ok?: false };
 
-  if (!response.ok || data.ok !== true) {
-    throw new Error(getApiError(data, "Could not update the background job."));
-  }
+    if (!response.ok || data.ok !== true) {
+      throw new Error(getApiError(data, "Could not update the background job."));
+    }
 
-  return data.job;
+    return data.job;
+  };
+  // Cancellation/retry remain deliberate mutations, never automatic read retries.
+  return init?.method === "POST" ? read(init.signal ?? undefined) : withReadDeadline(read, init?.signal ?? undefined);
 }
 
-async function authenticatedFetch(url: string, init?: RequestInit) {
-  const token = await getCurrentUserIdToken();
+async function authenticatedFetch(url: string, init?: RequestInit, ownerId?: string) {
+  const token = await getCurrentUserIdToken(ownerId);
+  init?.signal?.throwIfAborted();
 
   if (!token) {
     throw new Error("Sign in to view background jobs.");

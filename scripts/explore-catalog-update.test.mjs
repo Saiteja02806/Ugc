@@ -154,6 +154,8 @@ function loadRecreateCatalog(status, environment = "development") {
   const require = (specifier) => {
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
+    if (specifier === "./slideshow-reference-sources.json") return JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8"));
+    if (specifier === "./slideshow-reference-additions.json") return { mediaStatus: "staged", items: [] };
     if (specifier === "./hook-video-library") return library;
     if (specifier === "./wall-text-video-library") return { getExploreWallTextVideos: () => [] };
     if (specifier === "./reference-video-prompts") return { getReferenceVideoPrompt: () => undefined };

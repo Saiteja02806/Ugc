@@ -1,6 +1,8 @@
 import "server-only";
 
 import importedCatalog from "./imported-catalog.json" with { type: "json" };
+import slideshowSources from "./slideshow-reference-sources.json" with { type: "json" };
+import slideshowAdditions from "./slideshow-reference-additions.json" with { type: "json" };
 import {
   getExploreHookVideos,
 } from "./hook-video-library";
@@ -32,7 +34,7 @@ type ImportedCatalogItem = {
 };
 
 const importedItems = importedCatalog.mediaStatus === "published"
-  ? importedCatalog.items as ImportedCatalogItem[]
+  ? [...importedCatalog.items, ...(slideshowAdditions.mediaStatus === "published" ? slideshowAdditions.items : [])] as ImportedCatalogItem[]
   : [];
 
 export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
@@ -94,7 +96,7 @@ export function getLocalRecreateReferences(): RecreateReference[] {
   if (process.env.NODE_ENV !== "development") return [];
   const existing = getRecreateReferences();
   const existingIds = new Set(existing.map((item) => item.id));
-  const staged = (importedCatalog.items as ImportedCatalogItem[])
+  const staged = ([...importedCatalog.items, ...slideshowAdditions.items] as ImportedCatalogItem[])
     .filter((item) => !existingIds.has(item.id) && !(item.format === "hook" && isHookReferenceReleaseActive()))
     .map((item) => {
       const reference = toImportedReference(item, (file) => `/api/explore/local-media/${file}`);
@@ -104,6 +106,7 @@ export function getLocalRecreateReferences(): RecreateReference[] {
 }
 
 function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAssetUrl): RecreateReference {
+  const source = item.format === "slideshow" ? slideshowSources.items.find(source => source.referenceId === item.id) : undefined;
   const slides: ReferenceSlide[] = item.slides.map((slide) => ({
     height: slide.height,
     id: slide.id,
@@ -119,6 +122,7 @@ function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAs
     id: item.id,
     posterUrl: assetUrl(item.posterFile),
     slides,
+    ...(source ? { sourceUrl: source.sourceUrl, sourcePlatform: "tiktok" as const, sourceKind: source.sourceKind === "profile" ? "profile" as const : "post" as const } : {}),
     // Catalogue sequence numbers identify imports, not the user's topic.
     title: item.format === "slideshow" ? item.categoryLabel?.trim() || item.title : item.title,
     videoUrl: item.videoFile ? assetUrl(item.videoFile) : undefined,

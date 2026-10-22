@@ -222,6 +222,7 @@ export async function runGenerateImageJob(
               providerPrompt,
               input.aspectRatio,
               referenceImages,
+              ...(input.hookKeyframe?.promptVersion === 2 ? [input.hookKeyframe] as const : []),
             )
           : await generateOpenAiImageBuffer(
               providerPrompt,
@@ -291,7 +292,8 @@ export async function runGenerateImageJob(
   const imageBuffer = await prepareAIStudioImageOutput(
     generatedImageBuffer,
     input.aspectRatio,
-    { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe) },
+    { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe),
+      ...(input.hookKeyframe?.version === 2 && input.hookKeyframe.promptVersion === 2 ? { cropNearRatioPadding: true } : {}) },
   );
 
   await context.checkpoint({
@@ -350,6 +352,7 @@ async function generateDurableImageForJob(
       referenceImageUrl: referenceImageUrls?.[0] ?? (action === "submit" && input.referenceImageUrl
         ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl),
       ...(referenceImageUrls ? { referenceImageUrls } : {}),
+      ...(input.hookKeyframe?.promptVersion === 2 ? { hookKeyframe: input.hookKeyframe } : {}),
       providerOperationId: operationId,
       onOperationCreated: async (providerOperationId) => {
         await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });

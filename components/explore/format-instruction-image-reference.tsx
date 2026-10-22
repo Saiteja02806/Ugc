@@ -44,7 +44,7 @@ export function FormatInstructionImageReference({ selections, onChange, onPendin
   const queryKey = ["explore-reference-images", ownerId ?? "signed-out", "explore-only-v2"] as const;
   const limit = Math.max(0, Math.min(MAX_IMAGE_REFERENCE_CONTEXT, maxImages));
   const full = selections.length >= limit;
-  const images = useQuery({ queryKey, queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal), enabled: active && open && !preview && Boolean(ownerId), staleTime: REFERENCE_IMAGE_STALE_MS });
+  const images = useQuery({ queryKey, queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal), enabled: active && open && !preview && Boolean(ownerId), staleTime: REFERENCE_IMAGE_STALE_MS, refetchOnWindowFocus: true });
   useEffect(() => { pendingCallback.current = onPendingChange; }, [onPendingChange]);
   useEffect(() => { errorCallback.current = onErrorChange; }, [onErrorChange]);
   useEffect(() => {

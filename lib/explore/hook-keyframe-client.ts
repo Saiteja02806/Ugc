@@ -1,4 +1,5 @@
 import { hookKeyframeInputKey, type HookKeyframeDraft, type HookKeyframeScope } from "./hook-keyframe-draft.ts";
+import { isHookKeyframeImageModel, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export type HookKeyframeCheckpoint = { version: 1; scope: HookKeyframeScope; inputKey: string; requestKey: string; jobId: string | null };
@@ -9,7 +10,7 @@ export type HookStartingFrameSelection = {
 };
 export type HookKeyframeJob = {
   id: string; status: string; isTerminal: boolean; error: string | null;
-  receipt: { version: 1; purpose: "hook_starting_frame"; ownerId: string; draftId: string; referenceId: string; sourceSha256: string; inputKey: string };
+  receipt: { version: 1 | 2; imageModel?: HookKeyframeImageModel; promptVersion?: 1 | 2; purpose: "hook_starting_frame"; ownerId: string; draftId: string; referenceId: string; sourceSha256: string; inputKey: string };
   output: null | { mediaAssetId: string; url: string; width: number; height: number };
 };
 export function hookKeyframeCheckpointKey(scope: HookKeyframeScope) {
@@ -31,9 +32,15 @@ export function createHookKeyframeCheckpoint(draft: HookKeyframeDraft, requestKe
 export function verifiedHookKeyframeJob(value: unknown, checkpoint: HookKeyframeCheckpoint): HookKeyframeJob {
   const job = value as HookKeyframeJob;
   const receipt = job?.receipt;
+  let modelMatchesKey = true;
+  if (receipt?.version === 2) {
+    try { const bound = JSON.parse(checkpoint.inputKey); modelMatchesKey = bound.version === 2 && bound.imageModel === receipt.imageModel; }
+    catch { modelMatchesKey = false; }
+  }
   if (!job || !UUID.test(job.id) || checkpoint.jobId && job.id !== checkpoint.jobId || typeof job.status !== "string" || typeof job.isTerminal !== "boolean" ||
     job.error !== null && typeof job.error !== "string" ||
-    !receipt || receipt.version !== 1 || receipt.purpose !== "hook_starting_frame" || receipt.inputKey !== checkpoint.inputKey ||
+    !receipt || receipt.version !== 1 && receipt.version !== 2 || receipt.version === 2 && (!isHookKeyframeImageModel(receipt.imageModel) || receipt.promptVersion !== 2) ||
+    !modelMatchesKey || receipt.purpose !== "hook_starting_frame" || receipt.inputKey !== checkpoint.inputKey ||
     Object.keys(checkpoint.scope).some(key => receipt[key as keyof HookKeyframeScope] !== checkpoint.scope[key as keyof HookKeyframeScope])) {
     throw new Error("This starting image does not match the saved account, reference and photo selection.");
   }

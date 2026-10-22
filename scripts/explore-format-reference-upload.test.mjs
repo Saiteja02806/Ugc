@@ -74,6 +74,27 @@ function harness(upload, { images = [], queryError = false, queryPending = false
 }
 const flush = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
 
+test("compact face strip shows every main/support photo and opens the existing photo editor", () => {
+  const h = harness(async () => {});
+  const selected = [1, 2, 3].map(id => ({ kind: "image", asset: savedImage(`face-${id}`) }));
+  const options = { selection: null, imageSelections: selected, imagePurpose: "person", imagePresentation: "person-strip", videoInputEnabled: false, onImagesChange() {} };
+  const tree = h.render(options);
+  const previews = h.all(tree, node => node.type === "ImagePreview");
+  assert.equal(previews.length, 3);
+  assert.match(previews[0].props.name, /^Main face photo:/);
+  assert.match(previews[1].props.name, /^Supporting view 1:/);
+  assert.match(previews[2].props.name, /^Supporting view 2:/);
+  const trigger = h.all(tree, node => node.type === "DialogTrigger")[0];
+  assert.equal(trigger.props.render.props["aria-label"], "Change photos");
+  h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true);
+  const opened = h.render(options);
+  assert.equal(h.all(opened, node => node.type === "Dialog")[0].props.open, true);
+  assert.equal(h.all(opened, node => node.type === "Button" && node.props["aria-label"] === "Make photo 2 the main face photo").length, 1);
+  assert.equal(h.calls.length, 0);
+  const legacy = h.render({ ...options, imagePresentation: "tile" });
+  assert.equal(h.all(legacy, node => node.type === "ImagePreview").length, 1, "other workflows retain their existing person tile");
+});
+
 test("optional guidance blocks generation while pending and binds the upload to the original owner", async () => {
   let resolve;
   const h = harness(() => new Promise(done => { resolve = done; }));

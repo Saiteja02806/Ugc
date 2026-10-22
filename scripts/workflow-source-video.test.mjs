@@ -7,7 +7,7 @@ import ts from "typescript";
 const load = (path, imports, globals = {}) => {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { exports, require(name) { assert.ok(name in imports, name); return imports[name]; }, AbortController, Error, ...globals });
+    vm.runInNewContext(code, { exports, require(name) { assert.ok(name in imports, name); return imports[name]; }, AbortController, AbortSignal, Error, ...globals });
   return exports;
 };
 const policy = load("lib/explore/workflow-source-video.ts", {});

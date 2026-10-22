@@ -18,6 +18,7 @@ import { formatVideoFromAsset } from "@/lib/explore/format-video-source";
 import type { WorkflowVideoMode } from "@/lib/explore/workflow-source-video";
 import type { MediaAsset } from "@/lib/media/types";
 import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-contract";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 type VideoOutput = { id: string; kind: "media_asset" | "library_item"; url: string; title: string };
 export function FormatDemoWorkspace({ ownerId, enabled, localPreview, active, opening, sourcePreview, controlsTarget, resultsTarget, actionsTarget, previewAssets, onChooseSource, onDemoChange, onSaved, onContinue }: {
@@ -33,20 +34,22 @@ export function FormatDemoWorkspace({ ownerId, enabled, localPreview, active, op
   const [restoredDemoId, setRestoredDemoId] = useState<string | null>(null);
   const locallyChanged = useRef(false);
   const preview = useRef<HTMLDivElement>(null);
-  const openingQuery = useQuery({ queryKey: ["explore-demo-opening", ownerId, opening?.id], enabled: enabled && Boolean(ownerId && opening), queryFn: async () => {
+  const openingQuery = useQuery({ queryKey: ["explore-demo-opening", ownerId, opening?.id], enabled: enabled && Boolean(ownerId && opening), queryFn: ({ signal }) => withReadDeadline(async bounded => {
     const token = await getCurrentUserIdToken(ownerId ?? undefined);
+    bounded.throwIfAborted();
     if (!token || !opening) throw new Error("Sign in to load your saved hook.");
-    const asset = await fetchAIStudioMediaAsset(opening.id, token);
+    const asset = await fetchAIStudioMediaAsset(opening.id, token, { signal: bounded });
     formatVideoFromAsset(asset);
     return asset;
-  }});
-  const restoredDemoQuery = useQuery({ queryKey: ["explore-demo-restore", ownerId, restoredDemoId], enabled: enabled && Boolean(ownerId && restoredDemoId), queryFn: async () => {
+  }, signal)});
+  const restoredDemoQuery = useQuery({ queryKey: ["explore-demo-restore", ownerId, restoredDemoId], enabled: enabled && Boolean(ownerId && restoredDemoId), queryFn: ({ signal }) => withReadDeadline(async bounded => {
     const token = await getCurrentUserIdToken(ownerId ?? undefined);
+    bounded.throwIfAborted();
     if (!token || !restoredDemoId) throw new Error("Sign in to restore your demo.");
-    const asset = await fetchAIStudioMediaAsset(restoredDemoId, token);
+    const asset = await fetchAIStudioMediaAsset(restoredDemoId, token, { signal: bounded });
     formatVideoFromAsset(asset);
     return asset;
-  }});
+  }, signal)});
   const restoreDraft = useCallback((draft: ExploreFinishDraft) => {
     if (locallyChanged.current || !draft.demoAssetId) return;
     setRestoredDemoId(draft.demoAssetId); onDemoChange(true);

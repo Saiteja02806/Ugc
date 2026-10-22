@@ -1,5 +1,181 @@
 # Explore context and UI decision record
 
+## 2026-10-22 Combined release authorization and acceptance
+
+- The user has now explicitly authorized checking and deploying all intentional
+  current changes. This supersedes the earlier local-only deployment pause.
+  Production database changes and paid AI generation remain outside this release.
+- Release the model-aware starting-image contract on the AI generation worker
+  before promoting the website that submits it. Verify the active worker's baked
+  and runtime commit identity; a local build is not worker deployment evidence.
+- Include the concurrent connected-account photo fixes and performance/marketing
+  work after their combined checks. Keep the 60 unpublished slideshow images
+  staged only: their previously rejected public upload is still deferred.
+- Vercel source packaging must exclude local worktrees, diagnostics, credentials
+  and prototypes. A dry-run source manifest shrank from 2.33 GB to 266 MB after
+  correcting `.vercelignore`; this is source transfer, not measured runtime
+  savings. The current budget audit found approximately $0.23 infrastructure
+  usage with $19.77 included credit remaining. Do not infer that the previous
+  HTTP 402 was caused by exhausted credit.
+- Fresh local UI verification and final deployed acceptance are recorded in the
+  release receipt. Historical entries below describe checks and pauses at the
+  time they were written; they do not establish current production acceptance.
+
+## 2026-10-22 Approved slideshow mappings and source actions (local)
+
+- User confirmed all mappings in the supplied D: slideshow folder are good to
+  go. Retain repeated URLs, creator-profile destinations and existing categories
+  as approved; no further mapping confirmation is needed. Preserve the three
+  older catalogue sets absent from that folder.
+- 38 mappings now supply source links to slideshow cards in both galleries and
+  the full preview. Labels distinguish Original post and Creator profile; clicks
+  open separately without selecting/previewing/recreating. Existing verified
+  Starter/Growth entitlement applies, with the same free upgrade flow. Hook
+  remains post-only; Wall has no source action.
+- Separate staged additions contain 13 new sets / 60 original images. Existing
+  59 sets / 332 positions stay unchanged. Development preview merges 72 sets /
+  392 positions; staged IDs remain unavailable to authenticated generation lookup.
+  Missing old references are retained and new category titles continue numbering.
+- 86 local checks, application types, scoped lint and real-component browser
+  coverage pass, including all 38 destination clicks, preview/Recreate separation,
+  free/Pro, keyboard and 1366/1280/390px layouts. External navigation is intercepted
+  in that fixture. New-source reviewed Remix transcripts remain a distinct gap.
+- No deployment or successful cloud upload. Production is still HTTP 402
+  Deployment Paused. Automatic approval review rejected the 60-image / 11,811,439
+  byte transfer to public `ugcsaas-media/explore/recreate/v1/` pending explicit
+  payload/destination approval. Do not bypass that rejection; local staging keeps
+  unpublished media out of the live catalogue. See
+  `docs/slideshow-source-links-2026-10-22.md` for receipt and next steps.
+
+## 2026-10-22 Starting-image variations and image-only popup (local)
+
+- The next approved UI refinement orders generated image → variation choices →
+  approval, adds click/keyboard enlargement for both scene/result previews and
+  tightens their comparison columns without changing image pixels or proportions.
+  Rename Your person to Face reference. Its opt-in compact strip shows the main
+  photo and all supporting views, with Change photos opening the existing editor.
+  Other callers retain the standard reference tile. Enlargement is read-only and
+  must not approve an image, submit generation or dismiss the preparation.
+- Latest refinement: 60 focused checks and scoped lint pass. Fresh browser visual
+  verification is pending because the browser-control runtime fails before any
+  page action (cannot write kernel assets). Do not reuse older screenshots as
+  evidence of these latest changes or claim them visually verified/deployed.
+
+- The user explicitly removed video settings from Create your starting frame.
+  This popup contains source/person photos, optional image instructions, a compact
+  model choice and 1–4 image count. Video duration, motion editing and sound stay
+  in the existing video composer after Use as starting frame. Preserve saved
+  motion/audio preferences in the handoff; new preparations still default silent.
+- Show total image credits before the explicit Generate action. Each variation
+  uses the same frozen scene/person/model inputs and its own idempotency key.
+  Submit requests sequentially, stopping on rejected or uncertain admission;
+  closing stops only requests not yet submitted. Never resume planned requests
+  or retry a paid POST automatically on reopen or status refresh.
+- Keep each accepted result selectable in a compact thumbnail strip. Verify each
+  completed job and its exact input receipt before handing off only the chosen
+  image. Retain up to 12 recent choices locally without evicting pending requests
+  or the selected result. Older completed assets remain in the owned library.
+  Legacy single-image recovery records remain readable. Use one Web Lock and
+  persisted revision checks to prevent competing tabs from submitting stale work.
+- Reduce the approval button to its text width and the image model control to
+  a small selector. Local preview uses labelled sample images and no inference.
+  Deployment remains paused; no paid generation or production DB change is part
+  of this work. Offline/browser checks do not establish face or scene fidelity.
+
+## 2026-10-22 Expanded Content/Demo, Analytics and Scheduling loading audit (local)
+
+- Continue the idle/upload recurrence audit through the current Demo inventory,
+  Analytics and Scheduling. Current Demo is `/library?tab=posts`; historical
+  Content/uploaded-post terminology shares its `UploadedPostsTab` inventory.
+- Demo transfers use two shared slots and one settled-queue list read. Release
+  transferred Files/decoders/handlers; retain a small completion receipt for
+  explicit retry of the same object. Never delete an uncertain accepted upload.
+  Failed-transfer cleanup must finish before Retry is exposed. Partial bulk
+  deletion retains failed rows, selection and visible error.
+- Bound/cancel owner-scoped Demo/source/job reads through auth, fetch and parsing.
+  Stale pending jobs reconcile on return; terminal jobs stay stopped. Gallery
+  hover videos release their sources on leave/click/hide/offscreen/unmount.
+  Shared foreground refresh also suspends offline reads.
+- Analytics revalidates stale saved snapshots on return and uses latest job
+  status for polling eligibility. Scheduling pauses hidden/offline reads, keeps
+  warm calendar/editor content and reconciles media/accounts on return. Fresh
+  publishing access, selected IDs, draft state and submit validation remain.
+- Production remains deliberately paused. Local fixture checks cannot establish
+  hosted latency or a real 30-minute heap soak. Evidence and remaining acceptance:
+  `docs/app-loading-audit-2026-10-22.md`.
+
+## 2026-10-22 Upload, library and idle-tab performance recurrence (local)
+
+- User again reports slow uploads, library selection, editing and returning
+  after about 30 minutes. Production Explore currently shows the paused-hosting
+  page, so local checks are not production acceptance or a measured memory cause.
+- Manage library uses two concurrent transfers, ordered results, failed-file-only
+  retry and one successful-batch membership write. Mutation completion releases
+  its lock before background list reads; a failed refresh retains cached tiles.
+- Shared library Apply uses bounded owner-scoped batch admission. Preserve
+  generated-image/Remix provenance, original-source URLs, atomic draft changes,
+  slide/text identities and saved-output invalidation.
+- Stale image queries revalidate on return. Reads bound authentication/network/
+  parsing and reject late cancelled requests. Existing one-hour account cache
+  retention/isolation remains. Explore filmstrip thumbnails use the public
+  optimizer; main preview and export keep original dimensions/pixels.
+- Explore finishing/schedule preparation and Trending edit-status polls pause
+  while hidden/offline, then resume without overlap or interval catch-up. Only
+  reads resume; jobs continue server-side. Real 30-minute heap profiling remains
+  pending. Website-only correction; deployment pause is preserved.
+- Evidence and acceptance: `docs/ui-performance-2026-10-22.md`. 164 focused checks,
+  the actual-component desktop/mobile library suite, types and lint pass. One of
+  40 broader checks has a verified pre-existing source-assertion failure.
+
+## 2026-10-22 Local starting-image models and edge normalization
+
+- Deployment is paused at the user's explicit request. Continue local checks;
+  do not promote the new website/worker contract or run a paid test implicitly.
+- Add a compact image-model selector beside the image price. New preparations
+  default to Gemini 3 Pro Image; Gemini 3.1 Flash Image is the alternative. Bind
+  both choices to explicit provider model IDs. Do not let a general environment
+  override silently replace the selected Hook model. Model changes invalidate
+  approval of the previous result, retain photos and update the free price quote.
+- New model-aware drafts/receipts use version 2. Pro accepts up to five identity
+  photos and Flash four, plus the separate scene frame. Block a new request over
+  that limit before credits; do not drop photos when switching. Accepted legacy
+  Flash requests and their original fingerprints remain recoverable. Any new
+  request from an old draft upgrades explicitly; missing-model requests may only
+  replay an already saved legacy job.
+- The reported white side strips were real output pixels introduced by our white
+  contain-fit normalization: raw 768 × 1376 became 720 × 1280 with three white
+  columns on each side. Only new model-aware Hook outputs opt into centered,
+  uniform cover fitting when the required crop is at most 1% of either extent.
+  This case trims five output pixels from top and bottom, preserving proportions.
+  Larger mismatches retain the legacy fit. Never crop the source video or input
+  portraits, or rewrite existing accepted media, as part of this correction.
+- These changes fix input declarations and deterministic padding. Gemini's actual
+  scene/face preservation remains visually unqualified until an approved test.
+
+## 2026-10-21 Starting-frame layout and scene-preservation recurrence
+
+- The user rejected the deployed preparation dialog: landscape-sized containers
+  around portrait media created black gutters, source and result were separated
+  vertically, and the fixed recovery footer consumed useful screen space. Keep
+  portrait previews at their actual aspect ratio; compare source and result beside
+  each other. Put actions next to the person controls, with optional instructions
+  collapsed. Remove the large recovery-status container, while preserving the
+  underlying saved request and duplicate-submission protections.
+- Verify the actual UI at the user's short laptop viewport (1020 × 594) and a
+  narrow mobile viewport before accepting a layout correction. A successful build
+  or a larger desktop screenshot does not establish usable spacing or controls.
+- Read-only audit of job 808b8505-90e7-4adb-9654-fa5918a22125 recovered the existing
+  Google interaction. It contains the correct keyboard scene, main portrait and
+  support photo in order, with the exact scene-preservation prompt. The raw
+  gemini-3.1-flash-image output already contains the portrait's bedroom/clothing;
+  the displayed result is its exact resized derivative. This is a model scene-
+  preservation failure, not a missing reference, UI fallback or resizing error.
+- Stronger per-image roles and source integrity validation are input-contract
+  improvements. Offline tests cannot prove that the model will now preserve the
+  scene or facial proportions. Do not call visual quality solved without a new
+  explicitly approved visual test. No automatic paid retry or database migration
+  is part of this investigation. Current corrections are local until released.
+
 ## 2026-10-21 Hosted first-frame decoder packaging
 
 - PR #79 reached production and Recreate opens the new preparation dialog.

@@ -35,8 +35,8 @@ export function LandingFormatShelf() {
             A visual shelf for your approved formats.
           </h3>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-            Fresh trending formats matched to your brand niche daily. Pick your
-            favorite angle, customize the script, and schedule in one click.
+            Review daily slideshows in Trending. Create hook and text-led videos
+            separately in Explore, then review the finished content before scheduling.
           </p>
         </div>
         <Clapperboard className="size-5 shrink-0 text-primary" aria-hidden="true" />

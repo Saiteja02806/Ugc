@@ -87,6 +87,29 @@ async function main(){
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     assert.equal(await page.getByRole("status",{name:"Loading analytics",exact:true}).count(),0);
     release();
+    await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).every(query=>query.state.fetchStatus==='idle'));
+    // A still-mounted tab revalidates stale snapshots on return without hiding
+    // its saved content. A second return while fresh does not add more reads.
+    const readsBeforeIdle=await page.evaluate(()=>window.calls['/api/analytics/instagram/content']);
+    holdInstagram=true;
+    await page.evaluate(()=>{
+      window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}));
+      for(const query of window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}))if(query.queryKey.length===7)window.client.setQueryData(query.queryKey,query.state.data,{updatedAt:Date.now()-31*60_000});
+    });
+    await advance(200);
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsBeforeIdle);
+    await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});
+    await page.waitForFunction(before=>window.calls['/api/analytics/instagram/content']>before,readsBeforeIdle);
+    assert.ok(await page.getByText("A saved analytics post",{exact:true}).first().isVisible());
+    assert.equal(await page.getByRole("status",{name:"Loading content performance",exact:true}).count(),0);
+    await page.getByText("A saved analytics post",{exact:true}).first().scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(out,"analytics-idle-refresh.png")});
+    release();
+    await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).every(query=>query.state.fetchStatus==='idle'));
+    const readsAfterIdle=await page.evaluate(()=>window.calls['/api/analytics/instagram/content']);
+    await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
+    await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsAfterIdle,"fresh snapshots do not refetch on every focus");
     // A different range must never borrow the previous range's snapshot.
     holdInstagram=true;
     await page.getByRole("group",{name:"Analytics date range"}).getByRole("button",{name:"7 days",exact:true}).click();
@@ -104,13 +127,17 @@ async function main(){
     // Only active visible job observers poll. Completion is delivered via GET.
     needsRefresh=true;await page.evaluate(()=>window.client.invalidateQueries({queryKey:['account','owner-a','analytics']}));
     await page.waitForFunction(()=>Boolean(window.calls['/api/jobs/job-1']));
-    await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange'))});
+    await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});
     const before=await page.evaluate(()=>window.calls['/api/jobs/job-1']);await advance(20_000);
     assert.equal(await page.evaluate(()=>window.calls['/api/jobs/job-1']),before,"hidden tabs do not poll");
     views=19;complete=true;needsRefresh=false;
-    await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'))});
+    await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}));window.dispatchEvent(new Event('focus'))});
     await advance(2500);await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===19));
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
+    const jobsAfterCompletion=await page.evaluate(()=>window.calls['/api/jobs/job-1']);
+    await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
+    await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
+    assert.equal(await page.evaluate(()=>window.calls['/api/jobs/job-1']),jobsAfterCompletion,"completed jobs stay stopped when the tab returns");
     // Refresh-start failure never replaces the saved content.
     postFails=true;await page.getByRole("button",{name:"Refresh",exact:true}).click();
     await page.waitForFunction(()=>window.client.getQueryCache().getAll().some(q=>q.queryKey.some(part=>typeof part==='string'&&part.startsWith('manual:'))&&q.state.status==='error'));
@@ -132,6 +159,8 @@ async function main(){
     snapshotFails=false;await page.getByRole("button",{name:"Refresh",exact:true}).click();
     await page.waitForFunction(before=>window.calls['/api/analytics/instagram/content']>before,readsBeforeRepair);
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:path.join(out,"analytics-ready.png")});
     // A different authenticated owner gets a different QueryClient/screen.
     ownerB=true;await page.evaluate(()=>window.switchOwner('owner-b'));
     await page.waitForFunction(()=>window.currentOwner==='owner-b');
@@ -140,7 +169,7 @@ async function main(){
     assert.deepEqual(errors,[]);
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.accounts')));
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.snapshot')));
-    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
+    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
     write("results.json",JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
   }finally{if(browser)await browser.close();release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }

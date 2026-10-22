@@ -12,6 +12,7 @@ import { readSlideshowEditableDraft } from "../lib/explore/slideshow-editable-dr
 import { insertReferenceSlides } from "../lib/explore/slideshow-assembly.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
 import { sameBackgroundTargets } from "../lib/media/image-library.ts";
+import { imagePickerThumbnailUrl } from "../lib/media/image-picker.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -22,6 +23,7 @@ function load(file, imports = {}, globals = {}) {
 
     if (name === "@/components/media/image-library-picker") return { ImageLibraryPicker: "ImageLibraryPicker" };
     if (name === "@/lib/media/image-library") return { sameBackgroundTargets };
+    if (name === "@/lib/media/image-picker") return { imagePickerThumbnailUrl };
       if (name === "./slideshow-editable-draft.ts" || name === "./slideshow-editable-draft" || name === "@/lib/explore/slideshow-editable-draft") return { readSlideshowEditableDraft };
     if (name === "@/lib/explore/slideshow-api") return load("lib/explore/slideshow-api.ts", imports, globals);
     if (name === "./slideshow-draft" || name === "@/lib/explore/slideshow-draft") return load("lib/explore/slideshow-draft.ts", { "../../worker/src/lib/explore-finishing-contract.ts": { isExploreUuid: uuid } });

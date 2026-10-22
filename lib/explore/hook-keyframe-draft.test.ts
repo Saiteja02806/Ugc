@@ -54,6 +54,29 @@ test("preparation remains silent and cannot animate before image generation and 
   assert.equal(hookKeyframeAnimationReadiness(approved, { ...motion, sourceSha256: "c".repeat(64) }, duration).ready, false);
 });
 
+test("new drafts default to Pro and model changes invalidate the generated image and approval without discarding photos", () => {
+  assert.equal(createHookKeyframeDraft(scope).imageModel, "gemini_3_pro");
+  assert.equal(createHookKeyframeDraft(scope).version, 2);
+  const approved = approveHookKeyframeImage(generated());
+  const changed = updateHookKeyframeDraft(approved, { imageModel: "nano_banana_2" });
+  assert.notEqual(hookKeyframeInputKey(changed), hookKeyframeInputKey(approved));
+  assert.deepEqual(changed.imageAssetIds, approved.imageAssetIds);
+  assert.equal(changed.generatedImage, null); assert.equal(changed.approval, null);
+  assert.equal(readHookKeyframeDraft(serializeHookKeyframeDraft(changed), scope)!.imageModel, "nano_banana_2");
+  assert.throws(() => updateHookKeyframeDraft(changed, { imageModel: "other" as never }));
+});
+
+test("legacy drafts retain their Flash identity, accepted input key and approval until a deliberate new model selection", () => {
+  const legacy = { ...generated(), version: 1, imageModel: undefined, generatedImage: null };
+  const restored = readHookKeyframeDraft(JSON.stringify(legacy), scope)!;
+  assert.equal(restored.version, 1); assert.equal(restored.imageModel, "nano_banana_2");
+  const oldKey = hookKeyframeInputKey(restored);
+  const approved = approveHookKeyframeImage(recordHookKeyframeImage(restored, { assetId: imageId, inputKey: oldKey, promptVersion: 1 }));
+  assert.equal(readHookKeyframeDraft(serializeHookKeyframeDraft(approved), scope)!.approval!.inputKey, oldKey);
+  const upgraded = updateHookKeyframeDraft(approved, { imageModel: "nano_banana_2" });
+  assert.equal(upgraded.version, 2); assert.notEqual(hookKeyframeInputKey(upgraded), oldKey); assert.equal(upgraded.approval, null);
+});
+
 test("actual compiled motion must match the selected frame, duration and sound without accepting old review declarations", () => {
   const approved = approveHookKeyframeImage(generated());
   for (const changed of [

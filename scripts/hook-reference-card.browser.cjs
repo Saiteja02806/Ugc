@@ -35,8 +35,9 @@ const workspace = fs.readFileSync(path.join(root, "components/explore/recreate-w
 // Compile the production card and dialog unchanged, excluding unrelated auth/network workspace code.
 file("card.tsx", `import {useRef,useState} from 'react';import {ArrowLeft,ArrowRight,Check,Layers3,RotateCcw} from 'lucide-react';
 import {Button} from '@/components/ui/button';import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {SocialPlatformIcon} from '@/components/social/platform-icon';import {canonicalHookSource} from '@/worker/src/lib/explore-instagram-source';import {cn} from '@/lib/utils';
+import {SocialPlatformIcon} from '@/components/social/platform-icon';import {getReferenceSource,referenceSourceLabel} from '@/lib/explore/reference-source-link';import {cn} from '@/lib/utils';
 import Link from 'next/link';import {ReferenceVideoPlayer} from '@/components/explore/reference-video-player';
+import {useCoverPlayback} from '@/components/explore/use-cover-playback';
 import studio from '@/components/explore/workflow-studio.module.css';import type {RecreateReference} from '@/lib/explore/recreate-types';
 import {canOpenReferenceSource} from '@/lib/explore/reference-source-access';
 const useBillingSubscription=()=>{const free=new URLSearchParams(location.search).has('free');return {isSuccess:true,isFetching:false,isError:false,data:{isActive:!free,planKey:free?'free':'starter',freeGenerationCredits:{granted:5,remaining:0}}}};

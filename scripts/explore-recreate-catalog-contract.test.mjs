@@ -26,6 +26,8 @@ test("slideshow references display topics while preserving identity, media and v
   const dependencies = {
     "server-only": {},
     "./imported-catalog.json": { default: catalog },
+    "./slideshow-reference-sources.json": { default: JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8")) },
+    "./slideshow-reference-additions.json": { default: { mediaStatus: "staged", items: [] } },
     "./hook-video-library": { getExploreHookVideos: () => [] },
     "./wall-text-video-library": { getExploreWallTextVideos: () => [] },
     "./reference-video-prompts": { getReferenceVideoPrompt: () => undefined },
@@ -57,6 +59,8 @@ test("Hook labels omit catalogue numbers without changing active, archived or st
     "server-only": {},
     "./imported-catalog.json": { default: catalog },
     "./hook-video-library": { getExploreHookVideos: all => all ? [active, archived] : [active] },
+    "./slideshow-reference-sources.json": { default: { items: [] } },
+    "./slideshow-reference-additions.json": { default: { mediaStatus: "staged", items: [] } },
     "./wall-text-video-library": { getExploreWallTextVideos: () => [] },
     "./reference-video-prompts": { getReferenceVideoPrompt: id => id === active.id ? "Reviewed reference prompt" : undefined },
     "@/lib/storage/storage": { buildPublicStorageUrl: file => `https://media.test/${file}` },

@@ -75,7 +75,7 @@ const workflowSteps = [
 
 const productFooterLinks = [
   { label: "Multi-platform publishing", href: "#multi-platform" },
-  { label: "Try UGCPilot", href: "/try-ugcpilot" },
+  { label: "Try UGC Pilot", href: "/try-ugcpilot" },
   { label: "Founder marketing guides", href: "/guides" },
   { label: "Instagram carousel maker", href: "/instagram-carousel-maker" },
   { label: "AI UGC video generator", href: "/ai-ugc-video-generator" },
@@ -197,7 +197,7 @@ export default async function Home() {
           <div className="mb-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs sm:text-sm font-medium text-muted text-center">
             <span className="flex items-center gap-1.5">
               <Zap className="size-4 text-amber-500" aria-hidden="true" />
-              <span>2-minute setup</span>
+              <span>Start with your business context</span>
             </span>
             <span className="hidden sm:inline text-border-strong">•</span>
             <span className="flex items-center gap-1.5">
@@ -207,7 +207,7 @@ export default async function Home() {
             <span className="hidden sm:inline text-border-strong">•</span>
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
-              <span>100% human approval</span>
+              <span>Review before scheduling</span>
             </span>
           </div>
 
@@ -282,7 +282,7 @@ export default async function Home() {
         </div>
 
         <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} UGC Pilot. All rights reserved.</p>
           <p>{visibleSocialPlatformList} are trademarks of their respective owners.</p>
         </div>
       </footer>

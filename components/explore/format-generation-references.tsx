@@ -31,12 +31,13 @@ import picker from "@/components/explore/format-person-image-picker.module.css";
 type Kind = "image" | "video" | "audio";
 
 /** Optional generation guidance; imported editor footage uses the separate source picker. */
-export function FormatGenerationReferences({ selection, imageSelection, imageSelections, imagePurpose = "general", onImagePurposeChange, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true, heading = "Optional references" }: {
+export function FormatGenerationReferences({ selection, imageSelection, imageSelections, imagePurpose = "general", imagePresentation = "tile", onImagePurposeChange, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true, heading = "Optional references" }: {
   heading?: string;
   selection: AIStudioReferenceMedia | null;
   imageSelection?: AIStudioReferenceMedia | null;
   imageSelections?: AIStudioReferenceMedia[];
   imagePurpose?: ExploreImagePurpose;
+  imagePresentation?: "tile" | "person-strip";
   onImagePurposeChange?: (purpose: ExploreImagePurpose) => void;
   onImagesChange?: (selections: AIStudioReferenceMedia[]) => void;
   maxImages?: number;
@@ -96,6 +97,7 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
     queryFn: ({ signal }) => fetchFormatReferenceImages(ownerId!, signal),
     enabled: active && openKind === "image" && !preview && Boolean(ownerId),
     staleTime: REFERENCE_IMAGE_STALE_MS,
+    refetchOnWindowFocus: true,
   });
   const activeImageTab = imageTab ?? (!preview && ownerId && (imagesQuery.isPending || imagesQuery.data?.length) ? "user" : "catalog");
   const [wasActive, setWasActive] = useState(active);
@@ -277,17 +279,23 @@ export function FormatGenerationReferences({ selection, imageSelection, imageSel
         const Picker = kind === "image" ? Dialog : Popover;
         const PickerTrigger = kind === "image" ? DialogTrigger : PopoverTrigger;
         const PickerContent = kind === "image" ? DialogContent : PopoverContent;
-        return <div key={kind} data-reference-state={asset ? "selected" : "empty"} className={cn("relative min-w-0", presentation.referenceCard)}>
+        const personStrip = kind === "image" && personPhotos && imagePresentation === "person-strip";
+        return <div key={kind} data-reference-state={asset ? "selected" : "empty"} style={personStrip ? { minHeight: 0 } : undefined} className={cn("relative min-w-0", presentation.referenceCard)}>
           <input ref={input} type="file" multiple={kind === "image" && Boolean(onImagesChange)} className="hidden" aria-label={`Choose optional ${kind} reference`} accept={kind === "image" ? "image/png,image/jpeg,image/webp" : kind === "video" ? "video/mp4,video/quicktime,video/webm" : "audio/mpeg,audio/wav,audio/x-wav"} disabled={disabled || Boolean(pending) || !inputEnabled} onChange={event => {
             const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = "";
             if (kind === "image") void chooseImageFiles(files); else if (files[0]) void choose(kind, files[0]);
           }} />
-          <div className={imagePreview.picker}>
-          {kind === "image" && selectedImages.length ? <><div className={imagePreview.images} data-count={personPhotos ? 1 : selectedImages.length}>{(personPhotos ? selectedImages.slice(0, 1) : selectedImages).map(image => <WorkflowReferencePreview key={image.asset.id} url={image.asset.url} name={image.asset.fileName ?? image.asset.title} disabled={disabled || Boolean(pending)} onRemove={() => removeImage(image)} />)}</div>{personPhotos || selectedImages.length > 1 ? <span className={imagePreview.count}>{personPhotos ? `Main${selectedImages.length > 1 ? ` + ${selectedImages.length - 1} ${selectedImages.length === 2 ? "view" : "views"}` : " photo"}` : `${selectedImages.length} images`}</span> : null}</> : asset ? <WorkflowReferencePreview key={asset.url} kind={kind === "audio" ? "voice" : kind} url={asset.url} name={asset.name ?? "Selected reference"} disabled={disabled || Boolean(pending)} onRemove={isStyle ? onClearStyle ? removeStyleVideo : undefined : () => remove(kind)} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} onDurationChange={isStyle ? duration => onStyleVideoDurationChange?.(asset.url, duration) : undefined} /> : undefined} /> : null}
+          <div className={cn(imagePreview.picker, personStrip && imagePreview.personStrip)}>
+          {personStrip ? <div className={imagePreview.personPhotos} aria-label="Selected face reference photos">{selectedImages.map((image, index) => <div key={image.asset.id} className={imagePreview.personPhoto} data-main={index === 0}>
+            <div className={imagePreview.personVisual}><WorkflowReferencePreview url={image.asset.url} name={`${index === 0 ? "Main face photo" : `Supporting view ${index}`}: ${image.asset.fileName ?? image.asset.title}`} disabled={disabled || Boolean(pending)} /></div>
+            <span>{index === 0 ? "Main" : `Support ${index}`}</span>
+          </div>)}</div> : kind === "image" && selectedImages.length ? <><div className={imagePreview.images} data-count={personPhotos ? 1 : selectedImages.length}>{(personPhotos ? selectedImages.slice(0, 1) : selectedImages).map(image => <WorkflowReferencePreview key={image.asset.id} url={image.asset.url} name={image.asset.fileName ?? image.asset.title} disabled={disabled || Boolean(pending)} onRemove={() => removeImage(image)} />)}</div>{personPhotos || selectedImages.length > 1 ? <span className={imagePreview.count}>{personPhotos ? `Main${selectedImages.length > 1 ? ` + ${selectedImages.length - 1} ${selectedImages.length === 2 ? "view" : "views"}` : " photo"}` : `${selectedImages.length} images`}</span> : null}</> : asset ? <WorkflowReferencePreview key={asset.url} kind={kind === "audio" ? "voice" : kind} url={asset.url} name={asset.name ?? "Selected reference"} disabled={disabled || Boolean(pending)} onRemove={isStyle ? onClearStyle ? removeStyleVideo : undefined : () => remove(kind)} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} onDurationChange={isStyle ? duration => onStyleVideoDurationChange?.(asset.url, duration) : undefined} /> : undefined} /> : null}
           <Picker open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(null); setImagePages(1); setOpenKind(open ? kind : null); }}>
-            <PickerTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={cn(creation.referenceButton, imagePreview.action)} />}>
-              {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : !asset ? kind === "image" ? <UserRound aria-hidden="true" /> : kind === "video" ? <Video aria-hidden="true" /> : <AudioLines aria-hidden="true" /> : null}
-              {pending === kind || !asset ? <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : `Choose ${kind}`}</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
+            <PickerTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={personStrip ? selectedImages.length ? "Change photos" : "Choose face photos" : isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={personStrip ? "Choose the main face photo and supporting views" : asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={personStrip ? imagePreview.personChange : cn(creation.referenceButton, imagePreview.action)} />}>
+              {personStrip ? pending === kind ? "Preparing…" : selectedImages.length ? "Change photos" : "Choose photos" : <>
+                {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : !asset ? kind === "image" ? <UserRound aria-hidden="true" /> : kind === "video" ? <Video aria-hidden="true" /> : <AudioLines aria-hidden="true" /> : null}
+                {pending === kind || !asset ? <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : `Choose ${kind}`}</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
+              </>}
             </PickerTrigger>
             <PickerContent ref={popup} initialFocus={popup} tabIndex={-1} {...(kind === "image" ? { className: picker.dialog } : { side: "bottom" as const, align: "center" as const, className: cn(studio.floating, creation.floating), style: { maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" } })}>
               {kind === "image" ? <>

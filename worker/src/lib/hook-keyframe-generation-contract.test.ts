@@ -34,3 +34,32 @@ test("stale hash, image order, sourceframe and extra URL fields cannot reuse a r
   assert.equal(hookKeyframeSourceRatio(720, 1280), "9:16");
   assert.equal(hookKeyframeSourceRatio(719, 1280), null);
 });
+
+test("the new image prompt contract retains the legacy preparation key and accepted V1 receipt", () => {
+  const v2 = { ...receipt, promptVersion: 2 as const, promptSha256: hookKeyframePromptSha256("new labelled image edit") };
+  assert.deepEqual(parseHookKeyframeGenerationReceipt(v2), v2);
+  assert.deepEqual(parseHookKeyframeGenerationReceipt(receipt), receipt);
+  assert.equal(v2.inputKey, receipt.inputKey);
+  assert.equal(parseHookKeyframeGenerationReceipt({ ...v2, promptVersion: 3 }), null);
+});
+
+test("model-aware receipts bind model into input identity while legacy receipts remain unchanged", () => {
+  for (const model of ["gemini_3_pro", "nano_banana_2"] as const) {
+    const selected = { ...receipt, version: 2 as const, imageModel: model, promptVersion: 2 as const };
+    selected.inputKey = hookKeyframeGenerationInputKey(selected);
+    assert.deepEqual(parseHookKeyframeGenerationReceipt(selected), selected);
+    assert.notEqual(selected.inputKey, receipt.inputKey);
+    assert.equal(isHookKeyframeImageInput({ receipt: selected, ownerId: "owner", model, aspectRatio: "9:16", prompt: "compiled-image-prompt",
+      referenceImageUrl: scene, referenceImageUrls: [scene, "https://media.test/main.png"] }), true);
+    assert.equal(isHookKeyframeImageInput({ receipt: selected, ownerId: "owner", model: model === "gemini_3_pro" ? "nano_banana_2" : "gemini_3_pro", aspectRatio: "9:16", prompt: "compiled-image-prompt",
+      referenceImageUrl: scene, referenceImageUrls: [scene, "https://media.test/main.png"] }), false);
+  }
+  assert.equal(parseHookKeyframeGenerationReceipt({ ...receipt, version: 2 }), null);
+  assert.equal(parseHookKeyframeGenerationReceipt({ ...receipt, imageModel: "gemini_3_pro" }), null);
+  const fivePersonImages = Array.from({ length: 5 }, (_, index) => `00000000-0000-4000-8000-00000000000${index + 2}`);
+  for (const model of ["gemini_3_pro", "nano_banana_2"] as const) {
+    const selected = { ...receipt, version: 2 as const, imageModel: model, promptVersion: 2 as const, personImageAssetIds: fivePersonImages };
+    selected.inputKey = hookKeyframeGenerationInputKey(selected);
+    assert.equal(Boolean(parseHookKeyframeGenerationReceipt(selected)), model === "gemini_3_pro");
+  }
+});

@@ -27,4 +27,12 @@
 .fileName { overflow-wrap: anywhere; padding: 8px; color: var(--muted); background: var(--card); font-size: 12px; line-height: 18px; }
 .picker .add { width: 16px; height: 16px; flex: none; margin-left: auto; color: var(--muted); }
 .picker .action[data-state="selected"] .add { margin: 0; width: 18px; height: 18px; color: inherit; }
+.picker.personStrip { display: block; min-height: 0; aspect-ratio: auto; overflow: visible; margin-top: 0; border: 0; border-radius: 0; background: transparent; }
+.personPhotos { display: flex; flex-wrap: wrap; gap: 8px; }
+.personPhoto { width: 56px; min-width: 0; }
+.personVisual { height: 68px; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+.personPhoto[data-main="true"] .personVisual { border-color: var(--primary); }
+.personPhoto > span { display: block; margin-top: 4px; font-size: 10px; line-height: 15px; text-align: center; color: var(--muted-foreground); }
+.personPhoto[data-main="true"] > span { color: var(--foreground); }
+.personChange.personChange { margin-top: 8px; min-height: 28px; height: auto; padding: 4px 8px; font-size: 11px; }
 @media (prefers-reduced-motion: reduce) { .preview, .deck { animation: none; transition: none; } }

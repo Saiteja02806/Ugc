@@ -2,9 +2,11 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { PublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import { useAnalyticsDisplayTiming } from "./use-analytics-display-timing";
+import { analyticsRequest } from "./request-client";
+
+export { analyticsRequest } from "./request-client";
 
 type Snapshot<T> = { data?: T; needsRefresh: boolean; refreshKey: string; warning?: string };
 type Start<T> = { data?: T; job?: PublicBackgroundJob; jobId?: string; warning?: string };
@@ -17,21 +19,6 @@ function subscribeVisibility(listener: () => void) {
 const isVisible = () => document.visibilityState !== "hidden";
 function expired(job: PublicBackgroundJob | undefined) {
   return Boolean(job && !terminal.has(job.status) && Date.now() - Date.parse(job.createdAt) >= JOB_WAIT_MS);
-}
-
-export async function analyticsRequest<T>(url: string, owner: string, signal: AbortSignal, body?: object): Promise<T> {
-  const token = await getCurrentUserIdToken(owner);
-  signal.throwIfAborted();
-  if (!token) throw new Error("Sign in before viewing analytics.");
-  const response = await fetch(url, {
-    method: body ? "POST" : "GET", cache: "no-store",
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
-  });
-  const result = await response.json().catch(() => null);
-  if (!response.ok || result?.ok !== true) throw new Error(result?.message ?? "Could not load analytics. Please try again.");
-  return result as T;
 }
 
 /** Snapshot reads never wait for provider synchronization or dispatch. */
@@ -62,7 +49,9 @@ export function useAnalyticsResource<T>(params: {
   const force = manual.request === refreshRequest && manual.scope === scope;
   const snapshot = useQuery({
     queryKey: key, enabled: active, staleTime: params.staleTime, gcTime: 30 * 60_000,
-    retry: false, refetchOnWindowFocus: false,
+    // TanStack revalidates only stale snapshots when the tab becomes visible.
+    // The existing saved output stays rendered during this background read.
+    retry: false, refetchOnWindowFocus: true,
     queryFn: ({ signal }) => analyticsRequest<Snapshot<T>>(`${url}${days ? `?days=${days}` : ""}`, owner, signal),
   });
   const refreshKey = useMemo(() => [...key, "refresh", force ? `manual:${consumerId}:${refreshRequest}` : snapshot.data?.refreshKey ?? "initial"], [key, force, refreshRequest, consumerId, snapshot.data?.refreshKey]);
@@ -77,7 +66,12 @@ export function useAnalyticsResource<T>(params: {
   const jobKey = useMemo(() => ["account", owner, "analytics-job", jobId], [owner, jobId]);
   const job = useQuery({
     queryKey: jobKey,
-    enabled: active && visible && Boolean(jobId && initialJob && !terminal.has(initialJob.status) && !expired(initialJob)),
+    // Use the latest observed status. The POST's initial job can remain
+    // "processing" long after polling has delivered a terminal result.
+    enabled: (query) => {
+      const current = query.state.data ?? initialJob;
+      return active && visible && Boolean(jobId && current && !terminal.has(current.status) && !expired(current));
+    },
     initialData: initialJob, staleTime: 0, retry: false, refetchOnWindowFocus: true,
     queryFn: async ({ signal }) => (await analyticsRequest<{ job: PublicBackgroundJob }>(`/api/jobs/${encodeURIComponent(jobId!)}`, owner, signal)).job,
     refetchInterval: (query) => {

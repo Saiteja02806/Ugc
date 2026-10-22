@@ -28,6 +28,7 @@ export type RecreateReference = {
   instagramUrl?: string;
   sourceUrl?: string;
   sourcePlatform?: "instagram" | "tiktok";
+  sourceKind?: "post" | "profile";
   previewVideoUrl?: string;
   /** Addressable for saved work, excluded from new-reference browsing. */
   archived?: true;

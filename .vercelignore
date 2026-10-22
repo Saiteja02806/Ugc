@@ -1,6 +1,10 @@
 .agents/
 .chrome-carousel-upgrade-check/
 .codex/
+.codex-artifacts/
+.codex-audits/
+.release-worktrees/
+.release-db-*/
 .next/
 .playwright-mcp/
 .tmp/
@@ -16,9 +20,19 @@ tmp/
 tmp-logs/
 worker/dist/
 worker/node_modules/
+artifacts/
+build/
+coverage/
+landing_page/
+node-compile-cache/
+tinder/
+__pycache__/
+*.pyc
+*.pem
 *.tsbuildinfo
 .tmp-reference-*
 supabase/.temp/
+supabase/supabase/
 design/
 
 **/.terraform/
@@ -39,6 +53,7 @@ ugcpilot_logo__1.png
 ai-studio-images-desktop.png
 auth-desktop.png
 local-landing-page.png
+landing-*.png
 desktop.ini
 folderico-QfzIGG.ico
 design-qa.md

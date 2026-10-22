@@ -3,6 +3,7 @@ import { getConnectionsRevision } from "../social/connection-revision";
 import { invalidateConnectionAnalytics } from "../social/connection-cache-events";
 
 import { getCurrentUserIdToken } from "../firebase/auth";
+import { withReadDeadline } from "../http/read-deadline";
 import type { SocialConnection, SocialPlatform } from "../social/types";
 import {
   ACCOUNT_DATA_FRESH_TIME_MS,
@@ -71,8 +72,9 @@ export async function loadAccountSocialConnections(
 ) {
   return queryClient.fetchQuery({
     gcTime: ACCOUNT_DATA_GC_TIME_MS,
-    queryFn: async ({ signal }) => {
-      const token = options.token ?? await getCurrentUserIdToken();
+    queryFn: ({ signal }) => withReadDeadline(async (boundedSignal) => {
+      const token = options.token ?? await getCurrentUserIdToken(accountId);
+      boundedSignal.throwIfAborted();
 
       if (!token) {
         throw new AccountDataAuthenticationUnavailableError();
@@ -81,11 +83,12 @@ export async function loadAccountSocialConnections(
       const response = await fetch("/api/social/connections", {
         cache: "no-store",
         headers: getConnectionHeaders(token, options.trace),
-        signal,
+        signal: boundedSignal,
       });
       const data = (await response.json().catch(() => null)) as
         | ConnectionsResponse
         | null;
+      boundedSignal.throwIfAborted();
 
       if (!response.ok || data?.ok !== true) {
         throw new Error(
@@ -100,7 +103,7 @@ export async function loadAccountSocialConnections(
         invalidateConnectionAnalytics(queryClient, accountId);
       }
       return data.connections;
-    },
+    }, signal),
     queryKey: getAccountSocialConnectionsQueryKey(accountId),
     retry: false,
     staleTime: options.force ? 0 : ACCOUNT_DATA_FRESH_TIME_MS,
@@ -114,8 +117,9 @@ export async function loadAccountSchedules(
 ) {
   const schedules = await queryClient.fetchQuery({
     gcTime: ACCOUNT_DATA_GC_TIME_MS,
-    queryFn: async ({ signal }) => {
-      const token = options.token ?? await getCurrentUserIdToken();
+    queryFn: ({ signal }) => withReadDeadline(async (boundedSignal) => {
+      const token = options.token ?? await getCurrentUserIdToken(accountId);
+      boundedSignal.throwIfAborted();
 
       if (!token) {
         throw new AccountDataAuthenticationUnavailableError();
@@ -124,11 +128,12 @@ export async function loadAccountSchedules(
       const response = await fetch("/api/schedules", {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
-        signal,
+        signal: boundedSignal,
       });
       const data = (await response.json().catch(() => null)) as
         | SchedulesResponse
         | null;
+      boundedSignal.throwIfAborted();
 
       if (!response.ok || data?.ok !== true) {
         throw new Error(
@@ -144,7 +149,7 @@ export async function loadAccountSchedules(
         minimumScheduleLeadMinutes: data.minimumScheduleLeadMinutes,
         schedules: data.schedules,
       } satisfies AccountSchedules;
-    },
+    }, signal),
     queryKey: getAccountSchedulesQueryKey(accountId),
     retry: false,
     staleTime: options.force ? 0 : ACCOUNT_DATA_FRESH_TIME_MS,
@@ -182,8 +187,9 @@ export async function loadAccountScheduleConfig(
 
   return queryClient.fetchQuery({
     gcTime: ACCOUNT_DATA_GC_TIME_MS,
-    queryFn: async ({ signal }) => {
-      const token = options.token ?? await getCurrentUserIdToken();
+    queryFn: ({ signal }) => withReadDeadline(async (boundedSignal) => {
+      const token = options.token ?? await getCurrentUserIdToken(accountId);
+      boundedSignal.throwIfAborted();
 
       if (!token) {
         throw new AccountDataAuthenticationUnavailableError();
@@ -192,11 +198,12 @@ export async function loadAccountScheduleConfig(
       const response = await fetch("/api/schedules?configOnly=1", {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
-        signal,
+        signal: boundedSignal,
       });
       const data = (await response.json().catch(() => null)) as
         | ScheduleConfigResponse
         | null;
+      boundedSignal.throwIfAborted();
 
       if (!response.ok || data?.ok !== true) {
         throw new Error(
@@ -207,7 +214,7 @@ export async function loadAccountScheduleConfig(
       }
 
       return getScheduleConfig(data);
-    },
+    }, signal),
     queryKey: getAccountScheduleConfigQueryKey(accountId),
     retry: false,
     staleTime: options.force ? 0 : ACCOUNT_DATA_FRESH_TIME_MS,

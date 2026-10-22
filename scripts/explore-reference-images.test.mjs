@@ -4,13 +4,14 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { readSlideshowGenerationSlot } from "../worker/src/lib/slideshow-generation-batch.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 function load(file, imports, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => { if (name === "@/worker/src/lib/slideshow-generation-batch") return { readSlideshowGenerationSlot }; assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
+  vm.runInNewContext(code, { exports, require: name => { if (name === "@/lib/http/read-deadline") return { withReadDeadline }; if (name === "@/worker/src/lib/slideshow-generation-batch") return { readSlideshowGenerationSlot }; assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
 
@@ -36,7 +37,7 @@ test("saved image listing keeps user uploads and excludes catalogue copies and u
   assert.deepEqual(h.owners, ["owner-a"]);
   assert.equal(h.reads[0].url, "/api/media?collection=image&sourceTypes=upload&projectId=explore-reference");
   assert.equal(h.reads[0].options.headers.Authorization, "Bearer owner-token");
-  assert.equal(h.reads[0].options.cache, "no-store"); assert.equal(h.reads[0].options.signal, controller.signal);
+  assert.equal(h.reads[0].options.cache, "no-store"); assert.ok(h.reads[0].options.signal instanceof AbortSignal);
   // A fresh picker loads from the account API again, rather than browser-local URLs.
   assert.equal((await h.fetchFormatReferenceImages("owner-a"))[0].id, "owned-image"); assert.equal(h.reads.length, 2);
 });

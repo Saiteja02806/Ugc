@@ -8,6 +8,7 @@ import * as motions from "../lib/explore/hook-keyframe-motion.ts";
 import * as imagePrompts from "../lib/explore/hook-keyframe-image-prompt.ts";
 import * as promptPreviews from "../lib/explore/hook-keyframe-prompt-preview.ts";
 import * as keyframeClient from "../lib/explore/hook-keyframe-client.ts";
+import * as variationClient from "../lib/explore/hook-keyframe-variations.ts";
 
 const draftId = "00000000-0000-4000-8000-000000000001";
 const photoId = "00000000-0000-4000-8000-000000000002";
@@ -18,10 +19,11 @@ const scope = { ownerId: "owner", draftId, referenceId, sourceSha256: sha };
 const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.test/${id}.png`,
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
-function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness({ raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false } = {}) {
+function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
+function harness({ raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token" } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
-  let cursor = 0, closed = 0, job = null;
+  let cursor = 0, closed = 0, uuidIndex = 43;
+  const jobs = new Map();
   const submissions = [], selections = [];
   const key = drafts.hookKeyframeDraftStorageKey(ownerId, draftId, referenceId);
   if (raw) stored.set(key, raw);
@@ -43,20 +45,27 @@ function harness({ raw = null, sourceHash = sha, ownerId = "owner", frameError =
       useQuery(options) {
         queries.push(options);
         const name = options.queryKey[0];
-        return { data: name === "hook-opening-frame" ? frameData : name === "hook-starting-image-cost" ? 1 : options.enabled ? job : undefined,
+        return { data: name === "hook-opening-frame" ? frameData : name === "hook-starting-image-cost" ? 1 : undefined,
           isPending: false, error: name === "hook-opening-frame" ? frameError : null, refetch: () => {}, isFetching: false };
+      },
+      useQueries({ queries: batchQueries }) {
+        return batchQueries.map(options => {
+          queries.push(options);
+          return { data: options.enabled ? jobs.get(options.queryKey[4]) : undefined, error: null, isFetching: false, refetch: async () => {} };
+        });
       },
       useInfiniteQuery: () => ({ data: historyData, isPending: false, error: null, refetch() {}, hasNextPage: false }),
     },
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async id => { fetched.push(id); return { ...photo(id).asset, collection: "influencer" }; } },
     "@/lib/characters/history": { mergeCharacterHistoryPages: pages => pages.flatMap(page => page.images) },
-    "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" },
+    "@/lib/firebase/auth": { getCurrentUserIdToken: async () => typeof token === "function" ? token() : token },
     "@/lib/http/read-deadline": { withReadDeadline: fn => fn(new AbortController().signal) },
     "@/lib/explore/hook-keyframe-draft": drafts,
     "@/lib/explore/hook-keyframe-motion": motions,
     "@/lib/explore/hook-keyframe-image-prompt": imagePrompts,
     "@/lib/explore/hook-keyframe-prompt-preview": promptPreviews,
     "@/lib/explore/hook-keyframe-client": keyframeClient,
+    "@/lib/explore/hook-keyframe-variations": variationClient,
     "@/lib/explore/hook-starting-frame-client": { hookSourceSha256: () => sourceHash, fetchHookStartingFrame: async () => assert.fail("Query does not infer media") },
   };
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/hook-starting-frame-workspace.tsx", import.meta.url), "utf8"), {
@@ -64,7 +73,7 @@ function harness({ raw = null, sourceHash = sha, ownerId = "owner", frameError =
   }).outputText;
   const exports = {};
   vm.runInNewContext(code, { exports, localStorage: storage, queueMicrotask, AbortController, AbortSignal, Response, process: { env: { NODE_ENV: "test" } }, console,
-    navigator: { locks: { request: async (_name, _options, callback) => callback() } }, crypto: { randomUUID: () => "00000000-0000-4000-8000-000000000044" }, URL: class extends URL {
+    navigator: { locks: { request: async (_name, _options, callback) => callback() } }, crypto: { randomUUID: () => `00000000-0000-4000-8000-${String(++uuidIndex).padStart(12, "0")}` }, URL: class extends URL {
     static createObjectURL() { const url = `blob:fixture-${urls.length}`; urls.push(url); return url; } static revokeObjectURL(url) { revoked.push(url); }
   }, require(name) {
     if (name in imports) return imports[name];
@@ -76,11 +85,17 @@ function harness({ raw = null, sourceHash = sha, ownerId = "owner", frameError =
     const saved = keyframeClient.readHookKeyframeCheckpoint(stored.get(keyframeClient.hookKeyframeCheckpointKey(scope)), scope);
     assert.ok(saved, "request is persisted before submission");
     submissions.push(JSON.parse(options.body));
-    if (submitError) throw new Error("Unconfirmed connection");
-    return Response.json({ ok: true, jobId: "00000000-0000-4000-8000-000000000045", generationId: photoId,
-      receipt: { ...scope, version: 1, purpose: "hook_starting_frame", inputKey: saved.inputKey } }, { status: 202 });
+    if (submitError && submissions.length === failureAt) throw new Error("Unconfirmed connection");
+    if (submissions.length === rejectionAt) return Response.json({ ok: false, message: "Insufficient credits." }, { status: 402 });
+    const frozenInput = JSON.parse(saved.inputKey);
+    return Response.json({ ok: true, jobId: `00000000-0000-4000-8000-${String(500 + submissions.length).padStart(12, "0")}`, generationId: photoId,
+      receipt: { ...scope, version: frozenInput.version, imageModel: frozenInput.imageModel, promptVersion: 2, purpose: "hook_starting_frame", inputKey: saved.inputKey } }, { status: 202 });
   } });
-  return { stored, key, fetched, queries, urls, revoked, errors, submissions, selections, setJob(value) { job = value; }, closed: () => closed,
+  return { stored, key, fetched, queries, urls, revoked, errors, submissions, selections, setJob(value) { jobs.set(value.id, value); }, closed: () => closed,
+    restoreStore(other) { for (const [key, value] of other.stored) stored.set(key, value); for (const query of other.queries) {
+      if (query.queryKey[0] === "hook-starting-image-job") { const value = other.jobFor(query.queryKey[4]); if (value) jobs.set(value.id, value); }
+    } },
+    jobFor(id) { return jobs.get(id); },
     render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ ownerId, draftId,
       reference: { id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4` }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) });
       for (const image of nodes(tree).filter(node => node.type === "img")) if (image.props.ref) image.props.ref.current = { src: "", removeAttribute() {} };
@@ -93,8 +108,9 @@ function button(tree, label) { return nodes(tree).find(node => node.type === "Bu
 
 test("opening preparation shows the actual frame and separate inputs without automatically submitting generation", async () => {
   const h = harness(); h.render(); await h.settle(); const tree = h.render();
-  assert.match(text(tree), /Create your starting frame/); assert.match(text(tree), /Reference scene/); assert.match(text(tree), /Your influencer/);
-  assert.match(text(tree), /no generation is submitted/); assert.match(text(tree), /Sound starts off/);
+  assert.match(text(tree), /Create your starting frame/); assert.match(text(tree), /Source frame/); assert.match(text(tree), /Face reference/);
+  assert.equal(nodes(tree).some(node => node.props?.role === "switch"), false);
+  assert.doesNotMatch(text(tree), /Video settings|Review animation instructions/);
   assert.equal(button(tree, "Generate starting image").props.disabled, true);
   assert.equal(h.submissions.length, 0);
   assert.equal(button(tree, "Save preparation").props.disabled, true);
@@ -105,6 +121,7 @@ test("opening preparation shows the actual frame and separate inputs without aut
   const picker = find(tree, "FormatGenerationReferences").props;
   assert.equal(picker.imagePurpose, "person"); assert.equal(picker.videoInputEnabled, false); assert.equal(picker.audioInputEnabled, false);
   assert.equal(picker.ownerId, "owner"); assert.equal(picker.maxImages, 5);
+  assert.equal(picker.imagePresentation, "person-strip");
   assert.equal(h.errors.length, 0);
 });
 
@@ -148,23 +165,17 @@ test("changed canonical source blocks restoration and does not overwrite the sav
   assert.equal(JSON.parse(h.stored.get(h.key)).scope.sourceSha256, "c".repeat(64));
 });
 
-test("animation auto-fill stays separate from image directions and edits/sound restore without any submission", async () => {
-  const h = harness(); h.render(); await h.settle(); let tree = h.render();
-  const animation = () => nodes(tree).find(node => node.type === "textarea" && node.props["aria-label"] === "Animation instructions");
-  assert.match(animation().props.value, /OPENING STATE:.*reclining/s);
-  const original = animation().props.value;
-  animation().props.onChange({ target: { value: "Blink naturally, widen the eyes and hold the gaze." } }); tree = h.render();
-  assert.equal(animation().props.value, "Blink naturally, widen the eyes and hold the gaze.");
-  let saved = drafts.readHookKeyframeDraft(h.stored.get(h.key), scope);
-  assert.equal(saved.instructions, ""); assert.equal(saved.motionInstructions, animation().props.value);
-  const sound = nodes(tree).find(node => node.props?.role === "switch");
-  assert.equal(sound.props["aria-checked"], false); sound.props.onClick(); tree = h.render();
-  assert.match(text(tree), /SOUND SETTING: ON/); assert.doesNotMatch(text(tree), /SOUND SETTING: OFF/);
-  button(tree, "Restore suggested instructions").props.onClick(); tree = h.render();
-  assert.equal(animation().props.value, original);
-  saved = drafts.readHookKeyframeDraft(h.stored.get(h.key), scope);
-  assert.equal(saved.motionInstructions, null); assert.equal(saved.generateAudio, true);
-  assert.equal(h.errors.length, 0);
+test("image-only popup preserves saved video preferences for the later handoff", async () => {
+  const directions = "Blink naturally, widen the eyes and hold the gaze.";
+  const draft = drafts.updateHookKeyframeDraft(drafts.createHookKeyframeDraft(scope), { imageAssetIds: [photoId], motionInstructions: directions, generateAudio: true });
+  const h = harness({ raw: drafts.serializeHookKeyframeDraft(draft) }); h.render(); await h.settle(); let tree = h.render();
+  assert.doesNotMatch(text(tree), /Video settings|Sound on|Review animation instructions|Actions, expression and camera/);
+  assert.equal(nodes(tree).filter(node => node.type === "textarea").length, 1);
+  button(tree, "Generate starting image").props.onClick(); await h.settle(); completeImage(h); tree = h.render();
+  button(tree, "Use as starting frame").props.onClick();
+  assert.equal(h.selections[0].motionInstructions, directions);
+  assert.equal(h.selections[0].generateAudio, true);
+  assert.equal(h.submissions.length, 1);
 });
 
 test("partial upload warnings allow accepted person photos to be saved", async () => {
@@ -200,8 +211,9 @@ async function prepareImageRequest(h) {
 }
 function completeImage(h) {
   const checkpoint = keyframeClient.readHookKeyframeCheckpoint(h.stored.get(keyframeClient.hookKeyframeCheckpointKey(scope)), scope);
+  const frozenInput = JSON.parse(checkpoint.inputKey);
   const job = { id: checkpoint.jobId, status: "completed", isTerminal: true, error: null,
-    receipt: { ...scope, version: 1, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey },
+    receipt: { ...scope, version: frozenInput.version, imageModel: frozenInput.imageModel, promptVersion: 2, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey },
     output: { mediaAssetId: "00000000-0000-4000-8000-000000000046", url: "https://media.example.test/starting-frame.png", width: 720, height: 1280 } };
   h.setJob(job); return { checkpoint, job };
 }
@@ -211,6 +223,7 @@ test("explicit image generation freezes person order, and approval hands off a s
   assert.deepEqual(h.submissions[0].personImageAssetIds, [photoId, secondId]);
   assert.equal(h.submissions[0].referenceId, referenceId);
   assert.equal(h.submissions[0].sourceSha256, sha);
+  assert.equal(h.submissions[0].imageModel, "gemini_3_pro");
   const { job } = completeImage(h); const tree = h.render();
   assert.equal(button(tree, "Use as starting frame").props.disabled, false);
   button(tree, "Use as starting frame").props.onClick();
@@ -222,16 +235,12 @@ test("explicit image generation freezes person order, and approval hands off a s
   assert.match(selected.motionInstructions, /OPENING STATE/);
   assert.equal(drafts.readHookKeyframeDraft(h.stored.get(h.key), scope).approval.assetId, job.output.mediaAssetId);
 });
-test("changing image inputs or invalid motion directions prevents use of a previously generated image", async () => {
+test("changing image inputs prevents use of a previously generated image", async () => {
   const h = harness(); await prepareImageRequest(h); completeImage(h); let tree = h.render();
-  const directions = nodes(tree).find(node => node.type === "textarea" && node.props["aria-label"] === "Animation instructions");
-  directions.props.onChange({ target: { value: " " } }); tree = h.render();
-  assert.equal(button(tree, "Use as starting frame").props.disabled, true);
-  button(tree, "Restore suggested instructions").props.onClick(); tree = h.render();
   const imageInstructions = nodes(tree).find(node => node.type === "textarea" && !node.props["aria-label"]);
   imageInstructions.props.onChange({ target: { value: "Change the expression." } }); tree = h.render();
   assert.equal(button(tree, "Use as starting frame").props.disabled, true);
-  assert.match(text(tree), /earlier photo selection or image instructions/);
+  assert.match(text(tree), /photos, model or image instructions have changed/);
   assert.equal(h.selections.length, 0);
 });
 test("uncertain image submission preserves recovery identity and blocks a second paid submission", async () => {
@@ -248,10 +257,179 @@ test("uncertain image submission preserves recovery identity and blocks a second
 test("client result verification rejects failed jobs, mismatched receipt and credential-bearing URLs", () => {
   const checkpoint = keyframeClient.createHookKeyframeCheckpoint(drafts.createHookKeyframeDraft(scope), draftId);
   const job = { id: photoId, status: "completed", isTerminal: true, error: null,
-    receipt: { ...scope, version: 1, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey },
+    receipt: { ...scope, version: 2, imageModel: "gemini_3_pro", promptVersion: 2, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey },
     output: { mediaAssetId: secondId, url: "https://media.example.test/result.png", width: 720, height: 1280 } };
   assert.equal(keyframeClient.verifiedHookKeyframeJob(job, checkpoint), job);
   assert.throws(() => keyframeClient.verifiedHookKeyframeJob({ ...job, status: "failed" }, checkpoint));
   assert.throws(() => keyframeClient.verifiedHookKeyframeJob({ ...job, receipt: { ...job.receipt, ownerId: "other" } }, checkpoint));
   assert.throws(() => keyframeClient.verifiedHookKeyframeJob({ ...job, output: { ...job.output, url: "https://user:pass@media.example.test/result.png" } }, checkpoint));
+});
+
+test("model selection preserves photos, enforces the selected cap and binds the submitted request", async () => {
+  const h = harness(); h.render(); await h.settle(); let tree = h.render();
+  const model = () => nodes(tree).find(node => node.type === "select" && node.props["aria-label"] === "Starting image model");
+  assert.equal(model().props.value, "gemini_3_pro");
+  const photos = [photoId, secondId, ...[4, 5, 6].map(n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`)].map(photo);
+  find(tree, "FormatGenerationReferences").props.onImagesChange(photos); tree = h.render();
+  model().props.onChange({ target: { value: "nano_banana_2" } }); tree = h.render();
+  assert.equal(find(tree, "FormatGenerationReferences").props.maxImages, 4);
+  assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections.length, 5);
+  assert.equal(button(tree, "Generate starting image").props.disabled, true);
+  assert.match(text(tree), /Remove an extra photo or choose Gemini 3 Pro/);
+  assert.equal(h.submissions.length, 0);
+  model().props.onChange({ target: { value: "gemini_3_pro" } }); tree = h.render();
+  assert.equal(button(tree, "Generate starting image").props.disabled, false);
+  button(tree, "Generate starting image").props.onClick(); await h.settle(); tree = h.render();
+  assert.equal(h.submissions.length, 1); assert.equal(h.submissions[0].imageModel, "gemini_3_pro");
+  assert.deepEqual(h.submissions[0].personImageAssetIds, photos.map(item => item.asset.id));
+  assert.ok(h.queries.some(q => q.queryKey[0] === "hook-starting-image-cost" && q.queryKey[2] === "nano_banana_2"));
+});
+
+test("changing the selected model invalidates approval of a completed image", async () => {
+  const h = harness(); await prepareImageRequest(h); completeImage(h); let tree = h.render();
+  assert.equal(button(tree, "Use as starting frame").props.disabled, false);
+  nodes(tree).find(node => node.type === "select").props.onChange({ target: { value: "nano_banana_2" } }); tree = h.render();
+  assert.equal(button(tree, "Use as starting frame").props.disabled, true);
+  assert.match(text(tree), /photos, model or image instructions have changed/);
+  assert.equal(h.selections.length, 0); assert.equal(h.submissions.length, 1);
+});
+
+test("a new submission from a restored legacy draft upgrades to an explicit Flash request", async () => {
+  const legacy = { ...drafts.createHookKeyframeDraft(scope), version: 1, imageModel: "nano_banana_2", imageAssetIds: [photoId] };
+  const h = harness({ raw: drafts.serializeHookKeyframeDraft(legacy) }); h.render(); await h.settle(); let tree = h.render();
+  assert.equal(nodes(tree).find(node => node.type === "select").props.value, "nano_banana_2");
+  button(tree, "Generate starting image").props.onClick(); await h.settle(); tree = h.render();
+  assert.equal(h.submissions.length, 1); assert.equal(h.submissions[0].imageModel, "nano_banana_2");
+  const checkpoint = keyframeClient.readHookKeyframeCheckpoint(h.stored.get(keyframeClient.hookKeyframeCheckpointKey(scope)), scope);
+  assert.equal(JSON.parse(checkpoint.inputKey).version, 2);
+  assert.equal(drafts.readHookKeyframeDraft(h.stored.get(h.key), scope).version, 2);
+});
+
+test("a completed legacy image remains usable even when its old photo count exceeds the new Flash limit", async () => {
+  const ids = [photoId, secondId, ...[4, 5, 6].map(n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`)];
+  const legacy = { ...drafts.createHookKeyframeDraft(scope), version: 1, imageModel: "nano_banana_2", imageAssetIds: ids,
+    sourceFrame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "b".repeat(64) } };
+  const h = harness({ raw: drafts.serializeHookKeyframeDraft(legacy) });
+  const checkpoint = keyframeClient.createHookKeyframeCheckpoint(legacy, draftId);
+  checkpoint.jobId = "00000000-0000-4000-8000-000000000045";
+  h.stored.set(keyframeClient.hookKeyframeCheckpointKey(scope), JSON.stringify(checkpoint));
+  h.setJob({ id: checkpoint.jobId, status: "completed", isTerminal: true, error: null,
+    receipt: { ...scope, version: 1, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey },
+    output: { mediaAssetId: "00000000-0000-4000-8000-000000000046", url: "https://media.example.test/old-frame.png", width: 720, height: 1280 } });
+  h.render(); await h.settle(); const tree = h.render();
+  assert.equal(button(tree, "Generate another starting image").props.disabled, true);
+  assert.equal(button(tree, "Use as starting frame").props.disabled, false);
+  button(tree, "Use as starting frame").props.onClick();
+  assert.equal(h.selections.length, 1); assert.equal(h.submissions.length, 0);
+});
+
+async function prepareVariations(h, count) {
+  h.render(); await h.settle(); let tree = h.render();
+  find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId), photo(secondId)]); tree = h.render();
+  nodes(tree).find(node => node.props?.["aria-label"] === "Number of starting images").props.onChange({ target: { value: String(count) } });
+  tree = h.render();
+  assert.match(text(tree), new RegExp(`${count} credits total`));
+  button(tree, `Generate ${count} starting images`).props.onClick(); await h.settle(); return h.render();
+}
+function completeVariations(h) {
+  const store = variationClient.readHookKeyframeVariations(h.stored.get(variationClient.hookKeyframeVariationsKey(scope)), scope);
+  return store.entries.filter(entry => entry.state === "accepted").map((entry, index) => {
+    const frozen = JSON.parse(entry.checkpoint.inputKey);
+    const job = { id: entry.checkpoint.jobId, status: "completed", isTerminal: true, error: null,
+      receipt: { ...scope, version: frozen.version, imageModel: frozen.imageModel, promptVersion: 2, purpose: "hook_starting_frame", inputKey: entry.checkpoint.inputKey },
+      output: { mediaAssetId: `00000000-0000-4000-8000-${String(700 + index).padStart(12, "0")}`, url: `https://media.example.test/variation-${index}.png`, width: 720, height: 1280 } };
+    h.setJob(job); return job;
+  });
+}
+test("four-image choice displays total credits, submits four unique requests and hands off only the chosen result", async () => {
+  const h = harness(); await prepareVariations(h, 4);
+  assert.equal(h.submissions.length, 4);
+  assert.equal(new Set(h.submissions.map(input => input.idempotencyKey)).size, 4);
+  assert.ok(h.submissions.every(input => input.imageModel === "gemini_3_pro" && input.personImageAssetIds.join() === [photoId, secondId].join()));
+  const jobs = completeVariations(h); let tree = h.render(); await h.settle(); tree = h.render();
+  assert.match(text(tree), /4\s+of\s+4\s+ready/);
+  const third = nodes(tree).find(node => node.props?.["aria-label"] === "View starting image 3");
+  third.props.onClick(); await h.settle(); tree = h.render();
+  assert.equal(nodes(tree).find(node => node.props?.["aria-label"] === "View starting image 3").props["aria-pressed"], true);
+  assert.equal(nodes(tree).find(node => node.props?.alt === "Generated starting frame to review before animation").props.src, jobs[2].output.url);
+  button(tree, "Use as starting frame").props.onClick();
+  assert.equal(h.selections[0].assetId, jobs[2].output.mediaAssetId);
+  assert.equal(h.selections[0].jobId, jobs[2].id); assert.equal(h.submissions.length, 4);
+});
+test("uncertain second variation stops remaining plans and survives reopen without creating more requests", async () => {
+  const h = harness({ submitError: true, failureAt: 2 }); let tree = await prepareVariations(h, 4);
+  assert.equal(h.submissions.length, 2);
+  const stored = variationClient.readHookKeyframeVariations(h.stored.get(variationClient.hookKeyframeVariationsKey(scope)), scope);
+  assert.deepEqual(stored.entries.map(entry => entry.state), ["accepted", "submitting", "planned", "planned"]);
+  assert.equal(button(tree, "Generate 4 starting images").props.disabled, true);
+  const reopened = harness(); reopened.restoreStore(h); reopened.render(); await reopened.settle(); tree = reopened.render();
+  assert.equal(reopened.submissions.length, 0);
+  assert.equal(button(tree, "Generate starting image").props.disabled, true);
+  assert.match(text(tree), /will not retry automatically/);
+});
+test("second variation admission rejection preserves the first result and never submits remaining images", async () => {
+  const h = harness({ rejectionAt: 2 }); await prepareVariations(h, 4);
+  assert.equal(h.submissions.length, 2);
+  const stored = variationClient.readHookKeyframeVariations(h.stored.get(variationClient.hookKeyframeVariationsKey(scope)), scope);
+  assert.deepEqual(stored.entries.map(entry => entry.state), ["accepted", "rejected", "planned", "planned"]);
+  const jobs = completeVariations(h); let tree = h.render(); await h.settle(); tree = h.render();
+  button(tree, "Use as starting frame").props.onClick(); assert.equal(h.selections[0].assetId, jobs[0].output.mediaAssetId);
+});
+test("a changed cross-tab variation revision blocks new submission", async () => {
+  const h = harness(); await prepareVariations(h, 2); completeVariations(h); h.render(); await h.settle(); let tree = h.render();
+  const storeKey = variationClient.hookKeyframeVariationsKey(scope);
+  const stored = variationClient.readHookKeyframeVariations(h.stored.get(storeKey), scope);
+  h.stored.set(storeKey, JSON.stringify(variationClient.selectHookKeyframeVariation(stored, stored.entries[1].checkpoint.requestKey)));
+  button(tree, "Generate 2 starting images").props.onClick(); await h.settle(); tree = h.render();
+  assert.equal(h.submissions.length, 2); assert.match(text(tree), /Another tab has changed/);
+});
+test("authentication failure leaves only unsubmitted plans and permits an explicit later attempt", async () => {
+  const h = harness({ token: null }); h.render(); await h.settle(); let tree = h.render();
+  find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId)]); tree = h.render();
+  button(tree, "Generate starting image").props.onClick(); await h.settle(); tree = h.render();
+  assert.equal(h.submissions.length, 0);
+  const stored = variationClient.readHookKeyframeVariations(h.stored.get(variationClient.hookKeyframeVariationsKey(scope)), scope);
+  assert.deepEqual(stored.entries.map(entry => entry.state), ["planned"]);
+  assert.equal(button(tree, "Generate starting image").props.disabled, false);
+  assert.match(text(tree), /No new image was submitted/);
+});
+test("closing while authentication is pending prevents all not-yet-submitted variations", async () => {
+  let finishAuth;
+  const pendingAuth = new Promise(resolve => { finishAuth = resolve; });
+  const h = harness({ token: () => pendingAuth }); h.render(); await h.settle(); let tree = h.render();
+  find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId)]); tree = h.render();
+  button(tree, "Generate starting image").props.onClick(); await h.settle(); tree = h.render();
+  find(tree, "Dialog").props.onOpenChange(false); finishAuth("fixture-token"); await h.settle();
+  assert.equal(h.closed(), 1); assert.equal(h.submissions.length, 0);
+  const stored = variationClient.readHookKeyframeVariations(h.stored.get(variationClient.hookKeyframeVariationsKey(scope)), scope);
+  assert.deepEqual(stored.entries.map(entry => entry.state), ["planned"]);
+});
+
+test("source and generated previews enlarge without selecting an image or submitting generation", async () => {
+  const h = harness(); h.render(); await h.settle(); let tree = h.render();
+  const trigger = { focus() {} };
+  nodes(tree).find(node => node.props?.["aria-label"] === "Enlarge source frame").props.onClick({ currentTarget: trigger }); tree = h.render();
+  let zoom = nodes(tree).filter(node => node.type === "Dialog").at(-1);
+  assert.equal(zoom.props.open, true);
+  assert.equal(nodes(zoom).find(node => node.type === "img").props.src, "blob:fixture-0");
+  assert.equal(nodes(zoom).find(node => node.type === "DialogContent").props.finalFocus.current, trigger);
+  assert.equal(h.submissions.length, 0); assert.equal(h.selections.length, 0);
+  zoom.props.onOpenChange(false); tree = h.render();
+  assert.equal(nodes(tree).filter(node => node.type === "Dialog").at(-1).props.open, false); assert.equal(h.closed(), 0);
+  find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId)]); tree = h.render();
+  button(tree, "Generate starting image").props.onClick(); await h.settle(); const { job } = completeImage(h); tree = h.render();
+  nodes(tree).find(node => node.props?.["aria-label"] === "Enlarge generated starting image").props.onClick({ currentTarget: trigger }); tree = h.render();
+  zoom = nodes(tree).filter(node => node.type === "Dialog").at(-1);
+  assert.equal(nodes(zoom).find(node => node.type === "img").props.src, job.output.url);
+  assert.equal(h.submissions.length, 1); assert.equal(h.selections.length, 0);
+  assert.equal(drafts.readHookKeyframeDraft(h.stored.get(h.key), scope).approval, null);
+});
+test("variation choices precede approval in the rendered review flow", async () => {
+  const h = harness(); await prepareVariations(h, 4); completeVariations(h); let tree = h.render(); await h.settle(); tree = h.render();
+  const generated = nodes(tree).find(node => node.type === "section" && node.props["aria-label"] === "Generated starting image");
+  const children = nodes(generated);
+  const choices = children.findIndex(node => node.props?.["aria-label"] === "Starting image variations");
+  const approval = children.findIndex(node => node.type === "Button" && text(node) === "Use as starting frame");
+  assert.ok(choices > 0 && approval > choices);
+  assert.equal(h.selections.length, 0);
 });

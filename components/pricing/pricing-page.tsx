@@ -33,7 +33,7 @@ const platformFeatures = pricingWorkflows.map((workflow, index) => ({
 const faqs = [
   {
     question: "What does the free trial include?",
-    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily content concepts, review and edit them, and schedule Instagram posts while the trial is active. Connect one Instagram account and connect YouTube to schedule videos. Your account also gets ${ONE_TIME_FREE_GENERATION_CREDITS} free AI Studio credits once. No payment card is required, and the trial does not automatically become a paid subscription.`,
+    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily slideshow concepts in Trending to review and edit. Hooks and text-led videos are separate Explore workflows. Connect one Instagram account and connect TikTok and YouTube after email verification; scheduling depends on the content format and connected account. Your account also gets ${ONE_TIME_FREE_GENERATION_CREDITS} free AI Studio credits once. No payment card is required, and the trial does not automatically become a paid subscription.`,
   },
   {
     question: "What happens when my trial ends?",
@@ -41,15 +41,15 @@ const faqs = [
   },
   {
     question: "Are daily content concepts separate from AI credits?",
-    answer: "Yes. Daily content is your business-aware feed of hooks, Wall of Text videos and carousels. Starter includes 20 concepts per day and Growth includes 50. Your separate monthly AI credits cover custom image, video and character generation.",
+    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Starter includes 20 concepts per day and Growth includes 50. Review the content before scheduling. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
   },
   {
-    question: "How do UGCPilot credits work?",
+    question: "How do UGC Pilot credits work?",
     answer: `Free accounts receive ${ONE_TIME_FREE_GENERATION_CREDITS} credits once; these do not refill monthly. Starter includes 200 shared credits each month and Growth includes 600, including on annual subscriptions. Generation cost depends on the model, video duration and settings. Check the displayed credit cost before generating. If a generation costs more than your remaining credits, choose a paid plan to continue.`,
   },
   {
     question: "Which workflows and platforms are included?",
-    answer: "Review daily content, make custom images and videos in AI Studio, create AI characters, and edit and schedule content from your library. Instagram scheduling is included during the free trial. YouTube channel connection and video scheduling are available on every plan after you verify your email. YouTube supports video uploads; destination options depend on the content format.",
+    answer: "Review daily slideshows in Trending, create hooks, text-led videos and slideshows in Explore, and make custom images, videos and character images with AI credits. Connect Instagram, TikTok and YouTube; verify your email before connecting TikTok or YouTube. Instagram requires a professional account. YouTube supports video uploads; TikTok supports eligible videos and photo posts. The scheduler shows the destinations and settings available for your selected format and connected accounts. Review the post and confirm its schedule before publishing.",
   },
   {
     question: "How do annual billing and plan changes work?",
@@ -79,7 +79,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
           <Link
             href="/"
             className="group flex min-w-0 items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="UGCPilot home"
+            aria-label="UGC Pilot home"
           >
             <ProductLogoMark
               className="size-8 rounded-xl bg-primary p-1.5 shadow-xs"
@@ -87,7 +87,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
               sizes="32px"
             />
             <span className="truncate text-base font-semibold tracking-tight text-foreground-strong">
-              UGCPilot
+              UGC Pilot
             </span>
           </Link>
 
@@ -181,7 +181,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 From the first idea to the scheduled post
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
-                Try daily content for {FREE_TRIAL_CONTENT_DAYS} days and AI Studio with {ONE_TIME_FREE_GENERATION_CREDITS} free credits. Choose a paid plan for more capacity.
+                Try daily slideshows for {FREE_TRIAL_CONTENT_DAYS} days and AI Studio with {ONE_TIME_FREE_GENERATION_CREDITS} free credits. Daily content allowances and custom AI credits are separate.
               </p>
             </div>
 
@@ -232,7 +232,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 Frequently asked questions
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
-                Everything you need to know about plans, AI credits, and automated scheduling.
+                Understand daily slideshows, AI credits and scheduling after review.
               </p>
             </div>
 
@@ -261,7 +261,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
         <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs font-normal text-muted sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <ProductLogoMark className="size-4.5 rounded-md bg-primary p-1" imageClassName="brightness-0 invert" sizes="18px" />
-            <span className="font-semibold text-foreground-strong">UGCPilot</span>
+            <span className="font-semibold text-foreground-strong">UGC Pilot</span>
             <span>— Your content workspace</span>
           </div>
           <span>Prices in USD; applicable taxes shown at checkout. Billing by Dodo Payments.</span>

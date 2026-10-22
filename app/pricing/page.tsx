@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pricing" },
   title: "Pricing",
   description:
-    "Try UGCPilot free for seven days. Compare Starter and Growth plans for daily content, custom AI images and videos, credits, editing and scheduling.",
+    "Try UGC Pilot free for seven days. Compare daily slideshow allowances, custom AI credits, editing and supported Instagram, TikTok and YouTube scheduling.",
 };
 
 type PricingRouteProps = {

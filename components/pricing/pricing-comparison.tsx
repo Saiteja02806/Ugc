@@ -21,10 +21,12 @@ type FeatureRow = {
 
 
 const featureMatrix: FeatureRow[] = [
-  { label: "Daily hooks, Wall of Text & carousels", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
+  { label: "Daily slideshow concepts in Trending", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
+  { label: "Hook, text-led video & slideshow creation in Explore", free: true, starter: true, growth: true },
   { label: "Review, edit & demo library", free: true, starter: true, growth: true },
   { label: "Instagram scheduling", free: "Unlimited during trial", starter: true, growth: true },
-  { label: "Connect Instagram & YouTube", free: true, starter: true, growth: true },
+  { label: "Connect Instagram, TikTok & YouTube", free: true, starter: true, growth: true },
+  { label: "TikTok scheduling (supported videos and photo posts)", free: true, starter: true, growth: true },
   { label: "YouTube video scheduling", free: true, starter: true, growth: true },
   { label: "AI Studio images & videos", free: "Uses free credits", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "AI character generation", free: "1 assisted generation", starter: "Uses shared credits", growth: "Uses shared credits" },
@@ -49,7 +51,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
             Compare plan features &amp; limits
           </h2>
           <p className="mt-2 text-sm font-normal text-muted">
-            Detailed breakdown of daily ready-to-post drops, allowances, and tools included with each plan.
+            Daily slideshow allowances and custom AI credits are separate. Review each output before scheduling; destination options depend on the format and connected account.
           </p>
         </div>
 
@@ -154,7 +156,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
                     scope="row"
                     className="px-5 py-3.5 text-xs font-normal text-muted"
                   >
-                    Daily ready-to-post pieces
+                    Daily slideshow concepts to review
                   </th>
                   {plans.map((plan) => (
                     <td

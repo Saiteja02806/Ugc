@@ -1,7 +1,9 @@
 import { HOOK_KEYFRAME_MOTION_VERSION, type HookMotionCompilation } from "./hook-keyframe-motion.ts";
+import { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, isHookKeyframeImageModel, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
+export { DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, HOOK_KEYFRAME_IMAGE_MODELS, hookKeyframeMaxPersonImages, type HookKeyframeImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 
-/** Browser draft checkpoints only. A future admission endpoint must independently
- * resolve the canonical source, verify asset ownership and freeze paid requests. */
+/** Browser draft checkpoints only. Server admission independently resolves the
+ * canonical source, verifies asset ownership and freezes paid requests. */
 export const HOOK_KEYFRAME_MAX_PERSON_IMAGES = 5;
 export const HOOK_KEYFRAME_MAX_IMAGE_INSTRUCTIONS = 2_000;
 export const HOOK_KEYFRAME_MAX_MOTION_INSTRUCTIONS = 6_000;
@@ -16,10 +18,11 @@ export type HookKeyframeScope = {
 export type HookSourceFrame = {
   index: 0; timeSeconds: 0; width: number; height: number; sha256: string;
 };
-type GeneratedImage = { assetId: string; inputKey: string; promptVersion: 1 };
+type GeneratedImage = { assetId: string; inputKey: string; promptVersion: 1 | 2 };
 type ApprovedImage = { assetId: string; inputKey: string };
 export type HookKeyframeDraft = {
-  version: 1;
+  version: 1 | 2;
+  imageModel: HookKeyframeImageModel;
   scope: HookKeyframeScope;
   sourceFrame: HookSourceFrame | null;
   /** Main photo first, optional different views of that same person afterward. */
@@ -66,23 +69,25 @@ export function hookKeyframeDraftStorageKey(ownerId: string, draftId: string, re
 }
 export function createHookKeyframeDraft(scope: HookKeyframeScope): HookKeyframeDraft {
   if (!validScope(scope)) invalid();
-  return { version: 1, scope: { ...scope }, sourceFrame: null, imageAssetIds: [], instructions: "", motionInstructions: null,
+  return { version: 2, imageModel: DEFAULT_HOOK_KEYFRAME_IMAGE_MODEL, scope: { ...scope }, sourceFrame: null, imageAssetIds: [], instructions: "", motionInstructions: null,
     generateAudio: false, generatedImage: null, approval: null };
 }
 
 /** Exact, deterministic input binding; it is not a signature or ownership proof.
  * Sound belongs to animation and does not invalidate an already approved still. */
-export function hookKeyframeInputKey(draft: Pick<HookKeyframeDraft, "scope" | "sourceFrame" | "imageAssetIds" | "instructions">) {
+export function hookKeyframeInputKey(draft: Pick<HookKeyframeDraft, "scope" | "sourceFrame" | "imageAssetIds" | "instructions"> & Partial<Pick<HookKeyframeDraft, "version" | "imageModel">>) {
   const { ownerId, draftId, referenceId, sourceSha256 } = draft.scope;
   const frame = draft.sourceFrame;
-  return JSON.stringify({ version: 1, ownerId, draftId, referenceId, sourceSha256,
+  return JSON.stringify({ version: draft.version === 2 ? 2 : 1, ownerId, draftId, referenceId, sourceSha256,
     sourceFrame: frame ? { index: frame.index, timeSeconds: frame.timeSeconds, width: frame.width, height: frame.height, sha256: frame.sha256 } : null,
-    imageAssetIds: draft.imageAssetIds, instructions: draft.instructions });
+    imageAssetIds: draft.imageAssetIds, instructions: draft.instructions,
+    ...(draft.version === 2 ? { imageModel: draft.imageModel } : {}) });
 }
 
 function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft {
-  if (!validScope(scope) || !object(value) || !fields(value, ["version", "scope", "sourceFrame", "imageAssetIds", "instructions", "motionInstructions", "generateAudio", "generatedImage", "approval"]) ||
-    value.version !== 1 || !validScope(value.scope) ||
+  if (!validScope(scope) || !object(value) || !fields(value, ["version", "imageModel", "scope", "sourceFrame", "imageAssetIds", "instructions", "motionInstructions", "generateAudio", "generatedImage", "approval"]) ||
+    value.version !== 1 && value.version !== 2 || value.version === 2 && !isHookKeyframeImageModel(value.imageModel) ||
+    value.version === 1 && value.imageModel !== undefined && value.imageModel !== "nano_banana_2" || !validScope(value.scope) ||
     Object.keys(scope).some(key => value.scope !== null && (value.scope as HookKeyframeScope)[key as keyof HookKeyframeScope] !== scope[key as keyof HookKeyframeScope]) ||
     value.sourceFrame !== null && !validFrame(value.sourceFrame) ||
     !Array.isArray(value.imageAssetIds) || value.imageAssetIds.length > HOOK_KEYFRAME_MAX_PERSON_IMAGES ||
@@ -91,7 +96,7 @@ function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft
     value.motionInstructions !== undefined && value.motionInstructions !== null && (typeof value.motionInstructions !== "string" ||
       value.motionInstructions.length > HOOK_KEYFRAME_MAX_MOTION_INSTRUCTIONS || CONTROL.test(value.motionInstructions)) ||
     typeof value.generateAudio !== "boolean") invalid();
-  const draft: HookKeyframeDraft = { version: 1, scope: { ...scope },
+  const draft: HookKeyframeDraft = { version: value.version, imageModel: value.version === 2 ? value.imageModel as HookKeyframeImageModel : "nano_banana_2", scope: { ...scope },
     sourceFrame: value.sourceFrame === null ? null : { ...value.sourceFrame as HookSourceFrame },
     imageAssetIds: [...value.imageAssetIds as string[]], instructions: value.instructions as string,
     motionInstructions: value.motionInstructions === undefined || value.motionInstructions === null ? null : value.motionInstructions as string,
@@ -99,9 +104,9 @@ function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft
   if (value.generatedImage !== null) {
     const image = value.generatedImage;
     if (!object(image) || !fields(image, ["assetId", "inputKey", "promptVersion"]) || !assetId(image.assetId) ||
-      image.promptVersion !== 1 || image.inputKey !== hookKeyframeInputKey(draft) || !draft.sourceFrame || !draft.imageAssetIds.length ||
+      image.promptVersion !== 1 && image.promptVersion !== 2 || image.inputKey !== hookKeyframeInputKey(draft) || !draft.sourceFrame || !draft.imageAssetIds.length ||
       draft.imageAssetIds.some(id => id.toLowerCase() === (image.assetId as string).toLowerCase())) invalid();
-    draft.generatedImage = { assetId: image.assetId, inputKey: image.inputKey as string, promptVersion: 1 };
+    draft.generatedImage = { assetId: image.assetId, inputKey: image.inputKey as string, promptVersion: image.promptVersion };
   }
   if (value.approval !== null) {
     const approval = value.approval;
@@ -121,11 +126,11 @@ export function serializeHookKeyframeDraft(draft: HookKeyframeDraft): string {
   if (raw.length > MAX_DRAFT_LENGTH) invalid();
   return raw;
 }
-export function updateHookKeyframeDraft(draft: HookKeyframeDraft, patch: Partial<Pick<HookKeyframeDraft, "sourceFrame" | "imageAssetIds" | "instructions" | "motionInstructions" | "generateAudio">>): HookKeyframeDraft {
+export function updateHookKeyframeDraft(draft: HookKeyframeDraft, patch: Partial<Pick<HookKeyframeDraft, "imageModel" | "sourceFrame" | "imageAssetIds" | "instructions" | "motionInstructions" | "generateAudio">>): HookKeyframeDraft {
   const previous = parseDraft(draft, draft.scope);
-  if (!object(patch) || !fields(patch, ["sourceFrame", "imageAssetIds", "instructions", "motionInstructions", "generateAudio"])) invalid();
+  if (!object(patch) || !fields(patch, ["imageModel", "sourceFrame", "imageAssetIds", "instructions", "motionInstructions", "generateAudio"])) invalid();
   // Validate the new inputs independently of the old generated-image binding.
-  const next = parseDraft({ ...previous, ...patch, generatedImage: null, approval: null }, previous.scope);
+  const next = parseDraft({ ...previous, ...patch, ...(patch.imageModel === undefined ? {} : { version: 2 }), generatedImage: null, approval: null }, previous.scope);
   if (hookKeyframeInputKey(next) === hookKeyframeInputKey(previous)) {
     next.generatedImage = previous.generatedImage; next.approval = previous.approval;
   }

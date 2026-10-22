@@ -9,6 +9,8 @@ test("scene and intended person are explicit and retain their real multi-image o
     { imageIndex: 3, role: "supporting_face" }, { imageIndex: 4, role: "supporting_face" },
   ]);
   assert.equal(result.imageCount, 4);
+  assert.equal(result.version, 2);
+  assert.match(result.prompt, /BASE_SCENE_TO_EDIT/); assert.match(result.prompt, /MAIN_FACE_IDENTITY/);
   assert.match(result.prompt, /Image 1 supplies the scene/);
   assert.match(result.prompt, /Image 2 is the main face photo/);
   assert.match(result.prompt, /Image 3, Image 4 are additional views of the SAME person/);
@@ -19,6 +21,16 @@ test("scene and intended person are explicit and retain their real multi-image o
   assert.match(result.prompt, /Remove creator-added captions/);
   assert.match(result.prompt, /Preserve text physically belonging to objects/);
   assert.doesNotMatch(result.prompt, /@Video|@Image|watch the|original video|first_frame|last_frame/);
+});
+
+test("only a source-matched reviewed opening still supplies concrete scene guidance, without later motion beats", () => {
+  const scope = { referenceId: "explore-paired-hook-4585ee949081c4e5cd835cd3", sourceSha256: "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49" };
+  const reviewed = buildHookKeyframeImagePrompt({ personImageCount: 2, ...scope });
+  assert.match(reviewed.prompt, /VERIFIED OPENING SCENE — The performer sits behind a pink keyboard/);
+  assert.doesNotMatch(reviewed.prompt, /Lift the hand from screen-right to cover the mouth|Follow the reaching arm|ENDING STATE/);
+  for (const changed of [{ sourceSha256: "a".repeat(64) }, { referenceId: "unknown-hook" }]) {
+    assert.doesNotMatch(buildHookKeyframeImagePrompt({ personImageCount: 2, ...scope, ...changed }).prompt, /VERIFIED OPENING SCENE/);
+  }
 });
 
 test("one main photo is enough to prepare and supporting views never become mandatory or invented", () => {

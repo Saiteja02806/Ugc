@@ -7,10 +7,10 @@ export function LandingComparisonSection() {
         {/* Section Header */}
         <div className="mx-auto max-w-xl text-center">
           <p className="text-sm font-semibold text-primary">
-            Why UGCPilot
+            Why UGC Pilot
           </p>
           <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-4xl">
-            Stop spending hours crafting viral formats manually.
+            Bring your content workflow into one place.
           </h2>
           <p className="mx-auto mt-3.5 max-w-lg text-sm leading-6 text-muted sm:text-base">
             Get daily slideshow ideas for your business, then review and schedule your content. Create hook and text-led videos in Explore when you need them.
@@ -30,7 +30,7 @@ export function LandingComparisonSection() {
                     Manual Workflow
                   </span>
                   <h3 className="mt-0.5 text-xl font-semibold text-foreground-strong">
-                    Hours Spent per Post
+                    Build each post from scratch
                   </h3>
                 </div>
                 <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-red-500">
@@ -60,7 +60,7 @@ export function LandingComparisonSection() {
                   <span className="text-base leading-none select-none mt-0.5" aria-hidden="true">
                     🤯
                   </span>
-                  <span>Struggling to brainstorm high-converting viral hooks and angles for your business daily</span>
+                  <span>Finding a relevant opening and angle for your next product post</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-base leading-none select-none mt-0.5" aria-hidden="true">
@@ -96,10 +96,10 @@ export function LandingComparisonSection() {
               <div className="flex items-center justify-between border-b border-border pb-4">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                    The UGCPilot Flow
+                    The UGC Pilot Flow
                   </span>
                   <h3 className="mt-0.5 text-xl font-semibold text-foreground-strong">
-                    Ready to Post in 60 Seconds
+                    Create, review, then schedule
                   </h3>
                 </div>
                 <span className="rounded-full border border-primary/30 bg-card px-2.5 py-0.5 text-[11px] font-semibold text-primary">
@@ -110,7 +110,7 @@ export function LandingComparisonSection() {
               {/* Tool Chain Pipeline */}
               <div className="mt-4 rounded-card border border-border bg-card-muted/70 p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-                  Automated Content Pipeline:
+                  A reviewable content workflow:
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-foreground">
                   <span className="rounded-control bg-card px-2 py-0.5 border border-primary/30 text-primary font-semibold">Business Analysis</span>
@@ -139,13 +139,13 @@ export function LandingComparisonSection() {
                   <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary mt-0.5">
                     <Check className="size-3" aria-hidden="true" />
                   </span>
-                  <span><strong>Explore Library</strong> to view and choose high-performing Hook and Wall-of-Text videos</span>
+                  <span><strong>Explore references</strong> to choose a direction for hook and text-led videos</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary mt-0.5">
                     <Check className="size-3" aria-hidden="true" />
                   </span>
-                  <span><strong>Multi-Account Direct Publishing</strong> to grow followers and scale reach across accounts</span>
+                  <span><strong>Supported connected accounts</strong> for scheduling after you review the finished post</span>
                 </li>
               </ul>
             </div>

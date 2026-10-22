@@ -34,6 +34,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { requestPublishingPreferences } from "@/lib/scheduling/publishing-preferences-client";
 import {
   getDormantScheduleTargets,
@@ -757,29 +758,36 @@ export function ScheduleEditor({
     }));
 
     try {
-      const token = await getCurrentUserIdToken();
+      const data = await withReadDeadline(async (signal) => {
+        const token = await getCurrentUserIdToken();
+        signal.throwIfAborted();
 
-      if (!token) {
-        throw new Error("Sign in before loading TikTok settings.");
-      }
+        if (!token) {
+          throw new Error("Sign in before loading TikTok settings.");
+        }
 
-      const response = await fetch(
-        `/api/social/connections/${connectionId}/publish-settings`,
-        {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      const data = (await response.json()) as TikTokPublishSettingsResponse;
-
-      if (!response.ok || data.ok !== true) {
-        throw new Error(
-          getApiResponseMessage(
-            data,
-            "Could not load TikTok publishing settings.",
-          ),
+        const response = await fetch(
+          `/api/social/connections/${connectionId}/publish-settings`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+            signal,
+          },
         );
-      }
+        const data = (await response.json()) as TikTokPublishSettingsResponse;
+        signal.throwIfAborted();
+
+        if (!response.ok || data.ok !== true) {
+          throw new Error(
+            getApiResponseMessage(
+              data,
+              "Could not load TikTok publishing settings.",
+            ),
+          );
+        }
+
+        return data;
+      });
 
       setTikTokCapabilities((current) => ({
         ...current,

@@ -10,6 +10,7 @@ import * as accountPicker from "../lib/scheduling/account-picker.ts";
 import * as scheduleTypes from "../lib/scheduling/types.ts";
 import * as scheduleTime from "../lib/scheduling/schedule-time.ts";
 import * as tiktok from "../lib/social/tiktok-publishing.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 const source = readFileSync(new URL("../components/scheduling/schedule-editor.tsx", import.meta.url), "utf8");
 const nodes = value => value == null ? [] : Array.isArray(value) ? value.flatMap(nodes) : typeof value === "object" ? [value, ...nodes(value.props?.children)] : [];
@@ -46,6 +47,7 @@ function fixture(overrides = {}, instant = Date.now()) {
     "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },
     "@/lib/scheduling/account-timezone": { getSchedulingTimeZoneOptions: value => [{ value, label: value }] },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => "fixture-token" },
+    "@/lib/http/read-deadline": { withReadDeadline },
     "@/lib/scheduling/publishing-preferences-client": { requestPublishingPreferences: async () => ({ containsSyntheticMedia: false }) },
     "@/lib/scheduling/schedule-form-persistence": persistence,
     "@/lib/scheduling/platform-settings": platformSettings,

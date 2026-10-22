@@ -17,7 +17,8 @@ const carouselHeader = carouselModal.slice(
 );
 
 test("scheduling account rows render the returned profile picture with fallback", () => {
-  assert.match(avatar, /connection\.profilePictureUrl/);
+  assert.match(avatar, /useSocialAccountPicture\(connection\)/);
+  assert.match(avatar, /src=\{profilePictureUrl\}/);
   assert.match(avatar, /<AvatarImage/);
   assert.match(avatar, /<AvatarFallback>/);
   assert.match(avatar, /<SocialPlatformIcon/);

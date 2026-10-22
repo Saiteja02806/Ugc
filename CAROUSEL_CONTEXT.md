@@ -1,5 +1,39 @@
 # Carousel System Context
 
+## 2026-10-22 Approved manual Explore slideshow sources (local)
+
+- The user approved the supplied folder mappings. Manual Explore adds 38 source
+  mappings with post/profile labels and separate outbound actions; existing Pro
+  source entitlement is retained. Automatic Trending Carousel is unchanged.
+- 13 additional references / 60 images are staged separately. Existing 59
+  references and the three folder-absent sets are preserved. Local preview merges
+  72 sets; generation cannot resolve staged IDs before verified media publication.
+- 86 focused checks, types/lint and actual-component browser source clicks pass.
+  Production remains paused. Automatic approval review blocked the public media
+  upload pending explicit payload/destination approval; no successful upload or
+  deployment. New-source Remix transcripts remain unreviewed. Details:
+  `docs/slideshow-source-links-2026-10-22.md`.
+
+## 2026-10-22 Shared library and idle-tab performance (local)
+
+- Recurrent user latency report covers Trending slideshow Library, image upload,
+  editing and long-idle return, alongside Explore. Shared manager uploads two
+  files concurrently and writes ordered collection membership once. Apply batches
+  owned source admission, preserving archive/readiness checks and authoritative
+  generated-image provenance before one atomic background change.
+- List refresh follows mutation completion without holding the operation lock;
+  failed background refresh retains cached tiles. Stale open-library queries
+  revalidate on return. Query cache remains account-scoped; no global TTL change.
+- Trending queued/rendering edit-status reads pause while hidden/offline and
+  resume once, without overlap/catch-up. Existing revision fencing, render state,
+  text/slide identity, worker queues and Save-before-scheduling remain unchanged.
+- Website-only local correction, no worker/migration/production mutation. The
+  deliberate deployment pause blocks final hosted acceptance. Actual-component
+  Explore/Trending library desktop/mobile tests pass, including partial retry,
+  ordered concurrency, atomic admission, retained text and stale-cache recovery.
+  Evidence/limits: `docs/ui-performance-2026-10-22.md`. Expanded shared Demo,
+  job recovery and Scheduling audit: `docs/app-loading-audit-2026-10-22.md`.
+
 ## 2026-10-21 Manual Explore slideshow fidelity recurrence
 
 - Manual Explore audit visually verifies latest v3 Flare batch uses the laptop

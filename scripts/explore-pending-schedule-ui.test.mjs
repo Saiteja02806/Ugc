@@ -41,6 +41,12 @@ function fixture(options = {}) {
   let cursor = 0, tree, serverReply = options.serverReply;
   const slots = [], effects = [], calls = [], timers = new Map(), values = new Map(), changes = [];
   let timerId = 0;
+  const polling = {};
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../lib/http/foreground-polling.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
+    exports: polling, document: { visibilityState: "visible", addEventListener() {}, removeEventListener() {} },
+    window: { addEventListener() {}, removeEventListener() {} }, navigator: { onLine: true },
+    setTimeout: callback => { const key = ++timerId; timers.set(key, callback); return key; }, clearTimeout: key => timers.delete(key),
+  });
   const storageKey = "ugc-explore:background-schedule:v1:owner-a:hook";
   if (options.saved) values.set(storageKey, JSON.stringify(options.saved));
   const changed = (a, b) => !a || b.some((value, index) => !Object.is(value, a[index]));
@@ -53,6 +59,7 @@ function fixture(options = {}) {
     useLayoutEffect(create, deps) { const i = cursor++, prior = slots[i]; if (changed(prior?.deps, deps)) { prior?.cleanup?.(); slots[i] = { deps, cleanup: create() }; } },
   };
   const imports = {
+    "@/lib/http/foreground-polling": polling,
     "@/lib/explore/schedule-repeat-intent": repeatIntent,
     react, "react/jsx-runtime": { jsx: element, jsxs: element }, "next/dynamic": { __esModule: true, default: () => "ScheduleEditor" }, "next/link": { __esModule: true, default: "Link" },
     "lucide-react": { ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" }, "@tanstack/react-query": { useQuery: () => ({ data: true }), useQueryClient: () => cache.queryClient },

@@ -1,4 +1,7 @@
+"use client";
+
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { useSocialAccountPicture } from "@/components/social/use-social-account-picture";
 import {
   Avatar,
   AvatarFallback,
@@ -13,6 +16,7 @@ export function SocialAccountAvatar({
   connection: SocialConnection;
   size?: "default" | "sm" | "lg";
 }) {
+  const profilePictureUrl = useSocialAccountPicture(connection);
   const accountName =
     connection.platformAccountName ??
     connection.platformAccountUsername ??
@@ -20,9 +24,10 @@ export function SocialAccountAvatar({
 
   return (
     <Avatar size={size}>
-      {connection.profilePictureUrl ? (
+      {profilePictureUrl ? (
         <AvatarImage
-          src={connection.profilePictureUrl}
+          src={profilePictureUrl}
+          referrerPolicy="no-referrer"
           alt={`${accountName} profile picture`}
         />
       ) : null}

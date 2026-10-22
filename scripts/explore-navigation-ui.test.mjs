@@ -280,3 +280,33 @@ test("cover motion does not download on visibility, cancels fast clicks and resp
   assert.ok(paused > 0);
   cleanup(); assert.equal(handlers.size, 0); assert.equal(videoHandlers.size, 0);
 });
+
+test("gallery button hover releases video on hidden tab, offscreen scroll, dialog click and unmount", () => {
+  const handlers = new Map(), videoHandlers = new Map(), pageHandlers = new Map(), timers = new Map();
+  let effect, observe, paused = 0, released = 0, disconnected = false, target;
+  const button = { addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const page = { visibilityState: "visible", addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
+  const video = { src: null, closest: selector => { target = selector; return button; }, hasAttribute: () => video.src !== null,
+    removeAttribute() { video.src = null; }, load() { released++; }, pause() { paused++; }, play: async () => {},
+    addEventListener: (name, fn) => videoHandlers.set(name, fn), removeEventListener: name => videoHandlers.delete(name) };
+  const { useCoverPlayback } = load("components/explore/use-cover-playback.ts", {
+    react: { useRef: () => ({ current: video }), useEffect: fn => { effect = fn; } },
+  }, "production", {}, {
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) }, document: page,
+    IntersectionObserver: class { constructor(fn) { observe = fn; } observe() {} disconnect() { disconnected = true; } },
+    setTimeout(fn) { const id = Symbol(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
+  });
+  useCoverPlayback("/reference-preview.mp4", "button"); const cleanup = effect();
+  const flush = () => { for (const run of [...timers.values()]) run(); timers.clear(); };
+  assert.equal(target, "button"); observe([{ isIntersecting: true }]);
+  handlers.get("pointerenter")({ pointerType: "mouse" }); flush(); assert.equal(video.src, "/reference-preview.mp4");
+  page.visibilityState = "hidden"; pageHandlers.get("visibilitychange")(); assert.equal(video.src, null);
+  page.visibilityState = "visible"; pageHandlers.get("visibilitychange")(); flush();
+  observe([{ isIntersecting: false }]); assert.equal(video.src, null);
+  observe([{ isIntersecting: true }]); flush(); assert.equal(video.src, "/reference-preview.mp4");
+  handlers.get("click")(); assert.equal(video.src, null, "Dialog launch releases the decorative player");
+  handlers.get("pointerenter")({ pointerType: "mouse" }); cleanup(); flush();
+  assert.equal(video.src, null); assert.equal(timers.size, 0); assert.equal(handlers.size, 0);
+  assert.equal(pageHandlers.size, 0); assert.equal(videoHandlers.size, 0); assert.equal(disconnected, true);
+  assert.ok(paused > 0 && released >= 3);
+});

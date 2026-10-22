@@ -25,7 +25,7 @@ function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 3
       useRef: initial => { const index = mediaCursor++; return mediaSlots[index] ??= { current: initial }; },
       useEffect() {},
     }; },
-    Error, setTimeout, clearTimeout,
+    Error, AbortController, AbortSignal, setTimeout, clearTimeout,
     URL: { createObjectURL: () => `blob:selected-${++nextUrl}`, revokeObjectURL: url => revoked.push(url) },
     document: { createElement: () => ({ duration: metadataDuration, removeAttribute() {}, load() {}, set src(_) { queueMicrotask(() => this.onloadedmetadata?.()); } }) },
   });

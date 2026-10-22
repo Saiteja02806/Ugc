@@ -22,12 +22,14 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');const initial=
 function MusicEditor(){const[options,setOptions]=useState({backgroundMusic:false,subtitles:false,style:'clean'});const music=useWorkflowBackgroundMusic({ownerId:'library-owner',enabled:true,options,setOptions});return <section><h2>Audio editor</h2><WorkflowSavedAudioPicker ownerId='library-owner' attachment={music.attachment}/><output data-testid='music-options'>{JSON.stringify(options)}</output></section>}
 function App(){const[content,setContent]=useState(initial),[selected,setSelected]=useState(0),[busy,setBusy]=useState(false),[kind,setKind]=useState('trending');const controller=useRef(null),[controls,setControls]=useState(null),[results,setResults]=useState(null);const dirty=useCallback(()=>{document.body.dataset.dirty='true'},[]);
 return <main><header><h1>Trending</h1><MediaLibraryButton variant='creative-edit'/><button onClick={()=>setKind('trending')}>Trending editor</button><button onClick={()=>setKind('explore')}>Explore editor</button><button onClick={()=>setKind('audio')}>Audio editor</button><button onClick={()=>{setContent(initial());setSelected(0);}}>Reset Trending</button></header>{kind==='audio'?<MusicEditor/>:kind==='trending'?<section><nav>{content.slides.map((s,i)=><button key={s.slideId} onClick={()=>setSelected(i)}>Slide {i+1}</button>)}</nav><CarouselSlideImageSection slides={content.slides} renderLibrarySlidePreview={(sid,a)=><EditorPreview content={applyCarouselSlideImage(content,sid,a)} edit={null} initialContent={null} item={{format:'carousel'}} sourcePreview={null} fallbackHookPreviewUrl={null} activeSlideIndex={content.slides.findIndex(s=>s.slideId===sid)} onContentChange={()=>{}}/>} slide={content.slides[selected]} onBusyChange={setBusy} onUploaded={(id,a)=>setContent(c=>applyCarouselSlideImage(c,id,a))} onRestore={()=>{}} onLibraryApply={choice=>setContent(current=>choice.assignments.reduce((next,p)=>applyCarouselSlideImage(next,p.slideId,choice.assets.find(a=>a.id===p.assetId)),current))}/><output data-testid='trending-state'>{JSON.stringify(content)}</output><output data-testid='busy'>{String(busy)}</output></section>:<><div className='workspace'><aside ref={setControls}/><section ref={setResults}/></div><FormatSlideshowEditor reference={null} controllerRef={controller} active generationBusy={false} controlsTarget={controls} resultsTarget={results} localPreview={false} savingEnabled onDirty={dirty} onSaved={()=>{}} onContinue={()=>{}} onRegenerate={()=>{}}/></>}</main>}
-createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider>);`);
+const fixtureClient=new QueryClient({defaultOptions:{queries:{retry:false}}});window.fixtureClient=fixtureClient;
+createRoot(document.getElementById('root')).render(<QueryClientProvider client={fixtureClient}><App/></QueryClientProvider>);`);
 const id = n => '00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const asset = (n, patch={}) => ({id:id(n),collection:'image',sourceType:'upload',status:'ready',createdAt:'2026-10-18T00:00:00Z',updatedAt:'2026-10-18T00:00:00Z',url:'https://owned.test/'+n+'.png',thumbnailUrl:null,ratio:'4:5',width:1080,height:1350,mimeType:'image/png',title:'Photo '+n,fileName:'photo-'+n+'.png',projectId:'image-library',metadata:{},...patch});
 const inventory = new Map([1,2,3,20,21,22,23,24].map(n=>[id(n),asset(n)]));
 const groups = [{id:id(100),name:'Lifestyle',mediaType:'image'}], members = new Map([[id(100),[id(2),id(1)]]]);
 const calls=[]; let uploads=0, failNextRead=false, releaseUpload=null;
+const parallelUploads=new Map(); let failNextList=false;
 const failedOnce=new Set();
 const wav=Buffer.alloc(44+16000*2*4);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(16000,24);wav.writeUInt32LE(32000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);
 async function main(){
@@ -40,8 +42,9 @@ async function main(){
     if(url.pathname==='/style.css'){res.setHeader('Content-Type','text/css');return res.end(css);}
     if(url.pathname==='/'){res.setHeader('Content-Type','text/html');return res.end('<!doctype html><html class="dark"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><style>body{background:#202020;color:#fff;margin:0;font-family:Arial}main{padding:20px}header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px}header h1{font-size:26px}header>button,nav button{border:1px solid #666;border-radius:20px;padding:8px}output{display:block;max-width:100%;overflow-wrap:anywhere;font-size:10px}.workspace{display:grid;grid-template-columns:1fr 1fr;gap:16px}.workspace>*{min-width:0}@media(max-width:700px){.workspace{grid-template-columns:1fr}}</style><div id="root"></div><script src="/bundle.js"></script></html>');}
     assert.equal(req.headers.authorization,'Bearer library-token'); let body={};if(['POST','PATCH','DELETE'].includes(req.method)){let raw='';for await(const chunk of req)raw+=chunk;body=raw?JSON.parse(raw):{};}calls.push({path:url.pathname,method:req.method,body});
-    if(url.pathname==='/fixture-upload'){if(body.name.includes('slow'))await new Promise(resolve=>{releaseUpload=resolve});if(body.name.includes('retry')&&!failedOnce.has(body.name)){failedOnce.add(body.name);return json({ok:false,error:'Temporary upload failure. Retry this file.'},503);}if(body.name.includes('bad'))return json({ok:false,error:'Temporary upload failure. Retry this file.'},503);uploads++;const a=asset(200+uploads,body.kind==='audio'?{collection:'audio',mimeType:'audio/mpeg',durationSeconds:90,title:body.name,fileName:body.name,projectId:body.purpose}:{title:body.name});inventory.set(a.id,a);return json({ok:true,asset:a});}
-    if(url.pathname==='/api/media/image-library'){const q=url.searchParams.get('q')||'',archived=url.searchParams.get('archived')==='1';return json({ok:true,assets:[...inventory.values()].filter(a=>a.collection==='image'&&(a.metadata.imageLibraryArchived===true)===archived&&a.title.toLowerCase().includes(q.toLowerCase())),nextOffset:null});}
+    if(url.pathname==='/fixture-upload'){if(body.name.startsWith('parallel-'))await new Promise(resolve=>parallelUploads.set(body.name,resolve));if(body.name.includes('slow'))await new Promise(resolve=>{releaseUpload=resolve});if(body.name.includes('retry')&&!failedOnce.has(body.name)){failedOnce.add(body.name);return json({ok:false,error:'Temporary upload failure. Retry this file.'},503);}if(body.name.includes('bad'))return json({ok:false,error:'Temporary upload failure. Retry this file.'},503);uploads++;const a=asset(200+uploads,body.kind==='audio'?{collection:'audio',mimeType:'audio/mpeg',durationSeconds:90,title:body.name,fileName:body.name,projectId:body.purpose}:{title:body.name});inventory.set(a.id,a);return json({ok:true,asset:a});}
+    if(url.pathname==='/api/media/image-library'){if(failNextList){failNextList=false;return json({ok:false,error:'Temporary list failure'},503);}const q=url.searchParams.get('q')||'',archived=url.searchParams.get('archived')==='1';return json({ok:true,assets:[...inventory.values()].filter(a=>a.collection==='image'&&(a.metadata.imageLibraryArchived===true)===archived&&a.title.toLowerCase().includes(q.toLowerCase())),nextOffset:null});}
+    if(url.pathname==='/api/media/image-library/resolve'){if(failNextRead){failNextRead=false;return json({ok:false,error:'Image unavailable. Refresh and retry.'},409);}const assets=body.mediaAssetIds.map(id=>inventory.get(id));if(assets.some(a=>!a||a.metadata.imageLibraryArchived===true))return json({ok:false,error:'Image unavailable'},409);return json({ok:true,assets});}
     if(url.pathname==='/api/media'){return json({ok:true,assets:[...inventory.values()].filter(a=>a.collection===url.searchParams.get('collection'))});}
     if(url.pathname==='/api/audio/history')return json({assets:[],requests:[]});
     if(url.pathname==='/api/media/groups'){if(req.method==='POST'){const g={id:id(101+groups.length),name:body.name,mediaType:'image'};groups.push(g);members.set(g.id,[]);return json({ok:true,group:g});}return json({ok:true,groups});}
@@ -61,6 +64,15 @@ async function main(){
     await dlg().getByLabel('Upload library images').setInputFiles({name:'nature-collection.png',mimeType:'image/png',buffer:Buffer.from('fixture')});
     await dlg().getByRole('status').filter({hasText:'1 image saved'}).waitFor();
     assert.ok(members.get(groups.find(group=>group.name==='Product photos').id).includes(id(200+uploads)),'Uploading inside a collection adds membership automatically');
+    const waitForParallel=async count=>{const end=Date.now()+5000;while(parallelUploads.size<count&&Date.now()<end)await new Promise(resolve=>setTimeout(resolve,10));assert.equal(parallelUploads.size,count);};
+    const beforeMembership=calls.filter(c=>c.path.endsWith('/items')&&c.method==='POST').length;
+    await dlg().getByLabel('Upload library images').setInputFiles(['parallel-first.png','parallel-second.png','parallel-third.png'].map(name=>({name,mimeType:'image/png',buffer:Buffer.from('fixture')})));
+    await waitForParallel(2);assert.equal(parallelUploads.has('parallel-third.png'),false,'Only two files can transfer together');
+    parallelUploads.get('parallel-second.png')();await waitForParallel(3);parallelUploads.get('parallel-third.png')();parallelUploads.get('parallel-first.png')();
+    await dlg().getByRole('status').filter({hasText:'3 images saved'}).waitFor();
+    const memberships=calls.filter(c=>c.path.endsWith('/items')&&c.method==='POST');assert.equal(memberships.length,beforeMembership+1);
+    assert.deepEqual(memberships.at(-1).body.mediaAssetIds.map(id=>inventory.get(id).title),['parallel-first.png','parallel-second.png','parallel-third.png']);
+    console.log('PASS actual manager uses two concurrent transfers and one ordered collection write');
     await page.screenshot({path:path.join(out,'collections-desktop.png')});await dlg().getByRole('button',{name:'Music',exact:true}).click();await dlg().getByLabel('Upload library music').setInputFiles({name:'summer.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('fixture')});await dlg().getByRole('status').filter({hasText:'1 track saved'}).waitFor();assert.ok(calls.some(c=>c.path==='/fixture-upload'&&c.body.purpose==='music-library'));await dlg().getByRole('button',{name:'Close',exact:true}).waitFor();await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});await page.getByRole('dialog').waitFor({state:'hidden'});
     console.log('PASS collections persist, membership preserves originals, music uploads from Library pill');
     await page.getByRole('button',{name:'Library',exact:true}).click();
@@ -131,6 +143,7 @@ async function main(){
     await page.setViewportSize({width:390,height:844});
     await page.getByRole('button',{name:'Library backgrounds',exact:true}).click();
     await dlg().getByRole('combobox',{name:'Image collection',exact:true}).selectOption(id(100));
+    await dlg().getByRole('button',{name:'Refresh image library',exact:true}).click();
     await dlg().locator('button[aria-label^="Select image"]').nth(31).waitFor();
     const useCollection=dlg().getByRole('button',{name:'Use collection',exact:true});
     assert.ok(await useCollection.evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight}));
@@ -153,6 +166,18 @@ async function main(){
     await page.screenshot({path:path.join(out,'mobile-long-collection-name.png')});
     await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
     console.log('PASS 32-image mobile collection action/preview remain discoverable, long names fit, thumbnails fill their cards, no reorder arrows');
+
+    await page.setViewportSize({width:1366,height:768});await page.getByRole('button',{name:'Library',exact:true}).click();
+    await dlg().getByRole('button',{name:'Select image Photo 1',exact:true}).waitFor();
+    const beforeFocus=calls.filter(c=>c.path==='/api/media/image-library').length;
+    await page.evaluate(()=>{const key=['image-library-images','library-owner','',false],cache=window.fixtureClient;cache.setQueryData(key,cache.getQueryData(key),{updatedAt:Date.now()-30*60_000});});
+    failNextList=true;await page.evaluate(()=>{window.dispatchEvent(new Event('visibilitychange'));});
+    await dlg().getByRole('alert').filter({hasText:'Showing the saved list'}).waitFor();
+    assert.equal(calls.filter(c=>c.path==='/api/media/image-library').length,beforeFocus+1,'Returning to stale media performs one list refresh');
+    assert.equal(await dlg().getByRole('button',{name:'Select image Photo 1',exact:true}).isVisible(),true,'Failed refresh retains cached image tiles');
+    await dlg().getByRole('button',{name:'Retry images',exact:true}).click();await dlg().getByRole('alert').waitFor({state:'hidden'});
+    await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+    console.log('PASS simulated 30-minute stale-cache return revalidates once, keeps tiles on failure, and retries');
 
     assert.deepEqual(errors,[]);assert.ok(!calls.some(c=>/generate|schedule|publish/.test(c.path)));console.log('PASS music upload from edit screen and direct owned-track reuse without enabling playback or duplicating files');console.log('PASS mobile bounds, keyboard dismissal, no page errors or generation/publishing calls');
   } finally { if(browser)await browser.close();await new Promise(resolve=>server.close(resolve)); }

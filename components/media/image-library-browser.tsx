@@ -11,6 +11,7 @@ import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-up
 import { imageLibraryRequest } from "@/lib/media/image-library-client";
 import { IMAGE_LIBRARY_MAX_BYTES, IMAGE_LIBRARY_TYPES, isLibraryImage } from "@/lib/media/image-library";
 import { imagePickerThumbnailUrl, REFERENCE_IMAGE_STALE_MS } from "@/lib/media/image-picker";
+import { prepareReferenceImageBatch } from "@/lib/explore/reference-image-batch";
 import type { MediaAsset } from "@/lib/media/types";
 import styles from "./image-library.module.css";
 
@@ -54,9 +55,9 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
   const groups = useQuery({ queryKey: ["image-library-groups", owner], queryFn: ({ signal }) => imageLibraryRequest<{ groups: Collection[] }>(owner, "/api/media/groups?mediaType=image", { signal }), staleTime: REFERENCE_IMAGE_STALE_MS });
   const pages = useInfiniteQuery({ queryKey: ["image-library-images", owner, search, archived], initialPageParam: 0,
     queryFn: ({ pageParam, signal }) => imageLibraryRequest<Page>(owner, `/api/media/image-library?offset=${pageParam}&q=${encodeURIComponent(search)}&archived=${archived ? 1 : 0}`, { signal }),
-    getNextPageParam: page => page.nextOffset ?? undefined, enabled: !collectionId, staleTime: REFERENCE_IMAGE_STALE_MS });
+    getNextPageParam: page => page.nextOffset ?? undefined, enabled: !collectionId, staleTime: REFERENCE_IMAGE_STALE_MS, refetchOnWindowFocus: true });
   const collection = useQuery({ queryKey: ["image-library-collection", owner, collectionId],
-    queryFn: ({ signal }) => imageLibraryRequest<CollectionResult>(owner, `/api/media/groups/${collectionId}/items`, { signal }), enabled: Boolean(collectionId), staleTime: REFERENCE_IMAGE_STALE_MS });
+    queryFn: ({ signal }) => imageLibraryRequest<CollectionResult>(owner, `/api/media/groups/${collectionId}/items`, { signal }), enabled: Boolean(collectionId), staleTime: REFERENCE_IMAGE_STALE_MS, refetchOnWindowFocus: true });
   const active = collectionId ? collection : pages;
   const group = groups.data?.groups.find(item => item.id === collectionId);
   const assets = collectionId ? (collection.data?.assets.map(item => item.asset).filter(asset => isLibraryImage(asset) && asset.metadata.imageLibraryArchived !== true) ?? []) : (pages.data?.pages.flatMap(page => page.assets) ?? []);
@@ -72,7 +73,7 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
   async function run(action: () => Promise<void>) {
     if (working.current || disabled) return;
     working.current = true; setBusy(true); onBusyChange?.(true); setError(null); setMessage(null);
-    try { await action(); await refresh(); }
+    try { await action(); if (alive.current) void refresh(); }
     catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : "Could not update the library. Try again."); }
     finally { working.current = false; if (alive.current) { setBusy(false); onBusyChange?.(false); } }
   }
@@ -89,24 +90,25 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
     if (!files.length) return;
     if (files.length > 100) { setError("Upload up to 100 images at a time."); return; }
     await run(async () => {
-      const notices: string[] = [], failedFiles: File[] = [];
       setProgress([]); setRetryFiles([]);
-      for (let index = 0; index < files.length; index++) {
-        if (!alive.current) return;
-        const file = files[index]; setMessage(`Uploading ${index + 1} of ${files.length}: ${file.name}`);
-        try {
-          if (!IMAGE_LIBRARY_TYPES.includes(file.type) || !file.size || file.size > IMAGE_LIBRARY_MAX_BYTES) throw new Error("Choose JPG, PNG or WebP up to 25 MB.");
-          const { asset } = await uploadAIStudioReferenceMedia(file, "image", 3, owner, { purpose: "image-library" });
-          if (!alive.current) return;
-          if (targetCollection) {
-            try { await imageLibraryRequest(owner, `/api/media/groups/${targetCollection}/items`, { method: "POST", body: JSON.stringify({ mediaAssetIds: [asset.id] }) }); }
-            catch { notices.push(`${file.name}: uploaded to All images; could not add to the collection. Select it there and add it again.`); setProgress([...notices]); continue; }
-          }
-          notices.push(`${file.name}: uploaded`);
-        } catch (cause) { failedFiles.push(file); notices.push(`${file.name}: ${cause instanceof Error ? cause.message : "Upload failed. Retry this file."}`); }
-        setProgress([...notices]);
+      setMessage(`Uploading 0 of ${files.length} images…`);
+      const results = await prepareReferenceImageBatch(files, async file => {
+        if (!IMAGE_LIBRARY_TYPES.includes(file.type) || !file.size || file.size > IMAGE_LIBRARY_MAX_BYTES) throw new Error("Choose JPG, PNG or WebP up to 25 MB.");
+        return (await uploadAIStudioReferenceMedia(file, "image", 3, owner, { purpose: "image-library" })).asset;
+      }, () => alive.current, (completed, total) => setMessage(`Uploading ${completed} of ${total} images…`));
+      if (!alive.current) return;
+      const uploaded = results.flatMap(result => result?.value ? [result.value] : []);
+      let membershipFailed = false;
+      if (targetCollection && uploaded.length) {
+        // One ordered membership write after transfers; successful files never re-upload on retry.
+        try { await imageLibraryRequest(owner, `/api/media/groups/${targetCollection}/items`, { method: "POST", body: JSON.stringify({ mediaAssetIds: uploaded.map(asset => asset.id) }) }); }
+        catch { membershipFailed = true; }
       }
-      setRetryFiles(failedFiles); setMessage(failedFiles.length ? `${files.length - failedFiles.length} uploaded · ${failedFiles.length} need attention` : `${files.length} image${files.length === 1 ? "" : "s"} saved to library`);
+      if (!alive.current) return;
+      const failedFiles = files.filter((_, index) => results[index]?.error);
+      setProgress(results.flatMap((result, index) => result?.error ? [result.error] : result?.value
+        ? [`${files[index].name}: ${membershipFailed ? "uploaded to All images; could not add to the collection. Select it there and add it again." : "uploaded"}`] : []));
+      setRetryFiles(failedFiles); setMessage(failedFiles.length ? `${uploaded.length} uploaded · ${failedFiles.length} need attention` : `${uploaded.length} image${uploaded.length === 1 ? "" : "s"} saved to library`);
     });
   }
   async function saveName() {
@@ -168,7 +170,8 @@ export function ImageLibraryBrowser({ owner, mode = "manage", multiple = true, l
       <select aria-label="Image source" value={source} disabled={locked} onChange={event => { setSource(event.target.value); clearSelection(); }}><option value="all">All sources</option><option value="upload">Uploaded</option><option value="generated_image">Generated</option></select>
       {mode === "manage" && !collectionId ? <label><input type="checkbox" checked={archived} disabled={locked} onChange={event => { setArchived(event.target.checked); setSelected([]); }} />Archived</label> : null}
     </form>
-    {active.isPending ? <p role="status" className={styles.empty}><LoaderCircle className="animate-spin" aria-hidden="true" />Loading your images…</p> : active.isError ? <div role="alert" className={styles.empty}><p>Could not load these images. Your selections have not been applied.</p><Button type="button" variant="outline" onClick={() => void active.refetch()}>Retry images</Button></div> : <>
+    {active.isError && active.data ? <p role="alert">Could not refresh your images. Showing the saved list. <Button type="button" variant="link" onClick={() => void active.refetch()}>Retry images</Button></p> : null}
+    {active.isPending ? <p role="status" className={styles.empty}><LoaderCircle className="animate-spin" aria-hidden="true" />Loading your images…</p> : active.isError && !active.data ? <div role="alert" className={styles.empty}><p>Could not load these images. Your selections have not been applied.</p><Button type="button" variant="outline" onClick={() => void active.refetch()}>Retry images</Button></div> : <>
       {visible.length ? <div className={styles.grid}>{visible.map(asset => <button type="button" className={styles.tile} key={asset.id} aria-label={`Select image ${asset.title}`} aria-pressed={selectedIds ? selected.includes(asset.id) : collectionSelected || selected.includes(asset.id)} disabled={locked || (!selected.includes(asset.id) && multiple && selected.length >= limit)} onClick={() => toggle(asset.id)}>
         <img src={imagePickerThumbnailUrl(asset.thumbnailUrl ?? asset.url)} alt="" width={180} height={225} loading="lazy" decoding="async" draggable={false} /><span className={styles.check}>{selected.includes(asset.id) ? multiple ? selected.indexOf(asset.id) + 1 : <Check aria-hidden="true" /> : ""}</span><span className={styles.caption} title={asset.title}>{asset.title}</span>
       </button>)}</div> : <div className={styles.empty}><Images aria-hidden="true" /><p>{search ? "No matching images. Try another search." : collectionId ? "This collection is empty. Upload images here or add images from All images." : archived ? "No archived images." : "Upload JPG, PNG or WebP images, up to 25 MB each."}</p></div>}

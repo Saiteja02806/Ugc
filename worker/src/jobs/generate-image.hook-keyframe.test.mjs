@@ -7,8 +7,10 @@ mock.method(globalThis, "fetch", async () => assert.fail("No paid providers, dat
 mock.module(local("../../dist/lib/private-media.js"), { namedExports: { resolveOwnedPrivateMediaUrl: async (url, owner) => { calls.push({ resolved: url, owner }); return url; } } });
 mock.module(local("../../dist/lib/openai-image.js"), { namedExports: { SLIDESHOW_IMAGE_MODEL: "gpt-fixture", SLIDESHOW_FLARE_IMAGE_MODEL: "flare-fixture", generateOpenAiImageBuffer: async () => assert.fail("Wrong provider") } });
 mock.module(local("../../dist/lib/gemini-image.js"), { namedExports: {
-  GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image", generateGemini3ProImageBuffer: async () => assert.fail("Wrong provider"),
-  generateGeminiImageBuffer: async (prompt, ratio, references) => { calls.push({ paid: { prompt, ratio, references } }); return { buffer: storedImage, model: "nano-fixture", requestId: "image-operation" }; },
+  GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image", generateGemini3ProImageBuffer: async input => {
+    calls.push({ proPaid: input }); await input.onOperationCreated("pro-operation"); await input.onOperationSucceeded("pro-operation"); return storedImage;
+  },
+  generateGeminiImageBuffer: async (prompt, ratio, references, hookKeyframe) => { calls.push({ paid: { prompt, ratio, references, hookKeyframe } }); return { buffer: storedImage, model: "nano-fixture", requestId: "image-operation" }; },
 } });
 mock.module(local("../../dist/lib/seedream-image.js"), { namedExports: { SEEDREAM_5_PRO_IMAGE_MODEL: "seedream-fixture", generateSeedreamImageBuffer: async () => assert.fail("Wrong provider") } });
 mock.module(local("../../dist/lib/openrouter-seedream-image.js"), { namedExports: { generateOpenRouterSeedreamImage: async () => assert.fail("Wrong provider") } });
@@ -24,7 +26,7 @@ mock.module(local("../../dist/lib/storage.js"), { namedExports: {
 const { runGenerateImageJob } = await import("../../dist/jobs/generate-image.js");
 const context = { checkpoint: async () => {}, store: {
   reserveGenerationProviderOperation: async input => { calls.push({ reserve: input }); return { shouldSubmit: true, operation: { status: "reserved", metadata: {} } }; },
-  markGenerationProviderSucceeded: async () => {}, markGenerationOutputPersisted: async () => {},
+  markGenerationProviderSubmitted: async () => {}, markGenerationProviderSucceeded: async () => {}, markGenerationOutputPersisted: async () => {},
 } };
 function job() {
   const prompt = "Image 1 supplies the scene. Image 2 supplies the main face; Image 3 supplies supporting facial detail. Preserve the scene and edit facial appearance only.";
@@ -72,4 +74,38 @@ test("recovering an already stored starting image preserves its receipt without 
   existingOutput = true; const input = job(), output = await runGenerateImageJob(input, context);
   assert.deepEqual(output.hookKeyframe, input.input_json.hookKeyframe); assert.equal(output.generationId, input.input_json.generationId);
   assert.equal(count("reserve"), 0); assert.equal(count("paid"), 0); assert.equal(count("upload"), 0);
+});
+
+test("only new Hook V2 jobs opt into bound labels and verified scene bytes; legacy wire requests and recovery remain unchanged", async () => {
+  const legacy = job();
+  await runGenerateImageJob(legacy, context);
+  const legacyRequest = calls.find(call => call.paid).paid;
+  assert.equal(legacyRequest.hookKeyframe, undefined);
+  const legacyFingerprint = calls.find(call => call.reserve).reserve.requestFingerprint;
+  calls.length = 0;
+  const upgraded = job(); upgraded.input_json.hookKeyframe.promptVersion = 2;
+  await runGenerateImageJob(upgraded, context);
+  assert.deepEqual(calls.find(call => call.paid).paid.hookKeyframe, upgraded.input_json.hookKeyframe);
+  assert.notEqual(calls.find(call => call.reserve).reserve.requestFingerprint, legacyFingerprint);
+  calls.length = 0; existingOutput = true;
+  await runGenerateImageJob(legacy, context);
+  assert.equal(count("paid"), 0); assert.equal(count("reserve"), 0);
+});
+
+test("new model-aware Pro and Flash jobs route separately and bind model, role contract and edge policy", async () => {
+  for (const model of ["gemini_3_pro", "nano_banana_2"]) {
+    calls.length = 0;
+    const input = job(); input.input_json.model = model;
+    const receipt = input.input_json.hookKeyframe;
+    receipt.version = 2; receipt.promptVersion = 2; receipt.imageModel = model;
+    receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
+    const output = await runGenerateImageJob(input, context);
+    if (model === "gemini_3_pro") {
+      assert.equal(count("paid"), 0); assert.equal(count("proPaid"), 1);
+      assert.deepEqual(calls.find(call => call.proPaid).proPaid.hookKeyframe, receipt);
+      assert.deepEqual(calls.find(call => call.proPaid).proPaid.referenceImageUrls, input.input_json.referenceImageUrls);
+    } else { assert.equal(count("paid"), 1); assert.equal(count("proPaid"), 0); }
+    assert.deepEqual(calls.find(call => call.prepare).prepare.options, { preserveComposition: true, cropNearRatioPadding: true });
+    assert.equal(output.model, model);
+  }
 });

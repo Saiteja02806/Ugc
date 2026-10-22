@@ -546,7 +546,7 @@ test("scheduling media catalogs are briefly reused only inside one Firebase acco
     getSchedulingMediaCatalogQueryKey("user-a"),
     getSchedulingMediaCatalogQueryKey("user-b"),
   );
-  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 30 * 60 * 1_000);
+  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 60 * 1_000);
   assert.equal(SCHEDULING_CATALOG_GC_TIME_MS, 30 * 60 * 1_000);
 
   assert.match(schedulingWorkspace, /const \{ user \} = useAuth\(\)/);

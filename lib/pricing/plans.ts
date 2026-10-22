@@ -50,7 +50,7 @@ export function getPlanPricing(plan: PricingPlan, interval: BillingInterval): Pl
 export const pricingPlans: PricingPlan[] = [
   {
     slug: "free", name: "Free trial", bestFor: "Try your content workflow",
-    description: "See what UGCPilot can create for your business before choosing a plan.",
+    description: "See what UGC Pilot can create for your business before choosing a plan.",
     prices: { monthly: 0, yearly: 0 }, sharedMonthlyCredits: 0, oneTimeCredits: ONE_TIME_FREE_GENERATION_CREDITS,
     dailyContentPieces: `${FREE_TRIAL_DAILY_CONTENT_PIECES}/day for ${FREE_TRIAL_CONTENT_DAYS} days`,
     instagramAccounts: 1,
@@ -58,10 +58,10 @@ export const pricingPlans: PricingPlan[] = [
     features: [
       `Access to daily content workflows for ${FREE_TRIAL_CONTENT_DAYS} days`,
       `${FREE_TRIAL_DAILY_CONTENT_PIECES} daily concepts for ${FREE_TRIAL_CONTENT_DAYS} days`,
-      "Hooks, Wall of Text videos & carousels",
+      "Daily slideshows; hooks & text-led videos in Explore",
       "Review, edit & save your content",
       "Unlimited Instagram scheduling during trial",
-      "Connect Instagram & YouTube",
+      "Connect Instagram, TikTok & YouTube",
       "YouTube video scheduling",
       `Try AI Studio with ${ONE_TIME_FREE_GENERATION_CREDITS} free credits`,
       "No credit card required",
@@ -75,12 +75,12 @@ export const pricingPlans: PricingPlan[] = [
     capacityLabel: "200 credits / month",
     features: [
       "Access to all available workflows",
-      "20 ready-to-post concepts daily",
-      "Hooks, Wall of Text videos & carousels",
+      "20 daily slideshow concepts to review",
+      "Hooks, text-led videos & slideshows in Explore",
       "AI Studio image & video generation",
       "AI character creation with shared credits",
       "Review, edit, schedule & track performance",
-      "Connect Instagram & YouTube",
+      "Connect Instagram, TikTok & YouTube",
       "YouTube video scheduling",
     ],
   },
@@ -93,20 +93,20 @@ export const pricingPlans: PricingPlan[] = [
     capacityLabel: "600 credits / month",
     features: [
       "Access to all available workflows",
-      "50 ready-to-post concepts daily",
-      "Hooks, Wall of Text videos & carousels",
+      "50 daily slideshow concepts to review",
+      "Hooks, text-led videos & slideshows in Explore",
       "AI Studio image & video generation",
       "AI character creation with shared credits",
       "Review, edit, schedule & track performance",
-      "Connect Instagram & YouTube",
+      "Connect Instagram, TikTok & YouTube",
       "YouTube video scheduling",
     ],
   },
 ];
 
 export const pricingWorkflows = [
-  { id: "daily", title: "Daily content", description: "Business-aware hooks, Wall of Text videos and carousels to review each day.", access: "Trial, Starter & Growth" },
+  { id: "daily", title: "Daily slideshows", description: "Business-aware slideshow concepts in Trending. Create hooks and text-led videos separately in Explore.", access: "Trial, Starter & Growth" },
   { id: "studio", title: "AI Studio", description: "Create custom images and videos with the models and settings you choose.", access: `${ONE_TIME_FREE_GENERATION_CREDITS} free credits; monthly credits on paid plans` },
   { id: "characters", title: "AI characters", description: "Build a reusable creator for your brand and generate character images.", access: "1 free assisted generation; then credits" },
-  { id: "publish", title: "Edit & schedule", description: "Refine your content, save it to your library and plan Instagram posts and YouTube videos on your calendar.", access: "Instagram & YouTube scheduling" },
+  { id: "publish", title: "Edit & schedule", description: "Review your content and schedule supported posts to Instagram, TikTok and YouTube. Available destinations depend on the format and connected account.", access: "Verified accounts; supported formats only" },
 ] as const;

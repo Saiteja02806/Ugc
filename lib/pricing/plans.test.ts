@@ -76,17 +76,17 @@ test("Free allows one Instagram account, Starter three, and Growth five", () => 
   );
 });
 
-test("plan feature lists describe Instagram and YouTube connection without account counts", () => {
+test("plan feature lists describe all three supported connection platforms without changing account limits", () => {
   assert.deepEqual(
     pricingPlans.map((plan) =>
       plan.features.find((feature) =>
-        feature === "Connect Instagram & YouTube",
+        feature === "Connect Instagram, TikTok & YouTube",
       ),
     ),
     [
-      "Connect Instagram & YouTube",
-      "Connect Instagram & YouTube",
-      "Connect Instagram & YouTube",
+      "Connect Instagram, TikTok & YouTube",
+      "Connect Instagram, TikTok & YouTube",
+      "Connect Instagram, TikTok & YouTube",
     ],
   );
 });

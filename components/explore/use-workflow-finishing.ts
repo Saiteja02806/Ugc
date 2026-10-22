@@ -12,6 +12,7 @@ import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explo
 import type { ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { pollInForeground } from "@/lib/http/foreground-polling";
 
 export type FinishingOptions = import("@/lib/explore/workflow-session").WorkflowSessionOptions;
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
@@ -97,23 +98,14 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     if (!needsRecovery) return;
     // A completed receipt is not yet a usable preview if its owned-media GET
     // failed. Recover that same result without dispatching another render.
-    const timer = setInterval(() => {
-      if (fastStatus && typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      void refresh(true);
-    }, fastStatus ? 1000 : 4000);
-    return () => clearInterval(timer);
+    return pollInForeground({ poll: () => refresh(true), intervalMs: fastStatus ? 1000 : 4000 });
   }, [needsRecovery, refresh, fastStatus]);
   useEffect(() => {
     if (!needsRecovery || typeof window === "undefined") return;
-    const recover = () => { void refresh(true); };
-    const visible = () => { if (document.visibilityState === "visible") recover(); };
+    const recover = () => { if (document.visibilityState !== "hidden" && navigator.onLine) void refresh(true); };
     window.addEventListener("focus", recover);
-    window.addEventListener("online", recover);
-    document.addEventListener("visibilitychange", visible);
     return () => {
       window.removeEventListener("focus", recover);
-      window.removeEventListener("online", recover);
-      document.removeEventListener("visibilitychange", visible);
     };
   }, [needsRecovery, refresh]);
   async function upload(asset: LocalWorkflowMedia | null, mediaKind: "video" | "audio") {

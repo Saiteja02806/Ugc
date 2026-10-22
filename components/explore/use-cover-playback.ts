@@ -2,12 +2,12 @@
 import { useEffect, useRef } from "react";
 
 /** Route prefetch has priority; decorative video loads only on sustained interest. */
-export function useCoverPlayback(source: string | null) {
+export function useCoverPlayback(source: string | null, target: "a" | "button" = "a") {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current;
     if (!video || !source) return;
-    const link = video.closest("a");
+    const link = video.closest<HTMLElement>(target);
     if (!link) return;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let visible = false;
@@ -46,6 +46,6 @@ export function useCoverPlayback(source: string | null) {
       link.removeEventListener("pointerdown", leave); link.removeEventListener("click", leave);
       preference.removeEventListener("change", sync); document.removeEventListener("visibilitychange", sync); video.removeEventListener("canplay", ready);
     };
-  }, [source]);
+  }, [source, target]);
   return ref;
 }

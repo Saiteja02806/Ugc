@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { MediaLibraryButton } from "@/components/media/media-library-dialog";
+import { pollInForeground } from "@/lib/http/foreground-polling";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -2236,19 +2237,12 @@ export function TrendingDeck({
       });
     }
 
-    let inFlight = false;
-    const timer = window.setInterval(async () => {
-      if (inFlight) return;
-      inFlight = true;
-      try { await refreshPendingEdits(); } finally { inFlight = false; }
-    }, 1_000);
-    inFlight = true;
-    void refreshPendingEdits().finally(() => { inFlight = false; });
+    const stop = pollInForeground({ poll: refreshPendingEdits, intervalMs: 1_000, immediate: true });
 
     return () => {
       stopped = true;
       controller.abort();
-      window.clearInterval(timer);
+      stop();
     };
   }, [hasPendingCarouselEdits]);
 

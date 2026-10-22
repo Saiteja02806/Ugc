@@ -4,6 +4,7 @@ import { getMediaAssetForOwner } from "../media/media-storage";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl } from "../media/media-reference";
 import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
 import { parseHookKeyframeGenerationReceipt, isHookKeyframeImageInput, hookKeyframeSourceRatio } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
+import { hookKeyframeReceiptImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 
 export class HookKeyframeGenerationError extends Error {
   constructor(message: string, public status = 503) { super(message); this.name = "HookKeyframeGenerationError"; }
@@ -31,7 +32,7 @@ export async function resolveOwnedHookKeyframeResult(params: { assetId: string; 
   if (job.status !== "completed") throw new HookKeyframeGenerationError("Wait for the starting image to finish before using it.", 409);
   const output = record(job.output) ? job.output : null;
   const outputReceipt = parseHookKeyframeGenerationReceipt(output?.hookKeyframe);
-  if (!output || output.mediaAssetId !== params.assetId || output.generationId !== generationId || output.model !== "nano_banana_2" ||
+  if (!output || output.mediaAssetId !== params.assetId || output.generationId !== generationId || output.model !== hookKeyframeReceiptImageModel(receipt) ||
     !outputReceipt || outputReceipt.inputKey !== receipt.inputKey || outputReceipt.promptSha256 !== receipt.promptSha256 ||
     typeof output.key !== "string" || typeof output.url !== "string") throw new HookKeyframeGenerationError("The starting-image output could not be verified.", 409);
   const asset = await getMediaAssetForOwner({ assetId: params.assetId, userId: params.ownerId });

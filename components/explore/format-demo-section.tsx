@@ -42,6 +42,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import type { CSSProperties } from "react";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 type VideoOutput = {
     id: string;
     kind: "media_asset";
@@ -180,17 +181,18 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         } });
     const audio = useLocalWorkflowMedia("audio");
     const backgroundAudio = useLocalWorkflowMedia("audio");
-    const loadAsset = async (id: string, kind: "video" | "audio") => {
+    const loadAsset = (id: string, kind: "video" | "audio", signal?: AbortSignal) => withReadDeadline(async bounded => {
         const token = await getCurrentUserIdToken(owner ?? undefined);
+        bounded.throwIfAborted();
         if (!token)
             throw new Error("Sign in to restore your demo.");
         const asset: MediaAsset = kind === "video" && contentDemoId === id
-          ? await fetch("/api/demo/sources", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } }).then(async response => {
+          ? await fetch("/api/demo/sources", { cache: "no-store", signal: bounded, headers: { Authorization: `Bearer ${token}` } }).then(async response => {
             const data = await response.json();
             const source = response.ok && data.ok === true && Array.isArray(data.assets) ? data.assets.find((candidate: MediaAsset) => candidate.id === id) : null;
             if (!source) throw new Error("This footage is not available on the Demo screen. Choose another demo.");
             return source;
-          }) : await fetchAIStudioMediaAsset(id, token);
+          }) : await fetchAIStudioMediaAsset(id, token, { signal: bounded });
         if (kind === "video") {
             formatVideoFromAsset(asset);
             if (contentDemoId && asset.id === contentDemoId && asset.sourceType !== "demo_upload") throw new Error("This footage is not available on the Demo screen.");
@@ -198,11 +200,11 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         else if (asset.status !== "ready" || asset.collection !== "audio")
             throw new Error("Choose ready demo audio.");
         return asset;
-    };
-    const openingQuery = useQuery({ queryKey: ["format-demo-opening", owner, opening?.id], enabled: enabled && !!owner && !!opening, queryFn: () => loadAsset(opening!.id, "video") });
-    const demoQuery = useQuery({ queryKey: ["format-demo-restore", owner, contentDemoId ? "content" : "media", draft.demoId], enabled: !localPreview && !!owner && !!draft.demoId && !selectionChanged, queryFn: () => loadAsset(draft.demoId!, "video") });
-    const audioQuery = useQuery({ queryKey: ["format-demo-audio", owner, draft.audioId], enabled: !localPreview && !!owner && !!draft.audioId, queryFn: () => loadAsset(draft.audioId!, "audio") });
-    const backgroundQuery = useQuery({ queryKey: ["format-background-audio", owner, draft.backgroundAudioId], enabled: !localPreview && !!owner && !!draft.backgroundAudioId, queryFn: () => loadAsset(draft.backgroundAudioId!, "audio") });
+    }, signal);
+    const openingQuery = useQuery({ queryKey: ["format-demo-opening", owner, opening?.id], enabled: enabled && !!owner && !!opening, queryFn: ({ signal }) => loadAsset(opening!.id, "video", signal) });
+    const demoQuery = useQuery({ queryKey: ["format-demo-restore", owner, contentDemoId ? "content" : "media", draft.demoId], enabled: !localPreview && !!owner && !!draft.demoId && !selectionChanged, queryFn: ({ signal }) => loadAsset(draft.demoId!, "video", signal) });
+    const audioQuery = useQuery({ queryKey: ["format-demo-audio", owner, draft.audioId], enabled: !localPreview && !!owner && !!draft.audioId, queryFn: ({ signal }) => loadAsset(draft.audioId!, "audio", signal) });
+    const backgroundQuery = useQuery({ queryKey: ["format-background-audio", owner, draft.backgroundAudioId], enabled: !localPreview && !!owner && !!draft.backgroundAudioId, queryFn: ({ signal }) => loadAsset(draft.backgroundAudioId!, "audio", signal) });
     // Development fixtures restore from their local catalogue only. Live
     // restoration continues to require the owner-scoped asset query.
     const previewDemo = localPreview ? previewAssets?.find(asset => asset.id === draft.demoId && asset.status === "ready" && asset.mimeType.startsWith("video/")) : undefined;

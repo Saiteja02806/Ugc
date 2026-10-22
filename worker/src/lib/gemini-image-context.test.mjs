@@ -79,6 +79,29 @@ test("Hook V2 rejects mismatched scene bytes, MIME, dimensions or prompt before 
   }
 });
 
+test("recreation requests bind new shot and identity labels without changing saved V2 request labels", async () => {
+  const { prompt, receipt, urls } = hookContext();
+  receipt.version = 2; receipt.imageModel = "nano_banana_2"; receipt.promptVersion = 3;
+  receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
+  await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
+  const input = requests.at(-1).input;
+  assert.match(input[0].text, /PRIMARY_FRAME_BLUEPRINT/);
+  assert.equal(input[1].data, scene.toString("base64"));
+  assert.match(input[2].text, /MAIN_INFLUENCER_IDENTITY/);
+  assert.equal(input[3].data, Buffer.from(urls[1]).toString("base64"));
+  assert.match(input[4].text, /SUPPORTING_INFLUENCER_IDENTITY_1/);
+  receipt.promptVersion = 4;
+  await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
+  const referenceInput = requests.at(-1).input;
+  assert.match(referenceInput[0].text, /VISUAL_REFERENCE/);
+  assert.match(referenceInput[2].text, /MY_INFLUENCER/);
+  assert.doesNotMatch(referenceInput.filter(part => part.type === "text").slice(0, -1).map(part => part.text).join(" "), /swap|replace|edit this|blueprint/i);
+  assert.deepEqual(referenceInput.filter(part => part.type === "image"), input.filter(part => part.type === "image"));
+  receipt.promptVersion = 2;
+  await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
+  assert.deepEqual(requests.at(-1).input.filter(part => part.type === "text").slice(0, -1).map(part => part.text), hookKeyframeProviderImageLabels(2, 2));
+});
+
 test("new selected Hook Flash uses its explicit provider model while ordinary and legacy calls retain the environment override", async () => {
   const old = process.env.GEMINI_IMAGE_MODEL;
   process.env.GEMINI_IMAGE_MODEL = "legacy-environment-model";

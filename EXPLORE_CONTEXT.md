@@ -1,5 +1,26 @@
 # Explore context and UI decision record
 
+## 2026-10-22 Approved influencer photograph prompt v4
+
+- New Hook starting frames use the influencer as the person to photograph and the
+  decoded Hook frame as visual guidance for setting, pose, expression and gesture.
+  Recognizable likeness takes priority over copying source facial geometry.
+  Remove swap/replacement, exact-position and source-hairstyle preservation rules.
+- The same builder applies to every Hook and selected influencer. Pro remains the
+  default. Flash uses the same wording but has not received this v4 visual test.
+  Each input carries a versioned adjacent label. Prior accepted requests retain
+  their frozen prompt, labels and recovery identity without another submission.
+- One user-authorized direct Google test on gemini-3-pro-image/2K/9:16 used the
+  same four hash-verified images as the prior comparison. The user preferred its
+  result. Exact tested prompt SHA-256:
+  f3d622fdc0b37c225bf0e1d40367cba76e12425a1e5ca15e7b8a55a650fb1c76.
+  Tests pin this prompt and the adjacent image labels. One sample does not prove
+  consistency across identities/poses or production end-to-end acceptance.
+- Focused prompt production release requested; unrelated pending UI/slideshow
+  changes remain paused in the original checkout. No schema change is required.
+  Deployment evidence: docs/hook-prompt-v4-release-2026-10-22.md.
+
+
 ## 2026-10-22 Combined release authorization and acceptance
 
 - The user has now explicitly authorized checking and deploying all intentional

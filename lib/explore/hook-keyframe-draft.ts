@@ -18,7 +18,7 @@ export type HookKeyframeScope = {
 export type HookSourceFrame = {
   index: 0; timeSeconds: 0; width: number; height: number; sha256: string;
 };
-type GeneratedImage = { assetId: string; inputKey: string; promptVersion: 1 | 2 };
+type GeneratedImage = { assetId: string; inputKey: string; promptVersion: 1 | 2 | 3 | 4 };
 type ApprovedImage = { assetId: string; inputKey: string };
 export type HookKeyframeDraft = {
   version: 1 | 2;
@@ -104,7 +104,7 @@ function parseDraft(value: unknown, scope: HookKeyframeScope): HookKeyframeDraft
   if (value.generatedImage !== null) {
     const image = value.generatedImage;
     if (!object(image) || !fields(image, ["assetId", "inputKey", "promptVersion"]) || !assetId(image.assetId) ||
-      image.promptVersion !== 1 && image.promptVersion !== 2 || image.inputKey !== hookKeyframeInputKey(draft) || !draft.sourceFrame || !draft.imageAssetIds.length ||
+      image.promptVersion !== 1 && image.promptVersion !== 2 && image.promptVersion !== 3 && image.promptVersion !== 4 || image.inputKey !== hookKeyframeInputKey(draft) || !draft.sourceFrame || !draft.imageAssetIds.length ||
       draft.imageAssetIds.some(id => id.toLowerCase() === (image.assetId as string).toLowerCase())) invalid();
     draft.generatedImage = { assetId: image.assetId, inputKey: image.inputKey as string, promptVersion: image.promptVersion };
   }

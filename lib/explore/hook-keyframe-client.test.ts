@@ -14,6 +14,8 @@ test("client admission binds the completed image to the selected image model as 
     receipt: { ...scope, version: 2 as const, imageModel: "gemini_3_pro" as const, promptVersion: 2 as const, purpose: "hook_starting_frame" as const, inputKey: checkpoint.inputKey },
     output: { mediaAssetId: "55555555-5555-4555-8555-555555555555", url: "https://media.test/generated.png", width: 720, height: 1280 } };
   assert.equal(verifiedHookKeyframeJob(job, checkpoint).output!.mediaAssetId, job.output.mediaAssetId);
+  assert.equal(verifiedHookKeyframeJob({ ...job, receipt: { ...job.receipt, promptVersion: 3 } }, checkpoint).output!.mediaAssetId, job.output.mediaAssetId);
+  assert.equal(verifiedHookKeyframeJob({ ...job, receipt: { ...job.receipt, promptVersion: 4 } }, checkpoint).output!.mediaAssetId, job.output.mediaAssetId);
   assert.throws(() => verifiedHookKeyframeJob({ ...job, receipt: { ...job.receipt, imageModel: "nano_banana_2" } }, checkpoint));
   const switched = updateHookKeyframeDraft(draft, { imageModel: "nano_banana_2" });
   assert.throws(() => verifiedHookKeyframeJob(job, createHookKeyframeCheckpoint(switched, checkpoint.requestKey)));

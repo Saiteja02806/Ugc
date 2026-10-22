@@ -21,7 +21,7 @@ test("selected Hook supplies an image-only motion preview without importing the 
 test("main/support photos apply only to the image stage; sound applies only to animation", () => {
   const d = updateHookKeyframeDraft(draft, { imageAssetIds: ["00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"], instructions: "Keep the same clothing." });
   const silent = getHookKeyframePromptPreview(d), soundOn = getHookKeyframePromptPreview(updateHookKeyframeDraft(d, { generateAudio: true }));
-  assert.match(silent.imagePrompt!, /Image 1 supplies the scene/); assert.match(silent.imagePrompt!, /Image 2 is the main face/);
+  assert.match(silent.imagePrompt!, /^Generate a new photograph of my influencer/); assert.match(silent.imagePrompt!, /Image 2 is the main face/);
   assert.match(silent.imagePrompt!, /Image 3/); assert.match(silent.imagePrompt!, /Keep the same clothing/);
   assert.equal(silent.imagePrompt, soundOn.imagePrompt); assert.equal(silent.directions, soundOn.directions);
   assert.match(soundOn.animationPrompt!, /SOUND SETTING: ON/); assert.doesNotMatch(soundOn.animationPrompt!, /SOUND SETTING: OFF/);

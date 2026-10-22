@@ -93,19 +93,21 @@ test("only new Hook V2 jobs opt into bound labels and verified scene bytes; lega
 });
 
 test("new model-aware Pro and Flash jobs route separately and bind model, role contract and edge policy", async () => {
+  for (const promptVersion of [2, 3, 4]) {
   for (const model of ["gemini_3_pro", "nano_banana_2"]) {
     calls.length = 0;
     const input = job(); input.input_json.model = model;
     const receipt = input.input_json.hookKeyframe;
-    receipt.version = 2; receipt.promptVersion = 2; receipt.imageModel = model;
+    receipt.version = 2; receipt.promptVersion = promptVersion; receipt.imageModel = model;
     receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
     const output = await runGenerateImageJob(input, context);
     if (model === "gemini_3_pro") {
       assert.equal(count("paid"), 0); assert.equal(count("proPaid"), 1);
       assert.deepEqual(calls.find(call => call.proPaid).proPaid.hookKeyframe, receipt);
       assert.deepEqual(calls.find(call => call.proPaid).proPaid.referenceImageUrls, input.input_json.referenceImageUrls);
-    } else { assert.equal(count("paid"), 1); assert.equal(count("proPaid"), 0); }
+    } else { assert.equal(count("paid"), 1); assert.equal(count("proPaid"), 0); assert.deepEqual(calls.find(call => call.paid).paid.hookKeyframe, receipt); }
     assert.deepEqual(calls.find(call => call.prepare).prepare.options, { preserveComposition: true, cropNearRatioPadding: true });
     assert.equal(output.model, model);
+  }
   }
 });

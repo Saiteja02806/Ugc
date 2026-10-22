@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { buildHookKeyframeImagePrompt, HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH } from "./hook-keyframe-image-prompt.ts";
+
+test("the default reproduces the exact v4 prompt used in the user-approved image test", () => {
+  const result = buildHookKeyframeImagePrompt({
+    personImageCount: 3, instructions: "",
+    referenceId: "explore-paired-hook-892b0f65083c8cf03270a7c9",
+    sourceSha256: "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+  });
+  assert.equal(result.version, 4);
+  assert.equal(createHash("sha256").update(result.prompt).digest("hex"),
+    "f3d622fdc0b37c225bf0e1d40367cba76e12425a1e5ca15e7b8a55a650fb1c76");
+});
 
 test("scene and intended person are explicit and retain their real multi-image order", () => {
   const result = buildHookKeyframeImagePrompt({ personImageCount: 3 });
@@ -9,16 +21,16 @@ test("scene and intended person are explicit and retain their real multi-image o
     { imageIndex: 3, role: "supporting_face" }, { imageIndex: 4, role: "supporting_face" },
   ]);
   assert.equal(result.imageCount, 4);
-  assert.equal(result.version, 2);
-  assert.match(result.prompt, /BASE_SCENE_TO_EDIT/); assert.match(result.prompt, /MAIN_FACE_IDENTITY/);
-  assert.match(result.prompt, /Image 1 supplies the scene/);
+  assert.equal(result.version, 4);
+  assert.match(result.prompt, /^Generate a new photograph of my influencer/);
+  assert.match(result.prompt, /VISUAL_REFERENCE/); assert.match(result.prompt, /MY_INFLUENCER/);
   assert.match(result.prompt, /Image 2 is the main face photo/);
   assert.match(result.prompt, /Image 3, Image 4 are additional views of the SAME person/);
   assert.match(result.prompt, /eye shape and spacing, brows, nose, lips, jawline/);
-  assert.match(result.prompt, /Do not average this face/);
-  assert.match(result.prompt, /source hairstyle/);
-  assert.match(result.prompt, /hands and existing occlusions/);
-  assert.match(result.prompt, /Remove creator-added captions/);
+  assert.match(result.prompt, /recognizable likeness takes priority/);
+  assert.doesNotMatch(result.prompt, /swap|replace|Edit Image 1|exact positions|source hairstyle|Recreate only the facial regions/i);
+  assert.match(result.prompt, /face covered by hands or objects/);
+  assert.match(result.prompt, /Omit creator-added captions/);
   assert.match(result.prompt, /Preserve text physically belonging to objects/);
   assert.doesNotMatch(result.prompt, /@Video|@Image|watch the|original video|first_frame|last_frame/);
 });

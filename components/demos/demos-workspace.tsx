@@ -807,7 +807,7 @@ export function UploadedPostsTab({
             onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
             onDragActiveChange={setIsDragActive}
             onFiles={handleFiles}
-            onOpenPreview={(demo) => setPreviewModalDemo(demo)}
+            onOpenPreview={(demo) => { setPlayingDemoId(null); setPreviewModalDemo(demo); }}
             onPlayDemo={handleToggleDemoPlayback}
             onPlaybackStateChange={handleDemoPlaybackStateChange}
             onRefresh={() => void loadDemos()}
@@ -849,7 +849,7 @@ export function UploadedPostsTab({
               demos={demos}
               isLoading={isLoading}
               onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
-              onOpenPreview={(demo) => setPreviewModalDemo(demo)}
+              onOpenPreview={(demo) => { setPlayingDemoId(null); setPreviewModalDemo(demo); }}
               onPlayDemo={handleToggleDemoPlayback}
               onPlaybackStateChange={handleDemoPlaybackStateChange}
               onRenameDemo={handleRenameDemo}

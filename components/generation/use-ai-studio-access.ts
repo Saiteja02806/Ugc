@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth-context";
 import type { AIStudioAccessState } from "@/lib/ai-studio/access-policy";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 type AccessResponse = {
   isPro?: unknown;
@@ -20,7 +21,7 @@ export function useAIStudioAccess() {
   const accessQuery = useQuery({
     enabled: !loading && Boolean(user),
     gcTime: AI_STUDIO_ACCESS_GC_TIME_MS,
-    queryFn: ({ signal }) => fetchAIStudioAccess(signal),
+    queryFn: ({ signal }) => fetchAIStudioAccess(user?.uid ?? "signed-out", signal),
     queryKey: ["ai-studio-access", user?.uid ?? "signed-out"],
     refetchOnWindowFocus: "always",
     retry: 1,
@@ -47,28 +48,32 @@ export function useAIStudioAccess() {
 }
 
 async function fetchAIStudioAccess(
+  ownerId: string,
   signal?: AbortSignal,
 ): Promise<Exclude<AIStudioAccessState, "checking" | "error">> {
-  const token = await getCurrentUserIdToken();
+  return withReadDeadline(async bounded => {
+    const token = await getCurrentUserIdToken(ownerId);
+    bounded.throwIfAborted();
 
-  if (!token) {
-    throw new Error("Could not verify your sign-in session.");
-  }
+    if (!token) {
+      throw new Error("Could not verify your sign-in session.");
+    }
 
-  const response = await fetch("/api/ai-studio/access", {
-    cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    signal,
-  });
-  const data = (await response.json().catch(() => null)) as
-    | AccessResponse
-    | null;
+    const response = await fetch("/api/ai-studio/access", {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: bounded,
+    });
+    const data = (await response.json().catch(() => null)) as
+      | AccessResponse
+      | null;
 
-  if (!response.ok || data?.ok !== true) {
-    throw new Error("Could not verify AI Studio access.");
-  }
+    if (!response.ok || data?.ok !== true) {
+      throw new Error("Could not verify AI Studio access.");
+    }
 
-  return data.isPro === true ? "pro" : "locked";
+    return data.isPro === true ? "pro" : "locked";
+  }, signal);
 }

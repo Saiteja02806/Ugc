@@ -37,6 +37,22 @@ test("legacy Nano Banana callers still pass one image or text only", async () =>
   assert.equal(requests.at(-1).input, "Text only");
 });
 
+test("slideshow labels are placed beside their exact source and upload pixels, including base-only edits", async () => {
+  const urls = ["https://owned.test/source-4.png", "https://owned.test/screenshot.png"];
+  const labels = ["Source slide 4 (source)", "Upload C (screenshot)"];
+  await generateGeminiImageBuffer("Only edit the laptop screen", "4:5", urls, undefined, labels);
+  assert.deepEqual(requests.at(-1).input, [
+    { text: labels[0], type: "text" }, { data: Buffer.from(urls[0]).toString("base64"), mime_type: "image/png", type: "image" },
+    { text: labels[1], type: "text" }, { data: Buffer.from(urls[1]).toString("base64"), mime_type: "image/png", type: "image" },
+    { text: "Only edit the laptop screen", type: "text" },
+  ]);
+  await generateGeminiImageBuffer("Only change the lighting", "4:5", urls.slice(0, 1), undefined, labels.slice(0, 1));
+  assert.equal(requests.at(-1).input[0].text, labels[0]);
+  const before = requests.length;
+  await assert.rejects(generateGeminiImageBuffer("Invalid", "4:5", urls, undefined, ["only one name"]), /labels/);
+  assert.equal(requests.length, before);
+});
+
 const scene = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lV8AAAAASUVORK5CYII=", "base64");
 function hookContext() {
   const prompt = "Edit BASE_SCENE_TO_EDIT with MAIN_FACE_IDENTITY, preserving its scene.";

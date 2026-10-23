@@ -5,6 +5,8 @@ import { ArrowDownAZ, ArrowRight, AudioLines, Bookmark, BookOpen, Check, Chevron
 import { useAuth } from "@/contexts/auth-context";
 import { createAudioApi } from "@/lib/audio/client";
 import { audioLibraryQueryOptions, refreshAudioLibrary } from "@/lib/audio/library-query";
+import { pollInForeground } from "@/lib/http/foreground-polling";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 import { cn } from "@/lib/utils";
 import type { AudioAsset, AudioBootstrap, AudioHistory, AudioVoice } from "@/lib/audio/types";
 import { audioSubmissionStorageKey, readAudioSubmission, audioSubmissionResolved, type SavedAudioSubmission } from "@/lib/audio/submission-client";
@@ -86,42 +88,63 @@ function AudioGenerationSession({ uid }: { uid: string }) {
   }, [data, reconcileSubmission]);
   useEffect(() => {
     const current = ++session.current; const sessionRef = session; const previewRef = preview;
+    const controller = new AbortController();
     // Restore browser-only recovery state after mount; initial actions stay locked.
     void Promise.resolve().then(async () => {
       if (current !== sessionRef.current) return;
       const saved = readAudioSubmission(localStorage.getItem(audioSubmissionStorageKey(uid)), uid);
-      submission.current = saved; setSavedSubmission(saved); setRestored(true);
+      submission.current = saved; setSavedSubmission(saved);
       if (saved) {
         // Always recover against live history, even when catalogue data is cached.
-        const history = await api<AudioHistory>(`/api/audio/history?requestKey=${encodeURIComponent(saved.key)}`);
+        const history = await withReadDeadline(signal => api<AudioHistory>(`/api/audio/history?requestKey=${encodeURIComponent(saved.key)}`, { signal }), controller.signal);
         if (current === sessionRef.current) reconcileSubmission(history, saved);
       }
-    }).catch(err => { if (current === sessionRef.current) setError(err instanceof Error ? err.message : "The saved audio request could not be checked."); });
-    return () => { sessionRef.current++; previewRef.current?.pause(); };
+    }).catch(err => { if (current === sessionRef.current) setError(err instanceof Error ? err.message : "The saved audio request could not be checked."); })
+      .finally(() => { if (current === sessionRef.current) setRestored(true); });
+    return () => { sessionRef.current++; controller.abort(); previewRef.current?.pause(); };
   }, [api, uid, reconcileSubmission]);
   const activeRequests = data?.requests.filter(r => !TERMINAL.has(r.status)) ?? [];
   const activeSpeech = activeRequests.find(r => r.kind === "speech");
-  const hasActive = activeRequests.length > 0 || (savedSubmission !== null && liveId !== null && !recoveryBlocked);
+  const hasActive = activeRequests.length > 0 || (savedSubmission !== null && !recoveryBlocked);
+  const hasOtherActiveJobs = activeRequests.some(request => request.requestKey !== savedSubmission?.key);
   useEffect(() => {
-    if (!hasActive) return; let stopped = false; let busy = false;
+    if (!hasActive || !restored) return; let stopped = false;
+    const controller = new AbortController();
+    let intervalMs = 1600;
     const poll = async () => {
-      if (busy || document.hidden) return; busy = true;
-      try {
-        const savedKey = submission.current?.key;
-        const result = await api<AudioHistory>(savedKey ? `/api/audio/history?requestKey=${encodeURIComponent(savedKey)}` : "/api/audio/history"); if (stopped) return;
-        const libraryKey = ["audio-library", uid] as const;
-        // History polling does not make old account/plan availability fresh.
-        const checkedAt = queryClient.getQueryState(libraryKey)?.dataUpdatedAt;
-        queryClient.setQueryData<AudioBootstrap>(libraryKey, previous => previous ? { ...previous, ...result, requests: savedKey ? [...result.requests, ...previous.requests.filter(r => !result.requests.some(next => next.id === r.id))] : result.requests } : previous, { updatedAt: checkedAt });
-        const latest = result.requests.find(r => r.id === liveId);
-        if (latest?.status === "completed" && latest.outputAssetId) { setSelectedAssetId(latest.outputAssetId); setLiveId(null); }
-        reconcileSubmission(result);
-        if (result.requests.length && result.requests.every(r => TERMINAL.has(r.status))) void load(true);
-      } catch (err) { if (!stopped) setError(err instanceof Error ? err.message : "Progress could not be loaded."); }
-      finally { busy = false; }
+      const savedKey = recoveryBlocked ? undefined : submission.current?.key;
+      let broadHistory: AudioHistory | null = null;
+      let savedLookupError: unknown;
+      const result = await withReadDeadline(async signal => {
+        const history = await api<AudioHistory>(savedKey && !hasOtherActiveJobs ? `/api/audio/history?requestKey=${encodeURIComponent(savedKey)}` : "/api/audio/history", { signal });
+        if (hasOtherActiveJobs) broadHistory = history;
+        if (!savedKey || !hasOtherActiveJobs || history.requests.some(request => request.requestKey === savedKey)) return history;
+        // General history is limited. Keep exact-receipt recovery for an older
+        // saved request without hiding progress for the other pending jobs.
+        const saved = await api<AudioHistory>(`/api/audio/history?requestKey=${encodeURIComponent(savedKey)}`, { signal });
+        return { ...history, requests: [...saved.requests, ...history.requests.filter(request => !saved.requests.some(next => next.id === request.id))] };
+      }, controller.signal).catch(error => {
+        if (!broadHistory || controller.signal.aborted) throw error;
+        savedLookupError = error;
+        return broadHistory;
+      }); if (stopped) return;
+      intervalMs = savedKey && !hasOtherActiveJobs && result.requests.length === 0 ? 30000 : 1600;
+      const libraryKey = ["audio-library", uid] as const;
+      // History polling does not make old account/plan availability fresh.
+      const checkedAt = queryClient.getQueryState(libraryKey)?.dataUpdatedAt;
+      queryClient.setQueryData<AudioBootstrap>(libraryKey, previous => previous ? { ...previous, ...result, requests: savedKey ? [...result.requests, ...previous.requests.filter(r => !result.requests.some(next => next.id === r.id))] : result.requests } : previous, { updatedAt: checkedAt });
+      const latest = result.requests.find(r => r.id === liveId);
+      if (latest?.status === "completed" && latest.outputAssetId) { setSelectedAssetId(latest.outputAssetId); setLiveId(null); }
+      reconcileSubmission(result);
+      if (result.requests.length && result.requests.every(r => TERMINAL.has(r.status))) void load(true);
+      // One unavailable exact receipt must not hide verified progress for the
+      // other jobs. Keep its saved key and back off/report that read separately.
+      if (savedLookupError) throw savedLookupError;
     };
-    const timer = setInterval(() => void poll(), 1600); return () => { stopped = true; clearInterval(timer); };
-  }, [api, hasActive, liveId, load, queryClient, uid, reconcileSubmission]);
+    const stop = pollInForeground({ poll, intervalMs: () => intervalMs, maxErrorIntervalMs: 25600,
+      onError: err => { if (!stopped) setError(err instanceof Error ? err.message : "Progress could not be loaded."); } });
+    return () => { stopped = true; controller.abort(); stop(); };
+  }, [api, hasActive, hasOtherActiveJobs, restored, recoveryBlocked, liveId, load, queryClient, uid, reconcileSubmission]);
   const selected = data?.assets.find(a => a.id === selectedAssetId && a.status === "ready") ?? null;
   const references = data?.assets.filter(a => a.purpose === "reference" && a.status === "ready") ?? [];
   const allVoices = data?.voices ?? [];

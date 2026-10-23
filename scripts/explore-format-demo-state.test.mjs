@@ -344,7 +344,16 @@ test("Hook demo editor has only trim/text tools while audio and legacy framing r
   assert.equal(nodes(editor).some(n => n.type === "WorkflowDemoControls" || n.type === "WorkflowFilePicker" || n.type === "WorkflowSavedAudioPicker"), false);
   assert.doesNotMatch(text(editor), /Crop & zoom|Original sound|Demo sound/);
   assert.equal(nodes(editor).some(n => n.props?.["aria-label"] === "Demo original volume"), false);
-  assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Demo original volume"));
+  const adjustSound = nodes(overview).find(n => n.type === "button" && text(n).trim() === "Adjust demo sound");
+  assert.ok(adjustSound, "Hook Demo keeps the original-sound control as a compact disclosure");
+  assert.equal(adjustSound.props["aria-expanded"], false);
+  assert.equal(nodes(overview).some(n => n.props?.["aria-label"] === "Demo original volume"), false);
+  adjustSound.props.onClick();
+  const expandedTree = h.render();
+  const expandedOverview = nodes(expandedTree).find(n => n.type === "portal" && n.props.target === h.props.controlsTarget);
+  const expandedAdjustSound = nodes(expandedOverview).find(n => n.type === "button" && text(n).trim() === "Adjust demo sound");
+  assert.equal(expandedAdjustSound.props["aria-expanded"], true);
+  assert.ok(nodes(expandedOverview).some(n => n.props?.["aria-label"] === "Demo original volume"));
   assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Background audio settings"));
   assert.ok(nodes(overview).some(n => n.type === "Button" && text(n) === "Reset demo framing"));
   assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), stored.framing, "Removing crop tools must not silently rewrite saved media edits");

@@ -4,25 +4,29 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type SetStat
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { fetchFormatReferenceImage } from "@/lib/explore/format-reference-images";
 import { readSlideshowComposerDraft, slideshowComposerDraftKey } from "@/lib/explore/slideshow-composer-draft";
+import { assignSlideshowUploadNames, type SlideshowUploadName } from "@/lib/explore/slideshow-image-names";
 
-type State = { key: string; prompt: string; images: AIStudioReferenceMedia[]; ready: boolean; error: string | null };
-export function useSlideshowComposerDraft(owner: string | null, scope: string, enabled: boolean) {
+type State = { key: string; prompt: string; images: AIStudioReferenceMedia[]; ready: boolean; error: string | null; uploadNames?: SlideshowUploadName[] };
+export function useSlideshowComposerDraft(owner: string | null, scope: string, enabled: boolean, legacyScope?: string) {
   const key = enabled && owner ? slideshowComposerDraftKey(owner, scope) : "";
+  const legacyKey = enabled && owner && legacyScope ? slideshowComposerDraftKey(owner, legacyScope) : "";
   const [state, setState] = useState<State>({ key: "", prompt: "", images: [], ready: false, error: null });
   const [attempt, setAttempt] = useState(0);
   const current = useRef(state);
   const activeKey = useRef(key);
-  useLayoutEffect(() => { activeKey.current = key; }, [key]);
+  const fallbackKey = useRef(legacyKey);
+  useLayoutEffect(() => { activeKey.current = key; fallbackKey.current = legacyKey; }, [key, legacyKey]);
   useEffect(() => {
     if (!key || !owner) return;
     let cancelled = false;
     void (async () => {
       let prompt = "";
       try {
-        const saved = readSlideshowComposerDraft(localStorage.getItem(key)); prompt = saved.prompt;
-        const images = await Promise.all(saved.imageIds.map(async id => ({ kind: "image" as const, asset: await fetchFormatReferenceImage(id, owner) })));
+        const saved = readSlideshowComposerDraft(localStorage.getItem(key) ?? (fallbackKey.current ? localStorage.getItem(fallbackKey.current) : null)); prompt = saved.prompt;
+        const uploadNames = assignSlideshowUploadNames(saved.imageIds, saved.uploadNames);
+        const images = await Promise.all(saved.imageIds.map(async id => ({ kind: "image" as const, asset: await fetchFormatReferenceImage(id, owner), slideshowName: uploadNames.find(item => item.assetId === id)!.name })));
         if (cancelled || activeKey.current !== key) return;
-        const next = { key, prompt, images, ready: true, error: null }; current.current = next; setState(next);
+        const next = { key, prompt, images, uploadNames, ready: true, error: null }; current.current = next; setState(next);
       } catch (cause) {
         if (cancelled || activeKey.current !== key) return;
         const next = { key, prompt, images: [], ready: false, error: cause instanceof Error ? cause.message : "Could not restore your attached images." };
@@ -37,8 +41,10 @@ export function useSlideshowComposerDraft(owner: string | null, scope: string, e
     const previous = current.current;
     const next = { ...previous, ...(patch.prompt === undefined ? {} : { prompt: patch.prompt }), ...(patch.images === undefined ? {} : { images: typeof patch.images === "function" ? patch.images(previous.images) : patch.images }), error: null };
     try {
+      next.uploadNames = assignSlideshowUploadNames(next.images.map(image => image.asset.id), previous.uploadNames);
+      next.images = next.images.map(image => ({ ...image, slideshowName: next.uploadNames!.find(item => item.assetId === image.asset.id)!.name }));
       // Persist before acknowledging the change; never silently lose selected IDs.
-      localStorage.setItem(key, JSON.stringify({ version: 1, prompt: next.prompt, imageIds: next.images.map(image => image.asset.id) }));
+      localStorage.setItem(key, JSON.stringify({ version: 1, prompt: next.prompt, imageIds: next.images.map(image => image.asset.id), uploadNames: next.uploadNames }));
       current.current = next; setState(next);
     } catch { setState({ ...previous, error: "Your browser could not save these instructions. Allow site storage and retry before generating." }); }
   }, [key]);

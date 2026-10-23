@@ -108,6 +108,7 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     if (photos.reduce((total, photo) => total + photo.bytes, frame.png.byteLength) > HOOK_KEYFRAME_MAX_CONTEXT_BYTES) throw new HookKeyframeGenerationError("The scene and face photos exceed 50 MiB combined. Choose fewer or smaller face photos.", 400);
     const aspectRatio = hookKeyframeSourceRatio(frame.width, frame.height);
     if (!aspectRatio) throw new HookKeyframeGenerationError("This Hook's frame shape is not supported without changing its composition.", 400);
+    if (frame.workflow && frame.workflow !== "hook" && !["9:16", "16:9"].includes(aspectRatio)) throw new HookKeyframeGenerationError("This reference's frame shape is not supported for starting-frame animation. Choose a portrait or landscape reference.", 400);
     const prompt = buildHookKeyframeImagePrompt({ personImageCount: photos.length, instructions: input.instructions,
       referenceId: input.referenceId, sourceSha256: frame.sourceSha256 }).prompt;
     const model = input.imageModel ?? "nano_banana_2";
@@ -129,7 +130,7 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     // retained for recovery, never refunded or retried as a new paid generation.
     const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: 1,
       input: { generationId: crypto.randomUUID(), model, aspectRatio, prompt, referenceImageUrl: snapshot.url,
-        referenceImageUrls, hookKeyframe: receipt, exploreFormat: "hook", creditCost, batchSize: 1, batchIndex: 1 },
+        referenceImageUrls, hookKeyframe: receipt, exploreFormat: frame.workflow === "wall_text" ? "wall_text" : "hook", creditCost, batchSize: 1, batchIndex: 1 },
     }, { beforeDispatch: async stored => {
       const existing = hookKeyframeReceiptFromJob(stored, ownerId);
       if (!samePreparation(existing.receipt, input) || existing.receipt.inputKey !== receipt.inputKey) throw new HookKeyframeGenerationError("This request ID belongs to different work. Recover its original result.", 409);

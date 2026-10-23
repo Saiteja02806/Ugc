@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { nativeRoutePackages, verifyNativeRoute, verifyNoNativeMedia } from "./native-route-bundle-verification.mjs";
 
 // A working executable in the build checkout is not proof that a deployed
 // function contains the native package that resolves its executable path.
@@ -14,3 +15,11 @@ for (const route of ["hook-starting-frame", "hook-keyframe"]) {
   }
 }
 console.log("Hook decoder route bundles verified: native module, metadata and executable.");
+for (const [route, packages] of Object.entries(nativeRoutePackages)) {
+  await verifyNativeRoute(join(process.cwd(), '.next/server/app', route, 'route.js.nft.json'), packages);
+}
+console.log('All four native routes verified in isolated traced packages: module resolution and executable startup.');
+for (const route of ['mcp/health', '.well-known/oauth-protected-resource/mcp']) {
+  await verifyNoNativeMedia(join(process.cwd(), '.next/server/app', route, 'route.js.nft.json'));
+}
+console.log('Lightweight MCP health/discovery routes contain no native media package files.');

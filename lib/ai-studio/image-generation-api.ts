@@ -1,5 +1,9 @@
 import "server-only";
 import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
+import { resolveSlideshowNamedContext } from "@/lib/explore/slideshow-named-context";
+import { planSlideshowRequest, SlideshowPlanError } from "@/lib/explore/slideshow-plan-service";
+import { compileSlideshowOutputPlan } from "@/lib/explore/slideshow-request-plan";
+import { readRemixSource, remixSourceFromJob, type RemixTextSource } from "@/lib/explore/remix-source";
 
 import { NextResponse } from "next/server";
 
@@ -49,6 +53,7 @@ type GenerateRequest = {
   referenceImageAssetId?: unknown;
   referenceImageAssetIds?: unknown;
   regenerationImageAssetId?: unknown;
+  slideshowContext?: unknown;
 };
 
 type ImageJobOutput = {
@@ -168,6 +173,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
   let regenerationReferenceIndex: number | undefined;
   let attachmentReferences: string[] = [];
   let regenerationReferenceUrl: string | null = null;
+  let regenerationRemixSource: RemixTextSource | null = null;
   try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
   if (body?.referenceImageUrl && !referenceImageUrl) {
@@ -248,6 +254,15 @@ export async function handleAIStudioImageGeneration(request: Request) {
       const references = [...layoutReferences, ...additional];
       const regenerationUrl = regenerationId ? ownedUrls.at(-1)! : null;
       regenerationReferenceUrl = regenerationUrl;
+      if (body.slideshowContext !== undefined && regenerationId) {
+        const target = assets.at(-1)!;
+        if (target.source_type === "generated_image" && target.source_record_id) {
+          const origin = await getBackgroundJobById(target.source_record_id);
+          if (origin?.userId === user.uid && origin.jobType === IMAGE_JOB_TYPE) regenerationRemixSource = remixSourceFromJob(origin.input);
+        } else if (target.source_type === "upload" && target.project_id === "explore-catalog-reference" && target.metadata && typeof target.metadata === "object" && !Array.isArray(target.metadata)) {
+          regenerationRemixSource = readRemixSource(target.metadata.remixTextSource);
+        }
+      }
       if (regenerationUrl && !references.includes(regenerationUrl)) { references.push(regenerationUrl); regenerationReferenceIndex = references.length; }
       if (references.length > MAX_IMAGE_REFERENCE_CONTEXT) return NextResponse.json({ ok: false, message: `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Select fewer slideshow references or remove an attached image.` }, { status: 400 });
       referenceImageUrls = parseImageReferenceContext(references);
@@ -278,6 +293,9 @@ export async function handleAIStudioImageGeneration(request: Request) {
   let slideshowReferenceContract: SlideshowReferenceContract | undefined;
   let businessProfile: { businessProfileId: string; businessProfileVersion: number } | undefined;
   let slideshowBusinessContext: SlideshowBusinessContext | undefined;
+  const baseIdempotencyKey = cleanIdempotencyKey(request.headers.get("Idempotency-Key") ?? body?.idempotencyKey);
+  let plannedOutputs: ReturnType<typeof compileSlideshowOutputPlan>[] | undefined;
+  if (body?.slideshowContext !== undefined && body.exploreFormat !== "slideshow") return NextResponse.json({ ok: false, message: "Image assignments are available in Slideshows." }, { status: 400 });
   if (body?.exploreFormat === "slideshow") {
     if (requiresScreenshotAttachment(prompt) && !attachmentReferences.length) return NextResponse.json({ ok: false, message: "Your instructions refer to an uploaded screenshot, but none is attached. Attach it with + before generating." }, { status: 400 });
     const references = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
@@ -296,7 +314,30 @@ export async function handleAIStudioImageGeneration(request: Request) {
     } catch (error) {
       return NextResponse.json({ ok: false, message: error instanceof SlideshowBusinessContextUnavailableError ? error.message : "Could not load your business context." }, { status: error instanceof SlideshowBusinessContextUnavailableError ? error.status : 503 });
     }
-    // Validate the complete provider prompt before reserving credits; never truncate instructions.
+    if (body.slideshowContext !== undefined) {
+      try {
+        const ids = (body.referenceImageAssetIds ?? []) as string[];
+        const named = await resolveSlideshowNamedContext(body.slideshowContext, user.uid, prompt, styleReferences,
+          attachmentReferences.map((url, index) => ({ id: ids[index], url })),
+          regenerationReferenceUrl ? { id: String(body.regenerationImageAssetId), url: regenerationReferenceUrl } : undefined);
+        if (named.targetIds.length !== Number(slideCount)) return NextResponse.json({ ok: false, message: "The selected slide count changed. Select the slides again." }, { status: 400 });
+        if (prompt.length > 24000) return NextResponse.json({ ok: false, message: "Use up to 24,000 characters so every slide's instructions can be preserved." }, { status: 400 });
+        const missing = getMissingRuntimeEnv();
+        if (missing.length) return NextResponse.json({ ok: false, message: "Image generation is not configured yet. Your draft is preserved." }, { status: 501 });
+        const planned = await planSlideshowRequest(user.uid, baseIdempotencyKey, named);
+        if (planned.clarifications.length) return NextResponse.json({ ok: false, message: planned.clarifications.join(" "), clarifications: planned.clarifications }, { status: 422 });
+        plannedOutputs = named.targetIds.map((_, index) => compileSlideshowOutputPlan(named, planned, index));
+        for (const output of plannedOutputs) {
+          const contract = parseSlideshowReferenceContract({ version: 4, styleReferenceIndices: output.styleReferenceIndices, attachmentReferenceIndices: output.attachmentReferenceIndices,
+            ...(output.regenerationReferenceIndex ? { regenerationReferenceIndex: output.regenerationReferenceIndex } : {}), plan: output.plan }, output.urls.length);
+          if (slideshowBusinessContextPrompt(slideshowGenerationPrompt("", aspectRatio, contract), slideshowBusinessContext!, true).length > 32000) throw new SlideshowPlanError("The instructions for a slide are too long. Shorten them before generating.");
+        }
+      } catch (error) {
+        return NextResponse.json({ ok: false, message: error instanceof SlideshowPlanError ? error.message : "Could not verify the image names and slide assignments. Review the selected sources and uploads." }, { status: error instanceof SlideshowPlanError ? error.status : 400 });
+      }
+    }
+    if (!plannedOutputs) {
+    // Legacy jobs validate their unchanged complete provider prompt.
     const contextualPrompt = slideshowBusinessContextPrompt(prompt, slideshowBusinessContext!, true);
     const longestSlot = body?.slideshowSlideCount === undefined ? undefined
       : slideshowGenerationSlot("prompt-length-check", Number(slideCount), quantity, totalOutputs - 1);
@@ -305,6 +346,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
     const longestSlotContract = longestSlot ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[longestSlot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== longestSlot.slideIndex - 1)] } : slideshowReferenceContract;
     if (slideshowGenerationPrompt(longestSlotPrompt, aspectRatio, longestSlotContract).length > 32_000) {
       return NextResponse.json({ ok: false, message: "Shorten your instructions so the slideshow prompt, including reference guidance, fits within 32,000 characters." }, { status: 400 });
+    }
     }
   }
 
@@ -323,15 +365,15 @@ export async function handleAIStudioImageGeneration(request: Request) {
     );
   }
 
-  const baseIdempotencyKey = cleanIdempotencyKey(
-    request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
-  );
   const queuedJobs: { generationId: string; jobId: string; slideshowGeneration?: SlideshowGenerationSlot }[] = [];
   let queueError: unknown = null;
 
   for (let index = 0; index < totalOutputs; index += 1) {
     const slot = body?.slideshowSlideCount === undefined ? undefined : slideshowGenerationSlot(baseIdempotencyKey, Number(slideCount), quantity, index);
-    const slotContract = slot && slideshowReferenceContract ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[slot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== slot.slideIndex - 1)] } : slideshowReferenceContract;
+    const plannedOutput = plannedOutputs?.[slot ? slot.slideIndex - 1 : 0];
+    const slotContract = plannedOutput ? parseSlideshowReferenceContract({ version: 4, styleReferenceIndices: plannedOutput.styleReferenceIndices, attachmentReferenceIndices: plannedOutput.attachmentReferenceIndices,
+      ...(plannedOutput.regenerationReferenceIndex ? { regenerationReferenceIndex: plannedOutput.regenerationReferenceIndex } : {}), plan: plannedOutput.plan }, plannedOutput.urls.length)
+      : slot && slideshowReferenceContract ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[slot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== slot.slideIndex - 1)] } : slideshowReferenceContract;
     const generationId = crypto.randomUUID();
     const idempotencyKey = getChildIdempotencyKey(
       baseIdempotencyKey,
@@ -359,12 +401,13 @@ export async function handleAIStudioImageGeneration(request: Request) {
           model,
           ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
           prompt,
-          referenceImageUrl,
-          ...(referenceImageUrls ? { referenceImageUrls } : {}),
-          ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
-          ...(additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
-          ...(regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
+          referenceImageUrl: plannedOutput?.urls[0] ?? referenceImageUrl,
+          ...(plannedOutput ? { referenceImageUrls: plannedOutput.urls } : referenceImageUrls ? { referenceImageUrls } : {}),
+          ...(!plannedOutput && subjectReferenceIndex ? { subjectReferenceIndex } : {}),
+          ...(!plannedOutput && additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
+          ...(!plannedOutput && regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
           ...(slotContract ? { slideshowReferenceContract: slotContract } : {}),
+          ...(plannedOutput ? { slideshowRemixSource: regenerationReferenceUrl ? regenerationRemixSource : plannedOutput.plan.images[0].role === "source" ? { format: "slideshow", referenceId: null, sourceUrl: plannedOutput.urls[0] } : null } : {}),
           ...(slot ? { slideshowGeneration: slot } : {}),
           ...(businessProfile ?? {}),
           ...(slideshowBusinessContext ? { slideshowBusinessContext } : {}),

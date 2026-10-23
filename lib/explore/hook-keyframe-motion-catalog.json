@@ -1729,6 +1729,154 @@
         "source_only_instructions",
         "source_duration_dependency"
       ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "displayTitle": "Hook 99",
+      "sourceDurationSeconds": 4.1,
+      "sourceReviewedFrameCount": 123,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 123 decoded frames inspected in chronological contact sheet. Continuous reaction-only shot: raised hand covers mouth, camera moves closer, hand lowers and mouth opens. No screen tail. Native audio preserved. Static source review; no generated video tested.",
+      "sourceObservations": "Turn the surprised gaze toward the lens while keeping the raised hand beside the face. Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face. Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "sourceSha256": "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+      "displayTitle": "Hook 100",
+      "sourceDurationSeconds": 3.8,
+      "sourceReviewedFrameCount": 112,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 112 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer is in a low-angle close selfie wearing round eyeglasses and white earbuds, mouth slightly open, with the hand on screen-right already touching the glasses at the temple. Pull the glasses forward and away from the eyes with the same hand, then lower them below the face while looking off screen-right. Turn the gaze toward the lens with raised brows and slightly parted lips; hold the uncovered face in the low selfie view. Look back off screen-right with a questioning, open-mouth expression, keeping the glasses lowered. Keep the slightly tilted low handheld selfie, with gentle natural movement and the pale structural beams and windows behind. The glasses remain off the face and lowered, the earbuds stay in, and the performer looks off screen-right with parted lips. Remove the glasses forward from the face; do not place them on top of the head. Keep the black ribbed sweater, earbuds and room consistent. Do not add another person or a scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "face_prop_contact",
+        "hand_or_prop_occlusion",
+        "profile_turn",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-ddcfb2950d40f37771058b73",
+      "sourceSha256": "cd230e98db5d44712ca1541712b3ccc34c241af65c1142a3bb4c5136c581df22",
+      "displayTitle": "Hook 101",
+      "sourceDurationSeconds": 3.833008,
+      "sourceReviewedFrameCount": 113,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 113 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer is outdoors at night in a very low upward selfie view, head tipped back and face partly seen from below, wearing a black sweater and backpack straps. Bring the head forward and raise the handheld camera into a more level face view, revealing the smile and the brightly lit city screens behind. Keep a restrained closed-mouth smile while the body and handheld camera turn gently together, so the lights move across the background. Raise one hand toward the lips and chin, briefly look sideways, and return the smiling face toward the lens with the hand near the lower face. One continuous moving handheld selfie in the illuminated city square at night; transition from low upward framing to a more level close view while turning. The performer smiles toward the lens with one hand near the lips and chin, framed by bright nighttime city screens. Keep backpack straps and black sweater visible. Do not add a kissing partner or a scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "partial_face_crop",
+        "camera_reveals_unseen_scene",
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+      "sourceSha256": "ddb24f03edb483ef194be7cbe0c74d26a9ec4ae39507642efd2d334759fddf35",
+      "displayTitle": "Hook 102",
+      "sourceDurationSeconds": 2.766016,
+      "sourceReviewedFrameCount": 81,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 81 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer leans toward the selfie camera in a pale yellow thin-strap top, with knitted brows and slightly open lips, long blonde hair over the shoulders and a small pendant necklace. Open the mouth wider in disbelief and lean closer toward the lens, keeping the questioning brow. Raise the hand from screen-right and place it across the mouth as the camera moves into a tighter close-up. Briefly close the eyes, then lower the hand toward the chin, open the mouth into a surprised smile and glance upward off screen-left. Keep a single handheld room selfie, moving closer during the mouth-covering gesture and holding the tight ending crop. The hand rests below the mouth near the chin, the mouth is open in a surprised smile, and the eyes glance upward off screen-left. Use the same hand for the mouth-covering and lowering gesture. Keep the top, necklace and room consistent; no cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+      "sourceSha256": "109ec5d49c4f33800c23a26329107d1ffd26d98b5048c8a210d8534164a1e7c6",
+      "displayTitle": "Hook 103",
+      "sourceDurationSeconds": 2.966016,
+      "sourceReviewedFrameCount": 87,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 87 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer sits in an orange-lit room wearing large clear eyeglasses and a colorful top, looking upward off screen-left with lips parted. One hand holds a tall light-colored can upright while an extended finger rests near the lower lip. Widen the eyes and open the mouth in surprise while still looking off screen-left, keeping the can upright without drinking. Lower the can and its hand out of the main face area as the gaze shifts toward the lens. Move the handheld camera closer and hold a wide-eyed, open-mouth expression toward the viewer in the tight face crop. One handheld selfie moves from a seated upper-body view into a close face view against the warm orange wall lighting. The face is much closer to the lens with glasses still on, eyes wide and mouth open; the can is below the face area. Do not add a sip or lift the can to the lips. Keep glasses on and retain the colorful top and cross necklace. No scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "face_prop_contact",
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+      "sourceSha256": "7e43f6ca3c30d32d362c8370e7e1d82dd722604f4146db11ad1f4fbb0bdceb22",
+      "displayTitle": "Hook 104",
+      "sourceDurationSeconds": 3.4,
+      "sourceReviewedFrameCount": 100,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 100 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer sits in a purple-lit room wearing large eyeglasses and a blue-and-white fleece, looking down at the pale phone held upright on screen-left with a skeptical expression. Shift the gaze up from the phone, widen the eyes and open the mouth while keeping the phone in its hand. Bring the free hand up beside the face with fingers spread, then move that same hand across the mouth as the camera comes closer. Keep the mouth covered by the free hand and hold the wide-eyed look toward the lens in a tighter close-up. Maintain one handheld selfie in the purple-lit room, moving closer through the reaction without revealing a different setting. The free hand covers the mouth, the glasses remain on and the eyes are wide toward the lens in a tight crop. Keep the phone and mouth-covering gestures in different hands. Retain yellow nails, ring, fleece and glasses; no scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "sourceSha256": "05738540ee02c011cf73cfe2db7cae40b88c0886af99c23a99704e630bbfc955",
+      "displayTitle": "Hook 105",
+      "sourceDurationSeconds": 1.833008,
+      "sourceReviewedFrameCount": 53,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 53 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer sits beside an open dark laptop, wearing black eyeglasses, gold earrings and a white lace long-sleeve top, looking toward the laptop with the mouth open in surprise. Raise the red-manicured hand from screen-right and place it over the mouth as the eyes lift briefly toward the lens. Tilt the head slightly, hold the hand over the lower face and let the eyes soften into an amused expression. Turn the gaze back toward the laptop and smile behind the hand, briefly lowering the eyelids. Keep the steady seated medium-close view with the open laptop in the foreground and the pale room and stairs behind. The performer smiles toward the laptop with a hand still partly covering the mouth, glasses on and head gently tilted. Keep the laptop in the foreground and the glasses on. Do not add another person or a cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-44d165d51084f977f5146f69",
+      "sourceSha256": "b9b0c519f1e061ae9cdc91965cb6797777cee0f763d1e1f94cf0614f1d438f06",
+      "displayTitle": "Hook 106",
+      "sourceDurationSeconds": 2.8,
+      "sourceReviewedFrameCount": 82,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 82 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer wears a light denim jacket in a pale room, looking off screen-left with eyes wide and mouth open, with the ringed hand on screen-right resting against the upper chest and throat. Turn the widened eyes from screen-left toward the lens while keeping the mouth open and the ringed hand at the upper chest. Hold the surprised stare toward the lens, lower the hand slightly along the chest, and make a slow natural blink. Reopen the eyes wide and hold the open-mouth expression facing the viewer, with the hand resting at the upper chest. Keep the nearly fixed, front-facing upper-body view with warm wall lights and the pale bed and room behind. The performer faces the lens with wide eyes and open mouth, the ringed hand remaining on the upper chest. Do not raise the hand over the mouth or introduce a new gesture. Keep the denim jacket and gold ring; no scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-c15a0f9f2a7c4a28d5330825",
+      "sourceSha256": "3b75bff5ce95145b5779f91b8bb9a235009e69f4829d756679ee1b6cc0ee79a2",
+      "displayTitle": "Hook 107",
+      "sourceDurationSeconds": 1,
+      "sourceReviewedFrameCount": 28,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 28 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer is in a close selfie wearing a black thin-strap top and delicate necklace, with one hand curled under the chin and the index finger resting just below the lips, looking slightly off screen-right with a small closed-mouth smile. Keep the hand under the chin and shift the eyes subtly toward the lens while holding the small restrained smile. Make a natural blink and a slight head adjustment, keeping the thoughtful finger position near the lips. Return the gaze slightly off screen-right and hold the same calm, faintly amused expression with the chin still supported. Maintain the close, mostly steady handheld selfie with a pale wall and white door behind. The chin remains supported by the same hand, the mouth stays closed in a subtle smile and the gaze rests just off screen-right. Keep this a subtle held reaction; do not invent a large surprise gesture or remove the hand from the chin. No scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
     }
   ]
 }

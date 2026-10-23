@@ -28,6 +28,9 @@ test("slideshow references display topics while preserving identity, media and v
     "./imported-catalog.json": { default: catalog },
     "./slideshow-reference-sources.json": { default: JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8")) },
     "./slideshow-reference-additions.json": { default: { mediaStatus: "staged", items: [] } },
+    "./slideshow-reference-oct23.json": { default: { mediaStatus: "staged", items: [] } },
+    "./reference-upload-batches.json": { default: { batches: [] } },
+    "./reference-upload-batches.ts": { applyReferenceUploadBatches: items => items },
     "./hook-video-library": { getExploreHookVideos: () => [] },
     "./wall-text-video-library": { getExploreWallTextVideos: () => [] },
     "./reference-video-prompts": { getReferenceVideoPrompt: () => undefined },
@@ -61,6 +64,9 @@ test("Hook labels omit catalogue numbers without changing active, archived or st
     "./hook-video-library": { getExploreHookVideos: all => all ? [active, archived] : [active] },
     "./slideshow-reference-sources.json": { default: { items: [] } },
     "./slideshow-reference-additions.json": { default: { mediaStatus: "staged", items: [] } },
+    "./slideshow-reference-oct23.json": { default: { mediaStatus: "staged", items: [] } },
+    "./reference-upload-batches.json": { default: { batches: [] } },
+    "./reference-upload-batches.ts": { applyReferenceUploadBatches: items => items },
     "./wall-text-video-library": { getExploreWallTextVideos: () => [] },
     "./reference-video-prompts": { getReferenceVideoPrompt: id => id === active.id ? "Reviewed reference prompt" : undefined },
     "@/lib/storage/storage": { buildPublicStorageUrl: file => `https://media.test/${file}` },
@@ -285,16 +291,16 @@ test("the gallery does not show available video or slideshow totals", () => {
   assert.doesNotMatch(workspace, /<span>\{filtered\.length\}/);
   assert.doesNotMatch(workspace, /format === "slideshow" \? "slideshows" : "videos"/);
   assert.match(workspace, /selectedCategories\.length > 0 \? <div/);
-  assert.match(workspace, /queryKey: \["recreate-references", 3,/);
+  assert.match(workspace, /queryKey: \["recreate-references", 4,/);
 });
 
-test("the slideshow-first gallery mixes filtered cards without changing video order or selection", () => {
+test("the slideshow-first gallery applies shared stable ordering after filters without changing selection", () => {
   const workspace = readFileSync(new URL("../components/explore/recreate-workspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /useState<RecreateFormat>\("slideshow"\)/);
   assert.match(workspace, /initialGenerationMode = "images"/);
   assert.match(workspace, /useState<"images" \| "videos">\(initialGenerationMode\)/);
   assert.match(workspace, /filterReferences\(references, format, selectedCategories\)/);
-  assert.match(workspace, /format === "slideshow" \? interleaveReferenceCategories\(matching\) : matching/);
+  assert.match(workspace, /orderReferenceGallery\(matching, format\)/);
   assert.match(workspace, /key=\{reference\.id\}/);
   assert.doesNotMatch(workspace, /Math\.random\(\)|\.sort\(\(\) =>/);
 });

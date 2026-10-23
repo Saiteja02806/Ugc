@@ -17,6 +17,8 @@ import { CREATOR_REFERENCES } from "@/lib/ai-studio/creator-references";
 import { AI_STUDIO_GENERATION_QUANTITIES, AI_STUDIO_VIDEO_ASPECT_RATIOS, getAIStudioVideoResolutions, parseAIStudioGenerationQuantity, parseAIStudioVideoAspectRatio, parseAIStudioVideoModel, parseAIStudioVideoResolution } from "@/lib/ai-studio/generation-settings";
 import { getWorkflowVideoModels, type WorkflowGenerationSettings } from "@/lib/explore/workflow-generation-settings";
 import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
+import { hookStartingFrameVideoDurations, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
+import type { AIStudioVideoDuration } from "@/lib/ai-studio/generation-settings";
 import { cn } from "@/lib/utils";
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
@@ -35,10 +37,12 @@ export type WorkflowCreationFormProps = WorkflowAudioReferenceProps & {
   videoReference: WorkflowAttachment;
   generationSettings: WorkflowGenerationSettings;
   onGenerationSettingsChange: (patch: Partial<WorkflowGenerationSettings>) => void;
+  startingFrameControl?: ReactNode;
+  startingFrameMode?: boolean;
 };
 
 /** One mounted form at every size. Only the user can change instructions. */
-export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange }: WorkflowCreationFormProps & {
+export function WorkflowCreationForm({ kind, referenceInstructions, instructions, onInstructionsChange, creator, imageReferences, videoReference, audio, audioLabel, audioMode, onAudioModeChange, ownerId, appScreenControl, generationSettings, onGenerationSettingsChange, startingFrameControl, startingFrameMode = false }: WorkflowCreationFormProps & {
   kind: "hook" | "phone";
   appScreenControl?: ReactNode;
 }) {
@@ -46,13 +50,13 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
   const helperId = useId();
   const { model, duration, quantity, resolution, aspectRatio } = generationSettings;
   const referencePolicy = getVideoReferencePolicy(model);
-  const models = getWorkflowVideoModels();
+  const models = getWorkflowVideoModels().filter(option => !startingFrameMode || isHookStartingFrameVideoModel(option.value));
   const qualities = getAIStudioVideoResolutions(model).map((value) => ({ value, label: value }));
   const prefix = kind === "hook" ? "Hook" : "Phone video";
   const referenceCount = (imageReferences?.assets.length ?? Number(Boolean(creator.asset))) + [videoReference.asset, audio.asset].filter(Boolean).length;
   const qualityField = <SettingField label="Quality"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} quality`} value={resolution} onChange={(value) => onGenerationSettingsChange({ resolution: parseAIStudioVideoResolution(value) })} options={qualities} /></SettingField>;
   const quantityField = <SettingField label="Videos"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={kind === "hook" ? "Number of hook videos" : "Number of phone videos"} value={String(quantity)} onChange={(value) => onGenerationSettingsChange({ quantity: parseAIStudioGenerationQuantity(Number(value)) })} options={OUTPUTS} /></SettingField>;
-  const ratioField = <SettingField label="Ratio"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} /></SettingField>;
+  const ratioField = <SettingField label="Ratio">{startingFrameMode ? <p className="flex min-h-10 items-center gap-2 text-sm"><span>{aspectRatio}</span><span className="text-xs text-muted">From your frame</span></p> : <AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} aspect ratio`} value={aspectRatio} onChange={(value) => onGenerationSettingsChange({ aspectRatio: parseAIStudioVideoAspectRatio(value) })} options={RATIOS} />}</SettingField>;
 
   return <section aria-label={kind === "hook" ? "Hook composer" : "Phone video composer"} className={creation.composer}>
     <h2 className="sr-only">Create</h2>
@@ -60,7 +64,8 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
       <h3 className="text-sm font-medium">Inside the phone</h3>
       {appScreenControl}
     </section> : null}
-    <section aria-label="Optional references" className={kind === "hook" ? creation.classicReferences : sections.references}>
+    {startingFrameControl}
+    <section hidden={startingFrameMode} aria-label="Optional references" className={kind === "hook" ? creation.classicReferences : sections.references}>
       <div className={sections.referencesHeading}><h3>{kind === "hook" ? "Optional references" : "Generation references"}</h3>{kind !== "hook" ? <span>Optional</span> : null}{referenceCount ? <span>{referenceCount} attached</span> : null}</div>
       <div className={creation.referenceGrid}>
         <div className={kind === "hook" ? creation.classicReference : sections.referenceCard}><h4 className={kind === "hook" ? "sr-only" : undefined}>Image reference</h4>{kind !== "hook" ? <p>Appearance</p> : null}
@@ -111,7 +116,7 @@ export function WorkflowCreationForm({ kind, referenceInstructions, instructions
     <section aria-label="Video settings" className={kind === "hook" ? "space-y-3" : "mt-4 border-t border-border pt-4"}>
     <div role="group" aria-label={`${prefix} generation settings`} className={creation.settingsGrid}>
       <SettingField label="Model"><AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} model`} value={model} onChange={(value) => onGenerationSettingsChange({ model: parseAIStudioVideoModel(value) })} options={models} /></SettingField>
-      <SettingField label="Duration"><WorkflowDurationControl fieldLayout="classic" key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} /></SettingField>
+      <SettingField label="Duration">{startingFrameMode ? <AiStudioSettingSelect fieldLayout="classic" ariaLabel={`${prefix} duration`} value={String(duration)} onChange={value => onGenerationSettingsChange({ duration: Number(value) as AIStudioVideoDuration })} options={hookStartingFrameVideoDurations(model).map(value => ({ value: String(value), label: `${value} seconds` }))} /> : <WorkflowDurationControl fieldLayout="classic" key={model} ariaLabel={`${prefix} duration`} model={model} value={duration} onChange={(duration) => onGenerationSettingsChange({ duration })} />}</SettingField>
       {qualityField}{quantityField}
       {ratioField}
     </div>

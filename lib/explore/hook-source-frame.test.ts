@@ -44,6 +44,18 @@ test("unknown, retired, non-Hook IDs and source URLs cannot trigger downloads", 
   }
 });
 
+test("legacy Wall sources keep canonical hashes and derive bounded dimensions from decoded frame zero", async () => {
+  const wall = { ...source("explore-wall-text-02"), width: 0, height: 0, workflow: "wall_text" as const };
+  const get = createHookSourceFrameService({ items: () => [wall], sourceUrl: key => key, download: async () => bytes, decode: async () => frame(720, 1280) });
+  const result = await get(wall.id);
+  assert.equal(result.workflow, "wall_text"); assert.equal(result.width, 720); assert.equal(result.height, 1280);
+  assert.equal(result.sourceSha256, hash(bytes));
+  for (const shape of [[0, 1280], [8192, 8192]]) {
+    const invalid = createHookSourceFrameService({ items: () => [wall], sourceUrl: key => key, download: async () => bytes, decode: async () => frame(...shape) });
+    await assert.rejects(invalid(wall.id), /dimensions/);
+  }
+});
+
 test("changed source bytes, invalid catalogue hashes and mismatched full dimensions fail closed", async () => {
   let decoded = 0;
   const get = createHookSourceFrameService({ items: () => [source()], sourceUrl: key => key,

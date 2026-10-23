@@ -8,22 +8,22 @@ import {
 const content = seoPageContent.video;
 
 export const metadata: Metadata = {
-  title: "AI UGC Video Generator",
+  title: "AI UGC Video Generator for SaaS & Apps | UGC Pilot",
   description:
-    "Create creator-style AI UGC videos from a focused prompt and optional reference media. Review and keep each result in your UGC Pilot workflow.",
+    "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media. Review each result in UGC Pilot.",
   alternates: { canonical: content.canonicalPath },
   openGraph: {
-    title: "AI UGC Video Generator | UGC Pilot",
+    title: "AI UGC Video Generator for SaaS & Apps | UGC Pilot",
     description:
-      "Create creator-style AI UGC videos from a focused prompt and optional reference media in AI Studio.",
+      "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media.",
     url: content.canonicalPath,
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "AI UGC Video Generator | UGC Pilot",
+    title: "AI UGC Video Generator for SaaS & Apps | UGC Pilot",
     description:
-      "Create creator-style AI UGC videos from a focused prompt and optional reference media in AI Studio.",
+      "Create creator-style AI UGC video concepts for a SaaS product or mobile app with a focused prompt and optional reference media.",
   },
 };
 

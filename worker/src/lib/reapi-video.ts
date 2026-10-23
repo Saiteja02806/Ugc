@@ -41,11 +41,11 @@ export function buildReapiVideoRequest(input: ReapiVideoInput) {
   const editing = input.referenceVideoMode === "edit";
   // https://reapi.ai/docs/seedance-2-5: timed references turn frame roles
   // into general references. This path must contain exactly one first frame.
-  if (startingFrame && (!seedance || !isHttpsUrl(input.startingFrameImageUrl!) ||
+  if (startingFrame && (!isHttpsUrl(input.startingFrameImageUrl!) ||
     input.referenceImageUrl !== undefined || (input.referenceImageUrls?.length ?? 0) > 0 ||
     (input.referenceAudioUrls?.length ?? 0) > 0 || (input.referenceAudioDurationSeconds?.length ?? 0) > 0 ||
     input.referenceVideoUrl !== undefined || input.referenceVideoDurationSeconds !== undefined || input.referenceVideoMode !== undefined)) {
-    throw new ProviderRequestNotSubmittedError("Starting-frame animation requires Seedance 2.5 and one HTTPS starting image without other image, video or audio references.");
+    throw new ProviderRequestNotSubmittedError("Starting-frame animation requires one HTTPS starting image without other image, video or audio references.");
   }
   if (input.referenceVideoMode !== undefined && (!editing || !seedance || !input.referenceVideoUrl)) {
     throw new ProviderRequestNotSubmittedError("Source editing on ReAPI requires Seedance 2.5 and a source video.");
@@ -94,7 +94,7 @@ export function buildReapiVideoRequest(input: ReapiVideoInput) {
     // WAN uses its moderated route; never retry on a different review channel.
     content_filter: !seedance,
     ...(seedance ? { generate_audio: input.generateAudio ?? !startingFrame, output_format: "mp4", ...(!startingFrame && media.length ? { omni_reference_task_type: editing ? "edit" : "reference" } : {}) }
-      : { audio: input.generateAudio ?? true, ...(media.length ? { generation_type: "reference" } : {}) }),
+      : { audio: input.generateAudio ?? !startingFrame, ...(media.length ? { generation_type: "reference" } : {}) }),
     ...(startingFrame ? { image_with_roles: [{ url: input.startingFrameImageUrl!, role: "first_frame" as const }] } : {}),
     ...(images.length ? { image_urls: images } : {}),
     ...(audio.length ? { audio_urls: audio } : {}),

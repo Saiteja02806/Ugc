@@ -8,6 +8,7 @@ export type AIStudioReferenceKind = "image" | "video" | "audio";
 export type AIStudioReferenceMedia = {
   asset: MediaAsset;
   kind: AIStudioReferenceKind;
+  slideshowName?: string;
 };
 
 export type ReferenceUploadStage = "preparing" | "uploading" | "verifying" | "ready";

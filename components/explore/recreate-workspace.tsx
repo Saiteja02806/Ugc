@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { useAuth } from "@/contexts/auth-context";
-import { filterReferences, interleaveReferenceCategories, RECREATE_FORMAT_LABELS, RECREATE_FORMATS, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
+import { filterReferences, orderReferenceGallery, isRemovedWallTextReference, RECREATE_FORMAT_LABELS, RECREATE_FORMATS, referenceCategories, type RecreateFormat, type RecreateReference } from "@/lib/explore/recreate-types";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
     enabled: !localPreview && !authLoading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
     queryFn: ({ signal }) => fetchRecreateReferences(signal),
-    queryKey: ["recreate-references", 3, user?.uid ?? "signed-out"],
+    queryKey: ["recreate-references", 4, user?.uid ?? "signed-out"],
     refetchOnWindowFocus: false,
     retry: 1,
     staleTime: 30 * 60 * 1_000,
@@ -56,11 +56,12 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   const [previewReference, setPreviewReference] = useState<RecreateReference | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generationMode, setGenerationMode] = useState<"images" | "videos">(initialGenerationMode);
-  const references = previewReferences ?? referencesQuery.data ?? EMPTY_REFERENCES;
+  const referenceData = previewReferences ?? referencesQuery.data ?? EMPTY_REFERENCES;
+  const references = useMemo(() => referenceData.filter(item => !isRemovedWallTextReference(item.id)), [referenceData]);
   const categories = useMemo(() => referenceCategories(references, format), [format, references]);
   const filtered = useMemo(() => {
     const matching = filterReferences(references, format, selectedCategories);
-    return format === "slideshow" ? interleaveReferenceCategories(matching) : matching;
+    return orderReferenceGallery(matching, format);
   }, [format, references, selectedCategories]);
   const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
   const ready = localPreview || referencesQuery.isSuccess;
@@ -164,7 +165,7 @@ export function RecreateWorkspace({ previewReferences, initialGenerationMode = "
   );
 }
 
-export function FilterMenu({ activeCategories, categories, count, disabled, onClear, onToggle }: {
+export function FilterMenu({ activeCategories, categories, disabled, onClear, onToggle }: {
   activeCategories: readonly string[];
   categories: Array<{ id: string; label: string; count: number }>;
   count: number;
@@ -173,7 +174,7 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
   onToggle: (category: string, checked: boolean) => void;
 }) {
   return <Popover>
-    <PopoverTrigger render={<Button type="button" variant="outline" size="sm" className={cn("px-3", count > 0 && "border-primary/40 bg-primary/10 text-primary")} disabled={disabled} />}>
+    <PopoverTrigger render={<Button type="button" variant="outline" size="sm" className={cn("px-3", activeCategories.length > 0 && "border-primary/40 bg-primary/10 text-primary")} disabled={disabled} />}>
       <SlidersHorizontal data-icon="inline-start" aria-hidden="true" /> Filter
     </PopoverTrigger>
     <PopoverContent align="end" className={cn(studio.floating, "w-64 gap-3 rounded-[24px] border-border/60 p-4")}>
@@ -183,7 +184,7 @@ export function FilterMenu({ activeCategories, categories, count, disabled, onCl
           <span className="flex min-w-0 items-center gap-2"><Checkbox checked={activeCategories.includes(category.id)} onCheckedChange={(checked) => onToggle(category.id, checked === true)} /><span className="truncate">{category.label}</span></span>
         </label>)}
       </div>
-      {count ? <Button type="button" variant="link" size="sm" onClick={onClear} className="w-fit">Clear filters</Button> : null}
+      {activeCategories.length ? <Button type="button" variant="link" size="sm" onClick={onClear} className="w-fit">Clear filters</Button> : null}
     </PopoverContent>
   </Popover>;
 }
@@ -195,9 +196,10 @@ export function ReferenceCard({ isSelected, onPreview, onRecreate, reference, co
   return <article data-reference-id={reference.id} className="group min-w-0">
     <div className={cn(studio.mediaFrame, "relative overflow-hidden bg-card-muted ring-offset-background hover:shadow-card", isSelected && "ring-2 ring-primary ring-offset-2")}>
       <ReferenceMedia reference={reference} onPreview={onPreview} />
+      {reference.isNew ? <span data-reference-new className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold leading-none text-primary-foreground shadow-sm">New</span> : null}
       {overlay && source ? <ReferenceSourceAction source={source} label={`${sourceLabel}: ${reference.title}`} canOpen={canOpenSource} overlay /> : null}
-      {overlay && !hideRecreate ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} aria-pressed={isSelected} title={isSelected ? "Selected reference" : "Recreate this reference"} data-reference-recreate-overlay className="absolute bottom-3 right-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
-        {isSelected ? <Check className="size-[18px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" aria-hidden="true" /> : <RotateCcw className="size-[18px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" aria-hidden="true" />}
+      {overlay && !hideRecreate ? <button type="button" onClick={onRecreate} aria-label={`Recreate ${reference.title}`} title="Recreate this reference" data-reference-recreate-overlay className="absolute bottom-3 right-3 inline-flex size-8 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+        <RotateCcw className="size-[18px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]" aria-hidden="true" />
       </button> : null}
       {!hideRecreate && !showActionLabel && !overlay ? <button type="button" onClick={onRecreate} aria-pressed={isSelected} className={cn("absolute right-3 inline-flex size-10 items-center justify-center rounded-lg border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", compact ? "top-3" : "bottom-3", isSelected ? "border-primary bg-primary text-primary-foreground" : "border-white/25 bg-black/60 text-white backdrop-blur-sm hover:bg-primary hover:border-primary")} aria-label={`Recreate ${reference.title}`} title={isSelected ? "Selected reference" : "Recreate this reference"}>
         {compact && isSelected ? <Check className="size-5" strokeWidth={2} aria-hidden="true" /> : <RotateCcw className="size-5" strokeWidth={1.6} aria-hidden="true" />}
@@ -223,14 +225,15 @@ export function ReferenceSourceAction({ source, label, canOpen, overlay = false,
 }
 
 function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference; onPreview: () => void }) {
-  const videoRef = useCoverPlayback(reference.videoUrl ? reference.previewVideoUrl ?? reference.videoUrl : null, "button");
+  const [useOriginal, setUseOriginal] = useState(false);
+  const videoRef = useCoverPlayback(reference.videoUrl ? useOriginal ? reference.videoUrl : reference.previewVideoUrl ?? reference.videoUrl : null, "button", true);
   const [failed, setFailed] = useState(false);
   const playable = Boolean(reference.videoUrl);
 
   // A native video poster avoids a separate image that browser visual-search
   // overlays can turn into an external action. The button owns all card clicks.
   return <button type="button" aria-label={`Preview ${reference.title}`} title={`Preview ${reference.title}`} onClick={onPreview} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
-    {playable ? <video ref={videoRef} data-reference-preview-video aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} onError={() => setFailed(true)} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
+    {playable ? <video ref={videoRef} data-reference-preview-video aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} onPlaying={() => setFailed(false)} onError={() => { if (!useOriginal && reference.previewVideoUrl && reference.previewVideoUrl !== reference.videoUrl) setUseOriginal(true); else setFailed(true); }} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
     <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
     {failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : null}
     {reference.format === "slideshow" ? <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm"><Layers3 className="size-3" aria-hidden="true" />{reference.slides.length}</span> : null}
@@ -251,7 +254,7 @@ export function ReferencePreviewDialog({ initialSlide = 0, onOpenChange, open, r
           {slideshowReference && activeSlideData ? <div className="mx-auto max-w-[520px]"><img src={activeSlideData.url} width={activeSlideData.width} height={activeSlideData.height} alt={`${slideshowReference.title}, slide ${activeSlide + 1}`} className="mx-auto h-auto max-h-[62dvh] w-auto max-w-full rounded-2xl object-contain shadow-card" />
             <div className="mt-3 flex items-center justify-between gap-2"><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === 0} onClick={() => setActiveSlide((current) => current - 1)}><ArrowLeft data-icon="inline-start" aria-hidden="true" /> Previous</Button><span aria-live="polite" className="text-[11px] font-medium tabular-nums text-muted">{activeSlide + 1} / {slideshowReference.slides.length}</span><Button type="button" variant="outline" size="sm" className="rounded-full" disabled={activeSlide === slideshowReference.slides.length - 1} onClick={() => setActiveSlide((current) => current + 1)}>Next <ArrowRight data-icon="inline-end" aria-hidden="true" /></Button></div>
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{slideshowReference.slides.map((slide, index) => <button key={slide.id} type="button" onClick={() => setActiveSlide(index)} aria-label={`View slide ${index + 1}`} aria-current={activeSlide === index ? "step" : undefined} className={cn("w-11 shrink-0 overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus", activeSlide === index ? "border-primary ring-1 ring-primary/30" : "border-border")}><img alt="" src={slide.url} width={slide.width} height={slide.height} className="aspect-[4/5] w-full object-contain" /></button>)}</div>
-          </div> : <ReferenceVideoPlayer key={reference.id} title={reference.title} poster={reference.posterUrl} url={reference.previewVideoUrl ?? reference.videoUrl} />}
+          </div> : <ReferenceVideoPlayer key={reference.id} title={reference.title} poster={reference.posterUrl} url={reference.previewVideoUrl ?? reference.videoUrl} fallbackUrl={reference.videoUrl} />}
         </div>
       </> : null}
     </DialogContent>

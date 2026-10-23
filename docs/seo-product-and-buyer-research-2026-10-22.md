@@ -2,6 +2,8 @@
 
 Research date: 22 October 2026, IST.
 
+Later campaign update: the owner requested broader competitors beyond ReelFarm. `seo-competitor-priorities-2026-10-22.md` supersedes the comparison ordering below: Revid and Postjet lead, with UGCPoster/AITuber for focused tasks. Current Search Console actions and the new baseline are in `seo-search-console-actions-2026-10-22.md`; the earlier statement that fresh reporting was unavailable is historical. Manual listing materials are in `seo-manual-distribution-pack-2026-10-22.md`.
+
 Audience decision: the owner selected **SaaS and mobile-app founders** in this conversation. This is the first campaign's audience, not a claim that other businesses cannot use the product. English-language research was used; geography has not been confirmed.
 
 This document revises the earlier generic campaign recommendation. It records product evidence, competitive overlap, buyer questions, content priorities and publication requirements. It does not claim measured search volume, first-hand competitor testing, a new Search Console baseline or current production acceptance of authenticated workflows. No paid generation, publishing, account changes or site changes were made for this research.

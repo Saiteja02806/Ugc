@@ -273,7 +273,7 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
   async function generate() {
     if (disabled || !active.current || submittingRef.current) return;
     submittingRef.current = true;
-    setSubmittedPreview({ aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null, quantity: draft.settings.quantity });
+    setSubmittedPreview({ aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.startingFrame?.url ?? (draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null), quantity: draft.settings.quantity });
     setSubmitting(true);
     setActionError(null);
     setNotice(null);
@@ -306,7 +306,7 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
   }).length;
   const pendingCount = busy ? submitting ? submittedPreview?.quantity ?? draft.settings.quantity : Math.max(1, unfinishedCount) : 0;
   const pendingPreview = {
-    ...(submittedPreview ?? { aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null }),
+    ...(submittedPreview ?? { aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.startingFrame?.url ?? (draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null) }),
     label: submitting ? "Preparing your video" : recovering ? "Checking your saved video" : jobs.some(job => !terminal.has(job.status)) ? "Creating your video" : "Loading your video",
   };
   return children({ busy, disabled, message, error: actionError ?? statusError, notice, results, selected, pendingCount, pendingPreview,

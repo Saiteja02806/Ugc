@@ -43,7 +43,7 @@
 .library { display: flex; flex-direction: column; gap: 16px; min-height: 0; padding: 22px 24px 0; }
 .libraryHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .tabs { display: flex; flex-direction: column; gap: 14px; min-height: 0; flex: 1; }
-.sourceTabs { display: flex; flex: none; gap: 8px; }
+.sourceTabs { display: flex; flex: none; flex-wrap: wrap; gap: 8px; }
 .libraryPanel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px 3px 24px; }
 .libraryPanel > p { margin-bottom: 12px; }
 .libraryPanel[hidden] { display: none; }

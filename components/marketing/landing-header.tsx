@@ -1,12 +1,11 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import landingLogo from "@/app/logo.png";
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
+import { LandingLogo } from "@/components/marketing/landing-logo";
 
 type NavItem = {
   label: string;
@@ -59,12 +58,9 @@ export function LandingHeader({
           className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="UGC Pilot home"
         >
-          <Image
-            src={landingLogo}
-            alt=""
+          <LandingLogo
             sizes={isScrolled ? "32px" : "36px"}
-            priority
-            className={`rounded-md object-contain transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
+            className={`transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
               isScrolled ? "size-8" : "size-9"
             }`}
           />

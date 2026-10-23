@@ -55,3 +55,16 @@ test("both slideshow models edit with all selected references and the complete b
     } finally { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous; }
   }
 });
+
+test("named slide inputs keep source 4 first and the screenshot bytes paired with its upload name", async () => {
+  process.env.OPENAI_API_KEY = "test-fixture-only";
+  const references = ["https://owned.test/source-4.png", "https://owned.test/screenshot.png"];
+  await generateOpenAiImageBuffer("Only change this laptop screen", "4:5", references, SLIDESHOW_IMAGE_MODEL, true, ["Source slide 4 (source)", "Upload C (screenshot)"]);
+  const files = requests.at(-1).request.image;
+  assert.deepEqual(files.map(file => file.buffer.toString()), references);
+  assert.match(files[0].name, /^image-1-Source-slide-4-source/);
+  assert.match(files[1].name, /^image-2-Upload-C-screenshot/);
+  const before = requests.length;
+  await assert.rejects(generateOpenAiImageBuffer("Invalid names", "4:5", references, SLIDESHOW_IMAGE_MODEL, true, ["only one name"]), /names/);
+  assert.equal(requests.length, before);
+});

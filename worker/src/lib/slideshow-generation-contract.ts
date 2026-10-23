@@ -1,9 +1,11 @@
+import { parseSlideshowOutputPlan, slideshowOutputPlanPrompt, type SlideshowOutputPlan } from "./slideshow-output-plan.ts";
 /** Versioned roles/prompt policy keep already-admitted provider retries stable. */
 export type SlideshowReferenceContract = {
-  version: 2 | 3;
+  version: 2 | 3 | 4;
   styleReferenceIndices: number[];
   attachmentReferenceIndices: number[];
   regenerationReferenceIndex?: number;
+  plan?: SlideshowOutputPlan;
 };
 
 export function parseSlideshowReferenceContract(value: unknown, referenceCount: number): SlideshowReferenceContract {
@@ -12,18 +14,27 @@ export function parseSlideshowReferenceContract(value: unknown, referenceCount: 
   const roles = value as Record<string, unknown>;
   const validIndex = (index: unknown): index is number => typeof index === "number" && Number.isInteger(index) && index >= 1 && index <= referenceCount;
   const validIndices = (indices: unknown): indices is number[] => Array.isArray(indices) && indices.every(validIndex);
-  if ((roles.version !== 2 && roles.version !== 3) || !validIndices(roles.styleReferenceIndices) || new Set(roles.styleReferenceIndices).size !== roles.styleReferenceIndices.length || !validIndices(roles.attachmentReferenceIndices) || (roles.regenerationReferenceIndex !== undefined && !validIndex(roles.regenerationReferenceIndex))) throw invalid();
+  if ((roles.version !== 2 && roles.version !== 3 && roles.version !== 4) || !validIndices(roles.styleReferenceIndices) || new Set(roles.styleReferenceIndices).size !== roles.styleReferenceIndices.length || !validIndices(roles.attachmentReferenceIndices) || (roles.regenerationReferenceIndex !== undefined && !validIndex(roles.regenerationReferenceIndex))) throw invalid();
   const covered = new Set([...roles.styleReferenceIndices, ...roles.attachmentReferenceIndices, ...(roles.regenerationReferenceIndex === undefined ? [] : [roles.regenerationReferenceIndex])]);
   if (covered.size !== referenceCount) throw invalid();
+  const plan = roles.version === 4 ? parseSlideshowOutputPlan(roles.plan, referenceCount) : undefined;
+  if (plan) {
+    const source = plan.images.filter(image => image.role === "source").map(image => image.imageIndex);
+    const uploads = plan.images.filter(image => image.role !== "source" && image.role !== "edit_base").map(image => image.imageIndex);
+    if (JSON.stringify(source) !== JSON.stringify(roles.styleReferenceIndices) || JSON.stringify(uploads) !== JSON.stringify(roles.attachmentReferenceIndices) ||
+      plan.images.find(image => image.role === "edit_base")?.imageIndex !== roles.regenerationReferenceIndex) throw invalid();
+  }
   return {
     version: roles.version,
     styleReferenceIndices: [...roles.styleReferenceIndices],
     attachmentReferenceIndices: [...roles.attachmentReferenceIndices],
     ...(roles.regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: roles.regenerationReferenceIndex }),
+    ...(plan ? { plan } : {}),
   };
 }
 
 export function slideshowGenerationPrompt(prompt: string, ratio: string, roles: SlideshowReferenceContract) {
+  if (roles.version === 4) return slideshowOutputPlanPrompt(roles.plan!, ratio);
   if (roles.version === 3) return referencePreservingPrompt(prompt, ratio, roles);
   const instructions = [`Generate one slideshow image composed directly for the ${ratio} aspect ratio. Keep the complete subject and important visual elements inside the canvas with comfortable margins.`];
   if (roles.styleReferenceIndices.length) {

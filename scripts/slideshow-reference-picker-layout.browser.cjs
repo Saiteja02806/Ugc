@@ -47,7 +47,7 @@ async function main() {
       assert.equal(await page.getByRole('button',{name:'Use all',exact:true}).count(),0);
       assert.equal(await page.getByRole('button',{name:'Choose images',exact:true}).count(),0);
       assert.equal(await page.getByText(/Creating slide|will guide the result|Pick one result/).count(),0);
-      const slideTwo=page.getByRole('button',{name:'Slide 2 as generation reference',exact:true});
+      const slideTwo=page.getByRole('button',{name:'Source slide 2 as generation reference',exact:true});
       await slideTwo.focus();await page.keyboard.press('Space');await page.getByText('2 selected',{exact:true}).waitFor();
       assert.equal(await slideTwo.getAttribute('aria-pressed'),'true');
       await slideTwo.click();await page.getByText('1 selected',{exact:true}).waitFor();

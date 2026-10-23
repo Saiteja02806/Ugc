@@ -1,5 +1,5 @@
-import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
-import { parseImageReferenceContext } from "./image-reference-context.js";
+import { ProviderRequestNotSubmittedError } from "./generation-provider.ts";
+import { parseImageReferenceContext } from "./image-reference-context.ts";
 
 export const MAX_REFERENCE_IMAGE_BYTES = 25 * 1024 * 1024;
 const MAX_REFERENCE_CONTEXT_BYTES = 50 * 1024 * 1024;

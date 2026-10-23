@@ -23,12 +23,12 @@ export const productExamples = {
     limits: "An outline is not a rendered carousel. Review the actual images produced by the workflow and its current export and publishing options. Do not imply improved learning outcomes or time savings without evidence.",
   },
   video: {
-    title: "Write a usable short-video brief",
-    introduction: "Illustrative prompt for a short opening: show curiosity about a product action, then demonstrate the real product in a separate edit. It is a direction to try, not a generated asset or promise of fidelity.",
-    input: "Three-second vertical smartphone close-up of an adult creator looking at a phone. 0–1s: focused gaze. 1–2s: one brow lifts and the head tilts slightly. 2–3s: hold a curious smile. Soft window light, consistent face, hands and phone. No baked-in words, dialogue, music or cuts.",
-    output: ["A short opening that can introduce a relevant viewer question.", "A separate real product recording showing the action the opening refers to.", "Exact headline text added in the editor, with captions if the final video contains speech."],
-    review: ["Check the current model's supported duration, format, references and credit estimate before submission.", "Watch the result for inconsistent hands, props, motion or unintended lettering.", "Review the full edited opening and demonstration together before publishing."],
-    limits: "AI footage can contain visual errors and is not evidence of a real testimonial or feature. Generating footage and finishing a product-demo edit are separate steps. Use the website editor or the connected client's supported finishing tools for demo composition and exact overlays; check current capabilities before requesting them.",
+    title: "Plan an AI UGC opening for a real app feature",
+    introduction: "An illustrative SaaS brief shows how to separate generated creator-style footage from a genuine product demonstration. Replace the bracketed details with a feature and claims you have verified.",
+    input: "Audience: people evaluating [type of SaaS or mobile app]. Their question: how do I [specific task]? Verified product fact: [what the app actually does]. Prompt: Vertical, natural-light creator-style opening. The creator looks at their phone, then looks up with a curious expression as if introducing a practical solution. Keep the phone screen out of view; do not invent interface details, text, dialogue, logos or product claims.",
+    output: ["Generate and review a short creator-style opening based on the prompt and the model's current capabilities.", "In a separate edit, attach a genuine screen recording that shows the verified app feature completing the task.", "Add an exact headline that states the user's question, then review the opening and real demonstration together."],
+    review: ["Check the model's current duration, format, reference support and credit estimate before generating.", "Inspect the result for visual errors, invented interface details or implied claims.", "Make sure the real recording proves the feature described and the final text is readable on a phone."],
+    limits: "This is a sample brief, not a generated video, customer result or performance claim. AI footage can contain visual errors and cannot prove how an app works. Use genuine product footage for the demonstration and verify every product statement before publishing.",
   },
   manager: {
     title: "Give one customer question a manageable weekly plan",

@@ -2,10 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
-import { ExternalLink, ImageIcon, Loader2, RefreshCw, Scan, UserRound } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImageIcon, Loader2, RefreshCw, Scan, UserRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
-import { CharacterHistory } from "@/components/characters/character-history";
+import { AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { mergeCharacterHistoryPages } from "@/lib/characters/history";
 import type { CharacterHistoryImage, CharacterHistoryPage } from "@/lib/characters/types";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { HookStartingImageReadError, startingImageStatusPolling } from "@/lib/explore/hook-starting-image-polling";
 import {
   createHookKeyframeDraft, hookKeyframeMaxPersonImages, hookKeyframeDraftStorageKey,
   readHookKeyframeDraft, serializeHookKeyframeDraft, updateHookKeyframeDraft, hookKeyframeInputKey,
@@ -25,55 +26,72 @@ import { fetchHookStartingFrame, hookSourceSha256 } from "@/lib/explore/hook-sta
 import { getHookKeyframeMotionReviewDraft } from "@/lib/explore/hook-keyframe-motion";
 import { getHookKeyframePromptPreview } from "@/lib/explore/hook-keyframe-prompt-preview";
 import { hookKeyframeCheckpointKey, readHookKeyframeCheckpoint, verifiedHookKeyframeJob,
-  type HookKeyframeJob, type HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
+  type HookKeyframeJob, type HookStartingFrameSelection, type HookKeyframeCheckpoint } from "@/lib/explore/hook-keyframe-client";
 import { createHookKeyframeVariationBatch, hookKeyframeVariationsKey, importHookKeyframeCheckpoint,
   readHookKeyframeVariations, selectHookKeyframeVariation, updateHookKeyframeVariation,
   type HookKeyframeVariationStore } from "@/lib/explore/hook-keyframe-variations";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
+import type { StartingFrameWorkflow } from "@/lib/explore/starting-frame-workflow";
 import styles from "./hook-starting-frame-workspace.module.css";
 
 /** Only development fixtures supply this adapter. Production uses owned APIs. */
 export type HookKeyframePreviewRuntime = {
+  generationDisabledReason?: string;
+  loadInfluencers?: (cursor: string | null, signal: AbortSignal) => Promise<CharacterHistoryPage>;
   outputPreviewUrl?: string;
   outputPreviewUrls?: Record<string, string>;
-  loadSource: (signal: AbortSignal) => ReturnType<typeof fetchHookStartingFrame>;
+  loadSource: (input: { reference: RecreateReference; scope: HookKeyframeScope; signal: AbortSignal }) => ReturnType<typeof fetchHookStartingFrame>;
   resolvePhoto: (id: string, signal: AbortSignal) => Promise<AIStudioReferenceMedia["asset"]>;
   read: (query: string, signal?: AbortSignal) => Promise<Record<string, unknown>>;
   submit: (body: Record<string, unknown>) => Promise<{ ok: boolean; status: number; value: Record<string, unknown> }>;
 };
 /** Admission remains behind the server release gate; opening never submits inference. */
-export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClose, onUseStartingFrame, previewRuntime }: {
+export function HookStartingFrameWorkspace({ reference, ownerId, draftId, onClose, onUseStartingFrame, previewRuntime, presentation = "dialog", preparationFormat = "hook" }: {
   reference: RecreateReference; ownerId: string | null; draftId: string; onClose: () => void;
   onUseStartingFrame?: (selection: HookStartingFrameSelection) => void;
   previewRuntime?: HookKeyframePreviewRuntime;
+  presentation?: "dialog" | "workspace" | "recreation";
+  preparationFormat?: StartingFrameWorkflow;
 }) {
-  const sourceSha256 = hookSourceSha256(reference.videoUrl);
+  const sourceSha256 = hookSourceSha256(reference.videoUrl) ?? (/^[a-f0-9]{64}$/.test(reference.sourceSha256 ?? "") ? reference.sourceSha256! : null);
   const scope = useMemo(() => ownerId && sourceSha256 ? { ownerId, draftId, referenceId: reference.id, sourceSha256 } : null,
     [ownerId, draftId, reference.id, sourceSha256]);
-  if (!ownerId) return <PreparationDialog onClose={onClose}><p className="p-6" role="status">Sign in to choose your influencer and prepare a starting image.</p></PreparationDialog>;
-  if (!sourceSha256) return <PreparationDialog onClose={onClose}><p className="p-6" role="alert">Choose an available Hook reference to prepare its opening frame.</p></PreparationDialog>;
+  if (!ownerId) return <PreparationDialog onClose={onClose} presentation={presentation}><p className="p-6" role="status">Sign in to choose your influencer and prepare a starting image.</p></PreparationDialog>;
+  if (!sourceSha256) return <PreparationDialog onClose={onClose} presentation={presentation}><p className="p-6" role="alert">Choose an available Hook reference to prepare its opening frame.</p></PreparationDialog>;
   return <OwnedPreparation key={`${ownerId}:${draftId}:${reference.id}:${sourceSha256}`} reference={reference}
-    scope={scope!} onClose={onClose} onUseStartingFrame={onUseStartingFrame}
+    scope={scope!} onClose={onClose} onUseStartingFrame={onUseStartingFrame} presentation={presentation} preparationFormat={preparationFormat}
     previewRuntime={process.env.NODE_ENV === "development" ? previewRuntime : undefined} />;
 }
 
-function PreparationDialog({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function PreparationDialog({ children, footer, onClose, presentation = "dialog" }: { children: React.ReactNode; footer?: React.ReactNode; onClose: () => void; presentation?: "dialog" | "workspace" | "recreation" }) {
   const title = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => { if (presentation === "workspace") title.current?.focus({ preventScroll: true }); }, [presentation]);
+  if (presentation === "workspace") return <section className={styles.workspace} aria-label="Create your starting frame">
+    <header className={styles.workspaceHeader}>
+      <Button type="button" variant="ghost" size="sm" onClick={onClose}><ArrowLeft aria-hidden="true" />Back to references</Button>
+      <h2 ref={title} tabIndex={-1} className={styles.title}>Create your starting frame</h2>
+      <p>Keep the scene. Choose your person. Review the image before making a video.</p>
+    </header>
+    {children}
+  </section>;
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
-    <DialogContent className={styles.dialog} initialFocus={title}>
+    <DialogContent className={`${styles.dialog} ${presentation === "recreation" ? styles.recreationDialog : ""}`} initialFocus={title}>
       <header className={styles.header}>
         <DialogTitle ref={title} tabIndex={-1} className={styles.title}>Create your starting frame</DialogTitle>
         <DialogDescription>Keep the scene. Choose your person. Review the image before making a video.</DialogDescription>
       </header>
-      {children}
+      {presentation === "recreation" ? <div className={styles.recreationContent} data-recreation-scroll>{children}</div> : children}
+      {footer}
     </DialogContent>
   </Dialog>;
 }
 
-function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previewRuntime }: {
+function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previewRuntime, presentation, preparationFormat }: {
   reference: RecreateReference; scope: HookKeyframeScope; onClose: () => void;
   onUseStartingFrame?: (selection: HookStartingFrameSelection) => void;
   previewRuntime?: HookKeyframePreviewRuntime;
+  presentation?: "dialog" | "workspace" | "recreation";
+  preparationFormat: StartingFrameWorkflow;
 }) {
   const [draft, setDraft] = useState<HookKeyframeDraft>(() => createHookKeyframeDraft(scope));
   const [images, setImages] = useState<AIStudioReferenceMedia[]>([]);
@@ -83,7 +101,6 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const [storageError, setStorageError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [choosingInfluencer, setChoosingInfluencer] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [variations, setVariations] = useState<HookKeyframeVariationStore | null>(null);
   const [variationCount, setVariationCount] = useState(1);
@@ -105,10 +122,13 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const motionDraft = getHookKeyframeMotionReviewDraft(scope.referenceId, scope.sourceSha256);
   const frameQuery = useQuery({
     queryKey: ["hook-opening-frame", scope.ownerId, scope.referenceId, scope.sourceSha256],
-    queryFn: ({ signal }) => previewRuntime ? previewRuntime.loadSource(signal) : fetchHookStartingFrame({ ...scope, signal }), retry: false,
+    queryFn: ({ signal }) => previewRuntime ? previewRuntime.loadSource({ reference, scope, signal }) : fetchHookStartingFrame({ ...scope, signal }), retry: false,
     staleTime: 5 * 60_000, gcTime: 5 * 60_000,
   });
-  const costQuery = useQuery({ queryKey: ["hook-starting-image-cost", scope.ownerId, draft.imageModel], enabled: restored, retry: false, staleTime: 60_000,
+  const incompatibleAnimationShape = preparationFormat !== "hook" && frameQuery.data &&
+    frameQuery.data.frame.width * 16 !== frameQuery.data.frame.height * 9 && frameQuery.data.frame.width * 9 !== frameQuery.data.frame.height * 16;
+  const generationDisabledReason = previewRuntime?.generationDisabledReason ?? (incompatibleAnimationShape ? "This reference has a shape that cannot be animated without cropping. Choose a 9:16 or 16:9 reference before generating an image." : undefined);
+  const costQuery = useQuery({ queryKey: ["hook-starting-image-cost", scope.ownerId, draft.imageModel], enabled: restored && !generationDisabledReason, retry: false, staleTime: 60_000,
     queryFn: ({ signal }) => keyframeRead(`?cost=1&model=${draft.imageModel}`, signal).then(body => {
       if (typeof body.creditCost !== "number" || !Number.isFinite(body.creditCost) || body.creditCost <= 0 || body.model !== draft.imageModel) throw new Error("The starting-image price could not be verified.");
       return body.creditCost as number;
@@ -116,11 +136,11 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const readableEntries = variations?.entries.filter(entry => entry.state !== "planned" && entry.state !== "rejected") ?? [];
   const imageJobQueries = useQueries({ queries: readableEntries.map(({ checkpoint }) => ({
     queryKey: ["hook-starting-image-job", scope.ownerId, scope.draftId, checkpoint.requestKey, checkpoint.jobId],
-    enabled: checkpointRestored, retry: false,
+    enabled: checkpointRestored, ...startingImageStatusPolling,
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
       const body = await keyframeRead(checkpoint.jobId ? `?jobId=${encodeURIComponent(checkpoint.jobId)}` : `?requestKey=${encodeURIComponent(checkpoint.requestKey)}`, signal);
       return verifiedHookKeyframeJob(body.job, checkpoint);
-    }, refetchInterval: (query: { state: { error: unknown; data?: HookKeyframeJob } }) => query.state.error || query.state.data?.isTerminal ? false : 3_000,
+    },
   })) });
   const selectedEntry = variations?.entries.find(entry => entry.checkpoint.requestKey === variations.selectedRequestKey) ?? readableEntries.at(-1) ?? null;
   const checkpoint = selectedEntry?.checkpoint ?? null;
@@ -155,9 +175,15 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   useEffect(() => {
     const body = scrollBody.current, section = generatedSection.current;
     if (completedImageAssetId && body && section) {
-      body.scrollTo({ top: body.scrollTop + section.getBoundingClientRect().top - body.getBoundingClientRect().top, behavior: "instant" });
+      const scroller = presentation === "recreation" ? body.closest<HTMLElement>("[data-recreation-scroll]") ?? body : presentation === "workspace" ? body.closest<HTMLElement>("[data-starting-frame-stage]") ?? body : body;
+      const viewport = scroller.getBoundingClientRect(), result = section.getBoundingClientRect();
+      const actions = presentation === "workspace" ? body.querySelector<HTMLElement>('[aria-label="Starting image actions"]')?.getBoundingClientRect() : null;
+      const visibleBottom = actions && actions.top > viewport.top && actions.top < viewport.bottom ? actions.top : viewport.bottom;
+      if (result.top < viewport.top || result.bottom > visibleBottom) {
+        scroller.scrollTo({ top: scroller.scrollTop + result.top - viewport.top - 12, behavior: "instant" });
+      }
     }
-  }, [completedImageAssetId]);
+  }, [completedImageAssetId, presentation]);
   async function keyframeRead(query: string, signal?: AbortSignal) {
     if (previewRuntime) return previewRuntime.read(query, signal);
     return withReadDeadline(async bounded => {
@@ -165,15 +191,17 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       bounded.throwIfAborted();
       if (!token) throw new Error("Sign in to access this starting-image request.");
       const response = await fetch(`/api/explore/hook-keyframe${query}`, { cache: "no-store", signal: bounded, headers: { Authorization: `Bearer ${token}` } });
-      const body = await response.json();
-      if (!response.ok || !body.ok) throw new Error(body.message || "The image request could not be confirmed. Check its status before submitting anything else.");
+      const body = await response.json().catch(cause => { if (!response.ok) return null; throw cause; });
+      if (!response.ok || !body?.ok) throw new HookStartingImageReadError(body?.message || "The image request could not be confirmed. Check its status before submitting anything else.", response.ok ? 0 : response.status);
       return body;
     }, signal);
   }
   const history = useInfiniteQuery({
-    queryKey: ["hook-influencer-history", scope.ownerId], enabled: historyOpen, retry: false,
+    queryKey: ["hook-influencer-history", scope.ownerId], enabled: restored, retry: false,
+    staleTime: 60_000, gcTime: 5 * 60_000,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => withReadDeadline(async bounded => {
+      if (previewRuntime?.loadInfluencers) return previewRuntime.loadInfluencers(pageParam, bounded);
       const token = await getCurrentUserIdToken(scope.ownerId);
       bounded.throwIfAborted();
       if (!token) throw new Error("Sign in to choose your saved influencer.");
@@ -261,7 +289,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     setImages(next); setDraft(current => updateHookKeyframeDraft(current, { imageAssetIds: next.map(image => image.asset.id) })); setSaved(false);
   }
   async function selectInfluencer(image: CharacterHistoryImage) {
-    if (!restored || pending || choosingInfluencer) return;
+    if (!restored || pending || choosingInfluencer) return false;
+    if (images[0]?.asset.id === image.mediaAssetId) return true;
     const request = ++revision.current;
     const controller = new AbortController();
     influencerRequest.current?.abort();
@@ -269,12 +298,13 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     setChoosingInfluencer(true); setError(null);
     try {
       const asset = await withReadDeadline(async signal => {
+        if (previewRuntime) return previewRuntime.resolvePhoto(image.mediaAssetId, signal);
         const token = await getCurrentUserIdToken(scope.ownerId);
         signal.throwIfAborted();
         if (!token) throw new Error("Sign in to use your saved influencer.");
         return fetchAIStudioMediaAsset(image.mediaAssetId, token, { signal });
       }, controller.signal);
-      if (request !== revision.current) return;
+      if (request !== revision.current) return false;
       if (asset.status !== "ready" || (asset.collection !== "image" && asset.collection !== "influencer") || asset.sourceType !== "generated_image" ||
         !["image/png", "image/jpeg", "image/webp"].includes(asset.mimeType) || asset.id !== image.mediaAssetId) {
         throw new Error("This influencer image is no longer available. Choose another image.");
@@ -283,8 +313,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       // inherit supporting photos belonging to the previous person.
       setImages([{ kind: "image", asset }]);
       setDraft(current => updateHookKeyframeDraft(current, { imageAssetIds: [asset.id] }));
-      setSaved(false); setHistoryOpen(false);
-    } catch (cause) { if (request === revision.current) setError(cause instanceof Error ? cause.message : "This influencer could not be selected."); }
+      setSaved(false); return true;
+    } catch (cause) { if (request === revision.current) setError(cause instanceof Error ? cause.message : "This influencer could not be selected."); return false; }
     finally {
       if (influencerRequest.current === controller) influencerRequest.current = null;
       if (request === revision.current) setChoosingInfluencer(false);
@@ -295,6 +325,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     catch { setStorageError("Your choices could not be saved in this browser. Keep this screen open while you continue."); }
   }
   async function generateStartingImage() {
+    if (generationDisabledReason) return;
     if (!ready || !checkpointRestored || generationLock.current || costQuery.data === undefined || creatingImage) return;
     if (!navigator.locks) { setGenerationError("Use a browser with Web Locks support to submit images safely."); return; }
     generationLock.current = true; setSubmittingImage(true); setGenerationError(null);
@@ -362,15 +393,16 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       });
     } catch { if (mounted.current) setGenerationError("This variation could not be selected. Reopen the preparation to recover your images."); }
   }
-  function selectStartingFrame(job: HookKeyframeJob) {
-    if (!checkpoint || checkpoint.inputKey !== currentInput.current || !job.output || !onUseStartingFrame || promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim()) return;
-    const verified = verifiedHookKeyframeJob(job, checkpoint);
+  function selectStartingFrame(job: HookKeyframeJob, target: HookKeyframeCheckpoint | null = checkpoint) {
+    if (!target || target.inputKey !== currentInput.current || !job.output || !onUseStartingFrame || promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim()) return;
+    const verified = verifiedHookKeyframeJob(job, target);
     if (!verified.output) return;
-    const approved = approveHookKeyframeImage(recordHookKeyframeImage(preparedDraft, { assetId: verified.output.mediaAssetId, inputKey: checkpoint.inputKey, promptVersion: verified.receipt.promptVersion ?? 1 }));
+    const approved = approveHookKeyframeImage(recordHookKeyframeImage(preparedDraft, { assetId: verified.output.mediaAssetId, inputKey: target.inputKey, promptVersion: verified.receipt.promptVersion ?? 1 }));
     try { localStorage.setItem(key, serializeHookKeyframeDraft(approved)); }
     catch { setStorageError("Save this preparation before using the starting frame."); return; }
     setDraft(approved);
-    onUseStartingFrame({ ...scope, assetId: verified.output.mediaAssetId, jobId: verified.id, url: verified.output.url,
+    onUseStartingFrame({ ...scope, assetId: verified.output.mediaAssetId, jobId: verified.id,
+      url: previewRuntime?.outputPreviewUrls?.[verified.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? verified.output.url,
       width: verified.output.width, height: verified.output.height, durationSeconds: promptPreview.durationSeconds === 8 ? 8 : 4,
       motionInstructions: promptPreview.directions, generateAudio: preparedDraft.generateAudio });
   }
@@ -379,14 +411,28 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const maxPersonImages = hookKeyframeMaxPersonImages(draft.imageModel);
   const tooManyImages = images.length > maxPersonImages;
   const ready = restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
-  const promptPreview = getHookKeyframePromptPreview(preparedDraft);
+  const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat);
   const imageJob = checkpoint && imageJobQuery?.data ? imageJobQuery.data : null;
   const matchingImage = Boolean(checkpoint && checkpoint.inputKey === currentInputKey);
   const creatingImage = readableEntries.some((entry, index) => (entry.state === "submitting" || entry.state === "accepted") && !imageJobQueries[index]?.data?.isTerminal);
   const historyImages = mergeCharacterHistoryPages(history.data?.pages ?? []);
   const frameStyle = { "--frame-ratio": frameQuery.data ? frameQuery.data.frame.width / frameQuery.data.frame.height : 9 / 16 } as CSSProperties;
   const resultStyle = { "--frame-ratio": imageJob?.output ? imageJob.output.width / imageJob.output.height : 9 / 16 } as CSSProperties;
-  return <PreparationDialog onClose={() => {
+  const selectedIndex = readableEntries.findIndex(entry => entry.checkpoint.requestKey === checkpoint?.requestKey);
+  const cannotUseFrame = !imageJob?.output || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
+  const cannotGenerate = Boolean(generationDisabledReason) || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
+  const generateLabel = submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image";
+  return <PreparationDialog presentation={presentation} footer={presentation === "recreation" ? <footer className={styles.approvalFooter} aria-label="Starting frame approval">
+    <div className={styles.approvalSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Choose your starting frame"}</strong>
+      <span>{imageJob?.output && !matchingImage ? "Inputs changed. Generate a new frame to use them." : promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? "Motion needs review before this image can be used." : imageJob?.output ? "Check the face, pose and scene before continuing." : creatingImage ? "Your images are generating. You can review them here." : "Generate an image, then select it to continue."}</span>
+    </div>
+    <div className={styles.footerActions}>
+      <div className={styles.footerGenerate}>{!generationDisabledReason ? <span>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking price…"}</span> : null}
+        <Button type="button" variant={readableEntries.length ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{readableEntries.length && !submittingImage ? `Generate ${variationCount > 1 ? `${variationCount} more images` : "another image"}` : generateLabel}</Button>
+      </div>
+      <Button type="button" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use selected frame</Button>
+    </div>
+  </footer> : undefined} onClose={() => {
     mounted.current = false;
     revision.current += 1;
     influencerRequest.current?.abort();
@@ -409,7 +455,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         {motionDraft?.requiresDecision && motionDraft.riskFlags.includes("no_person_in_opening_frame") ? <p className={styles.notice} role="status">This reference opens before the performer appears. Its starting image and reveal need review before it can be animated.</p> : null}
         {motionDraft?.requiresDecision && motionDraft.riskFlags.some(flag => flag === "jump_cut" || flag === "multiple_takes") ? <p className={styles.notice} role="status">This reference contains a cut. Its action sequence needs review for animation from one image.</p> : null}
       </section>
-      {checkpoint ? <section ref={generatedSection} className={styles.generated} style={resultStyle} aria-label="Generated starting image">
+      {checkpoint && presentation !== "recreation" ? <section ref={generatedSection} className={styles.generated} style={resultStyle} aria-label="Generated starting image">
         <div className={styles.sectionHeading}><div><h2>Your starting image</h2><p>{previewRuntime ? "Sample result · layout only" : "Compare with the source"}</p></div></div>
         {imageJob?.output ? <><div className={styles.frame} style={resultStyle}><button type="button" className={styles.enlargeButton} aria-label="Enlarge generated starting image" title="Enlarge generated starting image"
           onClick={event => { if (!imageJob.output) return; previewTrigger.current = event.currentTarget;
@@ -444,14 +490,16 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       <section className={styles.person} aria-label="Face reference">
         <div className={styles.sectionHeading}><div><h2>Face reference</h2><p>Choose whose face to use.</p></div><UserRound aria-hidden="true" /></div>
         {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); setRestoreError(null); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
-        <Button type="button" variant="outline" disabled={busy || Boolean(previewRuntime)} onClick={() => { setHistoryOpen(true); void history.refetch(); }}>Choose saved influencer</Button>
-        <div className={styles.photos}>
-          <FormatGenerationReferences selection={null} imageSelections={images} imagePurpose="person" imagePresentation="person-strip" heading="Person photos"
+        <div className={styles.photos} data-unified-face-picker data-selected-face-photos={images.length}>
+          <FormatGenerationReferences selection={null} imageSelections={images} imagePurpose="person" heading="Person photos"
+            influencerLibrary={{ images: historyImages, loading: history.isPending, error: history.error, selectionError: error,
+              onRetry: () => void history.refetch(), hasMore: history.hasNextPage, loadingMore: history.isFetchingNextPage,
+              onLoadMore: () => void history.fetchNextPage(), onSelect: selectInfluencer }}
             maxImages={maxPersonImages} ownerId={scope.ownerId} preview={Boolean(previewRuntime)}
             disabled={busy} videoInputEnabled={false} audioInputEnabled={false}
             onChange={selection => changeImages(selection?.kind === "image" ? [...images.filter(image => image.asset.id !== selection.asset.id), selection] : [])}
             onImagesChange={changeImages} onPendingChange={setPending} onErrorChange={setError} />
-          <p>One clear main photo. Left and right views are optional.</p>
+          <p>Use one clear face photo. Extra views are optional.</p>
         </div>
         {tooManyImages ? <p className={styles.notice} role="alert">To generate a new image, Gemini 3.1 Flash supports up to {maxPersonImages} person photos. Remove an extra photo or choose Gemini 3 Pro.</p> : null}
         <a href="/explore/build-character" target="_blank" rel="noopener noreferrer" className={styles.builder}>Create a new influencer <ExternalLink aria-hidden="true" /><span className="sr-only"> in a new tab; your preparation stays here</span></a>
@@ -464,39 +512,67 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         </details>
         {error ? <p role="alert" className="text-destructive">{error}</p> : null}
       </section>
+      </div>
       <section className={styles.actions} aria-label="Starting image actions">
+        {presentation === "recreation" ? <h2 className={styles.settingsHeading}>Generation settings</h2> : null}
+        {preparationFormat === "talking_head" ? <p className={styles.notice}>After choosing an image, review your own spoken script and Sound setting. Your Demo stays separate.</p> : preparationFormat === "wall_text" ? <p className={styles.notice}>Create the background image here. Add and style your editable overlay text in Edit after generating the video.</p> : null}
         <div className={styles.actionMeta}>
           <div className={styles.generationChoices}>
-          <select className={styles.modelChoice} name="starting-image-model" aria-label="Starting image model" title="Change image model"
-            value={draft.imageModel} disabled={busy || creatingImage} onChange={event => {
-              setDraft(current => updateHookKeyframeDraft(current, { imageModel: event.target.value as HookKeyframeImageModel })); setSaved(false);
-            }}>
-            <option value="gemini_3_pro">Gemini 3 Pro</option><option value="nano_banana_2">Gemini 3.1 Flash</option>
-          </select>
-          <label className={styles.variationCount}>Images<select aria-label="Number of starting images" value={variationCount} disabled={busy || creatingImage} onChange={event => setVariationCount(Number(event.target.value))}>
+          <div className={styles.modelField}>{presentation === "recreation" ? <span>Image model</span> : null}<AiStudioSettingSelect ariaLabel="Starting image model" className={styles.modelChoice} size="sm"
+            value={draft.imageModel} disabled={busy || creatingImage} onChange={(value: HookKeyframeImageModel) => {
+              setDraft(current => updateHookKeyframeDraft(current, { imageModel: value })); setSaved(false);
+            }} options={[{ value: "gemini_3_pro", label: "Gemini 3 Pro" }, { value: "nano_banana_2", label: "Gemini 3.1 Flash" }]} /></div>
+          <label className={styles.variationCount}>Variations<select name="starting-image-count" aria-label="Number of starting frame variations" value={variationCount} disabled={busy || creatingImage} onChange={event => setVariationCount(Number(event.target.value))}>
             {[1, 2, 3, 4].map(count => <option key={count} value={count}>{count}</option>)}
           </select></label></div>
-          <p className={styles.price}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking image price…"}<span>{costQuery.data !== undefined ? `${costQuery.data} per image` : ""}</span></p>
+          {!generationDisabledReason ? <p className={styles.price}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking image price…"}<span>{costQuery.data !== undefined ? `${costQuery.data} per image` : ""}</span></p> : null}
         </div>
+        {promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? <p className={styles.notice} role="status">Image generation uses credits. This reference’s motion still needs review, so its image cannot currently be used to generate a video. Choose another reference to continue to animation.</p> : null}
+        {generationDisabledReason ? <p className={styles.notice} role="status">{generationDisabledReason}</p> : null}
         {costQuery.error ? <p role="alert">{costQuery.error.message}</p> : null}
         {generationError ? <p role="alert" className="text-destructive">{generationError}</p> : null}
         {variations?.entries.some(entry => entry.state === "planned" || entry.state === "rejected") && !submittingImage ? <p className={styles.variationProgress} role="status">Some images were not submitted or were rejected. Accepted requests are preserved; remaining images will not retry automatically.</p> : null}
-        {readableEntries.length >= 8 ? <p className={styles.variationProgress}>Up to 12 recent images stay in this chooser. Older completed images remain in your image library.</p> : null}
         {storageError ? <p role="alert" className="text-destructive">{storageError}</p> : saved ? <p role="status">Preparation saved on this browser.</p> : null}
-      <div className={styles.actionButtons}>{!imageJob?.output ? <Button type="button" variant="ghost" disabled={!ready} onClick={savePreparation}>Save preparation</Button> : null}
-        <Button type="button" variant={imageJob?.output ? "outline" : "default"} disabled={!ready || !checkpointRestored || creatingImage || costQuery.data === undefined} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
-        </div>
+      {presentation !== "recreation" ? <div className={styles.actionButtons}>{presentation === "dialog" && !imageJob?.output ? <Button type="button" variant="ghost" disabled={!ready} onClick={savePreparation}>Save preparation</Button> : null}
+        <Button type="button" variant={imageJob?.output ? "outline" : "default"} disabled={Boolean(generationDisabledReason) || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
+        </div> : null}
       </section>
-      </div>
     </div>
-    <CharacterHistory open={historyOpen} onOpenChange={setHistoryOpen} images={historyImages}
-      selectedJobId={null} onSelect={image => void selectInfluencer(image)} loading={history.isPending} error={history.error}
-      onRetry={() => void history.refetch()} hasMore={history.hasNextPage} loadingMore={history.isFetchingNextPage}
-      onLoadMore={() => void history.fetchNextPage()} signedIn busy={pending || choosingInfluencer} />
+    {presentation === "recreation" && readableEntries.length ? <section ref={generatedSection} className={styles.generatedGallery} aria-label="Generated starting frames">
+      <div className={styles.galleryHeading}><h3>Your starting frames</h3><p>Select an image below. Use the enlarge button to inspect details.</p></div>
+      <div className={styles.generatedGrid} data-variation-count={readableEntries.length}>
+        {readableEntries.map((entry, index) => {
+          const job = imageJobQueries[index]?.data;
+          const output = job?.output;
+          const matches = entry.checkpoint.inputKey === currentInputKey;
+          const selected = entry.checkpoint.requestKey === checkpoint?.requestKey;
+          return <article key={entry.checkpoint.requestKey} className={styles.generatedCard} data-selected={selected}>
+            {output ? <><button type="button" className={styles.resultPreview} aria-label={`Select variation ${index + 1}`} aria-pressed={selected}
+              disabled={submittingImage} onClick={() => void chooseVariation(entry.checkpoint.requestKey)}
+              style={{ "--frame-ratio": output.width / output.height } as CSSProperties}>
+              <img src={previewRuntime?.outputPreviewUrls?.[output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? output.url}
+                alt={`Starting frame variation ${index + 1}`} width={output.width} height={output.height} />
+              <span className={styles.selectionBadge}>{selected ? "Selected" : `Variation ${index + 1}`}</span>
+            </button><button type="button" className={styles.enlargeResult} aria-label={`Enlarge variation ${index + 1}`}
+              style={{ "--frame-ratio": output.width / output.height } as CSSProperties}
+              onClick={event => { previewTrigger.current = event.currentTarget; setEnlargedImage({
+                url: previewRuntime?.outputPreviewUrls?.[output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? output.url,
+                title: `Variation ${index + 1}`, alt: `Starting frame variation ${index + 1}`, width: output.width, height: output.height }); }}>
+              <Scan aria-hidden="true" /><span>Enlarge</span>
+            </button></> : <div className={styles.resultPlaceholder} role="status">{imageJobQueries[index]?.error ? "Could not check this image. Your request is saved."
+              : job?.isTerminal ? job.error || "Image unavailable" : "Generating…"}</div>}
+            {!matches && output ? <p className={styles.variationProgress}>Inputs changed. Generate a new frame to use these changes.</p> : null}
+          </article>;
+        })}
+      </div>
+      {creatingImage || imageJobQueries.some(query => query.error) ? <Button type="button" variant="ghost" size="sm"
+        disabled={submittingImage || imageJobQueries.some(query => query.isFetching)} onClick={() => void Promise.all(imageJobQueries.map(query => query.refetch()))}>Check image status</Button> : null}
+      {promptPreview.requiresDecision || promptPreview.animationError ? <p className={styles.notice} role="status">This Hook’s motion instructions need review before animation.</p> : null}
+    </section> : null}
     <Dialog open={Boolean(enlargedImage)} onOpenChange={open => { if (!open) setEnlargedImage(null); }}>
       <DialogContent className={styles.zoomDialog} finalFocus={previewTrigger}>
         <div className={styles.zoomHeader}><DialogTitle>{enlargedImage?.title ?? "Image preview"}</DialogTitle>
-          <DialogDescription>{previewRuntime ? "Sample image · layout demonstration" : "Inspect the face and scene before choosing your starting frame."}</DialogDescription></div>
+          <DialogDescription>{previewRuntime && !generationDisabledReason ? "Sample image · layout demonstration" : "Inspect the face and scene before choosing your starting frame."}</DialogDescription></div>
         {enlargedImage ? <img className={styles.zoomImage} src={enlargedImage.url} alt={enlargedImage.alt} width={enlargedImage.width} height={enlargedImage.height} /> : null}
       </DialogContent>
     </Dialog>

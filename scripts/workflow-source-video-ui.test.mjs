@@ -97,6 +97,10 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     const generationRun = { selected: asset, results: [], busy: false, error: null, onGenerate() {} };
     const finishing = { options: {}, setOptions() {}, output: null, pendingComposition: null, captions: { transcript: null }, music: { source: null, playback: "repeat", selectionError: null }, edit: { busy: false }, schedule: { busy: false } };
     const imports = {
+      "next/dynamic": { default: () => "starting-frame-preparation" },
+      "next/image": { default: "image" },
+      "./use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, ready: true, error: null, setFrame() {}, retry() {} }) },
+      "@/worker/src/lib/hook-starting-frame-video": { isHookStartingFrameVideoModel: () => true, hookStartingFrameVideoDurations: () => [4, 8] },
       "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
       react: rt.react, "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", Panel: "tabs-panel" } }, "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" }, "next/link": { default: "link" },
       "@/components/ui/button": { Button: "button" },
@@ -158,9 +162,10 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       generationRun.selected = asset;
       viewButton("Your videos").props.onClick(); tree = render();
       assert.equal(nodes(tree).filter(n => n.type === "edit-workspace").length, 1);
-      viewButton("Generated videos").props.onClick(); tree = render();
+      assert.equal(viewButton("Generated videos"), undefined);
+      nodes(tree).find(n => n.type === "preview-canvas").props.generation.onGenerate();
+      generationRun.busy = true; tree = render();
       assert.equal(visible(nodes(tree).find(n => n.type === "preview-canvas")), true);
-      generationRun.busy = true;
       viewButton("Your videos").props.onClick(); tree = render();
       assert.equal(visible(nodes(tree).find(n => n.type === "edit-workspace")), true, "Users can return to selected clips during generation");
       assert.equal(nodes(tree).find(n => n.type === "preview-canvas").props.generation.busy, true, "Generation remains mounted and keeps polling");

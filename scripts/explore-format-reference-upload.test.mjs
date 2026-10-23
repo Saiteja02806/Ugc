@@ -10,12 +10,13 @@ import * as imageBatch from "../lib/explore/reference-image-batch.ts";
 
 const savedImage = (id = "saved-image") => ({ id, collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", projectId: "explore-reference", fileName: "my-reference.png", title: "My reference", url: `https://owned.test/${id}.png` });
 
-function harness(upload, { images = [], queryError = false, queryPending = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner" } = {}) {
+function harness(upload, { images = [], queryError = false, queryPending = false, fetchSaved = async id => savedImage(id), preview = false, disabled = false, ownerId = "expected-owner", frames = [], fetchFrame = async frame => frame } = {}) {
   const states = [], refs = [], effects = [], changes = [], selectionChanges = [], pending = [], calls = [], queries = [], savedReads = [], cancellations = [], errors = [];
   const imageCache = new Map([[JSON.stringify(["explore-reference-images", ownerId ?? "signed-out", "explore-only-v2"]), images]]);
   let cursor = 0;
   const imports = {
     "@/lib/media/image-picker": imagePicker,
+    "@/lib/explore/hook-starting-frame-history-client": { fetchRecentStartingFrames: async () => frames, fetchRecentStartingFrame: fetchFrame },
     "@/lib/explore/person-reference": personReference,
     "@/components/explore/person-photo-guide": { PersonPhotoGuide: "PersonPhotoGuide" },
 
@@ -26,7 +27,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "lucide-react": new Proxy({}, { get: (_, key) => String(key) }),
     "@base-ui/react/tabs": { Tabs: { Root: "TabsRoot", List: "TabsList", Tab: "TabsTab", Panel: "TabsPanel" } },
     "@tanstack/react-query": {
-      useQuery: options => { queries.push(options); const data = imageCache.get(JSON.stringify(options.queryKey)); return { data, isPending: queryPending || data === undefined, isError: queryError, refetch: async () => {} }; },
+      useQuery: options => { queries.push(options); const data = options.queryKey[0] === "hook-starting-frames" ? frames : imageCache.get(JSON.stringify(options.queryKey)); return { data, isPending: queryPending || data === undefined, isError: queryError, refetch: async () => {} }; },
       useQueryClient: () => ({ cancelQueries: async options => { cancellations.push(options); }, setQueryData: (key, update) => { const cacheKey = JSON.stringify(key); imageCache.set(cacheKey, update(imageCache.get(cacheKey))); } }),
     },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
@@ -54,7 +55,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
   const code = ts.transpileModule(readFileSync(new URL("../components/explore/format-generation-references.tsx", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
-  vm.runInNewContext(code, { exports: exported, Error, File, fetch: async () => ({ ok: true, blob: async () => new Blob(["catalog"], { type: "image/png" }) }), require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
+  vm.runInNewContext(code, { exports: exported, process: { env: { NODE_ENV: "test" } }, Error, File, fetch: async () => ({ ok: true, blob: async () => new Blob(["catalog"], { type: "image/png" }) }), require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; } });
   function all(node, condition) {
     if (!node || typeof node !== "object") return [];
     return [...(condition(node) ? [node] : []), ...[node.props?.children].flat(Infinity).flatMap(child => all(child, condition))];
@@ -73,6 +74,33 @@ function harness(upload, { images = [], queryError = false, queryPending = false
   };
 }
 const flush = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
+
+test("one image tile opens saved influencers and uploads in the same chooser", async () => {
+  const h = harness(async () => {});
+  const selected = [];
+  const library = { images: [{ jobId: "generated-job", mediaAssetId: "generated-image", url: "https://owned.test/person.png" }],
+    loading: false, error: null, selectionError: null, hasMore: true, loadingMore: false, onRetry() {}, onLoadMore() {},
+    onSelect: async image => { selected.push(image.mediaAssetId); return true; } };
+  const options = { selection: null, imagePurpose: "person", videoInputEnabled: false, influencerLibrary: library };
+  let tree = h.render(options);
+  const triggers = h.all(tree, node => node.type === "DialogTrigger");
+  assert.equal(triggers.length, 1); assert.equal(triggers[0].props.render.props["aria-label"], "Choose image");
+  h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
+  assert.equal(h.all(tree, node => node.type === "TabsRoot")[0].props.value, "influencers");
+  assert.deepEqual(h.all(tree, node => node.type === "TabsTab").map(node => node.props.value), ["influencers", "user", "catalog"]);
+  h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1 as main photo")[0].props.onClick(); await flush(); tree = h.render(options);
+  assert.deepEqual(selected, ["generated-image"]); assert.equal(h.all(tree, node => node.type === "Dialog")[0].props.open, false);
+  assert.equal(h.calls.length, 0, "Selecting an existing influencer never uploads or generates again");
+});
+
+test("failed influencer selection keeps the chooser open and preserves the previous photos", async () => {
+  const h = harness(async () => {});
+  const options = { selection: null, videoInputEnabled: false, influencerLibrary: { images: [{ jobId: "job", mediaAssetId: "image", url: "https://owned.test/person.png" }],
+    loading: false, error: null, selectionError: "This photo is unavailable.", hasMore: false, loadingMore: false, onRetry() {}, onLoadMore() {}, onSelect: async () => false } };
+  let tree = h.render(options); h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
+  h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1 as main photo")[0].props.onClick(); await flush(); tree = h.render(options);
+  assert.equal(h.all(tree, node => node.type === "Dialog")[0].props.open, true); assert.equal(h.changes.length, 0);
+});
 
 test("compact face strip shows every main/support photo and opens the existing photo editor", () => {
   const h = harness(async () => {});
@@ -126,15 +154,15 @@ test("an unmounted owner's late upload cannot select media in the next workflow 
 
 test("saved images load only when the image picker opens and stay scoped to its owner", () => {
   const h = harness(async () => {}, { images: [savedImage()] });
-  assert.equal(h.queries.at(-1).enabled, false);
+  assert.equal(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).enabled, false);
   const opened = h.openImage();
-  assert.equal(h.queries.at(-1).enabled, true);
-  assert.equal(JSON.stringify(h.queries.at(-1).queryKey), JSON.stringify(["explore-reference-images", "expected-owner", "explore-only-v2"]));
+  assert.equal(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).enabled, true);
+  assert.equal(JSON.stringify(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).queryKey), JSON.stringify(["explore-reference-images", "expected-owner", "explore-only-v2"]));
   assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "Your images").length, 1);
   assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "UGC Pilot images").length, 1);
   for (const options of [{ preview: true }, { ownerId: null }]) {
     const isolated = harness(async () => {}, options); isolated.openImage();
-    assert.equal(isolated.queries.at(-1).enabled, false);
+    assert.equal(isolated.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).enabled, false);
   }
 });
 
@@ -398,7 +426,7 @@ test("the first picker page is bounded and does not start catalogue images while
   assert.equal(h.all(h.render(),node=>node.type==='Button'&&node.props['aria-label']?.startsWith('Use your image ')).length,48);
   h.openImage();
   assert.equal(h.all(h.render(),node=>node.type==='Button'&&node.props['aria-label']?.startsWith('Use your image ')).length,24);
-  assert.equal(h.queries.at(-1).staleTime,60_000);
+  assert.equal(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).staleTime,60_000);
   const empty=harness(async()=>{}, {queryPending:true});empty.openImage();
   assert.equal(empty.all(empty.render(),node=>node.type==='TabsRoot')[0].props.value,'user');
 });
@@ -416,4 +444,36 @@ test("an image batch cannot append late uploads or start queued files after its 
   h.cleanup();completions.forEach(complete=>complete());await flush();await flush();
   assert.equal(h.calls.length,2);assert.deepEqual(appended,[]);assert.deepEqual(h.pending,[true,false]);
   assert.equal(h.cancellations.length,0,'Late records must not enter the next owner’s cache');
+});
+
+
+test("starting frame chooser opens recent scenes and selects the verified frame without adding person photos", async () => {
+  const frames = [1, 2].map(n => ({ ownerId: "expected-owner", assetId: `asset-${n}`, jobId: `job-${n}`, url: `https://owned.test/frame-${n}.png`, width: 720, height: 1280 }));
+  const reads = [], chosen = [];
+  const h = harness(async () => assert.fail("No uploads"), { frames, fetchFrame: async (frame, owner) => { reads.push([frame, owner]); return { ...frame, motionInstructions: "Verified motion" }; } });
+  const props = { selection: null, startingFrame: frames[0], onSelectStartingFrame: frame => chosen.push(frame), videoInputEnabled: false };
+  let tree = h.render(props);
+  assert.equal(h.all(tree, node => node.props?.style?.["--starting-frame-ratio"])[0].props.style["--starting-frame-ratio"], 9 / 16);
+  assert.equal(h.all(tree, node => node.props?.["data-starting-frame"] === true).length, 1);
+  assert.equal(h.all(tree, n => n.type === "DialogTrigger")[0].props.render.props["aria-label"], "Change starting frame");
+  h.all(tree, n => n.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(props);
+  assert.equal(h.all(tree, n => n.type === "TabsRoot")[0].props.value, "starting");
+  assert.equal(h.queries.filter(q => q.queryKey[0] === "hook-starting-frames").at(-1).enabled, true);
+  h.all(tree, n => n.props?.["aria-label"] === "Use saved starting frame 2")[0].props.onClick(); await flush();
+  assert.equal(reads[0][1], "expected-owner"); assert.equal(chosen[0].assetId, "asset-2");
+  assert.equal(chosen[0].motionInstructions, "Verified motion"); assert.equal(h.changes.length, 0);
+  assert.equal(h.all(h.render(props), n => n.type === "Dialog")[0].props.open, false);
+});
+
+test("failed or late starting frame reads retain the selected image", async () => {
+  const frame = { assetId: "old", jobId: "job", url: "https://owned.test/old.png" };
+  for (const unmount of [false, true]) {
+    let finish; const chosen = [];
+    const h = harness(async () => {}, { frames: [frame], fetchFrame: () => new Promise((resolve, reject) => { finish = unmount ? () => resolve(frame) : () => reject(new Error("Frame deleted")); }) });
+    const props = { startingFrame: frame, onSelectStartingFrame: value => chosen.push(value) };
+    let tree = h.render(props); h.all(tree, n => n.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(props);
+    h.all(tree, n => n.props?.["aria-label"] === "Use saved starting frame 1")[0].props.onClick();
+    if (unmount) h.cleanup(); finish(); await flush(); assert.equal(chosen.length, 0); assert.equal(h.changes.length, 0);
+    if (!unmount) assert.ok(h.errors.includes("Frame deleted"));
+  }
 });

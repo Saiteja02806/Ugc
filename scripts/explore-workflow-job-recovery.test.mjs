@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { QueryClient } from "@tanstack/react-query";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import * as slideshowBatch from "../worker/src/lib/slideshow-generation-batch.ts";
 import * as slideshowGroups from "../lib/explore/slideshow-generation-groups.ts";
 import * as referencePrompts from "../lib/explore/reference-video-prompts.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import * as pollingPolicy from "../lib/jobs/background-job-polling-policy.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -27,6 +29,7 @@ function load(file, imports = {}, globals = {}) {
     if (name === "../../lib/explore/reference-video-prompts.ts") return referencePrompts;
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
     if (name === "@/lib/http/read-deadline") return { withReadDeadline };
+    if (name === "./background-job-polling-policy") return pollingPolicy;
     if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);
     if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
@@ -36,6 +39,7 @@ function load(file, imports = {}, globals = {}) {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if(name === "@/lib/ai-studio/video-generation-state") return load("lib/ai-studio/video-generation-state.ts");
     if(name === "@/lib/ai-studio/video-history") return load("lib/ai-studio/video-history.ts");
+    if(name === "@/worker/src/lib/hook-starting-frame-video") return load("worker/src/lib/hook-starting-frame-video.ts");
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });
@@ -77,7 +81,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     location: { href: `https://example.test/explore/${format}`, search: "" },
     addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {},
   };
-  const queryClient = { invalidateQueries: async () => {} };
+  const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
   let activeOptions, individualOptions = [];
   const query = {
     useQueryClient: () => queryClient,

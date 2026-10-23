@@ -21,7 +21,7 @@ tmp-logs/
 worker/dist/
 worker/node_modules/
 artifacts/
-build/
+/build/
 coverage/
 landing_page/
 node-compile-cache/

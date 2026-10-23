@@ -7,6 +7,17 @@ import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts"
 const id = "explore-paired-hook-ef59f4b5e69bc9e125f8ada7", entry = hookKeyframeMotionCatalog[id];
 const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "00000000-0000-4000-8000-000000000001", referenceId: id, sourceSha256: entry.sourceSha256 });
 
+test("Talking Head and Wall preview their own ready animation directions without Hook motion grammar", () => {
+  for (const workflow of ["talking_head", "wall_text"] as const) {
+    const preview = getHookKeyframePromptPreview(draft, workflow);
+    assert.equal(preview.animationError, null); assert.equal(preview.requiresDecision, false);
+    assert.equal(preview.durationSeconds, 4); assert.ok(preview.animationPrompt);
+    assert.match(preview.directions, workflow === "talking_head" ? /user's own spoken script/ : /editable text overlay/);
+    const audio = getHookKeyframePromptPreview(updateHookKeyframeDraft(draft, { generateAudio: true }), workflow);
+    assert.match(audio.animationPrompt!, workflow === "talking_head" ? /Generate the user's requested speech/ : /Do not add speech/);
+  }
+});
+
 test("selected Hook supplies an image-only motion preview without importing the old video-reference prompt", () => {
   const preview = getHookKeyframePromptPreview(draft);
   assert.match(preview.directions, /OPENING STATE:[\s\S]*reclining/);

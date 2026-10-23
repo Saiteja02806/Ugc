@@ -24,6 +24,7 @@ type GenerateGeminiOmniVideoParams = {
   providerOperationId?: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  startingFrameImageUrl?: string;
   referenceVideoUrl?: string;
   referenceVideoDurationSeconds?: number;
   referenceVideoMode?: "edit";
@@ -45,6 +46,7 @@ export async function generateGeminiOmniVideoBuffer({
   providerOperationId,
   referenceImageUrl,
   referenceImageUrls,
+  startingFrameImageUrl,
   referenceVideoUrl,
   referenceVideoDurationSeconds,
   referenceVideoMode,
@@ -71,13 +73,17 @@ export async function generateGeminiOmniVideoBuffer({
       );
     }
   } else {
+    if (startingFrameImageUrl && (referenceImageUrl || referenceImageUrls?.length || referenceVideoUrl || referenceVideoMode ||
+      referenceVideoDurationSeconds != null || !Number.isInteger(durationSeconds) || durationSeconds < 4 || durationSeconds > 10)) {
+      throw new ProviderRequestNotSubmittedError("Omni starting-frame animation requires one image, no source video and a duration from 4 to 10 seconds.");
+    }
     if (referenceVideoUrl && (referenceVideoMode !== "edit" || !referenceVideoDurationSeconds || !Number.isFinite(referenceVideoDurationSeconds) || referenceVideoDurationSeconds <= 0 || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS)) {
       throw new ProviderRequestNotSubmittedError("Google Omni video editing requires a source video up to 10 seconds.");
     }
     if (referenceVideoMode && !referenceVideoUrl) {
       throw new ProviderRequestNotSubmittedError("The source video is missing. No generation was submitted.");
     }
-    const imageUrls = referenceImageUrls?.length
+    const imageUrls = startingFrameImageUrl ? [startingFrameImageUrl] : referenceImageUrls?.length
       ? referenceImageUrls
       : referenceImageUrl ? [referenceImageUrl] : [];
     // Google documents ten images for the Omni 1.1 Enterprise model family:
@@ -105,7 +111,7 @@ export async function generateGeminiOmniVideoBuffer({
     }
     const generationPrompt = referenceVideo
       ? `[# Sources <VIDEO_0>@Video1]${referenceImages.length ? ` [# References ${referenceImages.map((_, index) => `<IMAGE_REF_${index}>@Image${index + 1}`).join(" ")}]` : ""}\nEdit the supplied source video. Preserve its actions, timing, camera, lighting and scene except for the changes requested below.${referenceImages.length ? " Use the supplied image(s) as appearance references, not as starting frames." : ""}\n${prompt}`
-      : prompt;
+      : startingFrameImageUrl ? `[# Sources <FIRST_FRAME>@Image1]\nUse the supplied image as the literal first frame.\n${prompt}` : prompt;
     await validateOmniInputTokens(ai, model, generationPrompt, [...referenceImages, ...(referenceVideo ? [referenceVideo] : [])]);
     interaction = await ai.interactions.create({
       input: referenceImages.length || referenceVideo
@@ -120,7 +126,7 @@ export async function generateGeminiOmniVideoBuffer({
           ]
         : prompt,
       model,
-      ...(referenceVideo ? { generation_config: { video_config: { task: "edit" as const } } } : {}),
+      ...(referenceVideo || startingFrameImageUrl ? { generation_config: { video_config: { task: referenceVideo ? "edit" as const : "image_to_video" as const } } } : {}),
       response_format: {
         // Edits inherit the source framing; Google rejects aspect_ratio for edit.
         ...(!referenceVideo ? { aspect_ratio: aspectRatio } : {}),

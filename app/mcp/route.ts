@@ -4,7 +4,6 @@ import { authenticateMcpRequest } from "@/lib/mcp/auth";
 import { getMcpResource } from "@/lib/mcp/config";
 import { readLimitedBody, requestWithBody } from "@/lib/mcp/http";
 import { clientLogRef } from "@/lib/mcp/logging";
-import { mcpHandler } from "@/lib/mcp/server";
 import { MCP_MAX_REQUEST_BYTES } from "@/lib/mcp/transport-limits";
 import {
   includesToolsListRequest,
@@ -59,6 +58,9 @@ async function handle(request: Request) {
       }
       request = requestWithBody(request, body);
     }
+    // Unauthenticated/invalid requests need no SDK, tool schemas or providers.
+    // Module loading is shared by the runtime; authInfo and servers stay per request.
+    const { mcpHandler } = await import("@/lib/mcp/server");
     const transportResponse = await mcpHandler.fetch(request, {
       authInfo: authentication.authInfo,
     });

@@ -1,15 +1,16 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from "react";
 import { HookStartingFrameWorkspace, type HookKeyframePreviewRuntime } from "@/components/explore/hook-starting-frame-workspace";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { Button } from "@/components/ui/button";
+import { ReferenceCard } from "@/components/explore/recreate-workspace";
 import { createHookKeyframeDraft, hookKeyframeDraftStorageKey, serializeHookKeyframeDraft, updateHookKeyframeDraft } from "@/lib/explore/hook-keyframe-draft";
 import { hookKeyframeCheckpointKey, readHookKeyframeCheckpoint, type HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 import { hookKeyframeVariationsKey, readHookKeyframeVariations } from "@/lib/explore/hook-keyframe-variations";
 import type { MediaAsset } from "@/lib/media/types";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
+import type { StartingFrameWorkflow } from "@/lib/explore/starting-frame-workflow";
 
 const scope = { ownerId: "local-ui-preview", draftId: "00000000-0000-4000-8000-000000000015",
   referenceId: "explore-paired-hook-43cc1dae0a6cfcb03e0a9333", sourceSha256: "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0" };
@@ -34,10 +35,16 @@ const photo: MediaAsset = { id: photoId, collection: "image", sourceType: "gener
 const fixturePersonPhotos: MediaAsset[] = [photo,
   { ...photo, id: "00000000-0000-4000-8000-000000000019", title: "Layout-only supporting placeholder 1" },
   { ...photo, id: "00000000-0000-4000-8000-000000000020", title: "Layout-only supporting placeholder 2" }];
+const fixtureInfluencers: MediaAsset[] = Array.from({ length: 6 }, (_, index) => ({ ...photo,
+  id: `00000000-0000-4000-8000-${String(30 + index).padStart(12, "0")}`,
+  title: `Sample saved influencer ${index + 1}`, url: samplePhotos[index % samplePhotos.length].url,
+  thumbnailUrl: samplePhotos[index % samplePhotos.length].url,
+  width: samplePhotos[index % samplePhotos.length].width, height: samplePhotos[index % samplePhotos.length].height }));
 
-export function HookKeyframePreview() {
+export function HookKeyframePreview({ preparationFormat = "hook" }: { preparationFormat?: StartingFrameWorkflow }) {
   const [open, setOpen] = useState(false);
   const [canResume, setCanResume] = useState(false);
+  const [recentFrames, setRecentFrames] = useState<HookStartingFrameSelection[]>([]);
   const [selection, setSelection] = useState<HookStartingFrameSelection | null>(null);
   useEffect(() => {
     let active = true;
@@ -66,14 +73,18 @@ export function HookKeyframePreview() {
     return {
     outputPreviewUrl: samplePhoto,
     outputPreviewUrls,
-    loadSource: async signal => {
+    loadInfluencers: async () => ({ ok: true, images: fixtureInfluencers.map((asset, index) => ({
+      jobId: `sample-influencer-${index}`, generationId: asset.id, mediaAssetId: asset.id, url: asset.url,
+      prompt: "Long image-generation instructions are hidden in this photo chooser.", model: "nano_banana_2",
+      createdAt: asset.createdAt, saved: true })), nextCursor: null }),
+    loadSource: async ({ signal }) => {
       const response = await fetch("/e2e/hook-keyframe-preview/scene", { signal });
       const blob = await response.blob();
       const sha256 = [...new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()))].map(x => x.toString(16).padStart(2, "0")).join("");
       return { referenceId: scope.referenceId, sourceSha256: scope.sourceSha256, blob, frame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256 } };
     },
     resolvePhoto: async id => {
-      const selectedPhoto = fixturePersonPhotos.find(item => item.id === id);
+      const selectedPhoto = [...fixturePersonPhotos, ...fixtureInfluencers].find(item => item.id === id);
       if (!selectedPhoto) throw new Error("Unknown local preview photo.");
       return selectedPhoto;
     },
@@ -98,28 +109,39 @@ export function HookKeyframePreview() {
     },
   }; }, []);
   function recreate() {
-    const draft = updateHookKeyframeDraft(createHookKeyframeDraft(scope), { imageAssetIds: fixturePersonPhotos.map(item => item.id) });
-    localStorage.setItem(hookKeyframeDraftStorageKey(scope.ownerId, scope.draftId, scope.referenceId), serializeHookKeyframeDraft(draft));
-    localStorage.removeItem(hookKeyframeCheckpointKey(scope));
-    localStorage.removeItem(hookKeyframeVariationsKey(scope));
-    setSelection(null); setCanResume(true); setOpen(true);
+    const savedDraftKey = hookKeyframeDraftStorageKey(scope.ownerId, scope.draftId, scope.referenceId);
+    if (!localStorage.getItem(savedDraftKey)) {
+      const draft = updateHookKeyframeDraft(createHookKeyframeDraft(scope), { imageAssetIds: fixturePersonPhotos.map(item => item.id) });
+      localStorage.setItem(savedDraftKey, serializeHookKeyframeDraft(draft));
+    }
+    setCanResume(true); setOpen(true);
   }
-  return <main className="min-h-screen bg-background p-5 text-foreground sm:p-8">
-    <p role="status" className="mb-6 rounded-lg border border-primary/40 bg-card p-3 text-sm">Local UI demonstration · sample images stand in for generated variations. Repeated face photos are layout-only placeholders, not supporting-view examples. No AI generation, credit charge or production data is used.</p>
-    <header className="mb-7 flex items-center gap-3"><span className="text-muted">Explore /</span><h1 className="text-xl font-semibold">Hook video</h1></header>
+  return <main className="min-h-screen bg-background p-3 text-foreground sm:p-4">
+    <p role="status" className="shrink-0 rounded-lg border border-primary/40 bg-card p-2 text-xs">Local UI demo · sample outputs and face photos test layout only. No AI generation, charges or production data.</p>
+    <header className="flex shrink-0 items-center gap-3 py-2"><span className="text-muted">Explore /</span><h1 className="text-xl font-semibold">Hook video</h1></header>
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
       <section className="min-w-0 rounded-2xl border border-border bg-card p-5"><h2 className="mb-5 font-semibold">Create</h2>
-        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onClearStartingFrame: () => setSelection(null),
+        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: setSelection, previewStartingFrames: recentFrames, onClearStartingFrame: () => setSelection(null),
           workflow: { format: "hook", controlsActive: true, controlsTarget: null, resultsTarget: null, onGenerationStart: () => {} } }} /> : <p className="text-sm text-muted">Choose a Hook and select Recreate to prepare its starting frame.</p>}
       </section>
       <section className="rounded-2xl border border-border bg-card p-5"><h2 className="mb-4 font-semibold">References</h2>
-        <div className="w-64"><img src={reference.posterUrl} alt="Hook 15 original opening frame" className="h-80 w-full rounded-xl object-contain bg-background" />
-          <div className="mt-4 flex items-center justify-between"><p>Hook 15 · 8.6s</p><Button type="button" onClick={recreate}>Recreate</Button></div></div>
+        <div className="w-64"><ReferenceCard reference={reference} compact showActionLabel overlayActions isSelected={canResume}
+          onPreview={recreate} onRecreate={recreate} /></div>
         {canResume ? <Button className="mt-4" type="button" variant="outline" onClick={() => setOpen(true)}>Resume preparation</Button> : null}
         {selection ? <p className="mt-6 text-sm text-muted">Starting frame selected. The existing video form receives only this image, the motion directions, eight seconds and your sound choice. Paid generation is locked in this demonstration.</p> : null}
       </section>
     </div>
-    {open ? <HookStartingFrameWorkspace reference={reference} ownerId={scope.ownerId} draftId={scope.draftId} previewRuntime={runtime}
-      onClose={() => setOpen(false)} onUseStartingFrame={value => { setSelection({ ...value, url: runtime.outputPreviewUrls?.[value.assetId] ?? samplePhoto }); setOpen(false); }} /> : null}
+    {open ? <HookStartingFrameWorkspace preparationFormat={preparationFormat} presentation="recreation" reference={reference} ownerId={scope.ownerId} draftId={scope.draftId} previewRuntime={runtime}
+          onClose={() => setOpen(false)} onUseStartingFrame={value => {
+            const selected = { ...value, url: runtime.outputPreviewUrls?.[value.assetId] ?? samplePhoto };
+            setSelection(selected); setOpen(false);
+            const stored = readHookKeyframeVariations(localStorage.getItem(hookKeyframeVariationsKey(scope)), scope);
+            void Promise.all((stored?.entries ?? []).flatMap(entry => entry.state === "accepted" ? [entry] : []).map(async entry => {
+              const response = await runtime.read(`?jobId=${entry.checkpoint.jobId}`, new AbortController().signal) as { job: { id: string; output: { mediaAssetId: string; width: number; height: number } } };
+              return { ...value, jobId: response.job.id, assetId: response.job.output.mediaAssetId, width: response.job.output.width, height: response.job.output.height,
+                url: runtime.outputPreviewUrls?.[response.job.output.mediaAssetId] ?? samplePhoto };
+            })).then(frames => setRecentFrames(frames.reverse())).catch(() => setRecentFrames([selected]));
+          }} />
+      : null}
   </main>;
 }

@@ -11,6 +11,7 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { backgroundJobStaleTime, readCoveredBackgroundJob } from "./background-job-polling-policy";
 import type { CanonicalBackgroundJobType, PublicBackgroundJob } from "./background-job-contract";
 
 type JobResponse = { job: PublicBackgroundJob; ok: true };
@@ -79,11 +80,14 @@ export function useRecoverableWorkflowJobs(
 
   const ids = Array.from(new Set([
     ...knownJobIds,
-    ...(recoveryEnabled && recovered.ownerKey === ownerKey ? recovered.ids : []),
+    // Keep the same observers/cache when a mounted panel becomes inactive.
+    // Only reads stop; discovered IDs must still recover on reactivation.
+    ...(recovered.ownerKey === ownerKey ? recovered.ids : []),
     ...matchingJobs.map(job => job.id),
   ]));
   return {
-    queries: useBackgroundJobs(ids),
+    // Standalone AI Studio has no Explore format but still reads known IDs.
+    queries: useBackgroundJobs(ids, { enabled, reuseActiveList: true }),
     recovering: recoveryEnabled && (accountJobs.isPending || (accountJobs.isFetching && !accountJobs.isFetchedAfterMount)),
     recoveryError: recoveryEnabled && accountJobs.isError ? "Could not check ongoing generations. Refresh to try again." : null,
   };
@@ -126,7 +130,7 @@ export function useBackgroundJob(jobId: string | null) {
     enabled: !loading && Boolean(user && jobId),
     queryFn: ({ signal }) => fetchJob(`/api/jobs/${encodeURIComponent(jobId || "")}`, { signal }, user?.uid),
     queryKey: ["background-jobs", user?.uid, jobId],
-    staleTime: 0,
+    staleTime: backgroundJobStaleTime,
     refetchOnWindowFocus: query => !terminalStatuses.has(query.state.data?.status ?? ""),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
@@ -136,25 +140,54 @@ export function useBackgroundJob(jobId: string | null) {
   });
 }
 
-export function useBackgroundJobs(jobIds: readonly string[]) {
+export function useBackgroundJobs(jobIds: readonly string[], { enabled = true, reuseActiveList = false }: { enabled?: boolean; reuseActiveList?: boolean } = {}) {
   const { loading, user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQueries({
+  const queries = useQueries({
     queries: jobIds.map((jobId) => ({
-      enabled: !loading && Boolean(user && jobId),
-      queryFn: ({ signal }: { signal: AbortSignal }) => fetchJob(`/api/jobs/${encodeURIComponent(jobId)}`, { signal }, user?.uid),
+      enabled: enabled && !loading && Boolean(user && jobId),
+      queryFn: ({ signal }: { signal: AbortSignal }) => {
+        if (reuseActiveList) {
+          const current = queryClient.getQueryState<PublicBackgroundJob>(["background-jobs", user?.uid, jobId]);
+          const covered = readCoveredBackgroundJob(queryClient, { ownerId: user?.uid, jobId, currentJob: current?.data, invalidated: current?.isInvalidated });
+          if (covered) return Promise.resolve(covered);
+        }
+        return fetchJob(`/api/jobs/${encodeURIComponent(jobId)}`, { signal }, user?.uid);
+      },
       queryKey: ["background-jobs", user?.uid, jobId],
-      staleTime: 0,
+      staleTime: backgroundJobStaleTime,
       refetchOnWindowFocus: (query: { state: { data?: PublicBackgroundJob } }) => !terminalStatuses.has(query.state.data?.status ?? ""),
       refetchInterval: (query: {
         state: { data?: PublicBackgroundJob };
       }) => {
         const status = query.state.data?.status;
 
-        return status && terminalStatuses.has(status) ? false : 5_000;
+        if (status && terminalStatuses.has(status)) {
+          if (reuseActiveList) {
+            // Another tab may retry the same ID after this observer stopped.
+            // Use a fresh list only as a reason to recheck; the query function
+            // still verifies ordering/conflicts before reusing that receipt.
+            const listed = readCoveredBackgroundJob(queryClient, { ownerId: user?.uid, jobId });
+            const currentTime = Date.parse(query.state.data!.updatedAt);
+            if (listed && !terminalStatuses.has(listed.status) &&
+                (!Number.isFinite(currentTime) || Date.parse(listed.updatedAt) >= currentTime)) return 5_000;
+          }
+          return false;
+        }
+        return 5_000;
       },
     })),
   });
+  if (!reuseActiveList) return queries;
+  return queries.map((query, index) => ({ ...query,
+    // An explicit Check status must reach the server even if automatic polling
+    // can reuse a recent list receipt. Direct consumers retain their old behavior.
+    refetch: async (options?: Parameters<typeof query.refetch>[0]) => {
+      await queryClient.invalidateQueries({ queryKey: ["background-jobs", user?.uid, jobIds[index]], exact: true, refetchType: "none" });
+      return query.refetch(options);
+    },
+  }));
 }
 
 export function useCancelBackgroundJob() {

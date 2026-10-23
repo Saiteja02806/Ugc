@@ -21,12 +21,14 @@ export async function generateGeminiImageBuffer(
   aspectRatio: AIStudioImageRatio,
   referenceImageUrl?: string | string[],
   hookKeyframe?: HookKeyframeGenerationReceipt,
+  slideshowLabels?: string[],
 ) {
   const ai = getGoogleClient();
   const model = hookKeyframe?.version === 2 ? HOOK_GEMINI_FLASH_IMAGE_MODEL :
     process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_GEMINI_IMAGE_MODEL;
   const downloadedImages = Array.isArray(referenceImageUrl) ? await downloadReferenceImageContext(referenceImageUrl) : undefined;
-  const referenceLabels = verifiedHookImageLabels(prompt, downloadedImages, hookKeyframe, "nano_banana_2");
+  if (slideshowLabels && (hookKeyframe || slideshowLabels.length !== downloadedImages?.length)) throw new ProviderRequestNotSubmittedError("The slideshow image labels do not match the inputs.");
+  const referenceLabels = slideshowLabels ?? verifiedHookImageLabels(prompt, downloadedImages, hookKeyframe, "nano_banana_2");
   const referenceImages = downloadedImages?.map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType }));
   const referenceImage = typeof referenceImageUrl === "string"
     ? await downloadReferenceImage(referenceImageUrl)
@@ -69,7 +71,7 @@ export function buildGeminiImageRequest(params: {
   imageSize?: "1K" | "2K";
 }) {
   const images = params.referenceImages ?? (params.referenceImage ? [params.referenceImage] : []);
-  if (params.referenceLabels && (params.referenceLabels.length !== images.length || images.length < 2)) {
+  if (params.referenceLabels && (params.referenceLabels.length !== images.length || images.length < 1)) {
     throw new ProviderRequestNotSubmittedError("The Hook scene and face input labels could not be verified.");
   }
   return {

@@ -79,6 +79,28 @@ test("reference images are included in token counting and the complete generatio
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("approved starting images use explicit first-frame binding and image-to-video without a source clip", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(Buffer.from("approved-scene"), { headers: { "Content-Type": "image/png" } });
+  try {
+    await generateGeminiOmniVideoBuffer({ ...params("Raise the eyebrows."), durationSeconds: 8, resolution: "720p",
+      startingFrameImageUrl: "https://owned-media.example.test/approved.png" });
+    const submitted = requests.at(-1);
+    assert.equal(submitted.generation_config.video_config.task, "image_to_video");
+    assert.equal(submitted.input.length, 2); assert.equal(submitted.input[0].type, "image");
+    assert.equal(Buffer.from(submitted.input[0].data, "base64").toString(), "approved-scene");
+    assert.match(submitted.input[1].text, /^\[# Sources <FIRST_FRAME>@Image1\]/);
+    assert.equal(submitted.response_format.duration, "8s");
+    const before = creates();
+    for (const patch of [{ durationSeconds: 11 }, { referenceImageUrl: "https://owned-media.example.test/person.png" }, { referenceVideoMode: "edit" }]) {
+      await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: "https://owned-media.example.test/approved.png", ...patch }), ProviderRequestNotSubmittedError);
+    }
+    assert.equal(creates(), before);
+    await generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: "expired-url", providerOperationId: "already-accepted" });
+    assert.equal(requests.at(-1).type, "resume"); assert.equal(creates(), before);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("video edits submit actual video bytes and the identity image, with explicit source and reference roles", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async url => new Response(Buffer.from(url.endsWith(".mp4") ? "source-video" : "identity-image"), {

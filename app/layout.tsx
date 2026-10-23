@@ -32,10 +32,13 @@ const geistSans = localFont({
   variable: "--font-geist-sans",
 });
 
+// Keep the original workspace faces/variables available, but request them only
+// when rendered text needs them. Public routes preload just the primary sans.
 const geistMono = localFont({
   src: "../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2",
   display: "swap",
   variable: "--font-geist-mono",
+  preload: false,
 });
 
 // The worker registers this exact static face before rasterizing overlays.
@@ -45,6 +48,7 @@ const geistEditOverlay = localFont({
   src: "../node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.woff2",
   display: "swap",
   variable: "--font-edit-overlay",
+  preload: false,
   weight: "600",
 });
 
@@ -52,6 +56,7 @@ const interWallText = localFont({
   src: "../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2",
   display: "swap",
   variable: "--font-wall-text-inter",
+  preload: false,
   weight: "400",
 });
 
@@ -60,6 +65,7 @@ const arialRegularWallText = localFont({
   adjustFontFallback: false,
   display: "swap",
   variable: "--font-wall-text-arial-regular",
+  preload: false,
   weight: "400",
 });
 
@@ -68,6 +74,7 @@ const avenirNextDemiBoldWallText = localFont({
   adjustFontFallback: false,
   display: "swap",
   variable: "--font-wall-text-avenir-next",
+  preload: false,
   weight: "600",
 });
 
@@ -76,6 +83,7 @@ const arialWallText = localFont({
   adjustFontFallback: false,
   display: "swap",
   variable: "--font-wall-text-arial",
+  preload: false,
   // Retained for persisted V3 metadata.
   weight: "500",
 });
@@ -85,6 +93,7 @@ const arialBoldWallText = localFont({
   adjustFontFallback: false,
   display: "swap",
   variable: "--font-wall-text-arial-bold",
+  preload: false,
   weight: "700",
 });
 

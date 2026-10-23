@@ -52,7 +52,10 @@ export async function resolveOwnedHookKeyframeResult(params: { assetId: string; 
 }
 export async function resolveApprovedHookStartingFrame(params: { assetId: string; imageJobId: string; ownerId: string }) {
   const result = await resolveOwnedHookKeyframeResult(params);
-  const source = getHookReferenceGalleryItems().find(item => item.id === result.referenceId);
+  const hook = getHookReferenceGalleryItems().find(item => item.id === result.referenceId);
+  const source = hook ?? (await import("./starting-frame-reference-source.ts")).getAdditionalStartingFrameSources().find(item => item.id === result.referenceId);
   if (!source || source.videoSha256 !== result.sourceSha256) throw new HookKeyframeGenerationError("The Hook source changed. Prepare a new starting image.", 409);
-  return result;
+  const workflow = "workflow" in source && source.workflow === "wall_text" ? "wall_text" as const
+    : "workflow" in source && source.workflow === "talking_head" ? "talking_head" as const : "hook" as const;
+  return { ...result, workflow, exploreFormat: workflow === "wall_text" ? "wall_text" as const : "hook" as const };
 }

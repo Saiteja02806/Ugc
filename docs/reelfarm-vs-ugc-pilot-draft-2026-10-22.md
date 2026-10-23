@@ -8,7 +8,9 @@ reviewed_on: 2026-10-22
 
 # ReelFarm vs UGC Pilot: which fits your app-content workflow?
 
-Editorial release note: keep this draft out of the sitemap and public navigation. Both UGC Pilot domains returned HTTP 402 `DEPLOYMENT_DISABLED` during this review. The production build is marked READY in Vercel, but its availability is not established by that state. Restore access and recheck the relevant flows and prices before publication. No side-by-side paid generation or customer acquisition experiment has been performed.
+Campaign priority update: the owner asked to broaden comparisons beyond slideshow tools. See `seo-competitor-priorities-2026-10-22.md`; Revid and Postjet now lead the editorial sequence. This draft remains available for the narrower slideshow decision. The owner's reported ReelFarm use is qualitative experience, not an independently reproduced test of every available format.
+
+Editorial release note: keep this draft out of the sitemap and public navigation. UGC Pilot service was restored on 22 October; anonymous production checks passed for all 15 public SEO pages and the new guide assets. Recheck the relevant account workflows and current prices before publication. No side-by-side paid generation or customer acquisition experiment has been performed.
 
 Disclosure: this comparison is prepared by UGC Pilot. Competitor features below come from its official documentation; our product descriptions also draw on source inspection and existing recorded media. This is a documented-workflow comparison, not a claim that we tested both products or that one produces better results.
 
@@ -48,7 +50,7 @@ Neither product's feature list establishes app installs, qualified signups or re
 
 ## Real example available for inspection
 
-UGC Pilot's [existing application walkthrough](https://getugcpilot.com/marketing/showcase-part2/application-demo.mp4) is a 137.81-second recording of an earlier interface. A [10-second excerpt](https://getugcpilot.com/marketing/guides/add-product-demo-excerpt.mp4) is prepared with the updated [product-demo guide](https://getugcpilot.com/guides/product-demo-to-short-video); the new excerpt URL becomes available only after that release.
+UGC Pilot's [existing application walkthrough](https://getugcpilot.com/marketing/showcase-part2/application-demo.mp4) is a 137.81-second recording of an earlier interface. A [10-second excerpt](https://getugcpilot.com/marketing/guides/add-product-demo-excerpt.mp4) is now live in the updated [product-demo guide](https://getugcpilot.com/guides/product-demo-to-short-video); its served bytes match the checked preparation receipt.
 
 The excerpt shows opening selection, the demo-attachment panel and entry into review. It has been trimmed locally and decoded in full. It is not a current production test, an editor export benchmark, or evidence of a published post. Older labels and format listings in the recording should not be used as today's availability guide. Its source hashes, dimensions and edit boundaries are recorded in the accompanying evidence receipt.
 
@@ -92,5 +94,5 @@ Prepare one truthful product brief and a real screen recording. Follow the [demo
 - Official competitor source: [ReelFarm](https://reel.farm/), including its feature, plan and FAQ sections. Read through web-source retrieval on 22 October 2026; not an authenticated trial.
 - UGC Pilot facts: `lib/trending/format-policy.ts`, `lib/pricing/plans.ts`, `lib/explore/workflows.ts`, `lib/social/platform-visibility.ts`, `lib/social/tiktok-beta-access.ts`, `docs/mcp-current-capability-audit-2026-10-17.md`.
 - Recording provenance: `docs/seo-product-demo-media-evidence-2026-10-22.json`; preparation script `scripts/prepare-product-demo-guide-evidence.mjs`.
-- Current availability limitation: `docs/seo-founder-release-notes-2026-10-22.md`.
-- Before publishing: restore production, recheck prices and claims, confirm new media URLs, repeat a real account demo workflow, and remove the internal release note. Label any remaining untested features explicitly. A future hands-on verdict requires comparable outputs and recorded effort/spend from both products.
+- Production follow-up and remaining acceptance limits: `docs/seo-founder-release-notes-2026-10-22.md`.
+- Before publishing: recheck prices and claims, repeat a real account demo workflow, and remove the internal release note. Hosting and the new media URLs have been verified after restoration. Label any remaining untested features explicitly. A future hands-on verdict requires comparable outputs and recorded effort/spend from both products.

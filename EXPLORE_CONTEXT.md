@@ -1,25 +1,768 @@
 # Explore context and UI decision record
 
-## 2026-10-22 Approved influencer photograph prompt v4
+## 2026-10-23 New Hook Remix and Recreate readiness follow-up
 
-- New Hook starting frames use the influencer as the person to photograph and the
-  decoded Hook frame as visual guidance for setting, pose, expression and gesture.
-  Recognizable likeness takes priority over copying source facial geometry.
-  Remove swap/replacement, exact-position and source-hairstyle preservation rules.
-- The same builder applies to every Hook and selected influencer. Pro remains the
-  default. Flash uses the same wording but has not received this v4 visual test.
-  Each input carries a versioned adjacent label. Prior accepted requests retain
-  their frozen prompt, labels and recovery identity without another submission.
-- One user-authorized direct Google test on gemini-3-pro-image/2K/9:16 used the
-  same four hash-verified images as the prior comparison. The user preferred its
-  result. Exact tested prompt SHA-256:
-  f3d622fdc0b37c225bf0e1d40367cba76e12425a1e5ca15e7b8a55a650fb1c76.
-  Tests pin this prompt and the adjacent image labels. One sample does not prove
-  consistency across identities/poses or production end-to-end acceptance.
-- Focused prompt production release requested; unrelated pending UI/slideshow
-  changes remain paused in the original checkout. No schema change is required.
-  Deployment evidence: docs/hook-prompt-v4-release-2026-10-22.md.
+- Verified all eight refresh references through the actual caption resolver,
+  Remix input/output overlay mapping, draft-to-prompt preview and v4 image builder.
+  Captions are ready with source hashes and reaction-only timing. Image prompts
+  use the influencer as the person, source frame as visual guidance, verified
+  frame-zero pose and caption removal; later motion/ending beats are separate.
+- Fresh focused checks confirm every new reference resolves a nonempty motion
+  preview with no animation error or unresolved decision. These are local pure
+  contract checks, not a fresh paid generation or hosted acceptance. User approval
+  of an actual generated image and server ownership/receipt validation remain.
+- Important existing exception: duplicate folder (4) uses Hook 83, whose prior
+  `needs_decision` review concerns retaining the intentional extreme partial-face
+  crop. Its text is ready, but `requiresDecision` still prevents the Use-frame
+  handoff. Importing the duplicate was not used to bypass this existing review.
+  Details: `docs/hook-folder-refresh-and-ending-audit-2026-10-23.md`.
 
+## 2026-10-23 Hook folder refresh and final-frame review (uploaded; release paused)
+
+- Rechecked `D:/hookswithlinks/notbeen` after folders (2) through (10) appeared.
+  Eight new posts are in `explore-hook-reference-oct23-refresh-release.json`
+  (Hooks 100–107). Folder (4) duplicates existing Hook 83 by canonical TikTok URL;
+  its original registered identity/trim remains. The unnumbered folder is Hook 99.
+- User corrected folder (2)'s audio choice to default background music. It uses a
+  verified immutable snapshot of the approved `hook_audio_006`. Supplied MP3s keep
+  exact bytes. Other TikTok downloads supply only the reaction's audio interval,
+  excluding later demo narration. Database lookup was read-only.
+- Demo/outro panels in the user's screenshots came from full downloads. Imports
+  use the short `muted_*.mp4` reaction files. All 656 new retained frames were
+  reviewed; first/last-four inspection also covers every short candidate and
+  existing Hook 83. Endings remain reaction footage, so no further cut was needed.
+  Original files are unchanged. Preview decoded-pixel hashes match the sources.
+- All 32 objects passed stored SHA-256/metadata and public URL checks before local
+  activation. These eight form Hook batch sequence 2 and receive New; Hook 99 loses
+  New while slideshow badges remain. Current platform mixing/order rules below
+  remain authoritative. Website and worker deployment remain paused. Evidence:
+  `docs/hook-folder-refresh-and-ending-audit-2026-10-23.md`.
+
+## 2026-10-23 Mix reference video platforms (local)
+
+- Default Hook and Wall video galleries now alternate Instagram/TikTok cards
+  instead of exhausting one platform first. Ordering is deterministic across
+  rerenders and scroll expansion, with newer batches first within each platform.
+  When one platform runs out, remaining cards stay available. Unknown provenance
+  stays unclassified and is included as its own interleaved bucket.
+- This supersedes strict global newest-batch-first ordering for reference videos
+  when that would group an entire platform first. New badges retain their batch
+  meaning. Slideshow category/batch ordering remains unchanged. Both gallery
+  entry points share the ordering; single-platform filters preserve platform scope.
+- Wall catalogue mapping now retains available source-platform/link fields,
+  allowing known provenance to participate without guessing unknown sources.
+  Local validation is separate from deployed acceptance; release remains paused.
+
+## 2026-10-23 Talking Head and Wall starting-frame Recreate (local)
+
+- Both workflows now use the shared Recreate preparation behind the existing
+  `ENABLE_HOOK_STARTING_FRAME_PREPARATION` gate: actual first frame, person photos,
+  image model/variations/cost, generated variations, explicit Use selected frame,
+  and separately submitted animation. Fixed approval footer and responsive result
+  previews are shared with Hook. Opening/reopening never generates automatically.
+- Talking Head keeps the user's script and Demo inputs. Its approved-frame form
+  exposes supported animation models/durations, the frame's fixed ratio and Sound
+  (off by default). Approval clears appearance/video generation references; a
+  selected audio reference is retained with an explicit blocker and removal action.
+  Script/Sound animation uses its own prompt builder; Hook's action-only grammar
+  must not reject speech or wrap Talking Head scripts as Hook action directions.
+- Wall uses clean moving background instructions; overlay words remain editable
+  in Edit and are not requested as rendered text in generated footage. Hook's
+  reviewed motion gates remain unchanged. These are generic workflow directions,
+  not a claim to reproduce a reference's exact performance.
+- Saved approved selections are isolated by account and workflow, and by draft
+  for Talking Head. Closing a replacement retains the previous approved selection.
+  Recovery re-verifies the exact owned job/asset with fresh media URLs. Other
+  workflow frames do not appear in the Hook starting-frame shelf.
+- The server resolves canonical Wall sources and nine packaged Talking Head clips,
+  verifies SHA-256 before extracting frame zero, and independently derives workflow
+  during image/video admission. Unsupported source shapes are blocked before image
+  credits; video admission verifies image ownership, source, model and matching ratio.
+  Native extraction routes trace packaged Talking Head MP4s. No schema change.
+- Local evidence: 298 focused tests, all nine real packaged clips decoded and
+  hash-verified, plus twelve browser layout cases (three workflows × four sizes).
+  Browser fixtures isolate auth, person picker, inference and final video form;
+  they establish layout/selection behavior, not hosted or paid-generation acceptance.
+  Details: `docs/multi-workflow-starting-frame-2026-10-23.md`. Release remains paused.
+
+## 2026-10-23 Recreate approval and preview layout (local)
+
+- Active Hook Recreate overlay keeps its header and approval footer outside one
+  scrolling content region. Use selected frame stays visible before/after image
+  generation and is disabled until the selected receipt and current inputs pass
+  existing approval checks. Choosing a card only selects; approval is explicit.
+- Image model, variations and unit/total cost are grouped in Generation settings.
+  Result badges, selection/enlarge labels and enlarged titles use Variation 1,
+  Variation 2, etc.; the approved image remains a starting frame in the video form.
+  After results, Generate more is secondary, with total cost beside it. Larger
+  result cards include a Selected badge and separate enlarge controls; mobile
+  uses two columns. Completion reveals the results within the content scroller.
+- Local component/browser checks cover desktop, short desktop, 390px and 320px
+  phones, four results, selection/approval, enlargement and footer visibility at
+  either scroll end. Browser fixtures isolate auth/generation/person-picker and
+  handoff boundaries; they do not establish hosted or paid-generation acceptance.
+  Production release remains paused. `scripts/hook-recreate-layout.browser.cjs`
+  reproduces this verification; screenshots/receipt: `.tmp/hook-recreate-layout/`.
+
+## 2026-10-23 Idle navigation continuation — browser reads (local)
+
+- Trending feed, shared billing and AI Studio access reads now include browser
+  token acquisition in a 20-second total deadline, bind the expected owner and
+  prevent late-token fetches after cancellation. Existing cache/retry policies
+  remain intact. No production speedup or real-idle acceptance is established.
+- Focused deadline/recovery tests pass; evidence and two unrelated broader test
+  assertions are recorded in `docs/idle-navigation-investigation-2026-10-23.md`.
+
+
+## 2026-10-23 New reference batches and supplied content (media uploaded; app release paused)
+
+- New reference uploads appear before older cards in their own workflow. A small
+  `New` badge marks every card in the latest complete published batch, with no
+  time expiry or per-user seen state. The next successful batch in that same
+  workflow retires the previous badge; uploading Hooks does not retire slideshow
+  or Wall of Text badges. Pending/incomplete imports do not replace a live batch.
+- Batch membership and monotonically increasing per-workflow sequences live in
+  `lib/explore/reference-upload-batches.json`. Future importers must register
+  their batch here and publish it only after all immutable media is verified.
+  Apply newest-first ordering after filtering/category interleaving in both
+  galleries so category mixing cannot move older slideshows above new content.
+- Imported four uncategorized slideshows from `D:/slideshow/slideshow explore/NONE`
+  with ordered counts 3/6/2/2 (13 original images). User explicitly excluded
+  `New folder (2)/middle.mp4`. Do not invent slideshow source-post links.
+- Imported one Hook from `D:/hookswithlinks/notbeen/New folder`: use the supplied
+  4.1-second reaction-only clip, its native audio and verified supplied TikTok
+  URL. The full download's later screen recording is excluded from the Hook.
+  All 123 reaction frames and source copy were reviewed; this does not claim a
+  generated animation has passed visual qualification or bypass motion gates.
+- Sixteen immutable storage objects were read back and verified by byte count,
+  content type and SHA-256 before activating local manifests. The source website
+  and worker remain undeployed. Existing slideshow additions from 22 October
+  remain staged, and automatic Trending catalogs are unchanged. Receipt, import
+  IDs, tests and release limitations:
+  `docs/explore-new-content-batches-2026-10-23.md`.
+
+## 2026-10-23 Idle navigation recurrence — shared auth recovery (local)
+
+- User clarified that sidebar navigation to Trending or other screens becomes
+  slow after 22–30 minutes unused. A real authenticated idle trace is still
+  absent; cache staleness alone is not an established root cause.
+- Fault injection reproduced unbounded Firebase server lookup/body waits that
+  hold same-token overlapping API checks. Local ten-second deadline releases
+  those waits; upstream outages return 503 instead of invalid-session 401.
+  Authorization remains fail-closed, without caching completed checks.
+- Existing four-library browser idle fixtures pass with simulated elapsed time.
+  Production browser requires sign-in; no deployment or real idle acceptance.
+  Findings, remaining client deadline gaps and limits:
+  `docs/idle-navigation-investigation-2026-10-23.md`.
+
+## 2026-10-23 Combined release review — deployment paused
+
+- Hook Recreate now stages replacement while retaining the previously approved
+  composer frame. Closing restores that frame; the replacement preparation's
+  draft ID remains recoverable. Only explicit Use this changes the selection.
+- The composer persists owned job/asset/source identities and approved motion,
+  duration and sound settings per account, without storing signed image URLs.
+  Refresh re-verifies through authenticated GET and uses a fresh media URL.
+  Failed reads retain the record and block generation until explicit retry or
+  clearing; late reads cannot overwrite a newer selection/removal/account.
+- References with unresolved motion now disclose the animation limitation next
+  to image generation before image credits are submitted. Existing animation
+  approval gates remain; the warning does not approve motion or generate video.
+- These local corrections supersede the cancellation/refresh gaps recorded in
+  the earlier step audit below. Production behavior is unchanged until release.
+- Full release scope, current checks, database prerequisite and rollout order:
+  `docs/final-release-review-2026-10-23.md`. No deployment or settings change.
+
+## 2026-10-23 Native media packaging and default build verification (local)
+
+- Default Turbopack production build now passes on the reviewed working copy.
+  Native `ffprobe-static` is externalized alongside `ffmpeg-static` so its package
+  resolver uses the deployed package directory instead of a bundled `/ROOT` path.
+- Trace only the build platform/architecture's probe binary and preserve package
+  entry/metadata. Four native consumers (Hook frame/keyframe, Audio transfer and
+  MCP) receive isolated package resolution/executable postbuild checks.
+- Broad `/mcp` include matching was removed because it added native binaries to
+  lightweight health/resource metadata routes. Negative postbuild assertions keep
+  those routes free of native media packages. No worker, generation or audio
+  product behavior changed. Isolated Linux packaging checks now pass; hosted
+  authentication/media acceptance remains distinct and requires release.
+- Source-only MCP CPU optimizations and storage measurements are recorded in
+  `docs/build-storage-mcp-audit-2026-10-23.md`. No deployment or retention change.
+
+## 2026-10-23 Reference gallery filters, scrolling and playback (local)
+
+- Hook filters expose Instagram and TikTok using source provenance, including
+  legacy Instagram links. Clear filters is shown only for an active selection.
+- Reference galleries reveal complete additional rows as the end approaches;
+  the Show more references button is removed. Filtering restarts the window and
+  existing access limits still apply.
+- Visible reference cards start muted previews without hover, unload when outside
+  the viewport or in a hidden tab, and respect reduced motion. Landing-page covers
+  retain their interest-based behavior. Failed preview derivatives fall back to
+  the original video in cards and the opened player.
+- Component regression checks are local. Deployment remains paused; playback of
+  every hosted media file and signed-in production acceptance remain unverified.
+
+## 2026-10-23 Completed-media receipt freshness (local)
+
+- Single/multi background-job detail hooks give successful completed receipts
+  with a valid completion time, no error and a media asset UUID 30 seconds of
+  freshness. This coalesces rapid remount/reconnect reads; it adds no timer.
+- Failed/cancelled, incomplete/nonmedia outputs, malformed receipts and read
+  failures retain immediate lifecycle revalidation. Explicit status refresh and
+  invalidation still reach the server. Active-list discovery and retry behavior
+  are unchanged. Do not extend this to all terminal jobs or infinite freshness.
+- Local verification and the separate Settings bundle changes are recorded in
+  `docs/terminal-settings-optimizations-2026-10-23.md`. Hosted acceptance remains
+  pending an authorized deployment.
+
+## 2026-10-23 Agent-reviewed polling coordination (local)
+
+- Inactive AI Studio panels stop initiating job reads but retain IDs/cache and
+  reconcile on reactivation. Standalone Studio remains enabled without an
+  Explore format; owner changes stay isolated.
+- Recoverable workflow detail polls may reuse fresh, observed, account-owned
+  active-list receipts. Missing/failed/stale lists and ordering conflicts fall
+  back to GET. Explicit Check status always reaches the server. Jobs leaving
+  the list still receive final detail/output reads.
+- A newer active receipt resumes a cached terminal same-ID job after a retry
+  elsewhere. Equal-time conflicts require authoritative GET; older lists cannot
+  revive newer terminal results. General terminal-cache tuning remains separate.
+- Recurring Audio/Reaction reads have a 20-second deadline. Audio checks other
+  pending jobs as well as exact saved receipts; successful general status updates
+  survive a separate receipt read failure. No automatic paid mutation.
+- Agents implemented and cross-reviewed policy/tests; parent reviewed/integrated
+  fixes. Local evidence, final validation and next steps:
+  `docs/polling-agent-review-2026-10-23.md`. Deployment remains paused.
+
+## 2026-10-23 Recreate step-by-step audit — no deployment
+
+- Complete 48-step trace, required/optional/unnecessary steps, production versus
+  local status and evidence limits are in
+  `docs/hook-recreate-step-audit-2026-10-23.md`. 82 local tests pass; an additional
+  executed diagnostic runs the exact production and local navigation functions.
+- Production still initializes legacy source-video intent behind preparation and
+  leaves it after Close. The local separation fix is not a production fix.
+- At this audit's revision, both versions cleared the approved frame during
+  replacement and failed to restore the composer selection on refresh. The local
+  corrections at the top of this file now address these gaps; production remains
+  unchanged until the paused release is authorized.
+- Ten of the 98 reviewed Hook entries need an explicit motion/crop/reveal/prop
+  decision. Use this remains blocked for them. The final local review adds an
+  explicit prepayment disclosure beside image generation; it does not silently
+  approve motion, skip source frames or submit another generation.
+- Local recent Starting frames history returns at most 24 verified frames from
+  48 completed jobs and restores suggested motion with Sound off. Do not promise
+  every historic frame or exact custom-motion/audio recovery with this service.
+- Fresh computer-use access timed out on application approval. No fresh visual,
+  keyboard, mobile or paid end-to-end acceptance is claimed. Prior signed-in
+  production observations, deployed source and local harness checks are separate.
+  No behavior change, production write, paid generation or deployment in this audit.
+
+## 2026-10-22 Starting-image transient status recovery (local)
+
+- Pending starting images check status every three seconds; transient network,
+  timeout, 408/409/429 and 5xx read failures back off to 15 seconds. Foreground
+  return checks the same receipt; terminal jobs stop. Auth/missing/invalid receipt
+  failures retain explicit checking. No automatic generation or paid retry.
+- Non-JSON HTTP failures retain their status classification. Successful malformed
+  data still fails receipt verification. Prompt/provider/generation rules are
+  unchanged; this polling patch remains under the deployment pause.
+- The Hook/Wall recovery harness now loads the real pure starting-frame model
+  helper: all 39 baseline checks pass. Separate runtime tests cover status
+  recovery and independent variations. Local evidence and remaining bottlenecks:
+  `docs/starting-image-recovery-fix-2026-10-22.md`.
+
+## 2026-10-23 Prompt v4 production default — deployed
+
+- User approved the generated v4 sample and requested its prompting approach as
+  the production default for all Hook starting frames and selected influencers.
+  Keep the exact approved prompt and adjacent image labels as the baseline.
+  Added regression hashes pin both to the tested request; do not silently replace
+  it with another untested wording change.
+- A focused release was prepared in managed worktree
+  `hook-prompt-v4-production`, PR #82, source commit
+  `dffa8a95fe5076d98143967332ee1f16242d995a`. It includes prompt/version compatibility
+  and worker forwarding only. Other pending UI, slideshow, scheduling, marketing,
+  polling and migration changes in this checkout remain under the earlier pause.
+  PR #82 is merged as `14be89fb36a796b28332f074f63a048006559266`.
+  Production website deployment `dpl_8VmfmCjFcprdyNZt65nVNia182Uo` is Ready,
+  serves getugcpilot.com/www.getugcpilot.com and reports that exact main commit.
+  Active worker `ugc-ai-generation-worker-promptv4dffa8a95` serves 100% traffic;
+  its pinned image and baked/runtime commit match the reviewed source commit.
+- Remaining quality work is a diverse Pro evaluation across people/scenes and a
+  separate Flash evaluation. One approved Pro image is not a consistency claim.
+  Keep explicit image review before animation. No additional paid test was run.
+  Signed-in production browser checks confirmed Recreate, source-frame decoding,
+  photo selection, Pro default and the v4 text under View image instructions.
+  No new paid production generation was submitted. Production still has the old
+  split influencer/photo controls, missing Starting frames picker tab and legacy
+  Use source video composer option; those fixes remain in the paused UI release.
+  Full release evidence: `docs/hook-prompt-v4-release-2026-10-22.md`.
+
+## 2026-10-22 Trending/Audio foreground polling (local)
+
+- Active Reaction cards, the Reaction text editor and active Audio history use
+  foreground status polling with bounded failure backoff. Returning reads the
+  existing status/receipt; it never submits generation or editing automatically.
+- Shared `pollInForeground` backoff is opt-in. Existing Explore finishing and
+  pending-schedule timing remains unchanged; all 68 adjacent regressions pass.
+- Local transport/effect tests cover hidden/offline return, late responses,
+  cancellation and retained request keys. No deployment or hosted acceptance.
+  Evidence: `docs/trending-audio-polling-2026-10-22.md`.
+- Follow-up review corrected Audio overlap during initial recovery, rapid reads
+  for absent receipts, and key-scoped reads that could starve other jobs while a
+  saved receipt was uncertain. Initial recovery has a 20-second deadline;
+  absent-receipt timer reads slow to 30 seconds. Shared numeric intervals retain
+  their behavior. All 101 relevant local review regressions pass.
+
+## 2026-10-22 Influencer photograph with visual reference — prompt v4 (local)
+
+- User clarified that the requested task is a new photograph of their influencer,
+  with the Hook frame as visual guidance. V3 still overemphasized exact scene and
+  original hairstyle preservation and facial-region reconstruction. V4 leads with
+  the influencer, uses the source for setting/composition/pose/expression/clothing,
+  and prioritizes recognizable likeness over copying source facial geometry.
+- Remove face-swap/replacement instructions and exact-position/source-hairstyle
+  constraints from the new prompt and adjacent image labels. New generation can
+  vary scene details; it is not a promise of pixel-identical scene preservation.
+  Keep source ratio, visible gesture, hand/object occlusion and caption omission.
+- Prompt v4 is supported through provider admission and saved-result recovery.
+  Earlier accepted versions retain their labels and prompts. After the user's
+  separate one-image test request, v4 completed on `gemini-3-pro-image`, 2K, 9:16,
+  with the same four exact input files as the earlier v2/v3 comparison. The result
+  visually follows more of the influencer's brow shape, facial proportions and
+  brown hairstyle, while retaining the source setting/glasses gesture and omitting
+  captions. This is one promising sample, not demonstrated production consistency.
+  Evidence: `outputs/hook-prompt-ab-2026-10-22/case-v4.json`, `receipt-v4.json`,
+  and `output-v4.jpg` (local ignored artifacts). Request ID:
+  `e5bec406-dd24-4df7-8feb-fb156ee44808`. A restricted-network DNS failure was
+  recorded before the successful unrestricted provider request. No additional
+  generations were submitted. Deployment remains paused.
+
+## 2026-10-22 Shared Demo and Creative Assets preview lifecycle (local)
+
+- Library cards now retain a bounded display-only still and release idle video
+  sources. Offscreen/hidden/offline playback pauses; explicit Resume retains its
+  time. Source changes isolate state. Opening an expanded Demo stops its card.
+- Visibility tracks the containing card including its playback controls. Tracking
+  only the frame caused immediate pause when mobile controls remained visible
+  below an offscreen frame; the explicit regression now passes.
+- Existing posters and source URLs remain in use; no original-media rewrite or
+  persistent/shared preview cache. This does not change Explore editor playback.
+- All 82 local desktop/mobile browser assertions and 36 focused contracts pass;
+  TypeScript and scoped lint pass. Long scrolling retains zero idle video sources
+  versus 52 desktop/46 mobile in the previous fixture. No bill-saving claim and
+  no deployment. Full build status and local/production limits are in the receipt.
+  Evidence and remaining work: `docs/demo-creative-assets-video-previews-2026-10-22.md`.
+
+## 2026-10-22 Primary-frame recreation prompt v3 (local; deployment paused)
+
+- Subsequent user-authorized A/B test completed two fresh direct Google requests
+  using `gemini-3-pro-image`, 2K, 9:16, the same hash-verified source from job
+  `2d6398b7-39e0-4898-b3e5-28db054f4fc8` and the exact same main/two support
+  images. Old prompt hash matches that historical job. Prompt plus adjacent role
+  labels changed together; no seed was set and no paid retries ran. Both returned
+  1536x2752 JPEGs. Private originals, prompts, input hashes and provider receipts
+  are in ignored `outputs/hook-prompt-ab-2026-10-22/`.
+- Visual review does not show v3 improving the requested identity in this pair.
+  Both preserve the scene and remove captions; v3 remains strongly source-like,
+  while v2 has more visible brow/skin changes. Neither is qualified as a convincing
+  match. This single pair is not a reliability estimate. Do not deploy v3 as a
+  proven fidelity fix. Deployment remains paused.
+
+- Following the user's four-variation failure report, new starting-image requests
+  explicitly recreate the primary shot with the selected influencer as the
+  performer. Image 1 defines scene, framing, pose, expression, clothing, hands
+  and occlusions; Image 2 defines facial identity. Scene preservation must not
+  preserve the original performer's face. Supporting photos supply identity only.
+- Prompt v3 and its adjacent provider image labels use the same recreation
+  instruction. Receipt/draft schema stays v2; prompt version independently binds
+  this change. Existing v1/v2 prompts, image labels, request recovery and saved
+  output approval remain supported without resubmitting accepted work.
+- This remains an unqualified prompt hypothesis, not a demonstrated fidelity
+  fix. The subsequent test above did not establish improvement; no production
+  deployment has run.
+- Local validation passed: application typecheck, worker build, focused prompt,
+  API, provider-input, approval/recovery and workspace interaction tests. These
+  checks verify request handling; they do not measure generated facial fidelity.
+
+## 2026-10-22 Completed slideshow recreation opens Your Slides (local)
+
+- When a user recreates a complete single-version slideshow (two or more
+  slides), resolve every owned result, preserve provider slide order, assemble
+  them in the current editor, and return directly to Create → Your Slides. Do
+  not require one Add to slideshow action for each finished slide.
+- A just-completed slideshow supersedes the current visible sequence, even when
+  that older draft is still restoring. Archive the older sequence for explicit
+  recovery; do not show its slides beside or instead of the fresh result. Direct
+  navigation to Your Slides continues to show the current draft. An interrupted
+  save remains protected and requires an explicit ordered-version choice after
+  it is resolved.
+- Recreating one selected slide remains a replacement action. Incomplete,
+  failed, recovered-history and multi-version batches stay in the generated
+  results view so the user can choose a complete version deliberately.
+- The shared prompt card beneath a generated slideshow version is bounded to a
+  readable width instead of spanning the full results workspace. This is local;
+  deployment remains paused.
+- Local regressions cover replacement of four old slides with two fresh ones,
+  direct-entry draft restoration, delayed restoration, retained draft history
+  and interrupted-save protection. The combined three-suite run passed 209
+  checks; the follow-up editor run passed 50, including one additional save
+  protection case. These are component/service-boundary checks, not deployed
+  browser acceptance or paid generation.
+
+## 2026-10-22 Repeated facial-adherence failure: glasses/hand Hook (read-only audit)
+
+- User reports that a previously successful face replacement does not generalize
+  to another selected face. The newest two owned outputs were downloaded for
+  inspection; both preserve the glasses/hand scene and remove captions, but do
+  not convincingly demonstrate the requested facial change. Do not equate a
+  completed image job with successful face replacement.
+- Confirmed saved jobs `c3c7cad3-1bb3-4356-9ea9-a6fb8f03bf88` (Gemini 3 Pro) and
+  `778ab6a8-6c93-49f7-a5f7-a2460462c94e` (Flash) use the same glasses Hook, main
+  and supporting asset IDs, prompt v2/hash, three image inputs and empty custom
+  instructions. Both provider operations are output_persisted. Switching to Pro
+  alone has not resolved this reported case.
+- Main/support metadata is 1122x1402, not the small UI thumbnail size. The main
+  file is a clear face reference; there is no evidence here that the user supplied
+  an unusable photo. Similar supporting poses add limited angle diversity; a
+  role/conflicting-source weighting failure is a hypothesis, not proven internal
+  model reasoning. Scene glasses, upward gaze and hand occlusion add difficulty.
+- The earlier user-described successful request used different person assets AND
+  a different Hook scene, so it does not isolate the effect of influencer choice.
+  Saved prompt explicitly requests replacement, not just caption removal.
+- Existing provider-interaction GETs returned 404 with the configured key. The
+  current audit therefore verifies saved app requests and owned outputs, not
+  retained provider input bytes or an actual provider model response field. Do
+  not conflate this with the separately verified 21 October keyboard incident.
+- Follow-up trace: the same main asset appears in eight completed outputs across
+  four distinct source frames and several support-photo sets. The 21 October
+  keyboard job is one of those runs and retains Gemini's original interaction:
+  source scene bytes were first, the main face photo second, support third, and
+  the explicit role/preservation prompt was present. Gemini returned a bedroom
+  scene derived from the identity photos instead of the supplied keyboard scene.
+  This is direct evidence that the general image-editing route does not provide
+  stable role precedence between the base scene and identity references. It is
+  not a missing prompt, picker-order, thumbnail or upload-delivery defect for
+  that recorded request. Current interaction retention is unavailable, so do not
+  overstate the old retained receipt as byte-level proof for every later run.
+- Direct cross-frame visual comparison then confirmed the user-reported pattern:
+  the purple-keyboard Flash run lets the identity reference override the source
+  scene; a separate four-variation Pro run with the same main plus two support
+  views preserves the Hook performer and scene but does not visibly adopt the
+  intended identity; a further Pro Hook and both glasses-frame model attempts
+  also fail identity review. All eight jobs have empty custom image instructions.
+  This rules out a conflicting user prompt and shows that adding supporting views
+  alone is not a reliable correction. Private comparison artifacts are ignored
+  under `outputs/hook-reference-compare-2026-10-22/`.
+- Recommendation is a bounded same-scene comparison before any more prompt-only
+  claims: caption cleanup localized first, then evaluate a dedicated facial edit
+  or face-swap stage, preserving occluding hands/glasses. A dedicated engine is
+  a candidate, not demonstrated acceptance. Keep output review and explicit Use
+  this; no automatic paid retries or hidden provider changes.
+- No inference, upload, database mutation, application behavior change, push or
+  deployment occurred in this investigation. Evidence and proposed qualification:
+  `docs/hook-face-adherence-investigation-2026-10-22.md`. Private photos and local
+  receipts stay under ignored `outputs/hook-face-adherence-2026-10-22/`.
+
+## 2026-10-22 Starting-frame animation models, preview size and Schedule footer (local)
+
+- User reported padded selected-frame tiles, a small generated-video preview,
+  disabled Omni/WAN model options and Schedule actions overlapping scrolling
+  timezone content. Deployment remains paused.
+- The selected starting-frame tile follows the verified image's actual ratio,
+  bounded to 200px, with no square letterboxing or image crop. Change still opens
+  the Starting frames library. The redundant badge over the image is removed.
+- The Seedance-only rule is superseded for new approved-frame animation requests.
+  Preserve the current supported model on frame selection; allow Omni Flash 1.1,
+  Seedance 2.5 and WAN 3.0 subject to their existing availability gates. The API
+  and worker both retain owned asset/job provenance and forbid mixed person,
+  source-video and audio inputs. App durations are 4–10s for Omni and 4–15s for
+  Seedance/WAN. Unsupported qualities/durations adapt when changing models.
+- New jobs freeze Gemini for Omni and ReAPI for Seedance/WAN. Omni receives one
+  image with `<FIRST_FRAME>` and `image_to_video`; both ReAPI models receive one
+  explicit `first_frame`. No fallback changes the paid model/provider route.
+  Accepted older jobs retain their provider and request fingerprint. Native
+  contract references: https://ai.google.dev/gemini-api/docs/omni and
+  https://reapi.ai/docs/wan-3-0 . These docs and local tests do not constitute a
+  fresh paid-provider acceptance test.
+- Pending and finished video cards share enlarged viewport-based dimensions.
+  Their container width determines whether the prompt sits alongside or below;
+  prompt and preview no longer use space-between to create a large empty gap.
+  Physical laptop diagonal is not detectable; available CSS viewport space is
+  the sizing input. Existing play/seek/sound/download actions remain available.
+- Schedule actions now scroll normally with the form. Removed the sticky footer
+  that exposed underlying content through the form's bottom padding. The action
+  keeps the short Schedule post label after confirmation; the Scheduling link
+  uses explicit completion state rather than interpreting button text. Recovery,
+  repeat intent, confirmation and duplicate-prevention behavior are unchanged.
+- Verified the real deployed domain read-only: it still has the older two face
+  controls and exposes legacy Use source video after closing Recreate. These are
+  production observations, not acceptance of the pending local changes. No
+  generation or scheduling submission was made. Local visual verification is
+  still pending restored browser access; no fresh screenshot is claimed.
+- Local validation: 208 frontend/scheduling checks, 97 source-frame/API/review
+  checks, 51 video adapter/worker checks and 12 image-contract/output checks pass
+  (368 distinct tests). Application TypeScript, worker build and scoped lint pass.
+  No paid generation, production writes, migration, push or deployment.
+
+## 2026-10-22 One face-image chooser (local; deployment paused)
+
+- The starting-frame overlay now uses one square Choose image tile, matching the
+  existing Create form. It replaces the separate Choose influencer and Choose
+  photos controls. Saved influencer images, uploaded images and UGC Pilot images
+  are sources inside that same chooser; library thumbnails stay inside it.
+- Selecting a saved influencer verifies the owned image and replaces the main
+  face photo. Changing identity clears old supporting views; a failed replacement
+  preserves the current selection. Reselecting the same main photo keeps supports.
+- The shared rounded model popover replaces the native model menu. Gemini 3 Pro
+  remains the default with Gemini 3.1 Flash available. The count is labelled
+  Variations, with 1–4 choices. Only the tile is width-bounded; its explanatory
+  text uses the available column width. Touch controls keep 44px targets.
+- The existing Create picker still exposes Starting frames for recent verified
+  outputs (up to 24), preserving the scene-image role rather than face-photo role.
+  Hook Recreate continues to open the overlay without attaching a source video;
+  video editing controls are absent from this starting-frame path.
+- 72 focused UI/history/navigation checks, application TypeScript and scoped lint
+  pass. The local server runs at port 8190. Browser security rejected access to
+  the local tab, so this revision has no fresh screenshot or visual acceptance.
+  Earlier screenshots below are not evidence of this chooser revision. No paid
+  generation, database change, push or deployment was performed.
+
+## 2026-10-22 Remove Generated videos shortcuts from clip overviews (local)
+
+- User removed the secondary Generated videos button from Hook's Your videos
+  header and asked for the same removal in other workflows. Remove its matching
+  Talking Head + Demo overview shortcut too. Keep the Schedule video action,
+  References/Your videos navigation, clip editors and generation progress.
+- Generation still reveals results when it starts; selecting Your videos
+  returns to the clip overview. This request does not remove generated media,
+  History, the Generate video submission button or slideshow controls.
+- Local change; deployment remains paused.
+
+## 2026-10-22 Hook Recreate flow audit (local; deployment paused)
+
+- Root cause of the reported screenshots: `?preview=1` was explicitly excluded
+  from keyframe preparation, so Recreate forwarded the full Hook as a legacy
+  source-video edit. Local Hook preview now opens the same recreation overlay
+  and suppresses that legacy binding while an approved starting image is absent.
+- Removed the attempted preview adapter that substituted catalogue posters and
+  an old generated portrait. Anonymous preview now calls a development-only,
+  loopback-only source endpoint using the same canonical-source hash verification
+  and FFmpeg frame-zero decoder as authenticated preparation. Client validates
+  its receipt and downloaded bytes. It never fabricates jobs or generated outputs.
+- Anonymous preview is explicitly read-only for generation. Existing influencers,
+  new image jobs and animation still require authentication and the configured
+  generation release gates. Local preview drafts use a separate identity and
+  cannot become owned production requests. The separate e2e layout fixture remains
+  labelled as a simulation; it is not evidence of model quality.
+- Fresh browser checks on the real `/explore/hook-video?preview=1` page verified
+  Recreate, actual 720x1280 source loading for two Hooks, enlargement, compact
+  model/image-count controls, closing without a video attachment and retained
+  Recreate action/focus. Source PNG was saved with a matching response SHA-256.
+  Screenshot: `outputs/hook-recreate-real-source-desktop-2026-10-22.jpg`.
+- 295 distinct focused frontend/API/worker checks pass. Application TypeScript,
+  worker build, scoped lint and diff whitespace checks pass. These checks verify
+  scene/main/support ordering, model routing, variation IDs, approval handoff,
+  owned-result checks and no automatic paid retry; they do not prove visual face
+  fidelity. No fresh paid image/video generation, push or deployment was performed.
+
+## 2026-10-22 Shared browser font preload optimization (local)
+
+- Root editor/monospace fonts retain their exact files, CSS variables and weights
+  with `preload: false`; public pages no longer eagerly request editor faces.
+  Rendered editor text still loads the matching fonts on demand. Bundled Explore
+  font choices, text layouts, saved drafts and worker rendering are unchanged.
+- All six legacy root families load in the production-mode local browser;
+  seven font/export regressions and the existing desktop/mobile editor suite
+  pass. No deployment, migration or paid generation. Evidence and limits:
+  `docs/homepage-cost-optimizations-2026-10-22.md`.
+
+## 2026-10-22 Deployment paused; user-drawn starting-frame flow supersedes tab layout
+
+- User explicitly paused deployment before any source push or worker/website
+  release. The separately approved additive migration `20261022092140` had already
+  succeeded; leave it in place. Do not apply any other migration or resume release
+  without the user's instruction.
+- Recreate opens a focused overlay inside the existing Hook page. Remove the
+  Starting frame tab from the right-side References/Your videos navigation.
+- Overlay top row: original source frame left, compact influencer chooser plus
+  model/variation count and Generate right. Generated variations occupy a separate
+  row below; each finished image has its own Use this action. Keep regeneration
+  available without discarding previous accepted outputs.
+- Use this closes the overlay and sets the verified generated image in the
+  existing Create / Choose image box as a first-frame input. Changing that box
+  opens the image chooser with a Starting frames source showing recent owned
+  generated frames. These are approved scene images, not person/support photos;
+  retain their source/motion metadata and correct first-frame role.
+
+### Local implementation and verification of the overlay flow
+
+- Recreate now uses `presentation="recreation"` in a modal over the unchanged
+  Hook page. References and Your videos are the only right-side navigation tabs.
+  Scene/person inputs stay above the result grid; every completed variation has
+  its own Use this and enlargement controls. Mobile rows explicitly reset the
+  desktop source span. The modal owns scrolling without shrinking its input grid.
+- The existing Create image picker displays the approved scene with a Starting
+  frame badge and Change action. Its new Starting frames source reads up to 24
+  recent verified owned outputs, newest first, then re-verifies the chosen
+  asset/job before handoff. It never adds that scene to person/support photos.
+- The development-only `?preview=1` Hook route follows the same starting-frame
+  branch as the authenticated workflow. It no longer auto-attaches the full
+  reference clip as `Use source video / Edit source video`; that legacy video
+  edit control is reserved for explicit non-keyframe editing. The source-only
+  local adapter decodes the selected canonical video; it never substitutes a
+  poster or presents an existing output as a new generation. It never calls a
+  provider, spends credits or changes production data.
+- Reuse restores the matching Hook source and current reviewed motion directions
+  (sound off); a missing/changed source, unavailable output or unresolved motion
+  review cannot silently enter animation. Selecting ordinary photos explicitly
+  exits starting-frame mode after successful admission; failed replacement leaves
+  the approved image intact. No new database schema or paid call is needed.
+- Local checks: 166 distinct focused tests pass, application TypeScript passes,
+  scoped lint passes and diff whitespace checks pass. The 165-test combined run
+  was followed by 32 targeted checks including the new navigation regression.
+  These cover per-card handoff, owner scoping, failed/late reads, request binding,
+  source reassignment and legacy upload/video behavior.
+- The earlier overlay revision lacked fresh browser acceptance because browser
+  access was restricted. The later flow audit above records fresh local browser
+  checks; authenticated model-generation acceptance is still separate and pending.
+- Deployment remains paused. No commit, push, website/worker release, migration
+  or paid generation was performed during this overlay refinement. The earlier
+  approved additive production migration remains in place.
+
+## 2026-10-22 Approved Hook workspace / named slideshow release (in progress)
+
+- User authorized push/deployment of the complete current intentional worktree
+  and separately approved the additive slideshow-plan database migration.
+- Production migration succeeded as ledger version `20261022092140`; canonical
+  filename was aligned. Private grants/RLS were verified. Previously deferred
+  recovery-billing and content-mix migrations remain unapplied. Historical ledger
+  drift is recorded separately; do not claim complete migration-history parity.
+- Release order is database, exact-commit image worker, website/MCP, then hosted
+  checks. Latest layout visual acceptance remains pending browser access; do not
+  reuse older screenshots as evidence. Detailed receipt:
+  `docs/hook-workspace-slideshow-release-2026-10-22.md`.
+
+## 2026-10-22 Starting-frame sizing and element placement review (local, visual review pending)
+
+- User rejected the overall scale/placement even after the compact chooser: source
+  and result ran below the laptop viewport, the selected face was too small and
+  generation controls were buried. Do not treat the earlier overflow-only checks
+  as visual acceptance of the composition. Screenshots 01–16 show prior revisions.
+- Rebalance the complete focused view: bounded equal-height scene/result previews
+  preserve their original aspect ratios and enlargement; selected face photos use
+  96×120px previews instead of 56×68px thumbnails. One Choose influencer box opens
+  the photo grid. Keep supporting photos and Change photos with the selected face.
+- Put model, image count, price and Generate together in a bottom image-action bar.
+  Keep generated variation choices before Use as starting frame. Back and heading
+  share one desktop row. Instructions stay collapsed; audio/duration remain in the
+  later video form. The main workspace auto-saves, so omit its redundant manual
+  Save preparation button. Retain accepted-request recovery and inline errors.
+- A completed result already visible must not automatically scroll the header out
+  of view. Scroll only when review is outside the visible area, accounting for the
+  action bar; reserve scroll padding so keyboard targets can clear that bar.
+- Browser security rejected access to the local preview in this revision. Do not
+  bypass that rejection or reuse the older screenshots as current evidence. The
+  local server was restarted on port 8190 for the user's direct review; an app
+  browser-panel open was queued. Fresh visual acceptance remains pending. No paid
+  generation, database change, push or deployment in this refinement.
+- Local code validation: 147 focused checks, application TypeScript and scoped
+  lint pass. These checks do not certify the revised layout's visual quality.
+
+## 2026-10-22 Hook saved-face picker and focused starting-frame view (local)
+
+- User again found the preparation compressed on a laptop. Recreate now opens
+  Starting frame inside the main Hook workspace, alongside References and Your
+  videos, with the left composer hidden but mounted during preparation. The
+  focused stage spans the available width and owns vertical scrolling. Keep the
+  existing composer portal targets/drafts mounted; do not replace this with a
+  new sidebar category or stack another narrow modal over the two-pane screen.
+- Saved influencers load when preparation is restored, not only on History.
+  User rejected the inline recent-photo row: show one compact Choose influencer
+  box that opens the paginated image grid. Never display the whole influencer
+  library on the preparation screen. Only selected main/supporting photos appear
+  there. Keep the image picker separate from the builder's prompt-heavy history.
+  Selecting a saved photo validates its owned ready asset and replaces the main
+  person selection, clearing supports from the previous identity. A failed
+  selection retains the current photos and shows an actionable error.
+  Reselecting the current main photo is a no-op and retains its supporting views.
+- Hook Recreate is a repeatable action: retain its rotate icon after selection
+  and Back. The orange card border can indicate context; do not substitute a tick
+  or toggle semantics for the action. Back retains local preparation/accepted
+  request identities and restores focus to that card's Recreate control.
+- Opening/cancelling gallery-based starting-frame preparation must not forward
+  the legacy source-video edit binding or URL reference prompt. Until an image is
+  approved, the composer offers Create starting frame/Clear reference and blocks
+  new video submissions. Existing accepted-request recovery still uses its frozen
+  request. Prompt-only/image-plus-prompt and intentional manual-video editing
+  outside this gallery intent retain their normal behavior. Only approval hands
+  the selected starting image and animation instructions to the video composer.
+- Browser access was subsequently enabled. Fresh local checks use the actual
+  components and shared production layout classes with a free mock adapter,
+  including laptop/short-window/mobile selection, enlargement, Back/Recreate,
+  retained variations and approved-image handoff. The shared shell exposed a
+  mobile minimum-height/absolute-helper overflow recurrence: bound the focused
+  grid row and main pane, and position the scrolling stage so hidden helper text
+  cannot enlarge the document. Do not infer model fidelity from fixture portraits.
+- 140 focused offline checks, application types and scoped lint pass (one existing
+  VideoPanel image warning). These changes remain local, uncommitted and
+  undeployed; no authenticated production acceptance, paid generation or database
+  migration is part of these checks. See
+  `docs/hook-starting-frame-workspace-2026-10-22.md` for the current UI receipt.
+- Compact-chooser follow-up: 31 focused checks and scoped lint pass. Fresh local
+  browser checks at 1366×768 and 390×844 confirm one 194×42px launcher, zero inline
+  library thumbnails, working dialog selection and no horizontal/page overflow.
+  Screenshot 15 replaces screenshot 12 as the current laptop review image.
+
+## 2026-10-22 Named slideshow inputs and scoped execution plans (local)
+
+- Keep the existing input bar. Selected images carry their original Source slide
+  number and stable reference/slide IDs; owned uploads receive Upload A/B/etc.
+  Names persist with the owner/source-scoped composer, including removed-name
+  tombstones, so deleting Upload A does not rename Upload B. Current slide is the
+  existing accepted result being edited. No per-image forms were introduced.
+- New UI requests carry a named manifest. Server verifies catalogue identities,
+  canonical URLs and upload ownership, then makes one image-aware structured
+  planning call per explicit Generate. Private durable plan receipts fence lost
+  responses, account isolation and conflicts; uncertain requests do not repeat
+  planning automatically. This included planning has its own 200/day abuse bound,
+  separate from the optional 20/day text-rewrite quota. Image credits are reserved
+  only after the plan has valid destinations and no unresolved clarifications.
+- Each v4 image job freezes its original request for history plus a scoped plan,
+  base-first provider URLs, stable labels and semantic attachment roles. Only the
+  target base and assigned uploads reach that output. Original slide 4 can be
+  output 2 without becoming Source slide 2. Plans participate in provider fences.
+  Already admitted v2/v3 jobs retain their prior prompts, ordering and recovery.
+- This implements assignment/execution boundaries, not an exact screenshot
+  compositor or a persistent conversational assistant. The optional sparkle
+  rewrite remains text-only. Provider/stub checks establish transport and scope;
+  actual model fidelity still needs a hosted visual acceptance run.
+- Deployment requires migration `20261022092140`, the v4-aware generation worker
+  first, then the website. This change has not applied the migration, deployed,
+  or submitted paid model requests. See `docs/slideshow-named-plans-2026-10-22.md`.
+- Local acceptance: 293 distinct automated checks, three real-component browser
+  suites, types/lint, worker build and production build/postbuild passed. The
+  browser recurrence where Recreate cleared uploads within the same source set
+  is repaired; source order is canonicalized for that draft scope. Original
+  Remix provenance is inherited from the accepted owned result's server job.
+
+## 2026-10-22 Two relationship Wall of Text references removed (local)
+
+- User identified two cards in a screenshot: `explore-wall-text-08` (“no man is
+  perfect…”) and `explore-wall-text-09` (“I'll forever be a ‘you should've just
+  told me’ type of person…”). Remove exactly these entries from the shared direct
+  Wall library, covering Recreate, format galleries, legacy list/preview, valid
+  source IDs and future import assets. Keep all remaining IDs and ordering.
+- Version catalogue query keys so previously cached lists do not retain the two
+  cards after the updated code loads. Keep source media and historical reviewed
+  transcripts; this is removal from references, not deletion of user creations
+  or cloud objects. Production acceptance requires release of this local change.
+- Frontend additionally suppresses retired IDs from cached/preview/API catalogue
+  data before gallery rendering, category metadata or URL-based selection. The
+  legacy Wall observer also removes retired items and replaces a retired preview
+  with the first available video. This covers an older response during rollout.
 
 ## 2026-10-22 Combined release authorization and acceptance
 
@@ -2966,7 +3709,7 @@ relevant feedback together.
 | Edit hook / Edit demo | Compact action attached to the matching preview card; opens that clip's focused editor | Unlabeled Edit far from its clip, or a top-level Demo tab repurposed as editing tools |
 | Workflow background audio/music | One clearly named composition group in Demo for Hook/Talking Head, showing the track's whole-video scope; any Create entry must reflect the same choice | Separate competing hook/demo background selections, duplicate Upload audio groups with unclear scope |
 | Talking Head Demo sound | Distinct optional group beside Demo setup; clearly says it affects the demo only | Treating it as the whole-video background track or removing it during layout cleanup |
-| Hook demo's original volume | Compact original-sound control in Demo setup; preserves the existing footage sound | Sound panels or separate demo-audio upload/library groups in focused editing |
+| Hook demo's original volume | Inline, text-only `Adjust demo sound` control beside the selected demo filename in Demo setup; it reveals the compact original-sound slider and preserves the existing footage sound | Sound panels or separate demo-audio upload/library groups in focused editing |
 | Text, Remix and appearance | Focused editor; reference Remix prominent, style controls beside the text where width permits | Duplicate Remix on overview; style sliders in a distant unrelated panel |
 | Clip Save and return | Stable editor footer with distinct primary/secondary emphasis | Schedule occupying Save's role or a footer covering controls |
 | Final preparation and scheduling | Composition overview/preparation status and Schedule review respectively | Repeated preparation/refresh controls overwhelming the clip editor |
@@ -3834,3 +4577,9 @@ catalogue/release records rather than copying counts from historical audits.
   approval, separately adapted motion prompts, explicit fixed-duration first-frame
   animation with sound OFF, then offline validation and user review. No new paid
   test or deployment is authorized by this planning discussion.
+
+## Combined deployment resumed — 23 October 2026
+
+- The user explicitly resumed the complete release and required the documented deployment order. Earlier deployment-pause notes are historical. Verify the already applied slideshow migration, freeze all intentional work, deploy and verify the matching generation worker, then merge/release website and MCP.
+- Current checks: 1,099 combined focused tests, 346 worker tests, 324 MCP tests, scoped lint, production compilation/TypeScript, native route traces and compiled MCP rejection checks pass. Local fixtures and source/media reviews remain distinct from hosted authenticated acceptance and paid generation quality.
+- The complete scope and every ignored path exclusion are recorded in `docs/combined-release-deployment-2026-10-23.md`. No unrelated migration, billing change, paid quality run or sibling-project retirement belongs to this release.

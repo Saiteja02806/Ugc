@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "folder": "New folder (2)",
+      "text": "POV: you finally understand\nhow to use Claude\nfor marketing",
+      "openingState": "The performer is in a low-angle close selfie wearing round eyeglasses and white earbuds, mouth slightly open, with the hand on screen-right already touching the glasses at the temple.",
+      "actions": ["Pull the glasses forward and away from the eyes with the same hand, then lower them below the face while looking off screen-right.", "Turn the gaze toward the lens with raised brows and slightly parted lips; hold the uncovered face in the low selfie view.", "Look back off screen-right with a questioning, open-mouth expression, keeping the glasses lowered."],
+      "camera": "Keep the slightly tilted low handheld selfie, with gentle natural movement and the pale structural beams and windows behind.",
+      "endingState": "The glasses remain off the face and lowered, the earbuds stay in, and the performer looks off screen-right with parted lips.",
+      "constraints": ["Remove the glasses forward from the face; do not place them on top of the head.", "Keep the black ribbed sweater, earbuds and room consistent. Do not add another person or a scene cut."],
+      "risks": ["face_prop_contact", "hand_or_prop_occlusion", "profile_turn", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (3)",
+      "text": "I could literally KISS\nthe business owner\nwho showed me this",
+      "openingState": "The performer is outdoors at night in a very low upward selfie view, head tipped back and face partly seen from below, wearing a black sweater and backpack straps.",
+      "actions": ["Bring the head forward and raise the handheld camera into a more level face view, revealing the smile and the brightly lit city screens behind.", "Keep a restrained closed-mouth smile while the body and handheld camera turn gently together, so the lights move across the background.", "Raise one hand toward the lips and chin, briefly look sideways, and return the smiling face toward the lens with the hand near the lower face."],
+      "camera": "One continuous moving handheld selfie in the illuminated city square at night; transition from low upward framing to a more level close view while turning.",
+      "endingState": "The performer smiles toward the lens with one hand near the lips and chin, framed by bright nighttime city screens.",
+      "constraints": ["Keep backpack straps and black sweater visible. Do not add a kissing partner or a scene cut."],
+      "risks": ["partial_face_crop", "camera_reveals_unseen_scene", "hand_or_prop_occlusion", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (4)",
+      "text": "BRUH 💀 i just found out\nhow my little brother studies\nfor exams 😭",
+      "openingState": "The performer fills the lower part of a very low-angle close-up, looking upward with parted lips and lifted brows; the pale ceiling occupies most of the frame.",
+      "actions": ["Hold the upward, questioning gaze and slightly open mouth with only small eye movements.", "Blink slowly, briefly narrow the eyes, and let the brows pull together with mild disbelief.", "Reopen the eyes and keep looking upward with parted lips, making a small natural head adjustment."],
+      "camera": "Maintain the nearly fixed very low selfie angle and close crop, with the ceiling and rectangular fixture above.",
+      "endingState": "The face stays low in the composition, looking upward with lips slightly parted and a questioning expression.",
+      "constraints": ["Do not add hand gestures, another person, a screen insert or a scene cut."],
+      "risks": ["partial_face_crop", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (5)",
+      "text": "Since when can WhatsApp\ndo THIS??!😭😭",
+      "openingState": "The performer leans toward the selfie camera in a pale yellow thin-strap top, with knitted brows and slightly open lips, long blonde hair over the shoulders and a small pendant necklace.",
+      "actions": ["Open the mouth wider in disbelief and lean closer toward the lens, keeping the questioning brow.", "Raise the hand from screen-right and place it across the mouth as the camera moves into a tighter close-up.", "Briefly close the eyes, then lower the hand toward the chin, open the mouth into a surprised smile and glance upward off screen-left."],
+      "camera": "Keep a single handheld room selfie, moving closer during the mouth-covering gesture and holding the tight ending crop.",
+      "endingState": "The hand rests below the mouth near the chin, the mouth is open in a surprised smile, and the eyes glance upward off screen-left.",
+      "constraints": ["Use the same hand for the mouth-covering and lowering gesture. Keep the top, necklace and room consistent; no cut."],
+      "risks": ["hand_or_prop_occlusion", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (6)",
+      "text": "POV: you found a way to\nmake your texts point you\nback to God",
+      "openingState": "The performer sits in an orange-lit room wearing large clear eyeglasses and a colorful top, looking upward off screen-left with lips parted. One hand holds a tall light-colored can upright while an extended finger rests near the lower lip.",
+      "actions": ["Widen the eyes and open the mouth in surprise while still looking off screen-left, keeping the can upright without drinking.", "Lower the can and its hand out of the main face area as the gaze shifts toward the lens.", "Move the handheld camera closer and hold a wide-eyed, open-mouth expression toward the viewer in the tight face crop."],
+      "camera": "One handheld selfie moves from a seated upper-body view into a close face view against the warm orange wall lighting.",
+      "endingState": "The face is much closer to the lens with glasses still on, eyes wide and mouth open; the can is below the face area.",
+      "constraints": ["Do not add a sip or lift the can to the lips. Keep glasses on and retain the colorful top and cross necklace. No scene cut."],
+      "risks": ["face_prop_contact", "hand_or_prop_occlusion", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (7)",
+      "text": "I love Gen Z because WDYM\nwe made a Bible buddy that\nwill literally text you and\nremind you to spend time\nwith God",
+      "openingState": "The performer sits in a purple-lit room wearing large eyeglasses and a blue-and-white fleece, looking down at the pale phone held upright on screen-left with a skeptical expression.",
+      "actions": ["Shift the gaze up from the phone, widen the eyes and open the mouth while keeping the phone in its hand.", "Bring the free hand up beside the face with fingers spread, then move that same hand across the mouth as the camera comes closer.", "Keep the mouth covered by the free hand and hold the wide-eyed look toward the lens in a tighter close-up."],
+      "camera": "Maintain one handheld selfie in the purple-lit room, moving closer through the reaction without revealing a different setting.",
+      "endingState": "The free hand covers the mouth, the glasses remain on and the eyes are wide toward the lens in a tight crop.",
+      "constraints": ["Keep the phone and mouth-covering gestures in different hands. Retain yellow nails, ring, fleece and glasses; no scene cut."],
+      "risks": ["hand_or_prop_occlusion", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (8)",
+      "text": "My husband coded\nme this!!!!",
+      "openingState": "The performer sits beside an open dark laptop, wearing black eyeglasses, gold earrings and a white lace long-sleeve top, looking toward the laptop with the mouth open in surprise.",
+      "actions": ["Raise the red-manicured hand from screen-right and place it over the mouth as the eyes lift briefly toward the lens.", "Tilt the head slightly, hold the hand over the lower face and let the eyes soften into an amused expression.", "Turn the gaze back toward the laptop and smile behind the hand, briefly lowering the eyelids."],
+      "camera": "Keep the steady seated medium-close view with the open laptop in the foreground and the pale room and stairs behind.",
+      "endingState": "The performer smiles toward the laptop with a hand still partly covering the mouth, glasses on and head gently tilted.",
+      "constraints": ["Keep the laptop in the foreground and the glasses on. Do not add another person or a cut."],
+      "risks": ["hand_or_prop_occlusion", "source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (9)",
+      "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+      "openingState": "The performer wears a light denim jacket in a pale room, looking off screen-left with eyes wide and mouth open, with the ringed hand on screen-right resting against the upper chest and throat.",
+      "actions": ["Turn the widened eyes from screen-left toward the lens while keeping the mouth open and the ringed hand at the upper chest.", "Hold the surprised stare toward the lens, lower the hand slightly along the chest, and make a slow natural blink.", "Reopen the eyes wide and hold the open-mouth expression facing the viewer, with the hand resting at the upper chest."],
+      "camera": "Keep the nearly fixed, front-facing upper-body view with warm wall lights and the pale bed and room behind.",
+      "endingState": "The performer faces the lens with wide eyes and open mouth, the ringed hand remaining on the upper chest.",
+      "constraints": ["Do not raise the hand over the mouth or introduce a new gesture. Keep the denim jacket and gold ring; no scene cut."],
+      "risks": ["source_duration_dependency"]
+    },
+    {
+      "folder": "New folder (10)",
+      "text": "Claude Code can't do that 😮‍💨",
+      "openingState": "The performer is in a close selfie wearing a black thin-strap top and delicate necklace, with one hand curled under the chin and the index finger resting just below the lips, looking slightly off screen-right with a small closed-mouth smile.",
+      "actions": ["Keep the hand under the chin and shift the eyes subtly toward the lens while holding the small restrained smile.", "Make a natural blink and a slight head adjustment, keeping the thoughtful finger position near the lips.", "Return the gaze slightly off screen-right and hold the same calm, faintly amused expression with the chin still supported."],
+      "camera": "Maintain the close, mostly steady handheld selfie with a pale wall and white door behind.",
+      "endingState": "The chin remains supported by the same hand, the mouth stays closed in a subtle smile and the gaze rests just off screen-right.",
+      "constraints": ["Keep this a subtle held reaction; do not invent a large surprise gesture or remove the hand from the chin. No scene cut."],
+      "risks": ["hand_or_prop_occlusion", "source_duration_dependency"]
+    }
+  ]
+}

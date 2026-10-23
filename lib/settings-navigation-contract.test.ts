@@ -54,7 +54,7 @@ test("Settings keeps existing deep links while rendering one active panel", () =
 test("Business Context is a first-class Settings panel, not a detached workflow", () => {
   assert.match(
     workspace,
-    /import \{ BusinessContextSettings \} from "@\/components\/settings\/business-context-settings"/,
+    /const BusinessContextSettings = dynamic\(\(\) => import\("@\/components\/settings\/business-context-settings"\)\.then\(module => module\.BusinessContextSettings\)/,
   );
   assert.match(
     workspace,

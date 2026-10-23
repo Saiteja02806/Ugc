@@ -8,6 +8,17 @@ import { getReferenceSource, referenceSourceLabel } from "../lib/explore/referen
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 
+test("a failed reference preview derivative falls back to the original video", () => {
+  const h = harness("hook");
+  h.reference.previewVideoUrl = "https://media.test/preview.mp4";
+  let tree = h.render();
+  assert.equal(h.playbackSources.at(-1).source, h.reference.previewVideoUrl);
+  tree.find(node => node.type === "video").props.onError();
+  tree = h.render();
+  assert.equal(h.playbackSources.at(-1).source, h.reference.videoUrl);
+  assert.equal(tree.some(node => node.props?.children === "Preview unavailable"), false);
+});
+
 function harness(format, reducedMotion = false, canOpenSource = false, showSource = false, overlay = showSource, subscription = canOpenSource
   ? { isSuccess: true, isFetching: false, isError: false, data: { isActive: true, planKey: "starter" } }
   : { isSuccess: true, isFetching: false, isError: false, data: { isActive: false, planKey: "free", freeGenerationCredits: { granted: 5, remaining: 0 } } }) {

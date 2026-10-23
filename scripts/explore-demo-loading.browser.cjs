@@ -67,6 +67,14 @@ async function main() {
       const overview=await page.locator('[data-clip-media]').evaluate(frame=>{const r=frame.getBoundingClientRect();return{width:r.width,height:r.height,aspect:r.width/r.height};});
       assert.ok(overview.width>300,'Demo overview makes use of the available laptop width');
       await page.screenshot({path:path.join(out,`overview-${viewport.width}.png`)});
+      const adjustDemoSound=page.getByRole('button',{name:'Adjust demo sound',exact:true});
+      assert.equal(await adjustDemoSound.isVisible(),true,'Hook Demo keeps its original-sound adjustment compact by default');
+      const [demoNameBox,adjustSoundBox]=await Promise.all([page.locator('aside').getByText('slow-demo.mp4',{exact:true}).boundingBox(),adjustDemoSound.boundingBox()]);
+      assert.ok(demoNameBox&&adjustSoundBox&&Math.abs((demoNameBox.y+demoNameBox.height/2)-(adjustSoundBox.y+adjustSoundBox.height/2))<1,'The sound text stays inline with the selected demo filename');
+      assert.equal(await page.getByLabel('Demo original volume',{exact:true}).count(),0);
+      await adjustDemoSound.click();
+      assert.equal(await page.getByLabel('Demo original volume',{exact:true}).inputValue(),'100');
+      await page.screenshot({path:path.join(out,`overview-sound-expanded-${viewport.width}.png`)});
       await page.getByRole('button',{name:'Change demo video',exact:true}).click();
       await page.getByRole('button',{name:'Upload demo video',exact:true}).waitFor();
       assert.equal(await page.getByRole('button',{name:'Choose demo video from Saved demos',exact:true}).isVisible(),true);

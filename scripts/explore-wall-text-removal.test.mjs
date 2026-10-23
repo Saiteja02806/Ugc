@@ -5,8 +5,11 @@ import vm from "node:vm";
 import ts from "typescript";
 
 const source = readFileSync(new URL("../lib/explore/wall-text-video-library.ts", import.meta.url), "utf8");
-const removedId = "explore-wall-text-01";
-const removedHash = "31d42e78ebbe868ee193ff281243948d610140323a593d03dab3258652921c6a";
+const removed = [
+  { id: "explore-wall-text-01", hash: "31d42e78ebbe868ee193ff281243948d610140323a593d03dab3258652921c6a" },
+  { id: "explore-wall-text-08", hash: "686eed6e67b73c82c703bf2bab0add794268e2cdab075eedcca58cc2e2474ff2" },
+  { id: "explore-wall-text-09", hash: "b6159891652a6f4ea1a3e13d79f5736f24b20de30111c136733e47f22f5e61ab" },
+];
 
 function loadLibrary() {
   const loadedModule = { exports: {} };
@@ -22,16 +25,20 @@ function loadLibrary() {
   return loadedModule.exports;
 }
 
-test("the removed clip is absent from lists, previews, imports and valid reference IDs", () => {
+test("removed clips are absent from lists, previews, imports and valid reference IDs", () => {
   const library = loadLibrary();
-  assert.doesNotMatch(source, new RegExp(removedHash));
-  assert.equal(library.isExploreWallTextVideoId(removedId), false);
+  for (const { id, hash } of removed) {
+    assert.doesNotMatch(source, new RegExp(hash));
+    assert.equal(library.isExploreWallTextVideoId(id), false);
+  }
   assert.equal(library.isExploreWallTextVideoId("explore-wall-text-02"), true);
   assert.equal(library.getExploreWallTextPreviewVideo().id, "explore-wall-text-02");
   for (const items of [library.getExploreWallTextVideos(), library.getExploreWallTextVideoAssetsForImport()]) {
-    assert.equal(items.some((item) => item.id === removedId), false);
-    assert.deepEqual(Array.from(items, (item) => item.id), Array.from({ length: 62 }, (_,index) => `explore-wall-text-${String(index + 2).padStart(2, "0")}`));
-    assert.equal(JSON.stringify(items).includes(removedHash), false);
+    assert.deepEqual(Array.from(items, (item) => item.id), Array.from({ length: 62 }, (_,index) => `explore-wall-text-${String(index + 2).padStart(2, "0")}`).filter(id => !removed.some(item => item.id === id)));
+    for (const { id, hash } of removed) {
+      assert.equal(items.some((item) => item.id === id), false);
+      assert.equal(JSON.stringify(items).includes(hash), false);
+    }
   }
 });
 

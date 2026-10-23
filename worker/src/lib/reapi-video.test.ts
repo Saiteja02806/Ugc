@@ -24,9 +24,17 @@ test("approved first-frame animation uses the explicit frame role, adaptive shap
   assert.equal("generate_audio" in audible && audible.generate_audio, true);
 });
 
+test("WAN starting frames use the literal frame family, not general reference mode", () => {
+  const request = buildReapiVideoRequest({ ...input, model: "wan_3_0", durationSeconds: 8, startingFrameImageUrl: "https://storage.example.com/frame.png" });
+  assert.equal(request.model, "wan3.0-video"); assert.equal(request.size, "adaptive");
+  assert.deepEqual(request.image_with_roles, [{ url: "https://storage.example.com/frame.png", role: "first_frame" }]);
+  assert.equal("audio" in request && request.audio, false); assert.equal(request.content_filter, true);
+  assert.equal("generation_type" in request, false); assert.equal("image_urls" in request, false);
+});
+
 test("first-frame conflicts and unsupported models or durations reject before any paid request", async () => {
   for (const patch of [
-    { model: "wan_3_0" }, { durationSeconds: -1 }, { durationSeconds: 16 }, { durationSeconds: 3.5 },
+    { model: "google_omni" }, { durationSeconds: -1 }, { durationSeconds: 16 }, { durationSeconds: 3.5 },
     { startingFrameImageUrl: "http://storage.example.com/frame.png" },
     { referenceImageUrl: "https://storage.example.com/portrait.png" },
     { referenceImageUrls: ["https://storage.example.com/portrait.png"] },

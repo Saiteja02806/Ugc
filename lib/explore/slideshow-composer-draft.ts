@@ -1,17 +1,19 @@
-export type SlideshowComposerDraft = { version: 1; prompt: string; imageIds: string[] };
+import type { SlideshowUploadName } from "./slideshow-image-names";
+export type SlideshowComposerDraft = { version: 1; prompt: string; imageIds: string[]; uploadNames?: SlideshowUploadName[] };
 export function slideshowComposerDraftKey(owner: string, scope: string) {
   // Include the full context: different selections must never share attachments.
   return `ugc-explore:slideshow-composer:v1:${owner}:${scope}`;
 }
 export function readSlideshowComposerDraft(raw: string | null): SlideshowComposerDraft {
   if (!raw) return { version: 1, prompt: "", imageIds: [] };
-  if (raw.length > 40000) throw new Error("The saved instructions are invalid. Reset this draft to continue.");
+  if (raw.length > 100000) throw new Error("The saved instructions are invalid. Reset this draft to continue.");
   const value = JSON.parse(raw);
   if (value?.version !== 1 || typeof value.prompt !== "string" || value.prompt.length > 32000 || !Array.isArray(value.imageIds) || value.imageIds.length > 14 ||
     value.imageIds.some((id: unknown) => typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id)) || new Set(value.imageIds).size !== value.imageIds.length) {
     throw new Error("The saved instructions are invalid. Reset this draft to continue.");
   }
-  return { version: 1, prompt: value.prompt, imageIds: value.imageIds };
+  if (value.uploadNames !== undefined && (!Array.isArray(value.uploadNames) || value.uploadNames.length > 500 || value.uploadNames.some((item: SlideshowUploadName) => !item || typeof item.assetId !== "string" || !/^[a-f0-9-]{36}$/i.test(item.assetId) || !/^Upload [A-Z]{1,3}$/.test(item.name)) || new Set(value.uploadNames.map((item: SlideshowUploadName) => item.assetId)).size !== value.uploadNames.length || new Set(value.uploadNames.map((item: SlideshowUploadName) => item.name)).size !== value.uploadNames.length)) throw new Error("The saved image names are invalid. Reset this draft to continue.");
+  return { version: 1, prompt: value.prompt, imageIds: value.imageIds, ...(value.uploadNames ? { uploadNames: value.uploadNames } : {}) };
 }
 
 /** Conservative preflight for an explicit uploaded-screen request, not a prompt interpreter. */

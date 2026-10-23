@@ -18,5 +18,5 @@ export default function HookVideoPage({ searchParams }: PageProps) {
 
 async function HookVideoPreview({ searchParams }: PageProps) {
   const query = await searchParams;
-  return <FormatWorkspace format="hook" previewReferences={query.preview === "1" ? getLocalRecreateReferences() : undefined} finishingEnabled={finishingEnabled} hookStartingFramePreparationEnabled={hookStartingFramePreparationEnabled} />;
+  return <FormatWorkspace format="hook" previewReferences={query.preview === "1" ? getLocalRecreateReferences() : undefined} finishingEnabled={finishingEnabled} hookStartingFramePreparationEnabled={query.preview === "1" || hookStartingFramePreparationEnabled} />;
 }

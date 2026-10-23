@@ -15,6 +15,15 @@ const imageId = "3c9226b8-9613-4fb1-9dd1-e22388f71230";
 const frame = { index: 0 as const, timeSeconds: 0 as const, width: 720, height: 1280, sha256: "b".repeat(64) };
 function prepared() { return updateHookKeyframeDraft(createHookKeyframeDraft(scope), { sourceFrame: frame, imageAssetIds: [main, support], instructions: "Keep the source hairstyle." }); }
 function generated() { const draft = prepared(); return recordHookKeyframeImage(draft, { assetId: imageId, inputKey: hookKeyframeInputKey(draft), promptVersion: 1 }); }
+test("recreation prompt results can be approved and restored alongside earlier results", () => {
+  for (const promptVersion of [1, 2, 3, 4] as const) {
+    const draft = prepared();
+    const approved = approveHookKeyframeImage(recordHookKeyframeImage(draft, { assetId: imageId, inputKey: hookKeyframeInputKey(draft), promptVersion }));
+    const restored = readHookKeyframeDraft(serializeHookKeyframeDraft(approved), scope);
+    assert.equal(restored?.generatedImage?.promptVersion, promptVersion);
+    assert.equal(restored?.approval?.assetId, imageId);
+  }
+});
 const duration = 4;
 // This explicitly reviewed record exists only in this unit test. It promotes no
 // production Hook and makes no claim about generated-media visual acceptance.

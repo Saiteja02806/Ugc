@@ -7,6 +7,17 @@ import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts"
 const id = "explore-paired-hook-ef59f4b5e69bc9e125f8ada7", entry = hookKeyframeMotionCatalog[id];
 const draft = createHookKeyframeDraft({ ownerId: "owner", draftId: "00000000-0000-4000-8000-000000000001", referenceId: id, sourceSha256: entry.sourceSha256 });
 
+test("Talking Head and Wall preview their own ready animation directions without Hook motion grammar", () => {
+  for (const workflow of ["talking_head", "wall_text"] as const) {
+    const preview = getHookKeyframePromptPreview(draft, workflow);
+    assert.equal(preview.animationError, null); assert.equal(preview.requiresDecision, false);
+    assert.equal(preview.durationSeconds, 4); assert.ok(preview.animationPrompt);
+    assert.match(preview.directions, workflow === "talking_head" ? /user's own spoken script/ : /editable text overlay/);
+    const audio = getHookKeyframePromptPreview(updateHookKeyframeDraft(draft, { generateAudio: true }), workflow);
+    assert.match(audio.animationPrompt!, workflow === "talking_head" ? /Generate the user's requested speech/ : /Do not add speech/);
+  }
+});
+
 test("selected Hook supplies an image-only motion preview without importing the old video-reference prompt", () => {
   const preview = getHookKeyframePromptPreview(draft);
   assert.match(preview.directions, /OPENING STATE:[\s\S]*reclining/);
@@ -21,7 +32,7 @@ test("selected Hook supplies an image-only motion preview without importing the 
 test("main/support photos apply only to the image stage; sound applies only to animation", () => {
   const d = updateHookKeyframeDraft(draft, { imageAssetIds: ["00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"], instructions: "Keep the same clothing." });
   const silent = getHookKeyframePromptPreview(d), soundOn = getHookKeyframePromptPreview(updateHookKeyframeDraft(d, { generateAudio: true }));
-  assert.match(silent.imagePrompt!, /Image 1 supplies the scene/); assert.match(silent.imagePrompt!, /Image 2 is the main face/);
+  assert.match(silent.imagePrompt!, /^Generate a new photograph of my influencer/); assert.match(silent.imagePrompt!, /Image 2 is the main face/);
   assert.match(silent.imagePrompt!, /Image 3/); assert.match(silent.imagePrompt!, /Keep the same clothing/);
   assert.equal(silent.imagePrompt, soundOn.imagePrompt); assert.equal(silent.directions, soundOn.directions);
   assert.match(soundOn.animationPrompt!, /SOUND SETTING: ON/); assert.doesNotMatch(soundOn.animationPrompt!, /SOUND SETTING: OFF/);

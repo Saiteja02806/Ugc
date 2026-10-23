@@ -8,15 +8,8 @@ const workspace = readFileSync(
 );
 
 test("retries a timed out or transient Trending feed request without relying on a reload", () => {
-  assert.match(workspace, /const TRENDING_FEED_REQUEST_TIMEOUT_MS = 20_000/);
-  assert.match(
-    workspace,
-    /const requestTimeout = window\.setTimeout\([\s\S]*?requestController\.abort\(\)[\s\S]*?TRENDING_FEED_REQUEST_TIMEOUT_MS/,
-  );
-  assert.match(
-    workspace,
-    /controller\.signal\.addEventListener\("abort", abortRequest, \{ once: true \}\)[\s\S]*?window\.clearTimeout\(requestTimeout\)[\s\S]*?controller\.signal\.removeEventListener\("abort", abortRequest\)/,
-  );
+  assert.match(workspace, /readTrendingFeed<CarouselHistoryResponse>\(\s*userId, feedSearchParams, controller.signal/);
+  assert.match(workspace, /error instanceof ReadDeadlineError/);
   assert.match(
     workspace,
     /error instanceof TrendingFeedRequestError[\s\S]*?: error instanceof TypeError/,
@@ -50,7 +43,8 @@ test("shows generation progress instead of caught-up while daily slots remain pe
     workspace,
     /\) : pendingSlotCount > 0 \? \([\s\S]*TrendingPreparingEmptyState[\s\S]*TrendingReadyEmptyState/,
   );
-  assert.match(workspace, /getTrendingPreparationCopy\(useContext\(TrendingPreparationContext\)\)/);
+  assert.match(workspace, /const preparationState = useContext\(TrendingPreparationContext\)/);
+  assert.match(workspace, /getTrendingPreparationCopy\(preparationState\)/);
   assert.match(workspace, /preparationState: data\.feed\.preparationState/);
   assert.match(workspace, /<EmptyTitle>\{copy\.title\}<\/EmptyTitle>/);
   assert.match(

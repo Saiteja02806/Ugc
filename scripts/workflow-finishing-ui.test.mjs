@@ -732,7 +732,7 @@ test("accepted schedules recover silently after a lost response in Hook and Phon
     } });
     h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
     const action = h.render().view.schedule;
-    assert.equal(action.error, null); assert.equal(action.message, "Post scheduled"); assert.equal(action.label, "Schedule another post");
+    assert.equal(action.error, null); assert.equal(action.message, "Post scheduled"); assert.equal(action.label, "Schedule post");
     assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
   }
 });
@@ -745,7 +745,7 @@ test("lost acknowledgements replay the exact durable request despite visible edi
     const first=h.calls.find(call=>call.method === "POST"); h.props.scheduleDraft={...h.props.scheduleDraft,caption:"Changed",time:"18:45"};
     h.render().view.schedule.onAction(); await tick();
     const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].body,first.body);
-    assert.equal(h.render().view.schedule.label,"Schedule another post"); h.unmount();
+    assert.equal(h.render().view.schedule.label,"Schedule post"); h.unmount();
   }
 });
 
@@ -767,7 +767,7 @@ test("Hook and Phone can explicitly schedule the same finished video an hour lat
     const h = schedulingHarness({ kind }); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
     const before = JSON.parse(h.store.get(h.storageKey));
     const repeat = h.render().view.schedule;
-    assert.equal(repeat.label, "Schedule another post"); assert.equal(repeat.disabled, false);
+    assert.equal(repeat.label, "Schedule post"); assert.equal(repeat.disabled, false);
     repeat.onAction(); repeat.onAction(); await tick();
     assert.equal(h.calls.filter(c => c.method === "POST").length, 1);
     assert.equal(h.store.has(h.storageKey), false);

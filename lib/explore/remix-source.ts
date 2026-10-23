@@ -9,6 +9,10 @@ export function remixSourceFromJob(input: unknown): RemixTextSource | null {
   if (!record(input)) return null;
   const format = input.exploreFormat ?? input.referenceType;
   if (format === "slideshow") {
+    if (record(input.slideshowReferenceContract) && input.slideshowReferenceContract.version === 4 && Object.hasOwn(input, "slideshowRemixSource")) {
+      const saved = readRemixSource(input.slideshowRemixSource);
+      return saved?.format === "slideshow" ? saved : null;
+    }
     // New deck outputs retain the selected slide's source, not always slide 1.
     const roles = record(input.slideshowReferenceContract) ? input.slideshowReferenceContract.styleReferenceIndices : null;
     const primary = record(input.slideshowGeneration) && Array.isArray(roles) && Number.isInteger(roles[0]) && Array.isArray(input.referenceImageUrls) ? input.referenceImageUrls[Number(roles[0]) - 1] : input.referenceImageUrl;

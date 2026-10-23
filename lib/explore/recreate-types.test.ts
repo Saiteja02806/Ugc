@@ -5,6 +5,7 @@ import {
   assembleSlideshow,
   filterReferences,
   interleaveReferenceCategories,
+  orderReferenceGallery,
   RECREATE_FORMATS,
   RECREATE_FORMAT_LABELS,
   referenceCategories,
@@ -48,9 +49,51 @@ const references: RecreateReference[] = [
   },
 ];
 
+test("Hook platform filters use source provenance and clear back to the whole gallery", () => {
+  const base = { ...references[0], format: "hook" as const, category: null, categoryLabel: null };
+  const items = [
+    { ...base, id: "ig", instagramUrl: "https://www.instagram.com/reel/example/" },
+    { ...base, id: "tt", sourceUrl: "https://www.tiktok.com/@creator/video/123" },
+    { ...base, id: "unknown" },
+    { ...base, id: "archived", sourcePlatform: "instagram" as const, archived: true as const },
+  ];
+  assert.deepEqual(referenceCategories(items, "hook"), [{ id: "instagram", label: "Instagram", count: 1 }, { id: "tiktok", label: "TikTok", count: 1 }]);
+  assert.deepEqual(filterReferences(items, "hook", ["instagram"]).map(item => item.id), ["ig"]);
+  assert.deepEqual(filterReferences(items, "hook", ["tiktok"]).map(item => item.id), ["tt"]);
+  assert.deepEqual(filterReferences(items, "hook", []).map(item => item.id), ["ig", "tt", "unknown"]);
+});
+
 test("gallery formats appear in the requested order", () => {
   assert.deepEqual(RECREATE_FORMATS, ["slideshow", "wall_text", "hook"]);
   assert.deepEqual(RECREATE_FORMATS.map((format) => RECREATE_FORMAT_LABELS[format]), ["Slideshows", "Wall of Text", "Hook videos"]);
+});
+
+test("video galleries mix platforms stably, including newer single-platform batches and unknown sources", () => {
+  for (const format of ["hook", "wall_text"] as const) {
+    const base = { ...references[2], format };
+    const items: RecreateReference[] = [
+      { ...base, id: "ig-old", instagramUrl: "https://www.instagram.com/reel/old/" },
+      { ...base, id: "ig-new-1", sourcePlatform: "instagram", uploadBatchSequence: 2, isNew: true },
+      { ...base, id: "ig-new-2", sourcePlatform: "instagram", uploadBatchSequence: 2, isNew: true },
+      { ...base, id: "tt-old", sourceUrl: "https://www.tiktok.com/@creator/video/123" },
+      { ...base, id: "tt-new", sourcePlatform: "tiktok", uploadBatchSequence: 1 },
+    ];
+    const original = JSON.stringify(items);
+    const mixed = orderReferenceGallery(items, format);
+    assert.deepEqual(mixed.map(item => item.id), ["ig-new-1", "tt-new", "ig-new-2", "tt-old", "ig-old"]);
+    assert.equal(JSON.stringify(items), original);
+    assert.equal(mixed[0], items[1]); assert.equal(mixed[2].isNew, true);
+    assert.deepEqual(orderReferenceGallery(items, format), mixed, "Renders and scroll expansion keep the same order");
+    for (const platform of ["instagram", "tiktok"]) {
+      const filtered = filterReferences(items, format, [platform]);
+      assert.deepEqual(orderReferenceGallery(filtered, format).map(item => item.id),
+        platform === "instagram" ? ["ig-new-1", "ig-new-2", "ig-old"] : ["tt-new", "tt-old"]);
+    }
+    const unknown = { ...base, id: "unknown" };
+    const withUnknown = orderReferenceGallery([...items, unknown], format);
+    assert.equal(withUnknown.length, items.length + 1); assert.ok(withUnknown.includes(unknown));
+    assert.deepEqual(orderReferenceGallery([], format), []);
+  }
 });
 
 test("slideshow categories alternate while their original cards and slides stay intact", () => {
@@ -84,6 +127,15 @@ test("Recreate filters categories inside the selected format", () => {
     filterReferences(references, "wall_text", []).map((item) => item.id),
     ["wall-productivity"],
   );
+});
+
+test("retired Wall cards cannot appear in frontend galleries or filter metadata from stale data", () => {
+  const stale = ["explore-wall-text-08", "explore-wall-text-09"].map(id => ({
+    ...references[2], id, category: "removed", categoryLabel: "Removed",
+  }));
+  const items = [...stale, references[2]];
+  assert.deepEqual(filterReferences(items, "wall_text", []).map(item => item.id), ["wall-productivity"]);
+  assert.deepEqual(referenceCategories(items, "wall_text"), [{ count: 1, id: "productivity", label: "Productivity" }]);
 });
 
 test("Recreate exposes compact filter metadata only for the active format", () => {

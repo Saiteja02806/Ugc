@@ -6,7 +6,7 @@ test('pilot prompts bind to exact source files, contain text removal and exclude
   for (const [id, entry] of Object.entries(referenceVideoPrompts)) {
     const prompt = getReferenceVideoPrompt(id, `https://example.test/${entry.sourceSha256}.mp4`);
     assert.ok(prompt?.includes(REFERENCE_TEXT_REMOVAL));
-    assert.match(prompt!, /Follow the original/);
+    assert.ok(prompt?.includes(entry.performance), `${id} includes its reviewed performance`);
     if(entry.reviewMethod==='all_decoded_frames') {
       assert.ok(entry.reviewedFrameCount!>0);
       assert.ok(entry.reviewNotes?.trim());

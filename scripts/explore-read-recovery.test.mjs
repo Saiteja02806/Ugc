@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import * as pollingPolicy from "../lib/jobs/background-job-polling-policy.ts";
 
 function load(file, imports, globals = {}) {
   const exported = {};
@@ -12,6 +13,7 @@ function load(file, imports, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports: exported, require: name => {
     if (name === "@/lib/http/read-deadline") return { withReadDeadline };
+    if (name === "./background-job-polling-policy") return pollingPolicy;
     assert.ok(name in imports, `Unexpected import ${name}`); return imports[name];
   }, Headers, ...globals });
   return exported;
@@ -20,7 +22,7 @@ function load(file, imports, globals = {}) {
 function jobs({ token = async () => "owner-token", fetch: transport = async () => Response.json({ ok: true, job: { id: "saved-job", status: "running" }, jobs: [] }) } = {}) {
   const reads = [], tokens = [];
   const client = load("lib/jobs/background-job-client.ts", {
-    react: {}, "@tanstack/react-query": { useQuery: options => options, useQueries: options => options.queries },
+    react: {}, "@tanstack/react-query": { useQueryClient: () => ({}), useQuery: options => options, useQueries: options => options.queries },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: expected => { tokens.push(expected); return token(expected); } },
   }, { fetch: (url, init) => { reads.push({ url, init }); return transport(url, init); } });
@@ -39,7 +41,7 @@ test("job reads bind cached owner, consume query cancellation, and refresh nonte
   assert.equal(h.reads.length, 3);
   assert.ok(h.reads.every(({ init }) => init.signal instanceof AbortSignal && init.headers.get("Authorization") === "Bearer owner-token"));
   for (const options of [single, multi]) {
-    assert.equal(options.staleTime, 0);
+    assert.equal(options.staleTime({ state: { status: "success", data: { status: "running" } } }), 0);
     assert.equal(options.refetchOnWindowFocus({ state: { data: { status: "running" } } }), true);
     assert.equal(options.refetchOnWindowFocus({ state: { data: { status: "completed" } } }), false);
     assert.equal(options.refetchInterval({ state: { data: { status: "completed" } } }), false);

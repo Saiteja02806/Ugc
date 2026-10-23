@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
+import octoberBatch from "../../worker/src/lib/explore-hook-reference-oct23-release.json" with { type: "json" };
+import octoberRefresh from "../../worker/src/lib/explore-hook-reference-oct23-refresh-release.json" with { type: "json" };
 import { referenceVideoPrompts } from "./reference-video-prompts.ts";
 import {
   compileReviewedHookKeyframeMotionPrompt,
@@ -42,10 +44,10 @@ function fixture(plan?: HookMotionPlan): HookMotionCatalogEntry {
   };
 }
 
-test("all 98 active canonical references have exact source-bound motion review records", () => {
+test("every active canonical reference has an exact source-bound motion review record", () => {
   const active = getHookReferenceGalleryItems();
-  assert.equal(active.length, 98);
-  assert.equal(Object.keys(hookKeyframeMotionCatalog).length, active.length);
+  assert.equal(active.length, 98 + (octoberBatch.mediaStatus === "published" && octoberBatch.activation === "active" ? 1 : 0) + (octoberRefresh.mediaStatus === "published" && octoberRefresh.activation === "active" ? 8 : 0));
+  assert.equal(Object.keys(hookKeyframeMotionCatalog).length, 107);
   for (const hook of active) {
     const entry = hookKeyframeMotionCatalog[hook.id];
     const legacy = referenceVideoPrompts[hook.id];

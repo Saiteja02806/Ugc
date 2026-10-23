@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeSnapshotKey, hookKeyframeSourceRatio, isHookKeyframeImageInput,
+import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeProviderImageLabels, hookKeyframeSnapshotKey, hookKeyframeSourceRatio, isHookKeyframeImageInput,
   parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "./hook-keyframe-generation-contract.js";
 const partial = { ownerId: "owner", draftId: "00000000-0000-4000-8000-000000000001", referenceId: "explore-hook-fixture", sourceSha256: "a".repeat(64),
   sourceFrame: { index: 0 as const, timeSeconds: 0 as const, width: 720, height: 1280, sha256: "b".repeat(64) },
@@ -8,6 +8,11 @@ const partial = { ownerId: "owner", draftId: "00000000-0000-4000-8000-0000000000
 const receipt: HookKeyframeGenerationReceipt = { ...partial, version: 1, purpose: "hook_starting_frame", promptVersion: 1,
   inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256("compiled-image-prompt") };
 const scene = `https://media.test/${hookKeyframeSnapshotKey(receipt)}`;
+
+test("v4 provider image labels match the user-approved generation exactly", () => {
+  assert.equal(hookKeyframePromptSha256(JSON.stringify(hookKeyframeProviderImageLabels(3, 4))),
+    "0acbb6122928e43278ab4ca6cc39f2dd8f53236a5ff42aed5125621b2cb38dd4");
+});
 test("receipt binds the decoded scene and ordered person IDs without accepting generic reference roles", () => {
   assert.deepEqual(parseHookKeyframeGenerationReceipt(receipt), receipt);
   assert.equal(isHookKeyframeImageInput({ receipt, ownerId: "owner", model: "nano_banana_2", aspectRatio: "9:16", prompt: "compiled-image-prompt",
@@ -44,8 +49,9 @@ test("the new image prompt contract retains the legacy preparation key and accep
 });
 
 test("model-aware receipts bind model into input identity while legacy receipts remain unchanged", () => {
+  for (const promptVersion of [2, 3, 4] as const) {
   for (const model of ["gemini_3_pro", "nano_banana_2"] as const) {
-    const selected = { ...receipt, version: 2 as const, imageModel: model, promptVersion: 2 as const };
+    const selected = { ...receipt, version: 2 as const, imageModel: model, promptVersion };
     selected.inputKey = hookKeyframeGenerationInputKey(selected);
     assert.deepEqual(parseHookKeyframeGenerationReceipt(selected), selected);
     assert.notEqual(selected.inputKey, receipt.inputKey);
@@ -53,6 +59,7 @@ test("model-aware receipts bind model into input identity while legacy receipts 
       referenceImageUrl: scene, referenceImageUrls: [scene, "https://media.test/main.png"] }), true);
     assert.equal(isHookKeyframeImageInput({ receipt: selected, ownerId: "owner", model: model === "gemini_3_pro" ? "nano_banana_2" : "gemini_3_pro", aspectRatio: "9:16", prompt: "compiled-image-prompt",
       referenceImageUrl: scene, referenceImageUrls: [scene, "https://media.test/main.png"] }), false);
+  }
   }
   assert.equal(parseHookKeyframeGenerationReceipt({ ...receipt, version: 2 }), null);
   assert.equal(parseHookKeyframeGenerationReceipt({ ...receipt, imageModel: "gemini_3_pro" }), null);

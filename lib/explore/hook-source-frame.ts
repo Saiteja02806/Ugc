@@ -2,7 +2,7 @@ import "server-only";
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import ffmpegStatic from "ffmpeg-static";
@@ -22,6 +22,7 @@ export class HookSourceFrameError extends Error {
 }
 
 export type HookSourceFrame = {
+  workflow?: "hook" | "wall_text" | "talking_head";
   referenceId: string;
   sourceSha256: string;
   frameSha256: string;
@@ -32,20 +33,31 @@ export type HookSourceFrame = {
   png: Buffer;
 };
 
-type Source = Pick<HookReferenceReleaseItem, "id" | "videoStorageKey" | "videoSha256" | "width" | "height">;
+type Source = Pick<HookReferenceReleaseItem, "id" | "videoStorageKey" | "videoSha256" | "width" | "height"> & {
+  workflow?: "hook" | "wall_text" | "talking_head"; localFile?: string;
+};
 type Frame = Omit<HookSourceFrame, "referenceId">;
+
+export async function resolveStartingFrameSource(referenceId: string): Promise<Source> {
+  const hook = getHookReferenceGalleryItems().find(item => item.id === referenceId);
+  if (hook) return checkedSource(referenceId, [hook]);
+  const { getAdditionalStartingFrameSources } = await import("./starting-frame-reference-source.ts");
+  return checkedSource(referenceId, getAdditionalStartingFrameSources());
+}
 
 function checkedSource(referenceId: string, items: Source[]) {
   if (!/^[a-zA-Z0-9_-]{1,200}$/.test(referenceId)) {
-    throw new HookSourceFrameError("Choose a Hook from the reference library.", 400);
+    throw new HookSourceFrameError("Choose a video from the reference library.", 400);
   }
   const source = items.find(item => item.id === referenceId);
-  if (!source) throw new HookSourceFrameError("This Hook is no longer available. Choose another reference.", 404);
+  if (!source) throw new HookSourceFrameError("This video is no longer available. Choose another reference.", 404);
+  const local = source.workflow === "talking_head" && source.localFile === `/explore/talking-head-references/v1/${source.id}.mp4`;
+  const unknownDimensions = source.workflow === "wall_text" && source.width === 0 && source.height === 0;
   if (!/^[a-f0-9]{64}$/.test(source.videoSha256)
-    || !source.videoStorageKey.startsWith("explore/")
+    || !local && (!source.videoStorageKey.startsWith("explore/")
     || source.videoStorageKey.includes("..")
-    || !source.videoStorageKey.endsWith(`/${source.videoSha256}.mp4`)
-    || ![source.width, source.height].every(value => Number.isInteger(value) && value > 0 && value <= 4096)
+    || !source.videoStorageKey.endsWith(`/${source.videoSha256}.mp4`))
+    || !unknownDimensions && ![source.width, source.height].every(value => Number.isInteger(value) && value > 0 && value <= 4096)
     || source.width * source.height > 16_777_216) {
     throw new HookSourceFrameError("This Hook needs a source review before a starting frame can be prepared.", 409);
   }
@@ -135,7 +147,8 @@ function checkedFrame(png: Buffer, source: Source): Frame {
     throw new HookSourceFrameError("A complete starting image could not be prepared.");
   }
   const width = png.readUInt32BE(16), height = png.readUInt32BE(20);
-  if (width !== source.width || height !== source.height) {
+  if (![width, height].every(value => Number.isInteger(value) && value > 0 && value <= 4096)
+    || width * height > 16_777_216 || source.width !== 0 && (width !== source.width || height !== source.height)) {
     throw new HookSourceFrameError("This Hook's dimensions changed. Its starting frame needs review.", 409);
   }
   return { sourceSha256: source.videoSha256, frameSha256: createHash("sha256").update(png).digest("hex"),
@@ -168,13 +181,13 @@ export function createHookSourceFrameService(options: {
     if (entry) { cachedBytes -= entry.frame.png.length; cache.delete(key); }
   };
   return async function getHookSourceFrame(referenceId: string): Promise<HookSourceFrame> {
-    const source = checkedSource(referenceId, (options.items ?? getHookReferenceGalleryItems)());
+    const source = options.items ? checkedSource(referenceId, options.items()) : await resolveStartingFrameSource(referenceId);
     const key = `${source.videoSha256}:${source.width}:${source.height}:frame0-png-v1`;
     for (const [id, entry] of cache) if (entry.expires <= now()) drop(id);
     const hit = cache.get(key);
     if (hit) {
       cache.delete(key); cache.set(key, hit);
-      return { ...hit.frame, png: Buffer.from(hit.frame.png), referenceId };
+      return { ...hit.frame, workflow: source.workflow ?? "hook", png: Buffer.from(hit.frame.png), referenceId };
     }
     let work = pending.get(key);
     if (!work) {
@@ -182,7 +195,13 @@ export function createHookSourceFrameService(options: {
         throw new HookSourceFrameError("Starting frames are being prepared. Try again shortly.", 429);
       }
       work = (async () => {
-        const bytes = await (options.download ?? downloadSource)((options.sourceUrl ?? buildPublicStorageUrl)(source.videoStorageKey));
+        let bytes: Buffer;
+        if (source.localFile) {
+          const path = join(process.cwd(), "public", source.localFile);
+          const metadata = await stat(path);
+          if (!metadata.isFile() || metadata.size < 32 || metadata.size > MAX_VIDEO_BYTES) throw new HookSourceFrameError("The original video is incomplete or too large.");
+          bytes = await readFile(path);
+        } else bytes = await (options.download ?? downloadSource)((options.sourceUrl ?? buildPublicStorageUrl)(source.videoStorageKey));
         if (bytes.length > MAX_VIDEO_BYTES || createHash("sha256").update(bytes).digest("hex") !== source.videoSha256) {
           throw new HookSourceFrameError("The Hook source changed. Refresh the library before continuing.", 409);
         }
@@ -203,7 +222,7 @@ export function createHookSourceFrameService(options: {
       void work.finally(() => pending.delete(key)).catch(() => undefined);
     }
     const frame = await work;
-    return { ...frame, png: Buffer.from(frame.png), referenceId };
+    return { ...frame, workflow: source.workflow ?? "hook", png: Buffer.from(frame.png), referenceId };
   };
 }
 

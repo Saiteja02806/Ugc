@@ -3,6 +3,7 @@ import test from 'node:test';
 import { getRecreateReferences } from '../lib/explore/recreate-catalog.ts';
 import { getReferenceText } from '../lib/explore/reference-text-store.ts';
 import { referenceVideoPrompts, REFERENCE_TEXT_REMOVAL } from '../lib/explore/reference-video-prompts.ts';
+import sceneRelease from './data/hook-reference-scene-release.json' with { type: 'json' };
 
 // Catalogue URL construction needs a public host, never storage credentials.
 process.env.GCP_STORAGE_BUCKET ??= 'hook-release-fixture';
@@ -10,7 +11,7 @@ process.env.GCP_STORAGE_PUBLIC_BASE_URL ??= 'https://hook-release-fixture.exampl
 
 test('every active Hook resolves its reviewed prompt and matching Remix source', () => {
   const hooks = getRecreateReferences().filter(reference => reference.format === 'hook' && !reference.archived);
-  assert.equal(hooks.length, 98);
+  assert.equal(hooks.length, 107);
   assert.equal(Object.keys(referenceVideoPrompts).length, hooks.length);
   let ready = 0;
   for (const hook of hooks) {
@@ -23,11 +24,16 @@ test('every active Hook resolves its reviewed prompt and matching Remix source',
     assert.equal(source.referenceId, hook.id);
     assert.equal(source.sourceSha256, review.sourceSha256);
     assert.ok(['ready', 'no_text'].includes(source.status));
-    assert.ok(source.notes.includes(`all ${review.reviewedFrameCount} decoded frames`));
+    const trimmed = sceneRelease.items.find(item => item.id === hook.id);
+    if (trimmed) {
+      assert.equal(source.sourceSha256, trimmed.replacement.videoSha256);
+      assert.equal(review.reviewedFrameCount, trimmed.replacement.frames);
+      assert.match(source.notes, /Scene cleanup approved by user/);
+    } else assert.ok(source.notes.includes(`all ${review.reviewedFrameCount} decoded frames`), hook.id);
     if (source.status === 'ready') ready++;
     else assert.deepEqual(source.blocks, []);
   }
-  assert.equal(ready, 96);
+  assert.equal(ready, 105);
 });
 
 const firstThree = [

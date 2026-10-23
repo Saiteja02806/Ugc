@@ -1,0 +1,16 @@
+.card { container: video-result / inline-size; min-width: 0; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.media { min-width: 0; max-width: 100%; }
+.prompt { width: 100%; min-width: 0; max-width: 32rem; }
+@container video-result (min-width: 580px) {
+  .row { grid-template-columns: minmax(0, min(44cqw, calc((100dvh - 260px) * 9 / 16), 22rem)) minmax(0, 1fr); gap: 28px; }
+  .row[data-ratio="4:5"] { grid-template-columns: minmax(0, min(44cqw, calc((100dvh - 260px) * 4 / 5), 22rem)) minmax(0, 1fr); }
+  .row[data-ratio="1:1"] { grid-template-columns: minmax(0, min(44cqw, calc(100dvh - 260px), 22rem)) minmax(0, 1fr); }
+  .media { max-width: min(44cqw, 22rem); }
+  .prompt { padding-top: 4px; }
+  .row[data-ratio="16:9"] { grid-template-columns: minmax(0, 1fr); }
+  .row[data-ratio="16:9"] .media { max-width: 100%; }
+}
+@container video-result (min-width: 880px) {
+  .row[data-ratio="16:9"] { grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr); }
+}

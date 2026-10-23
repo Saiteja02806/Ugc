@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Images, Sparkles, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
+import previewAssets from "@/lib/marketing/landing-preview-assets.json";
+import { LandingPreviewVideo } from "./landing-preview-video";
 
 const heroMediaPath = "/marketing/showcase/hero-restored";
 const slideshowImages = Array.from(
@@ -13,43 +15,24 @@ const slideshowImages = Array.from(
 
 export function LandingHeroShowcase() {
   const [activeSlide, setActiveSlide] = useState(0);
-  const [shouldLoadVideoPreviews, setShouldLoadVideoPreviews] = useState(false);
-  const [shouldLoadSideVideoPreviews, setShouldLoadSideVideoPreviews] = useState(false);
+  const showcase = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!shouldLoadSideVideoPreviews) return;
-
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const timer = window.setInterval(() => {
+      const rect = showcase.current?.getBoundingClientRect();
+      const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+      if (!desktop.matches || reducedMotion.matches || connection?.saveData || !navigator.onLine
+        || document.visibilityState === "hidden" || !rect || rect.bottom <= 0 || rect.top >= window.innerHeight) return;
       setActiveSlide((prev) => (prev + 1) % slideshowImages.length);
     }, 2800);
 
     return () => window.clearInterval(timer);
-  }, [shouldLoadSideVideoPreviews]);
-
-  useEffect(() => {
-    const desktopMedia = window.matchMedia("(min-width: 1024px)");
-    let readyToLoad = false;
-
-    function updateSidePreviews() {
-      setShouldLoadSideVideoPreviews(readyToLoad && desktopMedia.matches);
-    }
-
-    const timer = window.setTimeout(() => {
-      readyToLoad = true;
-      setShouldLoadVideoPreviews(true);
-      updateSidePreviews();
-    }, 750);
-
-    desktopMedia.addEventListener("change", updateSidePreviews);
-
-    return () => {
-      clearTimeout(timer);
-      desktopMedia.removeEventListener("change", updateSidePreviews);
-    };
   }, []);
 
   return (
-    <div className="relative mx-auto w-full max-w-[1140px] px-2 sm:px-4">
+    <div ref={showcase} className="relative mx-auto w-full max-w-[1140px] px-2 sm:px-4">
       {/* Visual background ambient glow behind center hero */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[320px] sm:size-[460px] rounded-full opacity-35 blur-[70px]"
@@ -75,20 +58,11 @@ export function LandingHeroShowcase() {
               </div>
 
               {/* Video preview */}
-              <video
-                src={
-                  shouldLoadSideVideoPreviews
-                    ? `${heroMediaPath}/left_side-v3.mp4`
-                    : undefined
-                }
-                autoPlay
-                muted
-                loop
-                playsInline
+              <LandingPreviewVideo
+                src={previewAssets.talkingHead.src}
+                desktopOnly
                 poster={`${heroMediaPath}/left_side-v3.webp`}
-                aria-label="Talking Head UGC video preview"
-                preload="metadata"
-                className="size-full object-cover"
+                title="Talking Head UGC video preview"
               />
 
               {/* Subtle edge overlay for visual polish */}
@@ -109,28 +83,14 @@ export function LandingHeroShowcase() {
               {/* Format pill with accent */}
               <div className="absolute left-3.5 top-3.5 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/70 px-3.5 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur-md shadow-md">
                 <Sparkles className="size-3.5 text-amber-400" aria-hidden="true" />
-                <span>Hook+Demo</span>
+                <span>Hook video</span>
               </div>
 
               {/* Supplied middle video playback */}
-              <video
-                src={
-                  shouldLoadVideoPreviews
-                    ? `${heroMediaPath}/middle.mp4`
-                    : undefined
-                }
-                autoPlay
-                muted
-                loop
-                playsInline
+              <LandingPreviewVideo
+                src={previewAssets.hookDemo.src}
                 poster={`${heroMediaPath}/middle.webp`}
-                aria-label="Hook and demo video preview"
-                preload="metadata"
-                onLoadedMetadata={(event) => {
-                  // Begin the supplied video at its first frame.
-                  event.currentTarget.currentTime = 0;
-                }}
-                className="size-full object-cover"
+                title="Hook video preview"
               />
 
               {/* Polished ambient highlight */}

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth-context";
 import { shouldPollForSubscriptionActivation } from "@/lib/billing/activation-state";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 export type BillingSubscription = {
   accessSource: "complimentary" | "dodo" | "free";
@@ -66,7 +67,7 @@ export function useBillingSubscription(options?: {
   return useQuery({
     enabled: !loading && Boolean(user),
     gcTime: 60 * 60 * 1_000,
-    queryFn: fetchBillingSubscription,
+    queryFn: ({ signal }) => fetchBillingSubscription(user?.uid ?? "signed-out", signal),
     queryKey: getBillingSubscriptionQueryKey(user?.uid ?? "signed-out"),
     refetchInterval: (query) =>
       options?.activationPolling &&
@@ -80,24 +81,28 @@ export function useBillingSubscription(options?: {
   });
 }
 
-async function fetchBillingSubscription(): Promise<BillingSubscription> {
-  const token = await getCurrentUserIdToken();
+async function fetchBillingSubscription(ownerId: string, signal?: AbortSignal): Promise<BillingSubscription> {
+  return withReadDeadline(async bounded => {
+    const token = await getCurrentUserIdToken(ownerId);
+    bounded.throwIfAborted();
 
-  if (!token) {
-    throw new Error("Sign in to view billing details.");
-  }
+    if (!token) {
+      throw new Error("Sign in to view billing details.");
+    }
 
-  const response = await fetch("/api/billing/subscription", {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = (await response.json().catch(() => null)) as
-    | { error?: string; subscription?: BillingSubscription }
-    | null;
+    const response = await fetch("/api/billing/subscription", {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: bounded,
+    });
+    const data = (await response.json().catch(() => null)) as
+      | { error?: string; subscription?: BillingSubscription }
+      | null;
 
-  if (!response.ok || !data?.subscription) {
-    throw new Error(data?.error || "Could not load billing details.");
-  }
+    if (!response.ok || !data?.subscription) {
+      throw new Error(data?.error || "Could not load billing details.");
+    }
 
-  return data.subscription;
+    return data.subscription;
+  }, signal);
 }

@@ -33,18 +33,28 @@ Only public content, guide media/presentation and existing pricing assertions ch
 
 Preview uses only the existing public Firebase web configuration in ignored `.env.local`; no server credentials were copied or printed. No media generation or social publishing was submitted.
 
-## Hosted availability prevents final acceptance
+## Production follow-up — hosting restored on 22 October
+
+After the owner reported restoration, fresh anonymous requests to the apex and www domains returned HTTP 200; www resolves to the canonical apex domain. Pricing and the product-demo guide also returned 200. The updated slideshow pricing copy and guide media are present in the served pages.
+
+The existing rendered SEO suite passed against `https://getugcpilot.com`: all 15 registered public pages, unique metadata, single H1, indexability directives, canonical URLs, internal reachability, guide schema, sitemap inventory and robots sitemap declaration passed. The live MP4 and poster returned 200 with the expected media types, byte lengths and exact SHA-256 values from the preparation receipt.
+
+Live Edge browser checks also passed on the homepage, pricing and product-demo guide at desktop (1280×800) and mobile (390×844) sizes: no page errors or document overflow; pricing explanation opens; guide brief edits and restores; video plays and reports the expected 10-second 1280×720 media, controls and no autoplay. Reports are saved in `.tmp/seo-founder-live-render-2026-10-22.json` and `.tmp/seo-founder-live-browser-result.json`.
+
+This verifies the public SEO surfaces now served in production. It does not verify authenticated media creation, export or publishing, or establish which deployment commit is serving. The earlier isolated checkout's FFmpeg bundle failure was not rerun or silently treated as passing.
+
+## Earlier hosted availability blocker — resolved
 
 Direct anonymous requests to both `https://getugcpilot.com/` and `https://www.getugcpilot.com/` returned HTTP 402 with `DEPLOYMENT_DISABLED` during the live capture attempt, confirmed again at 01:58 IST on 22 October. This is a fresh response; cached search retrieval of public content is not evidence that the site is live.
 
 Vercel read-only inspection returned project `ugc`, ID `prj_mVOxt7AUko5egMAESaxjGyC60Kvu`, `live: false`. Its aliased production deployment `dpl_AfU6Cfw5Sbhg2ekVu2B6s1J66sHk` is marked READY at commit `3c5b0a214947b53e4cd571beccc91a10d3daf7c2`. Build readiness and serving availability are different facts. The exact reason for disabled serving has not been established. Billing, plan and hosting settings were not modified.
 
-The owner must inspect the Vercel project's disabled/deployment notice and resolve the indicated account/project condition. Once restored, release the tested content changes and check the production homepage, pricing, guide media and actual account demo workflow. The comparison needs a fresh factual pass before publication; a hands-on quality/performance verdict additionally requires equivalent outputs and recorded effort/spend from both tools.
+The owner subsequently restored service, as verified above. The historical disabled-serving responses do not describe current availability. The comparison still needs a fresh factual pass before publication; a hands-on quality/performance verdict additionally requires equivalent outputs and recorded effort/spend from both tools.
 
 ## Remaining work and release boundaries
 
-- These changes are prepared locally, not deployed. The comparison remains a draft.
-- The production decoder bundle gate also needs to pass in the release checkout with its intended dependency layout before deploying. This task did not change decoder packaging to force that result.
+- The changed public copy and guide assets are now verified live. The comparison remains a draft.
+- The earlier isolated validation checkout did not pass its decoder bundle gate. This follow-up does not establish native decoder packaging or change it to force a passing result; validate it in the intended release checkout for any subsequent deployment.
 - Fresh screen recording, generated/finished output comparisons and authenticated production acceptance remain unverified.
 - No Search Console resubmission or paid backlink action occurred. There is no claim of changed indexing, rankings, signups or customer outcomes.
 - Do not include ignored preview configuration, `.next`, `node_modules`, browser recordings from failed attempts or `.tmp` test output in a release. The two guide media assets and their evidence/preparation script are intentional release files.

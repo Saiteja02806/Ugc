@@ -33,6 +33,14 @@ export async function fetchHookStartingFrame(input: {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ referenceId: input.referenceId }),
     });
+    return readVerifiedHookStartingFrame(response, input);
+  }, input.signal, 90_000);
+}
+
+/** Both live and development extraction must verify the exact same receipt. */
+export async function readVerifiedHookStartingFrame(response: Response, input: {
+  referenceId: string; sourceSha256: string;
+}): Promise<HookStartingFrame> {
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: string; message?: string } | null;
       throw new Error(body?.message || body?.error || "The opening frame could not be prepared. Try again.");
@@ -55,5 +63,4 @@ export async function fetchHookStartingFrame(input: {
     if (actual !== frameSha256) throw new Error("The opening frame download was incomplete. Try again.");
     return { referenceId: input.referenceId, sourceSha256: input.sourceSha256,
       frame: { index: 0, timeSeconds: 0, width, height, sha256: frameSha256 }, blob };
-  }, input.signal, 90_000);
 }

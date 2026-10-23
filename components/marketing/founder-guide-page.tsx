@@ -369,6 +369,24 @@ export const founderGuides = {
         ],
       },
       {
+        title: "Prepare a product demo people can trust",
+        paragraphs: [
+          "Before recording, choose one user question and the smallest real workflow that answers it. Write down the exact product fact the recording will prove, then show that action in the app instead of asking generated footage to stand in for the interface.",
+          "Use a demo account with sample data. Close notifications and remove names, email addresses, account IDs, and other private details from the screen before recording. Keep the opening short, show the real steps clearly, and end with one useful next action.",
+        ],
+        bullets: [
+          "Audience: who needs this explanation?",
+          "User question: what are they trying to do?",
+          "Verified app fact: what does the feature actually do?",
+          "Proof to record: which real action shows it working?",
+          "Opening line: what problem or question introduces the demo?",
+          "Exact on-screen text: what words need to appear?",
+          "Next action: what should an interested viewer do?",
+          "Privacy check: have sample data and a clean screen been used?",
+        ],
+        presentation: "brief",
+      },
+      {
         title: "Continue the story after launch",
         paragraphs: [
           "The launch is the start of the marketing loop. Use early user questions, reviews, feature requests, and usage patterns to decide what to explain next. This makes the content more concrete and gives the founder an ongoing source of ideas.",

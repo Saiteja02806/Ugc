@@ -27,8 +27,9 @@ import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library"
 import { getGenerationReferenceSoundtrack } from "@/worker/src/lib/explore-reference-soundtrack";
 import { personReferenceRoles } from "@/lib/explore/person-reference";
 import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
-import { buildHookAnimationPrompt } from "@/lib/explore/hook-keyframe-motion";
+import { buildStartingFrameAnimationPrompt } from "@/lib/explore/starting-frame-workflow";
 import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider } from "@/worker/src/lib/hook-starting-frame-video";
 
 import { getExploreVideoPromptMaxLength, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS } from "@/lib/explore/format-generation-prompt";
 import { resolveGalleryGenerationVideo } from "@/lib/explore/generation-video-reference";
@@ -192,10 +193,10 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     if (process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION !== "true") {
       return NextResponse.json({ ok: false, error: "Starting-frame animation is not available yet." }, { status: 404 });
     }
-    if (body?.exploreFormat !== "hook" || body.model !== "seedance_2_5" ||
+    if ((body?.exploreFormat !== "hook" && body?.exploreFormat !== "wall_text") || !isHookStartingFrameVideoModel(body.model) ||
       typeof body.startingFrameAssetId !== "string" || !UUID_PATTERN.test(body.startingFrameAssetId) ||
       typeof body.startingFrameJobId !== "string" || !UUID_PATTERN.test(body.startingFrameJobId)) {
-      return NextResponse.json({ ok: false, error: "Choose a generated Hook starting image and Seedance 2.5 before animating." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Choose a generated Hook starting image and a supported animation model." }, { status: 400 });
     }
     if (body.avatarImageUrl || (Array.isArray(body.referenceImageUrls) && body.referenceImageUrls.length) ||
       body.imageReferencePurpose !== undefined || body.referenceVideoUrl || body.referenceVideoAssetId ||
@@ -204,8 +205,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       (Array.isArray(body.referenceAudioAssetIds) && body.referenceAudioAssetIds.length) || body.referenceUrl) {
       return NextResponse.json({ ok: false, error: "Animate only the approved starting image. Remove source videos, person photos and audio references; use Sound on for generated audio." }, { status: 400 });
     }
-    if (typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) || body.durationSeconds < 4 || body.durationSeconds > 15) {
-      return NextResponse.json({ ok: false, error: "Choose a whole-number starting-frame duration from 4 to 15 seconds." }, { status: 400 });
+    if (typeof body.durationSeconds !== "number" || !hookStartingFrameVideoDurations(body.model).includes(body.durationSeconds)) {
+      return NextResponse.json({ ok: false, error: `Choose a whole-number starting-frame duration from 4 to ${body.model === "google_omni" ? 10 : 15} seconds.` }, { status: 400 });
     }
   }
   if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
@@ -312,7 +313,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         ownerId: user.uid,
       });
       if ((body?.referenceId !== undefined && body.referenceId !== startingFrame.referenceId) ||
-        (body?.referenceType !== undefined && body.referenceType !== "hook")) {
+        body?.exploreFormat !== startingFrame.exploreFormat ||
+        (body?.referenceType !== undefined && body.referenceType !== startingFrame.exploreFormat)) {
         return NextResponse.json({ ok: false, error: "The starting image belongs to a different Hook reference. Choose it again." }, { status: 400 });
       }
       // The provider animates the generated full-scene asset, not the source
@@ -369,7 +371,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
   let generationPrompt: string;
   try {
-    generationPrompt = startingFrame ? buildHookAnimationPrompt({ directions: prompt, durationSeconds, generateAudio: generateAudio === true })
+    generationPrompt = startingFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame.workflow ?? "hook", directions: prompt, durationSeconds, generateAudio: generateAudio === true })
       : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
@@ -595,7 +597,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const projectId = "ai-studio";
   // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
   // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
-  const provider = model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
+  const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model) ?? undefined
+    : model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
   const startingFrameInput = startingFrame ? {
     startingFrameAssetId: startingFrame.assetId,
     startingFrameJobId: startingFrame.imageJobId,
@@ -625,7 +628,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         referenceVideoDurationSeconds, referenceVideoUrl,
         ...(referenceVideoMode ? { referenceVideoMode } : {}),
         referenceId: startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
-        referenceType: startingFrame ? "hook" : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
+        referenceType: startingFrame ? startingFrame.exploreFormat : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
         referenceUrl: useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
         ...referenceSoundtrackInput(body),
         ...startingFrameInput,
@@ -680,7 +683,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           referenceId:
             startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
           referenceType:
-            startingFrame ? "hook" : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
+            startingFrame ? startingFrame.exploreFormat : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
           referenceUrl:
             useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
           ...referenceSoundtrackInput(body),

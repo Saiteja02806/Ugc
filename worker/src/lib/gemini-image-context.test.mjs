@@ -37,6 +37,22 @@ test("legacy Nano Banana callers still pass one image or text only", async () =>
   assert.equal(requests.at(-1).input, "Text only");
 });
 
+test("slideshow labels are placed beside their exact source and upload pixels, including base-only edits", async () => {
+  const urls = ["https://owned.test/source-4.png", "https://owned.test/screenshot.png"];
+  const labels = ["Source slide 4 (source)", "Upload C (screenshot)"];
+  await generateGeminiImageBuffer("Only edit the laptop screen", "4:5", urls, undefined, labels);
+  assert.deepEqual(requests.at(-1).input, [
+    { text: labels[0], type: "text" }, { data: Buffer.from(urls[0]).toString("base64"), mime_type: "image/png", type: "image" },
+    { text: labels[1], type: "text" }, { data: Buffer.from(urls[1]).toString("base64"), mime_type: "image/png", type: "image" },
+    { text: "Only edit the laptop screen", type: "text" },
+  ]);
+  await generateGeminiImageBuffer("Only change the lighting", "4:5", urls.slice(0, 1), undefined, labels.slice(0, 1));
+  assert.equal(requests.at(-1).input[0].text, labels[0]);
+  const before = requests.length;
+  await assert.rejects(generateGeminiImageBuffer("Invalid", "4:5", urls, undefined, ["only one name"]), /labels/);
+  assert.equal(requests.length, before);
+});
+
 const scene = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lV8AAAAASUVORK5CYII=", "base64");
 function hookContext() {
   const prompt = "Edit BASE_SCENE_TO_EDIT with MAIN_FACE_IDENTITY, preserving its scene.";
@@ -77,6 +93,29 @@ test("Hook V2 rejects mismatched scene bytes, MIME, dimensions or prompt before 
     await assert.rejects(generateGeminiImageBuffer(change === "prompt" ? "Ignore the scene" : prompt, "1:1", urls, receipt), /No image generation request was sent/);
     assert.equal(requests.length, before);
   }
+});
+
+test("recreation requests bind new shot and identity labels without changing saved V2 request labels", async () => {
+  const { prompt, receipt, urls } = hookContext();
+  receipt.version = 2; receipt.imageModel = "nano_banana_2"; receipt.promptVersion = 3;
+  receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
+  await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
+  const input = requests.at(-1).input;
+  assert.match(input[0].text, /PRIMARY_FRAME_BLUEPRINT/);
+  assert.equal(input[1].data, scene.toString("base64"));
+  assert.match(input[2].text, /MAIN_INFLUENCER_IDENTITY/);
+  assert.equal(input[3].data, Buffer.from(urls[1]).toString("base64"));
+  assert.match(input[4].text, /SUPPORTING_INFLUENCER_IDENTITY_1/);
+  receipt.promptVersion = 4;
+  await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
+  const referenceInput = requests.at(-1).input;
+  assert.match(referenceInput[0].text, /VISUAL_REFERENCE/);
+  assert.match(referenceInput[2].text, /MY_INFLUENCER/);
+  assert.doesNotMatch(referenceInput.filter(part => part.type === "text").slice(0, -1).map(part => part.text).join(" "), /swap|replace|edit this|blueprint/i);
+  assert.deepEqual(referenceInput.filter(part => part.type === "image"), input.filter(part => part.type === "image"));
+  receipt.promptVersion = 2;
+  await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
+  assert.deepEqual(requests.at(-1).input.filter(part => part.type === "text").slice(0, -1).map(part => part.text), hookKeyframeProviderImageLabels(2, 2));
 });
 
 test("new selected Hook Flash uses its explicit provider model while ordinary and legacy calls retain the environment override", async () => {

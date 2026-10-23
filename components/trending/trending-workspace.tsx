@@ -21,6 +21,8 @@ import {
 import dynamic from "next/dynamic";
 import { MediaLibraryButton } from "@/components/media/media-library-dialog";
 import { pollInForeground } from "@/lib/http/foreground-polling";
+import { ReadDeadlineError, withReadDeadline } from "@/lib/http/read-deadline";
+import { readTrendingFeed } from "@/lib/trending/feed-read-client";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -348,7 +350,6 @@ function getSmartPreparingPollInterval(attemptCount: number): number {
   return 10_000;
 }
 
-const TRENDING_FEED_REQUEST_TIMEOUT_MS = 20_000;
 
 class TrendingFeedRequestError extends Error {
   constructor(
@@ -917,12 +918,6 @@ export function TrendingWorkspace() {
       setCarouselHistoryError(null);
 
       try {
-        const idToken = await getCurrentUserIdToken();
-
-        if (!idToken) {
-          throw new Error("Sign in before viewing generated carousels.");
-        }
-
         const timezone =
           Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
         const retryFailed = retryFailedFeedRef.current;
@@ -931,43 +926,9 @@ export function TrendingWorkspace() {
         if (retryFailed) {
           feedSearchParams.set("retryFailed", "1");
         }
-        const requestController = new AbortController();
-        let requestTimedOut = false;
-        const abortRequest = () => requestController.abort();
-        const requestTimeout = window.setTimeout(() => {
-          requestTimedOut = true;
-          requestController.abort();
-        }, TRENDING_FEED_REQUEST_TIMEOUT_MS);
-        controller.signal.addEventListener("abort", abortRequest, { once: true });
-
-        let response: Response;
-        let data: CarouselHistoryResponse | null;
-
-        try {
-          response = await fetch(
-            `/api/trending/feed?${feedSearchParams.toString()}`,
-            {
-              cache: "no-store",
-              headers: { Authorization: `Bearer ${idToken}` },
-              signal: requestController.signal,
-            },
-          );
-          data = (await response.json().catch(() => null)) as
-            | CarouselHistoryResponse
-            | null;
-        } catch (error) {
-          if (requestTimedOut) {
-            throw new TrendingFeedRequestError(
-              "The Trending feed request timed out. Retrying…",
-              true,
-            );
-          }
-
-          throw error;
-        } finally {
-          window.clearTimeout(requestTimeout);
-          controller.signal.removeEventListener("abort", abortRequest);
-        }
+        const { response, data } = await readTrendingFeed<CarouselHistoryResponse>(
+          userId, feedSearchParams, controller.signal,
+        );
 
         if (!response.ok || !data?.ok) {
           throw new TrendingFeedRequestError(
@@ -1088,7 +1049,7 @@ export function TrendingWorkspace() {
         const retryable =
           error instanceof TrendingFeedRequestError
             ? error.retryable
-            : error instanceof TypeError;
+            : error instanceof TypeError || error instanceof ReadDeadlineError;
 
         if (retryable) {
           preparingPollAttemptsRef.current += 1;
@@ -2121,20 +2082,15 @@ export function TrendingDeck({
   useEffect(() => {
     if (!activeReactionCreativeId || !activeReactionAssignmentId || editorCandidate?.format === "reaction") return;
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
     const item = { creativeId: activeReactionCreativeId, assignmentId: activeReactionAssignmentId };
     async function refresh() {
-      try {
-        const edit = await fetchReactionTextEdit(item, undefined, controller.signal);
-        if (controller.signal.aborted) return;
-        setReactionEdits((current) => ({ ...current, [edit.creativeId]: edit }));
-        if (edit.state === "preparing") timer = setTimeout(refresh, 2500);
-      } catch {
-        if (!controller.signal.aborted) timer = setTimeout(refresh, 5000);
-      }
+      const edit = await withReadDeadline(signal => fetchReactionTextEdit(item, undefined, signal), controller.signal);
+      if (controller.signal.aborted) return;
+      setReactionEdits((current) => ({ ...current, [edit.creativeId]: edit }));
+      if (edit.state !== "preparing") stop();
     }
-    void refresh();
-    return () => { controller.abort(); clearTimeout(timer); };
+    const stop = pollInForeground({ poll: refresh, intervalMs: 2500, maxErrorIntervalMs: 20000, immediate: true });
+    return () => { controller.abort(); stop(); };
   }, [activeReactionCreativeId, activeReactionAssignmentId, activeReactionState, editorCandidate?.format]);
 
   const activeHookPreviewStatus =

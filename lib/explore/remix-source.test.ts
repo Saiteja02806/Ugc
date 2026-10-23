@@ -29,3 +29,11 @@ test("no linked source or malformed metadata requires manual text", () => {
   assert.equal(resolveRemixSource(null, [hook], "hook").reference, null);
   assert.equal(resolveRemixSource(undefined, [hook], "hook").reference, null);
 });
+
+test("v4 edits retain the accepted result's original source rather than its generated pixels or newly selected source", () => {
+  const original = { format: "slideshow", referenceId: null, sourceUrl: slides.slides[1].url };
+  const edited = { exploreFormat: "slideshow", referenceImageUrl: "https://owned.test/generated.png", slideshowReferenceContract: { version: 4 }, slideshowRemixSource: original };
+  assert.deepEqual(remixSourceFromJob(edited), original);
+  assert.equal(resolveRemixSource(remixSourceFromJob(edited), [slides], "slideshow").slideId, "slide-b");
+  assert.equal(remixSourceFromJob({ ...edited, slideshowRemixSource: null }), null);
+});

@@ -19,6 +19,7 @@ import { generateOpenRouterWanVideoBuffer } from "../lib/openrouter-wan-video.js
 import { generateReapiVideoBuffer } from "../lib/reapi-video.js";
 import { parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider } from "../lib/hook-starting-frame-video.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { generateKlingVideoBuffer } from "../lib/kling-video.js";
 import { resumeLegacyHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
@@ -221,8 +222,8 @@ async function generateWithFallback(
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
     : null;
   const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
-  if (input.startingFrameImageUrl && selectedProvider !== "reapi") {
-    throw new ProviderRequestNotSubmittedError("Starting-frame animation cannot change its saved Seedance 2.5 through ReAPI route.");
+  if (input.startingFrameImageUrl && selectedProvider !== hookStartingFrameVideoProvider(input.model)) {
+    throw new ProviderRequestNotSubmittedError("Starting-frame animation cannot change its saved model/provider route.");
   }
   if (input.model === "wan_3_0" && selectedProvider !== "runway" && selectedProvider !== "reapi" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
     throw new ProviderRequestNotSubmittedError("This saved WAN 3.0 request cannot use audio or video references. Start a new generation with your references.");
@@ -610,15 +611,15 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const assetId = job.input_json.startingFrameAssetId;
     const imageJobId = job.input_json.startingFrameJobId;
-    if (promptMode !== "direct" || model !== "seedance_2_5" || provider !== "reapi" ||
-      job.input_json.exploreFormat !== "hook" || job.input_json.generationIntent !== "animate_starting_frame" ||
+    if (promptMode !== "direct" || !isHookStartingFrameVideoModel(model) || provider !== hookStartingFrameVideoProvider(model) ||
+      (job.input_json.exploreFormat !== "hook" && job.input_json.exploreFormat !== "wall_text") || job.input_json.generationIntent !== "animate_starting_frame" ||
       !imageUrl || typeof assetId !== "string" || !uuid.test(assetId) || typeof imageJobId !== "string" || !uuid.test(imageJobId) ||
       !receipt || receipt.ownerId !== sharedInput.userId || (job.user_id && job.user_id !== sharedInput.userId) ||
       receipt.referenceId !== job.input_json.referenceId || sharedInput.avatarImageUrl || sharedInput.referenceImageUrls.length ||
       sharedInput.referenceAudioUrls.length || sharedInput.referenceAudioDurationSeconds.length || sharedInput.referenceVideoUrl ||
       job.input_json.referenceVideoDurationSeconds != null || job.input_json.referenceVideoMode !== undefined ||
-      job.input_json.personReference !== undefined || sharedInput.durationSeconds < 4 || sharedInput.durationSeconds > 15) {
-      throw new ProviderRequestNotSubmittedError("The saved starting-frame animation must contain one approved Hook image, its owned generation receipt, Seedance 2.5 through ReAPI, and a fixed duration from 4 to 15 seconds.");
+      job.input_json.personReference !== undefined || !hookStartingFrameVideoDurations(model).includes(sharedInput.durationSeconds)) {
+      throw new ProviderRequestNotSubmittedError("Starting-frame animation requires one approved image, its owned generation receipt, a supported model/provider pair, and a duration supported by that model. Original source videos and face photos cannot be mixed into this request.");
     }
     Object.assign(sharedInput, {
       startingFrameImageUrl: imageUrl, startingFrameAssetId: assetId, startingFrameJobId: imageJobId,

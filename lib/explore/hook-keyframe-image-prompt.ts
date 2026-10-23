@@ -1,7 +1,7 @@
 import { HOOK_KEYFRAME_MAX_IMAGE_INSTRUCTIONS, HOOK_KEYFRAME_MAX_PERSON_IMAGES } from "./hook-keyframe-draft.ts";
 import { getHookKeyframeMotionReviewDraft } from "./hook-keyframe-motion.ts";
 
-export const HOOK_KEYFRAME_IMAGE_PROMPT_VERSION = 2;
+export const HOOK_KEYFRAME_IMAGE_PROMPT_VERSION = 4;
 export const HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH = 8_000;
 type ImageRole = { imageIndex: number; role: "scene" | "main_face" | "supporting_face" };
 
@@ -25,13 +25,13 @@ export function buildHookKeyframeImagePrompt(input: { personImageCount: number; 
   const openingScene = sourceReview?.staticReview?.status === "static_reviewed" && sourceReview.staticReview.startingFrameIndex === 0
     ? sourceReview.candidatePlan?.openingState.trim() : undefined;
   const prompt = [
-    "Edit Image 1 (BASE_SCENE_TO_EDIT), keeping its complete scene and composition. Replace the scene performer's face using Image 2 (MAIN_FACE_IDENTITY), then remove creator-added captions. Return one full-scene image with the same framing and aspect ratio as Image 1, not a recreation of a person photo.",
-    "SCENE — Image 1 supplies the scene, camera angle and framing, lighting, background, body pose, facial expression, hands and existing occlusions, clothing, accessories and source hairstyle. Preserve these by default. Keep hands in place and do not invent visible facial parts where a hand or object should cover them.",
-    openingScene ? `VERIFIED OPENING SCENE — ${openingScene} This describes the opening still only. Preserve the scene visible in Image 1; do not perform later actions or invent unseen details.` : "",
-    "FACE — Image 2 is the main face photo of the intended person. Replace the scene performer's facial appearance with that person's facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Do not average this face with the original performer's face or substitute a similar-looking person. Keep the scene expression while using the intended person's facial structure. Match the face to the scene's existing light, exposure and shadows; do not add beauty filters, artificial glow or skin smoothing.",
-    supporting.length ? `SUPPORTING VIEWS — ${supporting.join(", ")} ${supporting.length === 1 ? "is an additional view" : "are additional views"} of the SAME person in Image 2. Use them only to understand that person's facial features and proportions from other angles. Do not borrow their pose, clothing, hairstyle, lighting or background. Do not merge multiple identities.` : "Image 2 is the only identity photo; do not infer additional photo inputs.",
-    "TEXT — Remove creator-added captions, hook text, subtitles, emojis and overlays from Image 1, reconstructing the scene beneath them. Preserve text physically belonging to objects in the scene unless the user's image instructions explicitly ask to change it. Do not add new text, borders or watermarks.",
-    "Apply explicit user-requested image changes below. Otherwise keep the scene, clothing, hairstyle and pose from Image 1. The person photos supply facial appearance, not a replacement scene. This step produces an image for inspection; it does not animate a video.",
+    "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.",
+    "PERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.",
+    supporting.length ? `SUPPORTING VIEWS — ${supporting.join(", ")} ${supporting.length === 1 ? "is an additional view" : "are additional views"} of the SAME person in Image 2. Use these photos to understand my influencer from other angles. Image 1 supplies the visual direction for the new photograph.` : "Image 2 is the only identity photo; do not infer additional photo inputs.",
+    "VISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.",
+    openingScene ? `VERIFIED OPENING SCENE — ${openingScene} Use this description of the visible opening moment as guidance for the new photograph.` : "",
+    "OUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.",
+    "Apply explicit user-requested image changes below. Create a still photograph for review before video generation.",
     instructions.trim() ? `USER IMAGE INSTRUCTIONS:\n${instructions.trim()}` : "",
   ].filter(Boolean).join("\n\n");
   if (prompt.length > HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH) throw new Error("Shorten the starting-image instructions.");

@@ -147,7 +147,7 @@ export const seoPageContent = {
     example: productExamples.video,
     canonicalPath: "/ai-ugc-video-generator",
     eyebrow: "AI UGC video generator",
-    title: "Create creator-style AI UGC videos your team can review.",
+    title: "Create AI UGC videos for your SaaS or mobile app.",
     description:
       "Use AI Studio to make short-form UGC video from a focused prompt and optional reference media, then review and keep the finished asset in your content workflow.",
     proof: "Focused brief and reference → generated footage → reviewable content workflow",
@@ -172,9 +172,9 @@ export const seoPageContent = {
           "Completed generations are saved to your account so your team can keep working with the result.",
       },
     ],
-    featuresTitle: "Video generation with a focused working surface.",
+    featuresTitle: "Turn a product message into a reviewable video concept.",
     featuresDescription:
-      "AI Studio keeps the creative brief, reference choice, generated footage, and later review in one shared home.",
+      "Start with a real product message, guide the generated footage, and keep the finished asset available for review in AI Studio.",
     features: [
       {
         title: "A prompt with purpose",

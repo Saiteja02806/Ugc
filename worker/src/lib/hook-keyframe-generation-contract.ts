@@ -12,7 +12,7 @@ export type HookKeyframeGenerationReceipt = {
   imageModel?: HookKeyframeImageModel;
   ownerId: string; draftId: string; referenceId: string; sourceSha256: string;
   sourceFrame: { index: 0; timeSeconds: 0; width: number; height: number; sha256: string };
-  personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2;
+  personImageAssetIds: string[]; instructions: string; promptVersion: 1 | 2 | 3 | 4;
   inputKey: string; promptSha256: string;
 };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -35,8 +35,9 @@ export function hookKeyframeSourceRatio(width: number, height: number): "9:16" |
 export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframeGenerationReceipt | null {
   if (!record(value) || !fields(value, ["version", "imageModel", "purpose", "ownerId", "draftId", "referenceId", "sourceSha256", "sourceFrame", "personImageAssetIds", "instructions", "promptVersion", "inputKey", "promptSha256"]) ||
     value.version !== 1 && value.version !== 2 || value.version === 1 && value.imageModel !== undefined ||
-    value.version === 2 && (!isHookKeyframeImageModel(value.imageModel) || value.promptVersion !== 2) ||
-    value.purpose !== HOOK_KEYFRAME_GENERATION_PURPOSE || ![1, 2].includes(value.promptVersion as number) ||
+    value.version === 2 && (!isHookKeyframeImageModel(value.imageModel) || ![2, 3, 4].includes(value.promptVersion as number)) ||
+    value.version === 1 && ![1, 2].includes(value.promptVersion as number) ||
+    value.purpose !== HOOK_KEYFRAME_GENERATION_PURPOSE || ![1, 2, 3, 4].includes(value.promptVersion as number) ||
     typeof value.ownerId !== "string" || !value.ownerId || value.ownerId.length > 128 || /[\u0000-\u001f]/u.test(value.ownerId) ||
     typeof value.draftId !== "string" || !uuid.test(value.draftId) ||
     typeof value.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value.referenceId) ||
@@ -59,10 +60,21 @@ export function parseHookKeyframeGenerationReceipt(value: unknown): HookKeyframe
 }
 export function hookKeyframePromptSha256(prompt: string) { return createHash("sha256").update(prompt).digest("hex"); }
 
-/** V2 binds each label directly to the next transmitted image block. These are
- * prompt labels, not a claim that Gemini offers structural identity/mask roles. */
-export function hookKeyframeProviderImageLabels(personImageCount: number): string[] {
+/** Bind labels to the next image block using the accepted prompt version.
+ * The default preserves V2 callers. These are prompt instructions, not structural
+ * identity/mask roles offered by Gemini. */
+export function hookKeyframeProviderImageLabels(personImageCount: number, promptVersion: 2 | 3 | 4 = 2): string[] {
   if (!Number.isInteger(personImageCount) || personImageCount < 1 || personImageCount > 5) throw new Error("Choose one main face photo and up to four supporting views.");
+  if (promptVersion === 4) return [
+    "IMAGE 1 — VISUAL_REFERENCE. A reference for the setting, composition, lighting, clothing, pose, expression and gesture of a new photograph of my influencer. Use it as visual guidance for how my influencer should be photographed.",
+    "IMAGE 2 — MY_INFLUENCER. The person to photograph. Generate this influencer with their recognizable facial features and natural appearance in the situation illustrated by Image 1.",
+    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — MY_INFLUENCER_SUPPORT_${index + 1}. Another view of my influencer from Image 2, to help depict their recognizable appearance from the requested angle.`),
+  ];
+  if (promptVersion === 3) return [
+    "IMAGE 1 — PRIMARY_FRAME_BLUEPRINT. Recreate this complete shot with the selected influencer as the performer. This image defines camera framing, background, lighting, pose, expression, hands, occlusions, clothing and hairstyle. It does not define the output person's facial identity. Remove creator-added captions.",
+    "IMAGE 2 — MAIN_INFLUENCER_IDENTITY. This is the person who must appear in the recreated primary frame. Use this person's facial structure and proportions, adapted to Image 1's head angle, expression and light. Do not copy this photo's background, clothing or pose, or retain Image 1's original facial identity.",
+    ...Array.from({ length: personImageCount - 1 }, (_, index) => `IMAGE ${index + 3} — SUPPORTING_INFLUENCER_IDENTITY_${index + 1}. Another view of the same person as Image 2. Use it to understand their facial structure. Image 1 remains the blueprint for the shot; this photo supplies identity only.`),
+  ];
   return [
     "IMAGE 1 — BASE_SCENE_TO_EDIT. Edit this image. It is the sole source for the composition, background, lighting, body pose, hands, expression, clothing and hairstyle. The final image must remain this scene, with only the face replaced and creator-added captions removed.",
     "IMAGE 2 — MAIN_FACE_IDENTITY. Use only this person's facial identity and proportions for the face in BASE_SCENE_TO_EDIT. This photo is not the output scene: do not copy its background, body pose, expression, clothing or lighting.",

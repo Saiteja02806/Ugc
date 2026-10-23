@@ -57,6 +57,16 @@ function readTextDraft(raw: string | null, activeIds: ReadonlySet<string>): Reco
   if (!raw || raw.length > 65536) return {};
   try { const parsed = JSON.parse(raw); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}; return Object.fromEntries(Object.entries(parsed).filter(([id]) => activeIds.has(id)).slice(0, MAX_SLIDESHOW_SLIDES).flatMap(([id, value]) => { try { return [[id, parseSlideText(value)]]; } catch { return []; } })); } catch { return {}; }
 }
+function readDraftHistory(raw: string | null, owner: string) {
+  if (!raw || raw.length > 1_500_000) return [];
+  try {
+    const history: unknown = JSON.parse(raw);
+    return Array.isArray(history) ? history.slice(0, 20).flatMap(value => {
+      const parsed = readSlideshowDraft(JSON.stringify({ version: 2, owner, slides: value?.slides }), owner);
+      return parsed && typeof value.id === "string" && typeof value.savedAt === "string" ? [{ id: value.id, savedAt: value.savedAt, slides: parsed.slides, text: readTextDraft(JSON.stringify(value.text), new Set(parsed.slides.map(slide => slide.referenceSlideId))) }] : [];
+    }) : [];
+  } catch { return []; }
+}
 
 export function FormatSlideshowEditor({ reference, legacyReferences, previewImages, previewText, controllerRef, active, previewActive = active, previewActions, onEdit, generationBusy, controlsTarget, resultsTarget, actionsTarget, localPreview, savingEnabled, onDirty, onSaved, onContinue, onRegenerate, onBackToPreview, onGoToCreate, onBusyChange, libraryItemId }: {
   reference: RecreateReference | null; legacyReferences?: readonly RecreateReference[]; controllerRef: Ref<SlideshowEditorController>; slideIndex?: number; active: boolean; generationBusy: boolean;
@@ -178,13 +188,39 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
   function editFingerprint(sequence: SlideshowSaveRequest["slides"]) { return JSON.stringify({ slides: sequence, text: sequence.map(slide => text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT) }); }
   function matchesSaved(saved: SlideshowSaveRequest, sequence: SlideshowSaveRequest["slides"]) { return sameSlideshowChoices(saved.sourceSlides ?? saved.slides, sequence) && (saved.editFingerprint ? saved.editFingerprint === editFingerprint(sequence) : !sequence.some(slide => hasText(text[slide.referenceSlideId] ?? EMPTY_SLIDE_TEXT))); }
   const archiveDraft = useCallback(() => {
-    if (!owner || localPreview || !slideRef.current.length) return;
-    const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), slides: choices(slideRef.current), text };
-    const next = [entry, ...draftHistory].slice(0, 20);
+    if (!owner || localPreview) return;
+    let slides = choices(slideRef.current);
+    let archivedText = text;
+    // A newly generated slideshow may finish before the previous sequence has
+    // completed restoring. Preserve that persisted sequence before the fresh
+    // one replaces it, rather than letting the delayed restore win the screen.
+    if (!slides.length) {
+      const persisted = readSlideshowDraft(localStorage.getItem(draftKey), owner);
+      if (!persisted?.slides.length) return;
+      slides = persisted.slides;
+      archivedText = readTextDraft(localStorage.getItem(`${draftKey}:text`), new Set(slides.map(slide => slide.referenceSlideId)));
+    }
+    const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), slides, text: archivedText };
+    const previous = restoring ? readDraftHistory(localStorage.getItem(`${draftKey}:history`), owner) : draftHistory;
+    const next = [entry, ...previous].slice(0, 20);
     localStorage.setItem(`${draftKey}:history`, JSON.stringify(next)); setDraftHistory(next);
-  }, [owner, localPreview, draftHistory, draftKey, text]);
+  }, [owner, localPreview, draftHistory, draftKey, text, restoring]);
   useImperativeHandle(controllerRef, () => ({ startNewSlide, useSlideshow(images, onlyIfEmpty = false) {
-    if (locked || working.current || onlyIfEmpty && slideRef.current.length) return false;
+    let persistedDraft: ReturnType<typeof readSlideshowDraft> = null;
+    let interruptedSave = false;
+    if (owner && !localPreview) {
+      try {
+        persistedDraft = readSlideshowDraft(localStorage.getItem(draftKey), owner);
+        const rawSave = localStorage.getItem(saveKey);
+        const saved = readSlideshowSaveRequest(rawSave, owner);
+        interruptedSave = Boolean(rawSave && (!saved || !saved.output));
+      } catch { /* The in-memory editor still guards active saves below. */ }
+    }
+    // Restoring is intentionally not a blocker: change() advances revision,
+    // making the late restore harmless while the just-generated slides become
+    // the current sequence immediately. An interrupted or active save remains
+    // protected until the user resolves it.
+    if (busy || pending || uploading || interruptedSave || working.current || onlyIfEmpty && (slideRef.current.length || persistedDraft?.slides.length)) return false;
     if (!images.length || images.length > MAX_SLIDESHOW_SLIDES || new Set(images.map(image => image.id)).size !== images.length || images.some(image => !isExploreUuid(image.id) || !image.url.startsWith("https://"))) { setError("Choose a complete saved slideshow version from your account."); return false; }
     if (images.length === slideRef.current.length && images.every((image, index) => image.id === slideRef.current[index].mediaAssetId)) return true;
     try { archiveDraft(); } catch { setError("Could not preserve your current draft. Keep it open before switching versions."); return false; }
@@ -208,7 +244,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
     if (target >= 0) next[target] = { ...next[target], mediaAssetId: image.id, image, previous: next[target].image ?? undefined, error: undefined };
     else next.push({ referenceSlideId: crypto.randomUUID(), mediaAssetId: image.id, image });
     replacementTarget.current = null; setError(null); change(next, target >= 0 ? target : next.length - 1); return true;
-  } }), [startNewSlide, locked, change, archiveDraft, owner, localPreview, draftKey]);
+  } }), [startNewSlide, locked, busy, pending, uploading, change, archiveDraft, owner, localPreview, draftKey, saveKey]);
 
   async function addSelectedSlides(source: SlideshowSlideSource, ids: string[]) {
     if (!owner || localPreview || locked || generationBusy || working.current) throw new Error("Finish restoring, generating or saving before adding slides.");
@@ -292,15 +328,7 @@ export function FormatSlideshowEditor({ reference, legacyReferences, previewImag
         const saved = readSlideshowSaveRequest(rawSave, owner);
         if (rawSave && !saved) throw new Error("Could not verify the saved slideshow request. Review your Library before saving again.");
         const draft = readSlideshowDraft(localStorage.getItem(draftKey), owner);
-        const historyRaw = localStorage.getItem(`${draftKey}:history`);
-        let previousHistory: typeof draftHistory = [];
-        try { if (historyRaw && historyRaw.length <= 1_500_000) {
-          const history: unknown = JSON.parse(historyRaw);
-          if (Array.isArray(history)) previousHistory = history.slice(0, 20).flatMap(value => {
-            const parsed = readSlideshowDraft(JSON.stringify({ version: 2, owner, slides: value?.slides }), owner);
-            return parsed && typeof value.id === "string" && typeof value.savedAt === "string" ? [{ id: value.id, savedAt: value.savedAt, slides: parsed.slides, text: readTextDraft(JSON.stringify(value.text), new Set(parsed.slides.map(slide => slide.referenceSlideId))) }] : [];
-          });
-        } } catch { /* An unreadable archive must not hide the active draft. */ }
+        const previousHistory = readDraftHistory(localStorage.getItem(`${draftKey}:history`), owner);
         setDraftHistory(previousHistory);
         if (libraryItemId && openedLibraryItem.current !== `${owner}:${libraryItemId}`) {
           if (!isExploreUuid(libraryItemId)) throw new Error("Choose a valid saved slideshow.");

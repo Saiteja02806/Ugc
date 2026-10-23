@@ -1,3 +1,5 @@
+import octoberRefresh from "./hook-reference-oct23-refresh-prompts.json" with { type: "json" };
+
 /** Reviewed pilot only. Never manufacture a performance for an unreviewed clip. */
 export const REFERENCE_TEXT_REMOVAL = "Remove all existing on-screen text, captions and text-associated emojis from the reference video. Reconstruct the underlying scene naturally. Do not add new text. Preserve text naturally present on physical objects.";
 
@@ -11,6 +13,15 @@ export type ReferenceVideoPrompt = {
 };
 
 export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = {
+  ...Object.fromEntries(octoberRefresh.entries.map(({ referenceId, ...entry }) => [referenceId, entry as ReferenceVideoPrompt])),
+  "explore-paired-hook-17133540b2315e0a3a05bfbd": {
+    version: 2,
+    sourceSha256: "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+    reviewMethod: "all_decoded_frames",
+    reviewedFrameCount: 123,
+    reviewNotes: "All 123 decoded frames reviewed in order. The supplied 4.1-second reaction-only clip is one continuous shot. Native audio retained; the separate full download's screen recording tail is excluded. Static source review; generated video quality not tested.",
+    performance: "Turn the surprised gaze toward the lens while keeping the raised hand beside the face. Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face. Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view.",
+  },
   "explore-paired-hook-4585ee949081c4e5cd835cd3": {
   "version": 2,
   "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",

@@ -100,6 +100,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   if (job.input_json.slideshowBusinessContext !== undefined && (!slideshowBusinessContext || job.input_json.exploreFormat !== "slideshow") || slideshowGeneration && !slideshowBusinessContext) throw new ProviderRequestNotSubmittedError("This slideshow job requires its saved business context.");
   if (job.input_json.slideshowGeneration !== undefined && (!slideshowGeneration || job.input_json.exploreFormat !== "slideshow")) throw new ProviderRequestNotSubmittedError("Invalid slideshow output position.");
   if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
+  if (slideshowReferenceContract?.version === 4 && slideshowGeneration && slideshowReferenceContract.plan!.outputSlideIndex !== slideshowGeneration.slideIndex) throw new ProviderRequestNotSubmittedError("The saved slide plan does not match this output position.");
   if (referenceImageUrls && characterReferenceContext && referenceImageUrls.length > 10) throw new ProviderRequestNotSubmittedError("Choose up to 10 influencer references.");
   if (referenceImageUrls && !characterReferenceContext && !hookKeyframe && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
@@ -142,7 +143,7 @@ export async function runGenerateImageJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
-  const preserveReference = input.slideshowReferenceContract?.version === 3;
+  const preserveReference = input.slideshowReferenceContract?.version === 3 || input.slideshowReferenceContract?.version === 4;
   const contextualPrompt = input.slideshowBusinessContext ? slideshowBusinessContextPrompt(input.prompt, input.slideshowBusinessContext, preserveReference) : input.prompt;
   const slidePrompt = input.slideshowGeneration ? slideshowSlotPrompt(contextualPrompt, input.slideshowGeneration, preserveReference) : contextualPrompt;
   const referencePrompt = input.slideshowReferenceContract
@@ -152,7 +153,8 @@ export async function runGenerateImageJob(
     : input.subjectReferenceIndex
     ? slideshowReferencePrompt(slidePrompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
     : slidePrompt;
-  const providerPrompt = referencePrompt;
+  const providerPrompt = input.slideshowReferenceContract?.version === 4 && input.slideshowBusinessContext
+    ? slideshowBusinessContextPrompt(referencePrompt, input.slideshowBusinessContext, true) : referencePrompt;
   if ((input.slideshowReferenceContract || input.slideshowBusinessContext || input.slideshowGeneration) && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
@@ -210,6 +212,8 @@ export async function runGenerateImageJob(
       const referenceImages = input.referenceImageUrls
         ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
         : referenceImageUrl;
+      const plan = input.slideshowReferenceContract?.version === 4 ? input.slideshowReferenceContract.plan : undefined;
+      const referenceLabels = plan ? input.referenceImageUrls!.map((_, index) => plan.images.filter(image => image.imageIndex === index + 1).map(image => `${image.label} (${image.role})`).join("; ")) : undefined;
       generated =
         input.model === "seedream_5_pro"
           ? await generateOpenRouterSeedreamImage({
@@ -218,11 +222,11 @@ export async function runGenerateImageJob(
               ...(input.referenceImageUrls ? { referenceImageUrls: referenceImages as string[] } : {}),
             })
           : input.model === "nano_banana_2"
-          ? await generateGeminiImageBuffer(
+          ? referenceLabels ? await generateGeminiImageBuffer(providerPrompt, input.aspectRatio, referenceImages, undefined, referenceLabels) : await generateGeminiImageBuffer(
               providerPrompt,
               input.aspectRatio,
               referenceImages,
-              ...(input.hookKeyframe?.promptVersion === 2 ? [input.hookKeyframe] as const : []),
+              ...(input.hookKeyframe && input.hookKeyframe.promptVersion >= 2 ? [input.hookKeyframe] as const : []),
             )
           : await generateOpenAiImageBuffer(
               providerPrompt,
@@ -230,6 +234,7 @@ export async function runGenerateImageJob(
               referenceImages,
               input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : input.model === "gpt_image_2_5_flare" ? SLIDESHOW_FLARE_IMAGE_MODEL : undefined,
               Boolean(input.slideshowReferenceContract),
+              ...(referenceLabels ? [referenceLabels] as const : []),
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -293,7 +298,7 @@ export async function runGenerateImageJob(
     generatedImageBuffer,
     input.aspectRatio,
     { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe),
-      ...(input.hookKeyframe?.version === 2 && input.hookKeyframe.promptVersion === 2 ? { cropNearRatioPadding: true } : {}) },
+      ...(input.hookKeyframe?.version === 2 && input.hookKeyframe.promptVersion >= 2 ? { cropNearRatioPadding: true } : {}) },
   );
 
   await context.checkpoint({
@@ -352,7 +357,7 @@ async function generateDurableImageForJob(
       referenceImageUrl: referenceImageUrls?.[0] ?? (action === "submit" && input.referenceImageUrl
         ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl),
       ...(referenceImageUrls ? { referenceImageUrls } : {}),
-      ...(input.hookKeyframe?.promptVersion === 2 ? { hookKeyframe: input.hookKeyframe } : {}),
+      ...(input.hookKeyframe && input.hookKeyframe.promptVersion >= 2 ? { hookKeyframe: input.hookKeyframe } : {}),
       providerOperationId: operationId,
       onOperationCreated: async (providerOperationId) => {
         await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });

@@ -1,6 +1,6 @@
 import { Storage } from "@google-cloud/storage";
 import { createClient } from "@supabase/supabase-js";
-import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderRequestNotSubmittedError } from "./generation-provider.ts";
 
 export type PrivateMediaRow = {
   user_id: string; status: string; deleted_at: string | null;

@@ -1,24 +1,21 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import {
   ArrowDown,
   CreditCard,
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
-import landingLogo from "@/app/logo.png";
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingBottomCta } from "@/components/marketing/landing-bottom-cta";
 import { LandingComparisonSection } from "@/components/marketing/landing-comparison-section";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { LandingLogo } from "@/components/marketing/landing-logo";
 import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcase";
 import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
 import { LandingContentShowcase } from "@/components/marketing/landing-content-showcase";
-import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
 import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 
 const authHref = "/sign-in";
@@ -107,9 +104,10 @@ const legalFooterLinks = [
   { label: "Cookie Policy", href: "/cookies" },
 ];
 
-export default async function Home() {
-  const initialHasSession =
-    (await cookies()).get(AUTH_SESSION_COOKIE_NAME)?.value === "1";
+export default function Home() {
+  // Shared, prerendered HTML. The auth actions reconcile the browser session
+  // after hydration, including email-verification and signed-in destinations.
+  const initialHasSession = false;
 
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -125,16 +123,16 @@ export default async function Home() {
 
             <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
-                Create. Discover. Publish.
+                You built the SaaS.
               </span>
               <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                Keep your content moving.
+                Now get it seen.
               </span>
             </h1>
 
             <p className="mx-auto mt-7 max-w-[740px] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Create content for your business. Review it, choose your accounts,
-              and schedule to {visibleSocialPlatformList} from one workspace.
+              Create an AI influencer for your SaaS, make videos that show what
+              it does, and schedule them across your social channels.
             </p>
 
             <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-5">
@@ -257,12 +255,7 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
           <div>
             <div className="flex items-center gap-3">
-              <Image
-                src={landingLogo}
-                alt=""
-                sizes="36px"
-                className="size-9 rounded-md object-contain"
-              />
+              <LandingLogo />
               <div>
                 <p className="font-semibold text-foreground-strong">UGC Pilot</p>
                 <p className="mt-0.5 text-xs text-muted">

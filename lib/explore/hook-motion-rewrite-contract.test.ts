@@ -4,9 +4,9 @@ import { parseHookMotionRewrite } from "./hook-motion-rewrite-contract.ts";
 import { buildHookAnimationPrompt, getHookKeyframeMotionPrompt, getHookKeyframeMotionReviewDraft,
   hookKeyframeMotionCatalog, hookKeyframeMotionRewrites, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
 
-test("all 98 rewrites bind to the exact canonical video and reviewed first-to-last frame evidence", () => {
+test("all 107 rewrites bind to the exact canonical video and reviewed first-to-last frame evidence", () => {
   const sources = Object.values(hookKeyframeMotionCatalog);
-  assert.equal(Object.keys(hookKeyframeMotionRewrites).length, 98);
+  assert.equal(Object.keys(hookKeyframeMotionRewrites).length, 107);
   let reviewed = 0, decisions = 0;
   for (const source of sources) {
     const rewrite = hookKeyframeMotionRewrites[source.referenceId];
@@ -28,7 +28,7 @@ test("all 98 rewrites bind to the exact canonical video and reviewed first-to-la
     if (rewrite.review.status === "static_reviewed") { reviewed++; assert.deepEqual(rewrite.review.supportedDurationsSeconds, [durationSeconds]); }
     else { decisions++; assert.equal(draft.requiresDecision, true); assert.ok(rewrite.review.issues.length); assert.deepEqual(rewrite.review.supportedDurationsSeconds, []); }
   }
-  assert.equal(reviewed, 88); assert.equal(decisions, 10);
+  assert.equal(reviewed, 97); assert.equal(decisions, 10);
 });
 
 test("ten remaining ambiguous sequences retain explicit source-bound decisions rather than silently changing the scene or timing", () => {

@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 
 /** Route prefetch has priority; decorative video loads only on sustained interest. */
-export function useCoverPlayback(source: string | null, target: "a" | "button" = "a") {
+export function useCoverPlayback(source: string | null, target: "a" | "button" = "a", playWhenVisible = false) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current;
@@ -11,7 +11,7 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     if (!link) return;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let visible = false;
-    let interested = false;
+    let interested = playWhenVisible;
     let startTimer: ReturnType<typeof setTimeout> | null = null;
     const stop = () => {
       if (startTimer !== null) { clearTimeout(startTimer); startTimer = null; }
@@ -30,9 +30,9 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     };
     const enter = (event: PointerEvent) => { if (event.pointerType === "touch") return; interested = true; sync(); };
     const focus = () => { interested = true; sync(); };
-    const leave = () => { interested = false; stop(); };
+    const leave = () => { interested = playWhenVisible; if (!playWhenVisible) stop(); };
     const ready = () => { if (interested && visible && !preference.matches && document.visibilityState !== "hidden") void video.play().catch(() => {}); };
-    const observer = new IntersectionObserver(entries => { visible = entries.some(entry => entry.isIntersecting); sync(); }, { rootMargin: "80px" });
+    const observer = new IntersectionObserver(entries => { visible = entries.some(entry => entry.isIntersecting); sync(); }, { rootMargin: playWhenVisible ? "0px" : "80px" });
     observer.observe(video);
     link.addEventListener("pointerenter", enter); link.addEventListener("pointerleave", leave);
     link.addEventListener("focus", focus); link.addEventListener("blur", leave);
@@ -46,6 +46,6 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
       link.removeEventListener("pointerdown", leave); link.removeEventListener("click", leave);
       preference.removeEventListener("change", sync); document.removeEventListener("visibilitychange", sync); video.removeEventListener("canplay", ready);
     };
-  }, [source, target]);
+  }, [source, target, playWhenVisible]);
   return ref;
 }

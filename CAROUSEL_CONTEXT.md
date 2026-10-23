@@ -1,5 +1,65 @@
 # Carousel System Context
 
+## 2026-10-23 Trending feed idle-return request boundary (local)
+
+- Feed reads now bound owner-scoped browser authentication, HTTP and parsing
+  together to 20 seconds. Late tokens cannot issue cancelled navigation reads;
+  typed timeout errors use the existing retry schedule. Feed cache, content
+  allocation, generation and scheduling behavior are unchanged. Local recovery
+  checks pass; real production idle latency remains unmeasured. See
+  `docs/idle-navigation-investigation-2026-10-23.md`.
+
+
+## 2026-10-23 Manual Explore slideshow reference additions (media uploaded; release paused)
+
+- Four supplied uncategorized references retain their own ordered image sets
+  (3/6/2/2, thirteen original files). User requested image-only import and
+  explicitly omitted `New folder (2)/middle.mp4`. This is Explore reference
+  content, separate from automatic Trending Carousel sourcing or generation.
+- The shared Explore gallery puts the latest published upload batch first and
+  badges it `New` until the next slideshow batch is fully published. Hook or Wall
+  uploads do not retire these badges. Category interleaving runs before batch
+  priority; source slide identity/order and category filtering remain intact.
+- Media is uploaded and verified; application/worker release remains paused.
+  The earlier staged slideshow additions and automatic Carousel pipeline remain
+  unchanged. See `docs/explore-new-content-batches-2026-10-23.md`.
+
+## 2026-10-22 Shared browser font preload optimization (local)
+
+- Root editor/monospace font declarations now use `preload: false`. Exact files,
+  family variables, weights and worker font registration remain unchanged;
+  browsers load these faces when rendered text needs them. Keep these variables
+  available to legacy Carousel/Wall previews; do not replace them with OS fonts.
+- The production-mode local homepage preloads only primary sans faces; all six
+  legacy editor families load on demand. Existing font/export and actual editor
+  browser regressions pass. No deployment or worker/database change. Evidence:
+  `docs/homepage-cost-optimizations-2026-10-22.md`.
+
+## 2026-10-22 Named slideshow release approved (in progress)
+
+- User approved deployment of all intentional changes and the additive private
+  plan migration. Production ledger records `20261022092140`; RLS and service-only
+  access were verified. The user subsequently paused deployment. The 23 October
+  final review re-verifies that migration and its access grants read-only; worker
+  and website deployment remain pending fresh authorization, in that order.
+- The automatic Trending Carousel pipeline and previously deferred default
+  content-mix migration are unchanged. Release evidence:
+  `docs/hook-workspace-slideshow-release-2026-10-22.md`.
+
+## 2026-10-22 Manual Explore named inputs and per-slide plans (local)
+
+- Manual Explore keeps one input bar, stable original source numbers, persistent
+  Upload A/B names and an explicit Current slide base for revisions. A private,
+  durable image-aware planning step binds uploaded images to semantic roles and
+  target slides before image credits. Clarifications stay in the existing flow.
+- New v4 generation requests isolate each target's base, assigned uploads and
+  instructions. Existing v2/v3 retries remain unchanged. Automatic Trending
+  Carousel planning, sourcing, matching, rendering and scheduling are unchanged.
+- Local implementation only; migration, generation worker and website deployment
+  are required before hosted acceptance. Input-boundary tests do not establish
+  generated visual fidelity or exact screenshot placement. Receipt and limits:
+  `docs/slideshow-named-plans-2026-10-22.md`.
+
 ## 2026-10-22 Approved manual Explore slideshow sources (local)
 
 - The user approved the supplied folder mappings. Manual Explore adds 38 source
@@ -8205,3 +8265,8 @@ The records below are retained from the deployed branch during release reconcili
 ## Trending library backgrounds retain body copy — 19 October 2026 release preparation
 
 - Include the completed worker correction in render-trending-carousel-edit.ts: body-only/single-statement copy resolves submitted subtext then headline, so replacing backgrounds cannot interpret the legacy headline column as deletion. Advance the renderer cache signature to normalized-edit-v4-body-copy. Six-slide render and editor browser regressions passed in the originating task. Production rollout is tracked in the combined Hook/Seedance release receipt.
+
+## Combined Explore/slideshow deployment resumed — 23 October 2026
+
+- The user authorized deployment of all intentional current changes. The private slideshow execution-plan migration `20261022092140` is already present with RLS and service-only access verified. Do not bulk-apply historical migration drift or unrelated deferred migrations.
+- Ship the matching generation worker before website/MCP so named slideshow inputs and versioned per-output contracts are supported before new requests can be accepted. Runtime release identity and production acceptance are recorded separately from the passing local suites in `docs/combined-release-deployment-2026-10-23.md`.

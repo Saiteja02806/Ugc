@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createInFlightAuthRequestCoalescer } from "./in-flight-auth-requests";
+import { withReadDeadline } from "../http/read-deadline";
 
 export type VerifiedFirebaseUser = {
   displayName: string | null;
@@ -83,21 +84,33 @@ export async function requireFirebaseIdentity(request: Request) {
 }
 
 async function lookupFirebaseUser(apiKey: string, idToken: string) {
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(
-      apiKey,
-    )}`,
-    {
-      body: JSON.stringify({
-        idToken,
-      }),
-      headers: {
-        "Content-Type": "application/json",
+  // Same-token requests share this lookup. Bound headers AND body parsing so a
+  // stalled upstream cannot strand the shared promise across screen changes.
+  const { response, data } = await withReadDeadline(async signal => {
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(
+        apiKey,
+      )}`,
+      {
+        body: JSON.stringify({
+          idToken,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        signal,
       },
-      method: "POST",
-    },
-  );
-  const data = (await response.json()) as FirebaseLookupResponse;
+    );
+    const data = (await response.json()) as FirebaseLookupResponse;
+    return { response, data };
+  }, undefined, 10_000).catch(() => {
+    throw new FirebaseAuthRequestError("Sign-in verification is temporarily unavailable. Try again.", 503);
+  });
+
+  if (response.status === 429 || response.status >= 500) {
+    throw new FirebaseAuthRequestError("Sign-in verification is temporarily unavailable. Try again.", 503);
+  }
 
   if (!response.ok || data.error) {
     throw new FirebaseAuthRequestError("Your sign-in session is invalid.");

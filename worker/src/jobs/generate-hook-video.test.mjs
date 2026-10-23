@@ -120,6 +120,26 @@ test("first-frame worker dispatch preserves one owned frame, fixed duration and 
   assert.equal(f.events.find(event => event.name === "reserve").operationKey, "primary-reapi");
 });
 
+test("Omni and WAN starting-frame jobs dispatch only to their frozen provider and recover without another paid submission", async () => {
+  for (const [model, provider] of [["google_omni", "gemini"], ["wan_3_0", "reapi"]]) {
+    const input = startingFrameInput({ model, provider, generateAudio: false });
+    const f = fixture(input); await runGenerateHookVideoJob(f.job, f.context);
+    const sent = received.at(-1);
+    assert.equal(sent.provider, provider); assert.equal(sent.model, model);
+    assert.ok(sent.startingFrameImageUrl); assert.deepEqual(sent.referenceImageUrls, []); assert.equal(sent.referenceVideoUrl, undefined);
+    const fingerprint = f.events.find(event => event.name === "reserve").requestFingerprint;
+    const recovering = fixture(input, false), reads = privateReads.length;
+    recovering.context.store.reserveGenerationProviderOperation = async value => {
+      recovering.events.push({ name: "reserve", ...value });
+      return { shouldSubmit: false, operation: { status: "submitted", provider_operation_id: `${model}-existing-task` } };
+    };
+    await runGenerateHookVideoJob(recovering.job, recovering.context);
+    assert.equal(received.at(-1).providerOperationId, `${model}-existing-task`);
+    assert.equal(privateReads.length, reads);
+    assert.equal(recovering.events.find(event => event.name === "reserve").requestFingerprint, fingerprint);
+  }
+});
+
 test("first-frame operations fingerprint canonical input and recover accepted tasks without refreshing private references", async () => {
   const input = startingFrameInput({ generateAudio: true });
   const initial = fixture(input), repeated = fixture(input);
@@ -147,7 +167,7 @@ test("first-frame operations fingerprint canonical input and recover accepted ta
 test("malformed or mixed first-frame worker input rejects before reserving a paid operation", async () => {
   const before = received.length;
   for (const patch of [
-    { provider: "runway" }, { model: "wan_3_0" }, { exploreFormat: "wall_text" }, { generationIntent: "replace_face" },
+    { provider: "runway" }, { model: "google_omni" }, { model: "wan_3_0", provider: "gemini" }, { exploreFormat: "unsupported" }, { generationIntent: "replace_face" },
     { startingFrameAssetId: undefined }, { startingFrameJobId: undefined }, { startingFrameReceipt: null },
     { referenceId: "another-hook" }, { durationSeconds: 16 }, { durationSeconds: 3 },
     { avatarImageUrl: "https://owned-media.example.test/portrait.png" },
@@ -158,7 +178,7 @@ test("malformed or mixed first-frame worker input rejects before reserving a pai
     { generateAudio: "false" },
   ]) {
     const f = fixture(startingFrameInput(patch));
-    await assert.rejects(runGenerateHookVideoJob(f.job, f.context), ProviderRequestNotSubmittedError);
+    await assert.rejects(runGenerateHookVideoJob(f.job, f.context), ProviderRequestNotSubmittedError, JSON.stringify(patch));
     assert.deepEqual(f.events, [], JSON.stringify(patch));
   }
   const wrongOwner = fixture(startingFrameInput());
@@ -171,7 +191,7 @@ test("malformed or mixed first-frame worker input rejects before reserving a pai
 test("first-frame jobs never silently migrate to a legacy provider operation", async () => {
   const f = fixture(startingFrameInput()), before = received.length;
   f.context.store.getGenerationProviderOperation = async () => ({ status: "submitted", provider_operation_id: "legacy-task" });
-  await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /cannot change its saved.*ReAPI route/);
+  await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /cannot change its saved model\/provider route/);
   assert.equal(received.length, before); assert.deepEqual(f.events, []);
 });
 
@@ -240,7 +260,7 @@ test("explicit sound controls supersede gallery music and distinguish provider o
 
 test("each eligible Hook reaches audio postprocessing and silent references omit automatic soundtrack receipts", async () => {
   const { getHookReferenceGalleryItems } = await import("../../dist/lib/explore-hook-reference-release.js");
-  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 98);
+  const references = getHookReferenceGalleryItems(); assert.equal(references.length, 107);
   for (const reference of references) {
     const before = referenceAudioCalls.length;
     const f = fixture({ referenceId: reference.id, referenceType: "hook", exploreFormat: "hook" });

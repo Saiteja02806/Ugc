@@ -1,17 +1,18 @@
 import { buildHookKeyframeImagePrompt } from "./hook-keyframe-image-prompt.ts";
-import { buildHookAnimationPrompt, getHookKeyframeMotionReviewDraft, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
+import { getHookKeyframeMotionReviewDraft, hookMotionPlanDirections } from "./hook-keyframe-motion.ts";
 import type { HookKeyframeDraft } from "./hook-keyframe-draft.ts";
+import { buildStartingFrameAnimationPrompt, startingFrameWorkflowDirections, type StartingFrameWorkflow } from "./starting-frame-workflow.ts";
 
 /** Preparation only. This is deliberately not a HookMotionCompilation ready receipt. */
-export function getHookKeyframePromptPreview(draft: HookKeyframeDraft) {
+export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: StartingFrameWorkflow = "hook") {
   const suggestion = getHookKeyframeMotionReviewDraft(draft.scope.referenceId, draft.scope.sourceSha256);
-  const suggestedDirections = suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : "";
+  const suggestedDirections = format !== "hook" ? startingFrameWorkflowDirections(format) : suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : "";
   const directions = draft.motionInstructions ?? suggestedDirections;
-  const durationSeconds = suggestion?.previewDurationSeconds ?? 4;
+  const durationSeconds = format === "hook" ? suggestion?.previewDurationSeconds ?? 4 : 4;
   let animationPrompt: string | null = null;
   let animationError: string | null = null;
   if (directions) {
-    try { animationPrompt = buildHookAnimationPrompt({ directions, durationSeconds, generateAudio: draft.generateAudio }); }
+    try { animationPrompt = buildStartingFrameAnimationPrompt({ workflow: format, directions, durationSeconds, generateAudio: draft.generateAudio }); }
     catch (error) { animationError = error instanceof Error ? error.message : "Review the animation instructions."; }
   }
   return {
@@ -19,7 +20,7 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft) {
     canSubmitPaidAnimation: false as const,
     sourceMatched: Boolean(suggestion),
     staticReview: suggestion?.staticReview ?? null,
-    requiresDecision: suggestion?.requiresDecision ?? false,
+    requiresDecision: format === "hook" && (suggestion?.requiresDecision ?? false),
     decisionIssues: suggestion?.staticReview?.issues ?? [],
     imagePrompt: draft.imageAssetIds.length ? buildHookKeyframeImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions,
       referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256 }).prompt : null,

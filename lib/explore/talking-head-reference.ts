@@ -3,7 +3,7 @@ import { getWorkflowVideoModels } from "./workflow-generation-settings";
 import { getVideoReferencePolicy } from "../ai-studio/video-reference-policy";
 import type { RecreateReference } from "./recreate-types";
 
-export type TalkingHeadReference = RecreateReference & { durationSeconds: number; generationPrompt: string };
+export type TalkingHeadReference = RecreateReference & { durationSeconds: number; generationPrompt: string; sourceSha256?: string };
 
 export function talkingHeadReferenceSettings(model: AIStudioVideoModel, duration: number, availableModels = getWorkflowVideoModels().map(item => item.value)) {
   if (!Number.isFinite(duration) || duration <= 0) throw new Error("This reference has no readable duration. Choose another example.");

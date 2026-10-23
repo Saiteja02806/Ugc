@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "talking-car-story",
+      "sourceSha256": "1c46b8fd23de99bf7bb5b21af96ad4d15fd17a1ff628662bbc24381560d216e1",
+      "file": "/explore/talking-head-references/v1/talking-car-story.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-warm-story",
+      "sourceSha256": "3886962301192b9fb45106d3817a2268a20714176e51dd759eef985ea80857f0",
+      "file": "/explore/talking-head-references/v1/talking-warm-story.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-outdoor-discovery",
+      "sourceSha256": "7a7d511452ae50b99d82d6b6bfbc06d6eaa308d7d7c6b4118401d50e45b55956",
+      "file": "/explore/talking-head-references/v1/talking-outdoor-discovery.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-outdoor-reaction",
+      "sourceSha256": "5e06af86ed7c05fd5016747f5a4cacac93b6693cdc6b8329600a025058aa0758",
+      "file": "/explore/talking-head-references/v1/talking-outdoor-reaction.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-room-explainer",
+      "sourceSha256": "56279887d29bf626568bee9625c91de14c7f9fad5d22ddcac4181097d3948e39",
+      "file": "/explore/talking-head-references/v1/talking-room-explainer.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-car-explainer",
+      "sourceSha256": "dca547f20d9ea453cbd99f5e0cde2a475016da41633396e353c93723becd67b9",
+      "file": "/explore/talking-head-references/v1/talking-car-explainer.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-discovery",
+      "sourceSha256": "44b3755fb54b4748618a5f445d0d57c52b658dd492d2438869649892dfa51999",
+      "file": "/explore/talking-head-references/v1/talking-discovery.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-surprised-story",
+      "sourceSha256": "19004ffd28c04c4cc1239da185e7b254a804a0584d83ed6d1839f1e4da837894",
+      "file": "/explore/talking-head-references/v1/talking-surprised-story.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-mug-story",
+      "sourceSha256": "1d143078e4496d1d4045f1f2ca8798be8c94bb4d4b07328a442f6633a63dc6a5",
+      "file": "/explore/talking-head-references/v1/talking-mug-story.mp4",
+      "width": 720,
+      "height": 1280
+    }
+  ]
+}

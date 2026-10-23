@@ -11,6 +11,7 @@ All intentional source, configuration, migration, script, test, documentation an
 - Scoped lint: zero errors or warnings; production Next build and TypeScript pass.
 - Native decoder packages resolve and execute in all four isolated route traces; lightweight MCP discovery/health routes exclude native media packages.
 - Four stale test contracts were corrected: new catalogue size, supported Wall animation, reviewed performance wording, and a factored Trending progress variable. Unsupported worker requests still reject before provider reservation; its error now describes the supported model/provider contract accurately.
+- The first hosted preview exposed an upload exclusion: unanchored `build/` also removed the versioned `lib/build` native tracing helper. The Vercel exclusion is now root-anchored as `/build/`; production traffic was unchanged while correcting this packaging issue.
 - Read-only production database verification confirms migration 20261022092140 is present, RLS is enabled, public table/function access is denied, and service-only access remains. No database write or bulk migration is required. Historical migration drift remains documented in the earlier release report.
 - Existing source/media review and local browser receipts are retained separately. Source review, fixture passes and a successful build do not establish generated-media fidelity or authenticated production acceptance.
 

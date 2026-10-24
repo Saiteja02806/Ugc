@@ -50,6 +50,12 @@ test("Hook image stage sends scene/main/support in exact order with only its com
   assert.deepEqual(output.hookKeyframe, input.input_json.hookKeyframe); assert.equal(output.model, "nano_banana_2"); assert.equal(output.effectivePrompt, received.prompt);
   assert.equal(count("paid"), 1); assert.equal(count("reserve"), 1);
 });
+test("Wall starting-image jobs accept the same verified scene/person contract from their own workflow", async () => {
+  const input = job(); input.input_json.exploreFormat = "wall_text";
+  const output = await runGenerateImageJob(input, context);
+  assert.deepEqual(output.hookKeyframe, input.input_json.hookKeyframe);
+  assert.equal(count("paid"), 1); assert.equal(count("reserve"), 1);
+});
 test("altered, incompatible or collided input roles fail before any provider reservation", async () => {
   for (const change of [{ model: "gpt_image" }, { exploreFormat: "slideshow" }, { prompt: "Unbound prompt" }, { aspectRatio: "4:5" },
     { hookKeyframe: null }, { slideshowReferenceContract: {} }, { characterSource: "ugc-pilot-characters" }, { additionalReferenceStartIndex: 2 },

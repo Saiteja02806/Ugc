@@ -87,7 +87,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
   const hookKeyframe = job.input_json.hookKeyframe === undefined ? undefined : parseHookKeyframeGenerationReceipt(job.input_json.hookKeyframe);
   if (hookKeyframe && model === "seedream_5_pro" && provider !== "openrouter") throw new ProviderRequestNotSubmittedError("Starting-frame Seedream jobs require the saved OpenRouter route.");
-  if (job.input_json.hookKeyframe !== undefined && (!hookKeyframe || job.input_json.exploreFormat !== "hook" ||
+  if (job.input_json.hookKeyframe !== undefined && (!hookKeyframe || !["hook", "wall_text"].includes(String(job.input_json.exploreFormat)) ||
     job.input_json.slideshowReferenceContract !== undefined || job.input_json.slideshowGeneration !== undefined ||
     job.input_json.slideshowBusinessContext !== undefined || job.input_json.subjectReferenceIndex !== undefined ||
     job.input_json.additionalReferenceStartIndex !== undefined || job.input_json.regenerationReferenceIndex !== undefined ||

@@ -1,5 +1,26 @@
 # Explore context and UI decision record
 
+## 2026-10-24 Creator repair and PR 85 production release verified
+
+- Website and MCP now serve reviewed main commit `e9f441e6`, which includes
+  Recreate release `0f9f2eba`, the integration of PR 84, and correctly merged
+  PR 85. Website deployment `dpl_F8NBi11GSzP3MdVwJyPUmaxA4G39` owns apex/www;
+  MCP deployment `dpl_68dGPSrZVBAVgGU28k32RV5jMLSy` owns its production host.
+- Generation worker `ugc-ai-generation-worker-r-e8cf2663` serves 100% traffic
+  using a pinned image with verified baked/runtime commit `e8cf2663`. That
+  worker Git tree is identical to `e9f441e6`. Functional configuration matches
+  the previous revision. The v3 Gemini receipt-routing fix is deployed.
+- Production checks pass: 13 public/authorization/media checks, 30 SEO checks
+  across 23 pages, MCP health, exact hook-library PDF hash and all 12 private
+  selected frame hashes through short-lived provider capabilities. PR 85's
+  page titles and hidden unreleased posting-default tool are verified live.
+  Normal automatic-build settings are restored. No paid generation was run;
+  signed-in performance, playback and new output fidelity remain separate.
+- The new how-to guide intentionally uses Article/HowTo/VideoObject schema.
+  The public-page audit now verifies its five matching visible step anchors
+  rather than applying the older founder-guide FAQ/breadcrumb requirements.
+- Full rollout and exact exclusions: docs/creator-recreate-release-2026-10-24.md.
+
 ## 2026-10-24 Creator starting-frame failure and loading recurrence (local fix)
 
 - Two production creator Gemini 3 Pro starting-frame jobs failed before Google
@@ -38,7 +59,7 @@
   twelve Recreate layout cases with four variations, approval/enlargement and
   dismissal during delayed UI loading. Source/auth/provider boundaries are
   simulated locally; no new paid output fidelity or positive production browser
-  acceptance is claimed. These fixes are not deployed yet.
+  acceptance is claimed. These fixes are now deployed as recorded above.
 
 ## 2026-10-24 Combined production release verified
 

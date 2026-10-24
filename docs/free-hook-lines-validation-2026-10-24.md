@@ -46,3 +46,9 @@ Final refinement checks: the new PDF cover was rendered and reviewed; the 110 gl
 Cover number weight refinement: changed only the cover numeral from Arial Bold to Arial Black at the same 104-point size. Positive character spacing is now 3.2 points to keep the heavier digits separate. The 11 hook-content pages and all hook text remain unchanged. Updated the cover preview to a new versioned asset.
 
 Cover spacing follow-up: brought the bold numeral closer using -3-point tracking while retaining Arial Black at 104 points. The original font side bearings retain clear space between the visible glyphs; the rendered cover is checked for separation. Only the numeral spacing changed in the PDF; all 11 content pages are preserved.
+
+Production follow-up: deployed from main `e9f441e6`. The live resource returns
+HTTP 200 with all 110 rendered hook entries, its sitemap entry and correct
+metadata. The live PDF is served as application/pdf and exactly matches the
+reviewed local checksum. Original local clipboard/layout checks remain distinct
+from these production HTTP checks. See `creator-recreate-release-2026-10-24.md`.

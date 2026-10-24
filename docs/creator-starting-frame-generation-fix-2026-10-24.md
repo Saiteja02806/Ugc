@@ -35,3 +35,10 @@ The focused set includes the separately run starting-frame job-contract suite.
 This is a local fix awaiting deployment. It does not prove a new paid output's
 likeness or that production generation is already repaired. Failed saved jobs
 remain failed; checking their status never submits a replacement paid request.
+
+Production follow-up: the fix is deployed on generation revision
+`ugc-ai-generation-worker-r-e8cf2663` at 100% traffic. Baked and runtime source
+identities agree, the functional worker configuration is preserved, and all
+twelve private selected source frames return their approved hashes from the
+live app. No new paid request was submitted. Existing failed requests remain
+failed. Complete rollout: `creator-recreate-release-2026-10-24.md`.

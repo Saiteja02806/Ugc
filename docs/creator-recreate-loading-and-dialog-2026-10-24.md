@@ -56,3 +56,9 @@ No paid generation, production mutation or deployment was performed. Existing
 failed jobs are unchanged and never automatically retried. Production loading
 times and a newly generated output's visual quality remain unverified until
 the fixes are deployed and explicitly exercised.
+
+Production follow-up: the website and MCP now serve `e9f441e6`, including these
+changes and PR 85. The matching generation-worker fix is active. Hosted builds,
+live route/deployment identities and selected private source-frame delivery
+pass. Signed-in performance and a fresh paid output remain unmeasured. Complete
+release evidence and exclusions: `creator-recreate-release-2026-10-24.md`.

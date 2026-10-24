@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   preserved-application:
-    if: github.head_ref == 'codex/mcp-business-release' || github.ref == 'refs/heads/codex/mcp-business-release'
+    if: github.head_ref == 'codex/mcp-business-release' || github.ref == 'refs/heads/codex/mcp-business-release' || github.head_ref == 'codex/mcp-analytics-read-20261018' || github.ref == 'refs/heads/codex/mcp-analytics-read-20261018'
     runs-on: ubuntu-latest
     env:
       FFMPEG_BIN: /usr/bin/ffmpeg
@@ -35,6 +35,9 @@ jobs:
           sudo cp worker/src/assets/fonts/61-ugc-inter.conf /etc/fonts/conf.d/61-ugc-inter.conf
           sudo fc-cache -f
       - run: npm ci
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci
       - run: node scripts/check-test-media-capabilities.mjs
       - run: npm run test:explore
       - run: node --test --test-concurrency=1 "worker/dist/**/*.test.js"

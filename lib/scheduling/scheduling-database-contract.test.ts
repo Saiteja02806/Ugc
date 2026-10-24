@@ -75,6 +75,9 @@ const instagramAccountManager = readProjectFile(
 const carouselScheduleModal = readProjectFile(
   "components/social/platform-selection-modal.tsx",
 );
+const postCaptionField = readProjectFile(
+  "components/scheduling/post-caption-field.tsx",
+);
 const hookVideoScheduleDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
 );
@@ -953,7 +956,8 @@ test("the inline carousel modal implements publishing-account content and time s
   assert.doesNotMatch(carouselScheduleModal, /Select connected account/);
   assert.doesNotMatch(carouselScheduleModal, /const platformConnections = useMemo/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
-  assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
+  assert.match(carouselScheduleModal, /<PostCaptionField[\s\S]*applyDefault=\{false\}/);
+  assert.match(postCaptionField, /Post caption <span>\(optional\)<\/span>/);
   assert.match(
     carouselScheduleModal,
     /self-start overflow-hidden rounded-card border border-border bg-card/,

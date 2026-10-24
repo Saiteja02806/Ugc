@@ -98,7 +98,7 @@ test("approved-frame mode hides extra references, limits animation choices and k
   const model = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook model");
   assert.ok(model.props.options.every(option => startingFrameVideo.isHookStartingFrameVideoModel(option.value)));
   const duration = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook duration");
-  assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), [4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), [3, 4, 5, 6, 7, 8, 9, 10]);
 });
 
 test("Talking Head exposes its saved image library with owner, limits and explicit selection", async () => {

@@ -45,6 +45,8 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
     "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: { isActive: true } }) },
     "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => access },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => source },
+    "@/components/explore/use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, setFrame() {}, ready: true, error: null, retry() {} }) },
+    "@/components/explore/use-creator-accounts": { useCreatorAccounts: () => ({ accounts: [], selectedId: null, select() {}, account: undefined, references: [], loading: false, error: null, catalogueError: null, retry() {}, retryCatalogue() {} }) },
     "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => ({ data: false, isFetching: false }) },
     "@/lib/explore/wall-pending-composition": { createWallScheduleComposition: () => ({ signature: "fixture", error: null, resolve: async () => ({}) }) },
     "@/lib/explore/recreate-types": references, "@/lib/explore/reference-pagination": pagination,
@@ -55,6 +57,7 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: () => { throw new Error("No owned-media request is allowed in this fixture"); } },
     "@/lib/firebase/auth": { getCurrentUserIdToken: () => { throw new Error("No authentication request is allowed in this fixture"); } },
     "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
+    "@/lib/explore/local-hook-starting-frame-preview": { LOCAL_HOOK_PREVIEW_OWNER_ID: "local-preview-owner", createLocalHookStartingFramePreviewRuntime: () => ({ generationDisabledReason: "Local source preview only" }) },
   };
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-workspace.tsx", import.meta.url), "utf8"), {
@@ -62,9 +65,10 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
   }).outputText, { exports, require: name => {
     if (name in imports) return imports[name];
     if (name.endsWith(".module.css")) return { __esModule: true, default: styles };
+    if (name === "react-dom") return { createPortal: (node) => node };
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => key });
     throw new Error(`Unexpected import ${name}`);
-  }, URLSearchParams, localStorage: { getItem: () => null }, window: { location, matchMedia: () => ({ matches: true }),
+  }, process: { env: { NODE_ENV: "test" } }, URLSearchParams, localStorage: { getItem: () => null }, window: { location, matchMedia: () => ({ matches: true }),
     history: { replaceState(_state, _title, url) { location.search = url.includes("?") ? url.slice(url.indexOf("?")) : ""; events.push({ kind: "url", value: url }); } } },
     requestAnimationFrame(callback) { callback(); },
   });

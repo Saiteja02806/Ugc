@@ -71,7 +71,7 @@ test("changing Firebase users creates a fresh application cache and subtree", ()
   );
 });
 
-test("landing auth CTAs receive an exact server-rendered session hint", () => {
+test("landing auth CTAs start signed out in shared HTML and reconcile the browser session after hydration", () => {
   assert.equal(hasAuthSessionCookie("ugc_session=1"), true);
   assert.equal(
     hasAuthSessionCookie("theme=dark; ugc_session=1; preference=compact"),
@@ -79,7 +79,7 @@ test("landing auth CTAs receive an exact server-rendered session hint", () => {
   );
   assert.equal(hasAuthSessionCookie("not_ugc_session=1"), false);
   assert.equal(hasAuthSessionCookie("ugc_session=10"), false);
-  assert.match(landingPage, /await cookies\(\)/);
+  assert.match(landingPage, /const initialHasSession = false/);
   assert.match(landingPage, /initialHasSession=\{initialHasSession\}/);
   assert.match(landingAuthActions, /initialHasSession \|\| hasSessionCookie\(\)/);
 });

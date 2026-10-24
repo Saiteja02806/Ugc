@@ -13,6 +13,10 @@ function load(file, imports, globals = {}) {
   }).outputText;
   vm.runInNewContext(code, { exports, Response, URL, console, ...globals, require: name => {
     if (name === "server-only") return {};
+    if (name === "./creator-slideshows.ts") return { creatorSlideFromUrl: () => null, getCreatorSlideshowReference: () => undefined };
+    if (name === "./creator-account-access.ts" || name === "@/lib/explore/creator-account-access") return { canAccessCreatorAccounts: () => false };
+    if (name === "@/worker/src/lib/creator-slide-delivery") return { parseCreatorSlideUrl: () => null };
+    if (name === "@/lib/ai-studio/generated-video-history-metadata") return {};
     if (!(name in imports)) throw new Error(`Unexpected dependency ${name}`);
     return imports[name];
   } });

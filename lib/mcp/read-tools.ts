@@ -145,11 +145,64 @@ export const registeredReadMcpTools = [
   "get_profile", "get_entitlements", "get_saas_brand", "list_assets", "get_asset", "get_capabilities",
 ] as const;
 
+// Static contracts are shared; per-request servers, handlers and principal checks remain isolated.
+const profileOutputSchema = z.strictObject({ id: z.string().min(1), name: z.string().min(1).optional(), email: z.email().optional(), nickname: z.string().min(1).optional() });
+
+const entitlementsOutputSchema = z.strictObject({
+  plan: z.enum(["free", "starter", "growth"]),
+  access_source: z.enum(["free", "dodo", "complimentary"]),
+  active: z.boolean(),
+  credits_remaining: z.number().int().nonnegative(),
+  credits_reserved: z.number().int().nonnegative(),
+  image_credit_cost: z.number().int().nonnegative(),
+  video_credits_per_second: z.number().int().nonnegative(),
+  features: z.strictObject({ image_generation: z.boolean(), video_generation: z.boolean() }),
+});
+
+const brandOutputSchema = z.strictObject({
+  id: uuid,
+  name: z.string().min(1),
+  source_url: sourceUrl.nullable(),
+  logo_url: httpsUrl.nullable(),
+  context: z.strictObject({
+    product_summary: z.string().min(20),
+    target_audience: z.array(z.string().min(1)).min(1),
+    category: nullableText,
+    business_model: z.enum(["b2b", "b2c", "both"]).nullable(),
+    main_problem: nullableText,
+    main_promise: nullableText,
+    value_propositions: z.array(z.string()),
+    differentiators: z.array(z.string()),
+    brand_tone: nullableText,
+    claims_to_avoid: z.array(z.string()),
+    missing_info: z.array(z.string()),
+  }),
+});
+
+const listAssetsInputSchema = z.strictObject({
+  collection: mediaCollection.optional().describe(`Optionally limit results. ${mediaCollectionDescription}`),
+  source_type: mediaSourceType.optional().describe(`Optionally limit results. ${mediaSourceTypeDescription}`),
+  query: z.string().trim().min(1).max(100).optional().describe("Optional words to find in asset titles."),
+  limit: z.number().int().min(1).max(50).default(20).describe("Maximum number of results to return, from 1 through 50."),
+  cursor: z.string().min(1).max(2048).optional().describe("The next_cursor returned by an earlier call with the same filters."),
+});
+
+const listAssetsOutputSchema = z.strictObject({ items: z.array(assetSummary), next_cursor: z.string().min(1).nullable() });
+
+const getAssetInputSchema = z.strictObject({ asset_id: uuid.describe("ID of the ready asset to retrieve.") });
+
+const getAssetOutputSchema = z.strictObject({ asset });
+
+const capabilitiesOutputSchema = z.strictObject({
+  image_generation: z.strictObject({ available: z.boolean(), aspect_ratios: z.array(z.enum(AI_STUDIO_IMAGE_ASPECT_RATIOS)), counts: z.array(generationCount), max_reference_images: z.union([z.literal(0), z.literal(1)]) }),
+  video_generation: z.strictObject({ available: z.boolean(), aspect_ratios: z.array(z.enum(AI_STUDIO_VIDEO_ASPECT_RATIOS)), durations_seconds: z.array(videoDuration), counts: z.array(generationCount), max_reference_images: z.union([z.literal(0), z.literal(1)]), max_reference_videos: z.literal(0) }),
+});
+
 export function registerReadMcpTools(server: McpServer) {
   server.registerTool("get_profile", {
     description: "Identify the connected UGC Pilot account.",
     inputSchema: empty,
-    outputSchema: z.strictObject({ id: z.string().min(1), name: z.string().min(1).optional(), email: z.email().optional(), nickname: z.string().min(1).optional() }),
+    outputSchema: profileOutputSchema,
     annotations: readOnly,
     scopeChallenge: requireScopes("account:read"),
     _meta: oauthMetadata("account:read", { "openai/profile": true }),
@@ -158,16 +211,7 @@ export function registerReadMcpTools(server: McpServer) {
   server.registerTool("get_entitlements", {
     description: "Show the current plan, available credits, and generation access.",
     inputSchema: empty,
-    outputSchema: z.strictObject({
-      plan: z.enum(["free", "starter", "growth"]),
-      access_source: z.enum(["free", "dodo", "complimentary"]),
-      active: z.boolean(),
-      credits_remaining: z.number().int().nonnegative(),
-      credits_reserved: z.number().int().nonnegative(),
-      image_credit_cost: z.number().int().nonnegative(),
-      video_credits_per_second: z.number().int().nonnegative(),
-      features: z.strictObject({ image_generation: z.boolean(), video_generation: z.boolean() }),
-    }),
+    outputSchema: entitlementsOutputSchema,
     annotations: readOnly,
     scopeChallenge: requireScopes("account:read"),
     _meta: oauthMetadata("account:read"),
@@ -189,25 +233,7 @@ export function registerReadMcpTools(server: McpServer) {
   server.registerTool("get_saas_brand", {
     description: "Get the completed brand profile and grounded business context for this account.",
     inputSchema: empty,
-    outputSchema: z.strictObject({
-      id: uuid,
-      name: z.string().min(1),
-      source_url: sourceUrl.nullable(),
-      logo_url: httpsUrl.nullable(),
-      context: z.strictObject({
-        product_summary: z.string().min(20),
-        target_audience: z.array(z.string().min(1)).min(1),
-        category: nullableText,
-        business_model: z.enum(["b2b", "b2c", "both"]).nullable(),
-        main_problem: nullableText,
-        main_promise: nullableText,
-        value_propositions: z.array(z.string()),
-        differentiators: z.array(z.string()),
-        brand_tone: nullableText,
-        claims_to_avoid: z.array(z.string()),
-        missing_info: z.array(z.string()),
-      }),
-    }),
+    outputSchema: brandOutputSchema,
     annotations: readOnly,
     scopeChallenge: requireScopes("brand:read"),
     _meta: oauthMetadata("brand:read"),
@@ -252,14 +278,8 @@ export function registerReadMcpTools(server: McpServer) {
 
   server.registerTool("list_assets", {
     description: "Find ready assets owned by the connected account, with search and pagination.",
-    inputSchema: z.strictObject({
-      collection: mediaCollection.optional().describe(`Optionally limit results. ${mediaCollectionDescription}`),
-      source_type: mediaSourceType.optional().describe(`Optionally limit results. ${mediaSourceTypeDescription}`),
-      query: z.string().trim().min(1).max(100).optional().describe("Optional words to find in asset titles."),
-      limit: z.number().int().min(1).max(50).default(20).describe("Maximum number of results to return, from 1 through 50."),
-      cursor: z.string().min(1).max(2048).optional().describe("The next_cursor returned by an earlier call with the same filters."),
-    }),
-    outputSchema: z.strictObject({ items: z.array(assetSummary), next_cursor: z.string().min(1).nullable() }),
+    inputSchema: listAssetsInputSchema,
+    outputSchema: listAssetsOutputSchema,
     annotations: readOnly,
     scopeChallenge: requireScopes("assets:read"),
     _meta: oauthMetadata("assets:read"),
@@ -293,8 +313,8 @@ export function registerReadMcpTools(server: McpServer) {
 
   server.registerTool("get_asset", {
     description: "Get one ready, undeleted asset owned by this account.",
-    inputSchema: z.strictObject({ asset_id: uuid.describe("ID of the ready asset to retrieve.") }),
-    outputSchema: z.strictObject({ asset }),
+    inputSchema: getAssetInputSchema,
+    outputSchema: getAssetOutputSchema,
     annotations: readOnly,
     scopeChallenge: requireScopes("assets:read"),
     _meta: oauthMetadata("assets:read"),
@@ -310,10 +330,7 @@ export function registerReadMcpTools(server: McpServer) {
   server.registerTool("get_capabilities", {
     description: "Show generation settings usable with the current account plan.",
     inputSchema: empty,
-    outputSchema: z.strictObject({
-      image_generation: z.strictObject({ available: z.boolean(), aspect_ratios: z.array(z.enum(AI_STUDIO_IMAGE_ASPECT_RATIOS)), counts: z.array(generationCount), max_reference_images: z.union([z.literal(0), z.literal(1)]) }),
-      video_generation: z.strictObject({ available: z.boolean(), aspect_ratios: z.array(z.enum(AI_STUDIO_VIDEO_ASPECT_RATIOS)), durations_seconds: z.array(videoDuration), counts: z.array(generationCount), max_reference_images: z.union([z.literal(0), z.literal(1)]), max_reference_videos: z.literal(0) }),
-    }),
+    outputSchema: capabilitiesOutputSchema,
     annotations: readOnly,
     scopeChallenge: requireScopes("account:read"),
     _meta: oauthMetadata("account:read"),

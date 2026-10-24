@@ -8,6 +8,10 @@ test("accepts YouTube channel analytics jobs", () => {
   assert.equal(isValidAnalyticsSyncInput(createJob("youtube_channel")), true);
 });
 
+test("accepts the separate account-profile renewal operation", () => {
+  assert.equal(isValidAnalyticsSyncInput(createJob("connection_profiles")), true);
+});
+
 test("rejects unknown analytics operations", () => {
   assert.equal(isValidAnalyticsSyncInput(createJob("unsupported_operation")), false);
 });

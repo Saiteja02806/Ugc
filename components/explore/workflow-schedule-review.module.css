@@ -18,16 +18,18 @@
 .summary h3 { margin: 0; color: var(--muted); font-size: 11px; font-weight: 500; }
 .summary p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
 .summary p.summaryDestination { color: var(--foreground); font-size: 14px; font-weight: 550; }
-.actions { width: 100%; display: grid; gap: 12px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); }
+.actions { position: static; width: 100%; display: grid; gap: 12px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); background: var(--card); }
+.schedulingLink { display: inline-flex; align-items: center; justify-self: start; gap: 6px; max-width: 100%; min-height: 36px; padding-block: 6px; color: var(--primary); font-size: 14px; font-weight: 600; line-height: 20px; text-decoration: underline; text-underline-offset: 4px; border-radius: 4px; }
+.schedulingLink:hover { color: var(--primary-hover); }
+.schedulingLink:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+@media (pointer: coarse) { .schedulingLink { min-height: 44px; } }
 .actionRow { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 10px 12px; }
 .backButton { grid-column: 1; grid-row: 2; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; height: auto; gap: 6px; padding-inline: 10px; font-size: 13px; line-height: 20px; white-space: normal; }
 .reviewAction { display: contents; }
 .actionHelp { grid-column: 1 / -1; grid-row: 1; max-width: none; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
-.reviewButton { grid-column: 2; grid-row: 2; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; height: auto; gap: 6px; padding-inline: 10px; font-size: 13px; line-height: 20px; white-space: normal; }
-@media (min-width: 1024px) and (min-height: 620px) {
-  .actions { position: sticky; bottom: 0; z-index: 3; padding-bottom: 6px; background: var(--card); }
-  .form :is(input, textarea, select) { scroll-margin-block: 16px 150px; }
-}
+.reviewButton { grid-column: 2; grid-row: 2; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; height: auto; gap: 6px; padding-inline: 10px; font-size: 13px; line-height: 20px; white-space: nowrap; }
+.reviewButton > svg, .backButton > svg { flex-shrink: 0; }
+.form :is(input, textarea, select) { scroll-margin-block: 16px; }
 @media (max-height: 760px) { .form { gap: 16px; padding: 22px; } .form > h2 { font-size: 22px; } .form textarea[name="postCaption"] { min-height: 80px; height: 80px; } .summary { padding: 12px 18px; } }
 @media (max-width: 767px) { .form { gap: 16px; padding: 18px; } .form > h2 { font-size: 22px; } .form [data-platform] { font-size: 12px; } .form textarea[name="postCaption"], .form [data-schedule-date-time] input { font-size: 16px; } }
 @media (max-width: 479px) { .form [data-schedule-date-time] { gap: 10px; } }

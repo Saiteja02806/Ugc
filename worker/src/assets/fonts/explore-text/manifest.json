@@ -84,6 +84,53 @@
           "woff2Sha256": "c80a03656775ac841f0da57b49750ab8228962fc765fa4e7a0f2580dbb9d87ef"
         }
       }
+    },
+    "tiktoksans": {
+      "source": "TikTokSans[opsz,slnt,wdth,wght].ttf",
+      "sourceSha256": "0e7f0a3e924c9a86478fc6fc2946de2e4ab8fc704ed72ee40434ade94bb9b0c6",
+      "weights": {
+        "400": {
+          "family": "UGCExploreTikTokSansW400",
+          "ttfSha256": "508cdd0a37f953e796136c33103e9cf45c0a8fb75df5bdbf1462c0e092359690",
+          "woff2Sha256": "f98bbfd960896b40c32d1342335e778c0b60e8348bc8d59b593e639094165062"
+        },
+        "500": {
+          "family": "UGCExploreTikTokSansW500",
+          "ttfSha256": "7e2f97c2910d3a4351579ed6fe476aeccd725e310312e25b9b0dbbfe0b58941d",
+          "woff2Sha256": "5f277558974dd8f27c70b630722d8bdfcae85b0237324306a0a7f23fdb5da0bf"
+        },
+        "700": {
+          "family": "UGCExploreTikTokSansW700",
+          "ttfSha256": "a0e13783690f8fe97c1ebea89bb83fe69d11ff1e1fdb3803b3cc7765f952c031",
+          "woff2Sha256": "5f99a632799bdb63112b8dcf6bdf6c32a9c1cfe485b9733e89f1cb8281b662ea"
+        }
+      }
+    },
+    "poppins": {
+      "source": "Poppins-{style}.ttf",
+      "weights": {
+        "400": {
+          "family": "UGCExplorePoppinsW400",
+          "ttfSha256": "c9cb4855faa1189e248a0575761e4d62ff5b0a21ba5c8707922f587eff9e5775",
+          "woff2Sha256": "13d8f125ea976898b9a8390d4484dd8a97766bad74ed2923af315ac3ca08474d",
+          "source": "Poppins-Regular.ttf",
+          "sourceSha256": "7e65201e9b79159e2300267cc885e16c8dcef2424cdfa09a29bfb0980a94a7ba"
+        },
+        "500": {
+          "family": "UGCExplorePoppinsW500",
+          "ttfSha256": "daa117dcaafb2a2f6e62c421b1e5bf484f994da98e54ca710b8f7f7067b1a2b2",
+          "woff2Sha256": "9cf238852391c9b534fe016c6fddfae43c98b4a72823b1f4d748017699b4ee70",
+          "source": "Poppins-Medium.ttf",
+          "sourceSha256": "90373e7d838d32468438fc3e152dca0bdb12edcab99ea639f158790b1ba1fd05"
+        },
+        "700": {
+          "family": "UGCExplorePoppinsW700",
+          "ttfSha256": "908ad96c7f13b3b4be4f92173857ae8af476eb6a6813bef322e2110fd20e9477",
+          "woff2Sha256": "b84bbf5d37c5bf9557b8ff548c6e3e863feeb4e70c083175f5a074a4a03219d5",
+          "source": "Poppins-Bold.ttf",
+          "sourceSha256": "983676516167748b74de6f4771fb384c664fd913acb8b471122ecacf5da5ea6c"
+        }
+      }
     }
   }
 }

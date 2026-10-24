@@ -1,6 +1,11 @@
 import "server-only";
 
 import importedCatalog from "./imported-catalog.json" with { type: "json" };
+import slideshowSources from "./slideshow-reference-sources.json" with { type: "json" };
+import slideshowAdditions from "./slideshow-reference-additions.json" with { type: "json" };
+import octoberSlideshows from "./slideshow-reference-oct23.json" with { type: "json" };
+import uploadBatches from "./reference-upload-batches.json" with { type: "json" };
+import { applyReferenceUploadBatches, type ReferenceUploadBatch } from "./reference-upload-batches.ts";
 import {
   getExploreHookVideos,
 } from "./hook-video-library";
@@ -32,7 +37,7 @@ type ImportedCatalogItem = {
 };
 
 const importedItems = importedCatalog.mediaStatus === "published"
-  ? importedCatalog.items as ImportedCatalogItem[]
+  ? [...importedCatalog.items, ...(slideshowAdditions.mediaStatus === "published" ? slideshowAdditions.items : []), ...(octoberSlideshows.mediaStatus === "published" ? octoberSlideshows.items : [])] as ImportedCatalogItem[]
   : [];
 
 export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
@@ -61,15 +66,19 @@ export function getRecreateReferences(includeArchivedHooks = false): RecreateRef
     slides: [],
     title: `${item.pairedAudio ? "Wall of text" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
+    ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
+    ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+    ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),
     ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
     ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
 
   // Published imported Hooks already enter through the dedicated Hook library.
-  return [...hooks, ...existingWallText, ...importedItems.filter((item) => item.format !== "hook").map((item) => toImportedReference(item))].map(item => {
+  const references = [...hooks, ...existingWallText, ...importedItems.filter((item) => item.format !== "hook").map((item) => toImportedReference(item))].map(item => {
     const generationPrompt = getReferenceVideoPrompt(item.id, item.videoUrl);
     return generationPrompt ? { ...item, generationPrompt } : item;
   });
+  return applyReferenceUploadBatches(references, uploadBatches.batches as ReferenceUploadBatch[]);
 }
 
 export function isKnownRecreateReferenceId(value: unknown) {
@@ -94,16 +103,17 @@ export function getLocalRecreateReferences(): RecreateReference[] {
   if (process.env.NODE_ENV !== "development") return [];
   const existing = getRecreateReferences();
   const existingIds = new Set(existing.map((item) => item.id));
-  const staged = (importedCatalog.items as ImportedCatalogItem[])
+  const staged = ([...importedCatalog.items, ...slideshowAdditions.items, ...octoberSlideshows.items] as ImportedCatalogItem[])
     .filter((item) => !existingIds.has(item.id) && !(item.format === "hook" && isHookReferenceReleaseActive()))
     .map((item) => {
       const reference = toImportedReference(item, (file) => `/api/explore/local-media/${file}`);
       return item.format === "hook" ? { ...reference, title: "Hook" } : reference;
     });
-  return [...existing, ...staged];
+  return applyReferenceUploadBatches([...existing, ...staged], uploadBatches.batches as ReferenceUploadBatch[], true);
 }
 
 function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAssetUrl): RecreateReference {
+  const source = item.format === "slideshow" ? slideshowSources.items.find(source => source.referenceId === item.id) : undefined;
   const slides: ReferenceSlide[] = item.slides.map((slide) => ({
     height: slide.height,
     id: slide.id,
@@ -119,6 +129,7 @@ function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAs
     id: item.id,
     posterUrl: assetUrl(item.posterFile),
     slides,
+    ...(source ? { sourceUrl: source.sourceUrl, sourcePlatform: "tiktok" as const, sourceKind: source.sourceKind === "profile" ? "profile" as const : "post" as const } : {}),
     // Catalogue sequence numbers identify imports, not the user's topic.
     title: item.format === "slideshow" ? item.categoryLabel?.trim() || item.title : item.title,
     videoUrl: item.videoFile ? assetUrl(item.videoFile) : undefined,

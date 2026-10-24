@@ -4,6 +4,8 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as schedulingDraft from "../lib/explore/workflow-scheduling-draft.ts";
+import { getVideoReferencePolicy } from "../lib/ai-studio/video-reference-policy.ts";
+import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const element = (type, props) => typeof type === "function" ? type(props) : ({ type, props });
@@ -17,6 +19,9 @@ function nodes(value) {
 function layout(kind) {
   let cursor = 0, mediaCursor = 0;
   const generationInputs = [];
+  const frameScopes = [];
+  const frameSelection = { frame: null, ready: true, error: null, setFrame(value) { this.frame = value; return true; }, retry() {} };
+  const reference = { id: "talking-car-story", sourceSha256: "a".repeat(64) };
   const recoveryInputs = [];
   const generationSettings = {aspectRatio:"9:16"};
   let generated = null;
@@ -73,8 +78,12 @@ function layout(kind) {
     removeUpload() {}, clearUploadError() {}, clearSelection() {},
   };
   const imports = {
+    "next/dynamic": { default: () => "starting-frame-preparation" },
+    "next/image": { default: "image" },
+    "./use-hook-composer-selection": { useHookComposerSelection: (...scope) => { frameScopes.push(scope); return frameSelection; } },
+    "@/worker/src/lib/hook-starting-frame-video": startingFrameVideo,
     "./use-talking-head-reference": { useTalkingHeadReference: () => ({
-      query: { data: [], isPending: false, isError: false, refetch() {} }, selectedId: null, instructions: "",
+      query: { data: [reference], isPending: false, isError: false, refetch() {} }, selectedId: null, instructions: "",
       changeInstructions() {}, choose: async () => false, retry() {}, videoReference: attachments[mediaCursor++],
     }) },
     "./talking-head-references": { TalkingHeadReferences: "talking-head-references" },
@@ -121,6 +130,7 @@ function layout(kind) {
     "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => attachments[mediaCursor++] },
     "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => attachments[0] },
+    "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy },
     "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: (initialDuration, initialModel) => {
       generationInputs.push({ initialDuration, initialModel });
       return { settings: generationSettings, dirty: false, changeSettings(patch) { Object.assign(generationSettings,patch); } };
@@ -152,11 +162,45 @@ function layout(kind) {
         generationDraft,
       };
     },
-    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, recoveryInputs, scheduleAction, prepareAction,
+    demo: attachments[3], audio: attachments[4], references: attachments.slice(0, 3), appScreen, generationInputs, recoveryInputs, scheduleAction, prepareAction, frameScopes, frameSelection, reference,
     selectVideo(video) { generated = video ? {selected:video, results:[video]} : null; },
     setFinishedOutput(output) { finishedOutput = output; },
   };
 }
+
+test("Talking Head Recreate approves only the current draft, preserves Demo/script and stages replacement", () => {
+  const actual = layout("hook");
+  const draftId = "00000000-0000-4000-8000-000000000099";
+  const props = { generationEnabled: true, startingFrameEnabled: true, draftEntry: { id: draftId } };
+  const render = () => actual.render(props);
+  let current = render();
+  current.composer.onInstructionsChange('Say "This is my product."');
+  nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
+  current = render();
+  let prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
+  assert.equal(prep.props.preparationFormat, "talking_head");
+  assert.equal(prep.props.draftId, draftId); assert.equal(current.generationDraft.referencesPending, true);
+  const frame = { ownerId: "owner", draftId, referenceId: actual.reference.id, assetId: "approved", jobId: "job", url: "https://owned.test/frame.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural delivery.", generateAudio: false };
+  prep.props.onUseStartingFrame({ ...frame, ownerId: "other" }); assert.equal(actual.frameSelection.frame, null);
+  prep.props.onUseStartingFrame({ ...frame, draftId: "other-draft" }); assert.equal(actual.frameSelection.frame, null);
+  prep.props.onUseStartingFrame(frame); current = render();
+  assert.equal(nodes(current.tree).some(node => node.type === "starting-frame-preparation"), false);
+  assert.equal(current.generationDraft.startingFrame, frame);
+  assert.equal(current.composer.instructions, 'Say "This is my product."');
+  assert.equal(current.composer.startingFrameMode, true);
+  assert.equal(current.composer.generationSettings.duration, 4);
+  assert.equal(current.composer.generationSettings.aspectRatio, "9:16");
+  assert.equal(actual.references[0].removed, 1); assert.equal(actual.references[1].removed, 1);
+  assert.equal(actual.references[2].removed, 0, "Attached audio is retained with an explicit generation blocker");
+  assert.equal(actual.demo.removed, 0); assert.equal(actual.audio.removed, 0);
+  assert.deepEqual(actual.frameScopes.at(-1), ["owner", true, `talking_head:${draftId}`]);
+  nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
+  current = render(); prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
+  prep.props.onClose(); current = render(); assert.equal(current.generationDraft.startingFrame, frame);
+  const sound = nodes(current.composer.startingFrameControl).find(node => node.type === "input" && node.props.type === "checkbox");
+  sound.props.onChange({ target: { checked: true } }); current = render();
+  assert.equal(current.generationDraft.startingFrame.generateAudio, true);
+});
 
 test("both Create layouts carry failed image, video and audio selections into generation validation", () => {
   for (const kind of ["hook", "phone"]) {

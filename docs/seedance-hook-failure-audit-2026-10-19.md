@@ -1,5 +1,10 @@
 # Seedance 2.5 Hook failure investigation — 19 October 2026
 
+The later screenshot showing `Choose the workflow's supported video model.` is
+a separate app-side admission failure, not the historical provider rejection
+described below. See [the admission investigation](seedance-explore-admission-fix-2026-10-19.md).
+
+
 Follow-up key/model research verifies the current deployed ReAPI key and Less
 Restriction request configuration, while preserving the historical/live-output
 distinction below. See `seedance-less-restriction-verification-2026-10-19.md`.

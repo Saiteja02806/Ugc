@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mediaCollections } from "@/lib/media/types";
 import { getProtectedMediaDeliveryUrl, isPrivateUserMedia } from "@/lib/media/media-delivery";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import { parseCreatorSlideUrl, resolveCreatorSlideDelivery } from "@/worker/src/lib/creator-slide-delivery";
 import { getAssetReferenceSoundtrack, getExplorePairedReference, referenceAudioBaseStorageKey } from "@/worker/src/lib/explore-reference-soundtrack";
 
 import type {
@@ -207,6 +208,7 @@ export async function listImageLibraryAssetsPage(params: { userId: string; offse
 export async function listMediaAssets(params: {
   collection?: MediaCollection | null;
   sourceTypes?: MediaSourceType[] | null;
+  projectId?: string;
   userId: string;
 }) {
   let query = getSupabaseServerClient()
@@ -223,6 +225,10 @@ export async function listMediaAssets(params: {
 
   if (params.sourceTypes?.length) {
     query = query.in("source_type", params.sourceTypes);
+  }
+
+  if (params.projectId) {
+    query = query.eq("project_id", params.projectId);
   }
 
   const { data, error } = await query;
@@ -580,7 +586,7 @@ export function serializeMediaAsset(row: MediaAssetRow): MediaAsset {
       ? getProtectedMediaDeliveryUrl(row.id, Date.now(), "thumbnail") : row.thumbnail_url,
     title: row.title,
     updatedAt: row.updated_at,
-    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : row.url,
+    url: isPrivateUserMedia(row) ? getProtectedMediaDeliveryUrl(row.id) : parseCreatorSlideUrl(row.url) ? resolveCreatorSlideDelivery(row.url) : row.url,
     width: row.width,
   };
 }

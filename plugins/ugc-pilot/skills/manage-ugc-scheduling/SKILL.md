@@ -5,7 +5,7 @@ description: Inspect connected UGC Pilot social-account labels, connection healt
 
 # Inspect social accounts and schedules
 
-Start with `get_scheduling_capabilities`. It requires `account:read`, performs no data write, and reports whether this deployment is configured for scheduling reads. If it reports unavailable, say so without trying a website route, provider API, storage credential or another account.
+Start with `get_scheduling_capabilities`. It requires `publishing:read`, performs no data write, and reports whether this deployment is configured for scheduling reads. If it reports unavailable, say so without trying a website route, provider API, storage credential or another account.
 
 ## Read only after the user requests it
 

@@ -4,8 +4,9 @@ import test from 'node:test';
 const record=JSON.parse(fs.readFileSync(new URL('./data/hook-reference-scene-audit-2026-10-19.json',import.meta.url),'utf8'));
 const sceneRelease=JSON.parse(fs.readFileSync(new URL('./data/hook-reference-scene-release.json',import.meta.url),'utf8'));
 const batches=['explore-hook-reference-release.json','explore-hook-reference-addition-release.json','explore-hook-reference-new-batch-release.json'].map(f=>JSON.parse(fs.readFileSync(new URL('../worker/src/lib/'+f,import.meta.url),'utf8')));
-const active=batches.flatMap(b=>b.mediaStatus==='published'&&b.activation==='active'?b.items.filter(i=>!b.excludedReferenceIds.includes(i.id)):[]);
-test('all current active Hooks have unique source-bound scene reviews; ambiguous reveal is not trimmed',()=>{
+const active=batches.flatMap(b=>b.mediaStatus==='published'&&b.activation==='active'?b.items.filter(i=>record.items.some(row=>row.id===i.id)):[]);
+// Preserve the historical audit cohort even when later discovery policy hides entries.
+test('all historically audited Hooks have unique source-bound scene reviews; ambiguous reveal is not trimmed',()=>{
  assert.equal(record.items.length,98);assert.equal(active.length,record.items.length);assert.equal(new Set(record.items.map(i=>i.id)).size,98);
  for(const [n,item]of record.items.entries()){
   assert.equal(item.ordinal,n+1);assert.equal(item.id,active[n].id);

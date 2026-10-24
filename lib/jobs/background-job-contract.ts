@@ -131,7 +131,12 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  if (isProviderOutputRecoveryCandidate(job)) return true;
   const errorCode = getPublicJobErrorCode(job);
+  // Completed ReAPI outputs use the complimentary collection RPC exclusively.
+  // Never fall back to the ordinary funded retry when its rollout is deferred.
+  if (errorCode === "PROVIDER_OUTPUT_COLLECTION_FAILED" && job.input &&
+      typeof job.input === "object" && !Array.isArray(job.input) && job.input.provider === "reapi") return false;
   // A provider's terminal failure needs a new, explicitly requested generation.
   // Replaying this job cannot revive its saved provider operation.
   if (
@@ -149,6 +154,20 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
     (job.status === "failed" || job.status === "stalled") &&
     job.attemptCount < job.maxAttempts
   );
+}
+
+/** The database verifies the saved completed operation before granting this once. */
+export function isProviderOutputRecoveryCandidate(job: BackgroundJobRecord) {
+  // Enable only after the reviewed recovery migration is installed. In
+  // particular, do not advertise exhausted-job recovery on a schema without it.
+  if (process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY !== "true") return false;
+  const input = job.input;
+  return job.jobType === "generate_hook_video" && job.status === "failed" &&
+    Number.isInteger(job.attemptCount) && job.attemptCount >= 0 && job.attemptCount < 20 &&
+    job.errorCode === "PROVIDER_OUTPUT_COLLECTION_FAILED" &&
+    Boolean(input && typeof input === "object" && !Array.isArray(input) &&
+      input.provider === "reapi" && ["seedance_2_5", "wan_3_0"].includes(String(input.model)) &&
+      input.providerOutputRecovery === undefined);
 }
 
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {

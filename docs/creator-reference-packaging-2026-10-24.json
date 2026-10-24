@@ -1,0 +1,34 @@
+{
+  "receipts": [
+    {
+      "route": "creator-slide-media/[referenceId]/[slideId]",
+      "expectedFiles": 39,
+      "allIncluded": true
+    },
+    {
+      "route": "creator-slide-provider/[...path]",
+      "expectedFiles": 39,
+      "allIncluded": true
+    },
+    {
+      "route": "slideshows/image",
+      "expectedFiles": 39,
+      "allIncluded": true
+    },
+    {
+      "route": "creator-scene/[...path]",
+      "expectedFiles": 24,
+      "allIncluded": true
+    },
+    {
+      "route": "hook-starting-frame",
+      "expectedFiles": 24,
+      "allIncluded": true
+    }
+  ],
+  "slides": 39,
+  "videos": 12,
+  "privateHashFilesInPublic": false,
+  "checkedClientBundles": 430,
+  "privateManifestMarkersInClientBundles": false
+}

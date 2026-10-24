@@ -1,7 +1,9 @@
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
+import { canAccessCreatorAccounts } from "@/lib/explore/creator-account-access";
 import { getBackgroundJobForUser } from "@/lib/jobs/background-jobs";
 import { remixSourceFromJob } from "@/lib/explore/remix-source";
 import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
+import { getGeneratedVideoHistoryMetadata } from "@/lib/ai-studio/generated-video-history-metadata";
 import {
   getMediaAssetForOwner,
   serializeMediaAsset,
@@ -48,18 +50,23 @@ async function handleRequest(
     const { assetId } = await context.params;
     const asset = await getMediaAssetForOwner({ assetId, userId: user.uid });
 
-    if (!asset) {
+    if (!asset || asset.storage_key?.startsWith("explore/creator-slideshows/") && !canAccessCreatorAccounts(user)) {
       return Response.json({ ok: false, error: "Media asset was not found." }, { status: 404 });
     }
 
     if (action === "get") {
       const serialized = serializeMediaAsset(asset);
-      const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
+      const wantsRemixSource = new URL(request.url).searchParams.get("remixSource") === "1";
+      const wantsGenerationDetails = new URL(request.url).searchParams.get("generationDetails") === "1";
+      const job = asset.source_record_id && (asset.source_type === "generated_image" || asset.source_type === "generated_video" && (wantsRemixSource || wantsGenerationDetails))
         ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
       if (asset.source_type === "generated_image" && job?.jobType === "generate_image") {
         serialized.metadata = { ...serialized.metadata, ...getGeneratedImageHistoryMetadata(job.input) };
       }
-      if (new URL(request.url).searchParams.get("remixSource") === "1") {
+      if (wantsGenerationDetails && asset.source_type === "generated_video" && job?.jobType === "generate_hook_video") {
+        serialized.metadata = { ...serialized.metadata, ...getGeneratedVideoHistoryMetadata(job.input) };
+      }
+      if (wantsRemixSource) {
         // Read provenance from this owner's original job, never browser state.
         // Original reference imports already contain server-validated provenance.
         // Unlike generated assets, they have no background generation job.

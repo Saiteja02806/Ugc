@@ -23,16 +23,33 @@ export function getAIStudioImageDimensions(ratio: AIStudioImageRatio) {
 export async function prepareAIStudioImageOutput(
   imageBuffer: Buffer,
   ratio: AIStudioImageRatio = AI_STUDIO_IMAGE_RATIO,
-  options: { preserveComposition?: boolean } = {},
+  options: { preserveComposition?: boolean; cropNearRatioPadding?: boolean } = {},
 ) {
   const dimensions = getAIStudioImageDimensions(ratio);
+  const image = sharp(imageBuffer);
+  let cropNearRatioPadding = false;
+  if (options.preserveComposition && options.cropNearRatioPadding) {
+    const { width, height } = await image.metadata();
+    if (width && height) {
+      // Some providers return a nominal 9:16 image on a nearby pixel grid.
+      // Remove the resulting thin margins without stretching facial proportions.
+      // A larger mismatch retains the complete image and the legacy contain fit.
+      const scale = Math.max(dimensions.width / width, dimensions.height / height);
+      const scaledWidth = Math.max(dimensions.width, Math.ceil(width * scale));
+      const scaledHeight = Math.max(dimensions.height, Math.ceil(height * scale));
+      // Round the estimated covered canvas up so even the pixel-grid boundary
+      // cannot opt into a crop exceeding one percent of either image extent.
+      const croppedFraction = 1 - Math.min(dimensions.width / scaledWidth, dimensions.height / scaledHeight);
+      cropNearRatioPadding = croppedFraction <= 0.01;
+    }
+  }
 
-  return sharp(imageBuffer)
+  return image
     .resize({
-      fit: options.preserveComposition ? "contain" : "cover",
-      ...(options.preserveComposition ? { background: "#ffffff" } : {}),
+      fit: options.preserveComposition && !cropNearRatioPadding ? "contain" : "cover",
+      ...(options.preserveComposition && !cropNearRatioPadding ? { background: "#ffffff" } : {}),
       height: dimensions.height,
-      position: "attention",
+      position: cropNearRatioPadding ? "centre" : "attention",
       width: dimensions.width,
     })
     .png()

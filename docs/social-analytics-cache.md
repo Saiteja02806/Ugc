@@ -1,14 +1,37 @@
-# TikTok and YouTube analytics loading
+# Social analytics loading and caching
 
-- Initial panel load requests analytics automatically. Browser cache keys include the authenticated owner, platform, connection IDs, connection dates and status.
-- TikTok, YouTube, and the shared platform/account selector are available to every verified signed-in user. API routes retain authentication and owner scoping; the email allowlists have been removed. Completed analytics job outputs serve as durable snapshots, scoped by owner, job type and operation.
-- Fresh results are reused for five minutes. Manual refresh has a 30-second cooldown; active jobs are shared. Saved results return alongside a background refresh job, so provider latency does not hide existing content.
-- Reconnected and disconnected accounts invalidate old snapshots. No public/CDN caching or new database tables are involved.
-- Refresh failures keep saved values visible with a warning. Genuine zero values remain zero; unavailable/private metrics are never substituted with zero.
-- Both platforms use a calendar-spaced line chart with thumbnail/count buttons, day pickers and video details. Dates follow the viewer's local timezone, matching Instagram. Unavailable-only days appear separately, not on the zero line.
-- Chart ranges are 7, 30 and 90 days (30 by default). Older returned videos remain in the table; the date range affects the chart and its summaries, not the separate 30-complete-day YouTube channel report.
-- Current ingestion is still limited to the 20 latest provider-returned videos per account. The chart is current video totals grouped by publication date, not a daily audience activity report or a complete historical archive.
-- YouTube channel reports and video lifetime counts remain separate. This change does not grant OAuth scopes or enable cloud APIs.
-- Both OAuth flows request the full existing publishing and analytics scope sets. Existing connections without analytics consent must reconnect; Settings explains this for both platforms.
+Implemented on 20 October 2026. The production web deployment is now `094e586455c2b686f6ee543c8e692d6fb88d6229`. Its required database migration was missing until the production repair at 18:17:48 UTC on 20 October; see [the empty-data incident](analytics-empty-data-repair-2026-10-20.md). Authenticated browser acceptance remains outstanding. See [the original investigation](analytics-loading-investigation-2026-10-20.md) for the loading evidence.
 
-Validation: `npm run test:analytics`, `npx tsc --noEmit`, and focused ESLint. Authenticated final acceptance should use the production domain, including a reload, a repeat refresh, platform switching, and day-to-video drill-down.
+- Connected accounts have their own observed, owner-scoped query. Accounts render independently of insights, content, activity and refresh dispatch. Loading/error lists are distinct from confirmed empty lists.
+- `listSocialConnections` reads stored rows only. The connections API queues stale Instagram profile renewal with Next.js `after`, through a durable `connection_profiles` job. Profiles have an eight-second request deadline, 24-hour freshness and 15-minute failure backoff. Concurrent credential changes prevent old profile lookups from overwriting new connections.
+- Analytics endpoints separate private, authenticated GET snapshot reads from POST refresh requests. Only the selected platform requests metrics. TanStack Query observes each resource and retains saved content through refresh failures. First sync shows account identity while metric sections load.
+- Browser freshness is 30 minutes for Instagram and five minutes for TikTok/YouTube; analytics retention is 30 minutes. Keys include owner, platform, operation, range and authorization revision. Changing authenticated owner replaces the application QueryClient.
+- `analytics_account_snapshots` retains each connection's last successful value independently of recent job history. Failed attempts update refresh status/message while preserving last-good metrics; successful empty results replace previous values. Writes verify authorization under a row lock and reject older attempts. The table/function are service-only with RLS enabled. Historical successful jobs are backfilled once. Legacy fallback is limited to connections without an authorization revision.
+- OAuth connect/reconnect assigns a new authorization revision; profile and token renewal preserve it. Settings/shared connection mutations invalidate analytics/activity, and BroadcastChannel propagates invalidation to other tabs for the same owner. Matching active refresh jobs are reused. Old revisions cannot write new snapshots.
+- Server freshness is one hour for Instagram and five minutes for TikTok/YouTube. Failed attempts have a one-minute retry cooldown; manual refresh has a 30-second cooldown. Saved Instagram content is filtered to the current rolling range.
+- Job status uses a shared owner/job query with sequential two-second polling while active and visible, backing off to 30 seconds after status-read errors. Hidden tabs pause and catch up on return. Platform switch/unmount cancels browser reads; durable jobs continue. Browser requests are bounded at 20 seconds and job waiting at 15 minutes. Provider analytics requests have explicit deadlines. Completion re-reads authoritative snapshots into the observed cache. Prior manual refresh clicks are not replayed when revisiting a resource.
+- Publishing activity has a separate, authenticated, date-scoped summary API. It pages thin owner-scoped targets and looks up titles for six visible activity rows, using viewer calendar boundaries. It does not download full schedules or media metadata.
+- No IndexedDB/localStorage persistence or public/CDN cache was added. Observed in-memory values accelerate repeat navigation; database snapshots support hard reloads. Persistent browser snapshots remain optional after production measurement.
+
+Provider limitations remain: unavailable/private metrics differ from zero; TikTok/YouTube ingestion returns at most 20 recent provider videos per account. Publish-date charts show current video totals grouped by publication date, rather than daily audience activity. Chart ranges are 7/30/90 days. YouTube's complete-day channel report stays separate from video lifetime counts. Existing connections without analytics consent must reconnect.
+
+## Timing and local checks
+
+Connections responses expose `Server-Timing` for auth and stored reads. Analytics responses separate auth and snapshot/refresh time. Logs include `analytics_request_timing`, `analytics_refresh_timing` (active-job lookup/dispatch), `analytics_profile_timing`, and `analytics_job_timing` (queue wait, with job ID). Browser User Timing entries `ugc.analytics.accounts` and `ugc.analytics.snapshot` measure the mounted/active surface's first accounts or successful snapshot. Only the latest sample per surface is retained; browser entries contain no owner IDs, account names or metrics. No production latency or battery improvement is claimed from local checks.
+
+- `npm run test:analytics-loading`: analytics, API, profile, invalidation, database, owner-isolation and worker regression checks.
+- `npm run test:analytics-loading:browser`: actual workspace/hooks against isolated API fixtures, covering held requests, inactive-platform deferral, stale cache, cancellation, range/reconnect isolation, hidden-tab resume, completion, refresh failure and owner change.
+- TypeScript, scoped ESLint and the production build are separate compile checks.
+
+Browser fixtures and PGlite do not constitute real-account production acceptance.
+
+Local verification on 20 October 2026: `test:analytics-loading` passed 180 checks across its analytics, regression/database and worker stages. The browser receipt passed all 12 scenarios, including no replay of a previous manual refresh. Scoped ESLint and TypeScript passed. The Next.js production build passed; Windows initially denied a generated `.next` directory, and the local build succeeded outside the restricted sandbox. No battery measurement or authenticated production latency comparison was performed.
+
+## Rollout order
+
+1. Apply `supabase/migrations/20261020181748_analytics_account_snapshots.sql` before releasing dependent web code. Applied in production on 20 October 2026; the local filename matches the actual remote migration ledger version. The web code requires its table/function and reports a storage error if they are missing. Run `node --env-file=.env.local scripts/check-analytics-storage.mjs kltxwijhluawgveykfbt` with the intended environment to verify both through the service API before release. This check does not change account data.
+2. Deploy the compatible worker accepting `connection_profiles`. No new profile jobs are emitted until the updated web application is live.
+3. Deploy the updated web application, including its internal analytics handler. Avoid mixing an old internal handler with new refresh requests: the old handler does not write the new snapshots or enforce revisions. If releases cannot be coordinated, stage the compatible internal handler before enabling the new browser/read path.
+4. Verify an authenticated account at `https://www.getugcpilot.com`: warm navigation, hard reload, first sync, queue/provider failure, every platform, ranges, reconnect/disconnect, another tab, hidden-tab resume and owner switch. Measure account/snapshot display and queue wait separately before tuning infrastructure.
+
+The original implementation task did not deploy. The follow-up repair applied the missing production migration and verified database/API/application snapshot reads. A separate local fix makes Refresh retry an initially failed snapshot GET; that browser code still needs release. No web or worker deployment was performed by the repair task.

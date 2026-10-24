@@ -7,6 +7,20 @@ import type { getExplorePairedReference } from "./explore-reference-soundtrack.j
 import { isSilentExploreReference } from "./explore-reference-soundtrack.js";
 import { runMediaCommand } from "../subtitles/media.js";
 
+/** Enforce the explicit OFF setting without re-encoding any video frames. */
+export async function silenceGeneratedVideo(buffer: Buffer) {
+  const directory = await mkdtemp(join(tmpdir(), "ugc-explore-silent-"));
+  try {
+    const sourcePath = join(directory, "generated.mp4"), outputPath = join(directory, "silent.mp4");
+    await writeFile(sourcePath, buffer, { flag: "wx" });
+    await runMediaCommand(process.env.FFMPEG_PATH || "ffmpeg", ["-nostdin", "-hide_banner", "-loglevel", "error", "-n",
+      "-protocol_whitelist", "file,pipe", "-i", sourcePath, "-map", "0:v:0", "-c:v", "copy", "-an", "-movflags", "+faststart", outputPath]);
+    return await readFile(outputPath);
+  } finally {
+    if (resolve(directory).startsWith(resolve(tmpdir()) + "/") || resolve(directory).startsWith(resolve(tmpdir()) + "\\")) await rm(directory, { recursive: true, force: true });
+  }
+}
+
 /** A local post-process of the completed provider output; never asks an AI to reproduce the song. */
 export async function applyGeneratedReferenceAudio(buffer: Buffer, reference: NonNullable<ReturnType<typeof getExplorePairedReference>>) {
   const directory = await mkdtemp(join(tmpdir(), "ugc-explore-reference-"));

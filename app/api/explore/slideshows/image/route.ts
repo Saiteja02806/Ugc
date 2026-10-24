@@ -6,6 +6,8 @@ import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import { isPrivateUserMedia } from "@/lib/media/media-delivery";
 import { assertPrivateMediaIdentity, privateMediaObject } from "@/lib/media/private-media-storage";
+import { canAccessCreatorAccounts } from "@/lib/explore/creator-account-access";
+import { creatorSlideFromUrl, getCreatorSlideshowReference, readCreatorSlide } from "@/lib/explore/creator-slideshows";
 
 const MAX_BYTES = 25 * 1024 ** 2;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -30,8 +32,16 @@ export async function GET(request: Request) {
       }
       source = asset.url;
     } else {
-      const reference = getRecreateReferences().find(item => item.id === params.get("referenceId") && item.format === "slideshow");
+      const reference = getRecreateReferences().find(item => item.id === params.get("referenceId") && item.format === "slideshow")
+        ?? getCreatorSlideshowReference(params.get("referenceId") ?? "",user);
       source = reference?.slides.find(slide => slide.id === params.get("slideId"))?.url;
+    }
+    const privateSlide = creatorSlideFromUrl(source);
+    if (privateSlide) {
+      if (!canAccessCreatorAccounts(user)) return Response.json({error:"This image is unavailable."},{status:404});
+      const object = await readCreatorSlide(privateSlide.referenceId,privateSlide.slideId);
+      if (!object) return Response.json({error:"This image is unavailable."},{status:404});
+      return new Response(new Uint8Array(object.bytes),{headers:{"Content-Type":object.contentType,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
     }
     if (!source || !source.startsWith("https://") || !isTrustedStorageUrl(source)) return Response.json({ error: "Choose a valid slideshow image." }, { status: 400 });
     // No client URL, redirects, credentials or generation provider are forwarded.

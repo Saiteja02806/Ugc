@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "mediaStatus": "published",
+  "activation": "active",
+  "excludedReferenceIds": [],
+  "items": [
+    {
+      "id": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "format": "hook",
+      "title": "Hook 99",
+      "sourceUrl": "https://www.tiktok.com/@tweetytakespics/video/7647168888169450784",
+      "sourcePlatform": "tiktok",
+      "videoStorageKey": "explore/paired-references/v1/fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd.mp4",
+      "audioStorageKey": "explore/paired-references/v1/e47e209df038edaa3d6f252f7e4ba832d3a998805d45c8f7a6498842535abba3.mp3",
+      "posterStorageKey": "explore/paired-references/v1/ca8e6d825c013cb02b3eddc0a1c5531c5b0075c27ddf00a6e93e84b7f15845a9.webp",
+      "previewStorageKey": "explore/paired-references/v1/fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd.mp4",
+      "videoSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "audioSha256": "e47e209df038edaa3d6f252f7e4ba832d3a998805d45c8f7a6498842535abba3",
+      "posterSha256": "ca8e6d825c013cb02b3eddc0a1c5531c5b0075c27ddf00a6e93e84b7f15845a9",
+      "previewSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "durationSeconds": 4.1,
+      "audioDurationSeconds": 4.127347,
+      "width": 576,
+      "height": 1024,
+      "audioTitle": "Original Hook audio",
+      "sourceFolder": "New folder"
+    }
+  ]
+}

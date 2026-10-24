@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { enqueueAnalyticsSyncJob } from "@/lib/analytics/jobs";
 
 import {
   FirebaseAuthRequestError,
@@ -15,10 +16,22 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const trace = getOAuthTraceContext(request);
+  const started = performance.now();
 
   try {
     const user = await requireFirebaseUser(request);
+    const authenticated = performance.now();
     const connections = await listSocialConnections(user.uid, trace);
+    const readAt = performance.now();
+    if (connections.some(connection => connection.profileNeedsRefresh)) {
+      after(async () => {
+        try {
+          await enqueueAnalyticsSyncJob({ userId: user.uid, operation: "connection_profiles" });
+        } catch (error) {
+          console.error("Account profiles could not be queued for renewal:", error);
+        }
+      });
+    }
 
     logSocialOAuthTrace(trace, "connected_accounts_api_response", {
       hasConnectedAccount: connections.some(
@@ -30,7 +43,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       { ok: true, connections },
-      { headers: { "Cache-Control": "no-store" } },
+      { headers: { "Cache-Control": "private, no-store", "Server-Timing": `auth;dur=${(authenticated-started).toFixed(1)},connections;dur=${(readAt-authenticated).toFixed(1)}` } },
     );
   } catch (error) {
     const message =

@@ -196,6 +196,7 @@ async function requestInstagramAccountInsightsPayload(params: {
 
   const response = await fetch(url, {
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${params.accessToken}`,
     },

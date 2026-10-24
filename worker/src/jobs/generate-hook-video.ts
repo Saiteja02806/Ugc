@@ -1,6 +1,6 @@
 import { logger } from "../logger.js";
 import { getGenerationReferenceSoundtrack, isSilentExploreReference } from "../lib/explore-reference-soundtrack.js";
-import { applyGeneratedReferenceAudio } from "../lib/explore-generated-reference-audio.js";
+import { applyGeneratedReferenceAudio, silenceGeneratedVideo } from "../lib/explore-generated-reference-audio.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import {
   assertProviderOperationCanContinue,
@@ -17,7 +17,9 @@ import { generateRunwayWanVideoBuffer } from "../lib/runway-wan-video.js";
 import { generateOpenRouterSeedanceVideoBuffer } from "../lib/openrouter-seedance-video.js";
 import { generateOpenRouterWanVideoBuffer } from "../lib/openrouter-wan-video.js";
 import { generateReapiVideoBuffer } from "../lib/reapi-video.js";
+import { parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { resolveHookVideoProvider } from "../lib/hook-video-provider.js";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "../lib/hook-starting-frame-video.js";
 import { generateGeminiOmniVideoBuffer } from "../lib/gemini-omni-video.js";
 import { generateKlingVideoBuffer } from "../lib/kling-video.js";
 import { resumeLegacyHiggsfieldVideoBuffer } from "../lib/higgsfield-video.js";
@@ -56,6 +58,11 @@ type GenerateHookVideoBaseInput = {
   referenceVideoDurationSeconds?: number;
   referenceVideoUrl?: string;
   referenceVideoMode?: "edit";
+  generateAudio?: boolean;
+  startingFrameImageUrl?: string;
+  startingFrameAssetId?: string;
+  startingFrameJobId?: string;
+  startingFrameReceipt?: HookKeyframeGenerationReceipt;
   userId: string;
   videoId: string;
 };
@@ -86,8 +93,19 @@ export async function runGenerateHookVideoJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
+  const recoveryInput = isJsonObject(job.input_json) ? job.input_json : undefined;
+  const collectionOnly = recoveryInput?.providerOutputRecovery !== undefined;
+  if (collectionOnly) {
+    const operation = await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-reapi" });
+    if (recoveryInput?.providerOutputRecovery !== "collection-only-v1" || input.provider !== "reapi" ||
+        !["seedance_2_5", "wan_3_0"].includes(input.model ?? "") ||
+        operation?.provider !== "reapi" || !operation.provider_operation_id ||
+        !["provider_succeeded", "output_persisted"].includes(operation.status)) {
+      throw new ProviderOperationTerminalError("The saved completed provider task could not be verified. No new generation was submitted.");
+    }
+  }
   const prompt = buildVideoGenerationPrompt(input);
-  const referenceSoundtrack = getGenerationReferenceSoundtrack(isJsonObject(job.input_json) ? job.input_json : {});
+  const referenceSoundtrack = input.generateAudio === undefined ? getGenerationReferenceSoundtrack(isJsonObject(job.input_json) ? job.input_json : {}) : null;
   const outputKey = `videos/hooks/${input.userId}/${input.projectId}/${input.videoId}.mp4`;
   const existingOutput = await getStoredObject(outputKey);
 
@@ -126,7 +144,10 @@ export async function runGenerateHookVideoJob(
     status: "processing",
   });
   let buffer = assertGeneratedMp4(generated.buffer);
-  if (referenceSoundtrack) {
+  if (input.generateAudio === false) {
+    await context.checkpoint({ progress: 85, stage: "applying_silence", status: "processing" });
+    buffer = assertGeneratedMp4(await silenceGeneratedVideo(buffer));
+  } else if (referenceSoundtrack) {
     await context.checkpoint({ progress: 85, stage: "applying_reference_audio", status: "processing" });
     buffer = assertGeneratedMp4(await applyGeneratedReferenceAudio(buffer, referenceSoundtrack));
   }
@@ -201,6 +222,9 @@ async function generateWithFallback(
     ? await context.store.getGenerationProviderOperation({ jobId: job.id, operationKey: "primary-higgsfield" })
     : null;
   const selectedProvider = resolveHookVideoProvider(input, legacyOperation);
+  if (input.startingFrameImageUrl && selectedProvider !== hookStartingFrameVideoProvider(input.model)) {
+    throw new ProviderRequestNotSubmittedError("Starting-frame animation cannot change its saved model/provider route.");
+  }
   if (input.model === "wan_3_0" && selectedProvider !== "runway" && selectedProvider !== "reapi" && (input.referenceVideoUrl || input.referenceAudioUrls.length)) {
     throw new ProviderRequestNotSubmittedError("This saved WAN 3.0 request cannot use audio or video references. Start a new generation with your references.");
   }
@@ -328,6 +352,15 @@ async function generateWithProvider(
     referenceVideoDurationSeconds: input.referenceVideoDurationSeconds ?? null,
     referenceVideoUrl: input.referenceVideoUrl ?? null,
     ...(input.referenceVideoMode ? { referenceVideoMode: input.referenceVideoMode } : {}),
+    ...(input.generateAudio !== undefined ? { generateAudio: input.generateAudio } : {}),
+    // Omit every new field for legacy jobs so accepted request fingerprints
+    // and their recovery operations remain byte-for-byte compatible.
+    ...(input.startingFrameImageUrl ? {
+      startingFrameImageUrl: input.startingFrameImageUrl,
+      startingFrameAssetId: input.startingFrameAssetId,
+      startingFrameJobId: input.startingFrameJobId,
+      startingFrameReceipt: input.startingFrameReceipt,
+    } : {}),
     videoId: input.videoId,
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
@@ -338,6 +371,11 @@ async function generateWithProvider(
     requestFingerprint,
   });
   const action = assertProviderOperationCanContinue(reservation);
+  if (isJsonObject(job.input_json) && job.input_json.providerOutputRecovery !== undefined &&
+      (provider !== "reapi" || action !== "resume" ||
+        !["provider_succeeded", "output_persisted"].includes(reservation.operation.status))) {
+    throw new ProviderOperationTerminalError("Collection recovery cannot submit a new provider generation.");
+  }
   let operationSubmitted = action === "resume";
   const providerOperationId =
     action === "resume"
@@ -385,6 +423,9 @@ async function generateWithProvider(
       referenceAudioDurationSeconds: input.referenceAudioDurationSeconds,
       referenceVideoDurationSeconds: input.referenceVideoDurationSeconds,
       referenceVideoMode: input.referenceVideoMode,
+      generateAudio: input.generateAudio,
+      startingFrameImageUrl: !providerOperationId && !providerOutputUrl && input.startingFrameImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.startingFrameImageUrl, job.user_id ?? input.userId) : input.startingFrameImageUrl,
       referenceVideoUrl: !providerOperationId && !providerOutputUrl && input.referenceVideoUrl
         ? await resolveOwnedPrivateMediaUrl(input.referenceVideoUrl, job.user_id ?? "") : input.referenceVideoUrl,
       resolution: input.resolution,
@@ -437,6 +478,8 @@ async function generateProviderBuffer(
     referenceVideoDurationSeconds?: number;
     referenceVideoUrl?: string;
     referenceVideoMode?: "edit";
+    generateAudio?: boolean;
+    startingFrameImageUrl?: string;
     resolution: HookVideoResolution;
   },
   onOperationSucceeded: (operationId: string, outputUrl?: string, usage?: { costUsd?: number; generationId?: string }) => Promise<void>,
@@ -501,6 +544,7 @@ function buildOutput(params: {
     resolution: params.input.resolution,
     url: params.uploaded.url,
     videoId: params.input.videoId,
+    ...(params.input.generateAudio !== undefined ? { generateAudio: params.input.generateAudio } : {}),
     ...(params.referenceSoundtrack && !isSilentExploreReference(params.referenceSoundtrack) ? { referenceSoundtrack: { version: 1, referenceId: params.referenceSoundtrack.id, audioSha256: params.referenceSoundtrack.audioSha256, volume: .2 } } : {}),
   };
 }
@@ -512,6 +556,7 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
 
   const promptMode =
     job.input_json.promptMode === "direct" ? "direct" : "ugc_template";
+  if (job.input_json.generateAudio !== undefined && typeof job.input_json.generateAudio !== "boolean") throw new ProviderRequestNotSubmittedError("Choose a valid sound setting.");
   const model =
     job.input_json.model === "wan_3_0" ? "wan_3_0" :
     job.input_json.model === "kling_3_0" ? "kling_3_0" :
@@ -524,8 +569,8 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
   const referenceVideoUrl = getOptionalHttpsUrl(job.input_json.referenceVideoUrl);
   const referenceVideoMode = job.input_json.referenceVideoMode === "edit" ? "edit" : undefined;
   if ((job.input_json.referenceVideoMode !== undefined && job.input_json.referenceVideoMode !== "edit") ||
-      (referenceVideoMode && (model !== "google_omni" || !referenceVideoUrl))) {
-    throw new ProviderRequestNotSubmittedError("Video editing requires Google Omni and a source video.");
+      (referenceVideoMode && (!referenceVideoUrl || (model !== "google_omni" && !(model === "seedance_2_5" && provider === "reapi"))))) {
+    throw new ProviderRequestNotSubmittedError("Video editing requires Google Omni or Seedance 2.5 through ReAPI and a source video.");
   }
   const hookIdea = getText(job.input_json.hookIdea, "hookIdea", promptMode === "direct" ? undefined : MAX_HOOK_LENGTH);
   const promptMaxLength = getVideoPromptCharacterLimit({ model, provider, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode });
@@ -547,14 +592,48 @@ function getInput(job: BackgroundJobRow): GenerateHookVideoInput {
     provider,
     referenceVideoDurationSeconds: getOptionalDurationSeconds(
       job.input_json.referenceVideoDurationSeconds,
-      referenceVideoMode ? 10 : model === "wan_3_0" ? 15 : model === "seedance_2_5" ? 30 : 3,
+      model === "seedance_2_5" ? 30 : referenceVideoMode ? 10 : model === "wan_3_0" ? 15 : 3,
     ),
     referenceVideoUrl,
     referenceVideoMode,
+    ...(typeof job.input_json.generateAudio === "boolean" ? { generateAudio: job.input_json.generateAudio } : {}),
     resolution: getGenerationResolution(job.input_json.resolution, model),
     userId: getPathSegment(job.input_json.userId, "userId"),
     videoId: getPathSegment(job.input_json.videoId, "videoId"),
   };
+
+  const savedInput = job.input_json;
+  const hasStartingFrame = ["startingFrameImageUrl", "startingFrameAssetId", "startingFrameJobId", "startingFrameReceipt"]
+    .some(field => savedInput[field] !== undefined);
+  if (hasStartingFrame) {
+    const receipt = parseHookKeyframeGenerationReceipt(job.input_json.startingFrameReceipt);
+    const imageUrl = getOptionalHttpsUrl(job.input_json.startingFrameImageUrl);
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const assetId = job.input_json.startingFrameAssetId;
+    const imageJobId = job.input_json.startingFrameJobId;
+    const photos = sharedInput.referenceImageUrls;
+    const roles = job.input_json.personReference;
+    const faceRolesValid = photos.length ? isJsonObject(roles) && roles.version === 1 && roles.mainImageUrl === photos[0] &&
+      Array.isArray(roles.supportingImageUrls) && roles.supportingImageUrls.length === photos.length - 1 &&
+      roles.supportingImageUrls.every((url, index) => url === photos[index + 1]) &&
+      Object.keys(roles).every(key => ["version", "mainImageUrl", "supportingImageUrls"].includes(key)) : roles === undefined;
+    if (promptMode !== "direct" || !isHookStartingFrameVideoModel(model) || provider !== hookStartingFrameVideoProvider(model) ||
+      (job.input_json.exploreFormat !== "hook" && job.input_json.exploreFormat !== "wall_text") || job.input_json.generationIntent !== "animate_starting_frame" ||
+      !imageUrl || typeof assetId !== "string" || !uuid.test(assetId) || typeof imageJobId !== "string" || !uuid.test(imageJobId) ||
+      !receipt || receipt.ownerId !== sharedInput.userId || (job.user_id && job.user_id !== sharedInput.userId) ||
+      receipt.referenceId !== job.input_json.referenceId || sharedInput.avatarImageUrl || !faceRolesValid ||
+      (photos.length > 0 && job.user_id !== sharedInput.userId) ||
+      photos.length > hookStartingFrameFaceReferenceLimit(model) || photos.includes(imageUrl ?? "") ||
+      sharedInput.referenceAudioUrls.length || sharedInput.referenceAudioDurationSeconds.length || sharedInput.referenceVideoUrl ||
+      job.input_json.referenceVideoDurationSeconds != null || job.input_json.referenceVideoMode !== undefined ||
+      !hookStartingFrameVideoDurations(model).includes(sharedInput.durationSeconds)) {
+      throw new ProviderRequestNotSubmittedError("Starting-frame animation requires its owned image receipt and a supported model/duration. Only Omni supports up to 5 separately labeled face references; source video and audio references cannot be mixed into this request.");
+    }
+    Object.assign(sharedInput, {
+      startingFrameImageUrl: imageUrl, startingFrameAssetId: assetId, startingFrameJobId: imageJobId,
+      startingFrameReceipt: receipt, generateAudio: sharedInput.generateAudio ?? false,
+    });
+  }
 
   if (promptMode === "direct") {
     return { ...sharedInput, promptMode: "direct" };

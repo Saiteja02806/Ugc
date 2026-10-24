@@ -213,11 +213,7 @@ test("discovery advertises five owner-scoped read tools and fresh analytics cons
     assert.equal(tool.annotations.readOnlyHint, true);
     assert.equal(tool.annotations.openWorldHint, false);
   }
-  assert.deepEqual(
-    tools.find((tool) => tool.name === "get_analytics_capabilities")._meta.securitySchemes[0].scopes,
-    ["account:read"],
-  );
-  for (const tool of tools.filter((tool) => tool.name !== "get_analytics_capabilities")) {
+  for (const tool of tools) {
     assert.deepEqual(tool._meta.securitySchemes[0].scopes, ["analytics:read"]);
   }
 });

@@ -3,6 +3,7 @@ import * as mediaStore from "@/lib/media/media-storage";
 import { isPrivateUserMedia } from "@/lib/media/media-delivery";
 import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { validPrivateStorageKey } from "@/lib/media/private-media-storage";
+import { creatorSlideFromUrl } from "@/lib/explore/creator-slideshows";
 
 export function privateKeyForMediaUrl(value: string) {
   const bucket = process.env.GCP_PRIVATE_MEDIA_BUCKET?.trim();
@@ -26,6 +27,13 @@ export function isTrustedMediaReferenceUrl(value: string) {
  */
 export async function canonicalMediaReference(value: unknown, owner: string) {
   if (typeof value !== "string" || !value) return value;
+  const slide = creatorSlideFromUrl(value);
+  if (slide) {
+    const key = `explore/creator-slideshows/${slide.referenceId}/${slide.slide.sha256}.${slide.slide.extension}`;
+    const asset = await mediaStore.getReadyMediaAssetByKeyForOwner(key,owner);
+    if (!asset || asset.user_id !== owner || asset.deleted_at !== null || asset.status !== "ready" || asset.url !== slide.canonicalUrl) throw new Error("Reference unavailable.");
+    return slide.canonicalUrl;
+  }
   const url = new URL(value);
   const app = new URL(process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://getugcpilot.com");
   const delivery = /^\/api\/media\/delivery\/([0-9a-f-]{36})$/i.exec(url.pathname);

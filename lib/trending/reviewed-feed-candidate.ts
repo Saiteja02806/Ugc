@@ -1,3 +1,4 @@
+import { usesRemovedCarouselImage } from "./removed-carousel-images.ts";
 import type { TrendingCreativeEditRecord } from "./creative-edit-contract";
 import type { TrendingCarouselCreative, TrendingCarouselFeedItem, TrendingCarouselSlide, TrendingHookVideoFeedItem, TrendingWallTextFeedItem, TrendingReactionFeedItem } from "./feed-items";
 
@@ -27,6 +28,7 @@ export function isRecoverableTrendingReview(value: unknown): value is ReviewedTr
   if (value.format !== item.format || ![item.id, item.assignmentId, item.creativeId, item.feedItemId].every(id => typeof id === "string" && id.length > 0) ||
     item.readiness !== "preview_ready" || !record(item.creative)) return false;
   const creative = item.creative;
+  if (item.format === "carousel" && usesRemovedCarouselImage(value)) return false;
   if (value.reviewedEdit != null) {
     const edit = value.reviewedEdit;
     if (!record(edit) || edit.assignmentId !== item.assignmentId || edit.creativeId !== item.creativeId || edit.format !== item.format ||

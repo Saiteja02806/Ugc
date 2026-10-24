@@ -61,7 +61,7 @@ export function LandingMultiPlatformSection() {
             <div className="mx-auto flex w-full items-center overflow-hidden rounded-[18px] border border-border-strong bg-card shadow-card sm:block sm:max-w-[190px]">
               <div className="relative aspect-[4/5] w-20 shrink-0 overflow-hidden bg-black sm:w-auto">
                 <Image
-                  src="/marketing/showcase/hook-preview-poster-v3.webp"
+                  src="/marketing/showcase/hero-restored/middle.webp"
                   alt=""
                   fill
                   sizes="190px"

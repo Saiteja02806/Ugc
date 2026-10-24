@@ -157,6 +157,12 @@
 .demoOptions summary { cursor: pointer; min-height: 24px; font-size: 13px; font-weight: 500; }
 .demoOptions summary span { float: right; margin-left: 8px; color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
 .demoOptions summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
+.demoOriginalSound { display: grid; }
+.demoSoundDisclosure { display: inline-flex; width: fit-content; min-height: 32px; flex: none; align-items: center; padding: 4px 0; border: 0; background: transparent; color: var(--muted-foreground); cursor: pointer; font-size: 12px; font-weight: 400; line-height: 1.25; text-align: right; text-decoration: none; white-space: nowrap; }
+.demoSoundDisclosure:hover { color: var(--muted-foreground); text-decoration: none; }
+.demoSoundDisclosure:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+.demoSoundDisclosure:disabled { cursor: default; opacity: .55; }
+@media (pointer: coarse) { .demoSoundDisclosure { min-height: 44px; } }
 .slideshowReferenceTiles { display: grid; grid-template-columns: repeat(2, minmax(0, 128px)); gap: 10px; }
 .slideshowReferenceTile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-muted); cursor: pointer; }
 .slideshowReferenceTile img { width: 100%; height: 100%; object-fit: contain; }

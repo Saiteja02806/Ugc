@@ -4,6 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as formatEdit from "../worker/src/lib/explore-format-edit.ts";
+import * as emoji from "../worker/src/lib/explore-emoji.ts";
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" };
@@ -29,6 +30,7 @@ function harness(file, dependencies = {}) {
     if (name.endsWith(".css")) return styles;
     if (name === "react-dom") return { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) };
     if (name === "@/worker/src/lib/explore-format-edit") return formatEdit;
+    if (name === "@/worker/src/lib/explore-emoji") return emoji;
     if (name === "@/components/ui/button") return { Button: "button" };
     if (name === "lucide-react") return new Proxy({}, { get: (_, name) => name });
     throw Error(`Unexpected import ${name}`);
@@ -37,6 +39,19 @@ function harness(file, dependencies = {}) {
     unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
 const labelled = (tree, label) => nodes(tree).find(node => node.props?.["aria-label"] === label);
+
+test("preview uses colored artwork for cross/arrow/check while retaining emoji and authored text", () => {
+  const h = harness("format-video-text-overlay");
+  const text = { value: "Features ❌\nMarketing ✅ → ✔️ 😂", width: .9, y: .18, fontSize: 64, color: "#ffffff", startMs: 0, endMs: 2000, font: "inter", fontWeight: 700 };
+  const tree = h.render(() => h.exports.FormatVideoTextOverlay({ text, width: 1080, height: 1920, label: "Caption" }));
+  const symbols = nodes(tree).filter(node => node.props?.["data-format-inline-symbol"]);
+  assert.deepEqual(symbols.map(node => node.props["data-format-inline-symbol"]), ["cross", "check-box", "arrow-right", "check"]);
+  assert.equal(nodes(symbols[0]).find(node => node.type === "path").props.fill, "#e53935");
+  assert.equal(nodes(symbols[1]).find(node => node.type === "path").props.fill, "#22a447");
+  assert.ok(nodes(tree).some(node => node.type === "image" && node.props["aria-label"] === "😂" && node.props.href === emoji.exploreEmojiUrl("1f602")));
+  assert.equal(text.value, "Features ❌\nMarketing ✅ → ✔️ 😂"); h.unmount();
+});
+
 
 test("preview text drags in both axes at display scale, clamps, and stops on release or cancellation", () => {
   const h = harness("format-video-text-overlay");
@@ -281,7 +296,7 @@ test("Wall manual text hides timing and style until advanced mode while keeping 
   assert.equal(labelled(tree, "Text start time"), undefined, "Advanced Wall also keeps text for the whole clip");
 });
 
-test("font and weight controls preserve text/timing/position, support old drafts, and default new text to Inter Bold", () => {
+test("font controls preserve saved styles and default new text to white Poppins Bold with outline 8", () => {
   const h = harness("format-text-overlays-editor"), updates = [];
   const text = { value: "Existing message", width: .7, y: .4, fontSize: 42, color: "#ff00ff", startMs: 1000, endMs: 3000 };
   const props = { overlays: [text], durationMs: 5000, timeMs: 1500, onChange: next => updates.push(next), onSeek() {} };
@@ -295,7 +310,9 @@ test("font and weight controls preserve text/timing/position, support old drafts
   labelled(tree, "Text weight").props.onChange({ target: { value: "500" } });
   assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1)[0])), { ...text, font: "dmsans", fontWeight: 500 });
   tree = h.render(() => h.exports.FormatTextOverlaysEditor({ ...props, overlays: [] }));
-  assert.equal(labelled(tree, "Text font").props.value, "inter"); assert.equal(labelled(tree, "Text weight").props.value, 700);
+  assert.equal(labelled(tree, "Text font").props.value, "poppins"); assert.equal(labelled(tree, "Text weight").props.value, 700);
+  assert.equal(labelled(tree, "Text outline thickness").props.value, 8);
   labelled(tree, "Overlay text").props.onChange({ target: { value: "New hook" } });
-  assert.equal(updates.at(-1)[0].font, "inter"); assert.equal(updates.at(-1)[0].fontWeight, 700);
+  assert.equal(updates.at(-1)[0].font, "poppins"); assert.equal(updates.at(-1)[0].fontWeight, 700);
+  assert.equal(updates.at(-1)[0].outlineWidth, 8); assert.equal(updates.at(-1)[0].color, "#ffffff");
 });

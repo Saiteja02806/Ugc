@@ -13,6 +13,11 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth-context";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 import { PlatformSelectionModalLoading } from "@/components/social/platform-selection-modal-loading";
 import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
@@ -83,6 +88,8 @@ export function HookVideoLibraryTab({
   hideIfEmpty?: boolean;
   onLoadedCount?: (count: number, loading: boolean) => void;
 } = {}) {
+  const { user } = useAuth();
+  const refreshQueue = useRefreshQueue(`saved-hooks:${user?.uid ?? "signed-out"}`);
   const [items, setItems] = useState<SavedHookVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -92,50 +99,60 @@ export function HookVideoLibraryTab({
     useState<SavedHookVideo | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
-  const loadItems = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage(null);
+  const loadItems = useCallback((options?: { background?: boolean }) => refreshQueue.run(async signal => {
+    if (!options?.background) {
+      setLoading(true);
+      setErrorMessage(null);
+    }
 
     try {
-      const token = await requireToken();
-      const response = await fetch("/api/trending/hook-videos/drafts", {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json().catch(() => null)) as
-        | SavedHookVideoResponse
-        | null;
+      const data = await withReadDeadline(async bounded => {
+        const token = await getCurrentUserIdToken(user?.uid);
+        if (!token) throw new Error("Sign in to load saved Reel hooks.");
+        bounded.throwIfAborted();
+        const response = await fetch("/api/trending/hook-videos/drafts", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: bounded,
+        });
+        const data = (await response.json().catch(() => null)) as
+          | SavedHookVideoResponse
+          | null;
 
-      if (!response.ok || !data || data.ok !== true) {
-        throw new Error(getApiError(data, "Could not load saved Reel hooks."));
-      }
+        if (!response.ok || !data || data.ok !== true) {
+          throw new Error(getApiError(data, "Could not load saved Reel hooks."));
+        }
 
-      setItems(data.drafts);
-      onLoadedCount?.(data.drafts.length, false);
+        return data;
+      }, signal);
+      if (signal.aborted) return;
+      setItems(current => replaceEqualDeep(current, data.drafts));
+      setErrorMessage(null);
     } catch (error) {
-      setItems([]);
-      onLoadedCount?.(0, false);
+      if (signal.aborted) return;
       setErrorMessage(
         getErrorMessage(error, "Could not load saved Reel hooks."),
       );
+      throw error;
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
-  }, [onLoadedCount]);
+  }, { background: options?.background }).catch(() => {}), [user?.uid, refreshQueue]);
+
+  useEffect(() => {
+    if (!loading) onLoadedCount?.(items.length, false);
+  }, [loading, items.length, onLoadedCount]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadItems(), 0);
     return () => window.clearTimeout(timer);
   }, [loadItems]);
 
-  useEffect(() => {
-    if (!items.some((item) => isRenderPending(item.renderStatus))) {
-      return;
-    }
-
-    const timer = window.setInterval(() => void loadItems(), 5_000);
-    return () => window.clearInterval(timer);
-  }, [items, loadItems]);
+  useVisibleRefresh({
+    enabled: Boolean(user),
+    refresh: () => loadItems({ background: true }),
+    intervalMs: items.some(item => isRenderPending(item.renderStatus)) ? 5_000 : false,
+  });
 
   function openPreview(item: SavedHookVideo) {
     if (item.renderStatus === "ready" && item.renderedVideoUrl) {

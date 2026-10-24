@@ -220,6 +220,6 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }
   const output = finishing.output;
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, label: receipt?.scheduleId ? "Schedule another post" : resumeSaved && !receipt.timeRejected ? "Try again" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

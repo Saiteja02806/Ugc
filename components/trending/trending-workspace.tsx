@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { MediaLibraryButton } from "@/components/media/media-library-dialog";
+import { pollInForeground } from "@/lib/http/foreground-polling";
+import { ReadDeadlineError, withReadDeadline } from "@/lib/http/read-deadline";
+import { readTrendingFeed } from "@/lib/trending/feed-read-client";
 import Link from "next/link";
 import type {
   CSSProperties,
@@ -48,6 +51,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { CarouselEditRenderStatus } from "@/components/trending/carousel-edit-render-status";
 import { getLatestTrendingEdit, shouldApplyCarouselEditRefresh } from "@/lib/trending/carousel-edit-render-status";
 import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refresh";
+import { readCreativeEdit, readCarouselEditStatus } from "@/lib/trending/creative-edit-client";
 import { shouldPollTrendingFeed } from "@/lib/trending/daily-feed-status";
 import { getTrendingPreparationCopy, type TrendingPreparationState } from "@/lib/trending/preparation-status";
 import {
@@ -120,7 +124,7 @@ import type {
   HookInfluencerSummary,
   HookInfluencerVideoSummary,
 } from "@/lib/trending/hook-video-types";
-import type { TrendingCarouselEditStatus, TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
+import type { TrendingCreativeEditRecord } from "@/lib/trending/creative-edit-contract";
 import { cn } from "@/lib/utils";
 import { filterTrendingItemsForRuntime } from "@/lib/trending/format-policy";
 
@@ -347,7 +351,6 @@ function getSmartPreparingPollInterval(attemptCount: number): number {
   return 10_000;
 }
 
-const TRENDING_FEED_REQUEST_TIMEOUT_MS = 20_000;
 
 class TrendingFeedRequestError extends Error {
   constructor(
@@ -916,12 +919,6 @@ export function TrendingWorkspace() {
       setCarouselHistoryError(null);
 
       try {
-        const idToken = await getCurrentUserIdToken();
-
-        if (!idToken) {
-          throw new Error("Sign in before viewing generated carousels.");
-        }
-
         const timezone =
           Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
         const retryFailed = retryFailedFeedRef.current;
@@ -930,43 +927,9 @@ export function TrendingWorkspace() {
         if (retryFailed) {
           feedSearchParams.set("retryFailed", "1");
         }
-        const requestController = new AbortController();
-        let requestTimedOut = false;
-        const abortRequest = () => requestController.abort();
-        const requestTimeout = window.setTimeout(() => {
-          requestTimedOut = true;
-          requestController.abort();
-        }, TRENDING_FEED_REQUEST_TIMEOUT_MS);
-        controller.signal.addEventListener("abort", abortRequest, { once: true });
-
-        let response: Response;
-        let data: CarouselHistoryResponse | null;
-
-        try {
-          response = await fetch(
-            `/api/trending/feed?${feedSearchParams.toString()}`,
-            {
-              cache: "no-store",
-              headers: { Authorization: `Bearer ${idToken}` },
-              signal: requestController.signal,
-            },
-          );
-          data = (await response.json().catch(() => null)) as
-            | CarouselHistoryResponse
-            | null;
-        } catch (error) {
-          if (requestTimedOut) {
-            throw new TrendingFeedRequestError(
-              "The Trending feed request timed out. Retrying…",
-              true,
-            );
-          }
-
-          throw error;
-        } finally {
-          window.clearTimeout(requestTimeout);
-          controller.signal.removeEventListener("abort", abortRequest);
-        }
+        const { response, data } = await readTrendingFeed<CarouselHistoryResponse>(
+          userId, feedSearchParams, controller.signal,
+        );
 
         if (!response.ok || !data?.ok) {
           throw new TrendingFeedRequestError(
@@ -1087,7 +1050,7 @@ export function TrendingWorkspace() {
         const retryable =
           error instanceof TrendingFeedRequestError
             ? error.retryable
-            : error instanceof TypeError;
+            : error instanceof TypeError || error instanceof ReadDeadlineError;
 
         if (retryable) {
           preparingPollAttemptsRef.current += 1;
@@ -2082,9 +2045,9 @@ export function TrendingDeck({
   );
   const activeCandidate: ReviewedTrendingCandidate | null = postHistory.active?.value ?? visibleCandidates[activeItemIndex] ?? null;
   const activeReviewItemId = activeCandidate?.item.id;
-  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && (
-    activeCandidate?.format !== "carousel" || !getLatestTrendingEdit(editByCreativeId[activeCandidate.item.creativeId], activeCandidate.reviewedEdit)?.id
-  ));
+  // An owned slideshow can receive its first edit after it was skipped. History
+  // is a navigation state, not evidence that its source is no longer editable.
+  const reviewEditDisabled = Boolean(exitDirection || postHistory.browsing && activeCandidate?.format !== "carousel");
 
   useLayoutEffect(() => {
     const frame = reviewFrameRef.current;
@@ -2120,20 +2083,15 @@ export function TrendingDeck({
   useEffect(() => {
     if (!activeReactionCreativeId || !activeReactionAssignmentId || editorCandidate?.format === "reaction") return;
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
     const item = { creativeId: activeReactionCreativeId, assignmentId: activeReactionAssignmentId };
     async function refresh() {
-      try {
-        const edit = await fetchReactionTextEdit(item, undefined, controller.signal);
-        if (controller.signal.aborted) return;
-        setReactionEdits((current) => ({ ...current, [edit.creativeId]: edit }));
-        if (edit.state === "preparing") timer = setTimeout(refresh, 2500);
-      } catch {
-        if (!controller.signal.aborted) timer = setTimeout(refresh, 5000);
-      }
+      const edit = await withReadDeadline(signal => fetchReactionTextEdit(item, undefined, signal), controller.signal);
+      if (controller.signal.aborted) return;
+      setReactionEdits((current) => ({ ...current, [edit.creativeId]: edit }));
+      if (edit.state !== "preparing") stop();
     }
-    void refresh();
-    return () => { controller.abort(); clearTimeout(timer); };
+    const stop = pollInForeground({ poll: refresh, intervalMs: 2500, maxErrorIntervalMs: 20000, immediate: true });
+    return () => { controller.abort(); stop(); };
   }, [activeReactionCreativeId, activeReactionAssignmentId, activeReactionState, editorCandidate?.format]);
 
   const activeHookPreviewStatus =
@@ -2195,7 +2153,8 @@ export function TrendingDeck({
   ]);
 
   useEffect(() => {
-    if (!hasPendingCarouselEdits) return;
+    if (!hasPendingCarouselEdits || !userId) return;
+    const editOwner = userId;
     let stopped = false;
     const controller = new AbortController();
 
@@ -2204,8 +2163,8 @@ export function TrendingDeck({
         entry.format === "carousel" && (entry.renderState === "queued" || entry.renderState === "rendering"));
       const refreshed = await Promise.all(
         pendingEdits.map(entry => refreshTrendingCarouselEdit(entry,
-          () => loadTrendingCarouselStatus(entry, controller.signal),
-          () => loadTrendingCreativeEditScope(entry, controller.signal))),
+          () => readCarouselEditStatus(editOwner, entry, controller.signal),
+          () => readCreativeEdit(editOwner, entry, "history", controller.signal))),
       );
 
       if (stopped) {
@@ -2236,25 +2195,18 @@ export function TrendingDeck({
       });
     }
 
-    let inFlight = false;
-    const timer = window.setInterval(async () => {
-      if (inFlight) return;
-      inFlight = true;
-      try { await refreshPendingEdits(); } finally { inFlight = false; }
-    }, 1_000);
-    inFlight = true;
-    void refreshPendingEdits().finally(() => { inFlight = false; });
+    const stop = pollInForeground({ poll: refreshPendingEdits, intervalMs: 1_000, immediate: true });
 
     return () => {
       stopped = true;
       controller.abort();
-      window.clearInterval(timer);
+      stop();
     };
-  }, [hasPendingCarouselEdits]);
+  }, [hasPendingCarouselEdits, userId]);
 
   useEffect(() => {
     if (
-      !activeCandidate ||
+      !userId || !activeCandidate ||
       activeCandidate.format === "reaction" ||
       editByCreativeId[activeCandidate.item.creativeId]
     ) {
@@ -2263,11 +2215,12 @@ export function TrendingDeck({
 
     let stopped = false;
     const activeItem = activeCandidate.item;
+    const editOwner = userId;
+    const controller = new AbortController();
 
     async function hydrateSavedEdit() {
-      const savedEdit = await loadTrendingCreativeEditForItem(
-        activeItem,
-      ).catch(() => null);
+      const savedEdit = await readCreativeEdit(editOwner, { assignmentId: activeItem.assignmentId,
+        creativeId: activeItem.creativeId, format: activeItem.format }, "history", controller.signal);
 
       if (!stopped && savedEdit?.id) {
         setEditByCreativeId((current) => ({
@@ -2275,14 +2228,19 @@ export function TrendingDeck({
           [savedEdit.creativeId]: savedEdit,
         }));
       }
+      if (!stopped) stop();
     }
 
-    void hydrateSavedEdit();
+    // A transient auth/network failure must not permanently strand the original
+    // preview after returning to Trending. Reads retry; saves never replay.
+    const stop = pollInForeground({ poll: hydrateSavedEdit, intervalMs: 2000, maxErrorIntervalMs: 20000, immediate: true });
 
     return () => {
       stopped = true;
+      controller.abort();
+      stop();
     };
-  }, [activeCandidate, editByCreativeId]);
+  }, [activeCandidate, editByCreativeId, userId]);
 
   useEffect(
     () => () => {
@@ -4730,71 +4688,6 @@ function writePendingDecisionEntries(
   } catch {
     // The current page still advances when browser storage is unavailable.
   }
-}
-
-async function loadTrendingCarouselStatus(edit: TrendingCreativeEditRecord, signal: AbortSignal) {
-  const token = await getCurrentUserIdToken();
-  if (!token) throw new Error("Sign in before checking this Trending edit.");
-  const response = await fetch(`/api/trending/creatives/carousel/${encodeURIComponent(edit.creativeId)}/edit?assignmentId=${encodeURIComponent(edit.assignmentId)}&view=status`, {
-    cache: "no-store", headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
-  });
-  const data = await response.json().catch(() => null) as { ok?: boolean; status?: TrendingCarouselEditStatus } | null;
-  if (!response.ok || !data?.ok || !data.status) throw new Error("Could not check this Trending update.");
-  return data.status;
-}
-
-async function loadTrendingCreativeEditForItem(item: TrendingFeedItem) {
-  if (item.format === "reaction") {
-    return null;
-  }
-
-  return loadTrendingCreativeEditScope({
-    assignmentId: item.assignmentId,
-    creativeId: item.creativeId,
-    format: item.format,
-  });
-}
-
-async function loadTrendingCreativeEditScope(scope: {
-  assignmentId: string;
-  creativeId: string;
-  format: TrendingCreativeEditRecord["format"];
-}, signal?: AbortSignal) {
-  const token = await getCurrentUserIdToken();
-
-  if (!token) {
-    throw new Error("Sign in before checking this Trending edit.");
-  }
-
-  const endpoint = [
-    "/api/trending/creatives",
-    encodeURIComponent(scope.format),
-    encodeURIComponent(scope.creativeId),
-    "edit",
-  ].join("/");
-  const response = await fetch(
-    `${endpoint}?assignmentId=${encodeURIComponent(scope.assignmentId)}&view=history`,
-    {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${token}` },
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
-    },
-  );
-  const data = (await response.json().catch(() => null)) as
-    | { edit: TrendingCreativeEditRecord; ok: true }
-    | { error?: string; ok?: false }
-    | null;
-
-  if (!response.ok || data?.ok !== true) {
-    throw new Error(
-      data?.ok === false && data.error
-        ? data.error
-        : "Could not refresh this Trending edit.",
-    );
-  }
-
-  return data.edit;
 }
 
 async function saveWallTextDraft(item: TrendingWallTextFeedItem) {

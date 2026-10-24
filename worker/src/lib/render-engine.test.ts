@@ -50,10 +50,34 @@ test("measures Avenir Next through its actual Pango family instead of a host fal
     },
   }).metadata();
 
-  // These exact TTF metrics distinguish the supplied Avenir face from the
-  // serif fallback Pango chooses when it is given the full face name.
+  // Keep the exact advance width that distinguishes the supplied Avenir face
+  // from a fallback. Raster height varies with host FreeType hinting (35 on
+  // Windows, 37 on Linux), so compare it with the explicit face on this host.
+  const explicitFace = await sharp({
+    text: {
+      dpi: 72,
+      font: "Avenir Next Demi-Bold 46",
+      fontfile,
+      rgba: true,
+      text: "Wall text 0123",
+      wrap: "none",
+    },
+  }).metadata();
+  const fallback = await sharp({
+    text: {
+      dpi: 72,
+      font: "serif 46",
+      rgba: true,
+      text: "Wall text 0123",
+      wrap: "none",
+    },
+  }).metadata();
   assert.equal(metadata.width, 310);
-  assert.equal(metadata.height, 35);
+  assert.deepEqual(
+    { width: metadata.width, height: metadata.height },
+    { width: explicitFace.width, height: explicitFace.height },
+  );
+  assert.notEqual(metadata.width, fallback.width);
 });
 
 test("reflows an overflowing Reaction caption into the safe white-card area", async () => {

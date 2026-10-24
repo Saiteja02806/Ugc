@@ -9,12 +9,13 @@ import { uploadAIStudioReferenceMedia, type AIStudioReferenceKind, type AIStudio
 
 type PendingReference = { file: File; kind: AIStudioReferenceKind; url?: string; index: number };
 
-export function ReferenceFilesUpload({ active, allowedKinds, disabled, expectedUserId, maxFiles, maxImageBytes = 20 * 1024 ** 2, maxTimedImageBytes = maxImageBytes, maxVideoDurationSeconds = 30, maxAudioDurationSeconds = 30, maxVideoBytes = 250 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, onChange, onPendingChange, onErrorChange, selections }: {
+export function ReferenceFilesUpload({ active, allowedKinds, disabled, expectedUserId, maxFiles, maxImages = maxFiles, maxImageBytes = 20 * 1024 ** 2, maxTimedImageBytes = maxImageBytes, maxVideoDurationSeconds = 30, maxAudioDurationSeconds = 30, maxVideoBytes = 250 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, onChange, onPendingChange, onErrorChange, selections }: {
   active: boolean;
   allowedKinds: AIStudioReferenceKind[];
   disabled: boolean;
   expectedUserId?: string;
   maxFiles: number;
+  maxImages?: number;
   maxImageBytes?: number;
   maxTimedImageBytes?: number;
   maxVideoDurationSeconds?: number;
@@ -45,7 +46,7 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, expectedU
 
   const addFiles = useCallback(async (files: File[]) => {
     if (disabled || busyRef.current || !files.length) return;
-    const batchError = validateReferenceFileBatch(files.map((file) => file.type), selectionsRef.current.map((item) => item.kind), allowedKinds, maxFiles);
+    const batchError = validateReferenceFileBatch(files.map((file) => file.type), selectionsRef.current.map((item) => item.kind), allowedKinds, maxFiles, maxImages);
     reportError(batchError);
     if (batchError) return;
     if (!expectedUserId) { reportError("Sign in before uploading reference files."); return; }
@@ -87,7 +88,7 @@ export function ReferenceFilesUpload({ active, allowedKinds, disabled, expectedU
       busyRef.current = false;
       if (mountedRef.current) { setPending([]); setBusy(false); onPendingChange(false); }
     }
-  }, [allowedKinds, disabled, expectedUserId, maxFiles, maxImageBytes, maxTimedImageBytes, maxVideoDurationSeconds, maxAudioDurationSeconds, maxVideoBytes, maxAudioBytes, onChange, onPendingChange, reportError]);
+  }, [allowedKinds, disabled, expectedUserId, maxFiles, maxImages, maxImageBytes, maxTimedImageBytes, maxVideoDurationSeconds, maxAudioDurationSeconds, maxVideoBytes, maxAudioBytes, onChange, onPendingChange, reportError]);
 
   useEffect(() => {
     if (!active) return;

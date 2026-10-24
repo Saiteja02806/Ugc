@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { ProviderOperationTerminalError, ProviderSubmissionUncertainError } from "../../dist/lib/generation-provider.js";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import curatedFrames from "../lib/hook-curated-frames.json" with { type: "json" };
+import { hookKeyframeGenerationInputKey } from "../lib/hook-keyframe-generation-contract.ts";
 
 // Exercise the actual worker with provider/storage stubs; no paid requests occur.
 const received = [];
+const labelCalls = [];
+let sceneBytes = Buffer.alloc(33);
+sceneBytes.set([137,80,78,71,13,10,26,10]); sceneBytes.write("IHDR",12); sceneBytes.writeUInt32BE(720,16); sceneBytes.writeUInt32BE(1280,20);
+mock.module(new URL("../../dist/lib/reference-image-download.js", import.meta.url), { namedExports: { downloadReferenceImageContext: async urls => urls.map(() => ({ buffer: sceneBytes, contentType: "image/png" })) } });
 const resolvedReferences = [], fingerprints = [], outputOptions = [];
 mock.method(globalThis, "fetch", async () => assert.fail("No network calls are allowed"));
 mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
@@ -21,11 +29,11 @@ const provider = async (model, prompt, ratio, reference, nativeAspectRatio = fal
 mock.module(new URL("../../dist/lib/openai-image.js", import.meta.url), { namedExports: {
   SLIDESHOW_IMAGE_MODEL: "gpt-image-2.5-sunburst",
   SLIDESHOW_FLARE_IMAGE_MODEL: "gpt-image-2.5-flare",
-  generateOpenAiImageBuffer: (prompt, ratio, reference, model, nativeAspectRatio) => provider(model ?? "gpt_image", prompt, ratio, reference, nativeAspectRatio),
+  generateOpenAiImageBuffer: (prompt, ratio, reference, model, nativeAspectRatio, labels) => { labelCalls.push(labels); return provider(model ?? "gpt_image", prompt, ratio, reference, nativeAspectRatio); },
 } });
 mock.module(new URL("../../dist/lib/gemini-image.js", import.meta.url), { namedExports: {
   GEMINI_3_PRO_IMAGE_MODEL: "gemini-3-pro-image",
-  generateGeminiImageBuffer: (prompt, ratio, reference) => provider("nano_banana_2", prompt, ratio, reference),
+  generateGeminiImageBuffer: (prompt, ratio, reference, _hook, labels) => { labelCalls.push(labels); return provider("nano_banana_2", prompt, ratio, reference); },
   generateGemini3ProImageBuffer: async params => {
     await provider("gemini_3_pro", params.prompt, params.aspectRatio, params.referenceImageUrls ?? params.referenceImageUrl);
     await params.onOperationCreated("fixture-request");
@@ -77,6 +85,73 @@ const job = (model, prompt) => ({
     characterSource: "ugc-pilot-characters", characterVersion: 2, mode: "custom", promptSource: "user",
     referenceImageUrl: "https://media.example.test/owned-reference.png",
   },
+});
+
+test("starting-frame GPT, Sunburst and Seedream routes preserve scene/person order, roles and model receipts", async () => {
+  for (const model of ["gpt_image", "gpt_image_2_5", "seedream_5_pro"]) {
+    const f = seedreamFixture(); const prompt = "Generate the selected person using the first image as the scene reference.";
+    const partial = { version: 2, imageModel: model, ownerId: "fixture-user", draftId: "00000000-0000-4000-8000-000000000001", referenceId: "hook", sourceSha256: "a".repeat(64), sourceFrame: { index:0,timeSeconds:0,width:720,height:1280,sha256:createHash("sha256").update(sceneBytes).digest("hex") }, personImageAssetIds:["00000000-0000-4000-8000-000000000002"],instructions:"" };
+    const receipt = {...partial,purpose:"hook_starting_frame",promptVersion:4,inputKey:hookKeyframeGenerationInputKey(partial),promptSha256:createHash("sha256").update(prompt).digest("hex")};
+    const refs = [`https://media.example.test/explore/hook-starting-frames/v1/${partial.sourceSha256}/${partial.sourceFrame.sha256}.png`, "https://media.example.test/person.png"];
+    f.imageJob.input_json = { generationId:"fixture-generation", model, ...(model==="seedream_5_pro"?{provider:"openrouter"}:{}), prompt, aspectRatio:"9:16",exploreFormat:"hook",referenceImageUrl:refs[0],referenceImageUrls:refs,hookKeyframe:receipt };
+    const output = await runGenerateImageJob(f.imageJob,f.context); assert.equal(output.model,model);assert.deepEqual(output.hookKeyframe,receipt);
+    if(model==="seedream_5_pro"){assert.deepEqual(openrouterCalls.at(-1).referenceImageUrls,refs);assert.match(openrouterCalls.at(-1).prompt,/IMAGE 2.*MY_INFLUENCER/)}else{assert.deepEqual(received.at(-1).reference,refs);assert.equal(received.at(-1).nativeAspectRatio,true);assert.match(labelCalls.at(-1)[0],/VISUAL_REFERENCE/)}
+    const before=received.length+openrouterCalls.length;const good=sceneBytes;try{sceneBytes=Buffer.from("wrong-source");await assert.rejects(runGenerateImageJob(f.imageJob,f.context));assert.equal(received.length+openrouterCalls.length,before)}finally{sceneBytes=good}
+  }
+});
+
+test("curated v3 receipt reaches every still-model worker route with the approved later-frame bytes", async () => {
+  const selected = curatedFrames.frames[0], originalBytes = sceneBytes;
+  try {
+    sceneBytes = readFileSync(new URL(`../../../public${selected.publicPath}`, import.meta.url));
+    for (const model of ["nano_banana_2", "gemini_3_pro", "gpt_image", "gpt_image_2_5", "seedream_5_pro"]) {
+      const f = seedreamFixture(), prompt = "Photograph my influencer in the selected scene.";
+      const partial = { version: 3, imageModel: model, ownerId: "fixture-user", draftId: "00000000-0000-4000-8000-000000000001",
+        referenceId: selected.referenceId, sourceSha256: selected.sourceSha256,
+        sourceFrame: { index: selected.index, timeSeconds: selected.timeSeconds, width: selected.width, height: selected.height, sha256: selected.sha256 },
+        personImageAssetIds: ["00000000-0000-4000-8000-000000000002"], instructions: "" };
+      const receipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 4, inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: createHash("sha256").update(prompt).digest("hex") };
+      const refs = [`https://media.example.test/explore/hook-starting-frames/v1/${selected.sourceSha256}/${selected.sha256}.png`, "https://media.example.test/person.png"];
+      f.imageJob.input_json = { generationId: "fixture-generation", model, ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
+        prompt, aspectRatio: "9:16", exploreFormat: "hook", referenceImageUrl: refs[0], referenceImageUrls: refs, hookKeyframe: receipt };
+      const result = await runGenerateImageJob(f.imageJob, f.context); assert.deepEqual(result.hookKeyframe, receipt);
+      assert.deepEqual(model === "seedream_5_pro" ? openrouterCalls.at(-1).referenceImageUrls : received.at(-1).reference, refs);
+    }
+  } finally { sceneBytes = originalBytes; }
+});
+
+test("v4 plans deliver only the correct base, upload, role and scoped instructions to both image providers", async () => {
+  for (const model of ["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"]) {
+    for (const [index, original] of [1, 4].entries()) {
+      const source = `https://media.example.test/source-${original}.png`, upload = `https://media.example.test/upload-${index ? "B" : "A"}.png`;
+      const imageJob = job(model, 'Full request: set the cover title to "Keep it simple" using Upload A; put Upload B inside Source slide 4.');
+      delete imageJob.input_json.characterSource;
+      Object.assign(imageJob.input_json, { exploreFormat: "slideshow", referenceImageUrl: source, referenceImageUrls: [source, upload],
+        slideshowGeneration: { version: 1, batchKey: "scoped", slideIndex: index + 1, slideCount: 2, versionIndex: 2, versionCount: 2 },
+        slideshowBusinessContext: { businessProfileId: "profile", businessProfileVersion: 1, businessContext: { businessName: "UGC Pilot", productSummary: "Content for small businesses", category: null, mainProblem: null, mainPromise: null, brandTone: null, targetAudience: [], valueProps: [], painPoints: [], differentiators: [], visualKeywords: [], ctaIdeas: [], claimsToAvoid: [] } },
+        slideshowReferenceContract: { version: 4, styleReferenceIndices: [1], attachmentReferenceIndices: [2], plan: {
+          version: 1, targetId: `source:${original}`, outputSlideIndex: index + 1, sourceSlideNumber: original,
+          instructions: index ? "Insert Upload B into the laptop screen." : 'Use Upload A as the product; set the title to "Keep it simple".', preserve: ["Keep the surrounding scene"],
+          images: [{ id: `source:${original}`, label: `Source slide ${original}`, role: "source", imageIndex: 1 },
+            { id: `upload:${index}`, label: `Upload ${index ? "B" : "A"}`, role: index ? "screenshot" : "product", imageIndex: 2 }],
+        } },
+      });
+      const result = await runGenerateImageJob(imageJob, context);
+      assert.deepEqual(received.at(-1).reference, [source, upload]);
+      assert.deepEqual(labelCalls.at(-1), [`Source slide ${original} (source)`, index ? "Upload B (screenshot)" : "Upload A (product)"]);
+      assert.doesNotMatch(received.at(-1).prompt, index ? /Keep it simple|Upload A|Source slide 1/ : /Upload B|Source slide 4|laptop screen/);
+      assert.match(received.at(-1).prompt, /UGC Pilot/);
+      assert.equal(result.prompt, imageJob.input_json.prompt); assert.equal(result.effectivePrompt, received.at(-1).prompt);
+      const fingerprint = fingerprints.at(-1);
+      imageJob.input_json.slideshowReferenceContract.plan.preserve.push("Keep the exact lighting");
+      await runGenerateImageJob(imageJob, context);
+      assert.notEqual(fingerprints.at(-1), fingerprint, "The complete saved plan participates in the provider fence");
+      const count = fingerprints.length;
+      imageJob.input_json.slideshowReferenceContract.plan.outputSlideIndex = index ? 1 : 2;
+      await assert.rejects(runGenerateImageJob(imageJob, context), /does not match/);
+      assert.equal(fingerprints.length, count);
+    }
+  }
 });
 
 test("Flare slide jobs carry business instructions and their exact version position through worker output", async () => {
@@ -259,7 +334,7 @@ test("an explicit redesign request remains intact and regeneration keeps the edi
 
 test("invalid or oversized versioned contracts fail before reserving or contacting a provider", async () => {
   const before = received.length, reserved = fingerprints.length;
-  for (const roles of [{ version: 4, styleReferenceIndices: [1], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [2], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [], regenerationReferenceIndex: "1" }]) {
+  for (const roles of [{ version: 5, styleReferenceIndices: [1], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [2], attachmentReferenceIndices: [] }, { version: 2, styleReferenceIndices: [1], attachmentReferenceIndices: [], regenerationReferenceIndex: "1" }]) {
     const imageJob = job("gpt_image_2_5", "Use the reference");
     Object.assign(imageJob.input_json, { exploreFormat: "slideshow", slideshowReferenceContract: roles });
     await assert.rejects(runGenerateImageJob(imageJob, context), /references/);

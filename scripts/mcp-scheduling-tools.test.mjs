@@ -126,11 +126,9 @@ test("discovery declares four reads and one disabled-gate write with distinct pu
   for (const tool of tools) {
     assert.equal(tool.annotations.readOnlyHint, tool.name !== "create_schedule");
     assert.equal(tool.annotations.openWorldHint, false);
-    assert.deepEqual(tool._meta.securitySchemes[0].scopes, [tool.name === "get_scheduling_capabilities"
-      ? "account:read"
-      : tool.name === "create_schedule"
-        ? "publishing:write"
-        : "publishing:read"]);
+    assert.deepEqual(tool._meta.securitySchemes[0].scopes, [tool.name === "create_schedule"
+      ? "publishing:write"
+      : "publishing:read"]);
   }
 });
 

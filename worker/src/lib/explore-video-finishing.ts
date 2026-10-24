@@ -5,7 +5,8 @@ import { dirname, join } from "node:path";
 
 import { composeExploreVideo } from "./explore-video-composition.js";
 import { renderExploreFormatEdit } from "./explore-format-render.js";
-import type { ExploreFormatEdit } from "./explore-format-edit.js";
+import { formatTextOverlays, type ExploreFormatEdit } from "./explore-format-edit.js";
+import { formatInlineRuns } from "./explore-inline-symbols.js";
 import type { ExploreClipComposition } from "./explore-finishing-contract.js";
 import { renderExploreReferenceAudio } from "./explore-reference-audio-render.js";
 import { assertExploreSubtitleScope } from "../subtitles/explore-policy.js";
@@ -78,6 +79,7 @@ export async function finishExploreVideo(options: ExploreFinishingOptions): Prom
     // Demo music starts after its trim, rather than at the raw source offset.
     // Original clip gain was applied above; it must not be applied twice.
     return finishExploreVideo({ ...options, clipComposition: undefined,
+      emojiArtworkAttribution: options.emojiArtworkAttribution || [snapshot.sourceEditing, snapshot.demoEditing].some(edit => edit && formatTextOverlays(edit).some(text => formatInlineRuns(text.value).some(run => run.artwork))),
       sourcePath: source?.outputPath ?? options.sourcePath,
       demoPath: demo?.outputPath ?? options.demoPath,
       sourceOriginalVolume: source ? 1 : options.sourceOriginalVolume,

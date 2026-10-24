@@ -3,6 +3,7 @@ import "server-only";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 
 export type AnalyticsSyncOperation =
+  | "connection_profiles"
   | "instagram_attribution"
   | "instagram_content"
   | "instagram_insights"
@@ -13,6 +14,7 @@ export async function enqueueAnalyticsSyncJob(params: {
   days?: 7 | 30 | 90;
   force?: boolean;
   idempotencyKey?: string | null;
+  connectionRevisions?: Record<string, string>;
   operation: AnalyticsSyncOperation;
   userId: string;
 }) {
@@ -28,6 +30,7 @@ export async function enqueueAnalyticsSyncJob(params: {
       ...(params.days ? { days: params.days } : {}),
       ...(params.force ? { force: true } : {}),
       operation: params.operation,
+      ...(params.connectionRevisions ? { connectionRevisions: params.connectionRevisions } : {}),
       userId: params.userId,
     },
     inputReference: `analytics:${scope}`,

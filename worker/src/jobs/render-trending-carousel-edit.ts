@@ -193,25 +193,29 @@ export async function runRenderTrendingCarouselEditJob(
     ).length;
     let completedSlideRenderCount = 0;
 
-    for (const {
+    // Bound raster memory and source/storage traffic, but overlap independent
+    // slides. Drain each pair before failure/persistence so no upload escapes
+    // the job lifetime. Promise result order preserves the slideshow order.
+    for (let offset = 0; offset < editSlidesWithSource.length; offset += 2) {
+      const batch = await Promise.allSettled(editSlidesWithSource.slice(offset, offset + 2).map(async ({
       editedSlide,
       originalSlide,
       renderFingerprint,
       reusableRender,
-    } of editSlidesWithSource) {
+      }) => {
       if (reusableRender) {
-        renderedSlides.push({
+        const result = {
           ...reusableRender,
           renderFingerprint,
           slideNumber: editedSlide.slideNumber,
-        });
+        };
         logger.info("Trending Carousel edit slide reused", {
           editId: input.editId,
           jobId: job.id,
           revision: input.revision,
           slideNumber: editedSlide.slideNumber,
         });
-        continue;
+        return result;
       }
 
       if (!originalSlide.category_image_asset_id) {
@@ -254,17 +258,6 @@ export async function runRenderTrendingCarouselEditJob(
               ),
               textStyle: originalTextStyle,
             });
-      completedSlideRenderCount += 1;
-      const progressAfterRender =
-        10 +
-        Math.round((completedSlideRenderCount / Math.max(slideRenderCount, 1)) * 70);
-
-      await context.checkpoint({
-        progress: progressAfterRender,
-        stage: `rendered_slide_${editedSlide.slideNumber}`,
-        status: "rendering",
-      });
-
       const uploaded = await dependencies.uploadRenderedCarouselSlide({
         buffer: rendered.buffer,
         carouselId: `${input.editId}-revision-${input.revision}`,
@@ -278,18 +271,30 @@ export async function runRenderTrendingCarouselEditJob(
         userId: input.userId,
       });
 
-      renderedSlides.push({
+      completedSlideRenderCount += 1;
+      const result = {
         renderFingerprint,
         renderedS3Key: uploaded.key,
         renderedUrl: uploaded.url,
         slideNumber: editedSlide.slideNumber,
-      });
+      };
       logger.info("Trending Carousel edit slide rendered", {
         diagnostics: rendered.diagnostics,
         editId: input.editId,
         jobId: job.id,
         revision: input.revision,
         slideNumber: editedSlide.slideNumber,
+      });
+      return result;
+      }));
+      for (const result of batch) {
+        if (result.status === "rejected") throw result.reason;
+        renderedSlides.push(result.value);
+      }
+      await context.checkpoint({
+        progress: 10 + Math.round((completedSlideRenderCount / Math.max(slideRenderCount, 1)) * 70),
+        stage: `rendered_slides_${renderedSlides.length}_of_${editedSlides.length}`,
+        status: "rendering",
       });
     }
 

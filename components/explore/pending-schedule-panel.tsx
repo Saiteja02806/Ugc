@@ -17,6 +17,7 @@ import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
 import { isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
 import styles from "@/components/explore/workflow-schedule-review.module.css";
+import { pollInForeground } from "@/lib/http/foreground-polling";
 
 async function authorized(owner: string, url: string, init?: RequestInit) {
   return requestWorkflowSchedule({ token: () => getCurrentUserIdToken(owner), fetch }, url, init);
@@ -76,15 +77,12 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   }, [owner, storageKey, accept]);
   useEffect(() => {
     if (!active || !saved || result?.preparation.state !== "preparing") return;
-    let stopped = false, checking = false;
-    const timer = setInterval(async () => {
-      if (checking) return;
-      checking = true;
+    let stopped = false;
+    const stop = pollInForeground({ poll: async () => {
       try { const value = await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(saved.input.requestKey)}`); if (!stopped) accept(saved, value); }
       catch (e) { if (!stopped) setError(e instanceof Error ? e.message : "Could not refresh preparation."); }
-      finally { checking = false; }
-    }, 5000);
-    return () => { stopped = true; clearInterval(timer); };
+    }, intervalMs: 5000 });
+    return () => { stopped = true; stop(); };
   }, [active, saved, result?.preparation.state, owner, accept]);
   const boundResult = saved?.signature === composition.signature ? result : null;
   const failedBeforePublishing = boundResult?.preparation.state === "failed" && boundResult.schedule?.targets.length === 0;
@@ -172,8 +170,8 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{busy ? "Scheduling your post…" : actionHelp}</p>
-      <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : confirmed ? "Schedule another post" : unresolved ? "Try again" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
-    {confirmed ? <Link href="/scheduling" className="text-sm text-primary underline">View in Scheduling</Link> : null}
+      <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
+    {confirmed ? <Link href="/scheduling" className={styles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;
-  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform,id) => onChange(selectWorkflowAccount(draft,platform,id))} />} /></div>;
+  return <div hidden={!active} className={styles.panel}><WorkflowSchedulingPanel ownerId={owner} captionEnabled={active && restored && !saved} captionScope={scope} draft={draft} onChange={onChange} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled active={active} ownerId={owner} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform,id) => onChange(selectWorkflowAccount(draft,platform,id))} />} /></div>;
 }

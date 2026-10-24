@@ -1,4 +1,5 @@
 import { getGeneratedVideoHistoryMetadata } from "@/lib/ai-studio/generated-video-history-metadata";
+import { canAccessCreatorAccounts } from "@/lib/explore/creator-account-access";
 import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
@@ -43,10 +44,12 @@ export async function GET(request: Request) {
     const rows = await listMediaAssets({
       collection,
       sourceTypes,
+      projectId: searchParams.get("projectId") || undefined,
       userId: user.uid,
     });
 
     const visibleAssets = rows
+      .filter(row => !row.storage_key?.startsWith("explore/creator-slideshows/") || canAccessCreatorAccounts(user))
       .filter((row) =>
         isMediaAssetVisibleInMediaList({
           metadata: row.metadata,

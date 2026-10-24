@@ -19,7 +19,7 @@ import { SUBTITLE_STYLES } from "../worker/dist/subtitles/styles.js";
 const load = (path, imports, globals = {}) => {
   const exported = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports: exported, require(name) { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, Error, ...globals });
+  vm.runInNewContext(code, { exports: exported, require(name) { if (name === "@/lib/http/foreground-polling") return load("lib/http/foreground-polling.ts", {}, globals); assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, Error, ...globals });
   return exported;
 };
 const tick = () => new Promise(setImmediate);
@@ -59,8 +59,8 @@ function harness({ saved = null, lost = false, completed = false, subtitles = fa
     window: { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
     document,
     localStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => { if (archiveFailure && key === finishClient.finishRecoveryStorageKey(storageKey)) throw new Error("recovery storage unavailable"); store.set(key, value); }, removeItem: key => store.delete(key) },
-    navigator: { locks: { request: async (_key, _opts, run) => run({}) } },
-    setInterval: (fn, delay) => { intervals.push(delay); const id = randomUUID(); timers.set(id, fn); return id; }, clearInterval: id => timers.delete(id),
+    navigator: { onLine: true, locks: { request: async (_key, _opts, run) => run({}) } },
+    setTimeout: (fn, delay) => { intervals.push(delay); const id = randomUUID(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
     fetch: async (url, init) => {
       if (url === "/api/explore/default-music") {
         musicReads.push({ url, ...init });
@@ -191,15 +191,15 @@ test("uncertain finishing responses automatically recover the same request witho
   assert.equal(h.timers.size, 0); h.unmount();
 });
 
-test("fast foreground checks pause while hidden and ordinary workflow polling remains unchanged", async () => {
+test("both fast and ordinary finishing pause while hidden and recover the same receipt on return", async () => {
   for (const fastStatus of [false, true]) {
     const h = harness({ pending: true, fastStatus });
     h.render(); await tick(); h.render().action.onAction(); await tick(); h.render();
     assert.equal(h.intervals.at(-1), fastStatus ? 1000 : 4000);
     h.visibility("hidden"); h.poll(); await tick();
-    assert.equal(h.calls.filter(call => call.method === "GET").length, fastStatus ? 0 : 1);
+    assert.equal(h.calls.filter(call => call.method === "GET").length, 0);
     h.visibility("visible"); h.event("visibilitychange"); await tick();
-    assert.equal(h.calls.filter(call => call.method === "GET").length, fastStatus ? 1 : 2);
+    assert.equal(h.calls.filter(call => call.method === "GET").length, 1);
     assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
     h.unmount(); assert.equal(h.timers.size, 0); assert.equal(h.listeners.size, 0);
   }
@@ -732,7 +732,7 @@ test("accepted schedules recover silently after a lost response in Hook and Phon
     } });
     h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
     const action = h.render().view.schedule;
-    assert.equal(action.error, null); assert.equal(action.message, "Post scheduled"); assert.equal(action.label, "Schedule another post");
+    assert.equal(action.error, null); assert.equal(action.message, "Post scheduled"); assert.equal(action.label, "Schedule post");
     assert.equal(h.calls.filter(call => call.method === "POST").length, 1); h.unmount();
   }
 });
@@ -745,7 +745,7 @@ test("lost acknowledgements replay the exact durable request despite visible edi
     const first=h.calls.find(call=>call.method === "POST"); h.props.scheduleDraft={...h.props.scheduleDraft,caption:"Changed",time:"18:45"};
     h.render().view.schedule.onAction(); await tick();
     const posts=h.calls.filter(call=>call.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].body,first.body);
-    assert.equal(h.render().view.schedule.label,"Schedule another post"); h.unmount();
+    assert.equal(h.render().view.schedule.label,"Schedule post"); h.unmount();
   }
 });
 
@@ -767,7 +767,7 @@ test("Hook and Phone can explicitly schedule the same finished video an hour lat
     const h = schedulingHarness({ kind }); h.render(); await tick(); h.render().view.schedule.onAction(); await tick();
     const before = JSON.parse(h.store.get(h.storageKey));
     const repeat = h.render().view.schedule;
-    assert.equal(repeat.label, "Schedule another post"); assert.equal(repeat.disabled, false);
+    assert.equal(repeat.label, "Schedule post"); assert.equal(repeat.disabled, false);
     repeat.onAction(); repeat.onAction(); await tick();
     assert.equal(h.calls.filter(c => c.method === "POST").length, 1);
     assert.equal(h.store.has(h.storageKey), false);

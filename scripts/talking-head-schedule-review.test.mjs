@@ -149,9 +149,16 @@ test("completed media recovery remains visibly preparing while its owned file lo
 
 test("a confirmed schedule shows the repeat action and Scheduling link with no recovery controls", () => {
   const tree = exported.TalkingHeadScheduleActions({ enabled: true, onBackToEdit() {},
-    action: { busy: false, disabled: false, label: "Schedule another post", message: "Post scheduled", error: null, onAction() {}, refresh() {} } });
+    action: { busy: false, disabled: false, completed: true, label: "Schedule post", message: "Post scheduled", error: null, onAction() {}, refresh() {} } });
   assert.match(text(tree), /Post scheduled/);
-  assert.ok(nodes(tree).find(node => node.type === "button" && text(node) === "Schedule another post"));
+  assert.ok(nodes(tree).find(node => node.type === "button" && text(node) === "Schedule post"));
   assert.equal(nodes(tree).find(node => node.type === "a" && text(node) === "View in Scheduling").props.href, "/scheduling");
   assert.doesNotMatch(text(tree), /Check saved|Confirm the same|Resume|Refresh status/);
+});
+
+test("schedule actions scroll with the form rather than covering timezone content", () => {
+  const css = readFileSync(new URL("../components/explore/workflow-schedule-review.module.css", import.meta.url), "utf8");
+  assert.match(css, /\.actions\s*\{[^}]*position:\s*static/);
+  assert.doesNotMatch(css, /position:\s*(?:fixed|sticky)/);
+  assert.match(css, /\.reviewButton\s*\{[^}]*white-space:\s*nowrap/);
 });

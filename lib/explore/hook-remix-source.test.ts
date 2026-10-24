@@ -8,7 +8,13 @@ import { applyVideoTextRemix } from "./remix-text-edit.ts";
 import { clipPreviewTextTimeMs } from "./clip-preview-time.ts";
 import type { ExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 
-const source = ReferenceTextSchema.parse(catalog.items.find(item => item.referenceId === "explore-paired-hook-4585ee949081c4e5cd835cd3"));
+const currentSource = ReferenceTextSchema.parse(catalog.items.find(item => item.referenceId === "explore-paired-hook-4585ee949081c4e5cd835cd3"));
+// Immutable pre-trim receipt: the live catalogue now contains only the kept
+// footage, so it cannot serve as the historical two-block input for recovery.
+const source = ReferenceTextSchema.parse({ ...currentSource, blocks: [
+  { ...currentSource.blocks[0], startMs: 0, endMs: 3067 },
+  { text: "Legacy screen-cut caption", startMs: 3067, endMs: 3100 },
+] });
 const output = { blocks: ["SaaS founders!!\nThis app is a game changer", "I used to think marketing my SaaS\nwould take so much time"], heading: "", body: "" };
 const blank: ExploreFormatEdit = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 3167, originalVolume: 1, musicVolume: .2, text: null };
 const style = { width: .84, y: .18, fontSize: 72, color: "#ffffff", font: "inter" as const, fontWeight: 700 as const };

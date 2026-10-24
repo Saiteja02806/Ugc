@@ -546,7 +546,7 @@ test("scheduling media catalogs are briefly reused only inside one Firebase acco
     getSchedulingMediaCatalogQueryKey("user-a"),
     getSchedulingMediaCatalogQueryKey("user-b"),
   );
-  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 30 * 60 * 1_000);
+  assert.equal(SCHEDULING_CATALOG_FRESH_TIME_MS, 60 * 1_000);
   assert.equal(SCHEDULING_CATALOG_GC_TIME_MS, 30 * 60 * 1_000);
 
   assert.match(schedulingWorkspace, /const \{ user \} = useAuth\(\)/);
@@ -599,14 +599,15 @@ test("active account screens consume the shared connection and schedule queries"
     schedulingWorkspace,
     carouselScheduleModal,
     hookVideoScheduleDrawer,
-    instagramAnalyticsWorkspace,
     instagramAccountManager,
   ]) {
     assert.match(consumer, /loadAccountSocialConnections/);
   }
 
   assert.match(schedulingWorkspace, /loadAccountSchedules/);
-  assert.match(instagramAnalyticsWorkspace, /loadAccountSchedules/);
+  assert.match(instagramAnalyticsWorkspace, /getAccountSocialConnectionsQueryKey/);
+  assert.match(instagramAnalyticsWorkspace, /useQuery\(/);
+  assert.match(instagramAnalyticsWorkspace, /\/api\/analytics\/activity/);
   assert.match(carouselScheduleModal, /loadAccountScheduleConfig/);
   assert.match(hookVideoScheduleDrawer, /loadAccountScheduleConfig/);
   assert.doesNotMatch(instagramAnalyticsWorkspace, /fetch\("\/api\/schedules"/);

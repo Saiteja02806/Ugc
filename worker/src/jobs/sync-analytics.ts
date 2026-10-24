@@ -36,6 +36,7 @@ export function isValidAnalyticsSyncInput(job: BackgroundJobRow) {
     !job.user_id ||
     input?.userId !== job.user_id ||
     ![
+      "connection_profiles",
       "instagram_attribution",
       "instagram_content",
       "instagram_insights",

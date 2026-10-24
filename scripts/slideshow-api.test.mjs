@@ -23,6 +23,7 @@ function harness(options={}) {
     "@/worker/src/lib/explore-finishing-contract":{isExploreUuid:value=>typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)},
     "./slideshow-draft":{MIN_SLIDESHOW_SLIDES:2,MAX_SLIDESHOW_SLIDES:10},
     "./slideshow-editable-draft":{readSlideshowEditableDraft},
+    "./creator-slideshows.ts":{getCreatorSlideshowReference:()=>undefined,isCreatorSlideshowReference:()=>false},
     "@/lib/media/media-storage":{getMediaAssetForOwner:async args=>{calls.push(args);assert.equal(args.userId,owner);active++;maxConcurrent=Math.max(active,maxConcurrent);await new Promise(resolve=>setTimeout(resolve,5));active--;return options.asset?options.asset(args.assetId):{id:args.assetId,user_id:owner,collection:"image",status:"ready",mime_type:"image/png",deleted_at:null,url:`https://trusted.test/${args.assetId}`,storage_key:`owned/${args.assetId}`};}},
     "@supabase/supabase-js":{createClient:()=>({rpc:async(name,args)=>{assert.equal(name,"explore_save_slideshow");writes.push(args);if(options.rpcError)return{error:{message:"provider-secret"}};const prior=seen.get(args.p_request_key);if(prior&&prior!==args.p_fingerprint)return{error:{message:"conflict"}};seen.set(args.p_request_key,args.p_fingerprint);return{data:id(60)};}})},
   };

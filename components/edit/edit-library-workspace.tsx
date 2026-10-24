@@ -3,6 +3,11 @@
 import { AlertCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth-context";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 import { VideoLibraryGrid } from "@/components/edit/video-library-grid";
 import { buttonClassName } from "@/components/ui/button";
@@ -10,87 +15,70 @@ import type { EditableVideo } from "@/lib/edit/video-library";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 
 export function EditLibraryWorkspace() {
+  const { user } = useAuth();
+  const refreshQueue = useRefreshQueue(`edit-library:${user?.uid ?? "signed-out"}`);
   const [editableVideos, setEditableVideos] = useState<EditableVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadVideos = useCallback(async (options?: { silent?: boolean }) => {
+  const loadVideos = useCallback((options?: { silent?: boolean; background?: boolean }) => refreshQueue.run(async signal => {
     if (!options?.silent) {
       setLoading(true);
       setErrorMessage(null);
     }
 
     try {
-      const token = await getCurrentUserIdToken();
+      const data = await withReadDeadline(async bounded => {
+        const token = await getCurrentUserIdToken(user?.uid);
+        bounded.throwIfAborted();
 
-      if (!token) {
-        throw new Error("Sign in to open your edit library.");
-      }
+        if (!token) {
+          throw new Error("Sign in to open your edit library.");
+        }
 
-      const response = await fetch("/api/edit/videos", {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json()) as
-        | { ok: true; videos: EditableVideo[] }
-        | { error?: string; ok?: false };
+        const response = await fetch("/api/edit/videos", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: bounded,
+        });
+        const data = (await response.json()) as
+          | { ok: true; videos: EditableVideo[] }
+          | { error?: string; ok?: false };
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiError(data, "Could not load your edit library."));
-      }
+        if (!response.ok || data.ok !== true) {
+          throw new Error(getApiError(data, "Could not load your edit library."));
+        }
 
-      setEditableVideos(data.videos);
+        return data;
+      }, signal);
+      if (signal.aborted) return;
+      setEditableVideos(current => replaceEqualDeep(current, data.videos));
+      setErrorMessage(null);
     } catch (error) {
-      if (!options?.silent) {
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Could not load your edit library.",
-        );
-      }
+      if (signal.aborted) return;
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not load your edit library.",
+      );
+      throw error;
     } finally {
-      if (!options?.silent) {
+      if (!signal.aborted) {
         setLoading(false);
       }
     }
-  }, []);
+  }, { background: options?.background }).catch(() => {}), [refreshQueue, user?.uid]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadVideos(), 0);
     return () => window.clearTimeout(timer);
   }, [loadVideos]);
 
-  useEffect(() => {
-    const hasSavingVideos = editableVideos.some(
-      (video) => video.status === "rendering",
-    );
-
-    if (!hasSavingVideos) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      void loadVideos({ silent: true });
-    }, 4_000);
-
-    return () => window.clearInterval(timer);
-  }, [editableVideos, loadVideos]);
-
-  useEffect(() => {
-    function refreshWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void loadVideos({ silent: true });
-      }
-    }
-
-    window.addEventListener("focus", refreshWhenVisible);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-
-    return () => {
-      window.removeEventListener("focus", refreshWhenVisible);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [loadVideos]);
+  useVisibleRefresh({
+    enabled: Boolean(user),
+    refresh: () => loadVideos({ silent: true, background: true }),
+    intervalMs: editableVideos.some(video => video.status === "rendering") ? 4_000 : false,
+  });
 
   return (
     <section className="flex min-h-screen flex-1 flex-col bg-background px-4 py-4 text-foreground sm:px-6 lg:h-screen lg:px-10 lg:py-6">

@@ -1,0 +1,112 @@
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, calc(100vw - 32px));
+  max-width: none;
+  height: min(760px, calc(100dvh - 40px));
+  max-height: calc(100dvh - 40px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.header { flex: none; padding: 24px 28px 20px; border-bottom: 1px solid var(--border); }
+.title { font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -.025em; }
+.description { margin-top: 8px; padding-right: 12px; color: var(--muted); line-height: 1.5; }
+.headerActions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; }
+.purpose { display: flex; gap: 8px; }
+.body { display: grid; grid-template-columns: 280px minmax(0, 1fr); flex: 1; min-height: 0; }
+.selection { display: flex; flex-direction: column; gap: 14px; overflow: auto; padding: 22px; border-right: 1px solid var(--border); background: var(--card-muted); }
+.selectionHeading h3, .libraryHeading h3 { font-size: 14px; font-weight: 600; }
+.selectionHeading p, .supportHeading p { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.emptySelection { display: flex; min-height: 210px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+.emptySelection svg { width: 28px; height: 28px; color: var(--muted); }
+.emptySelection strong { font-size: 13px; font-weight: 500; }
+.emptySelection span { font-size: 12px; line-height: 1.5; color: var(--muted); }
+.selectedGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+.selectedPhoto { min-width: 0; }
+.mainPhoto { grid-column: 1 / -1; }
+.selectedVisual { position: relative; border-radius: 12px; overflow: hidden; background: var(--card); }
+.selectedVisual img { width: 100%; height: 104px; object-fit: cover; }
+.mainPhoto .selectedVisual { outline: 1px solid var(--primary); outline-offset: 2px; }
+.mainPhoto .selectedVisual img { height: 170px; object-fit: contain; }
+.roleBadge { position: absolute; left: 7px; bottom: 7px; padding: 4px 7px; border-radius: 5px; background: #141414e6; color: #fff; font-size: 11px; font-weight: 500; line-height: 1.3; }
+.mainPhoto .roleBadge { background: var(--primary); color: var(--primary-foreground); }
+.removePhoto { position: absolute; right: 5px; top: 5px; width: 30px; height: 30px; border-radius: 50%; background: #141414d9; color: white; }
+.removePhoto:hover { background: #141414; color: white; }
+.makeMain { width: 100%; height: 32px; margin-top: 6px; padding: 0 6px; border-radius: 8px; font-size: 11px; }
+.supportHeading { margin-top: 20px; }
+.supportHeading h4 { font-size: 12px; font-weight: 600; }
+.supportHeading span { margin-left: 6px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.library { display: flex; flex-direction: column; gap: 16px; min-height: 0; padding: 22px 24px 0; }
+.libraryHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.libraryHeading h3 { flex: 1; }
+.catalogControl { width: auto; min-height: 32px; padding: 4px 6px; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
+.catalogControl[aria-pressed="true"] { color: var(--primary); }
+.builderLink { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.builderLink:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.inlineRoot { min-width: 0; }
+.inlineContent { container: person-picker / inline-size; display: flex; flex-direction: column; gap: 0; min-width: 0; width: min(560px, calc(100vw - 32px), var(--available-width)); max-height: min(420px, calc(100dvh - 32px), var(--available-height)); padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+.inlineContent .header { padding: 14px; }
+.inlineContent .title { font-size: 15px; }
+.inlineContent .description { margin-top: 6px; font-size: 12px; }
+.inlineContent .headerActions { margin-top: 8px; }
+.inlineContent .body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.inlineContent .selection { border-right: 0; border-bottom: 1px solid var(--border); padding: 14px; overflow: visible; }
+.inlineContent .emptySelection { min-height: 0; padding: 12px; gap: 6px; }
+.inlineContent .emptySelection svg { display: none; }
+.inlineContent .selectedGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.inlineContent .mainPhoto { grid-column: auto; }
+.inlineContent .selectedVisual img, .inlineContent .mainPhoto .selectedVisual img { height: 112px; object-fit: contain; }
+.inlineContent .supportHeading { display: none; }
+.inlineContent .library { padding: 14px; gap: 10px; }
+.inlineContent .libraryGrid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.inlineContent .libraryPanel { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 6px; }
+.inlineContent .footer { padding: 10px 14px; }
+.inlineContent .footerStatus { font-size: 11px; }
+@container person-picker (max-width: 380px) { .libraryHeading h3 { flex-basis: 100%; } .catalogControl { margin-right: auto; } }
+.tabs { display: flex; flex-direction: column; gap: 14px; min-height: 0; flex: 1; }
+.sourceTabs { display: flex; flex: none; flex-wrap: wrap; gap: 8px; }
+.libraryPanel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px 3px 24px; }
+.libraryPanel > p { margin-bottom: 12px; }
+.libraryPanel[hidden] { display: none; }
+.libraryHint { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.libraryGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.libraryPhoto { position: relative; height: auto; padding: 0; overflow: hidden; border-radius: 10px; }
+.libraryPhoto[aria-pressed="true"] { outline: 2px solid var(--primary); outline-offset: 1px; }
+.footer { display: flex; align-items: center; flex: none; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border); }
+.footerStatus { flex: 1; min-width: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.footerStatus [role="alert"] { max-height: 64px; overflow-y: auto; margin-top: 4px; }
+
+@media (min-width: 641px) and (max-height: 800px) {
+  .header { padding-top: 18px; padding-bottom: 16px; }
+  .purpose { margin-top: 12px; }
+  .selection { padding: 18px 22px; gap: 12px; }
+  .mainPhoto .selectedVisual img { height: 150px; }
+  .selectedVisual img { height: 96px; }
+  .supportHeading { margin-top: 14px; }
+  .selectedGrid { row-gap: 10px; }
+}
+
+@media (max-width: 640px) {
+  .dialog { width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); border-radius: 16px; }
+  .header { padding: 20px 18px 16px; }
+  .title { font-size: 20px; padding-right: 20px; }
+  .description { font-size: 12px; }
+  .body { display: block; overflow-y: auto; overscroll-behavior: contain; }
+  .selection { overflow: visible; border-right: 0; border-bottom: 1px solid var(--border); padding: 18px; gap: 14px; }
+  .emptySelection { min-height: 138px; }
+  .selectedGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .mainPhoto { grid-column: auto; }
+  .selectedVisual img, .mainPhoto .selectedVisual img { height: 132px; object-fit: cover; }
+  .supportHeading { display: none; }
+  .roleBadge { left: 4px; bottom: 4px; padding: 4px; font-size: 10px; }
+  .library { padding: 18px; gap: 14px; }
+  .libraryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .libraryPanel { overflow: visible; padding-bottom: 0; }
+  .footer { padding: 12px; gap: 6px; flex-wrap: wrap; }
+  .footerStatus { flex-basis: 100%; }
+  .footer > button:last-child { margin-left: auto; }
+}

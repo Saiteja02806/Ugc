@@ -31,6 +31,18 @@ test("malformed outputs and dates are ignored", () => {
   assert.equal(selectSocialSnapshot([{ completedAt, output: null }, { ...job, completedAt: "bad" }], [connection]), null);
 });
 
+test("partial jobs merge the latest good value for each connection", () => {
+  const second = { ...connection, id: "second" };
+  const older = { ...account, connectionId: second.id };
+  assert.deepEqual(selectSocialSnapshot([job, { ...job, output: { accounts: [older] } }], [connection, second])?.data.accounts, [account, older]);
+});
+
+test("changed consent invalidates an unchanged connection ID and connectedAt", () => {
+  assert.equal(selectSocialSnapshot([job], [{ ...connection, authorizationRevision: "new-consent" }]), null);
+  const current = { ...account, authorizationRevision: "new-consent" };
+  assert.deepEqual(selectSocialSnapshot([{ ...job, output: { accounts: [current] } }], [{ ...connection, authorizationRevision: "new-consent" }])?.data.accounts, [current]);
+});
+
 test("provider failure keeps last successful metrics but successful empty results clear deleted videos", () => {
   const previous = { accounts: [account] };
   const error = { accounts: [{ connectionId: connection.id, status: "error", lastSyncedAt: null }] };

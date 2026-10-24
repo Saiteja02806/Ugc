@@ -79,6 +79,51 @@ test("reference images are included in token counting and the complete generatio
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("approved starting images use explicit first-frame binding and image-to-video without a source clip", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(Buffer.from("approved-scene"), { headers: { "Content-Type": "image/png" } });
+  try {
+    await generateGeminiOmniVideoBuffer({ ...params("Raise the eyebrows."), durationSeconds: 8, resolution: "720p",
+      startingFrameImageUrl: "https://owned-media.example.test/approved.png" });
+    const submitted = requests.at(-1);
+    assert.equal(submitted.generation_config.video_config.task, "image_to_video");
+    assert.equal(submitted.input.length, 2); assert.equal(submitted.input[0].type, "image");
+    assert.equal(Buffer.from(submitted.input[0].data, "base64").toString(), "approved-scene");
+    assert.match(submitted.input[1].text, /^\[# Sources <FIRST_FRAME>@Image1\]/);
+    assert.equal(submitted.response_format.duration, "8s");
+    const before = creates();
+    for (const patch of [{ durationSeconds: 11 }, { referenceImageUrl: "https://owned-media.example.test/person.png" }, { referenceVideoMode: "edit" }]) {
+      await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: "https://owned-media.example.test/approved.png", ...patch }), ProviderRequestNotSubmittedError);
+    }
+    assert.equal(creates(), before);
+    await generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: "expired-url", providerOperationId: "already-accepted" });
+    assert.equal(requests.at(-1).type, "resume"); assert.equal(creates(), before);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("three-second Omni animation keeps the literal first frame and every optional face in separate roles", async () => {
+  const originalFetch = globalThis.fetch;
+  let downloads = 0;
+  globalThis.fetch = async url => { downloads++; return new Response(Buffer.from(url), { headers: { "Content-Type": "image/png" } }); };
+  const frame = "https://owned.test/start.png", faces = ["https://owned.test/main.png", "https://owned.test/support.png"];
+  try {
+    await generateGeminiOmniVideoBuffer({ ...params("Turn the head naturally."), durationSeconds: 3, resolution: "720p", startingFrameImageUrl: frame, referenceImageUrls: faces });
+    const submitted = requests.at(-1), prompt = submitted.input.at(-1).text;
+    assert.equal(submitted.response_format.duration, "3s"); assert.equal(submitted.generation_config.video_config.task, "image_to_video");
+    assert.deepEqual(submitted.input.filter(part => part.type === "image").map(part => Buffer.from(part.data, "base64").toString()), [frame, ...faces]);
+    assert.match(prompt, /^\[# Sources <FIRST_FRAME>@Image1\] \[# References <IMAGE_REF_0>@Image2 <IMAGE_REF_1>@Image3\]/);
+    assert.match(prompt, /only as facial appearance guidance/); assert.match(prompt, /not starting or ending frames/);
+    assert.equal(requests.findLast(request => request.type === "count").contents.filter(part => part.inlineData).length, 3);
+    const before = creates(), beforeDownloads = downloads;
+    for (const referenceImageUrls of [[frame], [faces[0], faces[0]], Array.from({ length: 6 }, (_, i) => `https://owned.test/${i}.png`)]) {
+      await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: frame, referenceImageUrls }), ProviderRequestNotSubmittedError);
+    }
+    assert.equal(creates(), before); assert.equal(downloads, beforeDownloads);
+    await generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: "expired-frame", referenceImageUrls: ["expired-face"], providerOperationId: "already-accepted-faces" });
+    assert.equal(requests.at(-1).type, "resume"); assert.equal(creates(), before); assert.equal(downloads, beforeDownloads);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("video edits submit actual video bytes and the identity image, with explicit source and reference roles", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async url => new Response(Buffer.from(url.endsWith(".mp4") ? "source-video" : "identity-image"), {
@@ -130,6 +175,39 @@ test("video edits preserve every selected appearance image in model input and to
     assert.match(submitted.input.at(-1).text, /<IMAGE_REF_2>@Image3/);
     const count = requests.findLast(request => request.type === "count");
     assert.equal(count.contents.filter(part => part.inlineData?.mimeType === "image/png").length, images.length);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("ten Omni images reach the model intact with or without a source; eleven never submit", async () => {
+  // These are mocked transport boundary checks. The ten-image cap follows the
+  // official Enterprise model-family specification, not paid direct-route QA.
+  const originalFetch = globalThis.fetch;
+  const images = Array.from({ length: 10 }, (_, index) => `https://owned.test/identity-${index}.png`);
+  let downloads = 0;
+  globalThis.fetch = async url => {
+    downloads += 1;
+    return new Response(url.endsWith(".mp4") ? clip(5) : Buffer.from(url), {
+      headers: { "Content-Type": url.endsWith(".mp4") ? "video/mp4" : "image/png" },
+    });
+  };
+  try {
+    for (const source of [{}, { referenceVideoUrl: "https://owned.test/source.mp4", referenceVideoDurationSeconds: 5, referenceVideoMode: "edit" }]) {
+      await generateGeminiOmniVideoBuffer({ ...params("Preserve the scene and use these identity references."), ...source, referenceImageUrls: images });
+      const submitted = requests.at(-1);
+      assert.deepEqual(submitted.input.filter(part => part.type === "image").map(part => Buffer.from(part.data, "base64").toString()), images);
+      const count = requests.findLast(request => request.type === "count");
+      assert.equal(count.contents.filter(part => part.inlineData?.mimeType === "image/png").length, 10);
+      if (source.referenceVideoUrl) {
+        assert.equal(submitted.input[0].type, "video");
+        assert.match(submitted.input.at(-1).text, /<IMAGE_REF_9>@Image10/);
+      }
+      const before = creates(), beforeDownloads = downloads;
+      await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Too many images."), ...source,
+        referenceImageUrls: [...images, "https://owned.test/excess.png"] }),
+        error => error instanceof ProviderRequestNotSubmittedError && /up to 10/.test(error.message));
+      assert.equal(creates(), before);
+      assert.equal(downloads, beforeDownloads, "excess fails before downloading or submitting media");
+    }
   } finally { globalThis.fetch = originalFetch; }
 });
 

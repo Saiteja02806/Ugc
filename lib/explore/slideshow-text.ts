@@ -1,3 +1,5 @@
+import { formatInlineRuns, formatInlineSymbolSvg, formatTextGraphemes, measureFormatInlineText } from "../../worker/src/lib/explore-inline-symbols.ts";
+
 export type SlideTextDesign = {
   heading: string; body: string; font: "sans" | "serif" | "mono"; size: number;
   color: string; align: "left" | "center" | "right"; position: "top" | "middle" | "bottom";
@@ -20,6 +22,7 @@ export function slideTextSvg(value: SlideTextDesign, width: number, height: numb
   if (!v.heading.trim() && !v.body.trim()) return "";
   const family = fonts[v.font], padding = width * .025, maxWidth = width * .8;
   let size = v.size * width / 1080;
+  const rowWidth = (text: string, bold: boolean) => measureFormatInlineText(text, size, part => measure(part, `${bold ? 700 : 400} ${size}px ${family}`));
   function lines(text: string, bold: boolean) {
     const result: { text: string; bold: boolean }[] = [];
     for (const paragraph of text.split("\n")) {
@@ -27,11 +30,11 @@ export function slideTextSvg(value: SlideTextDesign, width: number, height: numb
       let line = "";
       for (const word of paragraph.split(/\s+/)) {
         const candidate = line ? `${line} ${word}` : word;
-        if (measure(candidate, `${bold ? 700 : 400} ${size}px ${family}`) <= maxWidth) { line = candidate; continue; }
+        if (rowWidth(candidate, bold) <= maxWidth) { line = candidate; continue; }
         if (line) result.push({ text: line, bold });
         line = "";
-        for (const char of word) {
-          if (line && measure(line + char, `${bold ? 700 : 400} ${size}px ${family}`) > maxWidth) { result.push({ text: line, bold }); line = ""; }
+        for (const char of formatTextGraphemes(word)) {
+          if (line && rowWidth(line + char, bold) > maxWidth) { result.push({ text: line, bold }); line = ""; }
           line += char;
         }
       }
@@ -49,5 +52,17 @@ export function slideTextSvg(value: SlideTextDesign, width: number, height: numb
   const y = v.position === "top" ? height * .08 : v.position === "bottom" ? height * .92 - blockHeight : (height - blockHeight) / 2;
   const x = v.align === "left" ? width * .1 : v.align === "right" ? width * .9 : width / 2;
   const radius = v.background === "pill" ? Math.min(blockHeight / 2, width * .08) : v.background === "rounded" ? width * .025 : 0;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${v.background !== "none" ? `<rect x="${width * .1 - padding}" y="${y}" width="${maxWidth + padding * 2}" height="${blockHeight}" rx="${radius}" fill="${v.backgroundColor}" fill-opacity="${v.opacity}"/>` : ""}${rows.map((row, index) => `<text x="${x}" y="${y + padding + size + index * size * 1.3}" font-family="${family}" font-size="${size}" font-weight="${row.bold ? 700 : 400}" fill="${v.color}" text-anchor="${v.align === "left" ? "start" : v.align === "right" ? "end" : "middle"}"${v.background === "none" ? ` paint-order="stroke" stroke="#111314" stroke-width="${Math.max(1, size / 20)}" stroke-linejoin="round"` : ""}>${escape(row.text)}</text>`).join("")}</svg>`;
+  const markup = rows.map((row, index) => {
+    const baseline = y + padding + size + index * size * 1.3;
+    const attributes = `font-family="${family}" font-size="${size}" font-weight="${row.bold ? 700 : 400}" fill="${v.color}"${v.background === "none" ? ` paint-order="stroke" stroke="#111314" stroke-width="${Math.max(1, size / 20)}" stroke-linejoin="round"` : ""}`;
+    const runs = formatInlineRuns(row.text);
+    if (!runs.some(run => run.symbol)) return `<text x="${x}" y="${baseline}" ${attributes} text-anchor="${v.align === "left" ? "start" : v.align === "right" ? "end" : "middle"}">${escape(row.text)}</text>`;
+    let cursor = x - rowWidth(row.text, row.bold) * (v.align === "left" ? 0 : v.align === "right" ? 1 : .5);
+    return runs.map(run => {
+      const markup = run.symbol ? formatInlineSymbolSvg(run.symbol, cursor, baseline - size, size) : `<text x="${cursor}" y="${baseline}" ${attributes} text-anchor="start">${escape(run.value)}</text>`;
+      cursor += rowWidth(run.value, row.bold);
+      return markup;
+    }).join("");
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${v.background !== "none" ? `<rect x="${width * .1 - padding}" y="${y}" width="${maxWidth + padding * 2}" height="${blockHeight}" rx="${radius}" fill="${v.backgroundColor}" fill-opacity="${v.opacity}"/>` : ""}${markup}</svg>`;
 }

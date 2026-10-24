@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
+import * as startingFrameAnimation from "../lib/explore/starting-frame-animation-input.ts";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { QueryClient } from "@tanstack/react-query";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import * as slideshowBatch from "../worker/src/lib/slideshow-generation-batch.ts";
 import * as slideshowGroups from "../lib/explore/slideshow-generation-groups.ts";
 import * as referencePrompts from "../lib/explore/reference-video-prompts.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import * as pollingPolicy from "../lib/jobs/background-job-polling-policy.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -14,7 +18,11 @@ function load(file, imports = {}, globals = {}) {
     fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, process: { env: {} }, require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts");
+    if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
     if (name in imports) return imports[name];
+    if (name === "./person-reference.ts") return load("lib/explore/person-reference.ts");
+    if (name === "./generation-input-instructions.ts") return load("lib/explore/generation-input-instructions.ts");
+
     if (name === "@/components/explore/slideshow-prompt-improver") return { useSlideshowPromptImprover: () => ({busy:false,action:null,feedback:null}) };
     if (name === "@/lib/explore/slideshow-composer-draft") return load("lib/explore/slideshow-composer-draft.ts");
     if (name === "@/components/explore/use-slideshow-composer-draft") return { useSlideshowComposerDraft: () => { const [prompt,setPrompt]=imports.react.useState(""); const [images,setImages]=imports.react.useState([]); return {prompt,setPrompt,images,setImages,busy:false,error:null}; } };
@@ -22,7 +30,8 @@ function load(file, imports = {}, globals = {}) {
     if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
     if (name === "../../lib/explore/reference-video-prompts.ts") return referencePrompts;
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
-    if (name === "@/lib/http/read-deadline") return load("lib/http/read-deadline.ts", imports, globals);
+    if (name === "@/lib/http/read-deadline") return { withReadDeadline };
+    if (name === "./background-job-polling-policy") return pollingPolicy;
     if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);
     if (name === "../explore/remix-source.ts") return remixSource;
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
@@ -32,6 +41,7 @@ function load(file, imports = {}, globals = {}) {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if(name === "@/lib/ai-studio/video-generation-state") return load("lib/ai-studio/video-generation-state.ts");
     if(name === "@/lib/ai-studio/video-history") return load("lib/ai-studio/video-history.ts");
+    if(name === "@/worker/src/lib/hook-starting-frame-video") return load("worker/src/lib/hook-starting-frame-video.ts");
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
   }, ...globals });
@@ -73,7 +83,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
     location: { href: `https://example.test/explore/${format}`, search: "" },
     addEventListener() {}, removeEventListener() {}, setTimeout: () => 1, clearTimeout() {},
   };
-  const queryClient = { invalidateQueries: async () => {} };
+  const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
   let activeOptions, individualOptions = [];
   const query = {
     useQueryClient: () => queryClient,
@@ -164,7 +174,7 @@ for (const format of ["hook", "wall_text", "slideshow"]) {
     assert.deepEqual(h.ids(), [h.job.id]); assert.equal(h.composer().props.isGenerating, true);
     assert.equal(h.result().props.loading, false); assert.equal(h.result().props.status.tone, "progress");
     const query = h.activeQuery(); assert.equal(query.enabled, true); assert.equal(query.staleTime, 0); assert.equal(query.refetchOnMount, "always");
-    await query.queryFn(); await h.individualQueries()[0].queryFn();
+    await query.queryFn({ signal: new AbortController().signal }); await h.individualQueries()[0].queryFn({ signal: new AbortController().signal });
     assert.equal(h.calls[0].url, `/api/jobs?status=active&limit=100&exploreFormat=${format}`);
     assert.equal(h.calls[0].headers.get("Authorization"), "Bearer owner-token");
     assert.equal(h.calls[1].url, `/api/jobs/${h.job.id}`); h.unmount();

@@ -1,0 +1,444 @@
+{
+  "auditDate": "2026-10-23",
+  "scope": "Connected account's 12 saved Hook text remixes; source and output from read-only application receipts. Model/prompt/profile metadata verified by owner-filtered database query. No new generation.",
+  "records": [
+    {
+      "request_key": "06e7e484-f0e7-4abd-b913-eb7d628ee42b",
+      "status": "completed",
+      "created_at": "2026-10-23T13:38:24.373928+00:00",
+      "updated_at": "2026-10-23T13:38:27.385+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+        "slideId": null,
+        "sourceSha256": "e453ef90e410026d3bcb9f7fc8dc147d1959a2257f07e5663c6e1b58aff595a8",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV: you found a way to\nmake your texts point you\nback to God",
+            "startMs": 0,
+            "endMs": 2967
+          }
+        ],
+        "extractedAt": "2026-10-23T13:38:24.278Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "POV: you found a way to\nmake your content point people\nto your SaaS"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 2,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "c752e103-bd03-4d0c-b47c-aa95fe4a881c",
+      "status": "completed",
+      "created_at": "2026-10-23T13:17:43.128037+00:00",
+      "updated_at": "2026-10-23T13:17:44.982+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
+        "slideId": null,
+        "sourceSha256": "f117e9f24cc0488861fcad64c6001e8c33cb9a24a07b0a02276d8e176c3c0b76",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "pov: you’re dating an IT guy",
+            "startMs": 0,
+            "endMs": 3466
+          }
+        ],
+        "extractedAt": "2026-10-23T13:17:43.025Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "pov: you’re a SaaS founder using UGCPilot to create your marketing content"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 2,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "12d3aa3f-fc71-4402-9a10-d2832c1208bc",
+      "status": "completed",
+      "created_at": "2026-10-22T14:42:02.074273+00:00",
+      "updated_at": "2026-10-22T14:42:04.758+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "slideId": null,
+        "sourceSha256": "36c6266a480b54f4f5086e6e7746db961008f8351574f3da923914d5a4ee3891",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Computer Science students!!\nThis website is EVERYTHING",
+            "startMs": 0,
+            "endMs": 3067
+          }
+        ],
+        "extractedAt": "2026-10-22T14:42:01.868Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "SaaS founders!!\nThis tool is EVERYTHING"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 2,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "20850ea9-3840-4b55-8979-33c07e15c2cb",
+      "status": "completed",
+      "created_at": "2026-10-19T13:45:40.03093+00:00",
+      "updated_at": "2026-10-19T13:45:42.315+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+        "slideId": null,
+        "sourceSha256": "7f0309d1d4094c1626133e79143817226492e6d5dd215de54e073475dcc28388",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "no way this can HELP\nyou get through your\nRESEARCH! 😭",
+            "startMs": 0,
+            "endMs": 3100
+          }
+        ],
+        "extractedAt": "2026-10-19T13:45:39.894Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "no way this can HELP\nyou get through your\nCONTENT CREATION! ✨"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 2,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "4aba6844-313f-4ab3-ad1b-8f07dec951d7",
+      "status": "completed",
+      "created_at": "2026-10-19T05:16:21.068876+00:00",
+      "updated_at": "2026-10-19T05:16:24.471+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+        "slideId": null,
+        "sourceSha256": "5cc95742c90a1384e35d549c820bbff7c9320cc7692621900c647c50d43c954d",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "3 years of video editing\nand NOW i find this??? 😳",
+            "startMs": 0,
+            "endMs": 3733
+          }
+        ],
+        "extractedAt": "2026-10-19T05:16:20.971Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "3 years of SaaS marketing\nand NOW I find this??? 🚀"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 2,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "aa5f006b-1b7e-46ca-9af6-a86ef106d510",
+      "status": "completed",
+      "created_at": "2026-10-17T04:33:04.077811+00:00",
+      "updated_at": "2026-10-17T04:33:06.826+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "slideId": null,
+        "sourceSha256": "36c6266a480b54f4f5086e6e7746db961008f8351574f3da923914d5a4ee3891",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Computer Science students!!\nThis website is EVERYTHING",
+            "startMs": 0,
+            "endMs": 3100
+          }
+        ],
+        "extractedAt": "2026-10-17T04:33:03.933Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "SaaS founders!!\nThis platform is EVERYTHING"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 2,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "2d0fd0e9-6afb-447f-b20b-3a64875e86d3",
+      "status": "completed",
+      "created_at": "2026-10-16T19:21:45.82797+00:00",
+      "updated_at": "2026-10-16T19:21:48.723+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+        "slideId": null,
+        "sourceSha256": "9120ca68ffa5b490d8f4622c40ffdbc898f5ceb316b3380634d3a6da723e1def",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV you married the IT guy",
+            "startMs": 0,
+            "endMs": 2834
+          }
+        ],
+        "extractedAt": "2026-10-16T19:21:45.698Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "POV you let UGCPilot handle your content"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 1,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "012d65ba-900f-40d5-8959-161a18665ccb",
+      "status": "completed",
+      "created_at": "2026-10-16T19:02:21.580375+00:00",
+      "updated_at": "2026-10-16T19:02:24.309+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+        "slideId": null,
+        "sourceSha256": "9120ca68ffa5b490d8f4622c40ffdbc898f5ceb316b3380634d3a6da723e1def",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV you married the IT guy",
+            "startMs": 0,
+            "endMs": 2834
+          }
+        ],
+        "extractedAt": "2026-10-16T19:02:21.450Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "POV you let UGCPilot handle your content"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 1,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "e9116f48-2513-4e15-a30c-68edde88ea1b",
+      "status": "completed",
+      "created_at": "2026-10-16T17:58:56.20823+00:00",
+      "updated_at": "2026-10-16T17:58:59.949+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "slideId": null,
+        "sourceSha256": "029e474dcff0ce59152c83f064e7a300f3afa843e294085167a936e40739222f",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Computer Science students!!\nThis website is EVERYTHING",
+            "startMs": 0,
+            "endMs": 3067
+          },
+          {
+            "text": "I used to think learning coding\nwould be so difficult",
+            "startMs": 3067,
+            "endMs": 3100
+          }
+        ],
+        "extractedAt": "2026-10-16T17:58:56.118Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "SaaS founders!!\nThis app is a game changer",
+          "I used to think marketing my SaaS\nwould take so much time"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 1,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "292d844b-24cc-4efe-aa75-4023d4c09dea",
+      "status": "completed",
+      "created_at": "2026-10-16T14:03:26.639472+00:00",
+      "updated_at": "2026-10-16T14:03:29.948+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+        "slideId": null,
+        "sourceSha256": "e2666fad22ba37be42f70a237528fa915b3abbd873228f393d9743df32e4fee2",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "HOW is this even LEGAL?!?\n😭",
+            "startMs": 0,
+            "endMs": 3234
+          }
+        ],
+        "extractedAt": "2026-10-16T14:03:26.521Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "HOW is this much CONTENT even POSSIBLE?!?\n😭"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 1,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "1e07a767-be1a-4161-93d6-4a4cc8bde531",
+      "status": "completed",
+      "created_at": "2026-10-16T14:01:48.211372+00:00",
+      "updated_at": "2026-10-16T14:01:51.344+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+        "slideId": null,
+        "sourceSha256": "e2666fad22ba37be42f70a237528fa915b3abbd873228f393d9743df32e4fee2",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "HOW is this even LEGAL?!?\n😭",
+            "startMs": 0,
+            "endMs": 3234
+          }
+        ],
+        "extractedAt": "2026-10-16T14:01:48.102Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "HOW is this even AUTOMATED?!?\n😭"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 1,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    },
+    {
+      "request_key": "109601ce-415c-4eea-a90e-457c3f6803f7",
+      "status": "completed",
+      "created_at": "2026-10-16T10:53:32.171774+00:00",
+      "updated_at": "2026-10-16T10:53:35.28+00:00",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+        "slideId": null,
+        "sourceSha256": "e2666fad22ba37be42f70a237528fa915b3abbd873228f393d9743df32e4fee2",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "HOW is this even LEGAL?!?\n😭",
+            "startMs": 0,
+            "endMs": 3234
+          }
+        ],
+        "extractedAt": "2026-10-16T10:53:32.094Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "HOW are SaaS founders still doing this manually?!?\n😭"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "model": "gpt-5.6-luna",
+      "promptVersion": 1,
+      "businessProfileVersion": 2,
+      "instructions": ""
+    }
+  ]
+}

@@ -14,15 +14,16 @@ write('auth.ts', `export const getCurrentUserIdToken=async()=> 'fixture-token';e
 write('font.ts', `export default ()=>({variable:'fixture-inter'});`);
 write('entry.tsx', `import {useState} from 'react';import {createRoot} from 'react-dom/client';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import {TrendingCreativeEditor} from '@/components/trending/trending-creative-editor';
 const item={format:'carousel',creativeId:'creative',assignmentId:'assignment',creative:{title:'Useful habits'}};
-function App(){const [open,so]=useState(true);return <main><button onClick={()=>so(true)}>Open slideshow editor</button><TrendingCreativeEditor item={open?item:null} onClose={()=>so(false)} onSaved={edit=>window.saved=edit}/></main>};createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider>);`);
+function App(){const [open,so]=useState(true);window.leaveEditor=()=>so(false);return <main><button onClick={()=>so(true)}>Open slideshow editor</button>{open?<TrendingCreativeEditor item={item} onClose={()=>so(false)} onSaved={edit=>window.saved=edit}/>:null}</main>};createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider>);`);
 async function main() {
   console.log('Building actual Trending editor browser fixture');
   const manual = await import('../worker/dist/lib/carousel-manual-text.js'), { createCarouselManualSvg } = await import('../worker/dist/lib/carousel-manual-render.js');
   const baseSlide = n => ({ slideId: 'slide-'+n, slideNumber:n, headline:n===1?'Small steps, better work':'Useful habits', subtext:n===1?'':'Start with ten minutes.', ctaText:'', backgroundAssetId:'image-'+n, backgroundUrl:'/background.webp', originalBackgroundAssetId:'image-'+n, originalBackgroundUrl:'/background.webp', renderedUrl:'/background.webp', textPosition:{x:.5,y:.5}, renderFormat:'4:5', structureId:'structure_2', visualRole:'human', originalVisualRole:'human', storyLayoutVariant:'story_overlay_only', storyTextTreatment:'overlay' });
   let record={assignmentId:'assignment',creativeId:'creative',format:'carousel',id:'edit',revision:0,renderState:'ready',renderOutput:null,source:null,content:{format:'carousel',version:'trending-creative-edit-v1',slides:[baseSlide(1),baseSlide(2)]}};
-  const patches=[],errors=[],requests=[]; let failSave=false;
+  const patches=[],errors=[],requests=[]; let failSave=false, pendingRender=false, loseSaveResponse=false, saveGate=null, failStatus=false;
   const mediaId=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
-  const libraryImages=[1,2].map(n=>({id:mediaId(n),collection:'image',sourceType:'upload',status:'ready',createdAt:'2026-10-19T00:00:00Z',updatedAt:'2026-10-19T00:00:00Z',url:'https://owned.test/'+n+'.png',thumbnailUrl:null,ratio:'4:5',width:1080,height:1350,mimeType:'image/png',title:'Nature '+n,fileName:'nature-'+n+'.png',projectId:'image-library',metadata:{}}));
+  const libraryImages=[1,2,3,4,5,6].map(n=>({id:mediaId(n),collection:'image',sourceType:'upload',status:'ready',createdAt:'2026-10-19T00:00:00Z',updatedAt:'2026-10-19T00:00:00Z',url:'https://owned.test/'+n+'.png',thumbnailUrl:null,ratio:'4:5',width:1080,height:1350,mimeType:'image/png',title:'Nature '+n,fileName:'nature-'+n+'.png',projectId:'image-library',metadata:{}}));
+
   await new Promise((resolve,reject)=>{const c=webpack({mode:'development',plugins:[clientEnv],devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],extensionAlias:{'.js':['.js','.ts','.tsx']},alias:{'next/font/local':path.join(out,'font.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/contexts/auth-context':path.join(out,'auth.ts'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.module\.css$/,use:path.join(out,'module-css.cjs')},{test:/\.css$/,exclude:/\.module\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/media";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const server=http.createServer(async(req,res)=>{try {
@@ -39,16 +40,19 @@ async function main() {
     if(url.pathname==='/api/media/groups')return json({ok:true,groups:[{id:mediaId(100),name:'Nature backgrounds',mediaType:'image'}]});
     if(url.pathname==='/api/media/groups/'+mediaId(100)+'/items')return json({ok:true,group:{id:mediaId(100),name:'Nature backgrounds',mediaType:'image'},assets:[libraryImages[1],libraryImages[0]].map(asset=>({addedAt:asset.createdAt,asset}))});
     if(url.pathname==='/api/media/image-library')return json({ok:true,assets:libraryImages,nextOffset:null});
+    if(url.pathname==='/api/media/image-library/resolve'){let raw='';for await(const b of req)raw+=b;const body=JSON.parse(raw);return json({ok:true,assets:body.mediaAssetIds.map(id=>libraryImages.find(asset=>asset.id===id))});}
     if(url.pathname.startsWith('/api/media/')){const asset=libraryImages.find(asset=>url.pathname==='/api/media/'+asset.id);if(asset)return json({ok:true,asset});}
     assert.equal(url.pathname,'/api/trending/creatives/carousel/creative/edit');
     if(req.method==='PATCH'){
       let raw='';for await(const b of req)raw+=b;const body=JSON.parse(raw);patches.push(body);
       if(failSave){failSave=false;return json({ok:false,error:'Fixture save interrupted'},503);}
-      assert.equal(body.expectedRevision,record.revision);
+      assert.equal(body.expectedRevision,record.revision);if(saveGate)await saveGate;
       const slides=record.content.slides.map((slide,index)=>({...slide,...body.slides[index],textStyle:manual.parseCarouselManualTextStyle(body.slides[index].textStyle)}));
       for(const slide of slides)if(slide.textStyle){const {svg}=await createCarouselManualSvg(slide);assert.doesNotMatch(svg,/NaN|Infinity|undefined/,'Saved output must contain valid glyph coordinates');write('render-'+(record.revision+1)+'-'+slide.slideNumber+'.svg',svg);}
-      record={...record,revision:record.revision+1,content:{...record.content,slides},renderOutput:{slides:slides.map(slide=>({slideNumber:slide.slideNumber,renderedUrl:slide.textStyle?'/render-'+(record.revision+1)+'-'+slide.slideNumber+'.svg':'/background.webp'}))}};
+      record={...record,renderState:pendingRender?'queued':'ready',revision:record.revision+1,content:{...record.content,slides},renderOutput:{slides:slides.map(slide=>({slideNumber:slide.slideNumber,renderedUrl:slide.textStyle?'/render-'+(record.revision+1)+'-'+slide.slideNumber+'.svg':'/background.webp'}))}};
     }
+    if(req.method==='PATCH' && loseSaveResponse){loseSaveResponse=false;return json({ok:false,error:'Response lost after commit'},503);}
+    if(url.searchParams.get('view')==='status'){if(failStatus)return json({ok:false,error:'Temporarily offline'},503);return json({ok:true,status:record});}
     return json({ok:true,edit:record});
   } catch(e){errors.push(e.message);res.writeHead(500);res.end(JSON.stringify({ok:false,error:e.message}));}});
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -151,6 +155,31 @@ async function main() {
     assert.deepEqual(errors,[]);
     console.log('PASS actual Trending library flow: collection preview/cancel, explicit Use, separate Save to the same creative/revision, preserved text/style/order/originals and reopen');
     await page.getByRole('button',{name:'Cancel',exact:true}).click();
+    const priorRecord=structuredClone(record);
+    record={...record,renderOutput:null,content:{...record.content,slides:Array.from({length:6},(_,i)=>({...baseSlide(i+1),structureId:'structure_1',hasHeading:false,headline:i===0?'Small steps make better work':`Keep useful copy on slide ${i+1}.`,subtext:'',textStyle:null}))}};
+    await open();
+    await page.getByRole('button',{name:'Choose backgrounds from library',exact:true}).click();
+    picker=page.getByRole('dialog').last();
+    await picker.getByRole('radio',{name:/All slides/}).check();
+    for(let n=1;n<=6;n++)await picker.getByRole('button',{name:'Select image Nature '+n,exact:true}).click();
+    await picker.getByRole('button',{name:'Preview backgrounds',exact:true}).click();
+    for(let i=0;i<6;i++){
+      const proposed=picker.locator('[data-carousel-editor-preview]');
+      await proposed.getByText(record.content.slides[i].headline,{exact:true}).waitFor({state:'visible'});
+      if(i<5)await picker.getByRole('button',{name:'Next',exact:true}).click();
+    }
+    await picker.getByRole('button',{name:'Use these backgrounds',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelectorAll('[role="dialog"]').length===1);
+    for(let i=0;i<6;i++){
+      await preview().getByText(record.content.slides[i].headline,{exact:true}).waitFor({state:'visible'});
+      if(i<5)await page.getByRole('button',{name:'Next slide',exact:true}).click();
+    }
+    await page.screenshot({path:path.join(out,'six-library-backgrounds-body-copy.png')});
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();
+    assert.deepEqual(record.content.slides.map(s=>s.backgroundAssetId),Array.from({length:6},(_,i)=>'image-'+(i+1)),'Cancel leaves the saved six-slide creative unchanged');
+    record=priorRecord;
+    console.log('PASS six-slide body-only library preview: all six selected images, hook and five distinct body texts visible before and after Use; Cancel preserves saved draft');
+
     const coverBefore=structuredClone(record.content.slides[0]);
     record={...record,renderOutput:null,content:{...record.content,slides:[coverBefore,baseSlide(2),{...baseSlide(3),headline:'Different heading',subtext:'Keep this different copy on slide three.'},{...baseSlide(4),headline:'Last thought',subtext:'A longer body that wraps independently while sharing the same styling.'}]}};
     await open();await page.getByRole('button',{name:'Next slide',exact:true}).click();
@@ -200,6 +229,46 @@ async function main() {
     assert.deepEqual(record.content.slides.slice(1).map(s=>s.textStyle.fontSize),[44,44,44],'Explicitly rejoining shared styling allows propagation again');
     assert.deepEqual(errors,[]);
     console.log('PASS body styling: linked by default, independent copy/images, separate hook, single-slide override, explicit whole-layout reuse, save/reopen and full-canvas corner placement');
+    await page.setViewportSize({width:1366,height:768});
+    await open();await page.getByLabel('Hook',{exact:true}).fill('Save once, keep working');
+    pendingRender=true;let releaseSave;saveGate=new Promise(resolve=>{releaseSave=resolve});
+    const beforeNavigation=patches.length;
+    await Promise.all([page.waitForRequest(r=>r.method()==='PATCH'),page.getByRole('button',{name:'Confirm and save creative edit',exact:true}).click()]);
+    await page.evaluate(()=>window.leaveEditor());
+    await page.getByRole('button',{name:'Open slideshow editor',exact:true}).click();
+    releaseSave();saveGate=null;
+    const saveButton=page.getByRole('button',{name:'Confirm and save creative edit',exact:true});
+    await page.getByText('Rendering…',{exact:true}).waitFor();
+    assert.equal(await saveButton.isDisabled(),true,'Reopened pending renders cannot be submitted again');
+    assert.equal(patches.length,beforeNavigation+1);
+    assert.equal(await page.getByLabel('Hook',{exact:true}).inputValue(),'Save once, keep working');
+    await page.screenshot({path:path.join(out,'pending-render-reopened-desktop.png')});
+    // Full document navigation recovers the committed revision from the server.
+    await page.reload();await page.getByText('Rendering…',{exact:true}).waitFor();
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.join(out,'pending-render-reopened-mobile.png')});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    // Exercise the actual visibility event listener deterministically in headless Edge.
+    await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});document.dispatchEvent(new Event('visibilitychange'))});
+    record={...record,renderState:'ready'};
+    await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new Event('visibilitychange'))});
+    await page.getByText('Edits saved',{exact:true}).waitFor();
+    assert.equal(await saveButton.isDisabled(),true);assert.equal(patches.length,beforeNavigation+1);
+    await page.getByLabel('Hook',{exact:true}).fill('Keep my next edit');
+    assert.equal(await saveButton.isDisabled(),false);
+    loseSaveResponse=true;
+    await save();
+    assert.equal(patches.length,beforeNavigation+2,'Lost response recovers the accepted revision with GET only');
+    await open();await page.getByText('Rendering…',{exact:true}).waitFor();
+    failStatus=true;await page.getByText('Could not check progress. Retrying automatically.',{exact:true}).waitFor();
+    assert.equal(await saveButton.isDisabled(),true,'Read errors do not turn rendering into another Save action');
+    await page.getByLabel('Hook',{exact:true}).fill('Preserve typing while rendering');
+    record={...record,renderState:'ready'};failStatus=false;pendingRender=false;
+    await page.getByText('Save edit',{exact:true}).waitFor();
+    assert.equal(await page.getByLabel('Hook',{exact:true}).inputValue(),'Preserve typing while rendering');
+    assert.equal(patches.length,beforeNavigation+2);
+    assert.deepEqual(errors,[]);
+    console.log('PASS render recovery: remount during PATCH, full-page return, pending and saved buttons, tab visibility resume, lost response, transient status failure, newer local typing, desktop/mobile; no duplicate saves');
   } catch(e){await page.screenshot({path:path.join(out,'failure.png')});console.error('Browser/server errors:',errors);console.error(await page.locator('body').innerText());throw e;}
   finally {await browser.close();await new Promise(r=>server.close(r));}
 }

@@ -4,12 +4,13 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import * as referenceTypes from "../lib/explore/recreate-types.ts";
 import { createWallScheduleComposition } from "../lib/explore/wall-pending-composition.ts";
 
 function load(path, imports) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, URLSearchParams, queueMicrotask, window: imports.window, ResizeObserver: imports.ResizeObserver, requestAnimationFrame: fn => fn(), require(name) {
+  vm.runInNewContext(code, { exports, process: { env: { NODE_ENV: "development" } }, IntersectionObserver: class { constructor(callback) { this.callback = callback; } observe(node) { node.intersect = () => this.callback([{ isIntersecting: true }]); } disconnect() {} }, URLSearchParams, queueMicrotask, crypto: globalThis.crypto, window: imports.window, ResizeObserver: imports.ResizeObserver, requestAnimationFrame: fn => fn(), require(name) {
     if (name in imports) return imports[name];
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
@@ -23,7 +24,7 @@ const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influen
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow } = {}) {
+function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false, creatorCatalogue = [] } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
   const slots = [], effects = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
@@ -36,7 +37,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   const element = (type, props, key) => typeof type === "function" ? type(props) : { type, props, key };
   const jsx = { jsx: element, jsxs: element, Fragment: "fragment" };
   // JSX functions are called as module properties by the transpiled component.
-  const imports = { window, ResizeObserver: class { constructor(callback) { resizeCallback = callback; } observe() {} disconnect() {} }, "react/jsx-runtime": jsx, react: {
+  const imports = { window, "react-dom": { createPortal: value => value }, ResizeObserver: class { constructor(callback) { resizeCallback = callback; } observe() {} disconnect() {} }, "react/jsx-runtime": jsx, react: {
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; }, useCallback: fn => fn, useMemo: fn => fn(),
     useId: () => "workflow-controls-test",
@@ -47,13 +48,23 @@ function harness(format, query = "", { local = true, selected = video, catalogue
       slots[i] = next;
       effects.push(() => { previous?.cleanup?.(); next.cleanup = callback(); });
     },
-  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
+  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview|HookStartingFrameWorkspace)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
   "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
+  "@/components/explore/use-hook-composer-selection": { useHookComposerSelection() {
+    const [frame, setFrame] = imports.react.useState(null);
+    return { frame, setFrame, ready: true, error: null };
+  } },
+  "@/components/explore/use-creator-accounts": { useCreatorAccounts(_user, enabled) {
+    const [selectedId, select] = imports.react.useState(null);
+    const accounts = enabled ? creatorCatalogue : [];
+    return { accounts, selectedId, select, account: accounts.find(account => account.id === selectedId),
+      references: accounts.flatMap(account => account.items), loading: false, error: null, retry() {} };
+  } },
   "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => backgroundCapability },
   "@/components/explore/format-workspace.module.css": new Proxy({}, { get: (_, key) => key }),
   "@/lib/ai-studio/access-policy": { getAIStudioAccessMessage: () => "" }, "@/lib/explore/format-video-source": mapper,
@@ -62,21 +73,51 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (...args) => { reads.push(args); return video; } },
   "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { tokens.push(owner); return "owner-token"; } },
   "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: value => typeof value === "string" && /^[\da-f-]{36}$/i.test(value) },
-  "@/lib/explore/recreate-types": { referenceCategories: () => [], filterReferences: (items, kind, categories) => items.filter(item => item.format === kind && (!categories.length || categories.includes(item.category))), interleaveReferenceCategories: items => items },
+  "@/lib/explore/recreate-types": referenceTypes,
   "@/lib/explore/reference-pagination": pagination,
+  "@/lib/explore/local-hook-starting-frame-preview": { LOCAL_HOOK_PREVIEW_OWNER_ID: "local-preview-owner", createLocalHookStartingFramePreviewRuntime: () => ({ generationDisabledReason: "Local source preview only" }) },
   "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   imports.react.useLayoutEffect = imports.react.useEffect;
   const mod = load("components/explore/format-workspace.tsx", imports);
   return { source, accept, queries, tokens, reads, params: () => params, resize(count) { columns = count; resizeCallback?.(); }, render() {
     cursor = 0;
-    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined, previewFinalSlideshow: finalSlideshow });
+    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined, previewFinalSlideshow: finalSlideshow, hookStartingFramePreparationEnabled: keyframeEnabled });
     for (const commit of effects.splice(0)) commit();
     return tree;
   } };
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+
+test("creator account switching replaces only the gallery and preserves Recreate's exact reference", () => {
+  const shared = { id: "normal-hook", format: "hook", title: "Hook", slides: [], posterUrl: "/normal.png", videoUrl: "/normal.mp4" };
+  const accounts = [1, 2].map(number => ({ id: `creator-account-${number}`, label: `Creator Account ${number}`,
+    items: Array.from({ length: 6 }, (_, index) => ({ ...shared, id: `creator-account-${number}-0${index + 1}`, creatorAccountId: `creator-account-${number}`, videoUrl: `blob:creator-${number}-${index}` })) }));
+  const h = harness("hook", "", { local: false, selected: null, catalogue: [shared], keyframeEnabled: true, creatorCatalogue: accounts });
+  const cards = () => nodes(h.render()).filter(node => node.type === "ReferenceCard");
+  const menu = () => nodes(h.render()).find(node => node.type === "CreatorAccountMenu");
+  assert.deepEqual(cards().map(node => node.props.reference.id), [shared.id]);
+  menu().props.onSelect(accounts[0].id);
+  assert.deepEqual(cards().map(node => node.props.reference.id), accounts[0].items.map(item => item.id));
+  cards()[2].props.onRecreate();
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, accounts[0].items[2].id);
+  menu().props.onSelect(accounts[1].id);
+  assert.deepEqual(cards().map(node => node.props.reference.id), accounts[1].items.map(item => item.id));
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, accounts[0].items[2].id);
+  menu().props.onSelect(null);
+  assert.deepEqual(cards().map(node => node.props.reference.id), [shared.id]);
+});
+
+test("Wall frontend rejects retired cards from stale responses and direct reference URLs", () => {
+  const stale = ["explore-wall-text-08", "explore-wall-text-09"].map(id => ({ ...catalogue[0], id }));
+  for (const local of [false, true]) {
+    const h = harness("wall_text", "refId=explore-wall-text-08", { local, selected: null, catalogue: [...stale, catalogue[0]] });
+    const tree = h.render();
+    assert.deepEqual(nodes(tree).filter(node => node.type === "ReferenceCard").map(node => node.props.reference.id), ["wall-0"]);
+    assert.equal(nodes(tree).some(node => node.props?.styleVideo?.id === "explore-wall-text-08"), false);
+  }
+});
 test("Slideshow Create Your Slides reuses the current editor sequence and keeps generation results separately reachable", () => {
   const h = harness("slideshow", "", { selected: null });
   nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach((n, index) => n.props.ref({ clientWidth: 0, index }));
@@ -137,20 +178,18 @@ test("Hook Create Your videos shows the same two-clip overview as Demo even befo
   nodes(tree).find(n => n.type === "button" && text(n) === "References").props.onClick();
   assert.equal(stage(h.render()).props.hidden, true);
 });
-test("Hook's empty overview keeps generation History reachable and allows returning during generation", () => {
+test("Hook's empty overview omits the generated-video shortcut and allows returning during generation", () => {
   const h = harness("hook", "", { selected: null }); h.source.mode = "generate";
   nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
   const stage = () => nodes(h.render()).find(n => n.props?.["aria-label"] === "Clip previews and editor");
   const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
   nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
-  nodes(h.render()).find(n => n.type === "Button" && text(n) === "Generated videos").props.onClick();
-  assert.equal(stage().props.hidden, true, "Generated results and their existing History stay reachable without selected footage");
+  assert.equal(nodes(h.render()).some(n => n.type === "Button" && text(n) === "Generated videos"), false);
   workflow().onGenerationStart(); workflow().onBusyChange(true);
+  assert.equal(stage().props.hidden, true, "Starting generation reveals its progress");
   nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
   assert.equal(stage().props.hidden, false, "Explicit Your videos selection returns to the clip overview while polling continues");
-  nodes(h.render()).find(n => n.type === "Button" && text(n) === "Generated videos").props.onClick();
-  assert.equal(stage().props.hidden, true);
-  assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
+  assert.equal(nodes(h.render()).some(n => n.type === "Button" && text(n) === "Generated videos"), false);
 });
 test("Hook's top Videos action closes either clip editor without navigating or remounting drafts", () => {
   const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
@@ -304,6 +343,27 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   assert.equal(view().referenceImageUrls.length, 0);
 });
 
+test("video references mix both platforms before scroll expansion and retain single-platform filtering", () => {
+  for (const format of ["hook", "wall_text"]) {
+    const items = ["instagram", "tiktok"].flatMap(sourcePlatform => Array.from({ length: 16 }, (_, i) => ({
+      id: `${sourcePlatform}-${i}`, format, sourcePlatform, title: `${sourcePlatform} ${i}`, slides: [],
+      videoUrl: `https://media.test/${sourcePlatform}-${i}.mp4`, posterUrl: "/poster.jpg",
+    })));
+    const h = harness(format, "", { local: true, selected: null, catalogue: items });
+    const cards = () => nodes(h.render()).filter(n => n.type === "ReferenceCard").map(n => n.props.reference);
+    const first = cards();
+    assert.ok(first.length > 2 && first.length < items.length);
+    first.forEach((item, i) => assert.equal(item.sourcePlatform, i % 2 ? "tiktok" : "instagram"));
+    const end = {}; nodes(h.render()).find(n => n.props?.["data-reference-scroll-end"] !== undefined).props.ref(end); end.intersect();
+    const expanded = cards(); assert.ok(expanded.length > first.length);
+    assert.deepEqual(expanded.slice(0, first.length).map(item => item.id), first.map(item => item.id));
+    nodes(h.render()).find(n => n.type === "FilterMenu").props.onToggle("tiktok", true);
+    assert.ok(cards().every(item => item.sourcePlatform === "tiktok"));
+    nodes(h.render()).find(n => n.type === "FilterMenu").props.onClear();
+    assert.deepEqual(cards().slice(0, first.length).map(item => item.id), first.map(item => item.id));
+  }
+});
+
 test("reference batches fill complete rows at different column counts until the catalogue ends", () => {
   for (const columns of [1, 2, 3, 4, 5, 6, 7]) {
     const h = harness("wall_text", "", { selected: null, catalogue });
@@ -316,9 +376,9 @@ test("reference batches fill complete rows at different column counts until the 
       assert.equal(new Set(cards.map(n => n.props.reference.id)).size, cards.length);
       assert.ok(cards.every(n => n.props.hideCaption === true));
       if (cards.length < catalogue.length) assert.equal(cards.length % columns, 0, `Incomplete row at ${columns} columns`);
-      const more = nodes(tree).find(n => n.type === "Button" && text(n) === "Show more references");
-      if (cards.length === catalogue.length) { assert.equal(more, undefined); break; }
-      assert.ok(more); more.props.onClick();
+      assert.equal(nodes(tree).some(n => n.type === "Button" && text(n) === "Show more references"), false);
+      if (cards.length === catalogue.length) break;
+      const end = {}; nodes(tree).find(n => n.props?.["data-reference-scroll-end"] !== undefined).props.ref(end); end.intersect();
     }
     assert.equal(nodes(h.render()).filter(n => n.type === "ReferenceCard").length, 90);
   }
@@ -335,7 +395,7 @@ test("reference resizing preserves revealed items and filter changes restart wit
   const h = harness("wall_text", "", { selected: null, catalogue });
   let tree = h.render(); nodes(tree).find(n => n.type === "div" && typeof n.props?.ref === "function" && nodes(n.props.children).some(child => child.type === "ReferenceCard")).props.ref({ clientWidth: 1000 });
   tree = h.render(); assert.equal(nodes(tree).filter(n => n.type === "ReferenceCard").length, 15);
-  nodes(tree).find(n => n.type === "Button" && text(n) === "Show more references").props.onClick();
+  const end = {}; nodes(tree).find(n => n.props?.["data-reference-scroll-end"] !== undefined).props.ref(end); end.intersect();
   h.resize(4); tree = h.render(); assert.equal(nodes(tree).filter(n => n.type === "ReferenceCard").length, 32);
   h.resize(5); tree = h.render(); assert.equal(nodes(tree).filter(n => n.type === "ReferenceCard").length, 35);
   nodes(tree).find(n => n.type === "FilterMenu").props.onToggle("other", true);
@@ -404,7 +464,8 @@ for (const format of ["hook"]) {
     const generation = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
     assert.equal(stage().props.hidden, false);
     const editorKey = nodes(h.render()).find(n => n.type === "FormatVideoEditor").key;
-    nodes(h.render()).find(n => n.type === "Button" && text(n) === "Generated videos").props.onClick();
+    assert.equal(nodes(h.render()).some(n => n.type === "Button" && text(n) === "Generated videos"), false);
+    generation().onGenerationStart();
     assert.equal(stage().props.hidden, true);
     nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
     assert.equal(stage().props.hidden, false);
@@ -965,6 +1026,23 @@ test("slideshow keeps all workflow stages in its controls panel and preserves im
   assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props["data-pane"], "preview", "Refocusing the active stage must not hide its Preview panel");
 });
 
+test("a complete regenerated slideshow opens Your Slides as one ordered sequence", () => {
+  const h = harness("slideshow", "", { selected: null });
+  let tree = h.render();
+  nodes(tree).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  tree = h.render();
+  const received = [];
+  const editor = nodes(tree).find(n => n.type === "FormatSlideshowEditor");
+  editor.props.controllerRef.current = { useSlideshow: images => { received.push(...images.map(image => image.id)); return true; } };
+  const workflow = nodes(tree).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  assert.equal(workflow.onGeneratedSlideshow([{ id: "slide-1", url: "/one.png" }, { id: "slide-2", url: "/two.png" }, { id: "slide-3", url: "/three.png" }, { id: "slide-4", url: "/four.png" }]), true);
+  tree = h.render();
+  assert.deepEqual(received, ["slide-1", "slide-2", "slide-3", "slide-4"]);
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+  assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.previewActive, true);
+  assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.active, false);
+});
+
 test("slideshow shares Schedule actions and returns to Edit without changing its saved post", () => {
   const h = harness("slideshow", "", { selected: null });
   let tree = h.render();
@@ -1035,4 +1113,76 @@ test("sample slideshow props cannot become outputs in the live workflow or anoth
     const h = harness(format, "", { local, finalSlideshow });
     assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null);
   }
+});
+
+test("Hook Recreate opens free starting-frame preparation only behind its release gate and reopens the same draft", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  for (const keyframeEnabled of [false, true]) {
+    const h = harness("hook", "", { local: false, selected: null, catalogue: [reference], keyframeEnabled });
+    h.source.mode = "generate";
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    let prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    if (!keyframeEnabled) { assert.equal(prep, undefined); assert.equal(h.params().has("hookFrameDraft"), false); continue; }
+    assert.equal(prep.props.reference.id, reference.id); assert.equal(prep.props.ownerId, "owner");
+    const id = prep.props.draftId;
+    assert.match(id, /^[\da-f-]{36}$/i); assert.equal(h.params().get("hookRecreation"), "starting_image");
+    prep.props.onClose(); assert.equal(h.params().has("hookRecreation"), false);
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), false);
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    assert.equal(prep.props.draftId, id, "Closing and reopening preserves the image preparation");
+    assert.equal(h.reads.length, 0, "Preparing does not submit or collect a generated video");
+  }
+});
+
+test("Wall enters its own starting-frame preparation while Slideshows retain their image workflow", () => {
+  for (const [format, local] of [["wall_text", false], ["slideshow", false]]) {
+    const reference = { id: "example", format, title: "Example", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+    const h = harness(format, "", { local, selected: null, catalogue: [reference], keyframeEnabled: true });
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    const preparation = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    assert.equal(Boolean(preparation), format === "wall_text");
+    if (preparation) assert.equal(preparation.props.preparationFormat, "wall_text");
+    assert.equal(h.params().has("hookFrameDraft"), format === "wall_text");
+  }
+});
+
+test("local Hook Recreate opens the actual preparation component with isolated source-only access", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  const h = harness("hook", "", { local: true, selected: null, catalogue: [reference], keyframeEnabled: true });
+  nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+  const prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+  assert.ok(prep); assert.equal(prep.props.ownerId, "local-preview-owner");
+  assert.equal(prep.props.previewRuntime.generationDisabledReason, "Local source preview only");
+  assert.equal(h.params().get("hookRecreation"), "starting_image");
+  for (const name of ["sourceUrl", "refType", "exploreRecreate"]) assert.equal(h.params().has(name), false);
+});
+
+test("an explicit Hook preparation reload restores only a valid draft ID with the release gate enabled", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  const id = "00000000-0000-4000-8000-000000000001";
+  for (const [keyframeEnabled, draftId, expected] of [[true, id, true], [false, id, false], [true, "broken", false]]) {
+    const h = harness("hook", `refId=hook-first&hookFrameDraft=${draftId}&hookRecreation=starting_image`, { local: false, selected: null, catalogue: [reference], keyframeEnabled });
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), expected);
+  }
+});
+
+test("cancelling a different Hook replacement preserves the approved composer frame and replacement receipt", () => {
+  const first = { id: "hook-first", format: "hook", title: "First Hook", slides: [], videoUrl: "https://media.example.test/source.mp4" };
+  const second = { ...first, id: "hook-second", title: "Second Hook" };
+  const h = harness("hook", "", { local: false, selected: null, catalogue: [first, second], keyframeEnabled: true });
+  const cards = () => nodes(h.render()).filter(node => node.type === "ReferenceCard");
+  cards().find(node => node.props.reference.id === first.id).props.onRecreate();
+  let preparation = nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace");
+  const selected = { ownerId: "owner", draftId: preparation.props.draftId, referenceId: first.id, assetId: "owned-approved-frame" };
+  preparation.props.onUseStartingFrame(selected);
+  cards().find(node => node.props.reference.id === second.id).props.onRecreate();
+  preparation = nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace");
+  const replacementId = preparation.props.draftId; assert.equal(preparation.props.reference.id, second.id);
+  preparation.props.onClose();
+  const active = cards().find(node => node.props.isSelected); assert.equal(active.props.reference.id, first.id);
+  assert.equal(h.params().get("hookFrameDraft"), replacementId);
+  cards().find(node => node.props.reference.id === second.id).props.onRecreate();
+  preparation = nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace");
+  assert.equal(preparation.props.draftId, replacementId, "an accepted/uncertain replacement remains recoverable");
 });

@@ -8,8 +8,9 @@ import { validateHookAdditionRelease } from "./hook-reference-addition-release-r
 
 test("new batch binds 22 distinct complete sources to supplied audio and canonical post links", () => {
   const ready = validateHookAdditionRelease(batch, textCatalog);
-  assert.equal(ready.eligible.length, 22);
-  assert.deepEqual(ready.excluded, []);
+  assert.equal(batch.items.length, 22);
+  assert.equal(ready.eligible.length, 20);
+  assert.deepEqual(ready.excluded, ["explore-paired-hook-e5870158a2ad1494edc92741", "explore-paired-hook-6365d336034633aa5070eb48"]);
   assert.equal(batch.items.filter(item => item.sourcePlatform === "instagram").length, 5);
   assert.equal(batch.items.filter(item => item.sourcePlatform === "tiktok").length, 17);
   assert.ok(batch.items.every(item => item.sourceUrl && item.durationSeconds <= 15));

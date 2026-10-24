@@ -9474,6 +9474,482 @@
       "extractedAt": "2026-10-15T12:59:25.270Z",
       "model": "windows-ocr-en-US-v2",
       "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-1-5baea1ab7269",
+      "sourceSha256": "5baea1ab726961e9f523f6793f20819f70612aa72870a3d740506f6c17ac4b2d",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine you’re driving a car...",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.007Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 1 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-2-74f2f837d96c",
+      "sourceSha256": "74f2f837d96c8d878c5e630b5ca2fd8551b18bc9ddc4792b67b2ce928f9813f4",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Okay...",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 2 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-3-eaf045962221",
+      "sourceSha256": "eaf045962221f94808293e5c9ac8c33ede076cf61989d344393d0a5a58a4feec",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You’re trying to find an\naddress, but the music is\nplaying loudly. What do you\ndo?",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 3 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-4-dcd2d3e605f9",
+      "sourceSha256": "dcd2d3e605f9f71a1de9833abca3ff1eb0a4f904b870a4673011f39136c4e68e",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I turn it down.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 4 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-5-ed3a6942ecc5",
+      "sourceSha256": "ed3a6942ecc59e043b745e1422ef83bb3cc39d742ed9f127e007542247783658",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Why?",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 5 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-6-9aba9a629ad6",
+      "sourceSha256": "9aba9a629ad6fb3934b4ef7fa7aa708bb63bb14c65048e3be462edc04137d0d5",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So I can focus.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 6 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-general-649259ba9668dd18",
+      "slideId": "slide-1-c4d26e6aab87",
+      "sourceSha256": "c4d26e6aab8712af16c89e1521ed490b59d3fea380d385724fa4a12ea7beeaca",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I don’t feel like studying/working today”",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.461Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-649259ba9668dd18",
+      "slideId": "slide-2-7644f59cd6dd",
+      "sourceSha256": "7644f59cd6dd4fa30dd5ab46fcd39e08677643ef7d64b584f06f459f86217686",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Tell me something that will break my heart so much that it’ll make me work/study",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.463Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-649259ba9668dd18",
+      "slideId": "slide-3-912403411ad7",
+      "sourceSha256": "912403411ad7fba31c3f3d87465445372641c82819f601d3d9d74c37d97cc3d2",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine waking up one day to find that all the people you care about have moved on, achieving their dreams and living fulfilling lives, while you’re still stuck in the same place, paralyzed by inaction. The opportunities you once had are gone, and time lost can never be reclaimed.\nThe person you could have become—the one with the skills, the knowledge, and the confidence—is now just a distant dream, someone you’ll never meet because you didn’t put in the effort when it mattered most. And the worst part? You’ll have to live with that regret forever.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.463Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-1-1b632b100c7e",
+      "sourceSha256": "1b632b100c7e01921d5ae22ee1347aea1aa564978a7afa98168e1671a6b77693",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Your SaaS doesn’t need another feature.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-2-c5e348e64bfb",
+      "sourceSha256": "c5e348e64bfb2fe40665d1757bf3cfa3f62d8b4cdae603dbeff61ca7cab0ba7a",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Then what am I doing wrong?\nYou’re avoiding distribution.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-3-1714b5c3d978",
+      "sourceSha256": "1714b5c3d978a581f97cc8c3c2562e544b9ec49cc3b61e58522943bec11cde4b",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "But I’m building every day.\nI know. Building feels productive, so it looks like progress.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-4-89dab46fb4e3",
+      "sourceSha256": "89dab46fb4e31647445aa7c3cd8a2cad3694f6b514de666e1fb00cd27ec165ea",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Why does posting feel so hard?\nWithout a proven format, 0 views and 0 likes feel personal.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-5-ec43957cf2c9",
+      "sourceSha256": "ec43957cf2c931f36369ddcaf5ce047e5cb95123853666dd63143866b46b22f3",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So I just keep coding?\nYes. AI made coding easier, so it feels safer than posting.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-6-162345321e6c",
+      "sourceSha256": "162345321e6cea8193d583707b92958e6a856e693519ee1bf9f4cb062a804e15",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So what should I do instead?\nMake distribution your next feature.\nUse a proven content format.\nPost the problem.\nShow the demo.\nFind your first users.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-2f9cd9c161e9df4e",
+      "slideId": "slide-1-58632543f26c",
+      "sourceSha256": "58632543f26c25a37b27160b5045089d9cf583fb654c9de68f4286195667cb19",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I’ve been posting consistently for 1 month and these’re the 5 major things I’ve learned",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.561Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-2f9cd9c161e9df4e",
+      "slideId": "slide-2-79f4af9c561d",
+      "sourceSha256": "79f4af9c561d33c4b1b69a1ea3a04697e5a1d2c7cfc0648196254825b380bc5e",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "1. Post 1-4x a day\nanything that fits ur niche, quality doesn’t need to be perfect. just post and see what sticks\n2. Don’t sleep on stories\nposting to story daily gives tiktok more signals. ur video start reaching new ppl.\n3. Stop just scrolling\nengage on other ppls posts. shows tiktok ur real and need to boost ur stuff\n4. Stop guessing why ur videos flop.\nreel view shows how many ppl actually watch, when they swipe, and where they go. u can fix it instead of overthinking.\n5. Post at random times\ntry different time slots tiktok let u test ur content with different ppl. u might be surprised what works",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.561Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-aa89f92f73637d43",
+      "slideId": "slide-1-a69f9077e105",
+      "sourceSha256": "a69f9077e1050ec87a8923b64a67203763b44bab82f0c6ce9905e7d74e92fb87",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "i’ve been posting consistently for 3 months and these’re the 4 major things i’ve learnt",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.602Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-aa89f92f73637d43",
+      "slideId": "slide-2-fae07bb6b7bd",
+      "sourceSha256": "fae07bb6b7bdfa971cec196ed89dff53af8a2ec66b6c6c475bfaaccceeb8491d",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "1. don’t sleep on tiktok stories\nposting daily gives tik tok more signals\nand your videos get shown to new ppl.\n2. post 1-4 times daily\ndepending on your niche\nbut quality > quantity.\none good video beats 4 rushed ones.\n3. stop just scrolling\nengage on posts in your niche\nshows tik tok you’re a real account\nand gets your content pushed to new viewers\n4. stop guessing why ur videos flop.\nreel view shows what people actually watch,\nwhen they swipe, and what grabs their attention\nyou stop guessing what works,\nand post smarter.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.602Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "slideId": null,
+      "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You’re telling me this is what the cool girls use for their Pinterest??",
+          "startMs": 0,
+          "endMs": 4100
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:53.892Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 123 decoded frames of the source. Only the supplied reaction-only 4.1s clip is imported; full download retains an unrelated screen tail and is not the Hook source. Native source audio retained; separate MP3 derived from that same clip, no music invented."
+    },
+    {
+      "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "slideId": null,
+      "sourceSha256": "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you finally understand\nhow to use Claude\nfor marketing",
+          "startMs": 0,
+          "endMs": 3800
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:36.977Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 112 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-ddcfb2950d40f37771058b73",
+      "slideId": null,
+      "sourceSha256": "cd230e98db5d44712ca1541712b3ccc34c241af65c1142a3bb4c5136c581df22",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could literally KISS\nthe business owner\nwho showed me this",
+          "startMs": 0,
+          "endMs": 3834
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:38.728Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 113 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+      "slideId": null,
+      "sourceSha256": "ddb24f03edb483ef194be7cbe0c74d26a9ec4ae39507642efd2d334759fddf35",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Since when can WhatsApp\ndo THIS??!😭😭",
+          "startMs": 0,
+          "endMs": 2767
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:40.333Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 81 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+      "slideId": null,
+      "sourceSha256": "109ec5d49c4f33800c23a26329107d1ffd26d98b5048c8a210d8534164a1e7c6",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you found a way to\nmake your texts point you\nback to God",
+          "startMs": 0,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:41.864Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 87 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+      "slideId": null,
+      "sourceSha256": "7e43f6ca3c30d32d362c8370e7e1d82dd722604f4146db11ad1f4fbb0bdceb22",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I love Gen Z because WDYM\nwe made a Bible buddy that\nwill literally text you and\nremind you to spend time\nwith God",
+          "startMs": 0,
+          "endMs": 3400
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:43.542Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 100 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "slideId": null,
+      "sourceSha256": "05738540ee02c011cf73cfe2db7cae40b88c0886af99c23a99704e630bbfc955",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My husband coded\nme this!!!!",
+          "startMs": 0,
+          "endMs": 1834
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:44.723Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 53 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-44d165d51084f977f5146f69",
+      "slideId": null,
+      "sourceSha256": "b9b0c519f1e061ae9cdc91965cb6797777cee0f763d1e1f94cf0614f1d438f06",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+          "startMs": 0,
+          "endMs": 2800
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:46.100Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 82 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-c15a0f9f2a7c4a28d5330825",
+      "slideId": null,
+      "sourceSha256": "3b75bff5ce95145b5779f91b8bb9a235009e69f4829d756679ee1b6cc0ee79a2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Claude Code can't do that 😮‍💨",
+          "startMs": 0,
+          "endMs": 1000
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:46.983Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 28 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
     }
   ]
 }

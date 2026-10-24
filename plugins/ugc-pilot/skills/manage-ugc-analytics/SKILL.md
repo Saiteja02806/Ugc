@@ -6,9 +6,10 @@ description: Read saved UGC Pilot Instagram, TikTok, and YouTube analytics throu
 # Manage UGC Analytics
 
 Use the connected UGC Pilot tools only for the account that completed OAuth.
-Start with `get_analytics_capabilities`. It reports whether snapshot storage and
-the consent-time verified identity permit saved analytics reads. It never
-contacts a provider, refreshes a report, changes a connection, or publishes.
+Start with `get_analytics_capabilities`. It requires `analytics:read` and reports
+whether snapshot storage and the consent-time verified identity permit saved
+analytics reads. It never contacts a provider, refreshes a report, changes a
+connection, or publishes.
 
 Saved-report tools require the separate `analytics:read` OAuth permission and a
 verified UGC Pilot account email. An older grant will need normal OAuth

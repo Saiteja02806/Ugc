@@ -1,0 +1,497 @@
+{
+  "version": 1,
+  "mediaStatus": "staged",
+  "release": "0b9d4633fddb24c2a04f",
+  "items": [
+    {
+      "id": "explore-slideshow-calory-tracking-1b164a4a355f68f2",
+      "format": "slideshow",
+      "title": "Calory Tracking 07",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "c3ed273f4007f39d408bcebc4f24e89764f369b35d5da8e5230de1dbb29d6d3c.jpg",
+      "slides": [
+        {
+          "id": "slide-1-c3ed273f4007",
+          "file": "c3ed273f4007f39d408bcebc4f24e89764f369b35d5da8e5230de1dbb29d6d3c.jpg",
+          "width": 1200,
+          "height": 2132
+        },
+        {
+          "id": "slide-2-6f38fb8e7bc8",
+          "file": "6f38fb8e7bc8bc2f63515a10ed94bd18c180a23c3cf5c8376c4e6ad1b0cef535.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-3-72d824d7f187",
+          "file": "72d824d7f18752470c4718298d02b011f85ce64d3861bc953b45c733aff08517.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-4-c26b35ac5e11",
+          "file": "c26b35ac5e11c0ac9d5c8a2628422b4eab5f4d78559151664decc384235643a0.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-5-a6078b77ae95",
+          "file": "a6078b77ae9565200f354be4a8929ba6334571da3d4e4bdcccfe9368db5fba98.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-6-854c683b69e3",
+          "file": "854c683b69e373fd4533de02e68f7d477b9357ca5d15b0b83d7df390c3815c3c.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-7-b5dac115f9af",
+          "file": "b5dac115f9af9c07c1894a52822e7060a0343550f50f3042a25bd5a925db5e4a.jpg",
+          "width": 1126,
+          "height": 2000
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-ee89585cf07b2853",
+      "format": "slideshow",
+      "title": "Calory Tracking 08",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "99fe8587827ce252075bee25550d889dcf2f6b166b198b65eb866772b14ec5fa.jpg",
+      "slides": [
+        {
+          "id": "slide-1-99fe8587827c",
+          "file": "99fe8587827ce252075bee25550d889dcf2f6b166b198b65eb866772b14ec5fa.jpg",
+          "width": 1124,
+          "height": 2000
+        },
+        {
+          "id": "slide-2-926839754ba8",
+          "file": "926839754ba8291a3df0215e0cdb4a677ddcc0f391483526450c52f9ce4d0361.jpg",
+          "width": 1124,
+          "height": 2000
+        },
+        {
+          "id": "slide-3-e3c14ea50155",
+          "file": "e3c14ea50155ccf596507c26c3dce7d23f28ec42c51c153c75ac8099899d8800.jpg",
+          "width": 1198,
+          "height": 2130
+        },
+        {
+          "id": "slide-4-75d807e63015",
+          "file": "75d807e63015be62d4f550a5cb99df289dfc87fd5a7566c84958623597e80f8d.jpg",
+          "width": 1124,
+          "height": 2000
+        },
+        {
+          "id": "slide-5-d94ff8372a23",
+          "file": "d94ff8372a234f00e4061ad105f62cd123c7cb49769008294dd5f489e9aec505.jpg",
+          "width": 1124,
+          "height": 2000
+        },
+        {
+          "id": "slide-6-9f3437597095",
+          "file": "9f343759709583d5813b93086106129829f57b376d725355389779bbd47f0e07.jpg",
+          "width": 1124,
+          "height": 2000
+        },
+        {
+          "id": "slide-7-5ab4d4a23f03",
+          "file": "5ab4d4a23f039c55930ac036790fb16f98b4df32f8b7d5aeb8f6815806177b39.jpg",
+          "width": 1124,
+          "height": 2000
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-32b74895d17284ed",
+      "format": "slideshow",
+      "title": "Calory Tracking 09",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "e415ff230647beff22ff6641c78781468470fdf574b8c70933d130f6777b90f3.jpg",
+      "slides": [
+        {
+          "id": "slide-1-e415ff230647",
+          "file": "e415ff230647beff22ff6641c78781468470fdf574b8c70933d130f6777b90f3.jpg",
+          "width": 1200,
+          "height": 1596
+        },
+        {
+          "id": "slide-2-fc4e5cd39eb6",
+          "file": "fc4e5cd39eb6a632ed4d87291760716396d8dbcf72c371e0925888d4ff1e64e1.jpg",
+          "width": 1200,
+          "height": 1600
+        },
+        {
+          "id": "slide-3-e7afa1c2863b",
+          "file": "e7afa1c2863bb1c5e897881199934309c620055aed5f1eeaf6d7c8e4a12c5b05.jpg",
+          "width": 1200,
+          "height": 1626
+        },
+        {
+          "id": "slide-4-aa4874b4f6db",
+          "file": "aa4874b4f6db6a63f0892585b69fbd873c5e07075a575194bddbc3c1ab17c297.jpg",
+          "width": 1080,
+          "height": 1440
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-calory-tracking-f5a1ca2c1269a9e2",
+      "format": "slideshow",
+      "title": "Calory Tracking 10",
+      "category": "calory-tracking",
+      "categoryLabel": "Calory Tracking",
+      "posterFile": "2b84deb7489b2b1d4620f2c095508c195c9ea4470a3e4e74dac155b61235b78e.jpg",
+      "slides": [
+        {
+          "id": "slide-1-2b84deb7489b",
+          "file": "2b84deb7489b2b1d4620f2c095508c195c9ea4470a3e4e74dac155b61235b78e.jpg",
+          "width": 1200,
+          "height": 1600
+        },
+        {
+          "id": "slide-2-0b703c79195c",
+          "file": "0b703c79195cfb798bd7f742885b38b8ac84b45ca13f9db36e41087a282f724a.jpg",
+          "width": 1142,
+          "height": 1600
+        },
+        {
+          "id": "slide-3-a8852b51e1b9",
+          "file": "a8852b51e1b902631b97144a13176860f80841446f415a55b9fb5bcc7f4cdd36.jpg",
+          "width": 1142,
+          "height": 1600
+        },
+        {
+          "id": "slide-4-51d992e4d025",
+          "file": "51d992e4d02507dace3e1cc088ed8c3e80de771b95a00d6eba374523e7c76d6f.jpg",
+          "width": 1142,
+          "height": 1600
+        },
+        {
+          "id": "slide-5-7926c14a1a93",
+          "file": "7926c14a1a93e525c35ca350b36e0f5a4e301d874859ee72b948c205c0408dec.jpg",
+          "width": 1080,
+          "height": 1514
+        },
+        {
+          "id": "slide-6-ae28811306b9",
+          "file": "ae28811306b9534aa1908f3d4ae06efa25b91ff87726260d16374adda8196b80.jpg",
+          "width": 1080,
+          "height": 1512
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-9897ed22cf738042",
+      "format": "slideshow",
+      "title": "Fitness 15",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "1310db3063ed73a50276c6fce1c93a31753bafa4f1a306b4fbe4174ca3908114.jpg",
+      "slides": [
+        {
+          "id": "slide-1-1310db3063ed",
+          "file": "1310db3063ed73a50276c6fce1c93a31753bafa4f1a306b4fbe4174ca3908114.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-2-f1b5224c81d3",
+          "file": "f1b5224c81d3f81689e870326eb73fc8f745e806c2f9413790d13566f01375a6.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-3-860252a93b2a",
+          "file": "860252a93b2a9be0e1adc9a50a42d5007af424a4f1b1bcc01153e2a1f9134cac.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-4-d40262f8accb",
+          "file": "d40262f8accb9d2d44e60d09ec6901ffe9479a0ea85e03aa36fc83edffea7b09.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-5-74cd21376ccf",
+          "file": "74cd21376ccf6a0814d1ae15cf2deab9ff1591e1a0ab3f2a114340c486b2c95b.jpg",
+          "width": 1620,
+          "height": 2878
+        },
+        {
+          "id": "slide-6-cab23510ec41",
+          "file": "cab23510ec413adcdb8bae9ffc20ab8d09c5ad44b7772e5aedcb4ad1dac18e38.jpg",
+          "width": 1126,
+          "height": 2000
+        },
+        {
+          "id": "slide-7-5880f7b081f1",
+          "file": "5880f7b081f1e9feb955eeee947ae7985455cb0fb1d532a1fff5d0dde1a38eca.jpg",
+          "width": 1150,
+          "height": 2042
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-eba5cfac425a6799",
+      "format": "slideshow",
+      "title": "Fitness 16",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "4da9887163434268f9a14e1da8889a004831060f89284fd9d5fe3bcc5f6b8a92.jpg",
+      "slides": [
+        {
+          "id": "slide-1-4da988716343",
+          "file": "4da9887163434268f9a14e1da8889a004831060f89284fd9d5fe3bcc5f6b8a92.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-2-a5f14ed2ff29",
+          "file": "a5f14ed2ff2984b19d11d1c20620cf42f6847b4358fdcce6c41523f004015971.jpg",
+          "width": 981,
+          "height": 1920
+        },
+        {
+          "id": "slide-3-8b6c44c7f736",
+          "file": "8b6c44c7f736183b5cc7528fb8cbec571bbce21351fdbfc61645e9892143c5a7.jpg",
+          "width": 981,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-1ab7e03b18609533",
+      "format": "slideshow",
+      "title": "Fitness 17",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "1e3ab8f1170f2d57d4f90f5ff92c58dbcfb142a95909d9cde46d8b2a40497fd5.jpg",
+      "slides": [
+        {
+          "id": "slide-1-1e3ab8f1170f",
+          "file": "1e3ab8f1170f2d57d4f90f5ff92c58dbcfb142a95909d9cde46d8b2a40497fd5.jpg",
+          "width": 886,
+          "height": 1181
+        },
+        {
+          "id": "slide-2-8e3382a611e8",
+          "file": "8e3382a611e825a7485ee57d9ed1c0f3a966972a156b46be8d2a7922eadd3c23.jpg",
+          "width": 682,
+          "height": 1334
+        },
+        {
+          "id": "slide-3-d8596b97b0b8",
+          "file": "d8596b97b0b835bf53ee1538c98a204410869de39c196708237bf2757bf18c21.jpg",
+          "width": 886,
+          "height": 1181
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-29a05bed00dabbd4",
+      "format": "slideshow",
+      "title": "Fitness 18",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "2b280b011418fc37a11730bbdb7d97daafb2ea18d8c0df99eeea1664162c66da.jpg",
+      "slides": [
+        {
+          "id": "slide-1-2b280b011418",
+          "file": "2b280b011418fc37a11730bbdb7d97daafb2ea18d8c0df99eeea1664162c66da.jpg",
+          "width": 2160,
+          "height": 2880
+        },
+        {
+          "id": "slide-2-b777e6491525",
+          "file": "b777e6491525e448af23add2f64e952385ffe5d931776711a856f01fe955af81.jpg",
+          "width": 1180,
+          "height": 1360
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-fb12f86a11e5ec04",
+      "format": "slideshow",
+      "title": "Fitness 19",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "bd51606c2dc4ff06abd52bf27534361db147ca5583bd07dd98dcfdc0618d0837.jpg",
+      "slides": [
+        {
+          "id": "slide-1-bd51606c2dc4",
+          "file": "bd51606c2dc4ff06abd52bf27534361db147ca5583bd07dd98dcfdc0618d0837.jpg",
+          "width": 1080,
+          "height": 1444
+        },
+        {
+          "id": "slide-2-cc0c1474abbe",
+          "file": "cc0c1474abbefaa593ca72c31ab8e3ba4791610ca1e81fc80de371c99c51db42.jpg",
+          "width": 1180,
+          "height": 2098
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-fa5bd79d1463f253",
+      "format": "slideshow",
+      "title": "Fitness 20",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "d0af7449a6c370dde229614470fe752531dff928517a5e76e1e63d6630742004.jpg",
+      "slides": [
+        {
+          "id": "slide-1-d0af7449a6c3",
+          "file": "d0af7449a6c370dde229614470fe752531dff928517a5e76e1e63d6630742004.jpg",
+          "width": 1802,
+          "height": 2410
+        },
+        {
+          "id": "slide-2-eef3c31d2452",
+          "file": "eef3c31d24528e2609a77b50cfaad3afaad375d1caff074a3050871e5d008eef.jpg",
+          "width": 1180,
+          "height": 2096
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-35aed740a089aa3b",
+      "format": "slideshow",
+      "title": "Fitness 21",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "3ef6c9489facc7d0f610e10f2a2a081b4d7a67ea7a279de3dd6d2d9d2bf80622.jpg",
+      "slides": [
+        {
+          "id": "slide-1-3ef6c9489fac",
+          "file": "3ef6c9489facc7d0f610e10f2a2a081b4d7a67ea7a279de3dd6d2d9d2bf80622.jpg",
+          "width": 1152,
+          "height": 1598
+        },
+        {
+          "id": "slide-2-f787a94b1849",
+          "file": "f787a94b1849e04348195b2d6249b7c2e69eb5f8c4c739cc72ab2aee45fc75c5.jpg",
+          "width": 1180,
+          "height": 2098
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-fitness-6e508ea3e38302e6",
+      "format": "slideshow",
+      "title": "Fitness 22",
+      "category": "fitness",
+      "categoryLabel": "Fitness",
+      "posterFile": "4243c772c10bec95ea939fd62bd25c4068b06ac0cb7282853a20e0a6f3430d97.jpg",
+      "slides": [
+        {
+          "id": "slide-1-4243c772c10b",
+          "file": "4243c772c10bec95ea939fd62bd25c4068b06ac0cb7282853a20e0a6f3430d97.jpg",
+          "width": 1080,
+          "height": 1440
+        },
+        {
+          "id": "slide-2-56ae757d2f54",
+          "file": "56ae757d2f5454917f85c64846dfcb46716b6f56c18e260a9a18d69e30c7be5f.jpg",
+          "width": 736,
+          "height": 964
+        },
+        {
+          "id": "slide-3-b9ed59cbdae0",
+          "file": "b9ed59cbdae0122db293618b9bab5b85201d7ec8b07428b12b61c5c1654aa428.jpg",
+          "width": 712,
+          "height": 1344
+        },
+        {
+          "id": "slide-4-cf34e9c17a94",
+          "file": "cf34e9c17a94f1a1c73531f151a6d189de2a163c5f344633a8d032e7ce7057e2.jpg",
+          "width": 1356,
+          "height": 2560
+        },
+        {
+          "id": "slide-5-2c19bb05b2e0",
+          "file": "2c19bb05b2e050baf7acc4c8c0db38d9ba1892fc52daad5c74c39306b30af3e6.jpg",
+          "width": 692,
+          "height": 1308
+        },
+        {
+          "id": "slide-6-daff16ff316d",
+          "file": "daff16ff316dae161000ef4feb0c4e052459d326b7ce1b383b96034cafd6d2cf.jpg",
+          "width": 508,
+          "height": 900
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-skincare-9d2ac94d0f462f9f",
+      "format": "slideshow",
+      "title": "Skincare 09",
+      "category": "skincare",
+      "categoryLabel": "Skincare",
+      "posterFile": "1767253f7721662a5366bb134f93500f4d0eee9c7965173428e5f2f503b563f8.jpg",
+      "slides": [
+        {
+          "id": "slide-1-1767253f7721",
+          "file": "1767253f7721662a5366bb134f93500f4d0eee9c7965173428e5f2f503b563f8.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-2-3d59b5bf4b64",
+          "file": "3d59b5bf4b64b46f74f43fab67847ab4a485e5c10658dc397ebb766c76070a29.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-3-429d08d6223f",
+          "file": "429d08d6223f418e7f7e4791166328782c8d526e205355f42157b66826b5ebed.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-4-5c1386accb5c",
+          "file": "5c1386accb5c60a5ead7ba65dc5ecd749636bcf9eabbf18b76e9880bd644002c.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-5-b4b57a79a244",
+          "file": "b4b57a79a2443e53a455548475b832ae562f5963a7bfc389203309bea5663ef4.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-6-b9e3f2c575d0",
+          "file": "b9e3f2c575d0b8d83854d77565923885dc6f0d9697eaf2d85184506ccc748f4e.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-7-b6644c184ff9",
+          "file": "b6644c184ff90ee6b2d5fb3f7e7f5f7f49f112ab467d350d132263f1d545dccc.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-8-1569ba191179",
+          "file": "1569ba191179dc3db7b6b8bac876b53fff3ade276422374f01ce11047ad3b10d.jpg",
+          "width": 1080,
+          "height": 1080
+        },
+        {
+          "id": "slide-9-1c23bc9fc23f",
+          "file": "1c23bc9fc23fd0efb55cd3254ce4d4fc0cb186ebaa14f815648d59889734f6d8.jpg",
+          "width": 1080,
+          "height": 1080
+        }
+      ]
+    }
+  ]
+}

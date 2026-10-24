@@ -20,6 +20,7 @@ import { useWorkflowSourceVideo } from "@/components/explore/use-workflow-source
 import { WorkflowVideoSourceSection } from "@/components/explore/workflow-video-source-section";
 import { useLocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { useLocalWorkflowImages } from "@/components/explore/use-local-workflow-images";
+import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
 import { useWorkflowGenerationSettings } from "@/components/explore/use-workflow-generation-settings";
 import { WorkflowAccountBoundary, WorkflowGenerationBoundary } from "@/components/explore/workflow-generation-boundary";
 import { WorkflowFinishingBoundary } from "@/components/explore/workflow-finishing-boundary";
@@ -47,7 +48,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
   const appScreen = useLocalAppScreen();
   const videoReference = useLocalWorkflowMedia("video");
   const creatorAudio = useLocalWorkflowMedia("audio");
-  const creator = useLocalWorkflowImages(Math.max(0, (generation.settings.model === "kling_3_0" ? 2 : 6) - Number(Boolean(appScreen.asset)) - Number(Boolean(videoReference.asset)) - Number(Boolean(creatorAudio.asset))));
+  const creator = useLocalWorkflowImages(Math.max(0, getVideoReferencePolicy(generation.settings.model).maxImages - Number(appScreen.asset?.kind === "image")));
   const demo = useLocalWorkflowMedia("video");
   const demoAudio = useLocalWorkflowMedia("audio");
   const [demoAudioPlayback, setDemoAudioPlayback] = useState<ExploreBackgroundPlayback>("once");
@@ -130,7 +131,7 @@ function PhoneWorkflowLayout({ generationEnabled, ownerId, demoFramingEnabled }:
               demo={{ ...demo, choose: chooseDemo, remove: removeDemo }} demoAudio={{ ...demoAudio, choose: chooseDemoAudio, remove: removeDemoAudio }} demoAudioPlayback={demoAudioPlayback} onDemoAudioPlaybackChange={setDemoAudioPlayback} />
           </Tabs.Panel>
           <Tabs.Panel value="schedule" keepMounted className={creation.sectionPanel}>
-            <WorkflowSchedulingPanel draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platforms={workflowSelectedPlatforms(scheduleDraft)} selectedIds={workflowSelectedAccounts(scheduleDraft)} onSelect={(platform, id) => setScheduleDraft(current => selectWorkflowAccount(current, platform, id))} />} />
+            <WorkflowSchedulingPanel ownerId={ownerId} captionEnabled={generationEnabled && section === "schedule"} draft={scheduleDraft} onChange={setScheduleDraft} accountsControl={<WorkflowConnectedAccounts enabled={generationEnabled} active={section === "schedule"} ownerId={ownerId} platforms={workflowSelectedPlatforms(scheduleDraft)} selectedIds={workflowSelectedAccounts(scheduleDraft)} onSelect={(platform, id) => setScheduleDraft(current => selectWorkflowAccount(current, platform, id))} />} />
           </Tabs.Panel>
         </WorkflowCreationPanel>
         <section id="phone-workflow-preview" aria-label="Phone video creation workspace" className={cn(creation.main, sections.preview)} hidden={!previewVisible}>

@@ -10,6 +10,8 @@ import { isTrustedStorageUrl } from "@/lib/storage/storage";
 import { isExploreUuid } from "@/worker/src/lib/explore-finishing-contract";
 import { MAX_SLIDESHOW_SLIDES, MIN_SLIDESHOW_SLIDES } from "./slideshow-draft";
 import { readSlideshowEditableDraft } from "./slideshow-editable-draft";
+import { getCreatorSlideshowReference } from "./creator-slideshows.ts";
+import { canAccessCreatorAccounts } from "./creator-account-access.ts";
 
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store", Vary: "Authorization" } });
@@ -31,13 +33,13 @@ export async function handleSlideshowSave(request: Request) {
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return reject("Choose a valid slideshow."); }
     if (!record(body) || request.headers.get("Idempotency-Key") !== body.requestKey) return reject("Choose a valid slideshow request.");
-    return await saveSlideshowForOwner(user.uid, body);
+    return await saveSlideshowForOwner(user.uid, body,user);
   } catch (error) {
     return json({ ok:false, error:error instanceof FirebaseAuthRequestError ? error.message : "Could not confirm the saved slideshow. Resume the same save." }, error instanceof FirebaseAuthRequestError ? error.status : 503);
   }
 }
 /** Caller authenticates/checks access; website and MCP retain the same validation/fingerprint/RPC. */
-export async function prepareSlideshowSaveForOwner(userId: string, body: unknown) {
+export async function prepareSlideshowSaveForOwner(userId: string, body: unknown, actor?: Parameters<typeof canAccessCreatorAccounts>[0] & { uid?: string }) {
   try {
     if (process.env.EXPLORE_SLIDESHOW_SAVING_ENABLED !== "true") return reject("Slideshow saving is not enabled yet.",503);
     if (!record(body) || !isExploreUuid(body.requestKey) ||
@@ -45,7 +47,8 @@ export async function prepareSlideshowSaveForOwner(userId: string, body: unknown
       (body.version !== undefined && body.version !== 1 && body.version !== 2)) return reject("Choose 2–10 valid slideshow images.");
     const ownedSequence = body.version === 2;
     if (!(ownedSequence && body.referenceId === null || typeof body.referenceId === "string" && body.referenceId.length > 0 && body.referenceId.length <= 160)) return reject("Choose a valid slideshow reference.");
-    const reference = typeof body.referenceId === "string" ? getRecreateReferences().find(item => item.id === body.referenceId && item.format === "slideshow") : undefined;
+    const reference = typeof body.referenceId === "string" ? getRecreateReferences().find(item => item.id === body.referenceId && item.format === "slideshow")
+      ?? (actor?.uid === userId ? getCreatorSlideshowReference(body.referenceId,actor) : undefined) : undefined;
     const uploaded = typeof body.referenceId === "string" && body.referenceId.startsWith("uploaded:") && isExploreUuid(body.referenceId.slice(9));
     if (body.referenceId !== null && !reference && !uploaded || !ownedSequence && !reference && !uploaded) return reject("This slideshow reference is unavailable.");
 
@@ -89,8 +92,8 @@ export async function prepareSlideshowSaveForOwner(userId: string, body: unknown
 }
 
 /** The website retains its original RPC, response and immutable v1/v2 fingerprints. */
-export async function saveSlideshowForOwner(userId: string, body: unknown) {
-  const prepared = await prepareSlideshowSaveForOwner(userId, body);
+export async function saveSlideshowForOwner(userId: string, body: unknown, actor?: Parameters<typeof canAccessCreatorAccounts>[0] & { uid?: string }) {
+  const prepared = await prepareSlideshowSaveForOwner(userId, body,actor);
   if (prepared instanceof Response) return prepared;
   try {
     const databaseUrl = process.env.SUPABASE_URL?.trim() ?? process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();

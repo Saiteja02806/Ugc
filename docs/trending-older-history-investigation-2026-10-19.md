@@ -1,5 +1,15 @@
 # Older Trending posts unavailable after a time gap — 19 October 2026
 
+## 2026-10-19 Quota-history release verification
+
+- PR #74 merged as `283afc17`; staged production build `4c22c19e` has the identical Git tree and is live on both `getugcpilot.com` and `www.getugcpilot.com`.
+- Deployment `dpl_Dfbks1DRK3L4AMnmWQRJFU9ohNSM` is READY. No migrations or worker changes; MCP production unchanged. Deployment build settings restored.
+- Final history (22), interaction (88), TypeScript, lint, full browser and quota browser checks passed. The service recovered all eight reviewed production-quota slideshows, denied a different owner and left quota unchanged. Both live history endpoints reject anonymous requests with 401 and private/no-store caching.
+- Authenticated production-browser acceptance is still pending: the available browser is signed out. Deployment success does not establish that final user-session check. This entry supersedes earlier local-only/blocked-rerun status below.
+- Receipt: `outputs/trending-quota-history-release-verification-2026-10-19.json`.
+
+
+
 ## Implementation follow-up (local; not deployed)
 
 The correction below is now implemented locally. The original diagnosis is
@@ -39,6 +49,7 @@ Validation:
   slides each and no unavailable previews. A different owner was denied;
   the quota was unchanged. This checks actual data and service behavior,
   not the deployed HTTP endpoint or signed-in production browser.
+
 
 Run `npm run test:trending-history`, `npm run test:trending-interaction`, and
 `node scripts/trending-history-recovery.browser.cjs --quota-only` to reproduce.

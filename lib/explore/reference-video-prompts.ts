@@ -1,3 +1,5 @@
+import octoberRefresh from "./hook-reference-oct23-refresh-prompts.json" with { type: "json" };
+
 /** Reviewed pilot only. Never manufacture a performance for an unreviewed clip. */
 export const REFERENCE_TEXT_REMOVAL = "Remove all existing on-screen text, captions and text-associated emojis from the reference video. Reconstruct the underlying scene naturally. Do not add new text. Preserve text naturally present on physical objects.";
 
@@ -11,6 +13,15 @@ export type ReferenceVideoPrompt = {
 };
 
 export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = {
+  ...Object.fromEntries(octoberRefresh.entries.map(({ referenceId, ...entry }) => [referenceId, entry as ReferenceVideoPrompt])),
+  "explore-paired-hook-17133540b2315e0a3a05bfbd": {
+    version: 2,
+    sourceSha256: "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+    reviewMethod: "all_decoded_frames",
+    reviewedFrameCount: 123,
+    reviewNotes: "All 123 decoded frames reviewed in order. The supplied 4.1-second reaction-only clip is one continuous shot. Native audio retained; the separate full download's screen recording tail is excluded. Static source review; generated video quality not tested.",
+    performance: "Turn the surprised gaze toward the lens while keeping the raised hand beside the face. Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face. Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view.",
+  },
   "explore-paired-hook-4585ee949081c4e5cd835cd3": {
   "version": 2,
   "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
@@ -33,7 +44,7 @@ export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt
   "reviewMethod": "all_decoded_frames",
   "reviewedFrameCount": 109,
   "reviewNotes": "All 109 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
-  "performance": "Follow the original performance and timing: begin reclining against the patterned pillow, looking upward with slightly parted lips and a questioning expression. Briefly blink, bring the eyes toward the camera and widen them while raising the eyebrows. Glance toward screen-right, shift the gaze toward screen-left, then return to a wide-eyed look toward the lens. Hold the incredulous expression before the final sideways glance, with only small head movements and no added hand gesture. End on the performer in the same reaction scene through the final retained frame. Preserve the reclining position, pillow, dark headboard, handheld perspective, natural lighting and trimmed reference duration. Match the source gestures rather than the still pose in the image. Keep this a silent visual reaction: no speech, spoken words, voiceover, singing, lip-sync, music or background audio. Preserve the natural slightly parted lips without adding speaking movements. Keep the generated clip completely silent: no speech, spoken words, voiceover, singing, lip-sync, music or background audio."
+  "performance": "Follow the original performance and timing: begin reclining against the patterned pillow, looking upward with slightly parted lips and a questioning expression. Briefly blink, bring the eyes toward the camera and widen them while raising the eyebrows. Glance toward screen-right, shift the gaze toward screen-left, then return to a wide-eyed look toward the lens. Hold the incredulous expression before the final sideways glance, with only small head movements and no added hand gesture. End on the performer in the same reaction scene through the final retained frame. Preserve the reclining position, pillow, dark headboard, handheld perspective, natural lighting and trimmed reference duration. Match the source gestures rather than the still pose in the image. Preserve the natural slightly parted lips and original reaction movements."
 },
   "explore-paired-hook-b43622d1486957644f3317e6": {
   "version": 2,
@@ -513,7 +524,7 @@ export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt
   "explore-paired-hook-349e499826f7491d91f6b712": {
     version: 2, sourceSha256: "2a7b50e5af6a4ae022ce388de44598b7c5de4a67e7b9bf06e33b076df8fbe02a", reviewMethod: "all_decoded_frames", reviewedFrameCount: 136,
     reviewNotes: "All 136 decoded frames inspected sequentially. Temple hand lowers; wide eyes become furrowed questioning gaze, rounded lips and tighter off-center crop. No cut. Prompt content reviewed; generation quality not tested.",
-    performance: "Follow the original performance and timing: begin leaning toward the selfie camera with fingertips beside the temple on screen-right, brows drawn together and mouth open in disbelief. Blink, open the eyes much wider and hold the surprised stare toward the lens. Blink again, lower the hand out of view and furrow the brows more deeply. Move the face closer, glance off screen-right, briefly round and purse the lips, then return a questioning gaze toward the camera as the framing drifts into a tighter, partly off-center close-up. Preserve the white thin-strap top, long straight highlighted hair, necklace and hoop earrings, pale room with shelving, soft daylight, original handheld movement and full source duration; do not add dialogue.",
+    performance: "Follow the original performance and timing: begin leaning toward the selfie camera with fingertips beside the temple on screen-right, brows drawn together and mouth open in disbelief. Blink, open the eyes much wider and hold the surprised stare toward the lens. Blink again, lower the hand out of view and furrow the brows more deeply. Move the face closer, glance off screen-right, briefly round and purse the lips, then return a questioning gaze toward the camera as the framing drifts into a tighter, partly off-center close-up. Preserve the white thin-strap top, long straight highlighted hair, necklace and hoop earrings, pale room with shelving, soft daylight, original handheld movement and full source duration.",
   },
   "explore-paired-hook-88b4f433fe4fcb0504aca67f": {
     version: 2, sourceSha256: "3fd1ed03b048203fddd4df7fdae61b2980a0e4eabc8b4d376ac66e9615baa5aa", reviewMethod: "all_decoded_frames", reviewedFrameCount: 97,

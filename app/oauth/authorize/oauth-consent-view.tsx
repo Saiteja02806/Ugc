@@ -36,7 +36,12 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
   },
   "brand:read": {
     title: "Brand profile",
-    description: "View your business, product, audience, and source URL.",
+    description: "View your business, product, audience, source URL, saved Business Context drafts and change receipts.",
+    icon: BriefcaseBusiness,
+  },
+  "brand:write": {
+    title: "Edit Business Context",
+    description: "Save Business Context drafts and apply reviewed changes for future content. Existing generated content stays unchanged.",
     icon: BriefcaseBusiness,
   },
   "assets:read": {

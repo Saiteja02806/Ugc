@@ -13,6 +13,7 @@ const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/trending
 fs.mkdirSync(out, { recursive: true });
 const file = (name, value) => fs.writeFileSync(path.join(out, name), value);
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+file("css-loader.cjs", `const fs=require('node:fs'),path=require('node:path');module.exports=function(s){const p='ui_'+path.basename(this.resourcePath).replace(/[^a-z]/gi,'_')+'_';const m={};s=s.replace(/\\.([a-zA-Z_][\\w-]*)/g,(_,n)=>{m[n]=p+n;return '.'+p+n});fs.appendFileSync(${JSON.stringify(path.join(out,"modules.css"))},s+'\\n');return 'export default '+JSON.stringify(m)};`);
 file("auth.ts", "export const getCurrentUserIdToken=async()=> 'local-preferences';");
 file("context.ts", "export const useAuth=()=>({user:{uid:'local-owner',email:'verified@example.com',emailVerified:true}});");
 file("timezone.ts", "export const useAccountTimeZone=()=> 'Asia/Calcutta';");
@@ -23,13 +24,14 @@ function App(){const[open,setOpen]=useState(true);return mode==='preferences'?<P
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);`);
 
 async function main() {
+  file("modules.css", "");
   await new Promise((resolve, reject) => {
     const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], alias: {
       "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/contexts/auth-context": path.join(out, "context.ts"),
       "../firebase/auth": path.join(out, "auth.ts"),
       "@/components/providers/account-timezone-provider": path.join(out, "timezone.ts"),
       "@/components/social/use-social-oauth-popup": path.join(out, "popup.ts"), "@": root,
-    } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }] } });
+    } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.css$/, use: path.join(out, "css-loader.cjs") }] } });
     compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve()));
   });
   const accounts = ["instagram", "tiktok", "youtube"].map((platform) => ({
@@ -43,6 +45,9 @@ async function main() {
   const pendingPreferences = [];
   const releasePreferences = () => { holdPreferences = false; pendingPreferences.splice(0).forEach(resolve => resolve()); };
   const writes = [], errors = [];
+  const captionId = "00000000-0000-4000-8000-000000000001";
+  const defaultCaption = "A saved caption from Trending.\n\n#BuildInPublic";
+  let captions = { revision: 1, captions: [{ id: captionId, text: defaultCaption }], defaultId: captionId };
   const css = (await require("postcss")([require("@tailwindcss/postcss")({ base: root })])
     .process(fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "../components";'), { from: path.join(root, "app/globals.css") })).css;
   const json = (res, body) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); };
@@ -50,8 +55,12 @@ async function main() {
     const url = new URL(req.url, "http://fixture");
     if (url.pathname === "/" || url.pathname === "/settings") { res.setHeader("Content-Type", "text/html"); return res.end('<html class="dark"><head><link rel="stylesheet" href="/style.css"/><style>body{margin:0;font-family:Arial;background:#101312;color:white}</style></head><body><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script></body></html>'); }
     if (url.pathname === "/bundle.js") { res.setHeader("Content-Type", "text/javascript"); return res.end(fs.readFileSync(path.join(out, "bundle.js"))); }
-    if (url.pathname === "/style.css") { res.setHeader("Content-Type", "text/css"); return res.end(css); }
+    if (url.pathname === "/style.css") { res.setHeader("Content-Type", "text/css"); return res.end(css + fs.readFileSync(path.join(out,"modules.css"),"utf8")); }
     if (url.pathname.startsWith("/api/")) assert.equal(req.headers.authorization, "Bearer local-preferences");
+    if (url.pathname === "/api/account/saved-captions") {
+      if (req.method === "PUT") { let body=""; for await (const chunk of req) body+=chunk; const next=JSON.parse(body); if(next.revision!==captions.revision){res.statusCode=409;return json(res,{ok:false,message:"Changed in another tab"});} captions={...next,revision:next.revision+1}; }
+      return json(res,{ok:true,library:captions});
+    }
     if (url.pathname === "/api/account/publishing-preferences") {
       if (req.method === "PUT") { let body = ""; for await (const chunk of req) body += chunk; preferences = { ...preferences, ...JSON.parse(body) }; writes.push({ ...preferences }); }
       else assert.equal(req.method, "GET");
@@ -158,8 +167,20 @@ async function main() {
       releasePreferences();
       await ready();
       assert.equal(await disclosure().count(), 0);
+      const caption = page.getByRole("textbox", { name: "Post caption" });
+      await page.waitForFunction(expected => document.querySelector('textarea[name="caption"]')?.value === expected, defaultCaption);
+      await caption.fill("Saved from " + mode + "\n\n#UGCPilot");
+      await page.getByRole("button", { name: "Save caption", exact: true }).click();
+      await page.getByText("Caption saved.", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "Clear post caption", exact: true }).click();
+      assert.equal(await caption.inputValue(), "");
+      await page.getByRole("button", { name: /Saved captions/ }).click();
+      await page.getByRole("button", { name: "Use caption", exact: true }).first().click();
+      assert.equal(await caption.inputValue(), defaultCaption);
+      await page.getByRole("button", { name: /Saved captions/ }).click();
       await page.screenshot({ path: path.join(out, mode + "-1366x680.png"), fullPage: true });
       const settings = await submit(mode);
+      assert.equal(await page.evaluate(() => window.__submission.caption), defaultCaption);
       assert.equal(settings.containsSyntheticMedia, false);
       assert.equal(settings.privacyLevel, "SELF_ONLY");
       assert.equal(settings.allowComment, false);

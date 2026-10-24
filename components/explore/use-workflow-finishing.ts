@@ -12,10 +12,11 @@ import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explo
 import type { ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { pollInForeground } from "@/lib/http/foreground-polling";
 
 export type FinishingOptions = import("@/lib/explore/workflow-session").WorkflowSessionOptions;
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
-export type WorkflowAction = { busy: boolean; label?: string; processing?: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
+export type WorkflowAction = { busy: boolean; label?: string; completed?: boolean; processing?: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
 export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, demoAudioSource = null, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false, fastStatus = false, captionPreview = false, captionDraft = null, composition, demoAudioAssetId = null }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
@@ -42,7 +43,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
 }) {
   const active = useRef(true), working = useRef(false);
   const saved = useRef<SavedFinish | null>(null);
-  const uploaded = useRef(new Map<File, string>());
+  const uploaded = useRef(new WeakMap<File, string>());
   const [busy, setBusy] = useState(false), [restored, setRestored] = useState(false);
   const [status, setStatus] = useState<FinishStatus | null>(null), [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<MediaAsset | null>(null);
@@ -97,23 +98,14 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     if (!needsRecovery) return;
     // A completed receipt is not yet a usable preview if its owned-media GET
     // failed. Recover that same result without dispatching another render.
-    const timer = setInterval(() => {
-      if (fastStatus && typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      void refresh(true);
-    }, fastStatus ? 1000 : 4000);
-    return () => clearInterval(timer);
+    return pollInForeground({ poll: () => refresh(true), intervalMs: fastStatus ? 1000 : 4000 });
   }, [needsRecovery, refresh, fastStatus]);
   useEffect(() => {
     if (!needsRecovery || typeof window === "undefined") return;
-    const recover = () => { void refresh(true); };
-    const visible = () => { if (document.visibilityState === "visible") recover(); };
+    const recover = () => { if (document.visibilityState !== "hidden" && navigator.onLine) void refresh(true); };
     window.addEventListener("focus", recover);
-    window.addEventListener("online", recover);
-    document.addEventListener("visibilitychange", visible);
     return () => {
       window.removeEventListener("focus", recover);
-      window.removeEventListener("online", recover);
-      document.removeEventListener("visibilitychange", visible);
     };
   }, [needsRecovery, refresh]);
   async function upload(asset: LocalWorkflowMedia | null, mediaKind: "video" | "audio") {

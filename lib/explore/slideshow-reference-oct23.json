@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "mediaStatus": "published",
+  "items": [
+    {
+      "id": "explore-slideshow-general-649259ba9668dd18",
+      "format": "slideshow",
+      "title": "Slideshow 1",
+      "category": null,
+      "categoryLabel": null,
+      "posterFile": "c4d26e6aab8712af16c89e1521ed490b59d3fea380d385724fa4a12ea7beeaca.png",
+      "slides": [
+        {
+          "id": "slide-1-c4d26e6aab87",
+          "file": "c4d26e6aab8712af16c89e1521ed490b59d3fea380d385724fa4a12ea7beeaca.png",
+          "width": 470,
+          "height": 628
+        },
+        {
+          "id": "slide-2-7644f59cd6dd",
+          "file": "7644f59cd6dd4fa30dd5ab46fcd39e08677643ef7d64b584f06f459f86217686.png",
+          "width": 473,
+          "height": 597
+        },
+        {
+          "id": "slide-3-912403411ad7",
+          "file": "912403411ad7fba31c3f3d87465445372641c82819f601d3d9d74c37d97cc3d2.png",
+          "width": 472,
+          "height": 622
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "format": "slideshow",
+      "title": "Slideshow 2",
+      "category": null,
+      "categoryLabel": null,
+      "posterFile": "1b632b100c7e01921d5ae22ee1347aea1aa564978a7afa98168e1671a6b77693.png",
+      "slides": [
+        {
+          "id": "slide-1-1b632b100c7e",
+          "file": "1b632b100c7e01921d5ae22ee1347aea1aa564978a7afa98168e1671a6b77693.png",
+          "width": 1086,
+          "height": 1448
+        },
+        {
+          "id": "slide-2-c5e348e64bfb",
+          "file": "c5e348e64bfb2fe40665d1757bf3cfa3f62d8b4cdae603dbeff61ca7cab0ba7a.png",
+          "width": 1086,
+          "height": 1448
+        },
+        {
+          "id": "slide-3-1714b5c3d978",
+          "file": "1714b5c3d978a581f97cc8c3c2562e544b9ec49cc3b61e58522943bec11cde4b.png",
+          "width": 1086,
+          "height": 1448
+        },
+        {
+          "id": "slide-4-89dab46fb4e3",
+          "file": "89dab46fb4e31647445aa7c3cd8a2cad3694f6b514de666e1fb00cd27ec165ea.png",
+          "width": 1086,
+          "height": 1448
+        },
+        {
+          "id": "slide-5-ec43957cf2c9",
+          "file": "ec43957cf2c931f36369ddcaf5ce047e5cb95123853666dd63143866b46b22f3.png",
+          "width": 1086,
+          "height": 1448
+        },
+        {
+          "id": "slide-6-162345321e6c",
+          "file": "162345321e6cea8193d583707b92958e6a856e693519ee1bf9f4cb062a804e15.png",
+          "width": 1086,
+          "height": 1448
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-general-2f9cd9c161e9df4e",
+      "format": "slideshow",
+      "title": "Slideshow 3",
+      "category": null,
+      "categoryLabel": null,
+      "posterFile": "58632543f26c25a37b27160b5045089d9cf583fb654c9de68f4286195667cb19.png",
+      "slides": [
+        {
+          "id": "slide-1-58632543f26c",
+          "file": "58632543f26c25a37b27160b5045089d9cf583fb654c9de68f4286195667cb19.png",
+          "width": 1152,
+          "height": 2048
+        },
+        {
+          "id": "slide-2-79f4af9c561d",
+          "file": "79f4af9c561d33c4b1b69a1ea3a04697e5a1d2c7cfc0648196254825b380bc5e.png",
+          "width": 1030,
+          "height": 1344
+        }
+      ]
+    },
+    {
+      "id": "explore-slideshow-general-aa89f92f73637d43",
+      "format": "slideshow",
+      "title": "Slideshow 4",
+      "category": null,
+      "categoryLabel": null,
+      "posterFile": "a69f9077e1050ec87a8923b64a67203763b44bab82f0c6ce9905e7d74e92fb87.jpg",
+      "slides": [
+        {
+          "id": "slide-1-a69f9077e105",
+          "file": "a69f9077e1050ec87a8923b64a67203763b44bab82f0c6ce9905e7d74e92fb87.jpg",
+          "width": 2160,
+          "height": 3840
+        },
+        {
+          "id": "slide-2-fae07bb6b7bd",
+          "file": "fae07bb6b7bdfa971cec196ed89dff53af8a2ec66b6c6c475bfaaccceeb8491d.jpg",
+          "width": 1184,
+          "height": 2104
+        }
+      ]
+    }
+  ]
+}

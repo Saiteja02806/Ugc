@@ -72,14 +72,14 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
     </div>
     <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload slideshow images" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
-    {reference ? <details className={pickerStyles.selection} open><summary>Reference images<span aria-live="polite">{selectedSlideIds.length} selected</span></summary><div>
+    {reference ? <details className={pickerStyles.selection} open><summary>Source slides<span aria-live="polite">{selectedSlideIds.length} selected</span></summary><div>
       <div className={styles.slideshowContextStrip} role="group" aria-label="Select reference slides">
         {reference.slides.map((slide, index) => {
           const checked = selectedSlideIds.includes(slide.id);
-          return <button key={slide.id} type="button" className={styles.slideshowContextSlide} aria-label={`Slide ${index + 1} as generation reference`} aria-pressed={checked} disabled={disabled || busy} onClick={() => onSelectionChange(checked ? selectedSlideIds.filter(id => id !== slide.id) : [...selectedSlideIds, slide.id], checked ? undefined : index)}>
+          return <button key={slide.id} type="button" className={styles.slideshowContextSlide} aria-label={`Source slide ${index + 1} as generation reference`} title={`Source slide ${index + 1}`} aria-pressed={checked} disabled={disabled || busy} onClick={() => onSelectionChange(checked ? selectedSlideIds.filter(id => id !== slide.id) : [...selectedSlideIds, slide.id], checked ? undefined : index)}>
             <img src={slide.url} alt="" width={48} height={64} loading="lazy" />
             <span className={styles.slideshowContextCheck} aria-hidden="true">{checked ? <Check className="size-3" /> : null}</span>
-            <span className={styles.slideshowContextNumber} aria-hidden="true">{index + 1}</span>
+            <span className={styles.slideshowContextNumber} aria-hidden="true" title={`Source slide ${index + 1}`}>{index + 1}</span>
           </button>;
         })}
       </div>

@@ -32,14 +32,14 @@ test("recovery preserves an existing product-story batch before appending helpfu
   );
 });
 
-test("the default mixer allocates a 50-card Growth pack as 25 helpful tips and 25 product stories", () => {
+test("the default mixer allocates a 50-card Growth pack entirely to Structure 2", () => {
   assert.deepEqual(
     allocateTrendingSlideshowStyles({
       localDate: "2026-10-14",
       mix: DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
       slideshowCount: 50,
     }),
-    { helpful_tips: 25, product_stories_cta: 25 },
+    { helpful_tips: 0, product_stories_cta: 50 },
   );
 
   const batches = buildTrendingSlideshowStyleBatchPlan({
@@ -49,25 +49,25 @@ test("the default mixer allocates a 50-card Growth pack as 25 helpful tips and 2
   });
 
   assert.equal(batches.length, 10);
-  assert.equal(batches.filter((style) => style === "helpful_tips").length, 5);
+  assert.equal(batches.filter((style) => style === "helpful_tips").length, 0);
   assert.equal(
     batches.filter((style) => style === "product_stories_cta").length,
-    5,
+    10,
   );
   assert.equal(
-    batches.filter((style) => getCarouselStructureForTrendingSlideshowStyle(style) === "structure_1").length,
-    5,
+    batches.filter((style) => getCarouselStructureForTrendingSlideshowStyle(style) === "structure_2").length,
+    10,
   );
 });
 
-test("the default mixer allocates a 20-card Starter pack as ten cards of each style", () => {
+test("the default mixer allocates a 20-card Starter pack entirely to product stories", () => {
   assert.deepEqual(
     allocateTrendingSlideshowStyles({
       localDate: "2026-10-14",
       mix: DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
       slideshowCount: 20,
     }),
-    { helpful_tips: 10, product_stories_cta: 10 },
+    { helpful_tips: 0, product_stories_cta: 20 },
   );
   assert.equal(
     buildTrendingSlideshowStyleBatchPlan({
@@ -99,7 +99,7 @@ test("the UI reports the visible allocation produced by complete writer batches"
     allocateTrendingSlideshowStylesForPack({
       carouselCount: 20,
       localDate: "2026-10-14",
-      mix: DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
+      mix: { helpfulTips: 50, productStoriesCta: 50 },
     }),
     { helpful_tips: 10, product_stories_cta: 10 },
   );

@@ -47,8 +47,9 @@ locals {
       max_retry_duration    = "3600s"
     }
     carousel-edit = {
-      # Interactive rendering retains its own independent single-job service.
-      concurrent_dispatches = 1
+      # Match the dedicated edit service's two-instance cap. Generation keeps
+      # its own queue; each edit instance still processes one job at a time.
+      concurrent_dispatches = 2
       dispatches_per_second = 5
       max_attempts          = 5
       max_retry_duration    = "3600s"

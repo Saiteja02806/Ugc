@@ -619,7 +619,7 @@ test("advances locally and sends decisions through a durable background outbox",
   );
   assert.doesNotMatch(workspace, /setActiveItemIndex\(/);
   assert.match(workspace, /disabled=\{reviewEditDisabled\}/);
-  assert.match(workspace, /const reviewEditDisabled = Boolean\(exitDirection \|\| postHistory\.browsing && \(/);
+  assert.match(workspace, /const reviewEditDisabled = Boolean\(exitDirection \|\| postHistory\.browsing && activeCandidate\?\.format !== "carousel"\)/);
 });
 
 test("distinguishes ready cards from the complete remaining daily pack", () => {

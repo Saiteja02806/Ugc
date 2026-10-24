@@ -40,12 +40,14 @@ test("dragged positions reach real video exports for legacy, bundled-font and Sn
   assert.equal(digest(await readFile(sourcePath)), before);
 });
 
-test("new Remix text defaults to Inter Bold in Hook and Wall workflows", () => {
+test("new Remix text defaults to white Poppins Bold with outline 8 in Hook and Wall workflows", () => {
   for (const format of ["hook", "wall_text"]) {
     const source = { version: 1, referenceId: "ref", slideId: null, format, language: "en", sourceSha256: "a".repeat(64), blocks: [{ text: "Reference", startMs: 0, endMs: 2000 }] };
     const remixed = applyVideoTextRemix({ ...edit(null), format }, { blocks: ["New business message"], heading: "", body: "" }, source);
-    assert.equal(remixed.textOverlays[0].font, "inter");
+    assert.equal(remixed.textOverlays[0].font, "poppins");
     assert.equal(remixed.textOverlays[0].fontWeight, 700);
+    assert.equal(remixed.textOverlays[0].color, "#ffffff");
+    assert.equal(remixed.textOverlays[0].outlineWidth, 8);
   }
 });
 
@@ -96,19 +98,83 @@ test("every family and weight rasterizes distinctly using its bundled face and c
     // A missing packaged face cannot fall back silently to another font.
     await assert.rejects(prepareExploreFormatEditFilter({ width: 1080, height: 1920, durationMs: 2000, editing: edit(text), workDir, tools: { ...tools, fontsDir: join(root, "missing") } }));
   }
-  assert.equal(hashes.size, 12, "No family/weight silently falls back to the same face");
+  assert.equal(hashes.size, EXPLORE_TEXT_FONTS.length * EXPLORE_TEXT_WEIGHTS.length, "No family/weight silently falls back to the same face");
 });
 
 test("real video export preserves mixed font timing and original source bytes", async () => {
   const root = await mkdtemp(resolve(".tmp/explore-font-video-")), sourcePath = join(root, "source.mp4");
   execFileSync(ffmpeg, ["-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=360x640:r=30:d=2", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", sourcePath], { windowsHide: true });
   const before = digest(await readFile(sourcePath));
-  const textOverlays = EXPLORE_TEXT_FONTS.map(({ id: font }, i) => ({ ...legacyText, font, fontWeight: 500, startMs: i * 450, endMs: i * 450 + 350 }));
+  const interval = Math.floor(1800 / EXPLORE_TEXT_FONTS.length);
+  const textOverlays = EXPLORE_TEXT_FONTS.map(({ id: font }, i) => ({ ...legacyText, font, fontWeight: 500, startMs: i * interval, endMs: i * interval + interval - 75 }));
   const output = await finishExploreVideo({ sourcePath, editing: { ...edit(null), textOverlays }, workDir: join(root, "render"), tools });
   assert.equal(digest(await readFile(sourcePath)), before);
   const bright = ms => { const frame = execFileSync(ffmpeg, ["-v", "error", "-ss", String(ms / 1000), "-i", output.outputPath, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], { windowsHide: true }); let count = 0; for (let i=0;i<frame.length;i+=3) if (frame[i]>190 && frame[i+1]>190 && frame[i+2]>190) count++; return count; };
-  for (let i=0;i<4;i++) assert.ok(bright(i*450+150)>60);
+  for (let i=0;i<EXPLORE_TEXT_FONTS.length;i++) assert.ok(bright(i*interval+100)>60);
   assert.equal(bright(1900), 0);
+});
+
+for (const [font, family, outlineWidth] of [["tiktoksans", "UGCExploreTikTokSansW700", 2], ["poppins", "UGCExplorePoppinsW700", 8]]) test(`${font} Bold multiline copy survives saved edits and renders in a real video`, async () => {
+  const root = await mkdtemp(resolve(`.tmp/${font}-bold-`)), sourcePath = join(root, "source.mp4");
+  // Neutral gray separates the black outline from its background without YUV420
+  // blue chroma bleeding into thin black edge pixels during RGB decoding.
+  execFileSync(ffmpeg, ["-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=360x640:r=30:d=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", sourcePath], { windowsHide: true });
+  const copy = "POV: you finally understand\nhow to use UGCPilot\nfor marketing";
+  const text = { ...legacyText, value: copy, font, fontWeight: 700, outlineWidth, fontSize: 64, width: .9, startMs: 200, endMs: 1600 };
+  const saved = readFormatEditDraft(JSON.parse(JSON.stringify(edit(text))));
+  assert.equal(saved.text.value, copy); assert.equal(saved.text.font, font); assert.equal(saved.text.fontWeight, 700); assert.equal(saved.text.outlineWidth, outlineWidth);
+  const layout = formatTextLayout(saved.text, 360, 640);
+  assert.deepEqual(layout.lines, copy.split("\n")); assert.equal(layout.fontFamily, family); assert.equal(layout.outlineWidth, outlineWidth / 3);
+  const expectedSvg = await createOutlinedFormatTextSvg(saved.text, 360, 640, tools.fontsDir);
+  assert.match(expectedSvg, /<path d=/); assert.doesNotMatch(expectedSvg, /<text /);
+  const expected = await sharp(Buffer.from(expectedSvg)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const output = await finishExploreVideo({ sourcePath, editing: saved, workDir: join(root, "render"), tools });
+  const sample = ms => execFileSync(ffmpeg, ["-v", "error", "-ss", String(ms / 1000), "-i", output.outputPath, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], { windowsHide: true });
+  const visible = sample(800); let exactFacePixels = 0, matching = 0, outlinePixels = 0, matchingOutline = 0;
+  for (let pixel = 0; pixel < 360 * 640; pixel++) {
+    const rgba = pixel * 4, rgb = pixel * 3;
+    if (expected.data[rgba + 3] > 245 && expected.data[rgba] > 245 && expected.data[rgba + 1] > 245 && expected.data[rgba + 2] > 245) {
+      exactFacePixels++;
+      if (visible[rgb] > 200 && visible[rgb + 1] > 200 && visible[rgb + 2] > 200) matching++;
+    }
+    if (expected.data[rgba + 3] > 245 && expected.data[rgba] < 5 && expected.data[rgba + 1] < 5 && expected.data[rgba + 2] < 5) {
+      outlinePixels++;
+      if (visible[rgb] < 40 && visible[rgb + 1] < 40 && visible[rgb + 2] < 40) matchingOutline++;
+    }
+  }
+  assert.ok(exactFacePixels > 400, "Expected glyphs cover meaningful pixels");
+  assert.ok(matching / exactFacePixels > .95, "Exported pixels match the bundled Bold face, including all three lines");
+  if (outlineWidth === 8) { assert.ok(outlinePixels > 100); assert.ok(matchingOutline / outlinePixels > .9, "The thick black outline reaches the exported video"); }
+  for (const ms of [0, 1800]) {
+    const frame = sample(ms); let white = 0;
+    for (let i = 0; i < frame.length; i += 3) if (frame[i] > 200 && frame[i + 1] > 200 && frame[i + 2] > 200) white++;
+    assert.equal(white, 0, `No caption outside its saved timing at ${ms}ms`);
+  }
+});
+
+test("outline thickness is bounded, saved exactly and shared by browser SVG and export without changing legacy drafts", async () => {
+  assert.deepEqual(parseExploreFormatEdit(edit(legacyText)), edit(legacyText));
+  assert.equal(formatTextLayout(legacyText, 1080, 1920).outlineWidth, 2);
+  for (const outlineWidth of [0, 8, 16]) {
+    const text = { ...legacyText, font: "poppins", fontWeight: 700, outlineWidth };
+    const saved = readFormatEditDraft(JSON.parse(JSON.stringify(edit(text))));
+    assert.equal(saved.text.outlineWidth, outlineWidth);
+    assert.match(createFormatTextSvg(saved.text, 324, 576), new RegExp(`stroke-width="${outlineWidth * 324 / 1080}"`));
+    assert.match(await createOutlinedFormatTextSvg(saved.text, 324, 576, tools.fontsDir), new RegExp(`stroke-width="${outlineWidth * 324 / 1080}"`));
+    const classic = applyFormatTextPreset(saved.text, "snapchat-classic");
+    assert.doesNotMatch(createFormatTextSvg(classic, 324, 576), /stroke-width=/);
+    assert.equal(applyFormatTextPreset(classic, "bold").outlineWidth, outlineWidth);
+    const blank = readFormatEditDraft({ ...edit(null), textOverlays: [{ ...text, value: "" }] });
+    assert.equal(blank.textOverlays[0].outlineWidth, outlineWidth);
+  }
+  for (const outlineWidth of [-1, 17, NaN, Infinity, "8", null]) assert.throws(() => parseExploreFormatEdit(edit({ ...legacyText, outlineWidth })), /outline thickness/);
+  const root = await mkdtemp(resolve(".tmp/explore-original-outline-"));
+  for (const outlineWidth of [0, 8]) {
+    const workDir = join(root, String(outlineWidth)); await mkdir(workDir);
+    const result = await prepareExploreFormatEditFilter({ width: 360, height: 640, durationMs: 2000, editing: edit({ ...legacyText, outlineWidth }), workDir, tools });
+    assert.equal(result.captionImages.length, 1, "Changing the outline of Original/Arial text also uses the exact outline renderer");
+    assert.doesNotMatch(result.filter, /drawtext=/);
+  }
 });
 
 test("font outlines retain accents, emoji/script fallback and the selected preset background", async () => {

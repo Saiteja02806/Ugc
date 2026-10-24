@@ -387,10 +387,10 @@ export function registerAnalyticsMcpTools(server: McpServer) {
       notes: z.array(z.string()).max(2),
     }),
     annotations: readOnly,
-    scopeChallenge: requireScopes("account:read"),
-    _meta: oauthMetadata("account:read"),
+    scopeChallenge: requireScopes("analytics:read"),
+    _meta: oauthMetadata("analytics:read"),
   }, (_args, ctx) => executeTool(async () => {
-    const identity = principalIdentity(ctx, "account:read");
+    const identity = principalIdentity(ctx, "analytics:read");
     const configured = storageConfigured();
     const available = configured && identity.emailVerified;
 

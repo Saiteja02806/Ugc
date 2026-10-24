@@ -1,4 +1,7 @@
 export type PendingGeneration = { version: 1; ownerId: string; kind: "image" | "video"; scope: string; requestKey: string; input: Record<string, unknown> };
+export class GenerationClarificationError extends Error {
+  constructor(message: string, public clarifications: string[]) { super(message); }
+}
 export type SlideshowGenerationIdentity = { version: 1; batchKey: string; slideIndex: number; slideCount: number; versionIndex: number; versionCount: number };
 export type RecoveredGeneration = { ok: true; jobId: string; jobs: { jobId: string; generationId?: string; videoId?: string; slideshowGeneration?: SlideshowGenerationIdentity }[]; partial: boolean; message: string };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -90,12 +93,15 @@ export async function submitPendingGeneration(args: {
     if (!result) {
       args.assertActive();
       const response = await sendRequest(`/api/ai-studio/${saved.kind === "image" ? "images" : "videos"}/generate`, {
-        ...options, method: "POST", headers: { ...options.headers, "Content-Type": "application/json", "Idempotency-Key": requestKey }, body: JSON.stringify(saved.input),
+        ...options, ...(saved.input.slideshowContext ? { signal: AbortSignal.timeout(120_000) } : {}), method: "POST", headers: { ...options.headers, "Content-Type": "application/json", "Idempotency-Key": requestKey }, body: JSON.stringify(saved.input),
       });
       const value = await response.json().catch(() => null); args.assertActive();
       if (!response.ok || !value?.ok) {
         // These admission errors happen before the ordinary APIs create work.
         if ([400, 401, 402, 403, 422].includes(response.status)) args.storage.removeItem(key);
+        if (response.status === 422 && Array.isArray(value?.clarifications) && value.clarifications.length > 0 && value.clarifications.length <= 5 && value.clarifications.every((item: unknown) => typeof item === "string" && item.length <= 500)) {
+          throw new GenerationClarificationError(value.message, value.clarifications);
+        }
         throw new Error(value?.message ?? value?.error ?? "Generation could not be confirmed. Its request is preserved.");
       }
       result = confirmed(value, saved);

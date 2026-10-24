@@ -65,10 +65,16 @@ Never infer a later state from an earlier one. Live capability tools override pa
 - A READY production-target MCP deployment for source `1323837c` appeared while this review was running. It was created outside this work and does not contain the final merged candidate. This review did not create, promote, alias or alter that deployment or any production domain.
 - End-to-end host testing is therefore **not ready yet**. It still needs an isolated hosted database, a matching protected website/MCP staging pair from the exact candidate commit, and clean Codex and Claude Code install → sign-in → consent → callback → authenticated-read acceptance. Only after those pass should the previously authorized bounded one-second Hook/Demo finishing test run.
 
+## Combined business and analytics candidate — 24 October 2026
+
+- PR #71 now includes the business-release surface from PR #56. Plugin manifests are version `0.2.6` across `plugin.json`, `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json`. The package has 18 skills. Source registration is 106 tools: the 96-tool business candidate plus scheduling (`get_scheduling_capabilities`, `list_social_connections`, `list_schedules`, `get_schedule`, `create_schedule`) and saved analytics (`get_analytics_capabilities`, `get_instagram_account_analytics`, `get_instagram_content_analytics`, `get_tiktok_analytics`, `get_youtube_analytics`).
+- Saved TikTok and YouTube reads use the current snapshot store through `readSavedSocialAnalytics`. That helper never enqueues provider work. `readOrRefreshSocialAnalytics` remains the UI refresh entry and still delegates to `refreshAnalyticsSnapshot`.
+- `get_scheduling_capabilities` requires `publishing:read`. `get_analytics_capabilities` requires `analytics:read`. The consent screen already describes `analytics:read`. It does not yet describe `publishing:read` or `publishing:write`, and this pass does not add confirm-token flows or new consent-screen copy.
+
 ## Known gaps
 
 - Neither the earlier 0.2.2 OAuth candidate nor the 0.2.4 scheduling candidate has been deployed to protected staging or production.
-- The 0.2.5 analytics successor is pushed in draft PR #71 but is not deployed as a matching staged pair. It exposes saved reports, not provider refresh, social OAuth, schedule publishing or analytics mutation.
+- The 0.2.6 combined candidate in draft PR #71 supersedes the earlier 0.2.5 analytics package. It is not deployed as a matching staged pair. It exposes saved reports and gated schedule creation, not provider refresh, social OAuth, schedule publishing, or analytics mutation.
 - A clean Codex desktop installation has not yet been witnessed from **Install plugin** through sign-in, consent, callback return, and a successful authenticated read-only request.
 - Claude web connector evidence is not a substitute for a clean Claude Code plugin install and OAuth-return test.
 - The local Claude Code package must be upgraded from `0.1.8` to the reviewed `0.2.2` candidate after normal `claude auth login` succeeds. Confirm `claude auth status`, then use `/mcp` in a new Claude Code session to complete the UGC Pilot OAuth consent and run the stated read-only acceptance prompt.

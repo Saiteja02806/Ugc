@@ -8,6 +8,10 @@ import { trimHookFrames } from './trim-hook-reference-frames.mjs';
 import { referenceVideoPrompts,REFERENCE_TEXT_REMOVAL } from '../lib/explore/reference-video-prompts.ts';
 
 const root=path.resolve('outputs/hook-reference-audit-2026-10-19');
+const installationPath=path.join(root,'original-replacement-receipt.json');
+const installation=fs.existsSync(installationPath)?JSON.parse(fs.readFileSync(installationPath,'utf8')):null;
+const originalsReplaced=installation?.finished===true&&installation.replacements?.length===18;
+
 const existingAudit=process.argv.includes('--report-only')?JSON.parse(fs.readFileSync(path.join(root,'audit.json'),'utf8')):null;
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'inventory.json'),'utf8'));
 const rows=['batch-001-033.json','batch-034-066.json','batch-067-098.json'].flatMap(f=>JSON.parse(fs.readFileSync(path.join(root,f),'utf8'))).sort((a,b)=>a.ordinal-b.ordinal);
@@ -78,6 +82,8 @@ const stats={references:rows.length,decodedFrames:rows.reduce((a,r)=>a+r.reviewe
  cleaned:revised.filter(r=>r.receipt).length,manualReview:rows.filter(r=>r.status==='needs_review').length,keptByUser:rows.filter(r=>r.status==='keep_by_user').length,removedFrames:revised.filter(r=>r.receipt).reduce((a,r)=>a+r.receipt.originalFrameCount-r.receipt.retainedFrameCount,0),
  audio:'deferred_by_user',paidModelCalls:0,productionChanged:false,catalogueActivated:false};
 const cleanup={version:1,date:'2026-10-19',stats,manualReview:{ordinal:18,videoPath:manualVideo,framesPath:manualSheet,decision:decisions?.hook18??'pending_user'},items:revised};
+if(originalsReplaced)cleanup.originalImportReplacementReceipt='original-replacement-receipt.json';
+
 fs.writeFileSync(path.join(root,'audit.json'),JSON.stringify(cleanup,null,2)+'\n');
 const table=rows.map(r=>`<tr><td><a href="#hook-${r.ordinal}">${String(r.ordinal).padStart(2,'0')}</a></td><td>${r.reviewedFrameCount}</td><td>${esc(r.status==='clean'?'No unrelated cut':r.status==='trim_boundary'?'Cleaned copy ready':'Manual review')}</td><td>${esc(r.unwantedRanges.map(r=>r.startFrame===r.endFrame?r.startFrame:`${r.startFrame}–${r.endFrame}`).join(', '))}</td></tr>`).join('');
 const sections=revised.filter(r=>r.status!=='clean').sort((a,b)=>Number(!a.receipt)-Number(!b.receipt)||a.ordinal-b.ordinal).map(r=>{
@@ -94,7 +100,9 @@ const decisionHtml=decisions?.hook18==='keep_original'?html
  .replaceAll('0 manual decision','1 kept unchanged by your choice')
  .replaceAll('Review the uncertain airplane opening','View the unchanged airplane opening')
  .replaceAll('Manual review</td>','Kept by user</td>'):html;
-fs.writeFileSync(path.join(root,'review.html'),decisionHtml);
+fs.writeFileSync(path.join(root,'review.html'),originalsReplaced?decisionHtml.replace('Originals, soundtracks and current production references remain unchanged.','The 18 original import-folder MP4s have now been replaced with verified trimmed versions and backed up. Soundtracks and current production references remain unchanged.'):decisionHtml);
 const summary=`# Hook reference scene audit — 19 October 2026\n\nThree agents visually inspected all ${stats.decodedFrames} decoded frames across ${stats.references} active Hook references.\n\n- ${stats.clean} have no unrelated scene cut.\n- ${stats.cleaned} cleaned derivatives prepared; ${stats.removedFrames} unwanted tail frames removed.\n- Hook 18's continuous airplane-window reveal remains unchanged for the user's manual decision.\n- Audio deferred by user; no paid model calls or external processing.\n- Originals, soundtrack files, active catalogue and production unchanged.\n\nOpen review.html for cleaned videos, labelled cut boundaries, all-frame sheets and exact proposed prompts. audit.json contains source hashes, complete evidence and staged text-timing proposals. All retained decoded pixels and relative timestamps match their source; source sample duration defines each cleaned duration, not assumed frame rate.\n\n| Hook | Remove frames (zero based) | Keep frames | Cleaned duration |\n| --- | --- | --- | --- |\n${revised.filter(r=>r.receipt).map(r=>`| ${r.ordinal} | ${r.unwantedRanges.map(v=>v.startFrame===v.endFrame?v.startFrame:`${v.startFrame}–${v.endFrame}`).join(', ')} | ${r.keepStartFrame}–${r.keepEndFrameExclusive-1} | ${r.receipt.durationSeconds.toFixed(3)}s |`).join('\n')}\n\nThe proposed prompt paragraphs remove requests to reproduce discarded scenes. Original on-screen captions remain baked into source pixels; existing generation text-removal instructions remain. Caption text proposals clip/drop blocks outside retained footage and bind to new media hashes. These proposals are not activated. No local or production generated-output quality acceptance is claimed.\n`;
-fs.writeFileSync(path.join(root,'README.md'),decisions?.hook18==='keep_original'?summary.replace('remains unchanged for the user\'s manual decision.','is kept unchanged by the user\'s explicit decision.'):summary);
+const decisionSummary=decisions?.hook18==='keep_original'?summary.replace('remains unchanged for the user\'s manual decision.','is kept unchanged by the user\'s explicit decision.'):summary;
+fs.writeFileSync(path.join(root,'README.md'),originalsReplaced?decisionSummary.replace('- Originals, soundtrack files, active catalogue and production unchanged.','- All18 original import MP4s replaced as authorized, with verified backups. Soundtracks, active catalogue and production unchanged.'):decisionSummary);
+
 console.log(JSON.stringify(stats));

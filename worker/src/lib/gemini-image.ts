@@ -8,9 +8,11 @@ import {
 import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
+import { hookKeyframePromptSha256, hookKeyframeProviderImageLabels, hookKeyframeSceneBytesMatch, parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "./hook-keyframe-generation-contract.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const GEMINI_3_PRO_IMAGE_MODEL = "gemini-3-pro-image";
+export const HOOK_GEMINI_FLASH_IMAGE_MODEL = "gemini-3.1-flash-image";
 
 let googleClient: GoogleGenAI | null = null;
 
@@ -18,12 +20,16 @@ export async function generateGeminiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio,
   referenceImageUrl?: string | string[],
+  hookKeyframe?: HookKeyframeGenerationReceipt,
+  slideshowLabels?: string[],
 ) {
   const ai = getGoogleClient();
-  const model =
+  const model = hookKeyframe?.version === 2 ? HOOK_GEMINI_FLASH_IMAGE_MODEL :
     process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_GEMINI_IMAGE_MODEL;
-  const referenceImages = Array.isArray(referenceImageUrl)
-    ? (await downloadReferenceImageContext(referenceImageUrl)).map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType })) : undefined;
+  const downloadedImages = Array.isArray(referenceImageUrl) ? await downloadReferenceImageContext(referenceImageUrl) : undefined;
+  if (slideshowLabels && (hookKeyframe || slideshowLabels.length !== downloadedImages?.length)) throw new ProviderRequestNotSubmittedError("The slideshow image labels do not match the inputs.");
+  const referenceLabels = slideshowLabels ?? verifiedHookImageLabels(prompt, downloadedImages, hookKeyframe, "nano_banana_2");
+  const referenceImages = downloadedImages?.map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType }));
   const referenceImage = typeof referenceImageUrl === "string"
     ? await downloadReferenceImage(referenceImageUrl)
     : null;
@@ -34,6 +40,7 @@ export async function generateGeminiImageBuffer(
       prompt,
       referenceImage,
       referenceImages,
+      ...(referenceLabels ? { referenceLabels } : {}),
     }),
   );
 
@@ -60,17 +67,24 @@ export function buildGeminiImageRequest(params: {
   prompt: string;
   referenceImage: { data: string; mimeType: string } | null;
   referenceImages?: { data: string; mimeType: string }[];
+  referenceLabels?: string[];
   imageSize?: "1K" | "2K";
 }) {
   const images = params.referenceImages ?? (params.referenceImage ? [params.referenceImage] : []);
+  if (params.referenceLabels && (params.referenceLabels.length !== images.length || images.length < 1)) {
+    throw new ProviderRequestNotSubmittedError("The Hook scene and face input labels could not be verified.");
+  }
   return {
     input: images.length
       ? [
-          ...images.map(image => ({
-            data: image.data,
-            mime_type: image.mimeType,
-            type: "image" as const,
-          })),
+          ...images.flatMap((image, index) => [
+            ...(params.referenceLabels ? [{ text: params.referenceLabels[index], type: "text" as const }] : []),
+            {
+              data: image.data,
+              mime_type: image.mimeType,
+              type: "image" as const,
+            },
+          ]),
           { text: params.prompt, type: "text" as const },
         ]
       : params.prompt,
@@ -88,6 +102,7 @@ export async function generateGemini3ProImageBuffer(params: {
   prompt: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
+  hookKeyframe?: HookKeyframeGenerationReceipt;
   providerOperationId?: string;
   onOperationCreated: (operationId: string) => Promise<void>;
   onOperationSucceeded: (operationId: string) => Promise<void>;
@@ -106,8 +121,9 @@ export async function generateGemini3ProImageBuffer(params: {
     if (!prompt) {
       throw new ProviderRequestNotSubmittedError("Gemini 3 Pro requires a non-empty prompt.");
     }
-    const referenceImages = params.referenceImageUrls
-      ? (await downloadReferenceImageContext(params.referenceImageUrls)).map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType })) : undefined;
+    const downloadedImages = params.referenceImageUrls ? await downloadReferenceImageContext(params.referenceImageUrls) : undefined;
+    const referenceLabels = verifiedHookImageLabels(prompt, downloadedImages, params.hookKeyframe, "gemini_3_pro");
+    const referenceImages = downloadedImages?.map(image => ({ data: image.buffer.toString("base64"), mimeType: image.contentType }));
     const referenceImage = !referenceImages && params.referenceImageUrl
       ? await downloadReferenceImage(params.referenceImageUrl)
       : null;
@@ -118,6 +134,7 @@ export async function generateGemini3ProImageBuffer(params: {
       prompt,
       referenceImage,
       referenceImages,
+      ...(referenceLabels ? { referenceLabels } : {}),
     }));
     if (!interaction.id) throw new Error("Google returned no image interaction ID; acceptance could not be confirmed.");
     await params.onOperationCreated(interaction.id);
@@ -141,6 +158,18 @@ export async function generateGemini3ProImageBuffer(params: {
   }
   await params.onOperationSucceeded(interaction.id);
   return Buffer.from(interaction.output_image.data, "base64");
+}
+
+function verifiedHookImageLabels(prompt: string, images: Awaited<ReturnType<typeof downloadReferenceImageContext>> | undefined,
+  receipt: HookKeyframeGenerationReceipt | undefined, model: "gemini_3_pro" | "nano_banana_2") {
+  if (!receipt) return undefined;
+  if (!parseHookKeyframeGenerationReceipt(receipt) || (receipt.promptVersion !== 2 && receipt.promptVersion !== 3 && receipt.promptVersion !== 4) ||
+    (receipt.version === 2 ? receipt.imageModel !== model : model !== "nano_banana_2") ||
+    hookKeyframePromptSha256(prompt) !== receipt.promptSha256 || !images ||
+    images.length !== receipt.personImageAssetIds.length + 1 || !hookKeyframeSceneBytesMatch(receipt, images[0])) {
+    throw new ProviderRequestNotSubmittedError("The downloaded Hook scene does not match its verified opening frame. No image generation request was sent.");
+  }
+  return hookKeyframeProviderImageLabels(receipt.personImageAssetIds.length, receipt.promptVersion);
 }
 
 function getGoogleClient() {

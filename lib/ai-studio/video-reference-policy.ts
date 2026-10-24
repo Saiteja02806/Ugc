@@ -6,9 +6,18 @@ export type VideoReferencePolicyOptions = { allowOmniVideo?: boolean; hasTimedRe
 export function getVideoReferencePolicy(model: AIStudioVideoModel, options: VideoReferencePolicyOptions = {}) {
   const timed = model === "seedance_2_5" || model === "wan_3_0";
   const omniVideo = model === "google_omni" && options.allowOmniVideo === true;
+  // Image capacity is independent of the one video / one audio supported by
+  // this application. A source clip must not consume a face-photo slot.
+  // Google's Omni 1.1 Enterprise model card documents ten images per prompt:
+  // https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/omni-1-1-flash
+  // The direct Gemini stable route does not publish a separate numeric ceiling;
+  // ten is our supported cap based on that model-family specification, not a
+  // claim of a paid acceptance test or a guarantee about facial fidelity.
+  const maxImages = model === "seedance_2_5" ? 30 : model === "kling_3_0" ? 2 : 10;
   return {
     allowedKinds: ["image", ...(timed || omniVideo ? ["video"] : []), ...(timed ? ["audio"] : [])] as ("image" | "video" | "audio")[],
-    maxFiles: model === "kling_3_0" ? 2 : 6,
+    maxImages,
+    maxFiles: maxImages + (timed ? 2 : omniVideo ? 1 : 0),
     maxImageBytes: (model === "wan_3_0" && options.hasTimedReferences ? 16 : 20) * 1024 ** 2,
     maxVideoDuration: model === "wan_3_0" ? 15 : omniVideo ? 10 : 30,
     maxAudioDuration: model === "wan_3_0" ? 15 : 30,

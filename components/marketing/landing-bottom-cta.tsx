@@ -28,7 +28,7 @@ export function LandingBottomCta({
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-muted">
           <span className="flex items-center gap-1.5">
             <Zap className="size-3.5 text-amber-500" aria-hidden="true" />
-            2-minute setup
+            Start with your business context
           </span>
           <span className="flex items-center gap-1.5">
             <CreditCard className="size-3.5 text-primary" aria-hidden="true" />

@@ -10,6 +10,13 @@ type GuideSection = {
   paragraphs: readonly string[];
   bullets?: readonly string[];
   presentation?: "brief" | "example";
+  media?: {
+    src: string;
+    poster: string;
+    label: string;
+    description: string;
+    sourceHref: string;
+  };
 };
 
 type GuideFaq = {
@@ -41,7 +48,7 @@ export const founderGuideOpenGraphImage = {
   url: "/guides/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "UGCPilot founder marketing guides",
+  alt: "UGC Pilot founder marketing guides",
 };
 
 export const founderGuides = {
@@ -362,6 +369,24 @@ export const founderGuides = {
         ],
       },
       {
+        title: "Prepare a product demo people can trust",
+        paragraphs: [
+          "Before recording, choose one user question and the smallest real workflow that answers it. Write down the exact product fact the recording will prove, then show that action in the app instead of asking generated footage to stand in for the interface.",
+          "Use a demo account with sample data. Close notifications and remove names, email addresses, account IDs, and other private details from the screen before recording. Keep the opening short, show the real steps clearly, and end with one useful next action.",
+        ],
+        bullets: [
+          "Audience: who needs this explanation?",
+          "User question: what are they trying to do?",
+          "Verified app fact: what does the feature actually do?",
+          "Proof to record: which real action shows it working?",
+          "Opening line: what problem or question introduces the demo?",
+          "Exact on-screen text: what words need to appear?",
+          "Next action: what should an interested viewer do?",
+          "Privacy check: have sample data and a clean screen been used?",
+        ],
+        presentation: "brief",
+      },
+      {
         title: "Continue the story after launch",
         paragraphs: [
           "The launch is the start of the marketing loop. Use early user questions, reviews, feature requests, and usage patterns to decide what to explain next. This makes the content more concrete and gives the founder an ongoing source of ideas.",
@@ -650,13 +675,13 @@ function toJsonLd(guide: FounderGuide) {
         mainEntityOfPage: url,
         author: {
           "@type": "Organization",
-          name: guide.author ?? "UGCPilot",
+          name: guide.author ?? "UGC Pilot",
           url: "https://getugcpilot.com",
           logo: "https://getugcpilot.com/brand/ugc-pilot-logo.png",
         },
         publisher: {
           "@type": "Organization",
-          name: "UGCPilot",
+          name: "UGC Pilot",
           url: "https://getugcpilot.com",
           logo: "https://getugcpilot.com/brand/ugc-pilot-logo.png",
         },
@@ -753,6 +778,28 @@ export function FounderGuidePage({ guide }: { guide: FounderGuide }) {
               <div className="mt-4 space-y-4 text-[17px] leading-[1.75] text-foreground">
                 {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
               </div>
+              {section.media ? (
+                <figure className="mt-6">
+                  <video
+                    controls
+                    playsInline
+                    preload="none"
+                    width={1280}
+                    height={720}
+                    poster={section.media.poster}
+                    aria-label={section.media.label}
+                    aria-describedby={`${section.id}-media-description`}
+                    className="aspect-video w-full rounded-lg border border-border bg-black"
+                  >
+                    <source src={section.media.src} type="video/mp4" />
+                    Your browser cannot play this video. Read the description below or open the video file.
+                  </video>
+                  <figcaption id={`${section.id}-media-description`} className="mt-3 space-y-2 text-sm leading-6 text-muted">
+                    <p>{section.media.description}</p>
+                    <p><a href={section.media.src} className={linkClassName}>Open the short video</a>{" · "}<a href={section.media.sourceHref} className={linkClassName}>View the original walkthrough</a></p>
+                  </figcaption>
+                </figure>
+              ) : null}
               {section.bullets ? (
                 section.presentation === "brief" ? (
                   <GuideContentBrief id={`${section.id}-brief`} fields={section.bullets} />

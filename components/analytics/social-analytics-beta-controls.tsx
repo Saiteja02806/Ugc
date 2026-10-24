@@ -30,12 +30,16 @@ const platformOptions: Array<{
 
 export function SocialAnalyticsBetaControls({
   connections,
+  loading = false,
+  error = null,
   onConnectionChange,
   onPlatformChange,
   platform,
   selectedConnectionId,
 }: {
   connections: SocialConnection[];
+  loading?: boolean;
+  error?: string | null;
   onConnectionChange: (connectionId: string) => void;
   onPlatformChange: (platform: SocialPlatform) => void;
   platform: SocialPlatform;
@@ -78,6 +82,8 @@ export function SocialAnalyticsBetaControls({
               <PlatformAccountMenu
                 key={option.platform}
                 connections={platformConnections}
+                loading={loading}
+                error={error}
                 label={option.label}
                 onConnectionChange={(connectionId) => {
                   onPlatformChange(option.platform);
@@ -107,6 +113,8 @@ export function SocialAnalyticsBetaControls({
 
 function PlatformAccountMenu({
   connections,
+  loading,
+  error,
   label,
   onConnectionChange,
   onOpenChange,
@@ -117,6 +125,8 @@ function PlatformAccountMenu({
   selectedConnectionId,
 }: {
   connections: SocialConnection[];
+  loading: boolean;
+  error: string | null;
   label: string;
   onConnectionChange: (connectionId: string) => void;
   onOpenChange: (open: boolean) => void;
@@ -165,7 +175,7 @@ function PlatformAccountMenu({
               {label} accounts
             </PopoverTitle>
             <p className="text-xs text-muted">
-              {connections.length === 1
+              {loading ? "Loading accounts…" : error && connections.length === 0 ? "Accounts unavailable" : connections.length === 1
                 ? "1 connected account"
                 : `${connections.length} connected accounts`}
             </p>
@@ -194,7 +204,7 @@ function PlatformAccountMenu({
           </div>
         ) : (
           <p className="rounded-[var(--radius-segment)] border border-dashed border-border px-3 py-3 text-xs leading-5 text-muted">
-            No {label} accounts are connected yet.
+            {loading ? `Loading ${label} accounts…` : error ? "Could not load accounts. Please refresh and try again." : `No ${label} accounts are connected yet.`}
           </p>
         )}
       </PopoverContent>

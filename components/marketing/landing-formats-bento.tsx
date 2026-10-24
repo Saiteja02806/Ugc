@@ -44,7 +44,7 @@ export function LandingFormatsBento() {
             Reel Hooks
           </h3>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
-            Stop the scroll in the first 2 seconds with AI-scripted openers tailored to your niche.
+            Choose a hook reference and adapt the opening to your business context in Explore.
           </p>
         </div>
 
@@ -75,15 +75,15 @@ export function LandingFormatsBento() {
           <ul className="mt-4 space-y-2 text-xs leading-relaxed text-muted">
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span><strong>20+ daily hooks</strong> refreshed automatically</span>
+              <span><strong>Hook references</strong> to choose in Explore</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>High-retention viral opening angles</span>
+              <span>Review the opening against your product message</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>1-click script and angle customization</span>
+              <span>Adapt the words and direction before generating</span>
             </li>
           </ul>
         </div>
@@ -107,7 +107,7 @@ export function LandingFormatsBento() {
             Wall-of-Text Reels
           </h3>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
-            Deliver deep value fast with readable script overlays timed perfectly over moving B-roll.
+            Create or choose background footage, then add and review your on-screen message.
           </p>
         </div>
 
@@ -138,15 +138,15 @@ export function LandingFormatsBento() {
           <ul className="mt-4 space-y-2 text-xs leading-relaxed text-muted">
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>Auto-formatted vertical typography</span>
+              <span>Editable text and placement</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>Curated human-safe video B-roll</span>
+              <span>Reference footage and your own media</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>Paced for effortless mobile viewing</span>
+              <span>Check reading time on a phone</span>
             </li>
           </ul>
         </div>
@@ -170,7 +170,7 @@ export function LandingFormatsBento() {
             Slideshow Posts
           </h3>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
-            Build swipeable multi-slide visual decks that earn saves, shares, and high engagement.
+            Build a sequence of slides that explains one useful idea, then review it before scheduling.
           </p>
         </div>
 
@@ -259,7 +259,7 @@ export function LandingFormatsBento() {
           <ul className="mt-4 space-y-2 text-xs leading-relaxed text-muted">
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>Complete 6-slide story arcs ready to post</span>
+              <span>Review the full slide sequence before posting</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
@@ -267,7 +267,7 @@ export function LandingFormatsBento() {
             </li>
             <li className="flex items-center gap-2">
               <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span>1-click review & platform-ready scheduling</span>
+              <span>Review and schedule to a supported destination</span>
             </li>
           </ul>
         </div>

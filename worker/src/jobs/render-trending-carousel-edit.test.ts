@@ -58,8 +58,8 @@ test("six library backgrounds retain visible body-only copy through the real sav
       },
     },
   });
-  assert.deepEqual(rendered, [1, 2, 3, 4, 5, 6]);
-  assert.equal((output as { slides: unknown[] }).slides.length, 6);
+  assert.deepEqual(rendered.sort((a, b) => a - b), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual((output as { slides: { slideNumber: number }[] }).slides.map(slide => slide.slideNumber), [1, 2, 3, 4, 5, 6]);
 });
 
 for (const structureId of ["structure_1", "structure_2"] as const) {

@@ -63,6 +63,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedReceipt, setReceipt] = useState<ScheduleReceipt | null>(null);
+  const [receiptLoadedKey, setReceiptLoadedKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const alive = useRef(true), working = useRef(false);
   const key = `ugc-explore:schedule:v1:${user?.uid}:format:${output?.kind}:${output?.id}`;
@@ -94,9 +95,10 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   useEffect(() => {
     const timer = setTimeout(() => {
       setReceipt(null); setMessage(null); setError(null);
-      if (!user || !output || localPreview) return;
+      if (!user || !output || localPreview) { setReceiptLoadedKey(key); return; }
       try { const prior = saved(); setReceipt(prior); if (prior) setMessage(prior.scheduleId ? "Post scheduled" : prior.timeRejected ? SCHEDULE_TIME_REJECTED_MESSAGE : "Scheduling was interrupted. Try again to finish scheduling your post."); }
       catch (e) { setError(e instanceof Error ? e.message : "Could not restore scheduling."); }
+      finally { setReceiptLoadedKey(key); }
     }, 0);
     return () => clearTimeout(timer);
     // Restore once per output; never publish or POST during hydration.
@@ -167,13 +169,13 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Try again" : receipt?.scheduleId ? "Schedule another post" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Try again" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
-    {receipt?.scheduleId ? <Link href="/scheduling" className="text-sm text-primary underline">View in Scheduling</Link> : null}
+    {receipt?.scheduleId ? <Link href="/scheduling" className={reviewStyles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;
   if (pendingComposition && user && !localPreview && !imageOnly) return <PendingExploreSchedulePanel key={`${format}:${draftScopeId}`} owner={user.uid} scope={`${format}:${draftScopeId ?? "workflow"}`} composition={pendingComposition} draft={draft} onChange={setDraft} timezone={timezone} active={active} onBackToEdit={onBackToEdit} />;
-  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} /></div>
+  return <div hidden={!active} className={reviewStyles.panel}><div><WorkflowSchedulingPanel ownerId={user?.uid ?? null} captionEnabled={active && !localPreview && storedDraft.key === draftKey && receiptLoadedKey === key && !receipt && !error && !busy} captionScope={draftKey ?? "format"} draft={draft} onChange={setDraft} imageOnly={imageOnly} timezone={timezone} presentation="review" footer={actions} accountsControl={<WorkflowConnectedAccounts enabled={!localPreview} active={active} ownerId={user?.uid ?? null} platforms={platforms} selectedIds={workflowSelectedAccounts(draft)} onSelect={(platform, id) => setDraft(selectWorkflowAccount(draft, platform, id))} />} /></div>
     <section aria-label="Schedule summary" className={reviewStyles.summary}>
       <h3 className="sr-only">Schedule summary</h3>
       <p className={reviewStyles.summaryDestination}>{destinations || "Choose where to publish"}</p>

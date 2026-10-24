@@ -188,10 +188,10 @@ export function registerSchedulingMcpTools(server: McpServer) {
       notes: z.array(z.string()).max(2),
     }),
     annotations: readOnly,
-    scopeChallenge: requireScopes("account:read"),
-    _meta: oauthMetadata("account:read"),
+    scopeChallenge: requireScopes("publishing:read"),
+    _meta: oauthMetadata("publishing:read"),
   }, (_args, ctx) => executeTool(async () => {
-    principal(ctx, "account:read");
+    principal(ctx, "publishing:read");
     const configured = getMissingSchedulingRuntimeEnvVars().length === 0;
     const writeToolsAvailable = configured && writesEnabled();
     return {

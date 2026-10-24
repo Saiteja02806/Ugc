@@ -5,6 +5,8 @@ export const EXPLORE_TEXT_FONTS = [
   { id: "dmsans", label: "DM Sans" },
   { id: "robotocondensed", label: "Roboto Condensed" },
   { id: "montserrat", label: "Montserrat" },
+  { id: "poppins", label: "Poppins" },
+  { id: "tiktoksans", label: "TikTok Sans" },
 ] as const;
 export type ExploreTextFont = typeof EXPLORE_TEXT_FONTS[number]["id"];
 export type ExploreTextWeight = 400 | 500 | 700;

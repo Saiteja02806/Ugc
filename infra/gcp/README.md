@@ -87,7 +87,10 @@ For an app hosted outside GCP, also configure the `ugc-app-sa` credential using
 Never commit credentials.
 
 Slideshow hook/image edits use `ugc-carousel-edit` and the dedicated
-`ugc-carousel-edit-worker`, with one warm instance and one concurrent request.
+`ugc-carousel-edit-worker`, with one warm instance, up to two instances and one
+concurrent request per instance. Its queue admits up to two edits concurrently.
+The 24 October configuration increase is prepared locally; production remains
+at one concurrent dispatch/one instance until the paused release is authorized.
 Generation retains its existing serial queue/worker. Terminal generation jobs
 enqueue authenticated feed admission into `ugc-trending-reconciliation`; the
 database outbox and recovery scheduler retain failed deliveries.
@@ -104,11 +107,29 @@ service adds one warm instance; do not raise shared generation concurrency.
 1. Push the complete validated source to Git `main`. Temporarily skip Vercel
    Git builds while database prerequisites are pending.
 2. Apply only missing Supabase migrations and verify migration parity.
-3. Restore the Vercel Git build setting and deploy the exact `main` revision.
-4. Build one worker image from that revision and deploy it to every active
+3. Build one worker image from that revision and deploy it to every active
    worker service and job that uses this source.
+4. Verify worker readiness/source identity first, then stage and promote the
+   website and MCP from the same revision. Restore prior Vercel Git build
+   settings after promotion. New producers such as curated frame receipt v3
+   must never reach production before their backward-compatible workers.
 5. Run authenticated production smoke tests and verify app/worker source SHA
    parity on `https://www.getugcpilot.com`.
+
+For video-result delivery, run
+`node scripts/check-generation-worker-release.mjs <exact-reviewed-worker-sha>`
+before declaring the worker rollout complete. It is read-only and fails when
+traffic is split, the `/version` endpoint is missing, or the image's baked SHA
+and runtime SHA disagree with the reviewed commit. A successful Vercel build
+or a newly staged zero-traffic worker revision does not pass this check.
+Record the website deployment SHA separately. A later web-only commit can
+legitimately differ from the worker SHA; never substitute it for verifying the
+worker source changes required by a generation release.
+
+Keep `ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY=false` until the separately
+approved completed-output recovery migration is installed and verified. This
+gate affects exhausted historical collection recovery, not the collector fix
+for new video jobs. Do not enable it to work around a deferred database change.
 
 ## Infrastructure bootstrap apply order
 

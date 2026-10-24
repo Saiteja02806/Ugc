@@ -19,6 +19,7 @@ const load = (file, imports = {}, globals = {}) => {
 const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
+  "../../worker/src/lib/hook-starting-frame-video": load("worker/src/lib/hook-starting-frame-video.ts"),
   "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
   "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
   "./workflow-generation-settings": settings,
@@ -55,6 +56,45 @@ function harness(overrides = {}) {
   });
   return { client, calls, uploads, tokens };
 }
+
+const startingFrame = {
+  ownerId: "owner-a", draftId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-01", sourceSha256: "a".repeat(64),
+  assetId: "00000000-0000-4000-8000-000000000003", jobId: "00000000-0000-4000-8000-000000000004",
+  url: "https://storage.googleapis.com/test/approved.png", width: 720, height: 1280, durationSeconds: 4,
+  motionInstructions: "Natural direct-to-camera delivery.", generateAudio: true,
+};
+
+test("Talking Head starting-frame requests preserve script and owned identities without uploading references", async () => {
+  const actual = harness();
+  await actual.client.generate(draft({ instructions: "Say my exact message.", referenceInstructions: startingFrame.motionInstructions,
+    settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }), startingFrame }));
+  const body = JSON.parse(actual.calls[0].body);
+  assert.equal(actual.uploads.length, 0);
+  assert.equal(body.startingFrameAssetId, startingFrame.assetId);
+  assert.equal(body.startingFrameJobId, startingFrame.jobId);
+  assert.equal(body.referenceId, startingFrame.referenceId);
+  assert.equal(body.exploreFormat, "hook");
+  assert.equal(body.generateAudio, true);
+  assert.match(body.prompt, /Say my exact message/);
+  for (const name of ["avatarImageUrl", "referenceImageUrls", "referenceVideoUrl", "sourceSha256"]) assert.equal(name in body, false);
+});
+
+test("Starting-frame animation blocks unsupported settings and retained audio before uploads or submission", async () => {
+  for (const overrides of [
+    { settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0", duration: 5 }) },
+    { settings: { ...settings.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 4 }), duration: 3 } },
+    { audioReference: { url: "blob:audio", file: { type: "audio/wav", size: 20 }, duration: 4 } },
+    { creator: { url: "blob:portrait" } },
+    { settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4, aspectRatio: "16:9" }) },
+    { startingFrame: { ...startingFrame, width: 1000, height: 1000 } },
+    { kind: "phone" },
+  ]) {
+    const actual = harness();
+    await assert.rejects(actual.client.generate(draft({ startingFrame, settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }), ...overrides })));
+    assert.equal(actual.calls.length, 0);
+    assert.equal(actual.uploads.length, 0);
+  }
+});
 
 test("Talking Head and creator-phone preserve two/three requested videos through the request and response", async () => {
   for (const kind of ["hook", "phone"]) for (const quantity of [2, 3]) {
@@ -183,21 +223,21 @@ test("the ordered image collection is authoritative and every selected image rea
 test("image limits include the phone screenshot and block before any upload or authentication", async () => {
   const images = count => Array.from({ length: count }, (_, index) => ({ name: `image-${index}.png`, url: `blob:image-${index}` }));
   for (const input of [
-    draft({ referenceImages: images(7) }),
+    draft({ referenceImages: images(31) }),
     draft({ referenceImages: images(3), settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0" }) }),
-    draft({ kind: "phone", referenceImages: images(6), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
-    draft({ referenceImages: images(6), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
-    draft({ referenceImages: images(5), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
+    draft({ kind: "phone", referenceImages: images(30), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
+    draft({ referenceImages: images(31), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
+    draft({ referenceImages: images(31), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
     draft({ referenceImages: [{ name: "invalid.svg", url: "blob:invalid", file: { type: "image/svg+xml", size: 200 } }] }),
   ]) {
     const actual = harness();
     await assert.rejects(actual.client.generate(input));
     assert.equal(actual.uploads.length + actual.calls.length + actual.tokens.length, 0);
   }
-  for (const model of ["kling_3_0", "google_omni", "seedance_2_5"]) {
+  for (const [model, limit] of [["kling_3_0", 2], ["google_omni", 10], ["seedance_2_5", 30], ["wan_3_0", 10]]) {
     const actual = harness();
-    await actual.client.generate(draft({ referenceImages: images(model === "kling_3_0" ? 2 : 6), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
-    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, model === "kling_3_0" ? 2 : 6);
+    await actual.client.generate(draft({ referenceImages: images(limit), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
+    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, limit);
   }
 });
 

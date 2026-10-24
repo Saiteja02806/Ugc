@@ -1,5 +1,12 @@
 # Seedance 2.5 Less Restriction verification — 19 October 2026
 
+**Later correction:** this report verified provider routing and credentials, but
+missed the Explore request admission guard. Hook/Wall requests carrying
+`exploreFormat` were blocked before reaching this route. See
+[the admission investigation](seedance-explore-admission-fix-2026-10-19.md).
+Provider configuration alone does not establish that a user can submit a request.
+
+
 **Current production configuration: yes, new Seedance requests use the ReAPI
 key and request the intended Less Restriction route. Historical failed Hook
 requests did not use that route. Successful live Seedance output on the new

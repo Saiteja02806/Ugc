@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { RetryableJobError } from "../retryable-job-error.js";
-import { isProviderBalanceFailure } from "./provider-balance.js";
+import { RetryableJobError } from "../retryable-job-error.ts";
+import { isProviderBalanceFailure } from "./provider-balance.ts";
 import type { SupabaseJobStore } from "./supabase.js";
 
 export class ProviderRequestNotSubmittedError extends Error {

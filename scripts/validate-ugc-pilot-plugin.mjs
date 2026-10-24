@@ -161,8 +161,17 @@ export function validatePackage({ submission = false } = {}) {
   assert(portableInterface);
   assert.deepEqual(codex.extensions?.["com.openai"], portableExtension, "Compatibility onboarding/review metadata differs");
 
-  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content", "account-settings", "scheduling", "analytics"].flatMap((kind) => {
+  const knownTools = new Set(["read", "mutation", "generation", "finishing", "demo", "upload-recovery", "operation", "edit-draft", "edit-export", "audio", "audio-video-import", "reference", "creative-group", "library-content", "account-settings", "business-context", "business-onboarding", "business-logo", "scheduling", "analytics"].flatMap((kind) => {
     const code = fs.readFileSync(path.join(root, `lib/mcp/${kind}-tools.ts`), "utf8");
+    if (kind === "business-context") {
+      const inventory=code.match(/registeredBusinessContextMcpTools\s*=\s*(\[[^\]]+\])\s*as const/);
+      assert(inventory, "Missing Business Context inventory");
+      const declared=JSON.parse(inventory[1]);
+      const staticNames=[...code.matchAll(/registerTool\("([a-z_]+)"/g)].map(match=>match[1]);
+      const dynamicNames=[...code.matchAll(/tool:"([a-z_]+)"/g)].map(match=>match[1]);
+      assert.deepEqual([...new Set([...staticNames,...dynamicNames])].sort(),[...declared].sort(),"Business Context registrations differ from declared inventory");
+      return declared;
+    }
     if (kind === "creative-group") {
       const inventory = code.match(/registeredCreativeGroupMcpTools\s*=\s*(\[[^\]]+\])\s*as const/);
       assert(inventory, "Missing creative-group registered inventory");
@@ -174,7 +183,7 @@ export function validatePackage({ submission = false } = {}) {
     }
     return [...code.matchAll(/registerTool\("([a-z_]+)"/g)].map((match) => match[1]);
   }));
-  assert.equal(knownTools.size, 89, "Review the package contract when the MCP tool surface changes");
+  assert.equal(knownTools.size, 106, "Review the package contract when the MCP tool surface changes");
   const reviewReadiness = validateOpenAiMetadata(plugin, knownTools, { submission });
   const skillNames = new Set(packageFiles.filter((relative) => relative.endsWith("/SKILL.md")).map((relative) => path.basename(path.dirname(relative))));
   for (const item of json("evaluation-cases.json").cases) {

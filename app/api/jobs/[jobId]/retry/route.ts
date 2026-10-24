@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { BillingAccessError } from "@/lib/billing/subscription-db";
 
 import { requireFirebaseUser } from "@/lib/firebase/server-auth";
-import { getPublicBackgroundJob, isRetryableBackgroundJob } from "@/lib/jobs/background-job-contract";
+import { getPublicBackgroundJob, isRetryableBackgroundJob, isProviderOutputRecoveryCandidate } from "@/lib/jobs/background-job-contract";
 import {
   assertBackgroundJobOwner,
   retryAndDispatchBackgroundJob,
@@ -48,6 +48,7 @@ export async function POST(
     const job = await retryAndDispatchBackgroundJob({
       jobId: existing.id,
       userId: user.uid,
+      ...(isProviderOutputRecoveryCandidate(existing) ? { collectCompletedOutput: true } : {}),
     });
 
     if (!job) {

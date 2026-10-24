@@ -136,7 +136,8 @@ test("logo uploads are tenant-owned and verified before persistence", () => {
   assert.match(logoValidation, /isOwnedBusinessLogoStorageKey/);
   assert.match(logoValidation, /headStorageObject/);
   assert.match(logoValidation, /range: `bytes=0-\$\{BUSINESS_LOGO_MAX_BYTES\}`/);
-  assert.match(logoValidation, /sharp\(buffer, \{ failOn: "error" \}\)\.metadata\(\)/);
+  assert.match(logoValidation, /sharp\(buffer, \{ failOn: "error", limitInputPixels: BUSINESS_LOGO_MAX_DIMENSION \*\* 2 \}\)/);
+  assert.match(logoValidation, /image\.metadata\(\)/);
 });
 
 test("daily generation requires persisted and runtime completeness", () => {

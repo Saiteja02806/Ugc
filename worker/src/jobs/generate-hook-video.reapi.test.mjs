@@ -123,6 +123,37 @@ test("WAN collection failure preserves completion and recovers the same task fro
   assert.equal(ctx.operation().metadata.providerCostUsd, .495);
 });
 
+test("Seedance collection recovery persists the isolated CDN result and original cost using the same paid task", async () => {
+  const ctx = context(); let posts = 0; let recovered = false;
+  const outputUrl = "https://reapiflexible.b-cdn.net/seedance.mp4?token=private-signed-token";
+  mock.method(globalThis, "fetch", async (url, init) => {
+    assert.equal(init?.redirect, "error");
+    if (init?.method === "POST") {
+      posts++; assert.equal(JSON.parse(init.body).content_filter, false);
+      return json({ id: "existing-seedance" }, 202);
+    }
+    if (String(url).startsWith("https://reapi.ai/api/v1/tasks/")) {
+      assert.equal(String(url), "https://reapi.ai/api/v1/tasks/existing-seedance");
+      return json({ id: "existing-seedance", status: "completed", output: {
+        video_urls: [recovered ? outputUrl : "https://untrusted.example/private-token"],
+      }, usage: { credits: 1281 } });
+    }
+    assert.equal(String(url), outputUrl);
+    assert.equal(new Headers(init?.headers).has("Authorization"), false);
+    return new Response(video, { headers: { "content-type": "video/mp4" } });
+  });
+  await assert.rejects(runGenerateHookVideoJob(job, ctx), error => error.code === "PROVIDER_OUTPUT_COLLECTION_FAILED");
+  assert.equal(ctx.operation().status, "provider_succeeded");
+  assert.equal(ctx.operation().metadata.providerCostUsd, 1.281);
+  recovered = true;
+  const result = await runGenerateHookVideoJob(job, ctx);
+  assert.equal(result.provider, "reapi"); assert.equal(posts, 1);
+  assert.equal(ctx.operation().provider_operation_id, "existing-seedance");
+  assert.equal(ctx.operation().status, "output_persisted");
+  assert.equal(ctx.operation().metadata.providerCostUsd, 1.281);
+});
+
+
 test("ReAPI credit and moderation rejections are terminal without provider fallback", async () => {
   for (const [status, errorCode, expectedCode] of [[402, 20001, "PROVIDER_INSUFFICIENT_CREDITS"], [400, 80006, "PROVIDER_CONTENT_MODERATION"]]) {
     const ctx = context(); let posts = 0;
@@ -131,4 +162,34 @@ test("ReAPI credit and moderation rejections are terminal without provider fallb
     assert.equal(posts, 1); assert.equal(ctx.operation().last_error_code, expectedCode); assert.equal(ctx.operation().retry_allowed, false);
     mock.restoreAll();
   }
+});
+
+test("collection-only recovery fails closed without a verified completed saved task, before any provider request", async () => {
+  for (const operation of [null, { provider: "reapi", status: "submitted", provider_operation_id: "saved" },
+    { provider: "reapi", status: "provider_succeeded", provider_operation_id: null },
+    { provider: "openrouter", status: "provider_succeeded", provider_operation_id: "saved" }]) {
+    const ctx = context();
+    ctx.store.getGenerationProviderOperation = async () => operation;
+    ctx.store.reserveGenerationProviderOperation = async () => assert.fail("must not reserve a new operation");
+    mock.method(globalThis, "fetch", async () => assert.fail("must not contact a provider"));
+    await assert.rejects(runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json,
+      providerOutputRecovery: "collection-only-v1" } }, ctx), /saved completed provider task/);
+    mock.restoreAll();
+  }
+});
+
+test("collection-only recovery downloads the existing paid task without a POST or changed fingerprint", async () => {
+  const ctx = context(); let posts = 0;
+  mock.method(globalThis, "fetch", async (url, init) => {
+    if (init?.method === "POST") { posts++; return json({ id: "saved-paid-task" }, 202); }
+    if (String(url).includes("/tasks/")) return json({ status: "completed", output: { video_urls: ["https://reapiflexible.b-cdn.net/result.mp4"] } });
+    return new Response(video, { headers: { "content-type": "video/mp4" } });
+  });
+  await runGenerateHookVideoJob(job, ctx);
+  const fingerprint = ctx.operation().request_fingerprint;
+  ctx.operation().status = "provider_succeeded";
+  const result = await runGenerateHookVideoJob({ ...job, input_json: { ...job.input_json,
+    providerOutputRecovery: "collection-only-v1" } }, ctx);
+  assert.equal(result.videoId, job.input_json.videoId);
+  assert.equal(posts, 1); assert.equal(ctx.operation().request_fingerprint, fingerprint);
 });

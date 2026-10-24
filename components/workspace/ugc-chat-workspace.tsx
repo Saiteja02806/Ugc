@@ -60,7 +60,7 @@ import {
   mergeAIStudioImageHistory,
 } from "@/lib/ai-studio/image-history";
 import { normalizeAIStudioPrompt } from "@/lib/ai-studio/prompt-policy";
-import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
+import { pendingGenerationKey, readPendingGeneration, submitPendingGeneration, mergeStoredGenerationJobIds, GenerationClarificationError, type PendingGeneration, type RecoveredGeneration } from "@/lib/ai-studio/pending-generation";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 import { resolveSlideshowImage } from "@/lib/explore/slideshow-image";
 import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
@@ -233,7 +233,15 @@ export function ImageGenerationStudioPanel({
   const earlierRequests = useGenerationDiscovery({ ownerId: user?.uid ?? null, kind: "image", scope: workflowFormat ?? "studio", enabled: active && !recreateView?.preview, onRecovered: restoreDiscoveredJobs });
   const queryClient = useQueryClient();
   const [studioPrompt, setStudioPrompt] = useState("");
-  const composerDraft = useSlideshowComposerDraft(user?.uid ?? null, JSON.stringify({ references: recreateView?.referenceImageUrls ?? [recreateView?.referenceImageUrl ?? null], regeneration: recreateView?.referenceImageAssetId ?? null }), workflowFormat === "slideshow" && !recreateView?.preview);
+  const composerReferenceUrls = recreateView?.referenceImageUrls ?? [recreateView?.referenceImageUrl ?? null];
+  const composerReferences = recreateView?.slideshowSources?.length === composerReferenceUrls.length
+    ? composerReferenceUrls.map((url, index) => ({ url, number: recreateView.slideshowSources![index].slideNumber })).sort((a, b) => a.number - b.number).map(image => image.url)
+    : composerReferenceUrls;
+  const legacyComposerScope = JSON.stringify({ references: composerReferenceUrls, regeneration: recreateView?.referenceImageAssetId ?? null });
+  // Recreating an output within the same source selection keeps its named uploads.
+  // A standalone edit without sources remains scoped to its exact owned target.
+  const composerScope = JSON.stringify({ references: composerReferences, regeneration: composerReferences.some(Boolean) ? null : recreateView?.referenceImageAssetId ?? null });
+  const composerDraft = useSlideshowComposerDraft(user?.uid ?? null, composerScope, workflowFormat === "slideshow" && !recreateView?.preview, legacyComposerScope);
   const prompt = workflowFormat === "slideshow" && !recreateView?.preview ? composerDraft.prompt : studioPrompt;
   const setPrompt = workflowFormat === "slideshow" && !recreateView?.preview ? composerDraft.setPrompt : setStudioPrompt;
   const [aspectRatio, setAspectRatio] =
@@ -278,6 +286,7 @@ export function ImageGenerationStudioPanel({
   const [resultsError, setResultsError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [planningQuestions, setPlanningQuestions] = useState<{ owner: string; scope: string; items: string[] } | null>(null);
   const storedJobIds = useStoredBackgroundJobIds(user ? `${IMAGE_JOB_STORAGE_PREFIX}${workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid}` : null);
   const [submittedJobIds, setSubmittedJobIds] = useState<string[]>([]);
   const [ignoredPersistedJobId, setIgnoredPersistedJobId] = useState<
@@ -293,6 +302,8 @@ export function ImageGenerationStudioPanel({
   const billingSyncedJobIdsRef = useRef(new Set<string>());
   const submissionKeyRef = useRef<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
+  const autoAssembledSlideshowVersionsRef = useRef(new Set<string>());
+  const blockedAutoSlideshowVersionsRef = useRef(new Set<string>());
   const pendingOwnerId = user?.uid;
   useEffect(() => {
     let stopped = false;
@@ -361,6 +372,7 @@ export function ImageGenerationStudioPanel({
   });
   const improvingPrompt = promptImprover.busy;
   const onWorkflowBusyChange = workflow?.onBusyChange;
+  const onGeneratedSlideshow = workflow?.onGeneratedSlideshow;
   useEffect(() => { onWorkflowBusyChange?.(isGenerating || referenceUploadPending || selectingImage || improvingPrompt); }, [isGenerating, referenceUploadPending, selectingImage, improvingPrompt, onWorkflowBusyChange]);
   useEffect(() => {
     activeUserIdRef.current = user?.uid ?? null;
@@ -371,6 +383,8 @@ export function ImageGenerationStudioPanel({
     reconciledResultsRef.current.clear();
     submittedPromptsRef.current.clear();
     billingSyncedJobIdsRef.current.clear();
+    autoAssembledSlideshowVersionsRef.current.clear();
+    blockedAutoSlideshowVersionsRef.current.clear();
 
     return () => {
       activeUserIdRef.current = null;
@@ -681,6 +695,7 @@ export function ImageGenerationStudioPanel({
           referenceImageUrl: workflowFormat === "slideshow" ? recreateView?.referenceImageUrl ?? null : referenceImage?.asset.url ?? recreateView?.referenceImageUrl ?? null,
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageUrls?.length ? { referenceImageUrls: recreateView.referenceImageUrls } : {}),
           ...(workflowFormat === "slideshow" && instructionReferences.length ? { referenceImageAssetIds: instructionReferences.map(selection => selection.asset.id) } : {}),
+          ...(workflowFormat === "slideshow" ? { slideshowContext: { version: 1, sources: recreateView?.slideshowSources ?? [], uploads: instructionReferences.map(selection => ({ assetId: selection.asset.id, name: selection.slideshowName })) } } : {}),
           ...(workflowFormat === "slideshow" && recreateView?.referenceImageAssetId ? { regenerationImageAssetId: recreateView.referenceImageAssetId } : {}),
         }, acknowledge(result, input) {
           if (!persistImageJobs(workflowFormat ? `${user.uid}.${workflowFormat}` : user.uid, result.jobs, { aspectRatio: input.aspectRatio as AIStudioImageAspectRatio, prompt: String(input.prompt) })) throw new Error("Your generation is saved on the server. Its browser recovery record is preserved; recover it again.");
@@ -688,7 +703,7 @@ export function ImageGenerationStudioPanel({
       if (!admitted) throw new Error("Could not confirm the generation lock.");
       const data = admitted.result as Extract<GenerateResponse, { ok: true }>;
       const submittedPrompt = String(admitted.input.prompt);
-      setPendingSubmission(null); setActivePrompt(submittedPrompt);
+      setPendingSubmission(null); setActivePrompt(submittedPrompt); setPlanningQuestions(null);
       void queryClient.invalidateQueries({
         queryKey: ["billing-subscription", user.uid],
       });
@@ -715,6 +730,7 @@ export function ImageGenerationStudioPanel({
       setPrompt("");
     } catch (error) {
       console.error("Image generation failed:", error);
+      if (error instanceof GenerationClarificationError) setPlanningQuestions({ owner: user?.uid ?? "", scope: legacyComposerScope, items: error.clarifications });
       setActionError(
         getErrorMessage(error, "Image generation failed. Try again."),
       );
@@ -929,7 +945,6 @@ export function ImageGenerationStudioPanel({
     document.querySelector<HTMLTextAreaElement>('textarea[name="imagePrompt"]')?.focus();
   }
 
-  // Opening a version is explicit: completion must not silently populate a draft.
   const slideshowResults = workflowFormat === "slideshow"
     ? groupSlideshowResultRows(imageRows)
     : { versions: [], individual: imageRows };
@@ -946,6 +961,46 @@ export function ImageGenerationStudioPanel({
     } catch (error) { if (activeUserIdRef.current === ownerId) setActionError(getErrorMessage(error, "Could not open this slideshow version.")); }
     finally { selectingImageRef.current = false; setSelectingImage(false); }
   }
+
+  useEffect(() => {
+    if (workflowFormat !== "slideshow" || !onGeneratedSlideshow || !user || isGenerating || selectingImageRef.current) return;
+    // A one-slide regeneration replaces only the selected slot. A complete
+    // single-version slideshow is safe to assemble as one ordered sequence.
+    const completedVersion = slideshowResults.versions.find((group) =>
+      group.slot.slideCount > 1 && group.slot.versionCount === 1 &&
+      group.rows.length === group.slot.slideCount &&
+      group.rows.every((row) => row.asset && foregroundJobIdsRef.current.has(row.key)),
+    );
+    if (!completedVersion || autoAssembledSlideshowVersionsRef.current.has(completedVersion.key) || blockedAutoSlideshowVersionsRef.current.has(completedVersion.key)) return;
+
+    const images = completedVersion.rows.flatMap((row) => row.asset ? [row.asset] : []);
+    const ownerId = user.uid;
+    selectingImageRef.current = true;
+    setSelectingImage(true);
+    setActionError(null);
+    void (async () => {
+      try {
+        const token = await getCurrentUserIdToken(ownerId);
+        if (!token) throw new Error("Sign in before opening this slideshow.");
+        const owned = await Promise.all(images.map((image) => resolveSlideshowImage(image, token)));
+        if (activeUserIdRef.current === ownerId) {
+          if (onGeneratedSlideshow(owned)) autoAssembledSlideshowVersionsRef.current.add(completedVersion.key);
+          else {
+            blockedAutoSlideshowVersionsRef.current.add(completedVersion.key);
+            setActionNotice("Your complete slideshow is ready. Finish the current save, then open the ordered version below to continue.");
+          }
+        }
+      } catch (error) {
+        if (activeUserIdRef.current === ownerId) {
+          blockedAutoSlideshowVersionsRef.current.add(completedVersion.key);
+          setActionError(getErrorMessage(error, "Could not open your completed slideshow. Use the ordered version below."));
+        }
+      } finally {
+        selectingImageRef.current = false;
+        if (activeUserIdRef.current === ownerId) setSelectingImage(false);
+      }
+    })();
+  }, [isGenerating, onGeneratedSlideshow, slideshowResults.versions, user, workflowFormat]);
 
   return (
     <div
@@ -1016,13 +1071,13 @@ export function ImageGenerationStudioPanel({
                       asset={row.asset} aspectRatio={row.aspectRatio} prompt={row.prompt} createdAt={row.createdAt}
                       referenceImageUrl={referenceImage?.asset.url ?? null} isNew={row.asset?.id === latestCompletedId}
                       onOpenPreview={setPreviewImage}
-                      onSelect={row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
+                      onSelect={!complete && row.asset && workflow?.onSelectImage ? () => void selectWorkflowImage(row.asset!) : undefined}
                       selectionDisabled={selectingImage || isGenerating} compact selectionLabel={workflow?.imageSelectionLabel ?? "Add to slideshow"}
                     />
                   </div>
                 ))}
               </div>
-              <div className="mt-3"><ImagePromptBubble createdAt={group.rows[0].createdAt} prompt={group.rows[0].prompt} /></div>
+              <div className="mt-3 max-w-2xl"><ImagePromptBubble createdAt={group.rows[0].createdAt} prompt={group.rows[0].prompt} /></div>
             </section>
           );
         })}
@@ -1115,7 +1170,7 @@ export function ImageGenerationStudioPanel({
         }
         name="imagePrompt"
         promptAction={workflowFormat === "slideshow" ? promptImprover.action : undefined}
-        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
+        promptFeedback={workflowFormat === "slideshow" ? <div className="space-y-2">{promptImprover.feedback}{planningQuestions?.scope === legacyComposerScope && planningQuestions.owner === user?.uid ? <div role="status" className="text-xs leading-5 text-muted"><p>Clarify in the instructions above, then generate again:</p>{planningQuestions.items.map(question => <p key={question}>{question}</p>)}</div> : null}{composerDraft.busy ? <p role="status" className="text-xs text-muted">Restoring your instructions and attached images…</p> : null}{composerDraft.error ? <div role="alert" className="text-xs text-destructive"><p>{composerDraft.error}</p><Button type="button" variant="ghost" size="sm" onClick={composerDraft.retry}>Retry recovery</Button><Button type="button" variant="ghost" size="sm" onClick={composerDraft.reset}>Keep text, clear attachments</Button></div> : null}{missingScreenshot ? <p role="alert" className="text-xs text-destructive">Your instructions refer to a screenshot. Attach it with + before generating.</p> : null}</div> : undefined}
         placeholder={recreateView ? "What would you like to change?" : "Describe the image you want to create…"}
         prompt={prompt}
         onPromptChange={(nextPrompt) => {

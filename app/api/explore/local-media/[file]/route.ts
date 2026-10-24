@@ -1,10 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import catalog from "@/lib/explore/imported-catalog.json";
+import slideshowAdditions from "@/lib/explore/slideshow-reference-additions.json";
+import octoberSlideshows from "@/lib/explore/slideshow-reference-oct23.json";
 
 export const runtime = "nodejs";
 
-const allowedFiles = new Set(catalog.items.flatMap((item) => [
+const octoberFiles = new Set(octoberSlideshows.items.flatMap(item => [item.posterFile, ...item.slides.map(slide => slide.file)]));
+const allowedFiles = new Set([...catalog.items, ...slideshowAdditions.items, ...octoberSlideshows.items].flatMap((item) => [
   item.posterFile,
   ...("videoFile" in item ? [item.videoFile] : []),
   ...item.slides.map((slide) => slide.file),
@@ -18,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   }
   let data: Buffer;
   try {
-    data = await readFile(path.join(process.cwd(), ".tmp", "explore-catalog", "media", file));
+    data = await readFile(path.join(process.cwd(), ".tmp", octoberFiles.has(file) ? "explore-upload-batch-20261023" : "explore-catalog", "media", file));
   } catch {
     return new Response(null, { status: 404 });
   }

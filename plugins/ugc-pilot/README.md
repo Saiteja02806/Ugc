@@ -1,6 +1,6 @@
-# UGC Pilot — 0.2.5 public-submission candidate
+# UGC Pilot — 0.2.6 public-submission candidate
 
-Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes sixteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, saved Library outputs, saved social analytics, and read-only connected-social-account and schedule discovery where enabled.
+Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes eighteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, saved Library outputs, shared Business Context, saved business onboarding, saved social analytics, and read-only connected-social-account and schedule discovery where enabled.
 
 The package points to the existing hosted MCP at **https://mcp.getugcpilot.com/mcp**. Its portable `mcp.json` explicitly declares OAuth with Client Identifier Metadata Document (CIMD) registration and starts with the minimal `account:read` scope; individual write tools request their own consent when needed. It includes no server executable or credentials. Generation uses your UGC Pilot plan and credits, separately from your AI subscription.
 
@@ -44,7 +44,7 @@ Each workflow checks live capabilities. Reference remix, group and Library write
 
 ## Account defaults where deployed
 
-Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing defaults, unset timezone initialization and settings receipts. These tools require the additive account-settings migration; writes also require the separate `account:write` consent and write gate. Reads never initialize preferences. Existing scheduled posts and initialized timezones are preserved. Business Context, onboarding, logos/screenshots and social-account operations remain separate work.
+Use the [account workflow](skills/manage-ugc-account/SKILL.md) for publishing defaults, unset timezone initialization and settings receipts. These tools require the additive account-settings migration; writes also require the separate `account:write` consent and write gate. Reads never initialize preferences. Existing scheduled posts and initialized timezones are preserved. Use the [Business Context workflow](skills/manage-ugc-business/SKILL.md) to read and edit the shared Settings draft or apply reviewed context for future content. Writes separately require deployed schema, an enabled gate and fresh `brand:write` consent. Use the [business onboarding workflow](skills/onboard-ugc-business/SKILL.md) to resume saved legacy/background setup, choose a website/manual/mobile source, save identity/goals and submit intended setup where its separate write gate is enabled. Read capabilities first; completion can activate access/trial and prepare Trending content. Use the [business-logo workflow](skills/manage-ugc-media/references/business-logo-workflow.md) for a supplied local logo with recoverable reservations and verified bytes. Screenshots, website reanalysis and social-account operations remain separate work.
 
 ## Scheduling reads where deployed
 
@@ -61,7 +61,7 @@ Use the [analytics workflow](skills/manage-ugc-analytics/SKILL.md) for the accou
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The reviewed 0.2.5 candidate source exposes **89 tools**. The deployed server can retain its prior catalogue until this candidate is promoted, and existing conversations can retain a cached catalogue, so discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The reviewed production server contract contains **79 tools**. This 0.2.6 candidate registers **106** tools, including shared Business Context, saved onboarding, verified logo upload, saved social analytics, and schedule discovery, after its server/schema release; hosted acceptance remains pending. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.

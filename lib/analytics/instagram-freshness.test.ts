@@ -6,18 +6,21 @@ import {
   getInstagramIncrementalFeedStart,
   isInstagramContentMetricsStale,
   isInstagramThumbnailStale,
+  INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS,
+  INSTAGRAM_MEDIA_FEED_REFRESH_MS,
+  INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS,
 } from "./instagram-freshness.ts";
 
 const hour = 60 * 60_000;
 const now = Date.parse("2026-08-24T12:00:00.000Z");
 
-test("uses the agreed age-based Instagram content refresh windows", () => {
+test("recent Instagram posts use the fifteen-minute visit refresh window; older posts retain slower windows", () => {
   assert.equal(
     getInstagramContentRefreshIntervalMs(
       new Date(now - 23 * hour).toISOString(),
       now,
     ),
-    hour,
+    15 * 60_000,
   );
   assert.equal(
     getInstagramContentRefreshIntervalMs(
@@ -33,6 +36,15 @@ test("uses the agreed age-based Instagram content refresh windows", () => {
     ),
     24 * hour,
   );
+});
+
+test("browser reads are independent of the bounded provider synchronization window", () => {
+  assert.equal(INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS, 60_000);
+  assert.equal(INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS, 15 * 60_000);
+  assert.equal(INSTAGRAM_MEDIA_FEED_REFRESH_MS, 15 * 60_000);
+  const publishedAt = new Date(now - hour).toISOString();
+  assert.equal(isInstagramContentMetricsStale({ publishedAt, now, metricsSyncedAt: new Date(now - 14 * 60_000).toISOString() }), false);
+  assert.equal(isInstagramContentMetricsStale({ publishedAt, now, metricsSyncedAt: new Date(now - 15 * 60_000).toISOString() }), true);
 });
 
 test("treats missing or expired per-post metrics as stale", () => {

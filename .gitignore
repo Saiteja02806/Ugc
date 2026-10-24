@@ -114,3 +114,16 @@ next-env.d.ts
 
 # Node's local bytecode cache is not release source.
 /node-compile-cache/
+
+# Private pilot source/review files: only authenticated encrypted packages ship.
+/lib/explore/creator-accounts.json
+/lib/explore/creator-account-reviews.json
+/lib/explore/creator-slideshows.json
+/lib/explore/creator-slide-text.json
+/lib/explore/creator-account-media/*
+!/lib/explore/creator-account-media/*.enc
+/lib/explore/creator-slideshow-media/*
+!/lib/explore/creator-slideshow-media/*.enc
+/docs/creator-profile-frame-review-2026-10-24.json
+/docs/creator-profile-browser-simulation-2026-10-24.json
+/docs/creator-profile-legacy-simulation-2026-10-24.json

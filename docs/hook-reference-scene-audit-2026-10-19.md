@@ -1,5 +1,21 @@
 # Hook reference frame audit
 
+## Original-folder replacement completed
+
+After explicit user authorization, all 18 verified corrected files replaced the
+old MP4s in their original D: import folders, retaining original filenames.
+Backups are in `outputs/hook-reference-audit-2026-10-19/original-import-backups/`;
+the backup map records each original target. Fresh full-media checks, three
+independent agents' visual endpoint checks and installed-file checksum readback
+passed. Hook 18, sibling audio/text and all 106 manual audio-review files remain
+unchanged. See `scripts/data/hook-reference-original-replacements-2026-10-19.json`.
+
+The original-folder files are now corrected. Historical immutable cached source
+objects and the active website catalogue remain as before; no deployment occurred.
+References below to original files remaining unchanged describe the audit stage
+before this explicitly authorized physical replacement.
+
+
 Three agents inspected every decoded frame in the 98 active Hook references:
 9,773 frames total. Flagged boundaries were reopened at the original frame-tile
 size and reviewed again by the coordinating agent. Scope is unrelated scenes,

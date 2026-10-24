@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { listSocialConnections, refreshSocialConnectionProfilesForOwner } from "@/lib/social/oauth";
+import { getConnectionRevision } from "@/lib/social/connection-revision";
+import { readAccountSnapshots, saveAccountSnapshots, snapshotRowAccount, type SnapshotOperation } from "@/lib/analytics/snapshot-store";
+import { readAnalyticsSnapshot } from "@/lib/analytics/snapshot-service";
 
 import {
   listInstagramAccountInsightsForOwner,
@@ -70,12 +74,39 @@ export async function POST(request: Request) {
     // Keep the authenticated owner in a local constant. TypeScript cannot carry
     // the earlier null check through the async callbacks used for attribution.
     const userId = job.userId;
+    console.info("analytics_job_timing", { jobId: job.id, queueWaitMs: job.startedAt ? Math.max(0, Date.parse(job.startedAt)-Date.parse(job.createdAt)) : null });
 
     const input = getRecord(job.input);
 
     if (!input || input.userId !== userId) {
       return json({ error: "Analytics job ownership does not match.", ok: false }, 409);
     }
+
+    if (input.operation === "connection_profiles") {
+      const profileStarted = performance.now();
+      await refreshSocialConnectionProfilesForOwner(userId);
+      console.info("analytics_profile_timing", { durationMs: Math.round(performance.now()-profileStarted) });
+      return json({ ok: true, operation: input.operation });
+    }
+    const connections = await listSocialConnections(userId);
+    const currentRevisions = Object.fromEntries(connections.map(c => [c.id, getConnectionRevision(c)]));
+    const expectedRevisions = getRecord(input.connectionRevisions ?? null) ?? currentRevisions;
+    const revisions = Object.fromEntries(Object.entries(expectedRevisions).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+    if (Object.entries(revisions).some(([id, revision]) => currentRevisions[id] !== revision)) {
+      return json({ ok: false, error: "Account authorization changed before this sync started." }, 409);
+    }
+    const operation = input.operation as SnapshotOperation;
+    const snapshotDays = operation.startsWith("instagram") && [7, 30, 90].includes(Number(input.days)) ? Number(input.days) as InstagramInsightsRangeDays : undefined;
+    const previous = ["instagram_insights", "instagram_content", "tiktok_videos", "youtube_channel"].includes(operation)
+      ? await readAnalyticsSnapshot({ userId, operation, days: snapshotDays }) : null;
+    const persist = async (accounts: unknown[], operation: SnapshotOperation, days?: 7 | 30 | 90) => {
+      await saveAccountSnapshots({ userId, accounts: previous?.data.accounts.filter(a => a.status === "ready") ?? [], operation, days, connectionRevisions: revisions, attemptedAt: job.createdAt });
+      await saveAccountSnapshots({ userId, accounts, operation, days, connectionRevisions: revisions, attemptedAt: job.createdAt });
+      const current = await listSocialConnections(userId);
+      const platform = operation.startsWith("instagram") ? "instagram" : operation === "tiktok_videos" ? "tiktok" : "youtube";
+      const saved = await readAccountSnapshots({ userId, operation, days, connections: current.filter(c => c.platform === platform) });
+      return saved.map(snapshotRowAccount);
+    };
 
     if (input.operation === "tiktok_videos") {
       const accounts = await listTikTokPublicVideoAnalyticsForOwner({
@@ -86,13 +117,13 @@ export async function POST(request: Request) {
         recordTikTokHookPerformance({ accounts, userId }),
       );
 
-      return json({ accounts, ok: true, operation: input.operation });
+      return json({ accounts: await persist(accounts, "tiktok_videos"), ok: true, operation: input.operation });
     }
 
     if (input.operation === "youtube_channel") {
       const accounts = await listYouTubeChannelAnalyticsForOwner({ userId });
 
-      return json({ accounts, ok: true, operation: input.operation });
+      return json({ accounts: await persist(accounts, "youtube_channel"), ok: true, operation: input.operation });
     }
 
     const days = Number(input.days);
@@ -107,7 +138,7 @@ export async function POST(request: Request) {
         userId,
       });
 
-      return json({ accounts, days, ok: true, operation: input.operation });
+      return json({ accounts: await persist(accounts, "instagram_insights", days as InstagramInsightsRangeDays), days, ok: true, operation: input.operation });
     }
 
     if (input.operation === "instagram_content") {
@@ -133,7 +164,7 @@ export async function POST(request: Request) {
         );
       }
 
-      return json({ accounts, days, ok: true, operation: input.operation });
+      return json({ accounts: await persist(accounts, "instagram_content", days as InstagramInsightsRangeDays), days, ok: true, operation: input.operation });
     }
 
     if (input.operation === "instagram_attribution") {

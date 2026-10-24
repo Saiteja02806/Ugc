@@ -42,7 +42,7 @@ export function TalkingHeadScheduleActions({ action, preparation, enabled, onBac
         <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={!enabled || !current || current.disabled || busy} aria-busy={busy || preparing} onClick={current?.onAction}>{needsPreparation ? busy || preparing ? "Preparing video…" : current?.error ? "Retry final video" : "Prepare final video" : busy ? "Scheduling…" : action?.label ?? (action?.error ? "Try again" : "Schedule post")}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
-    {action?.label === "Schedule another post" ? <a href="/scheduling" className="text-sm text-primary underline">View in Scheduling</a> : null}
+    {action?.completed ? <a href="/scheduling" className={reviewStyles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></a> : null}
     {current && needsPreparation && (error || preparing) ? <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refresh}>Refresh status</Button>{current.cancel ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={current.cancel}>Cancel preparation</Button> : null}</div> : null}
   </div>;
 }

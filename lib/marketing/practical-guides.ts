@@ -69,7 +69,7 @@ export const practicalGuides = {
           src: "/marketing/guides/add-product-demo-excerpt.mp4",
           poster: "/marketing/guides/add-product-demo-poster.jpg",
           label: "Historical UGC Pilot recording: attach a demo after an opening",
-          description: "Silent video description: a selected portrait opening appears in the older Trending interface. The Add a product demo panel offers an upload or an existing demo, then the recording moves to the review and scheduling screen. This excerpt illustrates the task; controls and labels have since changed.",
+          description: "Silent video description: a selected portrait opening appears in the older Trending interface. The Add a product demo panel offers an upload or an existing demo, then the recording moves to the review screen. This excerpt illustrates the task; controls and labels have since changed.",
           sourceHref: "/marketing/showcase-part2/application-demo.mp4",
         },
       },
@@ -83,7 +83,7 @@ export const practicalGuides = {
       {
         title: "Where UGC Pilot fits",
         paragraphs: [
-          "In Explore, choose Hook video or Talking Head + Demo for an opening-plus-demo workflow. Bring an existing owned opening where supported, or request new footage with the displayed credit estimate. Add your real product recording in the Demo step, review the words, trim and framing, then inspect the complete finished file before scheduling it to a supported connected destination. Review the actual options available in your account.",
+          "In Explore, choose Hook video or Talking Head + Demo for an opening-plus-demo workflow. Bring an existing owned opening where supported, or request new footage with the displayed credit estimate. Add your real product recording in the Demo step, review the words, trim and framing, then inspect the complete finished file before you download it. Review the actual options available in your account.",
           "You do not need an AI actor if your screen recording already explains the task. A slideshow may work better when the reader needs to examine separate steps; a text-led clip may suit a short written explanation. Custom generated footage uses AI credits separately from daily slideshow concepts in Trending.",
           "The connected AI client and the website have different coverage. The generation tool makes footage; supported finishing tools can compose owned opening/demo clips and exact overlays when enabled. Discover the current capabilities first. Do not assume that connecting a client also enables every website editor feature or social publishing. This guide also works with a conventional video editor.",
         ],

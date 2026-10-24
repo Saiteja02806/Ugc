@@ -33,15 +33,15 @@ const platformFeatures = pricingWorkflows.map((workflow, index) => ({
 const faqs = [
   {
     question: "What does the free trial include?",
-    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily slideshow concepts in Trending to review and edit. Hooks and text-led videos are separate Explore workflows. Connect one Instagram account and connect TikTok and YouTube after email verification; scheduling depends on the content format and connected account. Your account also gets ${ONE_TIME_FREE_GENERATION_CREDITS} free AI Studio credits once. No payment card is required, and the trial does not automatically become a paid subscription.`,
+    answer: `Your ${FREE_TRIAL_CONTENT_DAYS}-day trial starts when you complete onboarding. Get ${FREE_TRIAL_DAILY_CONTENT_PIECES} daily slideshow concepts in Trending to review and edit. Hooks and text-led videos are separate Explore workflows. Connect one Instagram account and connect TikTok and YouTube after email verification. Your account also gets ${ONE_TIME_FREE_GENERATION_CREDITS} free AI Studio credits once. No payment card is required, and the trial does not automatically become a paid subscription.`,
   },
   {
     question: "What happens when my trial ends?",
-    answer: "Choose Starter or Growth to keep receiving daily content and scheduling new Instagram posts. Signing in again does not restart an expired trial. Your one-time free AI credits remain available until you spend them. Choose a paid plan for a monthly AI credit allowance.",
+    answer: "Choose Starter or Growth to keep receiving daily content. Signing in again does not restart an expired trial. Your one-time free AI credits remain available until you spend them. Choose a paid plan for a monthly AI credit allowance.",
   },
   {
     question: "Are daily content concepts separate from AI credits?",
-    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Starter includes 20 concepts per day and Growth includes 50. Review the content before scheduling. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
+    answer: "Yes. Trending currently provides slideshow concepts based on your business context. Starter includes 20 concepts per day and Growth includes 50. Review the content before you keep it. These allowances are separate from custom image, video and character generation, which uses AI credits. Hook and Wall of Text creation happens separately in Explore. A daily concept is not an additional custom AI video generation.",
   },
   {
     question: "How do UGC Pilot credits work?",
@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     question: "Which workflows and platforms are included?",
-    answer: "Review daily slideshows in Trending, create hooks, text-led videos and slideshows in Explore, and make custom images, videos and character images with AI credits. Connect Instagram, TikTok and YouTube; verify your email before connecting TikTok or YouTube. Instagram requires a professional account. YouTube supports video uploads; TikTok supports eligible videos and photo posts. The scheduler shows the destinations and settings available for your selected format and connected accounts. Review the post and confirm its schedule before publishing.",
+    answer: "Review daily slideshows in Trending, create hooks, text-led videos and slideshows in Explore, and make custom images, videos and character images with AI credits. Connect Instagram, TikTok and YouTube; verify your email before connecting TikTok or YouTube. Instagram requires a professional account. YouTube supports video uploads; TikTok supports eligible videos and photo posts. Review the finished asset and download the version you approve.",
   },
   {
     question: "How do annual billing and plan changes work?",
@@ -155,7 +155,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
               </h1>
               <p className="mx-auto mt-4 max-w-xl text-pretty text-sm font-normal leading-relaxed text-muted sm:text-base">
                 Daily ideas for your brand. Custom AI images and videos.
-                A workspace to review, edit and schedule it all.
+                A workspace to review, edit and keep the finished asset.
               </p>
             </div>
 
@@ -178,7 +178,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 id="features-title"
                 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-3xl"
               >
-                From the first idea to the scheduled post
+                From the first idea to a finished asset
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
                 Try daily slideshows for {FREE_TRIAL_CONTENT_DAYS} days and AI Studio with {ONE_TIME_FREE_GENERATION_CREDITS} free credits. Daily content allowances and custom AI credits are separate.
@@ -232,7 +232,7 @@ export function PricingPage({ initialBillingInterval }: PricingPageProps) {
                 Frequently asked questions
               </h2>
               <p className="mt-2 text-sm font-normal text-muted">
-                Understand daily slideshows, AI credits and scheduling after review.
+                Understand daily slideshows, AI credits, and what happens after review.
               </p>
             </div>
 

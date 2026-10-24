@@ -81,9 +81,10 @@ if (sitemap) {
     assert.equal(new Set(pages.map(page => page.description)).size, pages.length);
   });
 }
-await check("private beta setup stays noindex", `${canonicalOrigin}/connect-ai`, (response, html) => {
+await check("connect AI setup is indexable", `${canonicalOrigin}/connect-ai`, (response, html) => {
   assert.equal(response.status, 200);
-  assert(/\bnoindex\b/i.test([...metadata(html, "robots"), response.headers.get("x-robots-tag") ?? ""].join(" ")));
+  assert(!/\bnoindex\b/i.test([...metadata(html, "robots"), response.headers.get("x-robots-tag") ?? ""].join(" ")));
+  assert(expectedUrls.includes(`${canonicalOrigin}/connect-ai`));
 });
 await check("unknown page", `${canonicalOrigin}/seo-regression-nonexistent-20261008`, (response, html) => {
   assert.equal(response.status, 404);

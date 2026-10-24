@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getRecreateReferences } from "@/lib/explore/recreate-catalog";
+import { getArchivedHookReferences, getRecreateReferences } from "@/lib/explore/recreate-catalog";
 import {
   FirebaseAuthRequestError,
   requireFirebaseUser,
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }, status);
   }
 
-  return json({ items: getRecreateReferences(), ok: true });
+  return json({ items: getRecreateReferences(), archivedHookItems: getArchivedHookReferences(), ok: true });
 }
 
 function json(body: unknown, status = 200) {

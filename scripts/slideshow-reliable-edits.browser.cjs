@@ -1,0 +1,73 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Real components; isolated auth/storage/provider boundaries. */
+const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), http = require('node:http');
+const { webpack } = require('next/dist/compiled/webpack/webpack');
+const sharp = require('sharp');
+let playwright; try { playwright = require('playwright'); } catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
+const root = path.resolve(__dirname, '..'), out = path.join(root, '.tmp/slideshow-reliable-edits'); fs.mkdirSync(out, { recursive: true });
+const write = (name, value) => fs.writeFileSync(path.join(out, name), value);
+write('loader.cjs', `const ts=require(${JSON.stringify(require.resolve('typescript'))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+write('css.cjs', "module.exports=function(s){const prefix=require('node:path').basename(this.resourcePath).replace(/[^a-zA-Z]/g,'')+'_',names={};s=s.replace(/:global\\(([^)]+)\\)/g,(_,v)=>'GLOBALSTART'+Buffer.from(v).toString('hex')+'GLOBALEND');s=s.replace(/\\.([a-zA-Z][a-zA-Z0-9_-]*)/g,(_,n)=>{names[n]=prefix+n;return '.'+prefix+n;});s=s.replace(/GLOBALSTART([a-f0-9]+)GLOBALEND/g,(_,v)=>Buffer.from(v,'hex').toString());return 'const style=document.createElement(\"style\");style.textContent='+JSON.stringify(s)+';document.head.append(style);export default '+JSON.stringify(names)+';';};");
+write('auth.ts', 'export const getCurrentUserIdToken=async owner=>owner;');
+write('entry.tsx', `import {createRoot} from 'react-dom/client';import {useState} from 'react';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import {useSlideshowComposerDraft} from '@/components/explore/use-slideshow-composer-draft';import {useSlideshowPromptImprover} from '@/components/explore/slideshow-prompt-improver';import {requiresScreenshotAttachment} from '@/lib/explore/slideshow-composer-draft';
+const screenshot=${JSON.stringify({ id: '11111111-1111-4111-8111-111111111111', collection: 'image', status: 'ready', sourceType: 'upload', fileName: 'Explore screenshot.png', title: 'Explore screenshot', mimeType: 'image/png', projectId: 'explore-reference', url: '/source.png', metadata: {}, width: 1763, height: 842, fileSizeBytes: 1355079 })};
+function App(){const [owner,setOwner]=useState('owner'),[scope,setScope]=useState('marketing');const draft=useSlideshowComposerDraft(owner,scope,true);const improve=useSlideshowPromptImprover({owner,prompt:draft.prompt,contextKey:scope,disabled:draft.busy||!!draft.error,onChange:draft.setPrompt});return <main><h1>Slideshow edit verification</h1><label>Instructions<textarea aria-label="Instructions" value={draft.prompt} onChange={e=>draft.setPrompt(e.target.value)}/></label><div>{improve.action}{improve.feedback}</div><p data-testid="attached">{draft.images.map(i=>i.asset.fileName).join(', ')}</p>{draft.busy?<p role="status">Recovering attachments</p>:null}{draft.error?<p role="alert">{draft.error}</p>:null}<button onClick={()=>draft.setImages([{kind:'image',asset:screenshot}])} disabled={draft.busy}>Attach screenshot</button><button onClick={()=>draft.setImages([])}>Clear attachments</button><button onClick={()=>setOwner(v=>v==='owner'?'other':'owner')}>Switch account</button><button onClick={()=>setScope(v=>v==='marketing'?'other-deck':'marketing')}>Switch slideshow</button><button onClick={draft.retry}>Retry recovery</button><button onClick={draft.reset}>Keep text, clear attachments</button><button disabled={draft.busy||!!draft.error||improve.busy||requiresScreenshotAttachment(draft.prompt)&&!draft.images.length}>Generate slides</button></main>};createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><App/></QueryClientProvider>);`);
+async function main() {
+  await new Promise((resolve, reject) => { const compiler = webpack({ mode: 'development', devtool: false, context: root, entry: path.join(out, 'entry.tsx'), output: { path: out, filename: 'bundle.js' }, resolve: { extensions: ['.tsx', '.ts', '.js'], alias: { '@/lib/firebase/auth': path.join(out, 'auth.ts'), '@': root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, 'loader.cjs') }, { test: /\.css$/, use: path.join(out, 'css.cjs') }] } }); compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || Error(stats.toString({ all: false, errors: true }))) : resolve())); });
+  const css = (await require('postcss')([require('@tailwindcss/postcss')({ base: root })]).process(fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8').replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "../components/explore";\n@source "../components/ui";'), { from: path.join(root, 'app/globals.css') })).css;
+  const basePath = process.env.SLIDESHOW_TEST_BASE || 'C:/Users/chund/AppData/Local/Temp/codex-clipboard-e13a3412-6b92-4a91-a26e-b612b0dfd1b5.png';
+  const base = fs.existsSync(basePath) ? fs.readFileSync(basePath) : await sharp({create:{width:1080,height:1444,channels:4,background:'#886655'}}).png().toBuffer();
+  const sourcePath = process.env.SLIDESHOW_TEST_SCREENSHOT || 'C:/Users/chund/AppData/Local/Temp/codex-clipboard-e5980568-2130-4343-923e-a3396f5d29a1.png';
+  const source = fs.existsSync(sourcePath) ? fs.readFileSync(sourcePath) : await sharp({create:{width:1763,height:842,channels:4,background:'#111125'}}).png().toBuffer();
+  const screenshotId = '11111111-1111-4111-8111-111111111111'; let unavailable = false, savedPng, rewriteBodies = [], reads = [], uploadCount = 0;
+  const asset = id => ({ id, collection: 'image', status: 'ready', sourceType: 'upload', projectId: 'explore-reference', fileName: 'Explore screenshot.png', title: 'Explore screenshot', mimeType: 'image/png', url: '/source.png', width: 1763, height: 842, fileSizeBytes: source.length, metadata: {} });
+  const server = http.createServer(async (req, res) => { try {
+    const url = new URL(req.url, 'http://fixture'), json = (body, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
+    if (url.pathname === '/bundle.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(fs.readFileSync(path.join(out, 'bundle.js'))); }
+    if (url.pathname === '/') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); return res.end('<!doctype html><html class="dark"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' + css + 'body{background:#202020;color:white;font-family:Arial;margin:0}main{padding:24px;max-width:740px;margin:auto}main>button{margin:4px;padding:8px;border:1px solid #777;border-radius:8px}textarea{display:block;width:100%;min-height:120px;border:1px solid #777;padding:12px}pre{white-space:pre-wrap}</style><div id="root"></div><script src="/bundle.js"></script></html>'); }
+    if (url.pathname === '/source.png' || url.pathname === '/base.png') { res.setHeader('Content-Type', 'image/png'); return res.end(url.pathname === '/source.png' ? source : base); }
+    reads.push({ path: url.pathname, owner: req.headers.authorization });
+    if (url.pathname === '/api/media' && req.method === 'GET') return json({ ok: true, assets: [asset(screenshotId)] });
+    if (url.pathname === `/api/media/${screenshotId}`) return unavailable ? json({ ok: false, error: 'Image unavailable' }, 404) : json({ ok: true, asset: asset(screenshotId) });
+    if (url.pathname === '/api/explore/slideshows/image') { assert.ok(['Bearer owner', 'Bearer other'].includes(req.headers.authorization)); res.setHeader('Content-Type', 'image/png'); return res.end(url.searchParams.has('mediaAssetId') ? source : base); }
+    let raw = Buffer.alloc(0); for await (const part of req) raw = Buffer.concat([raw, part]);
+    if (url.pathname === '/api/explore/slideshows/improve-prompt') { const body = JSON.parse(raw); assert.deepEqual(Object.keys(body), ['prompt']); rewriteBodies.push(body); return json({ ok: true, output: { version: 1, prompt: 'Place my actual uploaded screenshot inside the laptop screen. Keep all surroundings unchanged.', clarifications: [] } }); }
+    if (url.pathname === '/api/media/create-upload-url') { uploadCount++; return json({ ok: true, assetId: '22222222-2222-4222-8222-222222222222', key: 'owned/placed.png', uploadUrl: `http://127.0.0.1:${server.address().port}/upload`, requiredHeaders: { 'Content-Type': 'image/png' } }); }
+    if (url.pathname === '/upload') { savedPng = raw; res.writeHead(200); return res.end(); }
+    if (url.pathname === '/api/media/complete-upload') { const body = JSON.parse(raw); return json({ ok: true, asset: { ...asset(body.assetId), width: body.width, height: body.height } }); }
+    assert.fail('Unexpected network call ' + req.method + ' ' + url.pathname);
+  } catch (error) { res.writeHead(500); res.end(error.message); } });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); server.unref();
+  const browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1366, height: 900 } }), errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${server.address().port}`); const prompt = page.getByRole('textbox', { name: 'Instructions', exact: true });
+    await page.getByRole('button', { name: 'Attach screenshot', exact: true }).waitFor(); await page.waitForFunction(() => !document.querySelector('button[disabled]')?.textContent.includes('Attach screenshot'));
+    await prompt.fill('Place my uploaded screenshot inside the laptop. Keep the background.'); await page.getByRole('button', { name: 'Attach screenshot', exact: true }).click();
+    await page.getByRole('button', { name: 'Improve instructions', exact: true }).click(); await page.getByRole('button', { name: 'Undo', exact: true }).waitFor(); assert.equal(rewriteBodies.length, 1);
+    assert.equal(await page.getByTestId('attached').textContent(), 'Explore screenshot.png');
+    const rewritten = await prompt.inputValue(); await page.reload(); await page.waitForFunction(() => document.querySelector('[data-testid="attached"]')?.textContent === 'Explore screenshot.png');
+    assert.equal(await prompt.inputValue(), rewritten); assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isEnabled(), true);
+    console.log('PASS text-only star rewrite preserves attachments; reload recovers text and owned IDs');
+    await page.getByRole('button', { name: 'Switch account', exact: true }).click(); await page.waitForFunction(() => document.querySelector('textarea').value === ''); assert.equal(await page.getByTestId('attached').textContent(), '');
+    await page.getByRole('button', { name: 'Switch account', exact: true }).click(); await page.waitForFunction(() => document.querySelector('[data-testid="attached"]')?.textContent === 'Explore screenshot.png');
+    await page.getByRole('button', { name: 'Switch slideshow', exact: true }).click(); await page.waitForFunction(() => document.querySelector('textarea').value === '');
+    await page.getByRole('button', { name: 'Switch slideshow', exact: true }).click(); await page.waitForFunction(() => document.querySelector('[data-testid="attached"]')?.textContent === 'Explore screenshot.png');
+    unavailable = true; await page.reload(); await page.getByRole('alert').waitFor(); assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    assert.equal(await prompt.inputValue(), rewritten); unavailable = false; await page.getByRole('button', { name: 'Retry recovery', exact: true }).click(); await page.waitForFunction(() => document.querySelector('[data-testid="attached"]')?.textContent === 'Explore screenshot.png');
+    console.log('PASS owner/source isolation and unavailable-image recovery block unsafe submission without losing text');
+    await page.getByRole('button', { name: 'Clear attachments', exact: true }).click(); assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    await prompt.fill('Use my uploaded screenshot inside the laptop, do not change anything else.');
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    await prompt.fill('Do not change the laptop, place my screenshot in its screen.');
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isDisabled(), true);
+    await page.getByRole('button', { name: 'Attach screenshot', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isEnabled(), true);
+    await page.getByRole('button', { name: 'Clear attachments', exact: true }).click();
+    await prompt.fill('Do not use my uploaded screenshot, keep the existing screen.');
+    assert.equal(await page.getByRole('button', { name: 'Generate slides', exact: true }).isEnabled(), true);
+    await prompt.fill('Use my uploaded screenshot inside the laptop, do not change anything else.');
+    await page.setViewportSize({width:390,height:844}); await page.screenshot({path:path.join(out,'composer-mobile.png'),fullPage:true});
+    assert.deepEqual(errors, []); console.log('PASS missing-screenshot submission guard');
+  } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,7 +1,7 @@
 /** Shared, serializable contract. Clients submit owned asset IDs, never URLs or storage keys. */
 import { parseExploreFormatEdit } from "./explore-format-edit.ts";
 import { parseSubtitleCorrections, type SubtitleCorrection } from "../subtitles/corrections.ts";
-import { validateTranscript, type SubtitleTranscript } from "../subtitles/contracts.ts";
+import { SubtitleError, validateTranscript, type SubtitleTranscript } from "../subtitles/contracts.ts";
 export const EXPLORE_FINISH_VERSION = 1;
 export const EXPLORE_RENDER_VERSION = "explore-finish-v2";
 export const DEMO_FRAMING_RENDER_VERSION = "explore-finish-pan-v2";
@@ -43,6 +43,8 @@ export type ExploreFinishReceipt = {
   user_id: string; request_key: string; fingerprint: string; draft: ExploreFinishDraft;
   job_id: string; output_asset_id: string; status: "queued" | "completed" | "uncertain";
   transcript?: SubtitleTranscript;
+  /** Retain the authoritative saved speech timeline when a receipt is parsed again. */
+  speech_duration_ms?: number;
 };
 export class ExploreFinishError extends Error {
   constructor(message: string, public readonly status = 400, public readonly code = "explore_finish_invalid") { super(message); }
@@ -192,7 +194,21 @@ export function parseExploreFinishReceipt(raw: unknown, ownerId: string, request
   const r = raw as Record<string, unknown>;
   if (r.user_id !== ownerId || r.request_key !== requestKey || !isExploreUuid(r.job_id) || !isExploreUuid(r.output_asset_id) ||
       typeof r.fingerprint !== "string" || !/^[0-9a-f]{64}$/.test(r.fingerprint) || !["queued","completed","uncertain"].includes(String(r.status))) throw new ExploreFinishError("Could not verify the saved finishing request.", 409);
+  let speech: { transcript: SubtitleTranscript; speech_duration_ms: number } | undefined;
+  if (r.transcript != null) {
+    // This duration comes from the saved speech claim, not the transcript's
+    // self-reported duration or the final video's container duration.
+    if (typeof r.speech_duration_ms !== "number" || !Number.isInteger(r.speech_duration_ms)) {
+      throw new ExploreFinishError("The saved video transcript could not be verified.", 409, "explore_finish_transcript_invalid");
+    }
+    try {
+      speech = { transcript: validateTranscript(r.transcript, r.speech_duration_ms), speech_duration_ms: r.speech_duration_ms };
+    } catch (error) {
+      if (error instanceof SubtitleError) throw new ExploreFinishError("The saved video transcript could not be verified.", 409, "explore_finish_transcript_invalid");
+      throw error;
+    }
+  }
   return { user_id: ownerId, request_key: requestKey, fingerprint: r.fingerprint, draft: parseExploreFinishDraft(r.draft),
     job_id: r.job_id, output_asset_id: r.output_asset_id, status: r.status as ExploreFinishReceipt["status"],
-    ...(r.transcript == null ? {} : { transcript: validateTranscript(r.transcript, Number(r.speech_duration_ms)) }) };
+    ...speech };
 }

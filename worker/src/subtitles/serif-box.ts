@@ -1,18 +1,18 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import sharp from "sharp";
 import { escapeAssText, type SubtitleLayout } from "./captions.js";
-import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement, type TimedWord } from "./contracts.js";
-import { runMediaCommand, type SubtitleTools } from "./media.js";
-import { groupNaturalSubtitleWords } from "./phrases.js";
+import { SubtitleError, type SubtitleCue, type SubtitlePlacement, type TimedWord } from "./contracts.js";
+import type { SubtitleTools } from "./media.js";
+import { createBatchedInkMeasurer } from "./batched-ink.js";
+import { SERIF_BOX_FAMILY, serifBoxAnchor, groupSerifBoxPhrases } from "./serif-box-policy.js";
 
-const FAMILY = "Instrument Serif";
+const FAMILY = SERIF_BOX_FAMILY;
 // The reference has slightly fuller strokes than the regular font. This small
 // same-colour edge follows the reveal, so it does not create a visible outline.
 const strokeWidth = (fontSize: number) => Number((fontSize * .3 / 61).toFixed(3));
-export const serifBoxAnchor = (placement: SubtitlePlacement) => placement === "bottom" ? .75 : subtitlePlacementGeometry(placement).anchor;
+export { serifBoxAnchor } from "./serif-box-policy.js";
 export type SerifBoxInk = { left: number; top: number; width: number; height: number };
-export type MeasureSerifBox = (text: string) => Promise<SerifBoxInk>;
+export type MeasureSerifBox = ((text: string) => Promise<SerifBoxInk>) & { preload?: (texts: string[]) => Promise<void> };
 const time = (ms: number) => {
   const cs = Math.floor(ms / 10);
   return `${Math.floor(cs / 360000)}:${String(Math.floor(cs / 6000) % 60).padStart(2, "0")}:${String(Math.floor(cs / 100) % 60).padStart(2, "0")}.${String(cs % 100).padStart(2, "0")}`;
@@ -28,40 +28,16 @@ export async function prepareSerifBoxFonts(tools: SubtitleTools, workDir: string
 
 /** Measure the font and subtle stroke with libass, exactly as the export renders it. */
 export function createSerifBoxMeasurer(layout: SubtitleLayout, tools: SubtitleTools, workDir: string, signal?: AbortSignal): MeasureSerifBox {
-  const cache = new Map<string, Promise<SerifBoxInk>>();
-  let queue = Promise.resolve();
-  return text => {
-    let result = cache.get(text);
-    if (!result) {
-      result = queue.then(() => measure(text));
-      queue = result.then(() => undefined, () => undefined);
-      cache.set(text, result);
-    }
-    return result;
-  };
-  async function measure(text: string): Promise<SerifBoxInk> {
-    signal?.throwIfAborted();
-    const width = Math.ceil((layout.width * 1.4 + 128) / 2) * 2, height = Math.ceil(Math.max(200, layout.fontSize * 2 + 128) / 2) * 2;
-    const padding = 64;
-    await writeFile(join(workDir, "serif-measure.ass"), header({ ...layout, width, height }) +
-      `Dialogue: 0,0:00:00.00,0:00:01.00,Caption,,0,0,0,,{\\an7\\pos(${padding},${padding})}${escapeAssText(text)}\n`);
-    const rendered = await runMediaCommand(tools.ffmpeg, ["-nostdin", "-hide_banner", "-loglevel", "verbose", "-y", "-protocol_whitelist", "file,pipe", "-f", "lavfi", "-i",
-      `color=c=black:s=${width}x${height}:r=24`, "-vf", "ass=serif-measure.ass:fontsdir=fonts", "-frames:v", "1", "serif-measure.png"], { cwd: workDir, signal, timeoutMs: 15000 });
-    if (!/fontselect:.*InstrumentSerif-Regular/iu.test(rendered.stderr) || /Glyph.*not found|fontselect: failed/iu.test(rendered.stderr))
-      throw new SubtitleError("FONT_UNAVAILABLE", "The serif subtitle font could not render these words.");
-    const { data, info } = await sharp(join(workDir, "serif-measure.png")).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-    let left = width, right = -1, top = height, bottom = -1;
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (data[(y * width + x) * info.channels] > 32) {
-      left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
-    }
-    if (right < 0) throw new SubtitleError("FONT_UNAVAILABLE", "No visible serif subtitle text was rendered.");
-    return { left: left - padding, top: top - padding, width: right >= width - 3 ? width * 2 : right - left + 1, height: bottom - top + 1 };
-  }
+  const width = Math.ceil((layout.width * 1.4 + 128) / 2) * 2, height = Math.ceil(Math.max(200, layout.fontSize * 2 + 128) / 2) * 2;
+  return createBatchedInkMeasurer<string>({ tools, workDir, signal, prefix: "serif-measure", key: text => text,
+    fontError: "The serif subtitle font could not render these words.", emptyError: "No visible serif subtitle text was rendered.",
+    describe: text => ({ width, height, header: header({ ...layout, width, height }),
+      body: `{\\an7\\pos(64,64)}${escapeAssText(text)}`, selectedFont: /fontselect:.*InstrumentSerif-Regular/iu }) });
 }
 
 export function groupSerifBoxWords(words: TimedWord[], layout: SubtitleLayout, measure: MeasureSerifBox) {
-  return groupNaturalSubtitleWords(words, layout, text => measure(text).then(ink => ink.width),
-    { maxWords: 6, preferredWords: 5, maxDurationMs: 2800, maxLines: 1 });
+  const width = Object.assign((text: string) => measure(text).then(ink => ink.width), { preload: measure.preload });
+  return groupSerifBoxPhrases(words, layout, width);
 }
 
 /** A fixed phrase: future words are grey, then each whole word fades to white. */

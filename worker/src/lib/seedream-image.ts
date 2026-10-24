@@ -24,6 +24,7 @@ type SeedreamImageParams = {
   aspectRatio: AIStudioImageRatio;
   prompt: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
   providerOperationId?: string;
   onOperationCreated?: (operationId: string) => Promise<void>;
   onOperationSucceeded?: (operationId: string) => Promise<void>;
@@ -36,14 +37,16 @@ export function buildSeedreamImageRequest(params: SeedreamImageParams) {
   if (!promptText || promptText.length > 4_000) {
     throw new ProviderRequestNotSubmittedError("Seedream requires a prompt of 1–4000 characters.");
   }
-  if (params.referenceImageUrl) {
+  const references = params.referenceImageUrls ?? (params.referenceImageUrl ? [params.referenceImageUrl] : []);
+  if (references.length > 10 || new Set(references).size !== references.length) throw new ProviderRequestNotSubmittedError("Choose up to 10 distinct reference images.");
+  for (const url of references) {
     let reference: URL;
     try {
-      reference = new URL(params.referenceImageUrl);
+      reference = new URL(url);
     } catch {
       throw new ProviderRequestNotSubmittedError("Seedream reference image must use a valid HTTPS URL.");
     }
-    if (reference.protocol !== "https:" || params.referenceImageUrl.length > 2_048) {
+    if (reference.protocol !== "https:" || reference.username || reference.password || url.length > 2_048) {
       throw new ProviderRequestNotSubmittedError("Seedream reference image must use an HTTPS URL of at most 2048 characters.");
     }
   }
@@ -54,7 +57,7 @@ export function buildSeedreamImageRequest(params: SeedreamImageParams) {
     outputFormat: "png" as const,
     outputCount: 1,
     grounding: false,
-    ...(params.referenceImageUrl ? { referenceImages: [{ uri: params.referenceImageUrl }] } : {}),
+    ...(references.length ? { referenceImages: references.map(uri => ({ uri })) } : {}),
   };
 }
 

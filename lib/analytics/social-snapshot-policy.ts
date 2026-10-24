@@ -1,4 +1,4 @@
-type Connection = { id: string; connectedAt: string; status: string };
+type Connection = { id: string; connectedAt: string; status: string; authorizationRevision?: string };
 type SavedJob = { output: unknown; completedAt: string | null };
 
 export function preserveSavedSocialAnalytics(previous: unknown, next: unknown) {
@@ -14,22 +14,25 @@ export function preserveSavedSocialAnalytics(previous: unknown, next: unknown) {
 }
 
 export function selectSocialSnapshot(jobs: SavedJob[], connections: Connection[]) {
+  const chosen = new Map<string, { account: unknown; savedAt: number }>();
   for (const job of jobs) {
     const savedAt = Date.parse(job.completedAt ?? "");
     if (!Number.isFinite(savedAt) || !job.output || typeof job.output !== "object") continue;
     const output = job.output as { accounts?: unknown[] };
     if (!Array.isArray(output.accounts)) continue;
-    const accounts = output.accounts.filter((value) => {
-      if (!value || typeof value !== "object") return false;
-      const account = value as { connectionId?: string; lastSyncedAt?: string };
+    for (const value of output.accounts) {
+      if (!value || typeof value !== "object") continue;
+      const account = value as { connectionId?: string; lastSyncedAt?: string; status?: string; authorizationRevision?: string };
       const connection = connections.find((c) => c.id === account.connectionId);
-      // A reconnect/disconnect invalidates old permissions and cached data.
-      return connection?.status === "connected" &&
-        Date.parse(account.lastSyncedAt ?? "") >= Date.parse(connection.connectedAt);
-    });
-    if (accounts.length > 0) {
-      return { data: { accounts }, savedAt: accounts.length === connections.length ? savedAt : 0 };
+      if (!connection || connection.status !== "connected" || chosen.has(connection.id) ||
+          (account.status && account.status !== "ready") ||
+          (connection.authorizationRevision && account.authorizationRevision !== connection.authorizationRevision) ||
+          !(Date.parse(account.lastSyncedAt ?? "") >= Date.parse(connection.connectedAt))) continue;
+      chosen.set(connection.id, { account, savedAt });
     }
   }
-  return null;
+  return chosen.size ? {
+    data: { accounts: [...chosen.values()].map(value => value.account) },
+    savedAt: chosen.size === connections.length ? Math.min(...[...chosen.values()].map(value => value.savedAt)) : 0,
+  } : null;
 }

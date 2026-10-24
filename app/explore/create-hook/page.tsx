@@ -8,6 +8,7 @@ export const metadata: Metadata = { title: "Talking Head + Demo", description: "
 export default function CreateHookPage() {
   return <Suspense fallback={<WorkspaceContentLoading label="Opening Talking Head + Demo" />}><HookWorkflowEntry
     generationEnabled={process.env.EXPLORE_GENERATION_ENABLED === "true"}
+    startingFrameEnabled={process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION === "true"}
     demoFramingEnabled={process.env.EXPLORE_DEMO_FRAMING_ENABLED === "true"}
   /></Suspense>;
 }

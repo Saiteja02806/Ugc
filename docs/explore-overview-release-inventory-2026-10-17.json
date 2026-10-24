@@ -1,0 +1,1184 @@
+{
+  "preparedAt": "2026-10-17T04:49:39.763876+00:00",
+  "base": "d73ef153a601c8a90ac5c36ef13c87ed3cbf35de",
+  "main": "74370aad41eae60f9f2224e0cc1a7fcc2e04cbf3",
+  "paths": [
+    {
+      "path": "CAROUSEL_CONTEXT.md",
+      "status": "reconcile",
+      "sha256": "ba39623f48107bcfba6d1663ee7b7da1417f1789b5f52ef9c0f7048b86dd2953",
+      "bytes": 494347
+    },
+    {
+      "path": "EXPLORE_CONTEXT.md",
+      "status": "reconcile",
+      "sha256": "4810f493a2ad6650cac71655eb45477801ae206bdfa2b59b5bd4f70331920a8d",
+      "bytes": 122210
+    },
+    {
+      "path": "app/aivideos/page.tsx",
+      "status": "already released",
+      "sha256": "f24e88aebf25090a2f529e3557435feccdc45b4477c20aaa7ed95be24bd3c7cf",
+      "bytes": 133
+    },
+    {
+      "path": "app/api/explore/slideshows/image/route.ts",
+      "status": "already released",
+      "sha256": "582c9c9e662a3b05d3b20962eb24588f4573a289394c382639f1305cb8d023dd",
+      "bytes": 4375
+    },
+    {
+      "path": "app/api/explore/slideshows/improve-prompt/route.ts",
+      "status": "already released",
+      "sha256": "afcf28318d183a5e51aa102e0ca87cd55eefd3d1d4225679346bd55b91b55f4f",
+      "bytes": 205
+    },
+    {
+      "path": "app/api/explore/slideshows/reference-images/route.ts",
+      "status": "already released",
+      "sha256": "6df64b0c97664f909f2a126abeb45b281bf938bfa44c70eef55f93836d625807",
+      "bytes": 178
+    },
+    {
+      "path": "app/api/media/[assetId]/route.ts",
+      "status": "already released",
+      "sha256": "f6dbbc9388da79541cba17f872602f558c1c7eccf2fe0d9d2f508373e9c82e15",
+      "bytes": 4152
+    },
+    {
+      "path": "app/api/media/route.ts",
+      "status": "already released",
+      "sha256": "5a72afbe85a9bdcad214aa98892aeb6c0bb1bddbe5735bbb4bcad1efb2fc1e52",
+      "bytes": 3972
+    },
+    {
+      "path": "app/hookvideos/page.tsx",
+      "status": "already released",
+      "sha256": "f03385e3831d2f3932e0140856086f0b30f46156428d76adfcb62ef7905182c9",
+      "bytes": 430
+    },
+    {
+      "path": "components/explore/explore-text-fonts.css",
+      "status": "already released",
+      "sha256": "1ef1da44e9c5858a264f46040c877ccb13f0c39d458dbe10887ede9b6a6ec76b",
+      "bytes": 2285
+    },
+    {
+      "path": "components/explore/format-demo-section.tsx",
+      "status": "already released",
+      "sha256": "9274c2ee1741f585db955a5f7fa4b78dd204ded20b3db844f9b008acda288a26",
+      "bytes": 76451
+    },
+    {
+      "path": "components/explore/format-demo-workspace.tsx",
+      "status": "already released",
+      "sha256": "cd5009feecb3009bc0450b72a66519d807df4f8c11c82e06a67aa4a26aee0676",
+      "bytes": 10538
+    },
+    {
+      "path": "components/explore/format-generation-references.tsx",
+      "status": "already released",
+      "sha256": "79c81b51d8e1a6048dfb2d48417b3e581766405c406aa33d8651fd785412e3eb",
+      "bytes": 24455
+    },
+    {
+      "path": "components/explore/format-slideshow-editor.tsx",
+      "status": "reconcile",
+      "sha256": "a491dc54f73ee1b4e842957dfb598c8e66915b764757d7be1c210899eeb383cc",
+      "bytes": 55804
+    },
+    {
+      "path": "components/explore/format-text-overlays-editor.tsx",
+      "status": "already released",
+      "sha256": "36b4d6d1904aa43fdcdbdc4acc08f37168f065d90e8397b249a440b5eb285096",
+      "bytes": 9035
+    },
+    {
+      "path": "components/explore/format-video-editor.module.css",
+      "status": "already released",
+      "sha256": "9f4c09ab64e699b5457dd42bb2a8571a57299804d8737c6ac5db808d4b6ec412",
+      "bytes": 6308
+    },
+    {
+      "path": "components/explore/format-video-editor.tsx",
+      "status": "already released",
+      "sha256": "8cba362a4414d052d24b38e99cec6dd3206c15f091e5f75af7e17ad8f8ffdff7",
+      "bytes": 40584
+    },
+    {
+      "path": "components/explore/format-video-text-overlay.tsx",
+      "status": "already released",
+      "sha256": "13a93433aa2c752edc495e1845f394b3ac75bdef327e15919c78d6d1c0618388",
+      "bytes": 1147
+    },
+    {
+      "path": "components/explore/format-workspace.module.css",
+      "status": "already released",
+      "sha256": "087f2511123fae5350d70f9cce82aa33c79c7ee972e9002ae589752dedacbe3f",
+      "bytes": 23738
+    },
+    {
+      "path": "components/explore/format-workspace.tsx",
+      "status": "reconcile",
+      "sha256": "4aaf274a2fdeaf666ac4e65348c87eb570f59cb77a82844a652fa90064e2aa4d",
+      "bytes": 60559
+    },
+    {
+      "path": "components/explore/hook-workflow-preview.tsx",
+      "status": "already released",
+      "sha256": "5189178503520fbbab57c95fc706f2a6376591621a495a0ec495a920f486f877",
+      "bytes": 38776
+    },
+    {
+      "path": "components/explore/recreate-generation-view.ts",
+      "status": "already released",
+      "sha256": "7bf5c71162695cf14cafbadc4c813e6bf0161d71cd749e8aac6e40c304d72dcb",
+      "bytes": 1377
+    },
+    {
+      "path": "components/explore/recreate-workspace.tsx",
+      "status": "already released",
+      "sha256": "29f05a63f217102ee9b22add5b2b119a91ce10d74fc9074bf303bf42d1a27f81",
+      "bytes": 26342
+    },
+    {
+      "path": "components/explore/reference-video-player.tsx",
+      "status": "already released",
+      "sha256": "907084ecea63848eaa37f1007fd7be2b134d0892caba9cea50e9431e6f3cd68f",
+      "bytes": 1705
+    },
+    {
+      "path": "components/explore/remix-text-section.tsx",
+      "status": "already released",
+      "sha256": "633dbf4d0d8f484f26add96cd528edf515e82d7e94fde4cccb12b08a4c1fe4c7",
+      "bytes": 20596
+    },
+    {
+      "path": "components/explore/slideshow-add-slides.module.css",
+      "status": "already released",
+      "sha256": "a3c1ffdc71d51c77b60546967ea5e76f424a1f08fe33bcd3d8779fd46ed2a606",
+      "bytes": 3211
+    },
+    {
+      "path": "components/explore/slideshow-add-slides.tsx",
+      "status": "already released",
+      "sha256": "80febeedb535bdd2b1b3910df118b5c6571f1221d895bb046d81a6d0a372142a",
+      "bytes": 9223
+    },
+    {
+      "path": "components/explore/slideshow-editor.module.css",
+      "status": "already released",
+      "sha256": "8b5fa8c2feeecd87c9be0fb8d767a00a9a505f7a72bf1d32de5d1844c395b9ff",
+      "bytes": 9069
+    },
+    {
+      "path": "components/explore/slideshow-prompt-improver.tsx",
+      "status": "already released",
+      "sha256": "837cfb5cd8580e6e099834e2f39ce067e1ca835905ee496650cf3038c867a10a",
+      "bytes": 4892
+    },
+    {
+      "path": "components/explore/talking-head-clip-editing.tsx",
+      "status": "already released",
+      "sha256": "626cf0885f3f81f2cc7a40cfc2752f2b4e5c40e492b2197a91a70b5ff404ea7b",
+      "bytes": 10759
+    },
+    {
+      "path": "components/explore/use-local-workflow-images.ts",
+      "status": "already released",
+      "sha256": "0a4f1b7ae53494effaf91d5d610453af91bcf538dd94debec2ba674a18ecca5d",
+      "bytes": 6490
+    },
+    {
+      "path": "components/explore/use-local-workflow-media.ts",
+      "status": "already released",
+      "sha256": "d4fd6f5704085f93aedab1d29feec2e1e5d0a8d4ca1f34186871055e586918a2",
+      "bytes": 5938
+    },
+    {
+      "path": "components/explore/use-slideshow-composer-draft.ts",
+      "status": "already released",
+      "sha256": "ff9b42d6a7c49ecd7db8a51c63788b05ad50e13d44faaa1050639a3b78550f58",
+      "bytes": 3684
+    },
+    {
+      "path": "components/explore/use-slideshow-slide-drag.ts",
+      "status": "already released",
+      "sha256": "cd57969890623cbc3bad8fbfb34d28c40ece3b26f85cf459801dbe6a0c0bccd3",
+      "bytes": 5988
+    },
+    {
+      "path": "components/explore/workflow-clip-source-actions.tsx",
+      "status": "already released",
+      "sha256": "9766dbd19d64a899f06b1b3bdec5bc01fc77a8cabeb3ec57b48c2676cac2c6a6",
+      "bytes": 4726
+    },
+    {
+      "path": "components/explore/workflow-composition-panel.tsx",
+      "status": "already released",
+      "sha256": "69bf79bb81545baf0c5f44437740cb2e962a14e7306ad57397a1380e247c3de2",
+      "bytes": 22503
+    },
+    {
+      "path": "components/explore/workflow-creation-form.tsx",
+      "status": "already released",
+      "sha256": "67bb1eeb08dc05fb08d79adaa0b158b31c8c3067ae8edee8ec68b9bd86b53536",
+      "bytes": 18093
+    },
+    {
+      "path": "components/explore/workflow-creation.module.css",
+      "status": "already released",
+      "sha256": "8236c6cd37b87b073bc226a4c5ecad8b07866ec515c89cac1637b0f1219a9f54",
+      "bytes": 28447
+    },
+    {
+      "path": "components/explore/workflow-edit-workspace.tsx",
+      "status": "already released",
+      "sha256": "da7a2eb00955514f471a5a8594235ce7d524d56e883745b1e1e637537aa5a85d",
+      "bytes": 22876
+    },
+    {
+      "path": "components/explore/workflow-generation-boundary.tsx",
+      "status": "already released",
+      "sha256": "ed446e63340405e7693722760233f585cdcbbf9e9f55b9c61dd4fa4ffdf1e091",
+      "bytes": 22375
+    },
+    {
+      "path": "components/explore/workflow-image-library.tsx",
+      "status": "already released",
+      "sha256": "defc0be7cd09e6b715b9d2d9ce133cadcdf7d686e5da2be9760a2236b4dad403",
+      "bytes": 4467
+    },
+    {
+      "path": "components/explore/workflow-section-layout.module.css",
+      "status": "already released",
+      "sha256": "35fa9ff7ef231b5f61f853e60f6cb75bb94827e8de2a67d0fa7301e22219a370",
+      "bytes": 15805
+    },
+    {
+      "path": "components/explore/workflow-video-asset-picker.tsx",
+      "status": "already released",
+      "sha256": "0812951201c46eb46bc1af3b053029c5f56b14320af8bdfb0d575d868267ecf6",
+      "bytes": 6536
+    },
+    {
+      "path": "components/generation/ai-studio-composer.tsx",
+      "status": "already released",
+      "sha256": "f0bcdecd2d7bcfe426d6f9dba06dc05063f5ab221d26a621ee3b5513e544f19b",
+      "bytes": 32265
+    },
+    {
+      "path": "components/trending/trending-ai-hook-bundle.tsx",
+      "status": "already released",
+      "sha256": "778501fae641e0f00f7d738399c1add2c169d0b43ed31299b6b83026085cbc2e",
+      "bytes": 6967
+    },
+    {
+      "path": "components/workspace/ugc-chat-workspace.tsx",
+      "status": "already released",
+      "sha256": "84c6a4fffec4abdc2a78e848f538aed8ac15081cd23e87d8c27521cc635ba541",
+      "bytes": 63337
+    },
+    {
+      "path": "docs/complete-release-2026-10-16.md",
+      "status": "already released",
+      "sha256": "4e9bee9c55201a63c6e36cda8579c690cf0436362f9e57958ea2d43f833a9e6c",
+      "bytes": 2152
+    },
+    {
+      "path": "docs/hook-remix-final-frame-2026-10-16.md",
+      "status": "already released",
+      "sha256": "5afb34f6c4eab092e428eb646ff0bb8a43278a760b02317c1ddada6bf71b7473",
+      "bytes": 3464
+    },
+    {
+      "path": "docs/scheduling-video-preparation-failure-2026-10-16.md",
+      "status": "already released",
+      "sha256": "1e567f6bed66af506ea58e9f30789703bd4293dc912ad5aee29c1b8bb9d482b6",
+      "bytes": 10109
+    },
+    {
+      "path": "docs/slideshow-assembly-ui-2026-10-16.md",
+      "status": "already released",
+      "sha256": "7558150cb1461c37293802fe1b3e0e2546c1f6f42c573aba8da43ecdf24d81f1",
+      "bytes": 5173
+    },
+    {
+      "path": "docs/slideshow-fidelity-and-master-assembly-2026-10-16.md",
+      "status": "already released",
+      "sha256": "6c308502a84c145458225a616a59fce56b6d2c2e203db7c5bbe11b5068145218",
+      "bytes": 7597
+    },
+    {
+      "path": "docs/slideshow-live-root-cause-2026-10-16.md",
+      "status": "already released",
+      "sha256": "ab170c764920ec47b2554a41f6e9ed4f96e8acf3b6e7dfb163c466bf47c35b76",
+      "bytes": 6789
+    },
+    {
+      "path": "docs/slideshow-prompt-improvement-2026-10-16.md",
+      "status": "already released",
+      "sha256": "3e436dd9055bad74cc84c1d421f53a56e7e99a144d6632f70755f1a4e7aaee73",
+      "bytes": 5733
+    },
+    {
+      "path": "docs/slideshow-release-2026-10-17.md",
+      "status": "already released",
+      "sha256": "b9658f70a014b4d0695e6232e442b7e4b9c0c1e1b110058f107413466046ad8c",
+      "bytes": 2725
+    },
+    {
+      "path": "docs/slideshow-thumbnail-controls-2026-10-17.md",
+      "status": "already released",
+      "sha256": "cb66a5a5793a2fd534358755ce9384124c78f3bac700b2ce6f4577e1a2dfc6ee",
+      "bytes": 1643
+    },
+    {
+      "path": "docs/trending-ai-hook-bundle-2026-10-16.md",
+      "status": "already released",
+      "sha256": "d75d0c5973c8a974d561337783f8f19e51c91556afc37893640d56c71d262f41",
+      "bytes": 5288
+    },
+    {
+      "path": "docs/trending-planner-release-2026-10-17.md",
+      "status": "already released",
+      "sha256": "0a2b9fa6c611e28bfd27225da97cb2c9a83a06986ebc603ea92d7959ce09870d",
+      "bytes": 3743
+    },
+    {
+      "path": "docs/trending-slideshow-generation-audit-2026-10-17.md",
+      "status": "already released",
+      "sha256": "e5d4b2ac83668b650d5015a5e1c5bfd9897cd8e5842a936fda8f22f5f29ce285",
+      "bytes": 5030
+    },
+    {
+      "path": "docs/trending-slideshow-planning-fix-2026-10-17.md",
+      "status": "already released",
+      "sha256": "3d0c61fe160899a71bbcee7d75850e91ab5f802509fc478f0fab877cf9b8e095",
+      "bytes": 3781
+    },
+    {
+      "path": "lib/ai-studio/generated-image-history-metadata.test.ts",
+      "status": "already released",
+      "sha256": "3abb02d9ac529b8c6cde3a319d93da86349c220e874d33447f553f0571bfdfdb",
+      "bytes": 1295
+    },
+    {
+      "path": "lib/ai-studio/generated-image-history-metadata.ts",
+      "status": "already released",
+      "sha256": "61f00707b6818a7e2fc09ebc6824287acc4d0945cd746ec9a0ac8664131c0e5b",
+      "bytes": 714
+    },
+    {
+      "path": "lib/ai-studio/image-generation-api.test.mjs",
+      "status": "already released",
+      "sha256": "58220703fc05bb9a98163e8ed7ce9ea67808794e4be64a79e5f7bedb80dea6bf",
+      "bytes": 29391
+    },
+    {
+      "path": "lib/ai-studio/image-generation-api.ts",
+      "status": "already released",
+      "sha256": "e0240a02505e4572cf6eaf9264ba72767f4df70e4698a0666e2db2d63ccd6da4",
+      "bytes": 24225
+    },
+    {
+      "path": "lib/explore/clip-preview-time.ts",
+      "status": "already released",
+      "sha256": "c052421ba637b08b18d6cc96c6acfb52ab520c5e9ed29b15e3043766bd8d2553",
+      "bytes": 206
+    },
+    {
+      "path": "lib/explore/hook-remix-source.test.ts",
+      "status": "already released",
+      "sha256": "b617faf76f443edf8e50528ed2bfb0d1589820e20b5d2d9920c111a4fff4f4bc",
+      "bytes": 5335
+    },
+    {
+      "path": "lib/explore/hook-remix-source.ts",
+      "status": "already released",
+      "sha256": "fd7b419926f4fdd5224cf85c93b82abc81185e3162938823091b73b4c72bd68b",
+      "bytes": 2159
+    },
+    {
+      "path": "lib/explore/remix-text-api.test.mjs",
+      "status": "already released",
+      "sha256": "7b3a580cfd7a590d27a97f808dc85c341bc5c2fd8c0d59a6298f83db350e24a7",
+      "bytes": 17799
+    },
+    {
+      "path": "lib/explore/remix-text-api.ts",
+      "status": "already released",
+      "sha256": "ee8d298e8aff35e00f1229a4e078ca514f37461810cea07cbfc1f00343d395f1",
+      "bytes": 12383
+    },
+    {
+      "path": "lib/explore/remix-text-edit.ts",
+      "status": "already released",
+      "sha256": "4d9d27c69497fdef1bb5dde33535fe31ef425ca0c8539fa664a1466ac7ec41b9",
+      "bytes": 1629
+    },
+    {
+      "path": "lib/explore/remix-text-input.ts",
+      "status": "already released",
+      "sha256": "260f90ec4b2285e6411419a4d96cd2e5f90c8d2d827bffc313f9f178e8d7b1e2",
+      "bytes": 2327
+    },
+    {
+      "path": "lib/explore/remix-text-prompt.ts",
+      "status": "already released",
+      "sha256": "1d970f239c978e1e97ae9f2d7cfb42fdb425e7df4c451ccf3dc6c21bba835e9e",
+      "bytes": 2364
+    },
+    {
+      "path": "lib/explore/slideshow-assembly.test.ts",
+      "status": "already released",
+      "sha256": "6c0536cac1f2eb194d551810c82b9e23b713771c2258a9b88700dfa8531da2fb",
+      "bytes": 1194
+    },
+    {
+      "path": "lib/explore/slideshow-assembly.ts",
+      "status": "already released",
+      "sha256": "c6018bbf5c18cc83075c55eb7401c4ed29cc4a5ccf6555023a65ed32d183a964",
+      "bytes": 857
+    },
+    {
+      "path": "lib/explore/slideshow-composer-draft.test.ts",
+      "status": "already released",
+      "sha256": "89302213a169f15e3be10cab031645d0ae29545ebb902f27536dd3d7906deeb8",
+      "bytes": 1563
+    },
+    {
+      "path": "lib/explore/slideshow-composer-draft.ts",
+      "status": "already released",
+      "sha256": "7685ef94fad7fe1631f44a0dd56ba28c83a8420e5882150bb55b954eb93f2f7f",
+      "bytes": 1629
+    },
+    {
+      "path": "lib/explore/slideshow-generation-groups.test.ts",
+      "status": "already released",
+      "sha256": "f6279d20371c6073139d3f56dda301837c8fc703d25b02c00ab7d1471f447be1",
+      "bytes": 3341
+    },
+    {
+      "path": "lib/explore/slideshow-generation-groups.ts",
+      "status": "already released",
+      "sha256": "ba7bbbc1c67fca3a2b3e9b3304673f65bda2e294addfcc4b02e4976cf325e7b1",
+      "bytes": 2555
+    },
+    {
+      "path": "lib/explore/slideshow-prompt-api.ts",
+      "status": "already released",
+      "sha256": "aea2f63698795456d6687fd025f46088978ff2243a87571ff18d62db4247147f",
+      "bytes": 5721
+    },
+    {
+      "path": "lib/explore/slideshow-prompt-client.ts",
+      "status": "already released",
+      "sha256": "53522eda334645280c52c63331d85e4b5752ce9efb71b0eec1c11a2779dc24e0",
+      "bytes": 2388
+    },
+    {
+      "path": "lib/explore/slideshow-prompt-plan.ts",
+      "status": "already released",
+      "sha256": "1cf4b7ed1f246074956e53bbe856c2a66c9747fc4d37bc3d98aa5da350406da1",
+      "bytes": 3962
+    },
+    {
+      "path": "lib/explore/slideshow-reference-import.ts",
+      "status": "already released",
+      "sha256": "d8a5d2cadf1feb495f62e00aa2637e61d0d0544803a012463d4c4647d48caf68",
+      "bytes": 7397
+    },
+    {
+      "path": "lib/explore/workflow-finishing-service.ts",
+      "status": "already released",
+      "sha256": "7c8ded4096fe140807548acc549b0d46825a67ca3bd5e8d5aa9168bd9f339804",
+      "bytes": 10864
+    },
+    {
+      "path": "lib/explore/workflow-generation-client.ts",
+      "status": "already released",
+      "sha256": "579b8244cdf037e5f12d99cad502ba9d327c0283b11f33e03d3f4f74dff1705f",
+      "bytes": 24589
+    },
+    {
+      "path": "lib/media/media-storage.ts",
+      "status": "already released",
+      "sha256": "d5ac25803f05ff3d408485d3c3095606be31c7251009cfe45ff9aa9900097ebc",
+      "bytes": 18265
+    },
+    {
+      "path": "lib/trending/ai-hook-bundle-order.ts",
+      "status": "already released",
+      "sha256": "edfca892af0f032c9bf9398e7d6498b7eefbe7fe0db3f68251470400b0590c51",
+      "bytes": 2701
+    },
+    {
+      "path": "lib/trending/ai-hook-bundle.json",
+      "status": "already released",
+      "sha256": "f52e51ac91e548683146f7384e10bda2c58ce3cb73027d1ac92e03a9412ab610",
+      "bytes": 90716
+    },
+    {
+      "path": "package-lock.json",
+      "status": "already released",
+      "sha256": "570c8ba2d0a3dba26de9d902920b4e4106359a638fb12e943363da395208066c",
+      "bytes": 454691
+    },
+    {
+      "path": "package.json",
+      "status": "already released",
+      "sha256": "0f66ae11404a5f4e614c28cc28e6ebea8daa31269e0b7f26695b346527f25225",
+      "bytes": 50764
+    },
+    {
+      "path": "public/explore-text-fonts/dmsans-400.woff2",
+      "status": "already released",
+      "sha256": "53257bea9c67330bfcb825cf1045b9495b3b1c90da3474485e52ad2de26c4705",
+      "bytes": 21852
+    },
+    {
+      "path": "public/explore-text-fonts/dmsans-500.woff2",
+      "status": "already released",
+      "sha256": "d4569f9ea3e0de18b0a9594e9d73b66c8a7d54e58ab8a87559715867588a4ee4",
+      "bytes": 22136
+    },
+    {
+      "path": "public/explore-text-fonts/dmsans-700.woff2",
+      "status": "already released",
+      "sha256": "aaa42cff56acec9e7badd69a940406fdee3ff937d3777abe597c165c556efc89",
+      "bytes": 22068
+    },
+    {
+      "path": "public/explore-text-fonts/dmsans-OFL.txt",
+      "status": "already released",
+      "sha256": "9af36190332437f5ecd09974de43c1f7c77a310a996cdd8ceb25628b458840e1",
+      "bytes": 4482
+    },
+    {
+      "path": "public/explore-text-fonts/inter-400.woff2",
+      "status": "already released",
+      "sha256": "f68a1f15cd7e06d16b2a08c0fc0cba6aeaa85c32f813cfb09b6cd90cb3957ff7",
+      "bytes": 113432
+    },
+    {
+      "path": "public/explore-text-fonts/inter-500.woff2",
+      "status": "already released",
+      "sha256": "bd6c3b23abc8264ce86a10f80a29c34a475c59b60cb820d91d2de4a88c0150e6",
+      "bytes": 116640
+    },
+    {
+      "path": "public/explore-text-fonts/inter-700.woff2",
+      "status": "already released",
+      "sha256": "e131bc4368fdd5171f872d69fe889bd1916028cfd740b2feb01ceb96ae91e7be",
+      "bytes": 117524
+    },
+    {
+      "path": "public/explore-text-fonts/inter-OFL.txt",
+      "status": "already released",
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "bytes": 4377
+    },
+    {
+      "path": "public/explore-text-fonts/montserrat-400.woff2",
+      "status": "already released",
+      "sha256": "fc048b344a4e39f23a88200f3bf19f9a6e2b36b173187c529724cf297968ad3b",
+      "bytes": 104632
+    },
+    {
+      "path": "public/explore-text-fonts/montserrat-500.woff2",
+      "status": "already released",
+      "sha256": "a245e9c98133e0333a4bef73e305fe8ec79b7754151e9923b464bb45b41332d1",
+      "bytes": 105128
+    },
+    {
+      "path": "public/explore-text-fonts/montserrat-700.woff2",
+      "status": "already released",
+      "sha256": "c80a03656775ac841f0da57b49750ab8228962fc765fa4e7a0f2580dbb9d87ef",
+      "bytes": 106728
+    },
+    {
+      "path": "public/explore-text-fonts/montserrat-OFL.txt",
+      "status": "already released",
+      "sha256": "8b7141c03fa4f8d44e6345d5d4931709290f0f67875e452e95ac1fd3a027802e",
+      "bytes": 4400
+    },
+    {
+      "path": "public/explore-text-fonts/robotocondensed-400.woff2",
+      "status": "already released",
+      "sha256": "957c1f17f3afc9550b7c98ada1d5dd8d7b5f572bb92a814c0fb536b9c05cbe8b",
+      "bytes": 63352
+    },
+    {
+      "path": "public/explore-text-fonts/robotocondensed-500.woff2",
+      "status": "already released",
+      "sha256": "daac37f97fde0223d678068cd673786e4efd155337ab585ec558101ec7915465",
+      "bytes": 65488
+    },
+    {
+      "path": "public/explore-text-fonts/robotocondensed-700.woff2",
+      "status": "already released",
+      "sha256": "a77bbe1bef601949bc6e57d084ae9213dc9c481acc96da106e07a93f72d42244",
+      "bytes": 66008
+    },
+    {
+      "path": "public/explore-text-fonts/robotocondensed-OFL.txt",
+      "status": "already released",
+      "sha256": "0e4cc6ece88573545be2ed25835363662a6182ba4a4c1b5c8feda52add30e8a6",
+      "bytes": 4393
+    },
+    {
+      "path": "scripts/build-trending-ai-hook-bundle.py",
+      "status": "already released",
+      "sha256": "4220c5dedcb3275370d635b3d9bff2d75ef9dc72124df0a63de91b7dd6c8248d",
+      "bytes": 1994
+    },
+    {
+      "path": "scripts/explore-clip-live-controls.test.mjs",
+      "status": "already released",
+      "sha256": "f24c7ec665f878599d95d160365de86d3687feeba34c408bfb8169cb7033485a",
+      "bytes": 16689
+    },
+    {
+      "path": "scripts/explore-demo-loading.browser.cjs",
+      "status": "already released",
+      "sha256": "b924591addeaee7afd63808ff9d7ee9f982a5b990f728790a4fd5e790415200e",
+      "bytes": 16214
+    },
+    {
+      "path": "scripts/explore-format-common-editor.test.mjs",
+      "status": "already released",
+      "sha256": "95a7002c572bcc0b64db17894018570d7b073a525256e89d82ac20f1142d98fa",
+      "bytes": 61693
+    },
+    {
+      "path": "scripts/explore-format-demo-state.test.mjs",
+      "status": "already released",
+      "sha256": "ed8c3d2bc49b6ace631b49c5885cb216d629d6b79c0b8d1ba7768eb77cfbaa6e",
+      "bytes": 66943
+    },
+    {
+      "path": "scripts/explore-format-generation-ui.test.mjs",
+      "status": "already released",
+      "sha256": "aea3cb17ad9b593c02f4bb51798e21b4a1dc16ab4000a3b5ec43fc29fa19d20e",
+      "bytes": 50416
+    },
+    {
+      "path": "scripts/explore-format-source-workspace.test.mjs",
+      "status": "reconcile",
+      "sha256": "bc156699783586b96f86d51f6489ad44588852aa693985c2a749bd8c7c989f85",
+      "bytes": 77834
+    },
+    {
+      "path": "scripts/explore-recreate-source-action.test.mjs",
+      "status": "already released",
+      "sha256": "18230076682a7e407ad2f2c1589c2b9652699d94b979c903ee39da9a153d483c",
+      "bytes": 11410
+    },
+    {
+      "path": "scripts/explore-reference-images.test.mjs",
+      "status": "already released",
+      "sha256": "784114b33f3a827d0f4c0b5817c2f406f8a8eb3be555a6fdbc7e67e35cab9324",
+      "bytes": 10519
+    },
+    {
+      "path": "scripts/explore-reference-preview.test.mjs",
+      "status": "already released",
+      "sha256": "497cb7ee8e2d366e9aa9759b1824145668f223c711a69b1e6780272b2f49ddc1",
+      "bytes": 7246
+    },
+    {
+      "path": "scripts/explore-slideshow-editor.test.mjs",
+      "status": "reconcile",
+      "sha256": "1b328fc4c0a664e76c22325568d07be52afde99cfd9c95bf80ecd188f7d4710b",
+      "bytes": 55379
+    },
+    {
+      "path": "scripts/explore-slideshow-reference-import.test.mjs",
+      "status": "already released",
+      "sha256": "8c422cf1d07169952519f1f48f2e3a244be809e4e0e3e82cdc1555e039d2fd2e",
+      "bytes": 12995
+    },
+    {
+      "path": "scripts/explore-slideshow.browser.cjs",
+      "status": "already released",
+      "sha256": "84df9e3280e0d35f07f03d44b698a9017bab58e80769fc9a9b48a8623cfbe0f0",
+      "bytes": 33949
+    },
+    {
+      "path": "scripts/explore-text-fonts.browser.cjs",
+      "status": "already released",
+      "sha256": "af2cac81b1d078f0ccbecd8a83254e72a0371627c1ada88d3b878414dac5cdac",
+      "bytes": 8654
+    },
+    {
+      "path": "scripts/explore-text-fonts.test.mjs",
+      "status": "already released",
+      "sha256": "e8330f3472dfc966185a298d110ddd9c298294c90389683430de04f3c4932825",
+      "bytes": 7352
+    },
+    {
+      "path": "scripts/explore-timeline-metadata.test.mjs",
+      "status": "already released",
+      "sha256": "46b305d8be52306aea191adf1fdb4f907946691516acf6dd22006387a09be6eb",
+      "bytes": 3475
+    },
+    {
+      "path": "scripts/explore-video-composition.test.mjs",
+      "status": "already released",
+      "sha256": "c65d38338eb1b42bc91c78fb9611a3fa2b360053a6941df303ac556eaf4b9b92",
+      "bytes": 22808
+    },
+    {
+      "path": "scripts/explore-workflow-job-recovery-api.test.mjs",
+      "status": "already released",
+      "sha256": "458c123205bf8154083d0bd720f9debbb716c0003d40ee950d5faa1fa284008a",
+      "bytes": 6426
+    },
+    {
+      "path": "scripts/explore-workflow-job-recovery.test.mjs",
+      "status": "already released",
+      "sha256": "f6ca1cb8d7ce35b94e4d10c20de730dfb901a556e7a10fb84315a8b8c877b08d",
+      "bytes": 17991
+    },
+    {
+      "path": "scripts/hook-reference-card.browser.cjs",
+      "status": "already released",
+      "sha256": "68979b4a01faac246882c24dafbb27d02ecf89d8ef70ba6c89851560cf7632df",
+      "bytes": 23399
+    },
+    {
+      "path": "scripts/hook-remix-ending.browser.cjs",
+      "status": "already released",
+      "sha256": "451155dd71d17ff14568c2cdea58676a6b2d1ccfb6fe37329e6aae3fc00a1f1b",
+      "bytes": 10269
+    },
+    {
+      "path": "scripts/hook-workflow-preview.test.mjs",
+      "status": "already released",
+      "sha256": "5cbad98494b25da720bd890799e6e466ec84c085efd74c2668cabfb6935461bc",
+      "bytes": 8298
+    },
+    {
+      "path": "scripts/prepare-explore-text-fonts.py",
+      "status": "already released",
+      "sha256": "70170856afeaad1e0825e42f307e87df3acc155bc081f173a311b48435258ebd",
+      "bytes": 3984
+    },
+    {
+      "path": "scripts/reference-video-player.test.mjs",
+      "status": "already released",
+      "sha256": "c31eea5c91a4b759ec72bbb71644a58fe3882ec2da454cada648334da10f0141",
+      "bytes": 2014
+    },
+    {
+      "path": "scripts/slideshow-add-slides.browser.cjs",
+      "status": "reconcile",
+      "sha256": "3741b12d2d348e2e7a03e256ad4e8ba4e7079cf6a0f61cde834c6a4be5ab1eb6",
+      "bytes": 24335
+    },
+    {
+      "path": "scripts/slideshow-prompt-api.test.mjs",
+      "status": "already released",
+      "sha256": "236cb6dd8e50fc05a9bad7a37c930644b67c02fd2020273d6c2e164da2f9db24",
+      "bytes": 6609
+    },
+    {
+      "path": "scripts/slideshow-prompt-db.test.mjs",
+      "status": "already released",
+      "sha256": "016dafacbfa84d940582d861884d92647cc8bddcb57046c0267d46e8998bb9d3",
+      "bytes": 2581
+    },
+    {
+      "path": "scripts/slideshow-prompt-history-api.test.mjs",
+      "status": "already released",
+      "sha256": "9ca0980da07f1ece066f819bf41374a392c91727e523442ee4e04dcdcb8ea2f7",
+      "bytes": 3470
+    },
+    {
+      "path": "scripts/slideshow-prompt-plan.test.mjs",
+      "status": "already released",
+      "sha256": "50234d034fb0e2d6337d3e3a0b2995c4d213fcf254d1b73fa34360584ebe8e09",
+      "bytes": 4470
+    },
+    {
+      "path": "scripts/slideshow-prompt.browser.cjs",
+      "status": "already released",
+      "sha256": "79fa9c47b611daa693828cadb05241112357cd4fd3a2a3582b7706f39ab0c4de",
+      "bytes": 14086
+    },
+    {
+      "path": "scripts/slideshow-reliable-edits.browser.cjs",
+      "status": "already released",
+      "sha256": "a9ee593a00c1ed46da20b55b7643ee7645713616e6041e9e950b47d987fe07c4",
+      "bytes": 12897
+    },
+    {
+      "path": "scripts/talking-head-editor-layout.browser.cjs",
+      "status": "already released",
+      "sha256": "1c22a807cb7253345f668e88fce589138ed5d52c620dd820ef1d90fd5d7f69a2",
+      "bytes": 27508
+    },
+    {
+      "path": "scripts/talking-head-saved-composition.test.mjs",
+      "status": "already released",
+      "sha256": "64dd2ced11c95e54ae9cb7759123549a8032a4491b33a3086bef5fd57f28ca4c",
+      "bytes": 8297
+    },
+    {
+      "path": "scripts/trending-ai-hook-bundle.browser.cjs",
+      "status": "already released",
+      "sha256": "dcf354e724c14067b7daf83b1ceae951d0886b52a62dd822c6f982676f0974d0",
+      "bytes": 5550
+    },
+    {
+      "path": "scripts/verify-explore-timing-recovery.mjs",
+      "status": "already released",
+      "sha256": "6ebc7317fb2b672511d5f268dfb144e5f1fb25abd195fb3948e1812bc0242cb4",
+      "bytes": 2919
+    },
+    {
+      "path": "scripts/workflow-clip-source-actions.test.mjs",
+      "status": "already released",
+      "sha256": "945b5219836753aa9ec3ca7482e4e438e93005669afb70c3776baab328742857",
+      "bytes": 5916
+    },
+    {
+      "path": "scripts/workflow-composition-panel.test.mjs",
+      "status": "already released",
+      "sha256": "3d54446ebd0b4a8763b70e3255289027e28eed55b3c897a018d3360d456e89a2",
+      "bytes": 39498
+    },
+    {
+      "path": "scripts/workflow-creation-form.test.mjs",
+      "status": "already released",
+      "sha256": "d6aca2d3ebbac7e156b950ebffb7cf530d1aa3eb3e60cd29653f5fe8f6973099",
+      "bytes": 23776
+    },
+    {
+      "path": "scripts/workflow-demo-audio-state.test.mjs",
+      "status": "already released",
+      "sha256": "0804a4a1ab2a155c1fa2f1d41a1b645f013e8cf0c52f8211059513bbd4879c9e",
+      "bytes": 24316
+    },
+    {
+      "path": "scripts/workflow-finishing-api.test.mjs",
+      "status": "already released",
+      "sha256": "ed94651a6d96ddfa9d2a9b1b0a297db8f82c07bad9a4b0c0f959835327d68bce",
+      "bytes": 25596
+    },
+    {
+      "path": "scripts/workflow-finishing-store.test.mjs",
+      "status": "already released",
+      "sha256": "d0639207facef1af9e05878df8cc9374beebb353ad65d2cce48a24c7e9a8c400",
+      "bytes": 6970
+    },
+    {
+      "path": "scripts/workflow-finishing-ui.test.mjs",
+      "status": "already released",
+      "sha256": "6ed5bdf512efcadf227befa483418067833d6639450db82b94d11ee09196ee59",
+      "bytes": 64530
+    },
+    {
+      "path": "scripts/workflow-generation-client.test.mjs",
+      "status": "already released",
+      "sha256": "62431922fe5512418a47d8d6f1b6d149a57166b0b84255ce549d17d78a3c34f1",
+      "bytes": 53054
+    },
+    {
+      "path": "scripts/workflow-image-collection.test.mjs",
+      "status": "already released",
+      "sha256": "6077e544241792756306b86e0257e7f5d47e14616bf20dfefd591aa6d0d842f3",
+      "bytes": 7614
+    },
+    {
+      "path": "scripts/workflow-image-library.browser.cjs",
+      "status": "already released",
+      "sha256": "3e1a31a6aec2ca0bd72dc2074a6e3c6faef46313421d3ee889d3604725092c30",
+      "bytes": 8414
+    },
+    {
+      "path": "scripts/workflow-session-ui.test.mjs",
+      "status": "already released",
+      "sha256": "49abe13b8c2b641e8e40750af1dcd555dee0fa5f665217821a14852feb415585",
+      "bytes": 21264
+    },
+    {
+      "path": "scripts/workflow-source-video-ui.test.mjs",
+      "status": "already released",
+      "sha256": "85a51c85ae4a55fca94f4517580039043239141c20621fae700d0cd926a455e6",
+      "bytes": 25532
+    },
+    {
+      "path": "scripts/workflow-video-picker.browser.cjs",
+      "status": "already released",
+      "sha256": "761fbf7b7478b3167084a1ab86f3fc2d965b9034cbfca401eab85dfda18ff3ab",
+      "bytes": 7878
+    },
+    {
+      "path": "supabase/migrations/20261016133514_slideshow_prompt_improvements.sql",
+      "status": "already released",
+      "sha256": "9cce7e468d764fb6b9f4efd34b5966b1c5a6721e60fb0a9b50659fbda53f7e2e",
+      "bytes": 2802
+    },
+    {
+      "path": "worker/package-lock.json",
+      "status": "already released",
+      "sha256": "2c5e255f804705173afb7d3512794c24844703398368ffb583d508cb905d499f",
+      "bytes": 90182
+    },
+    {
+      "path": "worker/package.json",
+      "status": "already released",
+      "sha256": "cf9f3f930ef4d7f8edf73c008f1eb7b2bf04e712ca9a5b086c3a735f8a96a834",
+      "bytes": 2842
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/README.md",
+      "status": "already released",
+      "sha256": "900e37833b43ae0fcfa70fcf946a7bf7189c21d2051e303eaa4a716a6cabe27d",
+      "bytes": 948
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/dmsans-400.ttf",
+      "status": "already released",
+      "sha256": "44968ac664d5ba9a7ea3cec36c18fdb3f28980eb537c3ff6484d5c8f5d36ad5f",
+      "bytes": 56648
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/dmsans-500.ttf",
+      "status": "already released",
+      "sha256": "bbfa2030891e99e97cf041044cd0dddb55b6b18a41a36df71dd5031b9af467e4",
+      "bytes": 56728
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/dmsans-700.ttf",
+      "status": "already released",
+      "sha256": "ce24fd90b892e229ee790fb748507931ebb7858b358407d9f1dc09d8352dd4d0",
+      "bytes": 56704
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/dmsans-OFL.txt",
+      "status": "already released",
+      "sha256": "9af36190332437f5ecd09974de43c1f7c77a310a996cdd8ceb25628b458840e1",
+      "bytes": 4482
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/inter-400.ttf",
+      "status": "already released",
+      "sha256": "59b7873f7a7f5dbf6e137cfd2a8eb7442b3de0beb4a010afde8090bcb902fd90",
+      "bytes": 341336
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/inter-500.ttf",
+      "status": "already released",
+      "sha256": "df541ec0e1ba4950a6ab858f69a50a4af833b82676b4bde12eab9bcd4eaf46fe",
+      "bytes": 341912
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/inter-700.ttf",
+      "status": "already released",
+      "sha256": "ee2204beedc7c06de9201e6933782d96c05dc7baa49266a7722d57b3fe506c66",
+      "bytes": 343028
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/inter-OFL.txt",
+      "status": "already released",
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "bytes": 4377
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/manifest.json",
+      "status": "already released",
+      "sha256": "d5fd05d6c2392c808f6cf1438cb228120e31360b0ff303727ec0fe04a20de2a1",
+      "bytes": 3997
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/montserrat-400.ttf",
+      "status": "already released",
+      "sha256": "daa12fdf2c4a8044acca421e72652a882e2749b9fcbca80d7528ca7f09cb50bd",
+      "bytes": 374488
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/montserrat-500.ttf",
+      "status": "already released",
+      "sha256": "c7c41f365a8dd1c7954f3d0c503b90b4034aea0c1928d7c639835b32f35cc9ef",
+      "bytes": 374284
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/montserrat-700.ttf",
+      "status": "already released",
+      "sha256": "02bdd7d6edd743ae3f83815741fa992aa5ab56505e8ecbed8c4f43e39a7484c5",
+      "bytes": 374612
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/montserrat-OFL.txt",
+      "status": "already released",
+      "sha256": "8b7141c03fa4f8d44e6345d5d4931709290f0f67875e452e95ac1fd3a027802e",
+      "bytes": 4400
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/robotocondensed-400.ttf",
+      "status": "already released",
+      "sha256": "5bbb16d2eb1703cb46bda56b0bcd5355600633de5bbd7f69da4fd29f7f1c5013",
+      "bytes": 144120
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/robotocondensed-500.ttf",
+      "status": "already released",
+      "sha256": "549f4423f857585ac2379794d2ac53a8b9b1faf602c4a0cddb7f5d1fe7eb693b",
+      "bytes": 144116
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/robotocondensed-700.ttf",
+      "status": "already released",
+      "sha256": "52671769a4b76384bc480e2640a4d86cc0c95fb1a84d71439f1477aff65cd3d4",
+      "bytes": 144772
+    },
+    {
+      "path": "worker/src/assets/fonts/explore-text/robotocondensed-OFL.txt",
+      "status": "already released",
+      "sha256": "0e4cc6ece88573545be2ed25835363662a6182ba4a4c1b5c8feda52add30e8a6",
+      "bytes": 4393
+    },
+    {
+      "path": "worker/src/jobs/generate-image.test.mjs",
+      "status": "already released",
+      "sha256": "078af8c593909484c50c41b14b222879d6a30133fd86019ca47056e3a1bf138f",
+      "bytes": 30769
+    },
+    {
+      "path": "worker/src/jobs/generate-image.ts",
+      "status": "already released",
+      "sha256": "2a949c022a4d664c52c807c8b20e17d06945c52a1d072d71b77117602062c56a",
+      "bytes": 20355
+    },
+    {
+      "path": "worker/src/lib/carousel-batch-positions.test.ts",
+      "status": "already released",
+      "sha256": "06121b31a8d504456df1b3c2c5f86e702ba245df027c26f37d26b1a6f2312df8",
+      "bytes": 1789
+    },
+    {
+      "path": "worker/src/lib/carousel-batch-positions.ts",
+      "status": "already released",
+      "sha256": "92c2bd5a0cbb895799efa22476a86d99b5f6634d76ba5ca7411069dc917c15c0",
+      "bytes": 1370
+    },
+    {
+      "path": "worker/src/lib/carousel-content-grammar.test.ts",
+      "status": "already released",
+      "sha256": "342132e7e7e663d92bd299f0104598f2a22f5d49fc7eb29ac26ee2e51002cdff",
+      "bytes": 74079
+    },
+    {
+      "path": "worker/src/lib/carousel-counted-body-repair.test.ts",
+      "status": "already released",
+      "sha256": "537944fae00f142f1dad866cb0ebd08ddd3d7e211f5d4a376b8636f49f50b084",
+      "bytes": 5393
+    },
+    {
+      "path": "worker/src/lib/carousel-counted-body-repair.ts",
+      "status": "already released",
+      "sha256": "a16813d01f27973fc1ffb22e5e4c942d64c68037086ff0afe8a9db1e102288b4",
+      "bytes": 6727
+    },
+    {
+      "path": "worker/src/lib/carousel-llm-slide-plan.ts",
+      "status": "already released",
+      "sha256": "e40c2194d5d556a91c381fc13af5cd5935dd65bba2694c41dd99919b8d7bd792",
+      "bytes": 130491
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-copy-policy.test.ts",
+      "status": "already released",
+      "sha256": "e839e186c5a29e4300e4e58f47bacff229798904ad3deef8382edfee3742d32e",
+      "bytes": 9406
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-formats.test.ts",
+      "status": "already released",
+      "sha256": "52a93978b1a4a6a89173614bcd9a9bd601469e8ac1eee11a6966437de1d06170",
+      "bytes": 1712
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-formats.ts",
+      "status": "already released",
+      "sha256": "1a033a3e5ebd9f15720ff407706c9957d12f1a492b2c6bc7b687a7af8262a7ab",
+      "bytes": 14017
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-measured-copy-fit.test.ts",
+      "status": "already released",
+      "sha256": "5d2cd125da2d936d8285b840b0b13cede758573d1632e0e3f2ea3a51ff47e77d",
+      "bytes": 4743
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-planner.test.ts",
+      "status": "already released",
+      "sha256": "5ce85a2c21d66362c7541ed57626a2fbc9b1b72d070de852199d3932ddab409e",
+      "bytes": 15895
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-planner.ts",
+      "status": "already released",
+      "sha256": "3d4910812bf68d93d72fbfc1ba96260923ba8ecb207f6d1cc07a895ff2390e04",
+      "bytes": 23529
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-story-plan.test.ts",
+      "status": "already released",
+      "sha256": "f2075db453efadb00c6d23418009cfaf5a2b3ffcba978d6055a5dbdfd0030cff",
+      "bytes": 19349
+    },
+    {
+      "path": "worker/src/lib/carousel-structure-2-story-plan.ts",
+      "status": "already released",
+      "sha256": "4da9d230695539146efc666209e5c50686f6b95dd6d5dc1dfef2f32d2fbf2be5",
+      "bytes": 51558
+    },
+    {
+      "path": "worker/src/lib/carousel-text-presentation.ts",
+      "status": "already released",
+      "sha256": "44a9b121b148278dff9f56b2a6c47bd6ae6fafee5564c500fefee12ea6f2a7af",
+      "bytes": 5784
+    },
+    {
+      "path": "worker/src/lib/explore-format-edit.ts",
+      "status": "already released",
+      "sha256": "9158921c6e97ba8e451e79f5f48180491bbb42dc1bc62dc403f42e84942a9276",
+      "bytes": 8595
+    },
+    {
+      "path": "worker/src/lib/explore-format-render.ts",
+      "status": "already released",
+      "sha256": "631520fa66598fce3ebef77e4306eb03530595086488b90a7092a93f58c499a1",
+      "bytes": 4932
+    },
+    {
+      "path": "worker/src/lib/explore-text-font-metrics.json",
+      "status": "already released",
+      "sha256": "150fb6698e1dda190965f15fca9ed2313d6995724197e0bb3a5bd5cb977db9b7",
+      "bytes": 113133
+    },
+    {
+      "path": "worker/src/lib/explore-text-fonts.ts",
+      "status": "already released",
+      "sha256": "09eb394f7a2cf40a5c57e16ccfb1f3dfcc7f947dc19ad8379919853a81cce406",
+      "bytes": 1601
+    },
+    {
+      "path": "worker/src/lib/explore-text-outlines.ts",
+      "status": "already released",
+      "sha256": "cd0af9ebcc17461e763e450d426c53617f16b567b9435a8f4eb78a34d9091ee1",
+      "bytes": 3362
+    },
+    {
+      "path": "worker/src/lib/explore-video-composition.ts",
+      "status": "already released",
+      "sha256": "65cb445feccebeca71fc2d520329262016ed6240f501d4e3b0f55fcfff1d8064",
+      "bytes": 27257
+    }
+  ],
+  "excludedIntentionalPaths": []
+}

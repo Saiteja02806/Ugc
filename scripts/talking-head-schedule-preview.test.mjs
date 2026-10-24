@@ -105,6 +105,17 @@ test("selected default music waits for read-only loading and revokes its URL whe
   assert.equal(h.preview().props.backgroundAudio.url, "blob:default-music"); assert.equal(h.preview().props.playbackDisabledReason, null);
   h.set({ options: { backgroundMusic: false } }); assert.equal(h.preview().props.backgroundAudio, null); assert.equal(h.revoked, 1);
 });
+
+test("combined preview uses selected music across both clips while demo audio stays on the demo", () => {
+  const custom = media("custom-music", "https://media.test/music.mp3");
+  const h = harness({ openingPreview: { segment: segment("opening", "blob:opening") }, demoPreview: { segment: segment("demo", "blob:demo") },
+    demoAudio: { url: "blob:demo-audio" }, options: { backgroundMusic: true, backgroundAssetId: custom.id }, backgroundSource: custom, backgroundPlayback: "once" });
+  const preview = h.preview().props; assert.equal(preview.backgroundAudio.url, custom.url); assert.equal(preview.backgroundAudio.playback, "once");
+  assert.equal(preview.segments[0].addedAudio, undefined); assert.equal(preview.segments[1].addedAudio.url, "blob:demo-audio");
+  assert.equal(preview.segments[0].editing.originalVolume, .7); assert.equal(h.requests, 0);
+  h.set({ backgroundSource: null }); assert.match(h.preview().props.playbackDisabledReason, /Loading your selected/); assert.equal(h.requests, 0);
+  h.set({ options: { backgroundMusic: false, backgroundAssetId: custom.id } }); assert.equal(h.preview().props.backgroundAudio, null);
+});
 test("failed selected music is not silently omitted, and a third Demo audio layer requires a saved mix", async () => {
   const h = harness({ source: media("opening", "https://media.test/opening.mp4"), ownerId: "owner", enabled: true, options: { backgroundMusic: true } }, async () => { throw new Error("Default track unavailable"); });
   await settled(); assert.equal(h.preview().props.playbackDisabledReason, "Default track unavailable");

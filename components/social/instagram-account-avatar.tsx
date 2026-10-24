@@ -1,4 +1,7 @@
+"use client";
+
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { useSocialAccountPicture } from "@/components/social/use-social-account-picture";
 import {
   Avatar,
   AvatarFallback,
@@ -14,6 +17,7 @@ export function InstagramAccountAvatar({
   className?: string;
   connection: SocialConnection;
 }) {
+  const profilePictureUrl = useSocialAccountPicture(connection);
   return (
     <Avatar
       aria-hidden="true"
@@ -22,11 +26,11 @@ export function InstagramAccountAvatar({
         className,
       )}
     >
-      {connection.profilePictureUrl ? (
+      {profilePictureUrl ? (
         <AvatarImage
           alt=""
           referrerPolicy="no-referrer"
-          src={connection.profilePictureUrl}
+          src={profilePictureUrl}
         />
       ) : null}
       <AvatarFallback className="bg-brand-soft">

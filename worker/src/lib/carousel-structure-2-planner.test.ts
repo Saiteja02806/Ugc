@@ -34,18 +34,11 @@ function rawPlan(valid: boolean) {
   };
 }
 
-function shortTakeawayPlan() {
-  const plan = rawPlan(true);
-  plan.slides[CAROUSEL_STRUCTURE_2_SLIDE_POSITION_KEYS[5]]!.storyText =
-    "Keep the next decision visible so changing priorities always have a clear owner and context to continue.";
-  return plan;
-}
-
 function multiIssuePlan() {
   const plan = rawPlan(true);
   plan.slides.first!.storyText =
     "This cover hook deliberately uses too many words for the compact visual space before anything changes";
-  plan.slides.sixth!.storyText = "Keep your next task visible today.";
+  plan.slides.sixth!.storyText = "Keep each next task visible with its owner and context. ".repeat(4);
   return plan;
 }
 
@@ -204,7 +197,7 @@ test("retains a valid candidate between failures and diagnoses only the rejected
           ? {
               storyTextBySlide: {
                 slide1: "Campaign changes should not steal nights",
-                slide6: "Keep your next task visible today.",
+                slide6: "Keep each next task visible with its owner and context. ".repeat(4),
               },
             }
           : requestNumber === 2

@@ -1,12 +1,11 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import landingLogo from "@/app/logo.png";
 import { LandingAuthAction } from "@/components/marketing/landing-auth-actions";
+import { LandingLogo } from "@/components/marketing/landing-logo";
 
 type NavItem = {
   label: string;
@@ -14,6 +13,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+  { label: "Guides", href: "/guides" },
   { label: "Pricing", href: "/pricing" },
 ];
 
@@ -55,16 +55,13 @@ export function LandingHeader({
       >
         <Link
           href="/"
-          className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="UGCPilot home"
         >
-          <Image
-            src={landingLogo}
-            alt=""
-            sizes={isScrolled ? "32px" : "36px"}
-            priority
-            className={`rounded-md object-contain transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
-              isScrolled ? "size-8" : "size-9"
+          <LandingLogo
+            sizes={isScrolled ? "24px" : "28px"}
+            className={`transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
+              isScrolled ? "size-6" : "size-7"
             }`}
           />
           <span className="truncate text-[17px] font-semibold text-foreground-strong">

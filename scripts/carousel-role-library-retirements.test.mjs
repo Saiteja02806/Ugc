@@ -26,6 +26,35 @@ test("Productivity cleanup records all 40 unique rejected source hashes", () => 
   assert.ok(retirement.sourceFileSha256s.every((hash) => /^[a-f0-9]{64}$/.test(hash)));
 });
 
+test("the user-rejected BOSS collage and exact copies cannot enter a fresh manifest", () => {
+  const collageHash = "11287eed773aa99be929566759cf3d29bbc1635d1fc6912775557e81b9c0ca8f";
+  const collagePath = "productivity-human/Pinterest_2026-08-16 (76)/pinterest_019.jpg";
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: collagePath })?.retiredAt, "2026-10-14");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "another-folder/copy.jpg", sourceFileSha256: collageHash })?.matchedBy, "sha256");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: collagePath.replaceAll("/", "\\").toUpperCase() })?.matchedBy, "source-path");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: collagePath.replace("019.jpg", "020.jpg"), sourceFileSha256: allowedHash }), null);
+  assert.throws(() => assertCarouselRoleManifestHasNoRetiredSources([
+    { libraryAssetId: "collage-copy", source: { relativePath: "copy.jpg" }, dbRow: { source_file_sha256: collageHash } },
+  ]), /retired Carousel source/);
+});
+
+test("the rejected low-resolution laptop hook and renamed byte-identical copies stay excluded", () => {
+  const sourcePath = "produtivity_hook_part3/This contains an image of_ gen z ceo vibes ✨️.jpg";
+  const hash = "872cd8ed19388833cd067d4f9bbdb3df733ac21407f220c09b5fbb7bebcd963c";
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath })?.retiredAt, "2026-10-20");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "new-batch/renamed.jpg", sourceFileSha256: hash })?.matchedBy, "sha256");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "produtivity_hook_part3/another.jpg", sourceFileSha256: allowedHash }), null);
+});
+
+test("the rejected exhausted-at-laptop body source and renamed identical copies stay excluded", () => {
+  const sourcePath = "productivity-human/Pinterest_2026-08-16 (74)/pinterest_002.jpg";
+  const hash = "3046ddbc7ac7584172f6b98ec839e18f7aaed7e0684f9337ddb4f3de27aed2a9";
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath })?.retiredAt, "2026-10-20");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: "another-batch/renamed.jpg", sourceFileSha256: hash })?.matchedBy, "sha256");
+  assert.equal(getCarouselRoleSourceRetirement({ relativePath: sourcePath.replace("002.jpg", "003.jpg"), sourceFileSha256: allowedHash }), null);
+});
+
+
 test("specific retired source path is excluded after Windows path normalization", () => {
   const result = getCarouselRoleSourceRetirement({
     relativePath: `./${rejectedPath.replaceAll("/", "\\").toUpperCase()}`,

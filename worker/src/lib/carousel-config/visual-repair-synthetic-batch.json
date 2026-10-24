@@ -1,0 +1,875 @@
+{
+  "initial": {
+    "items": {
+      "first": {
+        "notApplicableReason": null,
+        "plan": {
+          "broadSituations": [
+            "Campaign planning",
+            "Reporting processes",
+            "Team collaboration"
+          ],
+          "concept": "Streamline your handoff process for better clarity.",
+          "contentStrategy": {
+            "angle": "Focus on actionable steps for effective handoffs.",
+            "contentFormatId": "how_to",
+            "hookFamilyId": "curiosity"
+          },
+          "grounding": {
+            "anchorId": "workflow:main_problem"
+          },
+          "slides": [
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": "how to improve handoffs in your team",
+              "formatRole": "cover_hook",
+              "imageDirection": "A clean workspace with organized documents and a digital device displaying a project management tool.",
+              "listItems": [],
+              "slideNumber": 1,
+              "slideType": "hook",
+              "textMode": "single_statement"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Define",
+                  "the",
+                  "handoff",
+                  "process",
+                  "clearly."
+                ],
+                "secondWords": [
+                  "This",
+                  "ensures",
+                  "everyone",
+                  "knows",
+                  "their",
+                  "responsibilities."
+                ]
+              },
+              "headline": null,
+              "formatRole": "step_1",
+              "imageDirection": "A checklist on a clipboard with clear tasks outlined for team members.",
+              "listItems": [],
+              "slideNumber": 2,
+              "slideType": "solution",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Use",
+                  "shared",
+                  "documents",
+                  "for",
+                  "visibility."
+                ],
+                "secondWords": [
+                  "This",
+                  "helps",
+                  "all",
+                  "team",
+                  "members",
+                  "stay",
+                  "informed."
+                ]
+              },
+              "headline": null,
+              "formatRole": "step_2",
+              "imageDirection": "A digital document on a screen with multiple users accessing it simultaneously.",
+              "listItems": [],
+              "slideNumber": 3,
+              "slideType": "solution",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Set",
+                  "up",
+                  "reminders",
+                  "for",
+                  "follow-ups."
+                ],
+                "secondWords": [
+                  "This",
+                  "keeps",
+                  "the",
+                  "project",
+                  "on",
+                  "track."
+                ]
+              },
+              "headline": null,
+              "formatRole": "step_3",
+              "imageDirection": "A calendar app showing reminders and deadlines for project tasks.",
+              "listItems": [],
+              "slideNumber": 4,
+              "slideType": "solution",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Implement",
+                  "a",
+                  "feedback",
+                  "loop",
+                  "for",
+                  "improvements."
+                ],
+                "secondWords": [
+                  "This",
+                  "allows",
+                  "for",
+                  "continuous",
+                  "refinement",
+                  "of",
+                  "the",
+                  "process."
+                ]
+              },
+              "headline": null,
+              "formatRole": "practical_extension",
+              "imageDirection": "A feedback form on a desk next to a laptop, inviting input from team members.",
+              "listItems": [],
+              "slideNumber": 5,
+              "slideType": "solution",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Create",
+                  "a",
+                  "shared",
+                  "folder",
+                  "for",
+                  "handoff",
+                  "documents."
+                ],
+                "secondWords": [
+                  "This",
+                  "ensures",
+                  "everyone",
+                  "can",
+                  "access",
+                  "needed",
+                  "information."
+                ]
+              },
+              "headline": null,
+              "formatRole": "takeaway_cta",
+              "imageDirection": "A shared digital folder icon on a computer screen, symbolizing collaboration.",
+              "listItems": [],
+              "slideNumber": 6,
+              "slideType": "cta",
+              "textMode": "cta_takeaway"
+            }
+          ]
+        },
+        "status": "ready"
+      },
+      "second": {
+        "notApplicableReason": null,
+        "plan": {
+          "broadSituations": [
+            "Campaign planning",
+            "Reporting processes",
+            "Team collaboration"
+          ],
+          "concept": "Avoid common mistakes in campaign approvals.",
+          "contentStrategy": {
+            "angle": "Highlight mistakes and their solutions.",
+            "contentFormatId": "mistakes",
+            "hookFamilyId": "problem_recognition"
+          },
+          "grounding": {
+            "anchorId": "workflow:pain_point:0"
+          },
+          "slides": [
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": "3 mistakes that delay campaign approvals",
+              "formatRole": "cover_hook",
+              "imageDirection": "A cluttered desk with scattered papers and a stressed-out person looking at a computer.",
+              "listItems": [],
+              "slideNumber": 1,
+              "slideType": "hook",
+              "textMode": "single_statement"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Not",
+                  "having",
+                  "a",
+                  "clear",
+                  "approval",
+                  "process."
+                ],
+                "secondWords": [
+                  "This",
+                  "leads",
+                  "to",
+                  "confusion",
+                  "and",
+                  "delays."
+                ]
+              },
+              "headline": null,
+              "formatRole": "mistake_1",
+              "imageDirection": "A flowchart showing a confusing approval process with multiple paths.",
+              "listItems": [],
+              "slideNumber": 2,
+              "slideType": "problem",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Using",
+                  "different",
+                  "tools",
+                  "for",
+                  "communication."
+                ],
+                "secondWords": [
+                  "This",
+                  "causes",
+                  "miscommunication",
+                  "and",
+                  "lost",
+                  "information."
+                ]
+              },
+              "headline": null,
+              "formatRole": "mistake_2",
+              "imageDirection": "Screenshots of various communication tools scattered across a desktop.",
+              "listItems": [],
+              "slideNumber": 3,
+              "slideType": "problem",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Failing",
+                  "to",
+                  "set",
+                  "clear",
+                  "deadlines."
+                ],
+                "secondWords": [
+                  "This",
+                  "results",
+                  "in",
+                  "missed",
+                  "opportunities",
+                  "and",
+                  "frustration."
+                ]
+              },
+              "headline": null,
+              "formatRole": "mistake_3",
+              "imageDirection": "A calendar with overdue tasks marked in red, indicating missed deadlines.",
+              "listItems": [],
+              "slideNumber": 4,
+              "slideType": "problem",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Create",
+                  "a",
+                  "standardized",
+                  "approval",
+                  "template."
+                ],
+                "secondWords": [
+                  "This",
+                  "reduces",
+                  "confusion",
+                  "and",
+                  "speeds",
+                  "up",
+                  "the",
+                  "process."
+                ]
+              },
+              "headline": null,
+              "formatRole": "practical_extension",
+              "imageDirection": "A sample approval template displayed on a computer screen, ready for use.",
+              "listItems": [],
+              "slideNumber": 5,
+              "slideType": "solution",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Schedule",
+                  "regular",
+                  "check-ins",
+                  "to",
+                  "review",
+                  "progress."
+                ],
+                "secondWords": [
+                  "This",
+                  "keeps",
+                  "everyone",
+                  "aligned",
+                  "and",
+                  "on",
+                  "track."
+                ]
+              },
+              "headline": null,
+              "formatRole": "takeaway_cta",
+              "imageDirection": "A digital calendar showing scheduled check-in meetings for project updates.",
+              "listItems": [],
+              "slideNumber": 6,
+              "slideType": "cta",
+              "textMode": "cta_takeaway"
+            }
+          ]
+        },
+        "status": "ready"
+      },
+      "third": {
+        "notApplicableReason": null,
+        "plan": {
+          "broadSituations": [
+            "Campaign planning",
+            "Reporting processes",
+            "Team collaboration"
+          ],
+          "concept": "Transform your campaign management with one change.",
+          "contentStrategy": {
+            "angle": "Show the impact of a single improvement.",
+            "contentFormatId": "before_after",
+            "hookFamilyId": "specific_outcome"
+          },
+          "grounding": {
+            "anchorId": "product_detail:differentiator:0"
+          },
+          "slides": [
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": "how one change improved our campaign management",
+              "formatRole": "cover_hook",
+              "imageDirection": "A split image showing a chaotic workspace on one side and an organized one on the other.",
+              "listItems": [],
+              "slideNumber": 1,
+              "slideType": "hook",
+              "textMode": "single_statement"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Before",
+                  "we",
+                  "used",
+                  "multiple",
+                  "tools",
+                  "for",
+                  "campaigns."
+                ],
+                "secondWords": [
+                  "This",
+                  "led",
+                  "to",
+                  "confusion",
+                  "and",
+                  "missed",
+                  "deadlines."
+                ]
+              },
+              "headline": null,
+              "formatRole": "before",
+              "imageDirection": "A cluttered desk with various tools and papers scattered around.",
+              "listItems": [],
+              "slideNumber": 2,
+              "slideType": "problem",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "We",
+                  "switched",
+                  "to",
+                  "a",
+                  "single",
+                  "workspace."
+                ],
+                "secondWords": [
+                  "This",
+                  "centralized",
+                  "all",
+                  "planning",
+                  "and",
+                  "reporting."
+                ]
+              },
+              "headline": null,
+              "formatRole": "the_change",
+              "imageDirection": "A clean digital workspace displaying a project management tool with all tasks visible.",
+              "listItems": [],
+              "slideNumber": 3,
+              "slideType": "solution",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Now",
+                  "we",
+                  "have",
+                  "clearer",
+                  "communication",
+                  "and",
+                  "fewer",
+                  "mistakes."
+                ],
+                "secondWords": [
+                  "This",
+                  "helps",
+                  "us",
+                  "meet",
+                  "deadlines",
+                  "more",
+                  "effectively."
+                ]
+              },
+              "headline": null,
+              "formatRole": "after",
+              "imageDirection": "A team meeting around a digital screen showing a well-organized project timeline.",
+              "listItems": [],
+              "slideNumber": 4,
+              "slideType": "benefit",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Encourage",
+                  "team",
+                  "feedback",
+                  "on",
+                  "the",
+                  "new",
+                  "system."
+                ],
+                "secondWords": [
+                  "This",
+                  "ensures",
+                  "everyone",
+                  "is",
+                  "comfortable",
+                  "with",
+                  "the",
+                  "change."
+                ]
+              },
+              "headline": null,
+              "formatRole": "practical_extension",
+              "imageDirection": "A feedback form on a desk next to a computer, inviting team input.",
+              "listItems": [],
+              "slideNumber": 5,
+              "slideType": "benefit",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Review",
+                  "the",
+                  "workspace",
+                  "setup",
+                  "with",
+                  "your",
+                  "team."
+                ],
+                "secondWords": [
+                  "This",
+                  "ensures",
+                  "everyone",
+                  "is",
+                  "aligned",
+                  "on",
+                  "the",
+                  "new",
+                  "process."
+                ]
+              },
+              "headline": null,
+              "formatRole": "takeaway_cta",
+              "imageDirection": "A team gathered around a computer, discussing the workspace setup and processes.",
+              "listItems": [],
+              "slideNumber": 6,
+              "slideType": "cta",
+              "textMode": "cta_takeaway"
+            }
+          ]
+        },
+        "status": "ready"
+      },
+      "fourth": {
+        "notApplicableReason": null,
+        "plan": {
+          "broadSituations": [
+            "Campaign planning",
+            "Reporting processes",
+            "Team collaboration"
+          ],
+          "concept": "Choose the right tools for effective campaign management.",
+          "contentStrategy": {
+            "angle": "Highlight the differences between two approaches.",
+            "contentFormatId": "comparison",
+            "hookFamilyId": "question"
+          },
+          "grounding": {
+            "anchorId": "product_detail:value_prop:0"
+          },
+          "slides": [
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": "which approach leads to better campaign management?",
+              "formatRole": "cover_hook",
+              "imageDirection": "A split image showing two different tools side by side, one chaotic and one organized.",
+              "listItems": [],
+              "slideNumber": 1,
+              "slideType": "hook",
+              "textMode": "single_statement"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Using",
+                  "multiple",
+                  "tools",
+                  "for",
+                  "campaigns."
+                ],
+                "secondWords": [
+                  "This",
+                  "can",
+                  "lead",
+                  "to",
+                  "confusion",
+                  "and",
+                  "miscommunication."
+                ]
+              },
+              "headline": null,
+              "formatRole": "option_a",
+              "imageDirection": "Screenshots of various tools scattered across a desktop, indicating chaos.",
+              "listItems": [],
+              "slideNumber": 2,
+              "slideType": "benefit",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Using",
+                  "a",
+                  "single",
+                  "workspace",
+                  "for",
+                  "all",
+                  "tasks."
+                ],
+                "secondWords": [
+                  "This",
+                  "provides",
+                  "clarity",
+                  "and",
+                  "streamlined",
+                  "communication."
+                ]
+              },
+              "headline": null,
+              "formatRole": "option_b",
+              "imageDirection": "A clean digital workspace displaying a project management tool with all tasks visible.",
+              "listItems": [],
+              "slideNumber": 3,
+              "slideType": "benefit",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "The",
+                  "key",
+                  "difference",
+                  "is",
+                  "in",
+                  "communication."
+                ],
+                "secondWords": [
+                  "A",
+                  "single",
+                  "workspace",
+                  "reduces",
+                  "misunderstandings."
+                ]
+              },
+              "headline": null,
+              "formatRole": "key_comparison",
+              "imageDirection": "A visual comparison chart highlighting communication efficiency between the two options.",
+              "listItems": [],
+              "slideNumber": 4,
+              "slideType": "differentiator",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Adopt",
+                  "a",
+                  "single",
+                  "workspace",
+                  "to",
+                  "enhance",
+                  "collaboration."
+                ],
+                "secondWords": [
+                  "This",
+                  "will",
+                  "improve",
+                  "overall",
+                  "project",
+                  "success."
+                ]
+              },
+              "headline": null,
+              "formatRole": "practical_extension",
+              "imageDirection": "A team collaborating around a digital workspace, showcasing teamwork and clarity.",
+              "listItems": [],
+              "slideNumber": 5,
+              "slideType": "differentiator",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Evaluate",
+                  "your",
+                  "current",
+                  "tools",
+                  "and",
+                  "processes."
+                ],
+                "secondWords": [
+                  "This",
+                  "helps",
+                  "identify",
+                  "areas",
+                  "for",
+                  "improvement."
+                ]
+              },
+              "headline": null,
+              "formatRole": "takeaway_cta",
+              "imageDirection": "A checklist on a desk with various tools and notes for evaluation.",
+              "listItems": [],
+              "slideNumber": 6,
+              "slideType": "cta",
+              "textMode": "cta_takeaway"
+            }
+          ]
+        },
+        "status": "ready"
+      },
+      "fifth": {
+        "notApplicableReason": null,
+        "plan": {
+          "broadSituations": [
+            "Campaign planning",
+            "Reporting processes",
+            "Team collaboration"
+          ],
+          "concept": "Discover surprising insights for effective campaign management.",
+          "contentStrategy": {
+            "angle": "Reveal unexpected contrasts in campaign management.",
+            "contentFormatId": "list",
+            "hookFamilyId": "surprise"
+          },
+          "grounding": {
+            "anchorId": "workflow:main_problem"
+          },
+          "slides": [
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": "6 surprising insights for better campaign management",
+              "formatRole": "cover_hook",
+              "imageDirection": "A light bulb moment graphic with campaign-related icons around it.",
+              "listItems": [],
+              "slideNumber": 1,
+              "slideType": "hook",
+              "textMode": "single_statement"
+            },
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": null,
+              "formatRole": "items_1_2",
+              "imageDirection": "A checklist with two surprising insights written down, ready for review.",
+              "listItems": [
+                "Use a single workspace for all tasks.",
+                "Schedule regular check-ins for updates."
+              ],
+              "slideNumber": 2,
+              "slideType": "benefit",
+              "textMode": "checklist"
+            },
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": null,
+              "formatRole": "items_3_4",
+              "imageDirection": "A digital calendar showing reminders and deadlines for project tasks, highlighting organization.",
+              "listItems": [
+                "Encourage team feedback on processes.",
+                "Implement a clear approval workflow."
+              ],
+              "slideNumber": 3,
+              "slideType": "benefit",
+              "textMode": "checklist"
+            },
+            {
+              "ctaText": null,
+              "body": null,
+              "headline": null,
+              "formatRole": "items_5_6",
+              "imageDirection": "A feedback form on a desk next to a computer, inviting team input.",
+              "listItems": [
+                "Use templates for consistency.",
+                "Document decisions to avoid confusion."
+              ],
+              "slideNumber": 4,
+              "slideType": "benefit",
+              "textMode": "checklist"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Review",
+                  "these",
+                  "insights",
+                  "with",
+                  "your",
+                  "team."
+                ],
+                "secondWords": [
+                  "This",
+                  "ensures",
+                  "everyone",
+                  "is",
+                  "aligned",
+                  "on",
+                  "best",
+                  "practices."
+                ]
+              },
+              "headline": null,
+              "formatRole": "practical_extension",
+              "imageDirection": "A team gathered around a table discussing insights and strategies.",
+              "listItems": [],
+              "slideNumber": 5,
+              "slideType": "benefit",
+              "textMode": "body_only"
+            },
+            {
+              "ctaText": null,
+              "body": {
+                "firstWords": [
+                  "Create",
+                  "a",
+                  "shared",
+                  "document",
+                  "to",
+                  "track",
+                  "insights."
+                ],
+                "secondWords": [
+                  "This",
+                  "keeps",
+                  "everyone",
+                  "on",
+                  "the",
+                  "same",
+                  "page."
+                ]
+              },
+              "headline": null,
+              "formatRole": "takeaway_cta",
+              "imageDirection": "A shared digital document icon on a computer screen, symbolizing collaboration.",
+              "listItems": [],
+              "slideNumber": 6,
+              "slideType": "cta",
+              "textMode": "cta_takeaway"
+            }
+          ]
+        },
+        "status": "ready"
+      }
+    }
+  },
+  "repairs": [
+    {
+      "imageDirectionsBySlide": {
+        "slide2": "A checklist on a clipboard with clear tasks outlined for visibility.",
+        "slide5": "A feedback form on a desk next to a laptop, inviting input."
+      }
+    },
+    {
+      "imageDirectionsBySlide": {
+        "slide4": "A digital screen displaying a well-organized project timeline with clear milestones and tasks.",
+        "slide5": "A feedback form on a desk next to a computer, with space for written responses and suggestions.",
+        "slide6": "A computer screen showing a project management tool with a clear layout, surrounded by notes and a checklist."
+      }
+    },
+    {
+      "imageDirectionsBySlide": {
+        "slide5": "A digital workspace displayed on a screen, showing organized project elements and clear task assignments."
+      }
+    },
+    {
+      "imageDirectionsBySlide": {
+        "slide4": "A feedback form on a desk next to a computer, with clear text-safe space for notes and input.",
+        "slide5": "A table with a digital screen displaying insights and strategies, with clear text-safe space for discussion points."
+      }
+    }
+  ]
+}

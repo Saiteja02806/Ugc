@@ -62,16 +62,36 @@ test("Cancel keeps the confirmed duration and reopening discards an unconfirmed 
   assert.equal(actual.find("input").props.value, "5");
 });
 
-test("Custom respects a model's discrete durations, and presets cannot bypass limits", () => {
+test("Kling custom durations retain 11 through 14 seconds and cannot bypass its range", () => {
   const actual = control("kling_3_0");
-  actual.choose("custom"); actual.enter("11");
+  actual.choose("custom"); actual.enter("16");
   assert.equal(actual.find("button", "Apply duration").props.disabled, true);
   actual.choose("30");
   assert.deepEqual(actual.changes, []);
+  for (const seconds of [11, 12, 13, 14]) {
+    actual.choose("custom"); actual.enter(String(seconds));
+    assert.equal(actual.find("button", "Apply duration").props.disabled, false);
+    actual.find("button", "Apply duration").props.onClick();
+  }
   actual.enter("15");
   actual.find("input").props.onKeyDown({ key: "Enter", preventDefault() {} });
-  assert.deepEqual(actual.changes, [15]);
+  assert.deepEqual(actual.changes, [11, 12, 13, 14, 15]);
   assert.equal(actual.find("select").props.value, "15");
+});
+
+test("Seedance three-second entries explain the supported range and never change the draft", () => {
+  const actual = control("seedance_2_5");
+  actual.choose("custom"); actual.enter("3");
+  assert.equal(actual.find("input").props.min, 4);
+  assert.equal(actual.find("input").props.max, 30);
+  assert.equal(actual.find("button", "Apply duration").props.disabled, true);
+  assert.ok(actual.render().some(node => node.props?.children === "Choose 4–30 whole seconds for Seedance 2.5."));
+  actual.find("button", "Apply duration").props.onClick();
+  actual.find("input").props.onKeyDown({ key: "Enter", preventDefault() {} });
+  assert.deepEqual(actual.changes, []);
+  assert.equal(actual.find("select").props.value, "5");
+  actual.enter("4"); actual.find("button", "Apply duration").props.onClick();
+  assert.deepEqual(actual.changes, [4]);
 });
 
 test("WAN custom durations accept whole seconds from 2 through 30 and reject values outside that range", () => {
@@ -85,12 +105,12 @@ test("WAN custom durations accept whole seconds from 2 through 30 and reject val
     actual.find("input").props.onKeyDown({ key: "Enter", preventDefault() {} });
   }
   assert.deepEqual(actual.changes, []);
-  for (const seconds of [2, 17, 30]) {
+  for (const seconds of [2, 3, 17, 30]) {
     actual.choose("custom");
     actual.enter(String(seconds));
     actual.find("button", "Apply duration").props.onClick();
   }
-  assert.deepEqual(actual.changes, [2, 17, 30]);
+  assert.deepEqual(actual.changes, [2, 3, 17, 30]);
 });
 
 test("workflow duration keeps compact triggers and shows preset and custom credit costs", () => {

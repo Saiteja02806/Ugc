@@ -86,7 +86,7 @@ test("public video jobs explain a provider balance failure without exposing diag
     attemptCount: 1,
     errorCode: "JOB_FAILED",
     errorMessage:
-      "Seedance request request-private ended with status failed: Your credit balance is too low.",
+      "Runway request request-private ended with status failed: You do not have enough credits to run this task.",
     jobType: "generate_hook_video",
     maxAttempts: 3,
     status: "failed",
@@ -99,6 +99,18 @@ test("public video jobs explain a provider balance failure without exposing diag
     retryable: false,
   });
   assert.equal(JSON.stringify(getPublicBackgroundJob(job)).includes("request-private"), false);
+});
+
+test("image billing failures identify provider credits without exposing raw diagnostics or inviting retries", () => {
+  for (const errorCode of ["PROVIDER_INSUFFICIENT_CREDITS", "credit_balance_exhausted", "insufficient_quota", "billing_hard_limit_reached", "JOB_FAILED"]) {
+    const job = { attemptCount: 1, maxAttempts: 3, status: "failed", jobType: "generate_image", errorCode,
+      errorMessage: "429 You have no credits remaining. Add credits to continue. token=private-secret request-private" } as BackgroundJobRecord;
+    const error = getPublicBackgroundJob(job).error;
+    assert.match(error?.message ?? "", /image provider's credit balance is too low/);
+    assert.equal(error?.retryable, false);
+    assert.equal(isRetryableBackgroundJob(job), false);
+    assert.doesNotMatch(JSON.stringify(error), /private-secret|request-private|video provider|You can retry|cause could not be identified/);
+  }
 });
 
 const imagePrivacyRejection = `HTTP 400: ${JSON.stringify({
@@ -217,6 +229,63 @@ test("retry suggestions reflect exhausted attempts without hiding a known reason
   assert.equal(isRetryableBackgroundJob(job), false);
   assert.match(getPublicBackgroundJob(job).error?.message ?? "", /provider timed out/);
   assert.doesNotMatch(getPublicBackgroundJob(job).error?.message ?? "", /You can retry/);
+});
+
+test("completed-output failures explain recovery of the existing video and keep diagnostics private", () => {
+  for (const attemptCount of [1, 3]) {
+    const job = { attemptCount, maxAttempts: 3, errorCode: "PROVIDER_OUTPUT_COLLECTION_FAILED",
+      errorMessage: "private-secret https://file.deepytb.com/private-signed-url", jobType: "generate_hook_video", status: "failed" } as BackgroundJobRecord;
+    const error = getPublicBackgroundJob(job).error;
+    assert.equal(error?.code, "PROVIDER_OUTPUT_COLLECTION_FAILED");
+    assert.equal(error?.retryable, attemptCount < 3);
+    assert.match(error?.message ?? "", /provider finished your video/i);
+    assert.match(error?.message ?? "", /existing video/);
+    assert.doesNotMatch(JSON.stringify(error), /private-secret|deepytb|private-signed-url|cause could not be identified|Start a new/);
+  }
+});
+
+test("historical pending failures explain saved-request recovery after attempts are exhausted", () => {
+  const job = { attemptCount: 3, maxAttempts: 3, errorCode: "provider_operation_pending",
+    errorMessage: "The saved provider generation is still being recovered.", jobType: "generate_hook_video", status: "failed" } as BackgroundJobRecord;
+  const error = getPublicBackgroundJob(job).error;
+  assert.equal(error?.retryable, false);
+  assert.match(error?.message ?? "", /Contact support to check the existing request/);
+  assert.doesNotMatch(error?.message ?? "", /cause could not be identified|Start a new|provider finished/);
+});
+
+test("completed ReAPI collection has one explicit recovery after exhaustion without opening other failures", () => {
+  const previous = process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+  process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY = "true";
+  try {
+  const input = { provider: "reapi", model: "seedance_2_5" };
+  const job = { attemptCount: 3, maxAttempts: 3, errorCode: "PROVIDER_OUTPUT_COLLECTION_FAILED",
+    jobType: "generate_hook_video", status: "failed", input } as unknown as BackgroundJobRecord;
+  assert.equal(isRetryableBackgroundJob(job), true);
+  assert.equal(isRetryableBackgroundJob({ ...job, attemptCount: 19, maxAttempts: 20 }), true);
+  assert.equal(isRetryableBackgroundJob({ ...job, attemptCount: 20, maxAttempts: 20 }), false);
+  assert.match(getPublicBackgroundJob(job).error?.message ?? "", /Retry to recover the existing video/);
+  assert.equal(isRetryableBackgroundJob({ ...job, input: { ...input, providerOutputRecovery: "collection-only-v1" } }), false);
+  for (const errorCode of ["PROVIDER_TIMEOUT", "provider_submission_uncertain", "PROVIDER_CONTENT_MODERATION"])
+    assert.equal(isRetryableBackgroundJob({ ...job, errorCode }), false);
+  } finally {
+    if (previous === undefined) delete process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+    else process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY = previous;
+  }
+});
+
+test("exhausted provider recovery stays disabled until its schema rollout is approved", () => {
+  const previous = process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+  delete process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY;
+  try {
+    const job = { jobType: "generate_hook_video", status: "failed", attemptCount: 3, maxAttempts: 3,
+      errorCode: "PROVIDER_OUTPUT_COLLECTION_FAILED", input: { provider: "reapi", model: "seedance_2_5" },
+    } as unknown as BackgroundJobRecord;
+    assert.equal(isRetryableBackgroundJob(job), false);
+    assert.equal(isRetryableBackgroundJob({ ...job, attemptCount: 1 }), false);
+    assert.doesNotMatch(getPublicBackgroundJob(job).error?.message ?? "", /Retry to recover/);
+  } finally {
+    if (previous !== undefined) process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY = previous;
+  }
 });
 
 test("video-specific historical detection leaves Wall privacy and other jobs unchanged", () => {

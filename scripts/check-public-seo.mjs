@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
 const canonicalOrigin = "https://getugcpilot.com";
+const publicPaths = JSON.parse(await fs.readFile(new URL("../lib/marketing/public-page-paths.json", import.meta.url), "utf8"));
+const expectedUrls = publicPaths.map(path => new URL(path, canonicalOrigin).href).sort();
 const evidence = [];
 const pages = [];
 const decode = (value = "") => value.replaceAll("&amp;", "&").replaceAll("&quot;", '"').replaceAll("&#x27;", "'");
 function attribute(tag, name) {
-  return decode(tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, "i"))?.[1] ?? "");
+  return decode(tag.match(new RegExp(`\\b${name}=(["'])(.*?)\\1`, "i"))?.[2] ?? "");
 }
 function metadata(html, name) {
   return (html.match(/<meta\b[^>]*>/gi) ?? []).filter(tag => attribute(tag, "name").toLowerCase() === name).map(tag => attribute(tag, "content"));
@@ -39,7 +41,7 @@ await check("robots", `${canonicalOrigin}/robots.txt`, (response, body) => {
 const sitemap = await check("sitemap", `${canonicalOrigin}/sitemap.xml`, (response, body) => {
   assert.equal(response.status, 200);
   const urls = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => decode(match[1]));
-  assert.equal(urls.length, 13, "Review the public sitemap inventory before changing the expected count");
+  assert.deepEqual(urls.map(url => new URL(url).href).sort(), expectedUrls, "Deployed sitemap differs from the intended public release inventory");
   assert.equal(new Set(urls).size, urls.length);
   assert(urls.every(url => new URL(url).origin === canonicalOrigin));
   return { urls };
@@ -74,7 +76,7 @@ if (sitemap) {
     }, { headers: { "User-Agent": "Googlebot (UGC Pilot regression simulation)" } })));
   }
   await check("unique page metadata", `${canonicalOrigin}/sitemap.xml`, () => {
-    assert.equal(pages.length, 13);
+    assert.equal(pages.length, publicPaths.length);
     assert.equal(new Set(pages.map(page => page.title)).size, pages.length);
     assert.equal(new Set(pages.map(page => page.description)).size, pages.length);
   });

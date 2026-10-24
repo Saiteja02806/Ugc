@@ -1,5 +1,18 @@
 # AI Studio model routing
 
+**18 October 2026 Seedream local update:** new Seedream 5.0 Pro image jobs in AI
+Studio and Build AI influencer now freeze `provider: "openrouter"` and use
+`bytedance-seed/seedream-5-0-pro` through `/api/v1/images`. Legacy jobs without a
+provider continue through their original Runway operation. Deploy the worker
+before the website; this is implemented locally and not deployed by this task.
+See [the Seedream routing contract](seedream-openrouter-routing-2026-10-18.md).
+
+**18 October 2026 local update:** new Seedance 2.5 Less Restriction and WAN 3.0
+jobs, including audio/video references, now use ReAPI (`reapi.ai`). See the
+[current routing contract and release order](reapi-video-routing-2026-10-18.md).
+The OpenRouter/Runway routing descriptions below are historical for recovery.
+This local change requires its migration, worker credential and deployment.
+
 Image options are **GPT Image** (`gpt_image`, existing OpenAI route) and
 **Gemini 3 Pro** (`gemini_3_pro`, Google `gemini-3-pro-image`). Gemini 3 Pro
 uses Gemini 3 Pro Image, rather than the previous Gemini 3.1 Flash Image
@@ -24,7 +37,8 @@ character counter. Video provider constraints remain enforced with plain
 validation messages, and each provider's own input limits still apply.
 
 Video options are **Kling 3.0** (Runway), **Omni Flash 1.1** (Gemini),
-**Seedance 2.5** (OpenRouter), and **WAN 3.0** (OpenRouter). Seedance is gated by
+**Seedance 2.5** (OpenRouter), and **WAN 3.0** (OpenRouter for image-only input;
+Runway for multimodal references). Seedance is gated by
 `NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE=true` and remains unavailable until the
 worker, database migration, and inference-key configuration pass release verification.
 Explore's Recreate selector carries the same model into AI Studio.
@@ -43,17 +57,29 @@ another model. The worker uses the existing server-only `OPENROUTER_API_KEY`.
 
 Supported app settings are every integer duration from 2 to 30 seconds,
 480p/720p/1080p, portrait 9:16 or landscape 16:9, and up to six distinct uploaded
-HTTPS image references. Images are sent as `input_references` for content and
-identity guidance, rather than forced first frames. WAN audio/video generation
-references are rejected before credits are reserved; appending a demo is a
-separate workflow and stays available. The request enables native generated
-audio. Demo's background music toggle remains a separate final-video setting.
+HTTPS references. Image-only requests use `input_references` for content and
+identity guidance, rather than forced first frames. New requests with an audio
+or video reference freeze `provider: "runway"` and use the exact `wan3` model.
+That route honors images, video and audio together, independently of an
+appended demo or background music. It accepts one audio and one video reference
+up to 15 seconds each, within the six-file app limit. Audio is limited to 25 MB,
+video to 32 MB, and accompanying owned image references to 16 MB. Limits,
+ownership, ready status and stored durations are checked before billing; no
+reference is silently dropped, shortened or replaced by another model.
 
-WAN jobs freeze `provider: "openrouter"` and use the same durable acceptance,
+Image-only WAN jobs freeze `provider: "openrouter"` and use the same durable acceptance,
 polling, authenticated download and output validation as Seedance. Accepted job
 IDs are saved before polling, and recovery does not submit another paid request.
 The existing OpenRouter provider constraint and atomic Explore batch RPC accept
 these inputs, so WAN needs no new database migration.
+
+The Runway multimodal route uses the existing server-only `RUNWAYML_API_SECRET`,
+daily budget check and durable operation store. Its task ID is saved before
+polling, and retries recover that same task. Older queued OpenRouter jobs retain
+their provider and fingerprint; they are never converted into a new paid task.
+Publish the worker before the frontend/API release that can create these jobs.
+No paid WAN generation was submitted while validating the 2026-10-14 changes.
+See [the multimodal investigation](wan-multimodal-generation-routing-2026-10-14.md).
 
 Application credits retain the configured video-per-second policy. Provider key
 allowance uses the public catalogue's undiscounted duration pricing checked on
@@ -70,6 +96,8 @@ Official contracts:
 - [OpenRouter WAN 3.0](https://openrouter.ai/alibaba/wan-3.0)
 - [OpenRouter video generation](https://openrouter.ai/docs/guides/overview/multimodal/video-generation)
 - [Public video model catalogue](https://openrouter.ai/api/v1/videos/models)
+- [Runway input parameters](https://docs.dev.runwayml.com/assets/inputs/)
+- [Runway pricing](https://docs.dev.runwayml.com/guides/pricing/)
 
 ## Seedance investigation, 2026-10-02
 

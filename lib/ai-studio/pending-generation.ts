@@ -1,5 +1,9 @@
 export type PendingGeneration = { version: 1; ownerId: string; kind: "image" | "video"; scope: string; requestKey: string; input: Record<string, unknown> };
-export type RecoveredGeneration = { ok: true; jobId: string; jobs: { jobId: string; generationId?: string; videoId?: string }[]; partial: boolean; message: string };
+export class GenerationClarificationError extends Error {
+  constructor(message: string, public clarifications: string[]) { super(message); }
+}
+export type SlideshowGenerationIdentity = { version: 1; batchKey: string; slideIndex: number; slideCount: number; versionIndex: number; versionCount: number };
+export type RecoveredGeneration = { ok: true; jobId: string; jobs: { jobId: string; generationId?: string; videoId?: string; slideshowGeneration?: SlideshowGenerationIdentity }[]; partial: boolean; message: string };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const pendingGenerationKey = (owner: string, kind: PendingGeneration["kind"], scope: string) => `ugc-ai-studio:pending:v1:${encodeURIComponent(owner)}:${kind}:${scope}`;
 export const generationDiscoveryKey = (owner: string, kind: PendingGeneration["kind"], scope: string) => `${pendingGenerationKey(owner, kind, scope)}:discovery`;
@@ -27,15 +31,36 @@ export function readPendingGeneration(raw: string | null, owner: string, kind: P
   if (saved?.version !== 1 || saved.ownerId !== owner || saved.kind !== kind || saved.scope !== scope || !uuid.test(saved.requestKey) ||
       !saved.input || typeof saved.input !== "object" || Array.isArray(saved.input) || typeof saved.input.prompt !== "string" ||
       ![1, 2, 3, 4].includes(Number(saved.input.quantity)) || saved.input.idempotencyKey !== saved.requestKey ||
+      (saved.input.slideshowSlideCount !== undefined && (kind !== "image" || scope !== "slideshow" || !Number.isInteger(saved.input.slideshowSlideCount) || Number(saved.input.slideshowSlideCount) < 1 || Number(saved.input.slideshowSlideCount) > 10)) ||
       (saved.input.exploreFormat ?? "studio") !== scope) throw new Error("The saved generation request could not be verified. Keep its recovery record.");
   return saved;
 }
+function expectedOutputs(saved: PendingGeneration) {
+  return Number(saved.input.quantity) * Number(saved.input.slideshowSlideCount ?? 1);
+}
+function recoveryQuery(saved: PendingGeneration) {
+  const query = new URLSearchParams({ requestKey: saved.requestKey, kind: saved.kind, quantity: String(saved.input.quantity), scope: saved.scope });
+  if (saved.input.slideshowSlideCount !== undefined) query.set("slideshowSlideCount", String(saved.input.slideshowSlideCount));
+  return query;
+}
 function confirmed(value: unknown, saved: PendingGeneration): RecoveredGeneration {
   const v = value as RecoveredGeneration | null;
-  if (!v?.ok || !Array.isArray(v.jobs) || !v.jobs.length || v.jobs.length > Number(saved.input.quantity) ||
+  const total = expectedOutputs(saved);
+  if (!v?.ok || !Array.isArray(v.jobs) || !v.jobs.length || v.jobs.length > total ||
       !v.jobs.every(job => uuid.test(job.jobId) && uuid.test(String(saved.kind === "image" ? job.generationId : job.videoId))) ||
       new Set(v.jobs.map(job => job.jobId)).size !== v.jobs.length) throw new Error("Could not verify the generation response. The saved request is preserved.");
-  return { ...v, jobId: v.jobs[0].jobId, partial: v.jobs.length < Number(saved.input.quantity) };
+  if (saved.input.slideshowSlideCount !== undefined) {
+    const slots = new Set<string>();
+    for (const job of v.jobs) {
+      const group = job.slideshowGeneration;
+      if (!group || group.version !== 1 || group.batchKey !== saved.requestKey || group.slideCount !== saved.input.slideshowSlideCount || group.versionCount !== Number(saved.input.quantity) ||
+          !Number.isInteger(group.slideIndex) || group.slideIndex < 1 || group.slideIndex > group.slideCount ||
+          !Number.isInteger(group.versionIndex) || group.versionIndex < 1 || group.versionIndex > group.versionCount ||
+          slots.has(`${group.versionIndex}:${group.slideIndex}`)) throw new Error("Could not verify the slideshow generation response. The saved request is preserved.");
+      slots.add(`${group.versionIndex}:${group.slideIndex}`);
+    }
+  }
+  return { ...v, jobId: v.jobs[0].jobId, partial: v.jobs.length < total };
 }
 /** Explicit clicks recover first; hydration never creates or resubmits work. */
 export async function submitPendingGeneration(args: {
@@ -52,12 +77,13 @@ export async function submitPendingGeneration(args: {
     const prior = readPendingGeneration(args.storage.getItem(key), args.ownerId, args.kind, args.scope);
     const requestKey = prior?.requestKey ?? args.uuid();
     const saved: PendingGeneration = prior ?? { version: 1, ownerId: args.ownerId, kind: args.kind, scope: args.scope, requestKey, input: { ...args.input, idempotencyKey: requestKey } };
+    readPendingGeneration(JSON.stringify(saved), args.ownerId, args.kind, args.scope);
     // Storage must succeed before any paid submission can be made.
     args.storage.setItem(key, JSON.stringify(saved)); args.onStored(saved);
     const options = { cache: "no-store" as const, headers: { Authorization: `Bearer ${args.token}` }, signal: AbortSignal.timeout(30_000) };
     let result: RecoveredGeneration | null = null;
     if (prior) {
-      const query = new URLSearchParams({ requestKey, kind: saved.kind, quantity: String(saved.input.quantity), scope: saved.scope });
+      const query = recoveryQuery(saved);
       const response = await sendRequest(`/api/ai-studio/generation-requests?${query}`, options);
       const value = await response.json().catch(() => null); args.assertActive();
       if (!response.ok || !value?.ok || value.requestKey !== requestKey || !Array.isArray(value.jobs)) throw new Error("Could not check your saved generation. Its request is preserved; try recovery again.");
@@ -67,12 +93,15 @@ export async function submitPendingGeneration(args: {
     if (!result) {
       args.assertActive();
       const response = await sendRequest(`/api/ai-studio/${saved.kind === "image" ? "images" : "videos"}/generate`, {
-        ...options, method: "POST", headers: { ...options.headers, "Content-Type": "application/json", "Idempotency-Key": requestKey }, body: JSON.stringify(saved.input),
+        ...options, ...(saved.input.slideshowContext ? { signal: AbortSignal.timeout(120_000) } : {}), method: "POST", headers: { ...options.headers, "Content-Type": "application/json", "Idempotency-Key": requestKey }, body: JSON.stringify(saved.input),
       });
       const value = await response.json().catch(() => null); args.assertActive();
       if (!response.ok || !value?.ok) {
         // These admission errors happen before the ordinary APIs create work.
         if ([400, 401, 402, 403, 422].includes(response.status)) args.storage.removeItem(key);
+        if (response.status === 422 && Array.isArray(value?.clarifications) && value.clarifications.length > 0 && value.clarifications.length <= 5 && value.clarifications.every((item: unknown) => typeof item === "string" && item.length <= 500)) {
+          throw new GenerationClarificationError(value.message, value.clarifications);
+        }
         throw new Error(value?.message ?? value?.error ?? "Generation could not be confirmed. Its request is preserved.");
       }
       result = confirmed(value, saved);
@@ -109,7 +138,7 @@ export async function checkGenerationDiscoveries(args: {
     const remaining: PendingGeneration[] = [];
     let recovered = 0;
     for (const saved of history) {
-      const query = new URLSearchParams({ requestKey: saved.requestKey, kind: saved.kind, quantity: String(saved.input.quantity), scope: saved.scope });
+      const query = recoveryQuery(saved);
       const response = await sendRequest(`/api/ai-studio/generation-requests?${query}`, { cache: "no-store", headers: { Authorization: `Bearer ${args.token}` }, signal: AbortSignal.timeout(30_000) });
       const value = await response.json().catch(() => null); args.assertActive();
       if (!response.ok || !value?.ok || value.requestKey !== saved.requestKey || !Array.isArray(value.jobs)) throw new Error("Could not check an earlier generation. Its discovery record is preserved.");

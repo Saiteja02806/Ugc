@@ -26,15 +26,15 @@ test("Trending accepts only Content-owned demo projections", () => {
   assert.match(hookSources, /!demoSourceTypes\.includes\(asset\.source_type\)/);
 });
 
-test("the Hook picker names Content and Creative Assets excludes demos", () => {
+test("the Hook picker names Demo and Creative Assets excludes demos", () => {
   const creativeAssetSourceTypes = getConstArrayBody(
     creativeAssets,
     "hookVideoSourceTypes",
   );
 
   assert.doesNotMatch(creativeAssetSourceTypes, /"demo_upload"/);
-  assert.match(composer, /Choose a demo from Content/);
-  assert.match(composer, /Browse demo videos from Content/);
+  assert.match(composer, /Choose from Demo/);
+  assert.match(composer, /Browse saved demos/);
   assert.match(composer, /href="\/library"/);
 });
 

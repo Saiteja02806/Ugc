@@ -12,6 +12,8 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/compone
 import { cn } from "@/lib/utils";
 import studio from "@/components/explore/workflow-studio.module.css";
 import creation from "@/components/explore/workflow-creation.module.css";
+import type { AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
+import { getVideoReferencePolicy } from "@/lib/ai-studio/video-reference-policy";
 
 export type AppScreenAttachment = ReturnType<typeof useLocalAppScreen>;
 
@@ -19,8 +21,9 @@ export function PhoneWorkflowComposer(props: WorkflowCreationFormProps & { appSc
   return <WorkflowCreationForm kind="phone" {...props} />;
 }
 
-export function AppScreenPicker({ attachment }: { attachment: AppScreenAttachment }) {
+export function AppScreenPicker({ attachment, model = "seedance_2_5" }: { attachment: AppScreenAttachment; model?: AIStudioVideoModel }) {
   const input = useRef<HTMLInputElement>(null);
+  const referencePolicy = getVideoReferencePolicy(model);
   return <div className="inline-flex shrink-0 items-center rounded-lg bg-card-muted ring-1 ring-inset ring-border/50">
     <Popover>
       <PopoverTrigger render={<Button type="button" variant="ghost" className="h-8 rounded-lg px-3 text-sm" aria-label="App screen" />}>
@@ -33,14 +36,14 @@ export function AppScreenPicker({ attachment }: { attachment: AppScreenAttachmen
         {attachment.asset ? <><AppScreenMedia asset={attachment.asset} /><p className="break-all text-sm text-muted">{attachment.asset.name}</p></> : null}
         <input ref={input} type="file" accept="image/*,video/*" hidden aria-label="Upload app screen" onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) void attachment.choose(file);
+          if (file) void attachment.choose(file, { maxDuration: referencePolicy.maxVideoDuration, maxBytes: file.type.startsWith("video/") ? referencePolicy.maxVideoBytes : referencePolicy.maxImageBytes });
           event.target.value = "";
         }} />
         <Button type="button" variant="outline" className="rounded-lg text-sm" disabled={attachment.loading} onClick={() => input.current?.click()}>
           <Plus className="size-3.5" aria-hidden="true" />{attachment.loading ? "Reading file…" : attachment.asset ? "Replace app screen" : "Attach app screen"}
         </Button>
-        <p className="text-sm leading-5 text-muted">Screenshots up to 20 MB · recordings up to 30 seconds and 250 MB. Files upload only when you Generate in the connected workflow.</p>
-        <p className="text-xs leading-5 text-muted">Screen recordings require Seedance 2.5 through OpenRouter. Choose one reference video here or in Choose video, not both.</p>
+        <p className="text-sm leading-5 text-muted">Screenshots up to 20 MB. Files upload when you Generate.</p>
+        <p className="text-xs leading-5 text-muted">Screen recordings: WAN 3.0 up to 15 seconds and 32 MB · Seedance 2.5 up to 30 seconds and 250 MB. Choose one reference video here or in Choose video.</p>
         {attachment.error ? <p role="alert" className="text-sm text-destructive">{attachment.error}</p> : null}
       </PopoverContent>
     </Popover>

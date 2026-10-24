@@ -1,4 +1,5 @@
 import "server-only";
+import { readSlideshowEditableDraft, type SlideshowEditableDraft } from "@/lib/explore/slideshow-editable-draft";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -92,6 +93,7 @@ type LibraryDatabase = {
 };
 
 export type LibraryCarouselSlideRecord = {
+  mediaAssetId?: string;
   carouselGenerationId: string | null;
   carouselSlideId: string | null;
   headline: string | null;
@@ -105,6 +107,7 @@ export type LibraryCarouselSlideRecord = {
 };
 
 export type LibraryCarouselItemRecord = {
+  editorDraft?: SlideshowEditableDraft;
   coverUrl: string | null;
   createdAt: string;
   id: string;
@@ -344,7 +347,9 @@ function mapLibraryItem(
   row: LibraryItemRow,
   slides: LibraryCarouselSlideRecord[],
 ): LibraryCarouselItemRecord {
+  const editorDraft = row.project_id === "explore" && row.source_id.startsWith("explore-slideshow:") && row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? readSlideshowEditableDraft(row.metadata.editorDraft) : null;
   return {
+    ...(editorDraft ? { editorDraft } : {}),
     coverUrl: row.cover_url,
     createdAt: row.created_at,
     id: row.id,
@@ -364,6 +369,7 @@ function mapLibraryCarouselSlide(
   row: LibraryCarouselSlideRow,
 ): LibraryCarouselSlideRecord {
   return {
+    ...(row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) && typeof row.metadata.mediaAssetId === "string" ? { mediaAssetId: row.metadata.mediaAssetId } : {}),
     carouselGenerationId: row.carousel_generation_id,
     carouselSlideId: row.carousel_slide_id,
     headline: row.headline,

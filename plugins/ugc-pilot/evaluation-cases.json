@@ -1,5 +1,5 @@
 {
-  "status": "manual-host-evaluation-pending",
+  "status": "offline-validation-and-live-mcp-preflight-passed; installed-host-evaluation-pending",
   "cases": [
     {
       "id": "connection",
@@ -56,7 +56,7 @@
     {
       "id": "unsupported-publishing",
       "prompt": "Schedule this video on all my social accounts.",
-      "expected": "Explains this beta has no scheduling/publishing tools; no invented call or claim that publishing succeeded."
+      "expected": "Explains this plugin has no scheduling/publishing tools; no invented call or claim that publishing succeeded."
     },
     {
       "id": "foreign-asset",

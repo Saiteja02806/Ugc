@@ -1,4 +1,6 @@
+import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
 import assert from "node:assert/strict";
+import { createScheduleCacheFixture } from "./scheduling-cache-test-helpers.mjs";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -6,12 +8,14 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as drafts from "../lib/explore/format-schedule-draft.ts";
 import * as scheduling from "../lib/explore/workflow-scheduling-draft.ts";
+import { prepareSimpleWorkflowSchedule } from "../lib/explore/simple-workflow-schedule.ts";
 import * as scheduleClient from "../lib/explore/workflow-schedule-client.ts";
+import * as repeatIntent from "../lib/explore/schedule-repeat-intent.ts";
 
 const empty = { platform: "", caption: "", date: "", time: "", connectionId: "" };
 const output = { id: "00000000-0000-4000-8000-000000000001", kind: "media_asset", url: "/saved.mp4", title: "Saved video" };
 const scope = { environment: "live", owner: "alice", format: "hook", output };
-const draft = { caption: "My post", date: "2026-10-20", time: "18:30", platform: "instagram", platforms: ["instagram"], connectionId: "account-a", connectionIds: { instagram: "account-a" } };
+const draft = { caption: "My post", date: "2099-12-01", time: "18:30", platform: "instagram", platforms: ["instagram"], connectionId: "account-a", connectionIds: { instagram: "account-a" } };
 const normalize = value => JSON.parse(JSON.stringify(value));
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 
@@ -22,6 +26,24 @@ test("unsent schedule forms are versioned and isolated by owner, format, mode an
   for (const changed of [{ owner: "bob" }, { format: "wall_text" }, { environment: "preview" }, { output: null }, { output: { ...output, id: "other" } }, { output: { ...output, kind: "library_item" } }]) {
     assert.equal(drafts.readFormatScheduleDraft(raw, drafts.formatScheduleDraftKey({ ...scope, ...changed })), null);
   }
+});
+
+test("a deliberately cleared caption survives draft reload without reapplying the account default", () => {
+  const key = drafts.formatScheduleDraftKey(scope);
+  const cleared = { ...draft, caption: "", captionInitialized: true };
+  const restored = drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key, cleared), key);
+  assert.equal(restored.caption, ""); assert.equal(restored.captionInitialized, true);
+  assert.equal(drafts.readFormatScheduleDraft(JSON.stringify({ version: 1, key, draft: { ...cleared, captionInitialized: "true" } }), key), null);
+});
+
+test("saved caption defaults wait for owned draft and schedule recovery before the form becomes eligible", () => {
+  const h = harness();
+  h.render(); assert.equal(h.form().captionEnabled, false);
+  h.hydrate(); h.render(); assert.equal(h.form().captionEnabled, true);
+  assert.equal(h.form().ownerId, "alice");
+  h.form().onChange({ ...draft, caption: "", captionInitialized: true });
+  h.render(); assert.equal(h.form().draft.captionInitialized, true);
+  assert.equal(h.externalCalls, 0);
 });
 
 test("slideshow shares the review form while labeling Instagram as an image post", () => {
@@ -62,7 +84,8 @@ test("inline review timezone survives draft storage and invalid timezones cannot
 });
 
 /** Actual panel lifecycle with opt-in isolated review/confirmation responses. */
-function harness(storage = new Map(), { allowReview = false, allowConfirm = false, reviewAccountId = "account-a" } = {}) {
+function harness(storage = new Map(), { allowReview = false, allowConfirm = false, reviewAccountId = "account-a", transport } = {}) {
+  const cache = createScheduleCacheFixture("alice");
   let cursor = 0, owner = "alice", tree;
   const slots = [], effects = [], timers = new Map(), requests = []; let timerId = 0, externalCalls = 0;
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
@@ -74,12 +97,16 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
   react.useLayoutEffect = react.useEffect;
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = { react, "react/jsx-runtime": jsx, "react-dom": { createPortal: children => children },
+    "@/lib/explore/schedule-repeat-intent": repeatIntent,
+    "@tanstack/react-query": { useQueryClient: () => cache.queryClient },
+    "@/lib/scheduling/account-data-query": cache.api,
     "lucide-react": { ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" },
     "@/components/explore/workflow-schedule-review.module.css": { default: {} },
     "next/dynamic": { default: () => "ScheduleEditor" }, "next/link": { default: "Link" },
     "@/contexts/auth-context": { useAuth: () => ({ user: owner ? { uid: owner } : null }) },
     "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "Asia/Calcutta" },
     "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: empty, WorkflowSchedulingPanel: "WorkflowSchedulingPanel" },
+    "@/lib/explore/workflow-schedule-transport": scheduleTransport, "@/lib/explore/simple-workflow-schedule": { prepareSimpleWorkflowSchedule },
     "@/lib/explore/format-schedule-draft": drafts, "@/lib/explore/workflow-scheduling-draft": scheduling,
     "@/lib/explore/workflow-schedule-client": allowConfirm ? scheduleClient : { readScheduleReceipt: () => null },
     "@/lib/explore/workflow-connected-accounts": { parseWorkflowConnectedAccounts: value => { assert.equal(value.ok, true); assert.ok(Array.isArray(value.connections)); } },
@@ -93,6 +120,7 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
       if (!allowReview) throw new Error("Unexpected network request");
       assert.equal(options.headers.Authorization, "Bearer fixture-token");
       assert.equal(options.cache, "no-store");
+      if (transport) { const response = await transport(url, options); if (response) return response; }
       if (options.method === "POST") {
         assert.equal(allowConfirm, true, "Review and Back must never create a schedule"); assert.equal(url, "/api/schedules");
         const input = JSON.parse(options.body);
@@ -101,11 +129,11 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
       }
       if (url === "/api/schedules?configOnly=1") return { ok: true, json: async () => ({ ok: true, minimumScheduleLeadMinutes: 5 }) };
       assert.equal(url, "/api/social/connections");
-      return { ok: true, json: async () => ({ ok: true, connections: [{ id: reviewAccountId, platform: "instagram" }] }) };
+      return { ok: true, json: async () => ({ ok: true, connections: [{ id: reviewAccountId, platform: "instagram",status:"connected",platformAccountName:null,platformAccountUsername:null,scopes:["instagram_business_content_publish"],supportsBackgroundRefresh:true }] }) };
     }, require(name) { if (name in imports) return imports[name]; if (name.startsWith("@/components/")) return new Proxy({}, { get: (_, key) => String(key) }); throw new Error(name); } });
   const props = { output, format: "hook", localPreview: false, imageOnly: false, active: true };
   const render = () => { cursor = 0; tree = exported.FormatSchedulePanel(props); while (effects.length) effects.shift()(); return tree; };
-  return { props, storage, requests, owner(value) { owner = value; }, render,
+  return { props, storage, requests, cache, owner(value) { owner = value; }, render,
     hydrate() { for (const [id, callback] of [...timers]) { timers.delete(id); callback(); } return render(); },
     form() { return nodes(tree).find(node => node.type === "WorkflowSchedulingPanel").props; },
     editor() { return nodes(tree).find(node => node.type === "ScheduleEditor")?.props ?? null; },
@@ -113,51 +141,94 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
   };
 }
 
-test("all format reviews stay inline, retain edits on Back, and close when the finished output changes", async () => {
-  for (const format of ["hook", "wall_text", "slideshow"]) {
-    const h = harness(new Map(), { allowReview: true });
-    h.props.format = format; h.props.imageOnly = format === "slideshow";
-    if (h.props.imageOnly) h.props.output = { ...output, kind: "library_item" };
-    h.render(); h.hydrate(); h.form().onChange(draft); h.render();
-    const openReview = () => nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick();
-    openReview(); await new Promise(setImmediate); let tree = h.render();
-    const editor = h.editor();
-    assert.equal(editor.presentation, "inline");
-    assert.equal(editor.initialCaption, draft.caption);
-    assert.equal(editor.initialTimezone, "Asia/Calcutta");
-    assert.equal(editor.initialLibraryItemId, h.props.imageOnly ? output.id : undefined);
-    assert.equal(editor.finalVideo?.id, h.props.imageOnly ? undefined : output.id);
-    assert.equal(nodes(tree).some(node => node.props?.["aria-label"] === "Schedule summary"), false, "Do not show the previous summary during editable review");
-    assert.equal(h.requests.length, 2);
-    editor.onCloseDraft({ caption: "Updated caption", date: "2026-10-21", time: "17:45", timezone: "Asia/Dubai" }); editor.onClose(); tree = h.render();
-    assert.equal(h.editor(), null);
-    assert.deepEqual(normalize(h.form().draft), { ...draft, caption: "Updated caption", date: "2026-10-21", time: "17:45", timezone: "Asia/Dubai" });
-    assert.ok(nodes(tree).some(node => node.props?.["aria-label"] === "Schedule summary"));
-    openReview(); await new Promise(setImmediate); h.render();
-    assert.equal(h.editor().initialTimezone, "Asia/Dubai");
-    h.props.output = { ...h.props.output, id: "replacement-output" }; h.render();
-    assert.equal(h.editor(), null, "A review is tied to its exact output");
-    assert.equal(h.requests.some(request => request.options.method === "POST"), false);
+const clickSchedule = h => nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick();
+const settle = () => new Promise(setImmediate);
+
+test("Hook, Wall and Slideshow use the original simple form and schedule directly", async () => {
+  for(const format of ["hook","wall_text","slideshow"]) {
+    const account=randomUUID(), h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account});
+    h.props.format=format; h.props.imageOnly=format === "slideshow"; if(h.props.imageOnly)h.props.output={...output,kind:"library_item"};
+    h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account},timezone:"Asia/Dubai"}); h.render();
+    assert.equal(h.editor(),null); assert.equal(h.externalCalls,0); clickSchedule(h); await settle(); h.render();
+    const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,1); assert.equal(h.editor(),null);
+    const actual=JSON.parse(posts[0].options.body); assert.deepEqual(actual.source,{id:output.id,kind:h.props.output.kind});
+    assert.equal(actual.caption,draft.caption); assert.equal(actual.scheduledFor,"2099-12-01T14:30:00.000Z");
+    assert.ok(nodes(h.render()).some(node=>node.props?.["aria-label"] === "Schedule summary"));
+    assert.equal(h.cache.data().schedules.length, 1, "Confirmed posts reach the account cache before navigation");
+    assert.equal(h.cache.data().schedules[0].idempotencyKey, actual.idempotencyKey);
+    assert.equal(h.cache.queryClient.getQueryState(h.cache.key).isInvalidated, true);
+    assert.equal(h.cache.foreign().schedules[0].id, "foreign-post");
   }
 });
 
-test("confirmed inline values become the schedule summary while the exact request is persisted before submission", async () => {
+test("rejected format requests use the corrected time without changing their idempotency key", async () => {
+  for(const format of ["hook","wall_text","slideshow"]) {
+    const account=randomUUID(), kind=format === "slideshow" ? "library_item" : "media_asset";
+    const prior={version:1,owner:"alice",kind:"hook",timeRejected:true,input:{caption:"Original",source:{kind,id:output.id},targets:[{platform:"instagram",connectionId:account}],scheduledFor:"2026-10-13T22:40:00.000Z",timezone:"Asia/Calcutta",idempotencyKey:`explore:${randomUUID()}`}};
+    const key=`ugc-explore:schedule:v1:alice:format:${kind}:${output.id}`;
+    const h=harness(new Map([[key,JSON.stringify(prior)]]),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(url)=>url === "/api/schedules" ? Response.json({ok:true,schedules:[]}) : null});
+    h.props.format=format; h.props.imageOnly=kind === "library_item"; h.props.output={...output,kind};
+    h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
+    const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,1);
+    const actual=JSON.parse(posts[0].options.body); assert.equal(actual.idempotencyKey,prior.input.idempotencyKey); assert.equal(actual.scheduledFor,"2099-12-01T13:00:00.000Z"); assert.equal(h.editor(),null);
+  }
+});
+
+test("uncertain format requests replay exact input after visible time and caption changes", async () => {
+  const account=randomUUID(); let count=0;
+  const h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(_url,options)=>{ if(options.method === "POST" && ++count === 1) throw Error("Lost acknowledgement"); }});
+  h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
+  h.form().onChange({...h.form().draft,caption:"Changed",time:"19:45"}); h.render(); clickSchedule(h); await settle(); h.render();
+  const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].options.body,posts[0].options.body);
+});
+
+test("Hook, Wall and Slideshow can schedule the same output an hour later with a fresh intent", async () => {
   for (const format of ["hook", "wall_text", "slideshow"]) {
-    const account = randomUUID();
-    const h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account });
+    const account = randomUUID(), h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account });
     h.props.format = format; h.props.imageOnly = format === "slideshow";
-    if (h.props.imageOnly) h.props.output = { ...output, kind: "library_item" };
+    h.props.output = { ...output, kind: h.props.imageOnly ? "library_item" : "media_asset" };
     h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
-    nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg").props.onClick(); await new Promise(setImmediate); h.render();
-    assert.equal(h.requests.some(request => request.options.method === "POST"), false);
-    const confirmed = { caption: "Confirmed post", scheduledDate: "2026-10-21", scheduledTime: "17:45", timezone: "Asia/Dubai", scheduledFor: "2026-10-21T13:45:00.000Z", scheduledSource: { id: output.id, kind: h.props.output.kind }, targets: [{ platform: "instagram", connectionId: account }] };
-    h.editor().onSave(confirmed); await new Promise(setImmediate); h.render();
-    assert.equal(h.editor(), null);
-    assert.equal(h.form().draft.caption, confirmed.caption); assert.equal(h.form().draft.date, confirmed.scheduledDate);
-    assert.equal(h.form().draft.time, confirmed.scheduledTime); assert.equal(h.form().draft.timezone, confirmed.timezone);
-    assert.ok(nodes(h.form().footer).some(node => node.props?.role === "status" && node.props.children === "Your post is scheduled. Review it in Scheduling."));
-    const posts = h.requests.filter(request => request.options.method === "POST"); assert.equal(posts.length, 1);
-    assert.deepEqual(JSON.parse(posts[0].options.body).source, confirmed.scheduledSource);
+    clickSchedule(h); await settle(); h.render();
+    const key = `ugc-explore:schedule:v1:alice:format:${h.props.output.kind}:${output.id}`;
+    const previous = JSON.parse(h.storage.get(key));
+    assert.ok(previous.scheduleId);
+    const repeat = nodes(h.form().footer).find(node => node.type === "Button" && node.props.size === "lg");
+    assert.equal(repeat.props.disabled, false);
+    repeat.props.onClick(); repeat.props.onClick(); await settle(); h.render();
+    assert.equal(h.requests.filter(r => r.options.method === "POST").length, 1, "Opening another intent never posts");
+    assert.equal(h.storage.has(key), false);
+    assert.equal(JSON.parse(h.storage.get(`${key}:confirmed:${encodeURIComponent(previous.input.idempotencyKey)}`)).scheduleId, previous.scheduleId);
+    h.form().onChange({ ...h.form().draft, time: "19:30" }); h.render();
+    clickSchedule(h); await settle(); h.render();
+    const posts = h.requests.filter(r => r.options.method === "POST").map(r => JSON.parse(r.options.body));
+    assert.equal(posts.length, 2); assert.deepEqual(posts[1].source, posts[0].source);
+    assert.notEqual(posts[1].idempotencyKey, posts[0].idempotencyKey);
+    assert.equal(Date.parse(posts[1].scheduledFor) - Date.parse(posts[0].scheduledFor), 3600000);
+    assert.equal(h.cache.data().schedules.length, 2, "Both posts remain visible in Scheduling");
+  }
+});
+
+test("a stale confirmed Format screen cannot discard another tab's unconfirmed request", async () => {
+  const account = randomUUID(), h = harness(new Map(), { allowReview: true, allowConfirm: true, reviewAccountId: account });
+  h.render(); h.hydrate(); h.form().onChange({ ...draft, connectionId: account, connectionIds: { instagram: account } }); h.render();
+  clickSchedule(h); await settle(); h.render();
+  const key = `ugc-explore:schedule:v1:alice:format:media_asset:${output.id}`;
+  const current = JSON.parse(h.storage.get(key));
+  const other = { ...current, scheduleId: undefined, input: { ...current.input, idempotencyKey: `explore:${randomUUID()}`, scheduledTime: "20:30", scheduledFor: "2099-12-01T15:00:00.000Z" } };
+  h.storage.set(key, JSON.stringify(other));
+  clickSchedule(h); await settle(); h.render();
+  const posts = h.requests.filter(r => r.options.method === "POST").map(r => JSON.parse(r.options.body));
+  assert.deepEqual(posts[1], other.input, "Resume the other tab's exact request instead of replacing it");
+});
+
+test("source or draft changes while settings load cannot submit a stale format schedule", async () => {
+  for(const field of ["output","caption","time"]) {
+    let complete; const account=randomUUID();
+    const h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(url)=>url === "/api/schedules?configOnly=1" ? new Promise(resolve=>{complete=resolve;}) : null});
+    h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle();
+    if(field === "output")h.props.output={...output,id:randomUUID()}; else h.form().onChange({...h.form().draft,[field]:field === "time" ? "19:45" : "Changed"});
+    h.render(); complete(Response.json({ok:true,minimumScheduleLeadMinutes:5})); await settle(); h.render();
+    assert.equal(h.requests.some(request=>request.options.method === "POST"),false); assert.equal(h.editor(),null);
   }
 });
 

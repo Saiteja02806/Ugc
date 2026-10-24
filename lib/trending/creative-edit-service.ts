@@ -1,4 +1,5 @@
 import "server-only";
+import { createCarouselManualLayout, parseCarouselManualTextStyle } from "@/lib/carousel/manual-text";
 import { hasCarouselSemanticHeading } from "@/lib/carousel/text-presentation";
 import { getOwnedCarouselSlideImages } from "@/lib/trending/carousel-slide-images";
 
@@ -93,9 +94,8 @@ export async function loadTrendingCreativeReadView(params: {
   userId: string;
 }): Promise<TrendingCreativeEditRecord> {
   if (params.format === "wall_text") return loadTrendingWallTextPreview(params);
-  if (params.format === "hook_video") return loadTrendingCreativeEditor(params);
   await assertReadableTrendingCreative(params);
-  return loadTrendingCreativeRecord(params);
+  return loadTrendingCreativeRecord({ ...params, readOnly: true });
 }
 
 export async function loadTrendingCarouselEditStatus(params: {
@@ -118,6 +118,7 @@ async function loadTrendingCreativeRecord(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditRecord> {
 
   const [defaultContent, row] = await Promise.all([
@@ -141,8 +142,8 @@ async function loadTrendingCreativeRecord(params: {
   });
 }
 
-/** Read-only overlay access also permits owned posts in visit history.
- * The editor/save paths retain their stricter active/selected checks. */
+/** Wall history preview stays read-only. Carousel separately permits reopening
+ * an existing owned edit from history; Hook/Wall editor gates stay unchanged. */
 export async function loadTrendingWallTextPreview(params: {
   assignmentId: string;
   creativeId: string;
@@ -290,6 +291,7 @@ async function buildDefaultContent(params: {
   creativeId: string;
   format: TrendingCreativeEditFormat;
   userId: string;
+  readOnly?: boolean;
 }): Promise<TrendingCreativeEditContent> {
   if (params.format === "carousel") {
     const status = await getCarouselGenerationStatus(params.creativeId);
@@ -358,6 +360,7 @@ async function buildDefaultContent(params: {
       assignmentId: params.assignmentId,
       suggestionId: params.creativeId,
       userId: params.userId,
+      readOnly: params.readOnly,
     });
 
     if (!idea) {
@@ -425,6 +428,10 @@ function mergeSubmittedContent(
   submitted: TrendingCreativeEditSaveInput["content"],
 ): TrendingCreativeEditContent {
   if (defaults.format === "carousel" && submitted.format === "carousel") {
+    for (const slide of submitted.slides) {
+      const original = defaults.slides.find(entry => entry.slideId === slide.slideId);
+      if (original && slide.textStyle && !createCarouselManualLayout({ ...original, ...slide }).fits) throw new TrendingCreativeEditAccessError(`Slide ${slide.slideNumber}: reduce the font size or shorten the text to fit.`, 400);
+    }
     const submittedById = new Map(
       submitted.slides.map((slide) => [slide.slideId, slide]),
     );
@@ -454,6 +461,7 @@ function mergeSubmittedContent(
           headline: edited.headline.trim(),
           subtext: edited.subtext.trim(),
           textPosition: clampNormalizedTextPosition(edited.textPosition),
+          textStyle: parseCarouselManualTextStyle(edited.textStyle),
         };
       }),
     };
@@ -826,6 +834,7 @@ function mergeStoredContentWithOwnerDefaults(
               headline: edited.headline,
               subtext: edited.subtext,
               textPosition: clampNormalizedTextPosition(edited.textPosition),
+              textStyle: parseCarouselManualTextStyle(edited.textStyle),
               visualRole:
                 edited.visualRole === "product_asset"
                   ? "product_asset"

@@ -7,14 +7,21 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  # Keep one instance warm across the service, not one per tagged revision.
+  scaling {
+    min_instance_count = 1
+  }
+
   template {
     service_account                  = var.worker_service_account_email
     timeout                          = "${var.request_timeout_seconds}s"
     max_instance_request_concurrency = 1
 
     scaling {
-      min_instance_count = 1
-      max_instance_count = 1
+      min_instance_count = 0
+      # Separate interactive edits need not wait behind another user's render.
+      # Keep one request per instance to bound raster memory/CPU contention.
+      max_instance_count = 2
     }
 
     containers {
@@ -25,9 +32,8 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
       }
 
       resources {
-        # Keep one request-based instance warm for interactive edit latency.
-        # Retain the one-instance maximum until database reservation is
-        # explicitly safe for parallel writers.
+        # Request-based CPU with one warm service instance avoids routine
+        # first-edit cold starts without warming historical tagged revisions.
         cpu_idle          = true
         startup_cpu_boost = true
 

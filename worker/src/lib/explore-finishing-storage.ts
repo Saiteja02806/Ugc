@@ -1,9 +1,10 @@
-import { Storage } from "@google-cloud/storage";
+import { CRC32C, Storage } from "@google-cloud/storage";
 import { privateMediaBucket } from "./private-media.js";
 import { createWriteStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import type { Readable } from "node:stream";
 import { ExploreFinishError, exploreFinishOutputKey, EXPLORE_RENDER_VERSION } from "./explore-finishing-contract.js";
 import type { ExploreFinishReceipt } from "./explore-finishing-store.js";
 import { referenceAudioBaseStorageKey } from "./explore-reference-soundtrack.js";
@@ -34,7 +35,7 @@ function validateOutput(raw: unknown, receipt: ExploreFinishReceipt, key: string
 
 /** ADC in the GCP worker. No arbitrary URLs or client-selected buckets. */
 export class ExploreFinishingStorage {
-  constructor(private readonly storage = new Storage()) {}
+  constructor(private readonly storage = new Storage(), private readonly readMedia?: (url: string, signal?: AbortSignal) => Promise<Readable>) {}
   private bucket(location: "primary" | "private_user_media" = "primary") {
     if (location === "private_user_media") return this.storage.bucket(privateMediaBucket());
     const bucket = process.env.GCP_STORAGE_BUCKET?.trim() || process.env.GOOGLE_CLOUD_STORAGE_BUCKET?.trim();
@@ -44,18 +45,29 @@ export class ExploreFinishingStorage {
   async download(key: string, destination: string, maxBytes: number, location: "primary" | "private_user_media" = "primary", signal?: AbortSignal) {
     signal?.throwIfAborted();
     if (!key || key.startsWith("/") || key.includes("..") || /[:\\\u0000-\u001f]/.test(key)) throw new ExploreFinishError("Invalid saved-media storage key.");
-    const file = this.bucket(location).file(key);
+    const bucket = this.bucket(location), file = bucket.file(key);
     const [metadata] = await file.getMetadata();
     const size = Number(metadata.size);
     if (!Number.isSafeInteger(size) || size <= 0 || size > maxBytes || !metadata.generation) throw new ExploreFinishError("The selected media is empty or exceeds its size limit.",413);
+    signal?.throwIfAborted();
     let received = 0;
+    const checksum = new CRC32C();
     const bounded = new Transform({ transform(chunk: Buffer,_encoding,callback) {
       received += chunk.length;
+      checksum.update(chunk);
       callback(received > maxBytes ? new ExploreFinishError("The media download exceeded its size limit.",413) : null,chunk);
     } });
-    signal?.throwIfAborted();
-    await pipeline(this.bucket(location).file(key,{ generation:metadata.generation }).createReadStream(),bounded,createWriteStream(destination,{ flags:"wx" }), { signal });
+    // Authenticate directly through the same ADC client. The SDK's media
+    // reader nests several pipelines and over-attaches stream listeners.
+    // URLs are constructed from the configured bucket and validated key,
+    // never from user-supplied media URLs or metadata links.
+    const url = new URL(`${this.storage.apiEndpoint ?? "https://storage.googleapis.com"}/storage/v1/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(key)}`);
+    url.searchParams.set("alt", "media"); url.searchParams.set("generation", String(metadata.generation));
+    const input = this.readMedia ? await this.readMedia(url.toString(), signal)
+      : (await this.storage.authClient.request<Readable>({ url: url.toString(), responseType: "stream", signal, headers: { "Accept-Encoding": "identity" } })).data;
+    await pipeline(input,bounded,createWriteStream(destination,{ flags:"wx" }), { signal });
     if (received !== size) throw new ExploreFinishError("The selected media changed while downloading.",409);
+    if (metadata.crc32c && !checksum.validate(metadata.crc32c)) throw new ExploreFinishError("The media download failed its checksum check.",409);
   }
   private outputFile(receipt: ExploreFinishReceipt) { return this.bucket().file(exploreFinishOutputKey(receipt.output_asset_id)); }
   private async verifyAudioBase(receipt: ExploreFinishReceipt, key: string) {

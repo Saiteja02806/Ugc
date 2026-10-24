@@ -6,6 +6,7 @@ import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./re
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 export const SLIDESHOW_IMAGE_MODEL = "gpt-image-2.5-sunburst";
+export const SLIDESHOW_FLARE_IMAGE_MODEL = "gpt-image-2.5-flare";
 
 let openaiClient: OpenAI | null = null;
 
@@ -13,15 +14,17 @@ export async function generateOpenAiImageBuffer(
   prompt: string,
   aspectRatio: AIStudioImageRatio = "9:16",
   referenceImageUrl?: string | string[],
-  modelOverride?: typeof SLIDESHOW_IMAGE_MODEL,
+  modelOverride?: typeof SLIDESHOW_IMAGE_MODEL | typeof SLIDESHOW_FLARE_IMAGE_MODEL,
   nativeAspectRatio = false,
+  referenceLabels?: string[],
 ) {
+  if (referenceLabels && (!Array.isArray(referenceImageUrl) || referenceLabels.length !== referenceImageUrl.length)) throw new ProviderRequestNotSubmittedError("The image names do not match the provider inputs.");
   const client = getOpenAIClient();
   const model = modelOverride || process.env.OPENAI_IMAGE_MODEL?.trim() || DEFAULT_IMAGE_MODEL;
   const result = referenceImageUrl
     ? await client.images.edit({
         image: Array.isArray(referenceImageUrl)
-          ? await Promise.all((await downloadReferenceImageContext(referenceImageUrl)).map((image, index) => referenceImageFile(image, `reference-${index + 1}`)))
+          ? await Promise.all((await downloadReferenceImageContext(referenceImageUrl)).map((image, index) => referenceImageFile(image, referenceLabels ? `image-${index + 1}-${referenceLabels[index].replace(/[^a-z0-9-]+/gi, "-").slice(0, 100)}` : `reference-${index + 1}`)))
           : await downloadReferenceImage(referenceImageUrl),
         ...(model === "gpt-image-1" || model === "gpt-image-1.5" ? { input_fidelity: "high" as const } : {}),
         model,

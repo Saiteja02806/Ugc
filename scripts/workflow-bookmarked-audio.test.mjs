@@ -11,7 +11,7 @@ const element = (type, props = {}) => typeof type === "function" ? type(props) :
 const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" ? [node, ...nodes(node.props?.children)] : [];
 const text = node => Array.isArray(node) ? node.map(text).join(" ") : node && typeof node === "object" ? text(node.props?.children) : !node || typeof node === "boolean" ? "" : String(node);
 
-function harness({ paid = true, owner = "owner", user = "owner", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
+function harness({ paid = true, owner = "owner", user = "owner", maxDuration = 30, assets = [], metadataDuration = 5, mediaKind = "audio", response = () => new Response(new Uint8Array([1,2,3]), { headers: { "Content-Type": "audio/mpeg" } }) } = {}) {
   let cursor = 0, referenced = 0;
   const slots = [], calls = [], choices = [];
   let mediaCursor = 0, nextUrl = 0;
@@ -25,13 +25,13 @@ function harness({ paid = true, owner = "owner", user = "owner", response = () =
       useRef: initial => { const index = mediaCursor++; return mediaSlots[index] ??= { current: initial }; },
       useEffect() {},
     }; },
-    Error, setTimeout, clearTimeout,
+    Error, AbortController, AbortSignal, setTimeout, clearTimeout,
     URL: { createObjectURL: () => `blob:selected-${++nextUrl}`, revokeObjectURL: url => revoked.push(url) },
-    document: { createElement: () => ({ duration: 5, removeAttribute() {}, load() {}, set src(_) { queueMicrotask(() => this.onloadedmetadata?.()); } }) },
+    document: { createElement: () => ({ duration: metadataDuration, removeAttribute() {}, load() {}, set src(_) { queueMicrotask(() => this.onloadedmetadata?.()); } }) },
   });
   function attachment() {
     mediaCursor = 0;
-    const audio = mediaModule.useLocalWorkflowMedia("audio");
+    const audio = mediaModule.useLocalWorkflowMedia(mediaKind);
     return { ...audio, chooseRemote: (read, options, acceptFile) => audio.chooseRemote(read, { ...options, onRead: media => { choices.push({ file: media.file, options }); options?.onRead?.(media); } }, acceptFile) };
   }
   const imports = {
@@ -41,7 +41,7 @@ function harness({ paid = true, owner = "owner", user = "owner", response = () =
       useMemo: create => create(), useEffect() {},
     },
     "react/jsx-runtime": { jsx: element, jsxs: element },
-    "@tanstack/react-query": { useQuery: () => ({ data: { voices: [voice], assets: [], account: { paid } }, isSuccess: true }) },
+    "@tanstack/react-query": { useQuery: () => ({ data: { voices: [voice], assets, account: { paid } }, isSuccess: true }) },
     "lucide-react": Object.fromEntries(["AudioLines", "Bookmark", "Check", "LoaderCircle", "Pause", "Play", "RefreshCw"].map(name => [name,name])),
     "next/link": { default: "a" },
     "@/contexts/auth-context": { useAuth: () => ({ user: user ? {uid:user} : null, loading:false }) },
@@ -60,8 +60,36 @@ function harness({ paid = true, owner = "owner", user = "owner", response = () =
   vm.runInNewContext(ts.transpileModule(source, {fileName:"choices.tsx", compilerOptions:{ target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.CommonJS, jsx:ts.JsxEmit.ReactJSX }}).outputText, {
     exports: exported, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, File, AbortController, Error,
   });
-  return { calls, choices, revoked, get audio() { return attachment(); }, referenced: () => referenced, render() { cursor = 0; return exported.WorkflowSavedAudioChoices({ownerId:owner, audio: attachment(), onVoiceReference: () => referenced++}); } };
+  return { calls, choices, revoked, get audio() { return attachment(); }, referenced: () => referenced, render() { cursor = 0; return exported.WorkflowSavedAudioChoices({ownerId:owner, audio: attachment(), maxDuration, onVoiceReference: () => referenced++}); } };
 }
+
+test("saved choices and transferred files follow WAN's 15-second limit and Seedance's 30-second limit", async () => {
+  const assets = [10, 20].map(duration => ({ id: `recording-${duration}`, name: `${duration} second recording`, duration, purpose: "exact", status: "ready", testOnly: false }));
+  for (const maxDuration of [15, 30]) {
+    const actual = harness({ maxDuration, assets });
+    const choices = nodes(actual.render()).filter(node => node.type === "button" && node.props["aria-label"]?.startsWith("Choose saved audio"));
+    assert.equal(choices.length, maxDuration === 15 ? 1 : 2);
+    choices[0].props.onClick();
+    await new Promise(setImmediate);
+    assert.equal(actual.choices[0].options.maxDuration, maxDuration);
+  }
+  const staleDuration = harness({ maxDuration: 15, assets: [assets[0]], metadataDuration: 20 });
+  nodes(staleDuration.render()).find(node => node.props["aria-label"] === "Choose saved audio 10 second recording").props.onClick();
+  await new Promise(setImmediate);
+  assert.match(staleDuration.audio.error, /up to 15 seconds/);
+  assert.equal(staleDuration.audio.asset.url, "blob:previous");
+  assert.equal(staleDuration.choices.length, 0);
+});
+
+test("WAN video selection rejects files over 32 MB immediately while demo selection keeps its existing limit", async () => {
+  const actual = harness({ mediaKind: "video" });
+  const video = { name: "large.mp4", type: "video/mp4", size: 40 * 1024 ** 2 };
+  assert.equal(await actual.audio.choose(video, { maxDuration: 15, maxBytes: 32 * 1024 ** 2 }), false);
+  assert.match(actual.audio.error, /32 MB/);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  assert.equal(await actual.audio.choose(video), true);
+  assert.equal(actual.audio.asset.name, "large.mp4");
+});
 
 test("Use sample passes the authenticated normalized MP3 to the voice-reference attachment only", async () => {
   const actual = harness();
@@ -118,6 +146,21 @@ test("removing audio while a saved choice downloads prevents a late replacement"
   assert.equal(actual.choices.length, 0);
   assert.equal(actual.audio.asset, null);
   assert.equal(actual.audio.loading, false);
+});
+
+test("cancelling a pending audio choice preserves the accepted track and ignores its late response", async () => {
+  const actual = harness();
+  let finish;
+  const pending = actual.audio.chooseRemote(() => new Promise(resolve => { finish = resolve; }));
+  assert.equal(actual.audio.loading, true);
+  actual.audio.cancelPending();
+  assert.equal(actual.audio.loading, false);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  finish(new File(["late"], "late.mp3", { type: "audio/mpeg" }));
+  assert.equal(await pending, false);
+  assert.equal(actual.audio.asset.url, "blob:previous");
+  assert.equal(actual.audio.error, null);
+  assert.equal(actual.choices.length, 0);
 });
 
 test("failed local replacements retain the prior preview and clear only after removal or a successful choice", async () => {

@@ -1,18 +1,20 @@
 "use client";
 
-import { ArrowLeft, Check, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound } from "lucide-react";
+import { ArrowLeft, Check, Copy, History, ImageIcon, Images, Loader2, RectangleVertical, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { AiStudioComposer, AiStudioSetting, AiStudioSettingSelect } from "@/components/generation/ai-studio-composer";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CharacterImageCount, CharacterImageModel } from "@/lib/characters/types";
-import { CHARACTER_IMAGE_MODEL_OPTIONS, getCharacterImageModelLabel, getCharacterPromptLimit } from "@/lib/characters/image-models";
+import { CHARACTER_IMAGE_MODEL_OPTIONS, MAX_CHARACTER_REFERENCES, getCharacterImageModelLabel, getCharacterPromptLimit } from "@/lib/characters/image-models";
 import { characterBatchProgress } from "@/lib/characters/batch-progress";
+import { characterResultGroups } from "@/lib/characters/result-groups";
 import { useCharacterBuilder } from "./use-character-builder";
 import { CharacterHistory } from "./character-history";
+import { ImageDownloadButton } from "./image-download-button";
 import { ReferenceMediaUpload } from "@/components/generation/reference-media-upload";
 import { ReferenceUploadPreview } from "@/components/generation/reference-upload-preview";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -53,9 +55,21 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
   const [model, setModel] = useState<CharacterImageModel>("gpt_image");
   const [count, setCount] = useState<CharacterImageCount>(1);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [imageReference, setImageReference] = useState<AIStudioReferenceMedia | null>(null);
+  const [librarySelection, setLibrarySelection] = useState<string[]>([]);
+  const [workspaceNotice, setWorkspaceNotice] = useState<{ message: string } | null>(null);
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!copiedPromptId) return;
+    const timer = window.setTimeout(() => setCopiedPromptId(null), 2_000);
+    return () => window.clearTimeout(timer);
+  }, [copiedPromptId]);
+  useEffect(() => {
+    if (!workspaceNotice) return;
+    const timer = window.setTimeout(() => setWorkspaceNotice(null), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [workspaceNotice]);
+  const [imageReferences, setImageReferences] = useState<AIStudioReferenceMedia[]>([]);
   const [referenceError, setReferenceError] = useState<string | null>(null);
-  const [referenceControlVersion, setReferenceControlVersion] = useState(0);
   const touchSession = builder.touchSession;
   const referencePendingRef = useRef(false);
   const referenceErrorRef = useRef<string | null>(null);
@@ -79,30 +93,53 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
   const manualLocked = authLoading || !userId || !quantityAffordable || accessLoading || builder.access.isError;
   const error = builder.generate.error || builder.select.error;
   const progress = characterBatchProgress(builder.visibleJobs, builder.visibleStatuses);
-  const selected = imageReference ? null : builder.selected;
+  const selected = builder.selected;
+  const references = builder.selectedCharacters;
+  const selectedReferenceIds = builder.session.selectedCharacterIds?.length ? builder.session.selectedCharacterIds
+    : builder.session.selectedCharacterId ? [builder.session.selectedCharacterId] : references.map((reference) => reference.id);
+  const unresolvedReferences = selectedReferenceIds.length !== references.length;
+  const totalReferences = selectedReferenceIds.length + imageReferences.length;
+  const referencesLocked = busy || Boolean(pending);
   const countOptions = access
     ? COUNT_OPTIONS.filter((option) => Number(option.value) <= access.affordableImageCount || Number(option.value) === count)
     : COUNT_OPTIONS;
 
-  function resetImageReference() {
-    setImageReference(null);
-    updateReferenceError(null);
-    setReferenceControlVersion((version) => version + 1);
-  }
-
   function submitPrompt(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (busy || referencePendingRef.current || referenceErrorRef.current || manualLocked || pending || promptTooLong || !prompt.trim()) return;
+    if (busy || unresolvedReferences || totalReferences > MAX_CHARACTER_REFERENCES || referencePendingRef.current || referenceErrorRef.current || manualLocked || pending || promptTooLong || !prompt.trim()) return;
     builder.generate.mutate({
       mode: "custom", prompt: prompt.trim(), model, imageCount: count,
-      ...(imageReference ? { referenceImageAssetId: imageReference.asset.id } : selected ? { referenceCharacterId: selected.id } : {}),
+      ...(imageReferences.length > 1 ? { referenceImageAssetIds: imageReferences.map(reference => reference.asset.id) }
+        : imageReferences.length ? { referenceImageAssetId: imageReferences[0].asset.id } : {}),
+      ...(references.length > 1
+        ? { referenceCharacterIds: references.map((reference) => reference.id) } : selected ? { referenceCharacterId: selected.id } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
   }
   function openLibrary() {
     builder.touchSession();
+    setLibrarySelection(references.map((reference) => reference.id));
     setLibraryOpen(true);
     if (userId) void builder.characters.refetch();
+  }
+  async function copyPrompt(id: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPromptId(id);
+    } catch {
+      setCopiedPromptId(null);
+      setWorkspaceNotice({ message: "Could not copy the prompt. Select the text and copy it manually." });
+    }
+  }
+  function toggleReference(id: string) {
+    if (referencesLocked) return;
+    const ids = references.map((reference) => reference.id);
+    if (!ids.includes(id) && totalReferences >= MAX_CHARACTER_REFERENCES) {
+      setWorkspaceNotice({ message: `Use up to ${MAX_CHARACTER_REFERENCES} reference images at a time.` });
+      return;
+    }
+    builder.chooseCharacters(ids.includes(id) ? ids.filter((candidate) => candidate !== id) : [...ids, id]);
+    setWorkspaceNotice(null);
   }
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -141,17 +178,31 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
             <p className={styles.resultsHeading} role="status">{builder.historyImage ? "Image from your character history." : progress.message}</p>
             {builder.historyImage ? <Button variant="ghost" size="sm" onClick={builder.returnToSession}>Back to session</Button> : null}
           </div>
-          <div className={styles.results}>
-            {builder.visibleJobs.map((receipt, index) => {
+          <p className={styles.selectionHint}>Select images to use as references in your next prompt. The × only removes an image from this workspace.</p>
+          {characterResultGroups(builder.visibleJobs, builder.visibleStatuses).map(group => <div key={group.id} className={styles.resultGroup}>
+            {group.prompt ? <div className={styles.submittedPrompt}>
+              <p className={styles.promptText}>{group.prompt}</p>
+              <button type="button" className={styles.copyPrompt} aria-label="Copy prompt" title={copiedPromptId === group.id ? "Copied" : "Copy prompt"} onClick={() => void copyPrompt(group.id, group.prompt!)}>
+                {copiedPromptId === group.id ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+              </button>
+              {copiedPromptId === group.id ? <span role="status" className="sr-only">Prompt copied</span> : null}
+            </div> : null}
+            <div className={styles.results}>
+            {group.items.map(({ receipt, index }) => {
               const job = builder.visibleStatuses?.find((candidate) => candidate.id === receipt.jobId);
               const output = job?.output;
               const saved = Boolean(output && (builder.characters.data?.characters.some((character) => character.id === output.mediaAssetId) || builder.historyImage?.jobId === receipt.jobId && builder.historyImage.saved));
-              const active = Boolean(output && selected?.id === output.mediaAssetId);
+              const active = Boolean(output && references.some((reference) => reference.id === output.mediaAssetId));
               const saving = builder.select.isPending && builder.select.variables === receipt.jobId;
               return <article key={receipt.jobId} className={styles.candidate} data-selected={active} aria-label={`Influencer candidate ${index + 1}`}>
+                {job?.isTerminal ? <button type="button" className={styles.removeImage} aria-label={`Remove image ${index + 1} from workspace`} title="Remove from workspace. Kept in My influencers and History." onClick={() => {
+                  builder.dismissImage(receipt.jobId);
+                  setWorkspaceNotice({ message: output ? "Image removed from this workspace. It is still saved in My influencers and History." : "Result removed from this workspace. Your generation history is unchanged." });
+                }}><X className="size-4" aria-hidden="true" /></button> : null}
                 <button type="button" className={styles.portrait} aria-label={`Select influencer image ${index + 1}`} aria-pressed={active}
-                  disabled={!output || busy || builder.select.isPending || active} onClick={() => builder.select.mutate(receipt.jobId, { onSuccess: resetImageReference })}>
+                  disabled={!output || referencesLocked} onClick={() => output && toggleReference(output.mediaAssetId)}>
                   {output ? <>
+                    <span className={styles.selectionMark} aria-hidden="true">{active ? <Check className="size-4" /> : null}</span>
                     {/* Generated provider URLs are validated by the owned status endpoint. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={output.url} alt={`Generated influencer candidate ${index + 1}`} />
@@ -164,9 +215,14 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
                   {saving ? <span className={styles.saveStatus}><Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />Selecting…</span>
                     : saved || active ? <span className={styles.saveStatus}><Check className="size-3" aria-hidden="true" />Saved</span> : null}
                 </div>
+                {output ? <div className={styles.candidateActions}>
+                  <span className="text-xs text-muted">{active ? `Reference ${references.findIndex((reference) => reference.id === output.mediaAssetId) + 1}` : "Select as reference"}</span>
+                  <ImageDownloadButton assetId={output.mediaAssetId} userId={userId} name={`image ${index + 1}`} className={styles.downloadImage} />
+                </div> : null}
               </article>;
             })}
-          </div>
+            </div>
+          </div>)}
         </div> : <div className={styles.empty}>
           <div className={styles.emptyCopy}>
             <p className={styles.eyebrow}>A face for your ideas</p>
@@ -184,6 +240,14 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
       </div>
 
       <div className={styles.composerArea}>
+        {workspaceNotice ? <div className={`${styles.notice} ${styles.dismissibleNotice}`}>
+          <span role="status">{workspaceNotice.message}</span>
+          <button type="button" className={styles.noticeClose} aria-label="Dismiss notification" onClick={() => setWorkspaceNotice(null)}>
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div> : null}
+        {unresolvedReferences ? <div className={styles.notice} role="status">{builder.characters.isPending ? "Loading your saved references…" : "Some saved references could not be loaded. Choose them again in My influencers, or clear references before generating."}</div> : null}
+        {totalReferences ? <div className={styles.referenceSummary}><span>{totalReferences} reference{totalReferences === 1 ? "" : "s"} in your prompt</span><Button type="button" variant="ghost" size="sm" disabled={referencesLocked} onClick={() => { builder.chooseCharacters([]); setImageReferences([]); }}>Clear references</Button></div> : null}
         {builder.jobs.isError ? <div className={styles.notice} role="alert">{builder.jobs.error.message} <Button variant="ghost" size="sm" onClick={() => void builder.jobs.refetch()}>Check again</Button></div> : null}
         {error ? <div className={styles.notice} role="alert">{error.message}</div> : null}
         {pending && !builder.generate.isPending ? <div className={styles.notice}>
@@ -195,15 +259,21 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
         </div> : null}
         <AiStudioComposer active ariaLabel="Describe your AI influencer" name="character-prompt" layout="unified" inlineReferences quiet showPromptHint={false}
           prompt={prompt} onPromptChange={(value) => { builder.touchSession(); setPrompt(value); }} placeholder={selected ? "Describe a new outfit, setting or pose for your influencer…" : "Describe the influencer you want to create…"}
-          generateLabel={selected ? "Create variation" : "Generate"}
-          generateDisabled={busy || Boolean(referenceError) || manualLocked || Boolean(pending) || promptTooLong || !prompt.trim()}
-          hasAttachments={Boolean(imageReference) || referencePending || Boolean(referenceError)}
-          leadingControl={<ReferenceMediaUpload key={referenceControlVersion} allowedKinds={REFERENCE_IMAGE_KINDS} inline
-            expectedUserId={userId ?? undefined} selection={imageReference}
-            referencePreview={selected ? <ReferenceUploadPreview kind="image" url={selected.url} name="influencer reference" label="Identity"
+          generateLabel={totalReferences > 1 ? "Generate" : selected ? "Create variation" : "Generate"}
+          generateDisabled={busy || unresolvedReferences || totalReferences > MAX_CHARACTER_REFERENCES || Boolean(referenceError) || manualLocked || Boolean(pending) || promptTooLong || !prompt.trim()}
+          hasAttachments={imageReferences.length > 0 || selectedReferenceIds.length > 0 || referencePending || Boolean(referenceError)}
+          leadingControl={<ReferenceMediaUpload allowedKinds={REFERENCE_IMAGE_KINDS} inline
+            append referenceCount={totalReferences} maxReferences={MAX_CHARACTER_REFERENCES}
+            expectedUserId={userId ?? undefined} selection={null}
+            referencePreview={totalReferences > 1 || imageReferences.length ? <div className={styles.referenceThumbnails}>
+              {references.map((reference, index) => <ReferenceUploadPreview key={reference.id} kind="image" url={reference.url} name={`influencer reference ${index + 1}`} label={`Ref ${index + 1}`}
+                disabled={referencesLocked} onRemove={() => builder.chooseCharacters(references.filter((candidate) => candidate.id !== reference.id).map((candidate) => candidate.id))} />)}
+              {imageReferences.map((reference, index) => <ReferenceUploadPreview key={reference.asset.id} kind="image" url={reference.asset.url} name={`reference image ${index + 1}`} label={`Ref ${references.length + index + 1}`}
+                disabled={referencesLocked} onRemove={() => { builder.touchSession(); setImageReferences(current => current.filter(candidate => candidate.asset.id !== reference.asset.id)); }} />)}
+              </div> : selected ? <ReferenceUploadPreview kind="image" url={selected.url} name="influencer reference" label="Identity"
               disabled={busy || Boolean(pending)} onRemove={() => builder.chooseCharacter(null)} /> : undefined}
             disabled={authLoading || !userId || generationBusy || Boolean(pending) || builder.select.isPending}
-            onChange={(reference) => { builder.touchSession(); setImageReference(reference); if (reference) builder.chooseCharacter(null); }}
+            onChange={(reference) => { builder.touchSession(); setImageReferences(current => reference ? current.some(candidate => candidate.asset.id === reference.asset.id) ? current : [...current, reference] : []); }}
             onPendingChange={updateReferencePending} onErrorChange={updateReferenceError} />}
           maxLength={promptLimit}
           generationLocked={manualLocked} isGenerating={builder.generate.isPending || builder.inProgress}
@@ -229,15 +299,24 @@ function CharacterScreen({ userId, authLoading, localPreview, builder, historyOp
 
       <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
         <DialogContent className={styles.libraryDialog}>
-          <DialogHeader><DialogTitle>My influencers</DialogTitle><DialogDescription>All your generated influencer images are saved here automatically. Choose an image to keep that identity in your next generation.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>My influencers</DialogTitle><DialogDescription>Every generated image is saved here. Select up to {MAX_CHARACTER_REFERENCES} images, then use them as references in your prompt.</DialogDescription></DialogHeader>
           <div className={styles.library}>
-            {builder.characters.data?.characters.map((character) => <button key={character.id} type="button" aria-pressed={selected?.id === character.id} disabled={busy || Boolean(pending)} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { resetImageReference(); builder.chooseCharacter(character.id); setLibraryOpen(false); }}>
+            {builder.characters.data?.characters.map((character, index) => <div key={character.id} className={styles.savedCharacterCard}>
+              <button type="button" aria-label={`Select saved image ${index + 1}: ${character.name}`} aria-pressed={librarySelection.includes(character.id)} disabled={referencesLocked || !librarySelection.includes(character.id) && librarySelection.length + imageReferences.length >= MAX_CHARACTER_REFERENCES} className={`${styles.savedCharacter} outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => { builder.touchSession(); setLibrarySelection((current) => current.includes(character.id) ? current.filter((id) => id !== character.id) : [...current, character.id]); }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={character.url} alt={character.name} loading="lazy" decoding="async" />
-              <span className={styles.savedCharacterName}>{character.name}{selected?.id === character.id ? <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" /> : null}</span>
-            </button>)}
+              <span className={styles.savedCharacterName}>{character.name}<span className={styles.librarySelectionMark} aria-hidden="true">{librarySelection.includes(character.id) ? <Check className="size-3.5 shrink-0 text-primary" /> : null}</span></span>
+              </button>
+              <ImageDownloadButton assetId={character.id} userId={userId} name={`saved image ${index + 1}`} className={styles.downloadImage} />
+            </div>)}
             {!userId ? <div className={styles.libraryNotice}><p className="text-sm text-muted">Sign in to see your saved influencers.</p><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button></div> : builder.characters.isPending ? <p className={styles.libraryNotice} role="status">Loading influencers…</p> : builder.characters.isError ? <div className={styles.libraryNotice}><p className="text-sm text-destructive" role="alert">{builder.characters.error.message}</p><Button size="sm" variant="outline" onClick={() => void builder.characters.refetch()}>Try again</Button></div> : !builder.characters.data?.characters.length ? <p className={styles.libraryNotice}>Generate your first influencer image. Every completed image will appear here automatically.</p> : null}
             {busy && builder.characters.data?.characters.length ? <p className={styles.libraryNotice}>Wait for the current generation to finish before switching influencers.</p> : null}
+          </div>
+          <div className={styles.libraryActions}>
+            <p role="status" className="text-sm text-muted">{librarySelection.length + imageReferences.length} of {MAX_CHARACTER_REFERENCES} references selected{imageReferences.length ? ` · ${imageReferences.length} uploaded` : ""}</p>
+            <Button type="button" disabled={referencesLocked || !librarySelection.length || librarySelection.length + imageReferences.length > MAX_CHARACTER_REFERENCES} onClick={() => {
+              builder.chooseCharacters(librarySelection); setLibraryOpen(false);
+            }}>Use {librarySelection.length || "selected"} image{librarySelection.length === 1 ? "" : "s"} as references</Button>
           </div>
         </DialogContent>
       </Dialog>

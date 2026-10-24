@@ -21,7 +21,7 @@ export type ReferenceText = z.infer<typeof ReferenceTextSchema>;
 const remixFormat = z.enum(["hook", "wall_text", "slideshow"]);
 export const RemixRequestSchema = z.object({
   requestKey: z.string().uuid(), referenceId: z.string().min(1).max(160).nullable(),
-  slideId: z.string().min(1).max(160).nullable(), instructions: z.string().trim().max(2000),
+  slideId: z.string().min(1).max(160).nullable(), instructions: z.string().trim().max(6000),
   format: remixFormat.optional(),
   referenceBlocks: z.array(z.string().trim().min(1).max(6000).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f]*$/u)).min(1).max(20)
     .refine(blocks => blocks.join("").length <= 6000, "Keep the starting text within 6,000 characters.").optional(),

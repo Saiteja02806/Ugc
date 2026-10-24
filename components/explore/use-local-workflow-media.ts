@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; file?: File };
+export type LocalWorkflowMedia = { name: string; url: string; duration: number | null; width?: number | null; height?: number | null; file?: File; assetId?: string };
 export type LocalMediaKind = "image" | "audio" | "video";
-type FileSelectionOptions = { minDuration?: number; maxDuration?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void };
+type FileSelectionOptions = { minDuration?: number; maxDuration?: number; maxBytes?: number; signal?: AbortSignal; onRead?: (asset: LocalWorkflowMedia) => void };
 
 /** Browser-only attachments for layout review. No upload, account write, or provider request. */
 export function useLocalWorkflowMedia(kind: LocalMediaKind) {
@@ -12,11 +12,15 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const revision = useRef(0);
-  useEffect(() => () => { revision.current += 1; }, []);
+  const metadataRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => { revision.current += 1; metadataRequest.current?.abort(); }, []);
   useEffect(() => () => { if (asset?.url.startsWith("blob:")) URL.revokeObjectURL(asset.url); }, [asset]);
 
   async function select(source: File | (() => Promise<File>), options: FileSelectionOptions = {}, acceptFile?: (file: File) => Promise<boolean>) {
     const request = ++revision.current;
+    metadataRequest.current?.abort();
+    const controller = new AbortController();
+    metadataRequest.current = controller;
     setError(null);
     setLoading(true);
     let url: string | null = null;
@@ -29,8 +33,10 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
       if (request !== revision.current) return false;
       if (options.signal?.aborted) throw new Error(`This ${kind} selection was interrupted. Choose it again or remove the reference.`);
       downloading = false;
-      const maxMB = kind === "video" ? 250 : kind === "audio" ? 25 : 20;
-      if (!file.type.startsWith(`${kind}/`) || !Number.isFinite(file.size) || file.size <= 0 || file.size > maxMB * 1024 * 1024) {
+      const defaultMaxBytes = (kind === "video" ? 250 : kind === "audio" ? 25 : 20) * 1024 ** 2;
+      const maxBytes = Math.min(defaultMaxBytes, options.maxBytes ?? defaultMaxBytes);
+      const maxMB = maxBytes / 1024 ** 2;
+      if (!file.type.startsWith(`${kind}/`) || !Number.isFinite(file.size) || file.size <= 0 || file.size > maxBytes) {
         setError(`Choose ${kind === "image" || kind === "audio" ? "an" : "a"} ${kind} file smaller than ${maxMB} MB.`);
         return false;
       }
@@ -41,7 +47,7 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
         return await acceptFile(file);
       }
       url = URL.createObjectURL(file);
-      const duration = await readDuration(url, kind);
+      const duration = await readDuration(url, kind, options.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal);
       if (request !== revision.current) return false;
       if (options.signal?.aborted) throw new Error(`This ${kind} selection was interrupted. Choose it again or remove the reference.`);
       if (options.minDuration && duration !== null && duration < options.minDuration) {
@@ -71,8 +77,16 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
   const choose = (file: File, options: FileSelectionOptions = {}) => select(file, options);
   const chooseRemote = (loadFile: () => Promise<File>, options: FileSelectionOptions = {}, acceptFile?: (file: File) => Promise<boolean>) => select(loadFile, options, acceptFile);
 
+  function cancelPending() {
+    revision.current += 1;
+    metadataRequest.current?.abort();
+    setLoading(false);
+    setError(null);
+  }
+
   function remove() {
     revision.current += 1;
+    metadataRequest.current?.abort();
     setAsset(null);
     setLoading(false);
     setError(null);
@@ -81,19 +95,34 @@ export function useLocalWorkflowMedia(kind: LocalMediaKind) {
     // Only the existing static Creator library. Never upload or add prompt text.
     if (kind !== "image" || !/^\/ai-studio\/creator-references\/creator-\d{2}\.png$/.test(image.url)) return;
     revision.current += 1;
+    metadataRequest.current?.abort();
     setAsset({ ...image, duration: null });
     setLoading(false);
     setError(null);
   }
-  return { asset, choose, chooseRemote, chooseLibraryImage, error, loading, remove, clearError: () => setError(null) };
+  return { asset, choose, chooseRemote, chooseLibraryImage, error, loading, remove, cancelPending, clearError: () => setError(null) };
 }
 
-function readDuration(url: string, kind: LocalMediaKind): Promise<number | null> {
+export function readDuration(url: string, kind: LocalMediaKind, signal?: AbortSignal): Promise<number | null> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(signal.reason); return; }
     if (kind === "image") {
       const image = new Image();
-      image.onload = () => resolve(null);
-      image.onerror = reject;
+      let finished = false;
+      const finish = (error?: unknown) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
+        image.onload = null; image.onerror = null;
+        image.removeAttribute("src");
+        if (error) reject(error); else resolve(null);
+      };
+      const onAbort = () => finish(signal?.reason ?? new Error("Image selection cancelled"));
+      const timer = setTimeout(() => finish(new Error("Reading this image took too long")), 15000);
+      signal?.addEventListener("abort", onAbort, { once: true });
+      image.onload = () => finish();
+      image.onerror = () => finish(new Error("Invalid image"));
       image.src = url;
       return;
     }
@@ -103,6 +132,7 @@ function readDuration(url: string, kind: LocalMediaKind): Promise<number | null>
       if (finished) return;
       finished = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
       media.onloadedmetadata = null;
       media.onerror = null;
       media.removeAttribute("src");
@@ -110,7 +140,9 @@ function readDuration(url: string, kind: LocalMediaKind): Promise<number | null>
       if (duration && Number.isFinite(duration)) resolve(duration);
       else reject(new Error("Invalid media duration"));
     };
+    const onAbort = () => finish();
     const timer = setTimeout(() => finish(), 15000);
+    signal?.addEventListener("abort", onAbort, { once: true });
     media.onloadedmetadata = () => finish(media.duration);
     media.onerror = () => finish();
     media.preload = "metadata";

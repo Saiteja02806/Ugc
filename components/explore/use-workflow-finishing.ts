@@ -8,15 +8,15 @@ import { FINISH_REQUEST_TIMEOUT_MS, finishStorageKey, finishRecoveryStorageKey, 
 import { loadWorkflowDefaultMusic } from "@/lib/explore/workflow-default-music-client";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import type { MediaAsset } from "@/lib/media/types";
-import type { DemoFraming, ExploreFinishStyle, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
+import type { DemoFraming, ExploreClipComposition } from "@/worker/src/lib/explore-finishing-contract";
 import type { ExploreFormatEdit } from "@/worker/src/lib/explore-format-edit";
 import { getReferenceAudioPreview } from "@/lib/explore/reference-audio-preview";
-import type { SubtitleCorrection } from "@/worker/src/subtitles/corrections";
 import { withReadDeadline } from "@/lib/http/read-deadline";
+import { pollInForeground } from "@/lib/http/foreground-polling";
 
-export type FinishingOptions = { subtitles: boolean; style: ExploreFinishStyle; backgroundMusic: boolean; placement?: "bottom" | "middle" | "top"; corrections?: SubtitleCorrection[] };
+export type FinishingOptions = import("@/lib/explore/workflow-session").WorkflowSessionOptions;
 export const DEFAULT_FINISHING_OPTIONS: FinishingOptions = { subtitles: false, style: "clean", backgroundMusic: false, placement: "bottom" };
-export type WorkflowAction = { busy: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
+export type WorkflowAction = { busy: boolean; label?: string; completed?: boolean; processing?: boolean; disabled: boolean; message: string; error: string | null; onAction: () => void; refresh: () => void; cancel?: () => void; recoveryAvailable?: boolean };
 export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, demoSource = null, demoAudio, demoAudioSource = null, playback, options, onRestoreOptions, demoFraming = null, sourceFraming = null, demoFramingError = null, editing, backgroundSource = null, backgroundPlayback: formatBackgroundPlayback = "once", scope, onRestoreDraft, reuseUnchangedSource = false, fastStatus = false, captionPreview = false, captionDraft = null, composition, demoAudioAssetId = null }: {
   ownerId: string | null; enabled: boolean; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; options: FinishingOptions;
@@ -43,7 +43,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
 }) {
   const active = useRef(true), working = useRef(false);
   const saved = useRef<SavedFinish | null>(null);
-  const uploaded = useRef(new Map<File, string>());
+  const uploaded = useRef(new WeakMap<File, string>());
   const [busy, setBusy] = useState(false), [restored, setRestored] = useState(false);
   const [status, setStatus] = useState<FinishStatus | null>(null), [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<MediaAsset | null>(null);
@@ -54,6 +54,8 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   const signature = JSON.stringify([source?.id, demo?.url, demoAudio?.url, playback, options, demoFraming, sourceFraming, demoFramingError, editing, backgroundSource?.id, formatBackgroundPlayback, demoSource?.id, demoAudioSource?.id, composition, demoAudioAssetId]);
   const storageKey = finishStorageKey(ownerId ?? "signed-out", kind) + (scope ? `:${encodeURIComponent(scope)}` : "");
   const [completedSignature, setCompletedSignature] = useState<string | null>(null);
+  const musicSelection = options.backgroundAssetId === undefined ? undefined : options.backgroundMusic ? options.backgroundAssetId ?? "default" : "off";
+  const savedMusicMatches = musicSelection === undefined || savedEntry?.musicSelection === musicSelection;
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const deps = useCallback(() => ({ token: () => getCurrentUserIdToken(ownerId ?? undefined), fetch: (...args: Parameters<typeof fetch>) => fetch(...args), assertActive() { if (!active.current) throw new Error("This account's workflow is no longer active."); } }), [ownerId]);
   const accept = useCallback(async (next: FinishStatus) => {
@@ -67,12 +69,12 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
       setOutput(asset);
     }
   }, [ownerId]);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (quiet = false) => {
     if (!enabled || !ownerId || !saved.current || working.current || !active.current) return;
-    working.current = true; setBusy(true);
+    working.current = true; if (!quiet) setBusy(true);
     try { await accept(await requestFinish(deps(), saved.current)); }
     catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not recover your edit."); }
-    finally { working.current = false; if (active.current) setBusy(false); }
+    finally { working.current = false; if (!quiet && active.current) setBusy(false); }
   }, [enabled, ownerId, accept, deps]);
   useEffect(() => {
     if (!enabled || !ownerId) return;
@@ -85,7 +87,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
         setRecoveryEntries(readFinishRecovery(localStorage.getItem(finishRecoveryStorageKey(storageKey)), ownerId, kind));
         if (saved.current) onRestoreOptions?.({ subtitles: !!saved.current.draft.subtitles, style: saved.current.draft.subtitles?.style ?? "clean", backgroundMusic: !!saved.current.draft.backgroundAssetId, placement: saved.current.draft.subtitles?.placement ?? "bottom", ...(saved.current.draft.subtitles?.corrections ? { corrections: saved.current.draft.subtitles.corrections } : {}) });
         if (saved.current) onRestoreDraft?.(saved.current.draft);
-        setSavedEntry(saved.current); setRestored(true); void refresh();
+        setSavedEntry(saved.current); setRestored(true); void refresh(true);
       } catch (e) { setError(e instanceof Error ? e.message : "Could not verify the saved edit."); }
     });
     return () => { stopped = true; };
@@ -96,23 +98,14 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     if (!needsRecovery) return;
     // A completed receipt is not yet a usable preview if its owned-media GET
     // failed. Recover that same result without dispatching another render.
-    const timer = setInterval(() => {
-      if (fastStatus && typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      void refresh();
-    }, fastStatus ? 1000 : 4000);
-    return () => clearInterval(timer);
+    return pollInForeground({ poll: () => refresh(true), intervalMs: fastStatus ? 1000 : 4000 });
   }, [needsRecovery, refresh, fastStatus]);
   useEffect(() => {
     if (!needsRecovery || typeof window === "undefined") return;
-    const recover = () => { void refresh(); };
-    const visible = () => { if (document.visibilityState === "visible") recover(); };
+    const recover = () => { if (document.visibilityState !== "hidden" && navigator.onLine) void refresh(true); };
     window.addEventListener("focus", recover);
-    window.addEventListener("online", recover);
-    document.addEventListener("visibilitychange", visible);
     return () => {
       window.removeEventListener("focus", recover);
-      window.removeEventListener("online", recover);
-      document.removeEventListener("visibilitychange", visible);
     };
   }, [needsRecovery, refresh]);
   async function upload(asset: LocalWorkflowMedia | null, mediaKind: "video" | "audio") {
@@ -173,7 +166,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
           // new music after reload or repeating an acknowledged upload.
           if (captionDraft?.backgroundAssetId) {
             backgroundAssetId = captionDraft.backgroundAssetId; backgroundPlayback = captionDraft.backgroundPlayback;
-          } else if (savedEntry?.draft.backgroundAssetId) {
+          } else if (savedMusicMatches && savedEntry?.draft.backgroundAssetId) {
             backgroundAssetId = savedEntry.draft.backgroundAssetId; backgroundPlayback = savedEntry.draft.backgroundPlayback;
           } else {
             const music = await loadWorkflowDefaultMusic(deps());
@@ -185,7 +178,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
           ...(captionPreview ? { captionPreview: true as const } : {}),
           ...(demoFraming ? { demoFraming } : {}), ...(sourceFraming ? { sourceFraming } : {}), ...(editing ? { editing } : {}), ...(composition ? { composition } : {}) };
         deps().assertActive();
-        const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft };
+        const entry: SavedFinish = { version: 1, ownerId, kind, requestKey: crypto.randomUUID(), draft, ...(musicSelection !== undefined ? { musicSelection } : {}) };
         // A storage failure must happen before dispatch, never after a paid request.
         localStorage.setItem(storageKey, JSON.stringify(entry)); saved.current = entry;
         setSavedEntry(entry); setStatus(null); setOutput(null); setCompletedSignature(signature);
@@ -199,7 +192,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
   const recoveredDemoAudioMatches = demoAudioSource || demoAudioAssetId || scope?.startsWith("format-demo:")
     ? (demoAudioSource?.id ?? demoAudioAssetId ?? null) === savedEntry?.draft.demoAudioAssetId && (!(demoAudioSource || demoAudioAssetId) || playback === savedEntry?.draft.demoAudioPlayback)
     : true;
-  const recoveredMatches = completedSignature === null && savedEntry && JSON.stringify(composition) === JSON.stringify(savedEntry.draft.composition) && JSON.stringify(sourceFraming ?? undefined) === JSON.stringify(savedEntry.draft.sourceFraming) && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && recoveredDemoAudioMatches && (demoSource ? demoSource.id === savedEntry.draft.demoAssetId : !savedEntry.draft.demoAssetId || !scope?.startsWith("format-demo:")) && (demoSource ? JSON.stringify(demoFraming ?? undefined) === JSON.stringify(savedEntry.draft.demoFraming) : !demoFraming) && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
+  const recoveredMatches = completedSignature === null && savedEntry && savedMusicMatches && JSON.stringify(composition) === JSON.stringify(savedEntry.draft.composition) && JSON.stringify(sourceFraming ?? undefined) === JSON.stringify(savedEntry.draft.sourceFraming) && (!source || source.id === savedEntry.draft.sourceAssetId) && !demo && !demoAudio && recoveredDemoAudioMatches && (demoSource ? demoSource.id === savedEntry.draft.demoAssetId : !savedEntry.draft.demoAssetId || !scope?.startsWith("format-demo:")) && (demoSource ? JSON.stringify(demoFraming ?? undefined) === JSON.stringify(savedEntry.draft.demoFraming) : !demoFraming) && (editing ? JSON.stringify(editing) === JSON.stringify(savedEntry.draft.editing) && (backgroundSource?.id ?? null) === savedEntry.draft.backgroundAssetId && (!backgroundSource || formatBackgroundPlayback === savedEntry.draft.backgroundPlayback) :
     (backgroundSource ? backgroundSource.id === savedEntry.draft.backgroundAssetId && formatBackgroundPlayback === savedEntry.draft.backgroundPlayback : !!options.backgroundMusic === !!savedEntry.draft.backgroundAssetId) &&
     options.subtitles === !!savedEntry.draft.subtitles && (!options.subtitles || (options.style === savedEntry.draft.subtitles?.style &&
       (options.placement ?? "bottom") === (savedEntry.draft.subtitles?.placement ?? "bottom") && JSON.stringify(options.corrections ?? []) === JSON.stringify(savedEntry.draft.subtitles?.corrections ?? []))));
@@ -250,7 +243,7 @@ export function useWorkflowFinishing({ ownerId, enabled, kind, source, demo, dem
     finally { working.current = false; if (active.current) setBusy(false); }
   }
   const actionMessage = loadingOutput ? "Your video is saved. Loading your finished video…" : status?.message ?? (source ? "Apply edits to save your finished video." : "Choose a saved video before applying edits.");
-  const action: WorkflowAction = { busy, disabled, message: recoveryMessage ? `${actionMessage} ${recoveryMessage}` : actionMessage, error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refreshAll(); }, recoveryAvailable: recoveryEntries.length > 0,
+  const action: WorkflowAction = { busy, processing: status?.outcome === "pending" || loadingOutput, disabled, message: recoveryMessage ? `${actionMessage} ${recoveryMessage}` : actionMessage, error: demoFramingError ?? error, onAction: () => { void apply(); }, refresh: () => { void refreshAll(); }, recoveryAvailable: recoveryEntries.length > 0,
     ...(pending && status?.jobId && !status.terminal ? { cancel: () => { void cancel(); } } : {}) };
   return { action, output: currentOutput, status, transcript: currentTranscript, captionDraft: currentTranscript && savedEntry?.draft.subtitles?.version === 2 ? savedEntry.draft : null };
 }

@@ -1,7 +1,7 @@
 {
   "name": "ugc-pilot",
-  "version": "0.1.15",
-  "description": "Create UGC media, finish videos, edit drafts, manage groups and saved Library outputs, and remix application references through UGC Pilot where enabled.",
+  "version": "0.2.1",
+  "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account. Shared Business Context, saved onboarding and verified logo upload are included where their gates permit.",
   "author": {
     "name": "UGC Pilot",
     "url": "https://www.getugcpilot.com"
@@ -11,8 +11,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "UGC Pilot",
-    "shortDescription": "Images and videos in your AI",
-    "longDescription": "Create media and speech using UGC Pilot where enabled. Upload local clips/audio from a supported IDE, attach demos and retrieve finished videos. Open, save and export Edit drafts. Browse application references, Creative Asset groups and saved Carousel/slideshow Library outputs; remix text and change groups/Library when their gates permit. Read and edit shared Business Context drafts and apply reviewed changes for future content with separate brand consent where enabled. Resume business onboarding with saved answers and durable analysis/completion where the separate brand write gate permits. Upload a supplied business logo through a recoverable local transfer and server verification where the business-media gate permits. Slideshow text rendering, voice cloning and social publishing remain unavailable through MCP. Private beta; updating this package does not activate server features.",
+    "shortDescription": "Create UGC content",
+    "longDescription": "Draft UGC hooks, wall-of-text videos, and slideshow copy from your business context. Generate supported images and short videos, then review and manage outputs through your connected UGC Pilot account. Read and edit shared Business Context drafts, resume saved business onboarding, and upload a verified business logo where those separate gates and consents permit. UGC Pilot checks availability and cost before paid generation. Slideshow text rendering, voice cloning and social publishing remain unavailable through this plugin. Installing the package does not activate server features.",
     "developerName": "UGC Pilot",
     "websiteURL": "https://getugcpilot.com",
     "supportURL": "https://getugcpilot.com/contact",
@@ -22,9 +22,9 @@
     "logo": "./assets/logo.png",
     "composerIcon": "./assets/logo.png",
     "defaultPrompt": [
-      "Check my UGC Pilot connection, plan, credits, and generation options without generating anything.",
-      "Use UGC Pilot to create one vertical product image.",
-      "Use UGC Pilot to animate an image from my library into a five-second vertical video."
+      "Give me five hook texts based on my business.",
+      "Create a hook-video prompt for my product.",
+      "Generate one vertical product image using UGC Pilot."
     ]
   },
   "extensions": {
@@ -81,7 +81,7 @@
         }
       },
       "publication": {
-        "release_notes": "Adds the shared Business Context read/draft/apply/recovery workflow. Writes require deployed schema, enabled gate, fresh brand:write consent, current revisions and durable request UUIDs. Existing goals, generated media and today's pinned content are preserved. Onboarding, website reanalysis and logo/screenshot management remain separate work; package installation does not activate features."
+        "release_notes": "Adds clear creative-workflow metadata and starter prompts for hooks, wall-of-text videos, and slideshows. Adds shared Business Context read/draft/apply/recovery, saved business onboarding, and verified local logo upload. Writes require deployed schema, enabled gates, fresh consent, current revisions and durable request UUIDs. UGC Pilot checks each connected account's live capabilities before paid generation. Package installation does not activate server features."
       }
     }
   }

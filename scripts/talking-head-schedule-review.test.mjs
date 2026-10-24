@@ -50,12 +50,12 @@ test("in-card Review forwards the existing guarded controller and Back returns t
   const action = { busy: false, disabled: false, message: "Ready to review", error: "Connection lost", onAction() { reviewed++; }, refresh() { refreshed++; } };
   const tree = exported.TalkingHeadScheduleActions({ action, enabled: true, onBackToEdit() { returned++; } });
   const buttons = nodes(tree).filter(node => node.type === "button");
-  const review = buttons.find(button => text(button) === "Review schedule");
+  const review = buttons.find(button => text(button) === "Try again");
   assert.equal(review.props.disabled, false);
   assert.equal(review.props.onClick, action.onAction);
   review.props.onClick(); assert.equal(reviewed, 1);
   buttons.find(button => text(button) === "Back to Edit").props.onClick(); assert.equal(returned, 1);
-  buttons.find(button => text(button) === "Refresh status").props.onClick(); assert.equal(refreshed, 1);
+  assert.equal(buttons.find(button => text(button) === "Refresh status"), undefined); assert.equal(refreshed, 0);
   assert.match(text(nodes(tree).find(node => node.props?.role === "alert")), /Connection lost/);
 });
 
@@ -73,7 +73,7 @@ test("Schedule offers explicit preparation without calling either controller dur
   assert.equal(prepared, 1);
   assert.equal(scheduled, 0);
   assert.match(text(tree), /Prepare your publishing file/);
-  assert.equal(nodes(tree).some(node => node.type === "button" && text(node) === "Review schedule"), false);
+  assert.equal(nodes(tree).some(node => node.type === "button" && text(node) === "Schedule post"), false);
 });
 
 test("preparation retains disabled, busy and pending guards and exposes its existing recovery actions", () => {
@@ -108,13 +108,14 @@ test("failed preparation displays the error and forwards explicit retry, while s
   const failed = exported.TalkingHeadScheduleActions({ action: blockedSchedule, preparation, enabled: true, onBackToEdit() {} });
   assert.equal(nodes(failed).find(node => node.type === "button" && text(node) === "Retry final video").props.onClick, preparation.onAction);
   assert.match(text(nodes(failed).find(node => node.props?.role === "alert")), /selected demo could not load/);
-  const resumable = { ...blockedSchedule, disabled: false, message: "Resume the saved scheduling request" };
+  const resumable = { ...blockedSchedule, disabled: false, label: "Try again", message: "Scheduling was interrupted. Try again to finish scheduling your post." };
   const resumed = exported.TalkingHeadScheduleActions({ action: resumable, preparation, enabled: true, onBackToEdit() {} });
-  assert.equal(nodes(resumed).find(node => node.type === "button" && text(node) === "Review schedule").props.onClick, resumable.onAction);
+  assert.equal(nodes(resumed).find(node => node.type === "button" && text(node) === "Try again").props.onClick, resumable.onAction);
+  assert.doesNotMatch(text(resumed), /saved request|Confirm the same/);
   assert.equal(nodes(resumed).some(node => node.type === "button" && text(node) === "Retry final video"), false);
   const sending = { ...resumable, disabled: true, busy: true };
   const busyResume = exported.TalkingHeadScheduleActions({ action: sending, preparation, enabled: true, onBackToEdit() {} });
-  const checking = nodes(busyResume).find(node => node.type === "button" && text(node) === "Checking…");
+  const checking = nodes(busyResume).find(node => node.type === "button" && text(node) === "Scheduling…");
   assert.equal(checking.props.onClick, sending.onAction);
   assert.equal(checking.props.disabled, true, "A saved schedule submission cannot expose a concurrent preparation action");
   const blockedReceipt = { ...blockedSchedule, error: "The saved schedule needs review" };
@@ -130,9 +131,34 @@ test("local preview, controller guards and busy requests retain disabled Review 
     { enabled: true, action: { disabled: false, busy: true, message: "Checking" } },
   ]) {
     const tree = exported.TalkingHeadScheduleActions({ ...props, onBackToEdit() {} });
-    const review = nodes(tree).find(node => node.type === "button" && ["Review schedule", "Checking…"].includes(text(node)));
+    const review = nodes(tree).find(node => node.type === "button" && ["Schedule post", "Scheduling…"].includes(text(node)));
     assert.equal(review.props.disabled, true);
     if (!props.enabled) assert.match(text(tree), /Preview · scheduling disabled/);
     if (props.action?.busy) assert.equal(nodes(tree).find(node => text(node) === "Back to Edit").props.disabled, true);
   }
+});
+
+test("completed media recovery remains visibly preparing while its owned file loads", () => {
+  const tree = exported.TalkingHeadScheduleActions({ enabled: true, onBackToEdit() {},
+    action: { busy: false, disabled: true, message: "Wait for the final file" },
+    preparation: { busy: false, processing: true, disabled: true, message: "Loading your finished video…", refresh() {} } });
+  const preparing = nodes(tree).find(node => node.type === "button" && text(node) === "Preparing video…");
+  assert.ok(preparing); assert.equal(preparing.props.disabled, true); assert.equal(preparing.props["aria-busy"], true);
+  assert.match(text(tree), /Loading your finished video/);
+});
+
+test("a confirmed schedule shows the repeat action and Scheduling link with no recovery controls", () => {
+  const tree = exported.TalkingHeadScheduleActions({ enabled: true, onBackToEdit() {},
+    action: { busy: false, disabled: false, completed: true, label: "Schedule post", message: "Post scheduled", error: null, onAction() {}, refresh() {} } });
+  assert.match(text(tree), /Post scheduled/);
+  assert.ok(nodes(tree).find(node => node.type === "button" && text(node) === "Schedule post"));
+  assert.equal(nodes(tree).find(node => node.type === "a" && text(node) === "View in Scheduling").props.href, "/scheduling");
+  assert.doesNotMatch(text(tree), /Check saved|Confirm the same|Resume|Refresh status/);
+});
+
+test("schedule actions scroll with the form rather than covering timezone content", () => {
+  const css = readFileSync(new URL("../components/explore/workflow-schedule-review.module.css", import.meta.url), "utf8");
+  assert.match(css, /\.actions\s*\{[^}]*position:\s*static/);
+  assert.doesNotMatch(css, /position:\s*(?:fixed|sticky)/);
+  assert.match(css, /\.reviewButton\s*\{[^}]*white-space:\s*nowrap/);
 });

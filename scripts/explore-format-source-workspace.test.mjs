@@ -4,12 +4,13 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import * as referenceTypes from "../lib/explore/recreate-types.ts";
 import { createWallScheduleComposition } from "../lib/explore/wall-pending-composition.ts";
 
 function load(path, imports) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, URLSearchParams, queueMicrotask, window: imports.window, ResizeObserver: imports.ResizeObserver, requestAnimationFrame: fn => fn(), require(name) {
+  vm.runInNewContext(code, { exports, process: { env: { NODE_ENV: "development" } }, IntersectionObserver: class { constructor(callback) { this.callback = callback; } observe(node) { node.intersect = () => this.callback([{ isIntersecting: true }]); } disconnect() {} }, URLSearchParams, queueMicrotask, crypto: globalThis.crypto, window: imports.window, ResizeObserver: imports.ResizeObserver, requestAnimationFrame: fn => fn(), require(name) {
     if (name in imports) return imports[name];
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => String(key) });
     throw new Error(`Unexpected import: ${name}`);
@@ -23,7 +24,7 @@ const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influen
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow } = {}) {
+function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false, creatorCatalogue = [] } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
   const slots = [], effects = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
@@ -36,7 +37,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   const element = (type, props, key) => typeof type === "function" ? type(props) : { type, props, key };
   const jsx = { jsx: element, jsxs: element, Fragment: "fragment" };
   // JSX functions are called as module properties by the transpiled component.
-  const imports = { window, ResizeObserver: class { constructor(callback) { resizeCallback = callback; } observe() {} disconnect() {} }, "react/jsx-runtime": jsx, react: {
+  const imports = { window, "react-dom": { createPortal: value => value }, ResizeObserver: class { constructor(callback) { resizeCallback = callback; } observe() {} disconnect() {} }, "react/jsx-runtime": jsx, react: {
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; }, useCallback: fn => fn, useMemo: fn => fn(),
     useId: () => "workflow-controls-test",
@@ -47,13 +48,23 @@ function harness(format, query = "", { local = true, selected = video, catalogue
       slots[i] = next;
       effects.push(() => { previous?.cleanup?.(); next.cleanup = callback(); });
     },
-  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
+  }, "next/dynamic": { default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview|HookStartingFrameWorkspace)/)?.[1] ?? "generation-panel" }, "next/link": { default: "link" }, "next/navigation": { useSearchParams: () => params },
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
   "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
+  "@/components/explore/use-hook-composer-selection": { useHookComposerSelection() {
+    const [frame, setFrame] = imports.react.useState(null);
+    return { frame, setFrame, ready: true, error: null };
+  } },
+  "@/components/explore/use-creator-accounts": { useCreatorAccounts(_user, enabled) {
+    const [selectedId, select] = imports.react.useState(null);
+    const accounts = enabled ? creatorCatalogue : [];
+    return { accounts, selectedId, select, account: accounts.find(account => account.id === selectedId),
+      references: accounts.flatMap(account => account.items), loading: false, error: null, retry() {} };
+  } },
   "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => backgroundCapability },
   "@/components/explore/format-workspace.module.css": new Proxy({}, { get: (_, key) => key }),
   "@/lib/ai-studio/access-policy": { getAIStudioAccessMessage: () => "" }, "@/lib/explore/format-video-source": mapper,
@@ -62,21 +73,227 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async (...args) => { reads.push(args); return video; } },
   "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { tokens.push(owner); return "owner-token"; } },
   "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: value => typeof value === "string" && /^[\da-f-]{36}$/i.test(value) },
-  "@/lib/explore/recreate-types": { referenceCategories: () => [], filterReferences: (items, kind, categories) => items.filter(item => item.format === kind && (!categories.length || categories.includes(item.category))), interleaveReferenceCategories: items => items },
+  "@/lib/explore/recreate-types": referenceTypes,
   "@/lib/explore/reference-pagination": pagination,
+  "@/lib/explore/local-hook-starting-frame-preview": { LOCAL_HOOK_PREVIEW_OWNER_ID: "local-preview-owner", createLocalHookStartingFramePreviewRuntime: () => ({ generationDisabledReason: "Local source preview only" }) },
   "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(" ") },
   };
   imports.react.useLayoutEffect = imports.react.useEffect;
   const mod = load("components/explore/format-workspace.tsx", imports);
   return { source, accept, queries, tokens, reads, params: () => params, resize(count) { columns = count; resizeCallback?.(); }, render() {
     cursor = 0;
-    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined, previewFinalSlideshow: finalSlideshow });
+    const tree = mod.FormatWorkspace({ format, previewReferences: local ? catalogue : undefined, previewFinalSlideshow: finalSlideshow, hookStartingFramePreparationEnabled: keyframeEnabled });
     for (const commit of effects.splice(0)) commit();
     return tree;
   } };
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+
+test("creator account switching replaces only the gallery and preserves Recreate's exact reference", () => {
+  const shared = { id: "normal-hook", format: "hook", title: "Hook", slides: [], posterUrl: "/normal.png", videoUrl: "/normal.mp4" };
+  const accounts = [1, 2].map(number => ({ id: `creator-account-${number}`, label: `Creator Account ${number}`,
+    items: Array.from({ length: 6 }, (_, index) => ({ ...shared, id: `creator-account-${number}-0${index + 1}`, creatorAccountId: `creator-account-${number}`, videoUrl: `blob:creator-${number}-${index}` })) }));
+  const h = harness("hook", "", { local: false, selected: null, catalogue: [shared], keyframeEnabled: true, creatorCatalogue: accounts });
+  const cards = () => nodes(h.render()).filter(node => node.type === "ReferenceCard");
+  const menu = () => nodes(h.render()).find(node => node.type === "CreatorAccountMenu");
+  assert.deepEqual(cards().map(node => node.props.reference.id), [shared.id]);
+  menu().props.onSelect(accounts[0].id);
+  assert.deepEqual(cards().map(node => node.props.reference.id), accounts[0].items.map(item => item.id));
+  cards()[2].props.onRecreate();
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, accounts[0].items[2].id);
+  menu().props.onSelect(accounts[1].id);
+  assert.deepEqual(cards().map(node => node.props.reference.id), accounts[1].items.map(item => item.id));
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, accounts[0].items[2].id);
+  menu().props.onSelect(null);
+  assert.deepEqual(cards().map(node => node.props.reference.id), [shared.id]);
+});
+
+test("Wall frontend rejects retired cards from stale responses and direct reference URLs", () => {
+  const stale = ["explore-wall-text-08", "explore-wall-text-09"].map(id => ({ ...catalogue[0], id }));
+  for (const local of [false, true]) {
+    const h = harness("wall_text", "refId=explore-wall-text-08", { local, selected: null, catalogue: [...stale, catalogue[0]] });
+    const tree = h.render();
+    assert.deepEqual(nodes(tree).filter(node => node.type === "ReferenceCard").map(node => node.props.reference.id), ["wall-0"]);
+    assert.equal(nodes(tree).some(node => node.props?.styleVideo?.id === "explore-wall-text-08"), false);
+  }
+});
+test("Slideshow Create Your Slides reuses the current editor sequence and keeps generation results separately reachable", () => {
+  const h = harness("slideshow", "", { selected: null });
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach((n, index) => n.props.ref({ clientWidth: 0, index }));
+  const editor = () => nodes(h.render()).find(n => n.type === "FormatSlideshowEditor");
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  const select = label => nodes(h.render()).find(n => n.type === "button" && text(n) === label).props.onClick();
+  select("Your Slides");
+  const overview = editor();
+  assert.equal(overview.props.active, false, "Create keeps generation instructions in its sidebar");
+  assert.equal(overview.props.previewActive, true);
+  assert.equal(nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function")[overview.props.resultsTarget.index].props.hidden, false);
+  nodes(overview.props.previewActions).find(n => text(n) === "Generated slides").props.onClick();
+  assert.equal(editor().props.previewActive, false);
+  assert.equal(nodes(h.render()).find(n => n.type === "generation-panel").props.active, true);
+  workflow().onGenerationStart(); workflow().onBusyChange(true);
+  assert.equal(editor().props.previewActive, false, "Starting or recovering generation reveals progress and results");
+  select("Your Slides"); assert.equal(editor().props.previewActive, true);
+  workflow().onBusyChange(false);
+  editor().props.onEdit();
+  assert.equal(editor().props.active, true);
+  assert.equal(editor().props.previewActive, true);
+  assert.equal(editor().key, overview.key);
+  assert.equal(editor().props.resultsTarget, overview.props.resultsTarget, "Both views use one portal and one draft owner");
+  editor().props.onBackToPreview();
+  assert.equal(editor().props.active, false); assert.equal(editor().props.previewActive, true);
+  editor().props.onRegenerate(0, { id: "owned-image" });
+  assert.equal(editor().props.previewActive, false, "Recreating a selected slide still opens generation results");
+  select("References"); assert.equal(editor().props.previewActive, false);
+});
+
+test("A recovered slideshow job opens generated results before the current sequence overview", () => {
+  const h = harness("slideshow", "explore-slideshowJob=recover-job", { selected: null });
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, false);
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.previewActive, true);
+});
+
+test("Hook Create Your videos shows the same two-clip overview as Demo even before an opening is selected", () => {
+  const h = harness("hook", "", { selected: null }); h.source.mode = "generate";
+  let tree = h.render();
+  const stage = view => nodes(view).find(n => n.props?.["aria-label"] === "Clip previews and editor");
+  nodes(tree).find(n => n.type === "button" && text(n) === "Your videos").props.onClick(); tree = h.render();
+  assert.equal(stage(tree).props.hidden, false);
+  assert.match(text(stage(tree)), /Your videos.*Hook video/s);
+  const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+  assert.equal(demo.props.editPreviewActive, true, "Demo's actual empty/selected card renders in Create too");
+  assert.equal(demo.props.active, false, "Its setup/sidebar still belongs to the Demo tab");
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+  const demoTarget = demo.props.editResultsTarget;
+  nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
+  nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("demo"); tree = h.render();
+  assert.equal(stage(tree).props.hidden, false);
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demo.key);
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editResultsTarget, demoTarget);
+  nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("create"); tree = h.render();
+  assert.equal(stage(tree).props.hidden, false);
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editPreviewActive, true);
+  nodes(tree).find(n => n.type === "button" && text(n) === "References").props.onClick();
+  assert.equal(stage(h.render()).props.hidden, true);
+});
+test("Hook's empty overview omits the generated-video shortcut and allows returning during generation", () => {
+  const h = harness("hook", "", { selected: null }); h.source.mode = "generate";
+  nodes(h.render()).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  const stage = () => nodes(h.render()).find(n => n.props?.["aria-label"] === "Clip previews and editor");
+  const workflow = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
+  assert.equal(nodes(h.render()).some(n => n.type === "Button" && text(n) === "Generated videos"), false);
+  workflow().onGenerationStart(); workflow().onBusyChange(true);
+  assert.equal(stage().props.hidden, true, "Starting generation reveals its progress");
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
+  assert.equal(stage().props.hidden, false, "Explicit Your videos selection returns to the clip overview while polling continues");
+  assert.equal(nodes(h.render()).some(n => n.type === "Button" && text(n) === "Generated videos"), false);
+});
+test("Hook's top Videos action closes either clip editor without navigating or remounting drafts", () => {
+  const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
+  for (const target of ["opening", "demo"]) {
+    let tree = h.render();
+    const opening = nodes(tree).find(n => n.type === "FormatVideoEditor");
+    const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    (target === "opening" ? opening : demo).props.onEdit(); tree = h.render();
+    const header = nodes(tree).find(n => n.type === "header");
+    assert.equal(nodes(header).some(n => n.type === "link" && text(n) === "Explore"), true);
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-editing"], true);
+    nodes(header).find(n => n.props?.["aria-label"] === "Back to videos overview").props.onClick(); tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-editing"], false);
+    assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").key, opening.key);
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demo.key);
+    assert.equal(h.params().get("editVideoId"), video.id);
+    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Back to videos overview"), false);
+  }
+});
+test("Hook opening and demo editors put actions in their compact header, without a bottom action row", () => {
+  const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
+  for (const target of ["opening", "demo"]) {
+    let tree = h.render();
+    nodes(tree).find(n => n.type === (target === "opening" ? "FormatVideoEditor" : "FormatDemoSection")).props.onEdit();
+    tree = h.render();
+    const stage = nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor");
+    const header = nodes(stage).find(n => n.type === "header");
+    const actions = nodes(stage).filter(n => n.props?.["aria-label"] === "Clip edit action");
+    assert.equal(actions.length, 1); assert.ok(nodes(header).includes(actions[0])); assert.equal(actions[0].props.hidden, false);
+    assert.equal(nodes(stage).filter(n => n.type === "h2").length, 1);
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onBackToPreview();
+  }
+});
+
+test("Wall's actual workflow keeps edit actions above its tools and hides the legacy bottom footer", () => {
+  const h = harness("wall_text", "step=edit");
+  h.render(); h.accept(video, "assets");
+  nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("edit");
+  const tree = h.render(), aside = nodes(tree).find(n => n.type === "aside");
+  const toolbar = nodes(aside).find(n => n.props?.["aria-label"] === "Wall edit actions");
+  const footer = nodes(aside).find(n => n.type === "footer");
+  assert.equal(toolbar.props.hidden, false); assert.equal(footer.props.hidden, true);
+  assert.equal(nodes(footer).some(n => n.props?.ref === toolbar.props.ref), false);
+  const editor = nodes(tree).find(n => n.type === "FormatVideoEditor");
+  assert.ok(editor); assert.equal(editor.props.active, true);
+});
+
+test("full-duration single text is enabled only on the Hook workflow opening, never its demo or Wall", () => {
+  for (const format of ["hook", "wall_text"]) {
+    const h = harness(format); h.render(); h.accept(video, "assets");
+    const tree = h.render(), opening = nodes(tree).find(n => n.type === "FormatVideoEditor");
+    assert.equal(opening.props.fullDurationHookText, format === "hook");
+    const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    if (demo) assert.equal(demo.props.fullDurationHookText, undefined);
+  }
+});
+
+test("Hook Change chooses replacement assets in place, with cancellation and failed upload preserving the current clips", async () => {
+  const h = harness("hook", "step=demo"); h.render(); h.accept(video, "assets");
+  const current = () => nodes(h.render()).find(n => n.type === "FormatVideoEditor");
+  const change = () => nodes(current().props.previewActions).find(n => n.type === "WorkflowClipSourceActions");
+  const key = current().key;
+  const demoKey = nodes(h.render()).find(n => n.type === "FormatDemoSection").key;
+  change().props.onChooseAssets();
+  let picker = nodes(h.render()).find(n => n.type === "WorkflowVideoAssetPicker");
+  assert.equal(picker.props.open, true); picker.props.onOpenChange(false);
+  assert.equal(current().key, key); assert.equal(h.source.mode, "assets");
+  h.source.chooseUpload = async () => false;
+  assert.equal(await change().props.onUpload({ name: "bad.mp4" }), false);
+  assert.equal(current().key, key); assert.match(text(current().props.previewActions), /could not be added/);
+  change().props.onChooseAssets(); picker = nodes(h.render()).find(n => n.type === "WorkflowVideoAssetPicker");
+  const replacement = { ...video, id: "00000000-0000-4000-8000-000000000055", url: "/replacement.mp4" };
+  assert.equal(picker.props.onSelect(replacement), true); picker.props.onOpenChange(false);
+  assert.equal(current().props.video.url, replacement.url);
+  const tree = h.render();
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+  assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
+});
+test("Wall without a clip keeps its source controls and reference gallery available", () => {
+  for (const query of ["", "step=edit", "section=edit", "step=demo"]) {
+    const h = harness("wall_text", query, { selected: null, catalogue });
+    let tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit");
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    assert.ok(nodes(tree).some(n => n.type === "WorkflowVideoSourceSection"));
+    assert.ok(nodes(tree).some(n => n.type === "ReferenceCard"));
+    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Wall of text edit setup"), false);
+  }
+});
+
+test("a saved Demo entry opens its own editor and returns to the Demo screen", () => {
+  const h = harness("hook", `demoId=${video.id}&step=demo`, { local: false });
+  const tree = h.render(), editor = nodes(tree).find(n => n.type === "FormatDemoSection");
+  assert.equal(editor.props.contentDemoId, video.id); assert.equal(editor.props.editActive, true);
+  assert.ok(nodes(tree).some(n => n.props?.["aria-label"] === "Back to videos overview"));
+  const back = nodes(tree).find(n => n.type === "link" && text(n) === "Demo");
+  assert.equal(back.props.href, "/library?tab=posts");
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+});
+
+
 for (const format of ["hook", "wall_text"]) {
   if (format === "hook") test(`${format}: background scheduling enters Schedule with exact raw composition and no export requests`, () => {
     const h = harness(format, "", { local: false, backgroundCapability: { data: true, isFetching: false } });
@@ -107,11 +324,13 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   const view = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView;
   assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[0].url]);
   view().contextBanner.props.onSelectionChange(["first-1", "first-4"], 4);
-  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
-  assert.equal(view().referenceImageUrl, refs[0].slides[4].url);
+  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[1].url, refs[0].slides[4].url]);
+  assert.equal(view().referenceImageUrl, refs[0].slides[1].url);
+  assert.equal(view().slideshowSlideCount, 2);
   nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onRegenerate(2, { id: video.id, url: "https://owned.test/generated.png" });
   assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
   assert.equal(view().referenceImageAssetId, video.id);
+  assert.equal(view().slideshowSlideCount, undefined);
   view().contextBanner.props.onSelectionChange(refs[0].slides.map(slide => slide.id));
   assert.equal(view().referenceImageUrls.length, 6);
   view().contextBanner.props.onSelectionChange([]);
@@ -122,6 +341,27 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   view().contextBanner.props.onRemove();
   assert.equal(view().referenceImageUrl, undefined);
   assert.equal(view().referenceImageUrls.length, 0);
+});
+
+test("video references mix both platforms before scroll expansion and retain single-platform filtering", () => {
+  for (const format of ["hook", "wall_text"]) {
+    const items = ["instagram", "tiktok"].flatMap(sourcePlatform => Array.from({ length: 16 }, (_, i) => ({
+      id: `${sourcePlatform}-${i}`, format, sourcePlatform, title: `${sourcePlatform} ${i}`, slides: [],
+      videoUrl: `https://media.test/${sourcePlatform}-${i}.mp4`, posterUrl: "/poster.jpg",
+    })));
+    const h = harness(format, "", { local: true, selected: null, catalogue: items });
+    const cards = () => nodes(h.render()).filter(n => n.type === "ReferenceCard").map(n => n.props.reference);
+    const first = cards();
+    assert.ok(first.length > 2 && first.length < items.length);
+    first.forEach((item, i) => assert.equal(item.sourcePlatform, i % 2 ? "tiktok" : "instagram"));
+    const end = {}; nodes(h.render()).find(n => n.props?.["data-reference-scroll-end"] !== undefined).props.ref(end); end.intersect();
+    const expanded = cards(); assert.ok(expanded.length > first.length);
+    assert.deepEqual(expanded.slice(0, first.length).map(item => item.id), first.map(item => item.id));
+    nodes(h.render()).find(n => n.type === "FilterMenu").props.onToggle("tiktok", true);
+    assert.ok(cards().every(item => item.sourcePlatform === "tiktok"));
+    nodes(h.render()).find(n => n.type === "FilterMenu").props.onClear();
+    assert.deepEqual(cards().slice(0, first.length).map(item => item.id), first.map(item => item.id));
+  }
 });
 
 test("reference batches fill complete rows at different column counts until the catalogue ends", () => {
@@ -136,19 +376,26 @@ test("reference batches fill complete rows at different column counts until the 
       assert.equal(new Set(cards.map(n => n.props.reference.id)).size, cards.length);
       assert.ok(cards.every(n => n.props.hideCaption === true));
       if (cards.length < catalogue.length) assert.equal(cards.length % columns, 0, `Incomplete row at ${columns} columns`);
-      const more = nodes(tree).find(n => n.type === "Button" && text(n) === "Show more references");
-      if (cards.length === catalogue.length) { assert.equal(more, undefined); break; }
-      assert.ok(more); more.props.onClick();
+      assert.equal(nodes(tree).some(n => n.type === "Button" && text(n) === "Show more references"), false);
+      if (cards.length === catalogue.length) break;
+      const end = {}; nodes(tree).find(n => n.props?.["data-reference-scroll-end"] !== undefined).props.ref(end); end.intersect();
     }
     assert.equal(nodes(h.render()).filter(n => n.type === "ReferenceCard").length, 90);
   }
+});
+
+test("a saved slideshow link opens Edit slides with its exact Library identity", () => {
+  const itemId = "11111111-1111-4111-8111-111111111111";
+  const h = harness("slideshow", `step=edit&slideshowId=${itemId}`);
+  const editor = nodes(h.render()).find(node => node.type === "FormatSlideshowEditor");
+  assert.equal(editor.props.libraryItemId, itemId); assert.equal(editor.props.active, true);
 });
 
 test("reference resizing preserves revealed items and filter changes restart with complete rows", () => {
   const h = harness("wall_text", "", { selected: null, catalogue });
   let tree = h.render(); nodes(tree).find(n => n.type === "div" && typeof n.props?.ref === "function" && nodes(n.props.children).some(child => child.type === "ReferenceCard")).props.ref({ clientWidth: 1000 });
   tree = h.render(); assert.equal(nodes(tree).filter(n => n.type === "ReferenceCard").length, 15);
-  nodes(tree).find(n => n.type === "Button" && text(n) === "Show more references").props.onClick();
+  const end = {}; nodes(tree).find(n => n.props?.["data-reference-scroll-end"] !== undefined).props.ref(end); end.intersect();
   h.resize(4); tree = h.render(); assert.equal(nodes(tree).filter(n => n.type === "ReferenceCard").length, 32);
   h.resize(5); tree = h.render(); assert.equal(nodes(tree).filter(n => n.type === "ReferenceCard").length, 35);
   nodes(tree).find(n => n.type === "FilterMenu").props.onToggle("other", true);
@@ -157,10 +404,12 @@ test("reference resizing preserves revealed items and filter changes restart wit
   assert.equal(cards.length, 15); assert.ok(cards.every(n => n.props.reference.category === "other"));
 });
 
-test("only Wall of text hides captions; hook and slideshow names stay visible", () => {
+test("Hook references use overlay actions while slideshow keeps its caption", () => {
   for (const format of ["hook", "slideshow"]) {
     const tree = harness(format, "", { selected: null, catalogue: [{ ...catalogue[0], format }] }).render();
-    assert.equal(nodes(tree).find(n => n.type === "ReferenceCard").props.hideCaption, false);
+    const card = nodes(tree).find(n => n.type === "ReferenceCard");
+    assert.equal(card.props.hideCaption, false);
+    assert.equal(card.props.overlayActions, format === "hook");
   }
 });
 
@@ -215,7 +464,8 @@ for (const format of ["hook"]) {
     const generation = () => nodes(h.render()).find(n => n.type === "generation-panel").props.recreateView.workflow;
     assert.equal(stage().props.hidden, false);
     const editorKey = nodes(h.render()).find(n => n.type === "FormatVideoEditor").key;
-    nodes(h.render()).find(n => n.type === "Button" && text(n) === "Generated videos").props.onClick();
+    assert.equal(nodes(h.render()).some(n => n.type === "Button" && text(n) === "Generated videos"), false);
+    generation().onGenerationStart();
     assert.equal(stage().props.hidden, true);
     nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
     assert.equal(stage().props.hidden, false);
@@ -227,7 +477,7 @@ for (const format of ["hook"]) {
     assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
     assert.equal(nodes(h.render()).find(n => n.type === "FormatVideoEditor").props.video.url, "/new.mp4");
   });
-  test(`${format}: Demo shows editable previews, then the saved join, and can reopen its editor`, () => {
+  test(`${format}: saving the combined video retains editable clip cards and exact final output`, () => {
     const h = harness(format); h.render(); h.accept(video, "assets");
     let tree = h.render();
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
@@ -237,7 +487,10 @@ for (const format of ["hook"]) {
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSaved({ id: "joined", kind: "media_asset", url: "/joined.mp4", title: "Joined" });
     tree = h.render();
-    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, true);
+    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false, "Saving a combined video cannot remove the clip edit entry points");
+    assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.active, true);
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editPreviewActive, true);
+    assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output.id, "joined");
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onEdit();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
@@ -266,12 +519,41 @@ for (const format of ["hook"]) {
     const final = { id: "with-music", kind: "media_asset", url: "/with-music.mp4", title: "Final with music" };
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSaved(final);
     tree = h.render();
-    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, true);
+    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false, "A saved audio mix must not replace the opening's edit entry point");
     assert.deepEqual(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, final);
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onDirty();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
+  });
+  test(`${format}: Back to Edit after preparation retains both clip editors and the final schedule result`, () => {
+    const h = harness(format); h.render(); h.accept(video, "assets");
+    let tree = h.render();
+    nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
+    const openingKey = nodes(tree).find(n => n.type === "FormatVideoEditor").key;
+    const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onSaved({ id: "opening", kind: "media_asset", url: "/opening.mp4", title: "Opening" });
+    const final = { id: "combined", kind: "media_asset", url: "/combined.mp4", title: "Combined video" };
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onSaved(final);
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("schedule");
+    tree = h.render();
+    nodes(tree).find(n => n.type === "FormatSchedulePanel").props.onBackToEdit();
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor").props.hidden, false);
+    const opening = nodes(tree).find(n => n.type === "FormatVideoEditor");
+    const demo = nodes(tree).find(n => n.type === "FormatDemoSection");
+    assert.equal(opening.key, openingKey); assert.equal(demo.key, demoKey);
+    assert.equal(opening.props.active, true); assert.equal(opening.props.editingActive, false); assert.equal(demo.props.editPreviewActive, true);
+    assert.deepEqual(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, final);
+    opening.props.onEdit(); tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.editingActive, true);
+    nodes(tree).find(n => n.type === "FormatVideoEditor").props.onBackToPreview();
+    nodes(h.render()).find(n => n.type === "FormatDemoSection").props.onEdit();
+    tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").props.editActive, true);
+    nodes(tree).find(n => n.type === "FormatDemoSection").props.onDirty();
+    assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null, "New demo edits invalidate the previous combined output");
   });
   for (const mode of ["upload", "assets"]) {
     test(`${format}: accepting ${mode} automatically shows its editable preview in Create`, () => {
@@ -343,28 +625,45 @@ for (const format of ["hook"]) {
     const editor = nodes(h.render()).find(n => n.type === "FormatVideoEditor");
     assert.equal(editor.props.active, true); assert.equal(editor.props.video.id, replacement.id); assert.equal(h.params().get("editVideoId"), replacement.id);
   });
-  test(`${format}: an empty video preview recovers through Create without an Edit tab`, () => {
+  test(`${format}: an empty video preview offers direct source actions without an Edit tab`, () => {
     const h = harness(format, "", { selected: null }); nodes(h.render()).find(n => n.type === "button" && text(n) === "Your videos").props.onClick();
-    const choose = nodes(h.render()).find(n => n.type === "Button" && text(n) === "Go to Create");
-    assert.ok(choose); assert.equal(Boolean(choose.props.disabled), false); choose.props.onClick();
+    const choose = nodes(h.render()).find(n => n.type === "WorkflowClipSourceActions");
+    assert.ok(choose); assert.equal(Boolean(choose.props.disabled), false); choose.props.onChooseAssets();
+    assert.equal(nodes(h.render()).find(n => n.type === "WorkflowVideoAssetPicker").props.open, true);
     assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
   });
-  test(`${format}: the empty opening card uses Create as the single source chooser and preserves Demo`, () => {
+  test(`${format}: the empty opening card selects Creative Assets directly and preserves Demo and its tab`, () => {
     const h = harness(format, "", { selected: null });
     nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("demo");
     let tree = h.render(); const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
     const preview = nodes(tree).find(n => n.props?.["aria-label"] === "Clip previews and editor");
-    assert.equal(nodes(preview).some(n => n.type === "Button" && ["Upload", "Create", "Choose from Creative Assets"].includes(text(n))), false);
-    nodes(preview).find(n => n.type === "Button" && text(n) === "Go to Create").props.onClick();
+    nodes(preview).find(n => n.type === "WorkflowClipSourceActions").props.onChooseAssets();
     tree = h.render();
-    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
-    assert.equal(nodes(tree).find(n => n.type === "WorkflowVideoSourceSection").props.selection.selectAsset(video), true);
+    const picker = nodes(tree).find(n => n.type === "WorkflowVideoAssetPicker");
+    assert.equal(picker.props.open, true); assert.equal(picker.props.onSelect(video), true); picker.props.onOpenChange(false);
     tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.type === "WorkflowVideoAssetPicker").props.open, false);
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.url, video.url);
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
   });
-  test(`${format}: Change returns to Create without clearing the opening, its edits or Demo`, () => {
+  test(`${format}: inline upload uses the existing flow without navigation and preserves the demo on failure`, async () => {
+    const h = harness(format, "step=demo", { selected: null });
+    let tree = h.render(); const demoKey = nodes(tree).find(n => n.type === "FormatDemoSection").key;
+    h.source.chooseUpload = async () => false;
+    assert.equal(await nodes(tree).find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "bad.mp4" }), false);
+    tree = h.render(); assert.match(text(tree), /This video could not be added/);
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
+    h.source.chooseUpload = async () => { h.accept(video, "upload"); return true; };
+    assert.equal(await nodes(tree).find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "good.mp4" }), true);
+    tree = h.render(); assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.id, video.id);
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "demo");
+    assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
+  });
+  test(`${format}: choosing Generate from Change opens Create without clearing the opening, its edits or Demo`, () => {
     const h = harness(format, "", { selected: null }); h.render(); h.accept(video, "assets");
     let tree = h.render();
     const openingKey = nodes(tree).find(n => n.type === "FormatVideoEditor").key;
@@ -374,11 +673,11 @@ for (const format of ["hook"]) {
     nodes(tree).find(n => n.type === "FormatDemoSection").props.onSelectionChange(true);
     nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("demo");
     tree = h.render();
-    const change = nodes(nodes(tree).find(n => n.type === "FormatVideoEditor").props.previewActions).find(n => n.type === "Button");
-    assert.equal(text(change), "Change"); change.props.onClick();
+    const change = nodes(nodes(tree).find(n => n.type === "FormatVideoEditor").props.previewActions).find(n => n.type === "WorkflowClipSourceActions");
+    assert.equal(change.props.triggerLabel, "Change"); change.props.onGenerate();
     tree = h.render();
     assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
-    assert.equal(h.source.mode, "assets");
+    assert.equal(h.source.mode, "generate");
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").key, openingKey);
     assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.id, video.id);
     assert.equal(nodes(tree).find(n => n.type === "FormatDemoSection").key, demoKey);
@@ -418,8 +717,8 @@ for (const format of ["hook"]) {
     const demoKey = demo.key;
     assert.equal(demo.props.opening, null); assert.equal(demo.props.videoId, null);
     const demoCopy = text(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo"));
-    if (format === "hook") assert.match(demoCopy, /Add a hook in Create to remix its text/);
-    else assert.equal(demoCopy.trim(), "");
+    assert.equal(demoCopy.trim(), "", "The overview must not duplicate the clip editor's Remix form");
+    assert.equal(nodes(tree).some(n => n.props?.["aria-label"] === "Remix text"), false);
     assert.equal(nodes(nodes(tree).find(n => n.type === "tabpanel" && n.props.value === "demo")).some(n => n.type === "Button" && text(n) === "Go to Create"), false, "Demo uploads must remain available without an opening");
     demo.props.onSelectionChange(true);
     nodes(h.render()).find(n => n.type === "WorkflowVideoSourceSection").props.selection.selectAsset(video);
@@ -555,7 +854,7 @@ test("wall_text: changing its source preserves the draft until a replacement is 
   let tree = h.render(); const editor = nodes(tree).find(n => n.type === "FormatVideoEditor");
   const saved = { id: "saved-wall", kind: "media_asset", url: "/saved-wall.mp4", title: "Saved wall" };
   editor.props.onSaved(saved); nodes(tree).find(n => n.type === "tabs-root").props.onValueChange("edit");
-  nodes(editor.props.previewActions).find(n => n.type === "Button").props.onClick(); tree = h.render();
+  nodes(h.render()).find(n => n.props?.["aria-label"] === "Back to Create").props.onClick(); tree = h.render();
   assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
   assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").key, editor.key);
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
@@ -567,6 +866,19 @@ test("wall_text: changing its source preserves the draft until a replacement is 
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
   assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.mediaAssetId, replacement.id);
   assert.equal(h.params().get("editVideoId"), replacement.id);
+});
+
+test("Wall Change opens its asset chooser within Edit and cancellation keeps the single-video draft", () => {
+  const h = harness("wall_text"); h.render(); h.accept(video, "assets");
+  nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("edit");
+  const editor = () => nodes(h.render()).find(n => n.type === "FormatVideoEditor");
+  const key = editor().key;
+  nodes(editor().props.previewActions).find(n => n.type === "WorkflowClipSourceActions").props.onChooseAssets();
+  let tree = h.render(); const picker = nodes(tree).find(n => n.type === "WorkflowVideoAssetPicker");
+  assert.equal(picker.props.open, true); assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "edit");
+  picker.props.onOpenChange(false); tree = h.render();
+  assert.equal(editor().key, key); assert.equal(nodes(tree).some(n => n.type === "FormatDemoSection"), false);
+  assert.equal(nodes(tree).some(n => n.type === "link" && text(n) === "Explore"), true);
 });
 test("wall_text: enabled background scheduling captures its clip and does not export on Schedule navigation", async () => {
   const h = harness("wall_text", "", { local: false, backgroundCapability: { data: true, isFetching: false } });
@@ -625,8 +937,21 @@ test("wall_text: empty Edit recovers to Create without permitting a pending uplo
   assert.equal(nodes(tree).some(n => n.type === "FormatVideoEditor"), false);
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, null);
   h.source.busy = false; tree = h.render();
-  nodes(tree).find(n => n.type === "Button" && text(n) === "Go to Create").props.onClick();
   assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props.value, "create");
+});
+
+test("Wall Schedule recovery sends a missing source to Upload and an existing clip back to its edits", () => {
+  for (const selected of [null, video]) {
+    const h = harness("wall_text", "", { selected });
+    h.render(); if (selected) h.accept(selected, "assets");
+    nodes(h.render()).find(n => n.type === "tabs-root").props.onValueChange("schedule");
+    const button = nodes(h.render()).find(n => n.type === "Button" && text(n) === (selected ? "Back to Edit" : "Add video"));
+    assert.ok(button); button.props.onClick();
+    const tree = h.render();
+    assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, selected ? "edit" : "create");
+    if (!selected) assert.equal(h.source.mode, "upload");
+    else assert.equal(nodes(tree).find(n => n.type === "FormatVideoEditor").props.video.id, video.id);
+  }
 });
 test("wall_text: restoration checks owned media and retains the workflow boundary for generated results", async () => {
   const imported = harness("wall_text", `editVideoId=${video.id}&videoSource=assets`, { local: false, selected: null }); imported.render();
@@ -701,6 +1026,23 @@ test("slideshow keeps all workflow stages in its controls panel and preserves im
   assert.equal(nodes(h.render()).find(n => n.type === "tabs-root").props["data-pane"], "preview", "Refocusing the active stage must not hide its Preview panel");
 });
 
+test("a complete regenerated slideshow opens Your Slides as one ordered sequence", () => {
+  const h = harness("slideshow", "", { selected: null });
+  let tree = h.render();
+  nodes(tree).filter(n => n.type === "div" && typeof n.props?.ref === "function").forEach(n => n.props.ref({ clientWidth: 0 }));
+  tree = h.render();
+  const received = [];
+  const editor = nodes(tree).find(n => n.type === "FormatSlideshowEditor");
+  editor.props.controllerRef.current = { useSlideshow: images => { received.push(...images.map(image => image.id)); return true; } };
+  const workflow = nodes(tree).find(n => n.type === "generation-panel").props.recreateView.workflow;
+  assert.equal(workflow.onGeneratedSlideshow([{ id: "slide-1", url: "/one.png" }, { id: "slide-2", url: "/two.png" }, { id: "slide-3", url: "/three.png" }, { id: "slide-4", url: "/four.png" }]), true);
+  tree = h.render();
+  assert.deepEqual(received, ["slide-1", "slide-2", "slide-3", "slide-4"]);
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "create");
+  assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.previewActive, true);
+  assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").props.active, false);
+});
+
 test("slideshow shares Schedule actions and returns to Edit without changing its saved post", () => {
   const h = harness("slideshow", "", { selected: null });
   let tree = h.render();
@@ -719,6 +1061,24 @@ test("slideshow shares Schedule actions and returns to Edit without changing its
   scheduling.props.onBackToEdit(); tree = h.render();
   assert.equal(nodes(tree).find(n => n.type === "tabs-root").props.value, "edit");
   assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
+});
+
+test("Schedule from the slideshow Create preview opens scheduling controls with the confirmed sequence", () => {
+  const h = harness("slideshow", "", { selected: null });
+  nodes(h.render()).find(n => n.type === "button" && text(n) === "Your Slides").props.onClick();
+  nodes(nodes(h.render()).find(n => n.props?.["aria-label"] === "Workspace panels")).find(n => n.type === "Button" && text(n) === "Preview").props.onClick();
+  let tree = h.render();
+  const editor = nodes(tree).find(n => n.type === "FormatSlideshowEditor");
+  assert.equal(editor.props.active, false); assert.equal(editor.props.previewActive, true);
+  assert.equal(nodes(tree).find(n => n.type === "tabs-root").props["data-pane"], "preview");
+  const saved = { id: "saved-from-preview", kind: "library_item", url: "/slide-2.png", title: "Current order", slides: ["/slide-2.png", "/slide-1.png"] };
+  editor.props.onSaved(saved);
+  nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onContinue();
+  tree = h.render();
+  const root = nodes(tree).find(n => n.type === "tabs-root");
+  assert.equal(root.props.value, "schedule"); assert.equal(root.props["data-pane"], "controls");
+  assert.equal(nodes(tree).find(n => n.type === "FormatSchedulePanel").props.output, saved);
+  assert.equal(nodes(tree).find(n => n.type === "FormatSlideshowEditor").key, editor.key);
 });
 
 test("compact panel navigation retains accepted clips and saved output", () => {
@@ -753,4 +1113,76 @@ test("sample slideshow props cannot become outputs in the live workflow or anoth
     const h = harness(format, "", { local, finalSlideshow });
     assert.equal(nodes(h.render()).find(n => n.type === "FormatSchedulePanel").props.output, null);
   }
+});
+
+test("Hook Recreate opens free starting-frame preparation only behind its release gate and reopens the same draft", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  for (const keyframeEnabled of [false, true]) {
+    const h = harness("hook", "", { local: false, selected: null, catalogue: [reference], keyframeEnabled });
+    h.source.mode = "generate";
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    let prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    if (!keyframeEnabled) { assert.equal(prep, undefined); assert.equal(h.params().has("hookFrameDraft"), false); continue; }
+    assert.equal(prep.props.reference.id, reference.id); assert.equal(prep.props.ownerId, "owner");
+    const id = prep.props.draftId;
+    assert.match(id, /^[\da-f-]{36}$/i); assert.equal(h.params().get("hookRecreation"), "starting_image");
+    prep.props.onClose(); assert.equal(h.params().has("hookRecreation"), false);
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), false);
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    assert.equal(prep.props.draftId, id, "Closing and reopening preserves the image preparation");
+    assert.equal(h.reads.length, 0, "Preparing does not submit or collect a generated video");
+  }
+});
+
+test("Wall enters its own starting-frame preparation while Slideshows retain their image workflow", () => {
+  for (const [format, local] of [["wall_text", false], ["slideshow", false]]) {
+    const reference = { id: "example", format, title: "Example", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+    const h = harness(format, "", { local, selected: null, catalogue: [reference], keyframeEnabled: true });
+    nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+    const preparation = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+    assert.equal(Boolean(preparation), format === "wall_text");
+    if (preparation) assert.equal(preparation.props.preparationFormat, "wall_text");
+    assert.equal(h.params().has("hookFrameDraft"), format === "wall_text");
+  }
+});
+
+test("local Hook Recreate opens the actual preparation component with isolated source-only access", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  const h = harness("hook", "", { local: true, selected: null, catalogue: [reference], keyframeEnabled: true });
+  nodes(h.render()).find(n => n.type === "ReferenceCard").props.onRecreate();
+  const prep = nodes(h.render()).find(n => n.type === "HookStartingFrameWorkspace");
+  assert.ok(prep); assert.equal(prep.props.ownerId, "local-preview-owner");
+  assert.equal(prep.props.previewRuntime.generationDisabledReason, "Local source preview only");
+  assert.equal(h.params().get("hookRecreation"), "starting_image");
+  for (const name of ["sourceUrl", "refType", "exploreRecreate"]) assert.equal(h.params().has(name), false);
+});
+
+test("an explicit Hook preparation reload restores only a valid draft ID with the release gate enabled", () => {
+  const reference = { id: "hook-first", format: "hook", title: "Hook sample", slides: [], videoUrl: "https://media.example.test/source.mp4", posterUrl: "/poster.jpg" };
+  const id = "00000000-0000-4000-8000-000000000001";
+  for (const [keyframeEnabled, draftId, expected] of [[true, id, true], [false, id, false], [true, "broken", false]]) {
+    const h = harness("hook", `refId=hook-first&hookFrameDraft=${draftId}&hookRecreation=starting_image`, { local: false, selected: null, catalogue: [reference], keyframeEnabled });
+    assert.equal(nodes(h.render()).some(n => n.type === "HookStartingFrameWorkspace"), expected);
+  }
+});
+
+test("cancelling a different Hook replacement preserves the approved composer frame and replacement receipt", () => {
+  const first = { id: "hook-first", format: "hook", title: "First Hook", slides: [], videoUrl: "https://media.example.test/source.mp4" };
+  const second = { ...first, id: "hook-second", title: "Second Hook" };
+  const h = harness("hook", "", { local: false, selected: null, catalogue: [first, second], keyframeEnabled: true });
+  const cards = () => nodes(h.render()).filter(node => node.type === "ReferenceCard");
+  cards().find(node => node.props.reference.id === first.id).props.onRecreate();
+  let preparation = nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace");
+  const selected = { ownerId: "owner", draftId: preparation.props.draftId, referenceId: first.id, assetId: "owned-approved-frame" };
+  preparation.props.onUseStartingFrame(selected);
+  cards().find(node => node.props.reference.id === second.id).props.onRecreate();
+  preparation = nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace");
+  const replacementId = preparation.props.draftId; assert.equal(preparation.props.reference.id, second.id);
+  preparation.props.onClose();
+  const active = cards().find(node => node.props.isSelected); assert.equal(active.props.reference.id, first.id);
+  assert.equal(h.params().get("hookFrameDraft"), replacementId);
+  cards().find(node => node.props.reference.id === second.id).props.onRecreate();
+  preparation = nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace");
+  assert.equal(preparation.props.draftId, replacementId, "an accepted/uncertain replacement remains recoverable");
 });

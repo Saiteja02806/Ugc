@@ -15,13 +15,14 @@ const sourceAsset = { id: "00000000-0000-4000-8000-000000000001", mediaAssetId: 
 
 // Execute the real FormatWorkspace click handlers with React/Next and network
 // boundaries isolated. The gallery entries retain separate MP4 and poster URLs.
-function fixture(format, { mode = "generate", preview = false, busy = false, generationBusy = false, existingOpening = false } = {}) {
+function fixture(format, { mode = "generate", preview = false, busy = false, generationBusy = false, existingOpening = false, initialReference = false, staleSearchParams = false, access = "pro" } = {}) {
   const reference = { id: `${format}-gallery-video`, format, title: "The selected gallery clip", category: null, categoryLabel: null,
     posterUrl: "https://media.example/poster.jpg", videoUrl: "https://media.example/reference.mp4", durationSeconds: 7, slides: [] };
   let cursor = 0, tree, component;
   const slots = [], events = [];
   const location = { pathname: `/explore/${format === "hook" ? "hook-video" : "wall-of-text"}`,
-    search: `?videoSource=${mode}${existingOpening ? `&editVideoId=${sourceAsset.id}` : ""}` };
+    search: `?videoSource=${mode}${existingOpening ? `&editVideoId=${sourceAsset.id}` : ""}${initialReference ? `&refId=${reference.id}` : ""}` };
+  const initialParams = new URLSearchParams(location.search);
   const source = { mode, busy, enabled: !preview, ownerId: "owner-a", dirty: false, error: null,
     source: null, preview: null, ready: false,
     setMode(next) { events.push({ kind: "mode", value: next }); source.mode = next; },
@@ -37,12 +38,12 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
   const imports = {
     react, "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "Fragment" },
     "next/dynamic": { __esModule: true, default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? (dynamicIndex++ === 0 ? "ImagePanel" : "VideoPanel") },
-    "next/link": { __esModule: true, default: "Link" }, "next/navigation": { useSearchParams: () => new URLSearchParams(location.search) },
+    "next/link": { __esModule: true, default: "Link" }, "next/navigation": { useSearchParams: () => staleSearchParams ? initialParams : new URLSearchParams(location.search) },
     "@base-ui/react/tabs": { Tabs: { Root: "Tabs.Root", Panel: "Tabs.Panel" } },
     "@tanstack/react-query": { useQuery: query => ({ data: query.queryKey[0] === "recreate-references" ? [reference] : query.queryKey[0] === "explore-edit-restore" && existingOpening && location.search.includes("editVideoId=") ? sourceAsset : undefined, isFetching: false, isError: false }) },
     "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner-a" }, loading: false }) },
     "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: { isActive: true } }) },
-    "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
+    "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => access },
     "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => source },
     "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => ({ data: false, isFetching: false }) },
     "@/lib/explore/wall-pending-composition": { createWallScheduleComposition: () => ({ signature: "fixture", error: null, resolve: async () => ({}) }) },
@@ -67,7 +68,7 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
     history: { replaceState(_state, _title, url) { location.search = url.includes("?") ? url.slice(url.indexOf("?")) : ""; events.push({ kind: "url", value: url }); } } },
     requestAnimationFrame(callback) { callback(); },
   });
-  const props = { format, ...(preview ? { previewReferences: [reference], ...(existingOpening ? { previewVideo: sourceAsset } : {}) } : {}) };
+  const props = { format, ...(preview ? { previewReferences: [reference], ...(existingOpening ? { previewVideo: sourceAsset } : {}), ...(initialReference ? { previewText: { referenceId: reference.id } } : {}) } : {}) };
   component = exports.FormatWorkspace(props);
   function render() { cursor = 0; tree = component.type(component.props); return tree; }
   render();
@@ -89,6 +90,24 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
 }
 
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: only verified Pro accounts can open external reference posts`, () => {
+    for (const access of ["checking", "error", "locked", "pro"]) {
+      assert.equal(fixture(format, { access }).card().props.canOpenSource, access === "pro");
+    }
+    assert.equal(fixture(format, { preview: true }).card().props.canOpenSource, false);
+  });
+  for (const preview of [false, true]) test(`${format}: removing the initial ${preview ? "preview" : "linked"} reference stays cleared while URL hooks catch up and Recreate can select it again`, () => {
+    const h = fixture(format, { preview, initialReference: true, staleSearchParams: true });
+    assert.equal(h.panel().props.recreateView.styleVideo.id, h.reference.id);
+    h.panel().props.recreateView.onClearReference(); h.render();
+    assert.equal(h.panel().props.recreateView.styleVideo, undefined);
+    assert.equal(h.card().props.isSelected, false);
+    assert.equal(new URLSearchParams(h.location.search).has("refId"), false);
+    h.render(); assert.equal(h.panel().props.recreateView.styleVideo, undefined);
+    h.card().props.onRecreate(); h.render();
+    assert.equal(h.panel().props.recreateView.styleVideo.id, h.reference.id);
+    assert.equal(h.card().props.isSelected, true);
+  });
   for (const preview of [false, true]) for (const mode of ["generate", "upload", "assets"]) {
     test(`${format}: Recreate from ${mode} enters Generate with the clicked MP4 in ${preview ? "preview" : "live"} controls`, () => {
       const h = fixture(format, { mode, preview });

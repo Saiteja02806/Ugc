@@ -35,7 +35,10 @@ import {
   refreshTikTokAccessToken,
   TikTokOAuthError,
 } from "../lib/tiktok-oauth.js";
-import { prepareInstagramCarouselImages } from "../lib/social-carousel-media.js";
+import {
+  prepareInstagramCarouselImages,
+  prepareTikTokCarouselImages,
+} from "../lib/social-carousel-media.js";
 import {
   publishYouTubeVideo,
   YouTubePublishError,
@@ -105,6 +108,7 @@ export async function runPublishSocialPostJob(
   job: BackgroundJobRow,
   context: {
     prepareInstagramCarouselImages?: typeof prepareInstagramCarouselImages;
+    prepareTikTokCarouselImages?: typeof prepareTikTokCarouselImages;
     publishers?: Partial<SocialPublishers>;
     store: SupabaseJobStore;
   },
@@ -435,9 +439,19 @@ export async function runPublishSocialPostJob(
         platformPostUrl: result.permalink,
       };
     } else if (publishContext.target.platform === "tiktok") {
-      const carouselImageUrls = publishContext.carousel?.slides.map(
+      const sourceCarouselImageUrls = publishContext.carousel?.slides.map(
         (slide) => slide.rendered_url,
       );
+      // A resumed provider operation already owns its media. Do not upload new
+      // copies or initialize a second post while waiting for its result.
+      const carouselImageUrls = sourceCarouselImageUrls
+        ? operation?.provider_operation_id
+          ? sourceCarouselImageUrls
+          : await (context.prepareTikTokCarouselImages ?? prepareTikTokCarouselImages)({
+              imageUrls: sourceCarouselImageUrls,
+              libraryItemId: publishContext.carousel!.item.id,
+            })
+        : undefined;
       const videoMedia = publishContext.media;
       const publishToTikTok = async (token: string) =>
         carouselImageUrls
@@ -676,6 +690,9 @@ export async function runPublishSocialPostJob(
     const retryDecision = getSocialPublishRetryDecision({
       attemptCount: job.attempt_count,
       errorMessage,
+      maxAttempts: Math.min(job.max_attempts, getIntegerEnv(
+        "SOCIAL_PUBLISH_MAX_ATTEMPTS", DEFAULT_SOCIAL_PUBLISH_MAX_ATTEMPTS, 1, 10,
+      )),
       providerRetryAfterSeconds: failure.retryAfterSeconds,
       retryable: failure.retryable,
     });
@@ -1488,7 +1505,7 @@ function getSocialPublishFailure(error: unknown, fallbackMessage: string) {
         occurredAt: new Date().toISOString(),
         status: error.status,
       },
-      retryable: null,
+      retryable: error.code === "file_format_check_failed" ? false : null,
       retryAfterSeconds: null,
       userMessage: getTikTokUserMessage(error.code, error.message),
     };
@@ -1559,6 +1576,9 @@ function getGenericSocialPublishUserMessage(
 }
 
 function getTikTokUserMessage(code: string, fallbackMessage: string) {
+  if (code === "file_format_check_failed") {
+    return "TikTok rejected this post's media format. Its images need publishing preparation before you retry.";
+  }
   if (["access_token_invalid", "account_mismatch", "invalid_grant", "invalid_refresh_token", "refresh_token_expired", "scope_not_authorized"].includes(code)) {
     return "Reconnect TikTok to continue publishing.";
   }

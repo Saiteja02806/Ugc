@@ -1,4 +1,4 @@
-export const hookVideoProviders = ["gemini", "veo", "runway", "higgsfield", "openrouter"] as const;
+export const hookVideoProviders = ["gemini", "veo", "runway", "higgsfield", "openrouter", "reapi"] as const;
 export const hookVideoEmotions = [
   "surprised",
   "excited",

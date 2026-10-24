@@ -27,14 +27,13 @@ import type {
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { withReadDeadline } from "@/lib/http/read-deadline";
+import { uploadAIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
 import { useAuth } from "@/contexts/auth-context";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getDefaultAccountScheduleSlot } from "@/lib/scheduling/account-timezone";
 import type { MediaAsset, MediaSourceType } from "@/lib/media/types";
-import {
-  isContentSecondaryClipMediaAsset,
-  isScheduledVideoMediaAsset,
-} from "@/lib/scheduling/secondary-clip-media";
+import { isScheduledVideoMediaAsset } from "@/lib/scheduling/secondary-clip-media";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -387,8 +386,9 @@ export function SchedulingWorkspace() {
     try {
       const mediaCatalog = await queryClient.fetchQuery({
         gcTime: SCHEDULING_CATALOG_GC_TIME_MS,
-        queryFn: async ({ signal }) => {
-          const token = await getCurrentUserIdToken();
+        queryFn: ({ signal }) => withReadDeadline(async (boundedSignal) => {
+          const token = await getCurrentUserIdToken(accountId);
+          boundedSignal.throwIfAborted();
 
           if (!token) {
             throw new SchedulingAuthenticationUnavailableError();
@@ -402,18 +402,19 @@ export function SchedulingWorkspace() {
               fetch("/api/media?collection=influencer", {
                 cache: "no-store",
                 headers: { Authorization: `Bearer ${token}` },
-                signal,
+                signal: boundedSignal,
               }),
               fetch("/api/media?collection=video&purpose=scheduling", {
                 cache: "no-store",
                 headers: { Authorization: `Bearer ${token}` },
-                signal,
+                signal: boundedSignal,
               }),
             ]);
           const [influencerData, videoData] = (await Promise.all([
             influencerResponse.json(),
             videoResponse.json(),
           ])) as [MediaListResponse, MediaListResponse];
+          boundedSignal.throwIfAborted();
 
           if (
             !influencerResponse.ok ||
@@ -428,9 +429,8 @@ export function SchedulingWorkspace() {
           const scheduledVideoAssets = videoAssets.filter(isScheduledVideoMediaAsset);
 
           return {
-            availableScheduledVideoIds: scheduledVideoAssets.map((asset) => asset.id),
+            availableScheduledVideoIds: [...scheduledVideoAssets, ...influencerData.assets.filter(isCreativeAssetHookMediaAsset)].map((asset) => asset.id),
             demoMediaOptions: scheduledVideoAssets
-              .filter(isContentSecondaryClipMediaAsset)
               .map(mapMediaAssetToScheduleMediaOption),
             hookMediaOptions: dedupeScheduleMediaOptions([
               ...influencerData.assets
@@ -441,7 +441,7 @@ export function SchedulingWorkspace() {
                 .map(mapMediaAssetToScheduleMediaOption),
             ]),
           } satisfies SchedulingMediaCatalog;
-        },
+        }, signal),
         queryKey: getSchedulingMediaCatalogQueryKey(accountId),
         retry: false,
         staleTime: options.force ? 0 : SCHEDULING_CATALOG_FRESH_TIME_MS,
@@ -536,7 +536,10 @@ export function SchedulingWorkspace() {
 
     const timer = window.setTimeout(() => {
       void loadScheduleMedia();
-      void loadSchedules();
+      // Workflow mutations and background preparation may have changed the
+      // calendar while this route was inactive. Keep cached rows visible, but
+      // always reconcile the list when returning to Scheduling.
+      void loadSchedules({ force: true });
       void loadSocialConnections();
     }, 0);
     return () => window.clearTimeout(timer);
@@ -550,17 +553,19 @@ export function SchedulingWorkspace() {
     let disposed = false;
     let timer: number | undefined;
     let refreshing = false;
+    const canRefresh = () =>
+      !disposed && document.visibilityState !== "hidden" && navigator.onLine !== false;
 
     function scheduleRefresh(schedules: ScheduledPost[]) {
       window.clearTimeout(timer);
       const delay = getScheduleRefreshDelay(schedules);
-      if (delay !== null && !disposed) {
+      if (delay !== null && canRefresh()) {
         timer = window.setTimeout(() => void refresh(), delay);
       }
     }
 
     async function refresh() {
-      if (disposed || refreshing) {
+      if (!canRefresh() || refreshing) {
         return;
       }
       refreshing = true;
@@ -573,22 +578,30 @@ export function SchedulingWorkspace() {
     }
 
     function refreshWhenVisible() {
-      if (document.visibilityState === "visible") {
+      window.clearTimeout(timer);
+      if (canRefresh()) {
         void refresh();
+        // Retain warm rows while stale media/account catalogues reconcile.
+        void loadScheduleMedia();
+        void loadSocialConnections();
       }
     }
 
     scheduleRefresh(serverSchedules);
     window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    window.addEventListener("offline", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       disposed = true;
       window.clearTimeout(timer);
       window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      window.removeEventListener("offline", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [accountId, loadSchedules, serverSchedules]);
+  }, [accountId, loadScheduleMedia, loadSchedules, loadSocialConnections, serverSchedules]);
 
   const counts = useMemo(() => getTabCounts(drafts), [drafts]);
   const visibleDrafts = useMemo(
@@ -649,6 +662,9 @@ export function SchedulingWorkspace() {
     setActionNotice(null);
 
     try {
+      // Media and fresh access are independent reads. Reuse the visible media
+      // snapshot while its background reconciliation completes.
+      const mediaRead = loadScheduleMedia();
       // Account connection changes must be visible immediately, not after the
       // shared catalog's 30-minute freshness window.
       const connections = await loadSocialConnections({ force: true });
@@ -694,7 +710,7 @@ export function SchedulingWorkspace() {
       if (!options.keepDayOpen) {
         setDayPlannerOpen(false);
       }
-      await loadScheduleMedia();
+      if (!scheduleMediaLoaded) await mediaRead;
       setDrawerOpen(true);
     } finally {
       setCheckingScheduleAccess(false);
@@ -703,6 +719,7 @@ export function SchedulingWorkspace() {
     checkingScheduleAccess,
     loadScheduleMedia,
     loadSocialConnections,
+    scheduleMediaLoaded,
     selectedCalendarDate,
     tiktokBetaEnabled,
     youtubeBetaEnabled,
@@ -759,10 +776,13 @@ export function SchedulingWorkspace() {
     setEditingScheduleId(schedule.id);
     setRequireScheduleTarget(true);
     setNewScheduleInitialDate(draft.scheduledDate ?? selectedCalendarDate);
-    await Promise.all([
+    const refresh = Promise.all([
       loadScheduleMedia(),
       loadSocialConnections({ force: true }),
     ]);
+    if (!scheduleMediaLoaded || cachedSocialConnections === undefined) {
+      await refresh;
+    }
     setDrawerOpen(true);
   }
 
@@ -780,33 +800,39 @@ export function SchedulingWorkspace() {
 
     const requestedDraftId = draftId;
     let cancelled = false;
+    const controller = new AbortController();
     initialDraftQueryState.current = "opening";
 
     async function openDraftFromQuery() {
-      const token = await getCurrentUserIdToken();
+      const schedule = await withReadDeadline(async (signal) => {
+        const token = await getCurrentUserIdToken(accountId);
+        signal.throwIfAborted();
 
-      if (!token) {
-        throw new Error("Sign in before opening this schedule draft.");
-      }
+        if (!token) {
+          throw new Error("Sign in before opening this schedule draft.");
+        }
 
-      const response = await fetch(
-        `/api/schedules/${encodeURIComponent(requestedDraftId)}`,
-        {
-          cache: "no-store",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      const data = (await response.json().catch(() => null)) as
-        | ScheduleMutationResponse
-        | null;
-
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(
-          getApiResponseMessage(data, "This schedule draft could not be found."),
+        const response = await fetch(
+          `/api/schedules/${encodeURIComponent(requestedDraftId)}`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+            signal,
+          },
         );
-      }
+        const data = (await response.json().catch(() => null)) as
+          | ScheduleMutationResponse
+          | null;
+        signal.throwIfAborted();
 
-      const schedule = data.schedule;
+        if (!response.ok || data?.ok !== true) {
+          throw new Error(
+            getApiResponseMessage(data, "This schedule draft could not be found."),
+          );
+        }
+
+        return data.schedule;
+      }, controller.signal);
       const editBlockReason = getScheduleEditBlockReason(schedule);
 
       if (editBlockReason) {
@@ -862,8 +888,10 @@ export function SchedulingWorkspace() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [
+    accountId,
     loadScheduleMedia,
     loadSocialConnections,
     schedulesLoaded,
@@ -1467,6 +1495,12 @@ export function SchedulingWorkspace() {
           onRefreshConnections={async () =>
             (await loadSocialConnections({ force: true })) !== null
           }
+          onUploadVideo={async (file) => {
+            if (!user?.uid) throw new Error("Sign in before uploading a video.");
+            if (!file.size || file.size > 250 * 1024 * 1024) throw new Error("Choose a video up to 250 MB.");
+            const uploaded = await uploadAIStudioReferenceMedia(file, "video", 86_400, user.uid, { requireVideoReferenceRatio: false });
+            return mapMediaAssetToScheduleMediaOption(uploaded.asset);
+          }}
           onSave={handleSaveScheduleDraft}
           requireScheduleTarget={requireScheduleTarget}
           saving={savingSchedule}
@@ -3337,13 +3371,16 @@ function getTargetStatusHelpText(
 
   if (target.status === "publishing") {
     if (target.nextRetryAt) {
-      return `Temporary platform issue. Retrying ${formatShortDateTime(
+      const prefix = Date.parse(target.nextRetryAt) <= Date.now()
+        ? "Retry pending since"
+        : "Retry scheduled for";
+      return `${prefix} ${formatShortDateTime(
         target.nextRetryAt,
         timezone,
       )}.`;
     }
 
-    return "The worker is posting this video now.";
+    return "The worker is publishing this post now.";
   }
 
   if (target.status === "scheduled") {

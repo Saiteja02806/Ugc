@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const load = (file, imports = {}, globals = {}) => {
@@ -10,14 +11,16 @@ const load = (file, imports = {}, globals = {}) => {
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     exports: exported,
     Error,
-    require(name) { if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
+    require(name) { if (name === "@/lib/explore/format-reference-images" && !(name in imports)) return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
     ...globals,
   });
   return exported;
 };
-const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true" } } });
-const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true" } } });
+const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
+const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
+  "../../worker/src/lib/hook-starting-frame-video": load("worker/src/lib/hook-starting-frame-video.ts"),
+  "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
   "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
   "./workflow-generation-settings": settings,
 });
@@ -26,6 +29,19 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 const draft = (overrides = {}) => ({ kind: "hook", instructions: "  Keep my words.\nNo template.  ", settings: settings.createWorkflowGenerationSettings(), creator: null, appScreen: null, videoReference: null, audioReference: null, ...overrides });
 const queued = (count = 1, overrides = {}) => ({ ok: true, jobId: "job-1", jobs: Array.from({ length: count }, (_, i) => ({ jobId: `job-${i + 1}`, videoId: `video-${i + 1}` })), message: `${count} started.`, partial: false, ...overrides });
 const response = (body, status = 202) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+test("talking-head reference directions and user instructions reach generation with the exact owned reference", async () => {
+  const actual = harness({ uploadReference: async () => ({ url: "https://storage.googleapis.com/test/reference.mp4", assetId: "00000000-0000-4000-8000-000000000001", duration: 3.3 }) });
+  await actual.client.generate(draft({ instructions: "Say my own product message.", referenceInstructions: "Follow the opening delivery. Do not show the original demo.",
+    videoReference: { name: "opening.mp4", url: "blob:opening", duration: 3.3, file: { type: "video/mp4", size: 1024 } } }));
+  const body = JSON.parse(actual.calls[0].body);
+  assert.equal(body.prompt, "Reference instructions:\nFollow the opening delivery. Do not show the original demo.\n\nYour instructions:\nSay my own product message.");
+  assert.equal(body.referenceVideoAssetId, "00000000-0000-4000-8000-000000000001");
+  assert.equal(body.referenceVideoDurationSeconds, 3.3);
+  const missingOwn = harness();
+  await assert.rejects(missingOwn.client.generate(draft({ instructions: "", referenceInstructions: "Reference directions only" })), /Write your instructions/);
+  assert.equal(missingOwn.calls.length, 0);
+});
 
 function harness(overrides = {}) {
   const calls = [], uploads = [], tokens = [];
@@ -40,6 +56,45 @@ function harness(overrides = {}) {
   });
   return { client, calls, uploads, tokens };
 }
+
+const startingFrame = {
+  ownerId: "owner-a", draftId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-01", sourceSha256: "a".repeat(64),
+  assetId: "00000000-0000-4000-8000-000000000003", jobId: "00000000-0000-4000-8000-000000000004",
+  url: "https://storage.googleapis.com/test/approved.png", width: 720, height: 1280, durationSeconds: 4,
+  motionInstructions: "Natural direct-to-camera delivery.", generateAudio: true,
+};
+
+test("Talking Head starting-frame requests preserve script and owned identities without uploading references", async () => {
+  const actual = harness();
+  await actual.client.generate(draft({ instructions: "Say my exact message.", referenceInstructions: startingFrame.motionInstructions,
+    settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }), startingFrame }));
+  const body = JSON.parse(actual.calls[0].body);
+  assert.equal(actual.uploads.length, 0);
+  assert.equal(body.startingFrameAssetId, startingFrame.assetId);
+  assert.equal(body.startingFrameJobId, startingFrame.jobId);
+  assert.equal(body.referenceId, startingFrame.referenceId);
+  assert.equal(body.exploreFormat, "hook");
+  assert.equal(body.generateAudio, true);
+  assert.match(body.prompt, /Say my exact message/);
+  for (const name of ["avatarImageUrl", "referenceImageUrls", "referenceVideoUrl", "sourceSha256"]) assert.equal(name in body, false);
+});
+
+test("Starting-frame animation blocks unsupported settings and retained audio before uploads or submission", async () => {
+  for (const overrides of [
+    { settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0", duration: 5 }) },
+    { settings: { ...settings.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 4 }), duration: 3 } },
+    { audioReference: { url: "blob:audio", file: { type: "audio/wav", size: 20 }, duration: 4 } },
+    { creator: { url: "blob:portrait" } },
+    { settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4, aspectRatio: "16:9" }) },
+    { startingFrame: { ...startingFrame, width: 1000, height: 1000 } },
+    { kind: "phone" },
+  ]) {
+    const actual = harness();
+    await assert.rejects(actual.client.generate(draft({ startingFrame, settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4 }), ...overrides })));
+    assert.equal(actual.calls.length, 0);
+    assert.equal(actual.uploads.length, 0);
+  }
+});
 
 test("Talking Head and creator-phone preserve two/three requested videos through the request and response", async () => {
   for (const kind of ["hook", "phone"]) for (const quantity of [2, 3]) {
@@ -73,6 +128,14 @@ test("text-only generation uses the existing authenticated API without requiring
     assert.equal(actual.calls[0].headers.Authorization, "Bearer fake-owner-token");
     assert.equal(body.referenceType, undefined); // No Recreate image-required context.
   }
+});
+
+test("saved image IDs are re-resolved for each explicit generation instead of reusing a stale URL cache", async () => {
+  const actual = harness();
+  const input = draft({creator:{assetId:"saved-image",url:"https://old.test/image.png",name:"Product"}});
+  await actual.client.generate(input); await actual.client.generate(input);
+  assert.equal(actual.uploads.length,2);
+  assert.equal(actual.uploads[1].assetId,"saved-image");
 });
 
 test("Talking Head native browser fetch is called without a transport object receiver", async () => {
@@ -160,21 +223,21 @@ test("the ordered image collection is authoritative and every selected image rea
 test("image limits include the phone screenshot and block before any upload or authentication", async () => {
   const images = count => Array.from({ length: count }, (_, index) => ({ name: `image-${index}.png`, url: `blob:image-${index}` }));
   for (const input of [
-    draft({ referenceImages: images(7) }),
+    draft({ referenceImages: images(31) }),
     draft({ referenceImages: images(3), settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0" }) }),
-    draft({ kind: "phone", referenceImages: images(6), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
-    draft({ referenceImages: images(6), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
-    draft({ referenceImages: images(5), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
+    draft({ kind: "phone", referenceImages: images(30), appScreen: { name: "app.png", url: "blob:app", kind: "image" } }),
+    draft({ referenceImages: images(31), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } } }),
+    draft({ referenceImages: images(31), videoReference: { name: "source.mp4", url: "blob:source", duration: 5, file: { type: "video/mp4", size: 1024 } }, audioReference: { name: "audio.mp3", url: "blob:audio", duration: 5, file: { type: "audio/mpeg", size: 1024 } } }),
     draft({ referenceImages: [{ name: "invalid.svg", url: "blob:invalid", file: { type: "image/svg+xml", size: 200 } }] }),
   ]) {
     const actual = harness();
     await assert.rejects(actual.client.generate(input));
     assert.equal(actual.uploads.length + actual.calls.length + actual.tokens.length, 0);
   }
-  for (const model of ["kling_3_0", "google_omni", "seedance_2_5"]) {
+  for (const [model, limit] of [["kling_3_0", 2], ["google_omni", 10], ["seedance_2_5", 30], ["wan_3_0", 10]]) {
     const actual = harness();
-    await actual.client.generate(draft({ referenceImages: images(model === "kling_3_0" ? 2 : 6), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
-    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, model === "kling_3_0" ? 2 : 6);
+    await actual.client.generate(draft({ referenceImages: images(limit), settings: settings.normalizeWorkflowGenerationSettings({ model }) }));
+    assert.equal(JSON.parse(actual.calls[0].body).referenceImageUrls.length, limit);
   }
 });
 
@@ -191,6 +254,51 @@ test("image-array edits after the generation click cannot replace the captured r
 
 const referenceId = "11111111-1111-4111-8111-111111111111";
 const timed = kind => ({ name: `${kind}.media`, url: `blob:${kind}`, duration: 5, file: { type: kind === "audio" ? "audio/mpeg" : "video/mp4", size: 1024 } });
+test("WAN accepts image, video and audio together in both connected workflows, preserving all inputs and three seconds", async () => {
+  for (const kind of ["hook", "phone"]) {
+    const actual = harness({ uploadReference: async (source, mediaKind) => ({ url: `https://storage.googleapis.com/test/${mediaKind}.media`, assetId: mediaKind === "audio" ? referenceId : "22222222-2222-4222-8222-222222222222", duration: source.duration }) });
+    await actual.client.generate(draft({ kind, creator: { name: "creator.png", url: "blob:creator", file: { type: "image/png", size: 100 } }, videoReference: { ...timed("video"), duration: 15 }, audioReference: { ...timed("audio"), duration: 15 }, settings: settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 }) }));
+    const body = JSON.parse(actual.calls[0].body);
+    assert.equal(body.model, "wan_3_0");
+    assert.equal(body.durationSeconds, 3);
+    assert.equal(body.referenceImageUrls.length, 1);
+    assert.equal(body.referenceVideoDurationSeconds, 15);
+    assert.deepEqual(body.referenceAudioAssetIds, [referenceId]);
+    assert.doesNotMatch(actual.calls[0].body, /blob:/);
+  }
+});
+
+test("WAN oversized and overlong references stop before authentication, upload and billing", async () => {
+  const wanSettings = settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 });
+  for (const refs of [
+    { videoReference: { ...timed("video"), duration: 15.01 } },
+    { audioReference: { ...timed("audio"), duration: 15.01 } },
+    { videoReference: { ...timed("video"), file: { type: "video/mp4", size: 32 * 1024 ** 2 + 1 } } },
+    { audioReference: { ...timed("audio"), file: { type: "audio/mpeg", size: 25 * 1024 ** 2 + 1 } } },
+  ]) {
+    const actual = harness();
+    await assert.rejects(actual.client.generate(draft({ ...refs, settings: wanSettings })), /WAN 3.0/);
+    assert.equal(actual.calls.length + actual.uploads.length + actual.tokens.length, 0);
+  }
+  const incompatible = clientModule.getWorkflowGenerationDraftError(draft({ videoReference: timed("video"), settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0" }) }));
+  assert.match(incompatible, /Seedance 2.5 or WAN 3.0/);
+  assert.doesNotMatch(incompatible, /OpenRouter|Runway|Higgsfield/);
+});
+
+test("a WAN reference whose verified upload is longer than the local preview never reaches generation", async () => {
+  const actual = harness({ uploadReference: async () => ({ url: "https://storage.googleapis.com/test/reference.mp4", assetId: referenceId, duration: 16 }) });
+  await assert.rejects(actual.client.generate(draft({ videoReference: timed("video"), settings: settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 }) })), /up to 15 seconds for WAN 3.0/);
+  assert.equal(actual.calls.length, 0);
+});
+
+test("WAN images use the connected route's size limit without reducing image-only support", async () => {
+  const input = draft({ creator: { name: "large.png", url: "blob:large", file: { type: "image/png", size: 17 * 1024 ** 2 } }, settings: settings.normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3 }) });
+  const actual = harness();
+  assert.equal(clientModule.getWorkflowGenerationDraftError(input), null);
+  await assert.rejects(actual.client.generate({ ...input, audioReference: timed("audio") }), /image up to 16 MB/);
+  assert.equal(actual.calls.length + actual.uploads.length + actual.tokens.length, 0);
+});
+
 test("Create references upload once, guide Seedance and preserve the exact uncertain request", async () => {
   const uploads = [], calls = [];
   const actual = harness({
@@ -357,7 +465,8 @@ test("Talking Head + Demo stays visible, the phone workflow stays hidden, and pr
             if (kind === "phone") assert.throws(invoke, /NOT_FOUND/);
             else {
               const shell = await invoke();
-              const rendered = shell.props.children.type(shell.props.children.props);
+                  const result = shell.props.children.type(shell.props.children.props);
+                  const rendered = typeof result.props.children === "function" ? result.props.children({id:"test-draft",createNew:true}) : result;
               assert.equal(rendered.type, "hook");
               assert.equal(rendered.props.generationEnabled, generationEnabled === "true" && preview !== "1");
             }
@@ -394,10 +503,11 @@ function connectedHarness(overrides = {}) {
     billing: { data: { userId: "owner-a", creditsRemaining: 100, videoGenerationCreditsPerSecond: 1 }, isError: false, isPending: false },
     jobQueries: [], mediaQueries: [], ...overrides,
   };
-  const slots = [], effects = [], calls = [], invalidations = [], queryOptions = [], queriedJobIds = [], store = new Map();
+  const slots = [], effects = [], calls = [], invalidations = [], queryOptions = [], queriedJobIds = [], store = new Map(), visitStore = new Map();
   let cursor = 0;
   const fakeWindow = {
-    localStorage: { getItem: (key) => store.get(key), setItem: (key, value) => store.set(key, value), removeItem: (key) => store.delete(key) },
+    localStorage: { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value), removeItem: (key) => store.delete(key) },
+    sessionStorage: { getItem: key => visitStore.get(key) ?? null, setItem: (key, value) => visitStore.set(key, value), removeItem: key => visitStore.delete(key) },
     addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
   };
   const react = {
@@ -420,6 +530,7 @@ function connectedHarness(overrides = {}) {
   };
   const boundary = load("components/explore/workflow-generation-boundary.tsx", {
     react,
+    "@/lib/explore/format-reference-images": { fetchFormatReferenceImage: async (id, owner) => { calls.push({savedImage:id,owner}); if(state.savedImageError) throw Error(state.savedImageError); return {id,url:"https://storage.googleapis.com/test/saved-owned.png"}; } },
     "@tanstack/react-query": {
       useQueryClient: () => ({ invalidateQueries: (value) => { invalidations.push(value); return Promise.resolve(); } }),
       useQueries: (options) => { queryOptions.push(options); return state.mediaQueries; },
@@ -456,9 +567,11 @@ function connectedHarness(overrides = {}) {
   });
   return {
     state, calls, invalidations, queryOptions, queriedJobIds, store,
+    rememberVisit(batch) { clientModule.persistWorkflowGenerationJobs(load("lib/explore/workflow-visit-storage.ts").workflowVisitStorage(fakeWindow.sessionStorage), "owner-a", "hook", batch); },
+    rememberDraft(id, batch) { clientModule.persistWorkflowGenerationJobs(draftLifecycle.workflowDraftStorage(fakeWindow.localStorage,id),"owner-a","hook",batch); },
     render(input = draft({ settings: { ...settings.createWorkflowGenerationSettings(), quantity: 4 } })) {
       cursor = 0;
-      const view = boundary.WorkflowGenerationBoundary({ enabled: true, ownerId: "owner-a", draft: input, children: (value) => value });
+      const view = boundary.WorkflowGenerationBoundary({ enabled: true, ownerId: "owner-a", draft: input, draftId: state.draftId, children: (value) => value });
       while (effects.length) effects.shift()();
       return view;
     },
@@ -467,6 +580,81 @@ function connectedHarness(overrides = {}) {
 }
 const readyAsset = (id = "asset-1") => ({ id, title: "Saved video", collection: "video", status: "ready", sourceType: "generated_video", url: `https://storage.googleapis.com/test/${id}.mp4`, durationSeconds: 5 });
 const jobQuery = (id, status, output = null, error = null) => ({ data: { id, status, output, error, jobType: "video_generation", projectId: "ai-studio" }, isError: false, isPending: false, refetch: async () => {} });
+
+test("Talking Head revalidates saved image ownership on Generate and sends its current URL without reupload", async () => {
+  const actual = connectedHarness();
+  const input = draft({ creator: { name:"Product", assetId:"owned-image", url:"https://old.test/product.png" } });
+  actual.render(input).onGenerate(); await new Promise(setImmediate); await new Promise(setImmediate);
+  assert.ok(actual.calls.some(call => call.savedImage === "owned-image" && call.owner === "owner-a"));
+  assert.equal(actual.calls.filter(call => call.upload).length, 0);
+  const request = actual.calls.find(call => call.method === "POST"); assert.ok(request);
+  assert.deepEqual(JSON.parse(request.body).referenceImageUrls, ["https://storage.googleapis.com/test/saved-owned.png"]);
+  const rejected = connectedHarness({savedImageError:"Image was removed"});
+  rejected.render(input).onGenerate(); await new Promise(setImmediate); await new Promise(setImmediate);
+  assert.equal(rejected.calls.filter(call => call.method === "POST").length, 0);
+  assert.match(rejected.render(input).error, /Image was removed/);
+});
+
+test("a current draft reads only its jobs; read-only recovery routes an older request to its original draft",async()=>{
+  const oldId="00000000-0000-4000-8000-000000000090",newId="00000000-0000-4000-8000-000000000091",requestKey="11111111-1111-4111-8111-111111111111";
+  const actual=connectedHarness({draftId:newId,fetchResponse:async(_url,init)=>{assert.equal(init.method,"GET");return response({...queued(),requestKey,resolved:true});}});
+  actual.rememberDraft(oldId,queued(2));actual.render();assert.deepEqual(actual.queriedJobIds.at(-1),[]);
+  const key=clientModule.workflowGenerationRequestStorageKey("owner-a","hook");
+  actual.store.set(key,JSON.stringify({version:1,ownerId:"owner-a",kind:"hook",requestKey,quantity:1}));
+  actual.store.set(`${key}:draft:${requestKey}`,oldId);
+  actual.render();await new Promise(setImmediate);const recovered=actual.render();
+  assert.deepEqual(actual.queriedJobIds.at(-1),[]);assert.equal(recovered.selected,null);assert.match(recovered.notice,/earlier generation/);
+  const backing={getItem:key=>actual.store.get(key)??null,setItem:(key,value)=>actual.store.set(key,value),removeItem:key=>actual.store.delete(key)};
+  assert.deepEqual(Array.from(clientModule.readWorkflowGenerationJobs(draftLifecycle.workflowDraftStorage(backing,oldId),"owner-a","hook")),["job-1"],JSON.stringify([...actual.store]));
+  assert.equal(actual.calls.filter(c=>c.method==="POST").length,0);
+  const current=connectedHarness({draftId:newId});current.rememberDraft(newId,queued(2));current.render();assert.deepEqual(current.queriedJobIds.at(-1),["job-1","job-2"]);
+});
+
+test("a fresh Talking Head visit ignores permanent result history and yesterday's automatic job URL", () => {
+  const actual = connectedHarness({ urlJob: "yesterdays-job" });
+  clientModule.persistWorkflowGenerationJobs({ setItem: (key, value) => actual.store.set(key, value) }, "owner-a", "hook", queued());
+  const before = new Map(actual.store);
+  const view = actual.render();
+  assert.deepEqual(actual.queriedJobIds.at(-1), []);
+  assert.equal(view.selected, null); assert.equal(view.results.length, 0); assert.equal(view.busy, false);
+  assert.deepEqual(actual.store, before, "Accepted receipts remain available separately");
+  const phone = connectedHarness({ urlJob: "phone-job" }); phone.render(draft({ kind: "phone" }));
+  assert.deepEqual(phone.queriedJobIds.at(-1), ["phone-job"], "Other workflow recovery is outside this change");
+});
+
+test("generation previews count unfinished outputs through restored jobs, partial completion and failure", () => {
+  const actual = connectedHarness({ jobQueries: [jobQuery("job-1", "completed", { mediaAssetId: "asset-1" }), jobQuery("job-2", "processing"), jobQuery("job-3", "failed"), jobQuery("job-4", "queued")], mediaQueries: [{ data: readyAsset("asset-1") }] });
+  actual.rememberVisit(queued(4));
+  let view = actual.render();
+  assert.equal(view.busy, true);
+  assert.equal(view.pendingCount, 2);
+  assert.equal(view.pendingPreview.label, "Creating your video");
+  actual.state.jobQueries = [jobQuery("job-1", "completed", { mediaAssetId: "asset-1" }), jobQuery("job-2", "completed", { mediaAssetId: "asset-2" }), jobQuery("job-3", "failed"), jobQuery("job-4", "cancelled")];
+  actual.state.mediaQueries = [{ data: readyAsset("asset-1") }, { isPending: true }];
+  view = actual.render();
+  assert.equal(view.pendingCount, 1);
+  assert.equal(view.pendingPreview.label, "Loading your video");
+  actual.state.mediaQueries = [{ data: readyAsset("asset-1") }, { data: readyAsset("asset-2") }];
+  view = actual.render();
+  assert.equal(view.busy, false);
+  assert.equal(view.pendingCount, 0);
+});
+
+test("preparing previews capture the clicked quantity, aspect ratio and reference without following later edits", async () => {
+  let finish;
+  const actual = connectedHarness({ fetchResponse: () => new Promise(resolve => { finish = resolve; }) });
+  const input = draft({ referenceImages: [{ name: "chosen.png", url: "blob:chosen", file: { type: "image/png", size: 100 } }], settings: { ...settings.createWorkflowGenerationSettings(), quantity: 2, aspectRatio: "16:9" } });
+  actual.render(input).onGenerate();
+  await new Promise(setImmediate);
+  const view = actual.render(draft({ settings: { ...input.settings, quantity: 4, aspectRatio: "9:16" } }));
+  assert.equal(view.pendingCount, 2);
+  assert.equal(view.pendingPreview.aspectRatio, "16:9");
+  assert.equal(view.pendingPreview.referenceImageUrl, "blob:chosen");
+  assert.equal(view.pendingPreview.label, "Preparing your video");
+  finish(response({ ok: false, error: "Video could not start." }, 400));
+  await new Promise(setImmediate);
+  assert.equal(actual.render().pendingCount, 0);
+});
 
 test("the connected Generate action stays blocked while a failed replacement retains its prior preview", async () => {
   for (const kind of ["hook", "phone"]) {
@@ -580,6 +768,7 @@ test("saved jobs recover read-only, and status errors or uncertain provider subm
   ]) {
     let reads = 0;
     const actual = connectedHarness({ urlJob: "job-1", jobQueries: [{ ...job, refetch: async () => { reads++; } }] });
+    actual.rememberVisit(queued());
     const view = actual.render();
     assert.equal(view.disabled, true);
     assert.deepEqual(actual.queriedJobIds.at(-1), ["job-1"]);

@@ -16,6 +16,11 @@ export function estimateRunwayKlingCredits(durationSeconds: number) {
   return durationSeconds * 13;
 }
 
+export function estimateRunwayWanCredits(resolution: "480p" | "720p" | "1080p", durationSeconds: number) {
+  // WAN 3.0 reference inputs do not add a separate charge.
+  return { "480p": 5, "720p": 10, "1080p": 20 }[resolution] * durationSeconds;
+}
+
 export function estimateRunwaySeedanceCredits(
   resolution: "480p" | "720p",
   durationSeconds: number,
@@ -118,7 +123,8 @@ export async function assertRunwayDailyCreditBudget(
   // lag fallback, with detailed usage remaining authoritative when larger.
   const estimatedCreditsFromDailyGenerations = hookCreditsFromDailyGenerations +
     Math.max(0, organization.usage.models.seedance2_5?.dailyGenerations ?? 0) * 80 +
-    Math.max(0, organization.usage.models["kling3.0_standard"]?.dailyGenerations ?? 0) * estimateRunwayKlingCredits(3);
+    Math.max(0, organization.usage.models["kling3.0_standard"]?.dailyGenerations ?? 0) * estimateRunwayKlingCredits(3) +
+    Math.max(0, organization.usage.models.wan3?.dailyGenerations ?? 0) * estimateRunwayWanCredits("480p", 2);
 
   const usedCredits = Math.max(
     reportedCredits,

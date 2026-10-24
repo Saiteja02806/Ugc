@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { subtitlePreview, subtitleStyleDefinition, type SubtitleStyle } from "@/worker/src/subtitles/styles";
 
 /** One player; selection is a draft and never starts playback or finishing. */
-export function WorkflowSubtitlePreview({ style }: { style: SubtitleStyle }) {
-  return <ExamplePlayer key={style} style={style} />;
+export function WorkflowSubtitlePreview({ style, onCollapse }: { style: SubtitleStyle; onCollapse?: () => void }) {
+  return <ExamplePlayer key={style} style={style} onCollapse={onCollapse} />;
 }
-function ExamplePlayer({ style }: { style: SubtitleStyle }) {
+function ExamplePlayer({ style, onCollapse }: { style: SubtitleStyle; onCollapse?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "paused" | "error">("idle");
   const { video, poster } = subtitlePreview(style), definition = subtitleStyleDefinition(style);
@@ -40,11 +41,13 @@ function ExamplePlayer({ style }: { style: SubtitleStyle }) {
         onEnded={() => setStatus("paused")} onError={() => setStatus("error")} />
       <div className="min-w-0 space-y-2">
         <p className="text-sm font-medium">{definition.label} example</p>
-        <p className="text-xs leading-5 text-muted">{definition.description} This shared example shows the rendered result. Your captions follow your video’s speech.</p>
-        <Button type="button" variant="outline" disabled={status === "loading"} onClick={() => status === "playing" ? ref.current?.pause() : void play()}>
-          {status === "loading" ? "Loading…" : status === "error" ? "Retry example" : status === "playing" ? "Pause example" : "Play example"}
-        </Button>
-        <p role={status === "error" ? "alert" : "status"} className="text-xs text-muted">{status === "error" ? "The example could not load. Try again." : status === "loading" ? "Loading the selected example…" : "Examples play only when you press Play."}</p>
+        <div className="flex items-center justify-between gap-3">
+          <Button type="button" variant="outline" className="min-w-32" disabled={status === "loading"} onClick={() => status === "playing" ? ref.current?.pause() : void play()}>
+            {status === "loading" ? "Loading…" : status === "error" ? "Retry example" : status === "playing" ? "Pause example" : "Play example"}
+          </Button>
+          {onCollapse ? <Button type="button" variant="ghost" size="icon" className="text-primary hover:text-primary" aria-label="Collapse subtitle appearance" title="Collapse subtitle appearance" onClick={() => { ref.current?.pause(); onCollapse(); }}><Minus aria-hidden="true" /></Button> : null}
+        </div>
+        {status === "error" ? <p role="alert" className="text-xs text-destructive">The example could not load. Try again.</p> : null}
       </div>
     </div>
   </section>;

@@ -14,6 +14,11 @@ import { createWorkflowGenerationClient, getWorkflowGenerationDraftError, persis
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { persistJobIdInUrl, useBackgroundJobs, usePersistedJobIdFromUrl } from "@/lib/jobs/background-job-client";
 import type { MediaAsset } from "@/lib/media/types";
+import type { AIStudioVideoAspectRatio } from "@/lib/ai-studio/generation-settings";
+import { workflowVisitStorage } from "@/lib/explore/workflow-visit-storage";
+import { workflowDraftStorage, workflowDraftRequestStorage, workflowRequestDraft } from "@/lib/explore/workflow-draft-lifecycle";
+import { fetchFormatReferenceImage } from "@/lib/explore/format-reference-images";
+import { workflowGenerationPrompt } from "@/lib/explore/workflow-generation-client";
 
 export type WorkflowGenerationView = {
   busy: boolean;
@@ -23,6 +28,8 @@ export type WorkflowGenerationView = {
   message: string;
   results: MediaAsset[];
   selected: MediaAsset | null;
+  pendingCount?: number;
+  pendingPreview?: { aspectRatio: AIStudioVideoAspectRatio; referenceImageUrl: string | null; label: string; prompt?: string; createdAt?: string };
   onGenerate: () => void;
   selectResult: (id: string) => void;
   refreshStatus: () => void;
@@ -46,15 +53,19 @@ function AccountBoundary({ children }: { children: (ownerId: string | null) => R
   return children(!loading && user ? user.uid : null);
 }
 
-export function WorkflowGenerationBoundary({ enabled, ownerId, draft, children }: {
+export type RestoredWorkflowGenerationSelection = { assetId: string | null; asset: MediaAsset | null; ready: boolean; allowAutomaticSelection?: boolean };
+export function WorkflowGenerationBoundary({ enabled, ownerId, draft, children, restoredSelection, onSelectionChange, draftId }: {
   enabled: boolean;
   ownerId: string | null;
   draft: WorkflowGenerationDraft;
   children: (generation: WorkflowGenerationView | null) => ReactNode;
+  restoredSelection?: RestoredWorkflowGenerationSelection;
+  onSelectionChange?: (asset: MediaAsset | null) => void;
+  draftId?: string;
 }) {
   if (!enabled) return children(null);
   if (!ownerId) return children(emptyView("Sign in before generating a video."));
-  return <ConnectedGeneration key={`${ownerId}:${draft.kind}`} ownerId={ownerId} draft={draft}>{children}</ConnectedGeneration>;
+  return <ConnectedGeneration key={`${ownerId}:${draft.kind}:${draftId ?? "legacy"}`} ownerId={ownerId} draft={draft} restoredSelection={restoredSelection} onSelectionChange={onSelectionChange} draftId={draftId}>{children}</ConnectedGeneration>;
 }
 
 function subscribeToStoredJobs(notify: () => void) {
@@ -63,8 +74,8 @@ function subscribeToStoredJobs(notify: () => void) {
   return () => { window.removeEventListener("storage", notify); window.removeEventListener(STORAGE_CHANGED, notify); };
 }
 
-function getStoredJobsSnapshot(ownerId: string, kind: WorkflowKind) {
-  try { return window.localStorage.getItem(workflowGenerationStorageKey(ownerId, kind)) ?? ""; }
+function getStoredJobsSnapshot(ownerId: string, kind: WorkflowKind, draftId?: string) {
+  try { return (draftId ? workflowDraftStorage(window.localStorage, draftId) : kind === "hook" ? workflowVisitStorage(window.sessionStorage) : window.localStorage).getItem(workflowGenerationStorageKey(ownerId, kind)) ?? ""; }
   catch { return ""; }
 }
 
@@ -73,10 +84,13 @@ function getStoredRequestSnapshot(ownerId: string, kind: WorkflowKind) {
   catch { return "storage-unavailable"; }
 }
 
-function ConnectedGeneration({ ownerId, draft, children }: {
+function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSelectionChange, draftId }: {
   ownerId: string;
   draft: WorkflowGenerationDraft;
   children: (generation: WorkflowGenerationView) => ReactNode;
+  restoredSelection?: RestoredWorkflowGenerationSelection;
+  onSelectionChange?: (asset: MediaAsset | null) => void;
+  draftId?: string;
 }) {
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
@@ -88,10 +102,11 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   const [recovering, setRecovering] = useState(false);
   const recoveringRef = useRef(false);
   const submittingRef = useRef(false);
+  const [submittedPreview, setSubmittedPreview] = useState<{ aspectRatio: AIStudioVideoAspectRatio; referenceImageUrl: string | null; quantity: number; prompt: string; createdAt: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const getSnapshot = useCallback(() => getStoredJobsSnapshot(ownerId, draft.kind), [ownerId, draft.kind]);
+  const getSnapshot = useCallback(() => getStoredJobsSnapshot(ownerId, draft.kind, draftId), [ownerId, draft.kind, draftId]);
   const stored = useSyncExternalStore(subscribeToStoredJobs, getSnapshot, () => "");
   const storedIds = readWorkflowGenerationJobs({ getItem: () => stored }, ownerId, draft.kind);
   const getRequestSnapshot = useCallback(() => getStoredRequestSnapshot(ownerId, draft.kind), [ownerId, draft.kind]);
@@ -102,7 +117,9 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   const recoveryPending = Boolean(storedRequest);
   const urlParameter = draft.kind === "hook" ? "hookJob" : "phoneJob";
   const urlJob = usePersistedJobIdFromUrl(urlParameter);
-  const jobIds = submittedIds ?? (storedIds.length ? storedIds : urlJob && JOB_ID.test(urlJob) ? [urlJob] : []);
+  // hookJob remains a durable receipt in the URL. It must not silently select
+  // yesterday's result after the automatic editing visit has expired.
+  const jobIds = submittedIds ?? (storedIds.length ? storedIds : draft.kind !== "hook" && urlJob && JOB_ID.test(urlJob) ? [urlJob] : []);
   const jobQueries = useBackgroundJobs(jobIds);
   const jobs = jobQueries.flatMap((query) => query.data ? [query.data] : []);
   const invalidJob = jobs.some((job) => job.jobType !== "video_generation" || job.projectId !== "ai-studio");
@@ -111,13 +128,13 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     if (job.status !== "completed" || !output || typeof output !== "object" || Array.isArray(output)) return [];
     return typeof output.mediaAssetId === "string" && JOB_ID.test(output.mediaAssetId) ? [output.mediaAssetId] : [];
   });
-  const distinctAssetIds = [...new Set(assetIds)];
+  const distinctAssetIds = [...new Set([...assetIds, ...(restoredSelection?.ready && restoredSelection.assetId ? [restoredSelection.assetId] : [])])];
   const mediaQueries = useQueries({ queries: distinctAssetIds.map((assetId) => ({
     queryKey: ["explore-generation-media", ownerId, assetId],
     queryFn: async () => {
       const token = await getCurrentUserIdToken(ownerId);
       if (!token) throw new Error("Sign in to view your generated video.");
-      const asset = await fetchAIStudioMediaAsset(assetId, token);
+      const asset = await fetchAIStudioMediaAsset(assetId, token, { generationDetails: true });
       if (!active.current) throw new Error("This workflow is no longer active.");
       if (asset.id !== assetId || asset.collection !== "video" || asset.status !== "ready" || asset.sourceType !== "generated_video" || !asset.url.startsWith("https://")) {
         throw new Error("The generated video is not ready to preview.");
@@ -126,8 +143,13 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     },
     retry: 1,
   })) });
-  const results = mediaQueries.flatMap((query) => query.data ? [query.data] : []);
-  const selected = results.find((asset) => asset.id === selectedId) ?? results[0] ?? null;
+  const currentResults = mediaQueries.flatMap((query) => query.data ? [query.data] : []);
+  // A verified chosen result may belong to an earlier batch. Keep its exact ID,
+  // even if the newest saved batch no longer includes it.
+  const restoredAsset = restoredSelection?.ready && restoredSelection.assetId === restoredSelection.asset?.id ? restoredSelection.asset : null;
+  const results = restoredAsset && !currentResults.some(asset => asset.id === restoredAsset.id) ? [...currentResults, restoredAsset] : currentResults;
+  const requestedId = restoredSelection ? restoredSelection.assetId : selectedId;
+  const selected = restoredSelection && !restoredSelection.ready ? null : requestedId ? results.find(asset => asset.id === requestedId) ?? null : restoredSelection?.allowAutomaticSelection === false ? null : results[0] ?? null;
   const queryError = jobQueries.some((query) => query.isError) || mediaQueries.some((query) => query.isError);
   const pending = jobQueries.some((query) => query.isPending) || mediaQueries.some((query) => query.isPending);
   const busy = submitting || recovering || pending || jobs.some((job) => !terminal.has(job.status));
@@ -140,9 +162,11 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   const validBilling = Boolean(billing.data && billing.data.userId === ownerId && Number.isFinite(rate) && rate! > 0 && Number.isFinite(billing.data.creditsRemaining) && billing.data.creditsRemaining >= 0);
   const billingReady = !billing.isError && validBilling && !billing.isPending;
   const insufficientCredits = billingReady && billing.data!.creditsRemaining < requiredCredits;
-  const disabled = access !== "pro" || !billingReady || insufficientCredits || busy || recoveryPending || queryError || invalidJob || missingOutput || uncertainProvider || Boolean(draftError);
+  const selectionUnavailable = Boolean(restoredSelection?.ready && requestedId && !selected && !pending);
+  const disabled = access !== "pro" || !billingReady || insufficientCredits || busy || recoveryPending || queryError || invalidJob || missingOutput || uncertainProvider || Boolean(draftError) || restoredSelection?.ready === false || selectionUnavailable;
   const statusError = requestError ?? (recoveryPending ? "The previous request is not confirmed. Refresh status to recover it; no new generation will be submitted."
     : billing.isError || (billing.data && !validBilling) ? "Could not confirm generation credits for this account. Refresh status before generating."
+    : selectionUnavailable ? "Your saved selected video is unavailable. Retry recovery or choose another video; it will not be replaced automatically."
     : invalidJob ? "This saved job does not belong to video generation. Open the correct workflow."
     : queryError ? "Could not load the saved generation status. Refresh status before starting another request."
     : missingOutput ? "The saved job completed without a video reference. Contact support with the job ID."
@@ -151,6 +175,9 @@ function ConnectedGeneration({ ownerId, draft, children }: {
   useEffect(() => {
     if (terminalKey) void queryClient.invalidateQueries({ queryKey: ["billing-subscription", ownerId] });
   }, [terminalKey, queryClient, ownerId]);
+  useEffect(() => {
+    if (restoredSelection?.ready && restoredSelection.allowAutomaticSelection !== false && !restoredSelection.assetId && selected) onSelectionChange?.(selected);
+  }, [restoredSelection?.ready, restoredSelection?.allowAutomaticSelection, restoredSelection?.assetId, selected, onSelectionChange]);
 
   const [client] = useState(() => createWorkflowGenerationClient({
     getOwnerToken: () => getCurrentUserIdToken(ownerId),
@@ -158,7 +185,7 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     createIdempotencyKey: () => crypto.randomUUID(),
     assertActive() { if (!active.current) throw new Error("This workflow is no longer active."); },
     recovery: {
-      ownerId, kind: draft.kind, storage: () => window.localStorage,
+      ownerId, kind: draft.kind, storage: () => draftId ? workflowDraftRequestStorage(window.localStorage, workflowGenerationRequestStorageKey(ownerId, draft.kind), draftId) : window.localStorage,
       onChange: () => window.dispatchEvent(new Event(STORAGE_CHANGED)),
       withLock: async (work) => {
         if (!navigator.locks) throw new Error("This browser cannot safely coordinate generation across tabs. Use a browser with Web Locks support.");
@@ -169,6 +196,11 @@ function ConnectedGeneration({ ownerId, draft, children }: {
       },
     },
     async uploadImage(image: WorkflowImageSource) {
+      if (image.assetId) {
+        const asset = await fetchFormatReferenceImage(image.assetId, ownerId);
+        if (!active.current) throw new Error("This workflow is no longer active.");
+        return { url: asset.url };
+      }
       let file = image.file;
       if (!file) {
         const reference = CREATOR_REFERENCES.find((item) => item.src === image.url);
@@ -193,41 +225,56 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     },
   }));
 
-  const acceptBatch = useCallback((batch: WorkflowGenerationBatch) => {
+  const acceptBatch = useCallback((batch: WorkflowGenerationBatch, originDraft: string | null | undefined = draftId) => {
+    if (draftId && originDraft !== draftId) {
+      // Read-only recovery can resolve an older account-wide uncertain request.
+      // Store its receipt with its original task, never with the newly open one.
+      if (originDraft) persistWorkflowGenerationJobs(workflowDraftStorage(window.localStorage, originDraft), ownerId, draft.kind, batch);
+      setNotice("An earlier generation was recovered. Open its saved draft or find its video in Creative Assets.");
+      window.dispatchEvent(new Event(STORAGE_CHANGED));
+      return;
+    }
     setSubmittedIds(batch.jobs.map((job) => job.jobId));
     setSelectedId(null);
+    onSelectionChange?.(null);
     setNotice(batch.partial ? batch.message : null);
     try { persistWorkflowGenerationJobs(window.localStorage, ownerId, draft.kind, batch); } catch { /* Server jobs remain authoritative. */ }
+    if (draft.kind === "hook") {
+      try { persistWorkflowGenerationJobs(draftId ? workflowDraftStorage(window.localStorage, draftId) : workflowVisitStorage(window.sessionStorage), ownerId, draft.kind, batch); } catch { /* Durable receipts remain separate. */ }
+    }
     try { persistJobIdInUrl(batch.jobs[0].jobId, urlParameter); } catch { /* Server jobs remain authoritative. */ }
     window.dispatchEvent(new Event(STORAGE_CHANGED));
     void queryClient.invalidateQueries({ queryKey: ["billing-subscription", ownerId] });
-  }, [ownerId, draft.kind, urlParameter, queryClient]);
+  }, [ownerId, draft.kind, urlParameter, queryClient, onSelectionChange, draftId]);
 
   const recover = useCallback(async (resolveUnreceived = false) => {
     if (!active.current || submittingRef.current || recoveringRef.current) return;
     recoveringRef.current = true;
     setRecovering(true);
     try {
+      const pendingRequest = readWorkflowGenerationRequest(window.localStorage, ownerId, draft.kind);
+      const originDraft = draftId && pendingRequest ? workflowRequestDraft(window.localStorage, workflowGenerationRequestStorageKey(ownerId, draft.kind), pendingRequest.requestKey) : undefined;
       const recovered = await recoverWorkflowGenerationRequest({ storage: window.localStorage, ownerId, kind: draft.kind,
         getOwnerToken: () => getCurrentUserIdToken(ownerId), fetch: (...args) => fetch(...args),
         assertActive() { if (!active.current) throw new Error("This workflow is no longer active."); },
         resolveUnreceived,
       });
       if (!active.current) return;
-      if (recovered.batch) acceptBatch(recovered.batch);
-      if (recovered.message) setNotice(recovered.message);
+      if (recovered.batch) acceptBatch(recovered.batch, originDraft);
+      if (recovered.message && (!draftId || originDraft === draftId)) setNotice(recovered.message);
       setActionError(recovered.resolved ? null : "The previous request is not fully confirmed. Refresh status later; starting another request is blocked to avoid duplicate charges.");
       window.dispatchEvent(new Event(STORAGE_CHANGED));
     } catch (error) {
       if (active.current) setActionError(error instanceof Error ? error.message : "Could not recover your request.");
     } finally { recoveringRef.current = false; if (active.current) setRecovering(false); }
-  }, [ownerId, draft.kind, acceptBatch]);
+  }, [ownerId, draft.kind, acceptBatch, draftId]);
 
   useEffect(() => { if (storedRequest) void recover(); }, [storedRequest, recover]);
 
   async function generate() {
     if (disabled || !active.current || submittingRef.current) return;
     submittingRef.current = true;
+    setSubmittedPreview({ aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.startingFrame?.url ?? (draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null), quantity: draft.settings.quantity, prompt: workflowGenerationPrompt(draft), createdAt: new Date().toISOString() });
     setSubmitting(true);
     setActionError(null);
     setNotice(null);
@@ -251,9 +298,21 @@ function ConnectedGeneration({ ownerId, draft, children }: {
     : insufficientCredits ? `This generation needs ${requiredCredits} AI credits. You have ${billing.data!.creditsRemaining}.`
     : draftError ?? `This generation uses ${requiredCredits} AI credits.`;
 
-  return children({ busy, disabled, message, error: actionError ?? statusError, notice, results, selected,
+  const unfinishedCount = jobIds.filter(id => {
+    const job = jobs.find(value => value.id === id);
+    if (!job) return true;
+    if (job.status !== "completed") return !terminal.has(job.status);
+    const output = job.output;
+    return Boolean(output && typeof output === "object" && !Array.isArray(output) && typeof output.mediaAssetId === "string" && !currentResults.some(asset => asset.id === output.mediaAssetId));
+  }).length;
+  const pendingCount = busy ? submitting ? submittedPreview?.quantity ?? draft.settings.quantity : Math.max(1, unfinishedCount) : 0;
+  const pendingPreview = {
+    ...(submittedPreview ?? { aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.startingFrame?.url ?? (draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null) }),
+    label: submitting ? "Preparing your video" : recovering ? "Checking your saved video" : jobs.some(job => !terminal.has(job.status)) ? "Creating your video" : "Loading your video",
+  };
+  return children({ busy, disabled, message, error: actionError ?? statusError, notice, results, selected, pendingCount, pendingPreview,
     onGenerate: () => { void generate(); },
-    selectResult: (id) => { if (results.some((asset) => asset.id === id)) setSelectedId(id); },
+    selectResult: (id) => { const asset = results.find(value => value.id === id); if (asset) { setSelectedId(id); onSelectionChange?.(asset); } },
     refreshStatus: () => {
       void recover(true);
       for (const query of [...jobQueries, ...mediaQueries]) void query.refetch();

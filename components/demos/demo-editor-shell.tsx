@@ -97,7 +97,7 @@ type RenderStatusResponse =
 export function DemoEditorShell({
   demoId,
   returnHref = CONTENT_REELS_HREF,
-  returnLabel = "Back to Content",
+  returnLabel = "Back to Demo",
 }: {
   demoId: string;
   returnHref?: string;

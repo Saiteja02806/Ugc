@@ -7774,6 +7774,2182 @@
       "extractedAt": "2026-10-10T17:35:21.538Z",
       "model": "windows-ocr-en-US-v2",
       "notes": "Visually reviewed 2026-10-10T18:37:50.587Z. Creator captions visually transcribed; all 32 sampled source frames inspected in order, including final frame. Static caption consolidated into one complete block. Timing ends at video stream duration. App interface and incidental scene text excluded. Original wording and values preserved; source claims were not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "slideId": null,
+      "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Computer Science students!!\nThis website is EVERYTHING",
+          "startMs": 0,
+          "endMs": 3067
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:08.393Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "slideId": null,
+      "sourceSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "editors, get ready to\nwash dishes for $100/mo 💀🤡",
+          "startMs": 0,
+          "endMs": 3067
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:09.090Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
+      "slideId": null,
+      "sourceSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Broke people will\nLOVE me after seeing\nTHIS 😭💰",
+          "startMs": 0,
+          "endMs": 3033
+        },
+        {
+          "text": "Go to Pinterest",
+          "startMs": 3033,
+          "endMs": 3067
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:12.425Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "slideId": null,
+      "sourceSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "3 years of video editing\nand NOW i find this??? 😳",
+          "startMs": 0,
+          "endMs": 3733
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:12.689Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+      "slideId": null,
+      "sourceSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "HOW is this even LEGAL?!?\n😭",
+          "startMs": 0,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:16.035Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 96 decoded frames on 2026-10-15 alongside the performance prompt. Original wording, capitalization and emojis preserved; app interface, packaging and incidental scene text excluded. One unchanged caption spans the cafe clip. Timings rounded to milliseconds from decoded frame presentation timestamps. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "slideId": null,
+      "sourceSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How tf is this legal 💀",
+          "startMs": 0,
+          "endMs": 3733
+        },
+        {
+          "text": "Go to “Google”",
+          "startMs": 3733,
+          "endMs": 3734
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:19.212Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "slideId": null,
+      "sourceSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Wasted 2 hours editing my\npodcast when THIS exists\n🤯🤯",
+          "startMs": 0,
+          "endMs": 2667
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:20.173Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
+      "slideId": null,
+      "sourceSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Claude + Shorts\n= $940/day 🤯",
+          "startMs": 0,
+          "endMs": 2700
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:24.140Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 79 decoded frames on 2026-10-15 alongside the performance prompt. Existing text rendering of the floating Claude + Shorts logo equation and $940/day caption confirmed, including the exploding-head emoji. Logo names describe the creator-added overlay; physical laptop sticker text is excluded. Timings checked against decoded frame presentation timestamps and rounded to milliseconds. App interface and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "slideId": null,
+      "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV you married the IT guy",
+          "startMs": 0,
+          "endMs": 2834
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:24.562Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 85 decoded frames on 2026-10-15 alongside the performance prompt. One unchanged creator caption spans the close-up: POV you married the IT guy. Existing wording and timing confirmed. Timings checked against decoded frame presentation timestamps and rounded to milliseconds. App interface and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "slideId": null,
+      "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My Gen Z intern just showed\nme how she's been making\n100+ creatives for our clients\nin 5 minutes 😭💀",
+          "startMs": 0,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:27.506Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 112 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "slideId": null,
+      "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "no way this can HELP\nyou get through your\nRESEARCH! 😭",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:27.991Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "slideId": null,
+      "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Gaming website that\nmakes you money while\nyou sleep 😴💸",
+          "startMs": 0,
+          "endMs": 2434
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:30.212Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 73 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "slideId": null,
+      "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: I let ChatGPT plan and\ncreate an entire video 🤯",
+          "startMs": 0,
+          "endMs": 3367
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:33.504Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 101 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "slideId": null,
+      "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Normal people:\n“I don’t have experience/\nI can’t do game dev”",
+          "startMs": 0,
+          "endMs": 5667
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:41.122Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 258 decoded frames on 2026-10-15 alongside the performance prompt. Caption ends at the cut to the second take, decoded frame 170 at 5667 ms; corrected previous sampled end of 5333 ms. Wording unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-114ce0aeebb28251ce298e14",
+      "slideId": null,
+      "sourceSha256": "9bf4fbe8b87b477b624f37f6249ec76118a5fe47a945131379f453f24483f9a7",
+      "format": "hook",
+      "status": "needs_review",
+      "blocks": [],
+      "extractedAt": "2026-10-15T07:11:44.055Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Local OCR v2; review policy: creator captions only. Complete 64-block full-frame OCR retained in reference-text-transcripts.json. Similarity proposals are unapproved; verify captions, exclude UI and check emojis. Source frame timestamps used; sampling up to 4fps, boundaries still approximate. Editor capacity exceeded; no partial transcript published. Review/consolidate the complete extraction."
+    },
+    {
+      "referenceId": "explore-paired-hook-be7df3868a7b06024c0a90d1",
+      "slideId": null,
+      "sourceSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: put your dream\nshoes on a public\nwishlist for fun...\nturns out rich people\nenjoy spending\nmoney 😭😭",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:45.798Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-b0aead788c4930565401371b",
+      "slideId": null,
+      "sourceSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I owe my entire career\nto the random guy\nwho showed me this\nside hustle 😭",
+          "startMs": 0,
+          "endMs": 2434
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:47.706Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 72 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
+      "slideId": null,
+      "sourceSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "BRUH 💀 I just found out\nhow my 6 year old brother\nstudies for exams 😭😳",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:49.494Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 63 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "slideId": null,
+      "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could LITERALLY KISS the\nflight attendant that\nshowed me this 🤭🤭😩",
+          "startMs": 0,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:51.936Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 88 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "slideId": null,
+      "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+          "startMs": 0,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:53.122Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "slideId": null,
+      "sourceSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+          "startMs": 0,
+          "endMs": 2933
+        },
+        {
+          "text": "Open Cantina",
+          "startMs": 2933,
+          "endMs": 2934
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:55.921Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
+      "slideId": null,
+      "sourceSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So this is why everyone’s\ndeleting Claude 🤯💰",
+          "startMs": 0,
+          "endMs": 3200
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:57.547Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 94 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-59dee735a7c5d1643bc57127",
+      "slideId": null,
+      "sourceSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you’re unemployed but\nrent is due tomorrow 💰",
+          "startMs": 0,
+          "endMs": 2300
+        }
+      ],
+      "extractedAt": "2026-10-15T07:11:59.045Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 68 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-43f2c2d266d23e3af05875d8",
+      "slideId": null,
+      "sourceSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "AI + coloring books\n= 💰💰💰",
+          "startMs": 0,
+          "endMs": 2567
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:01.401Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 77 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-62f80506cbbedab0d340f863",
+      "slideId": null,
+      "sourceSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "= 💰💰💰/mo",
+          "startMs": 0,
+          "endMs": 1634
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:02.330Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "slideId": null,
+      "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Broke people are gonna\nKISS me after seeing\nTHIS 😭💸",
+          "startMs": 0,
+          "endMs": 3367
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:06.144Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 98 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
+      "slideId": null,
+      "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I owe my side income\nto this AI coloring book\n💰💰💰",
+          "startMs": 0,
+          "endMs": 2567
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:06.799Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 77 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
+      "slideId": null,
+      "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I use Chatgpt to help me code”\n🤮🤮🤮",
+          "startMs": 0,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:09.956Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
+      "slideId": null,
+      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "editors,\nare we cooked?",
+          "startMs": 0,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:10.210Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 88 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-9309a041061ae5abc6970d52",
+      "slideId": null,
+      "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "new obsession unlocked:\nplaying a game where I\nhave access to a missing\nk-pop idol’s phone and I\nhave to figure out what\nhappened to her",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:12.699Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 63 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "slideId": null,
+      "sourceSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you gave the IT guy\na chance 😭",
+          "startMs": 0,
+          "endMs": 2400
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:13.642Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-df58806df2ea040df347f267",
+      "slideId": null,
+      "sourceSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "pov: you’re in love with\na nerd 😭",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:16.324Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
+      "slideId": null,
+      "sourceSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: U finally understood\nhow to use Claude\nfor marketing 😭",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:17.056Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 64 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
+      "slideId": null,
+      "sourceSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“i edit all my videos manually\nin capcut”\n🤮🤮🤮",
+          "startMs": 0,
+          "endMs": 3767
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:20.309Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "slideId": null,
+      "sourceSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "just thinking about all\nthe selfies I deleted before I\nknew about this",
+          "startMs": 0,
+          "endMs": 3500
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:20.785Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 105 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-f1b5421be14d24803539be89",
+      "slideId": null,
+      "sourceSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "so THIS is how creators talk\nfor 10 minutes without\nforgetting their words??",
+          "startMs": 0,
+          "endMs": 1634
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:23.093Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "slideId": null,
+      "sourceSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "so graphic designers have\nbeen using THIS instead of\nPinterest this WHOLE time??!",
+          "startMs": 0,
+          "endMs": 3234
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:24.164Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 94 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "slideId": null,
+      "sourceSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found a game where\nyou have to stalk a missing\ngirl's phone to find out\nwhat happened to her",
+          "startMs": 0,
+          "endMs": 2167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:25.771Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 63 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "slideId": null,
+      "sourceSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could literally kiss\nthe game dev that\nshowed me this 🤯😭",
+          "startMs": 0,
+          "endMs": 3900
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:27.958Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 116 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "slideId": null,
+      "sourceSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I use ChatGPT to make\nvideo games 🤮🤮🤮”",
+          "startMs": 0,
+          "endMs": 4533
+        },
+        {
+          "text": "Go to Tesana.ai",
+          "startMs": 4533,
+          "endMs": 4534
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:30.061Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "slideId": null,
+      "sourceSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "HOW is this even LEGAL?!?",
+          "startMs": 0,
+          "endMs": 3200
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:32.020Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "slideId": null,
+      "sourceSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine being\nUNEMPLOYED when\nthis EXISTS 🤯💀🤯",
+          "startMs": 0,
+          "endMs": 4834
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:34.006Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 142 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "slideId": null,
+      "sourceSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: How it feels\nfinally making your\ndream game 🔥",
+          "startMs": 0,
+          "endMs": 3400
+        },
+        {
+          "text": "GOOD 😆",
+          "startMs": 3400,
+          "endMs": 3734
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:35.447Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+      "slideId": null,
+      "sourceSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Kids YouTube + AI\n= 💰💰💰",
+          "startMs": 0,
+          "endMs": 3167
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:37.884Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "slideId": null,
+      "sourceSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Gaming website that\nmake you rich in 2026\n🤯🤯💸💵💰",
+          "startMs": 0,
+          "endMs": 5700
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:39.829Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 168 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "slideId": null,
+      "sourceSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How is this\nLEGAL 😭💀",
+          "startMs": 0,
+          "endMs": 2434
+        }
+      ],
+      "extractedAt": "2026-10-15T07:12:41.148Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 72 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "slideId": null,
+      "sourceSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“bro rate my startup idea 💀🥀”",
+          "startMs": 0,
+          "endMs": 2400
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:07.836Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 72 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "slideId": null,
+      "sourceSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Part time job ❌\nColoring Books ✅",
+          "startMs": 0,
+          "endMs": 2766
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:09.015Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 83 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "slideId": null,
+      "sourceSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Wait...CHATGPT 6 Astra can do what? 🤡💀",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:12.192Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "slideId": null,
+      "sourceSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I can’t get client” 🤨",
+          "startMs": 0,
+          "endMs": 2333
+        },
+        {
+          "text": "“I can’t get client” 🤨\n“Ok...let me show you how” 😎",
+          "startMs": 2333,
+          "endMs": 3766
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:12.860Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 113 decoded frames on 2026-10-16 alongside the performance prompt. Additional yellow caption starts at decoded frame 70 / 2333 ms, correcting prior 2400 ms sampled boundary. Corrected first caption emoji to the visible raised-eyebrow face; wording unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "slideId": null,
+      "sourceSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "SAY BYE BYE\nTO CLAUDE MAX 🥀🤪",
+          "startMs": 0,
+          "endMs": 2800
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:16.356Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 84 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "slideId": null,
+      "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "grand\ntheft\nauto VI + YouTube\n= $678/day 🤑",
+          "startMs": 0,
+          "endMs": 3200
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:18.674Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 96 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
+      "slideId": null,
+      "sourceSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "pov: you’re dating an IT guy",
+          "startMs": 0,
+          "endMs": 3466
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:19.754Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 104 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "slideId": null,
+      "sourceSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "4 YEARS of Amazon shopping and nobody told\nme about this!!! 👀",
+          "startMs": 0,
+          "endMs": 2800
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:21.303Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "slideId": null,
+      "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "No way I’ve been shopping on Amazon for 4 YEARS\nand NOW I find this 💀💀💀",
+          "startMs": 0,
+          "endMs": 1767
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:22.410Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "slideId": null,
+      "sourceSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How tf is this LEGAL? 💀",
+          "startMs": 0,
+          "endMs": 4700
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:26.446Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 140 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "slideId": null,
+      "sourceSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I deleted Capcut after this 🤫",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:26.778Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-743919c25a4f61942184a81b",
+      "slideId": null,
+      "sourceSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Why was I searching for\ntemplate on Tiktok when\nthis exists 😭😭😭",
+          "startMs": 0,
+          "endMs": 2566
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:31.575Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 77 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "slideId": null,
+      "sourceSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I think my sister has\nofficially lost her mind\nwhy is this her wedding\ninvitation??",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:32.156Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "slideId": null,
+      "sourceSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "someone tell me how this worksss 🥺",
+          "startMs": 0,
+          "endMs": 1900
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:34.614Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 57 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "slideId": null,
+      "sourceSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "how life sounds like after your\nfriend shows you an app to\nlive translate and save\nmanhwa on your phone",
+          "startMs": 0,
+          "endMs": 2733
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:36.619Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 82 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "slideId": null,
+      "sourceSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine a game where\nyou have to stalk a\nmissing girl’s phone to\nfind her",
+          "startMs": 0,
+          "endMs": 2666
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:39.762Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 64 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "slideId": null,
+      "sourceSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My sister is actually nuts\nwhy are these her\nwedding invites 😭",
+          "startMs": 0,
+          "endMs": 3000
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:41.233Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 90 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "slideId": null,
+      "sourceSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: ur alarm won’t turn\noff til u do 15 squats 😭😭😭",
+          "startMs": 0,
+          "endMs": 2433
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:43.959Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 73 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "slideId": null,
+      "sourceSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Travel Agents...\nare we cooked??",
+          "startMs": 0,
+          "endMs": 1733
+        },
+        {
+          "text": "Travel Agents...\nare we cooked??\nlook what I found... 😭😭",
+          "startMs": 1733,
+          "endMs": 3033
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:47.783Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 91 decoded frames on 2026-10-16 alongside the performance prompt. Additional caption starts at decoded frame 52 / 1733 ms, correcting prior 1867 ms sampled boundary. Wording and emojis unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "slideId": null,
+      "sourceSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You’re telling me I could’ve been\nwatching the Bible this whole\ntime???",
+          "startMs": 0,
+          "endMs": 4100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:52.125Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 123 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "slideId": null,
+      "sourceSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How to put a Bible verse\non your lockscreen\n(It changes everyday)",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:53.773Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-caceb6cb43d6e62137cf9892",
+      "slideId": null,
+      "sourceSha256": "923b786dd67b219c34d29e4011429fb56a3c1bdfdb9039480423beb595df4631",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "10 years of using a male\ndesigned period app and\nnow I find this...",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:55.482Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 93 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
+      "slideId": null,
+      "sourceSha256": "d864c622b2a8534724d126def5d50c02369e1dc4641b86bdcc3adcaa30ac26ad",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You realize you’ve been\nusing such basic period\napps & then find THIS!!!??",
+          "startMs": 0,
+          "endMs": 3833
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:58.455Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 115 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
+      "slideId": null,
+      "sourceSha256": "759fb407fb2cb8fb19a62fa7aeccd19b2065fe82f73c842fb087937450148f63",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "pov: you finally delete\nsnap",
+          "startMs": 0,
+          "endMs": 2135
+        }
+      ],
+      "extractedAt": "2026-10-15T09:07:59.098Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 63 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "slideId": null,
+      "sourceSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My boyfriend changed my alarm so now I have\nto fly to turn it off 😭😭💔",
+          "startMs": 0,
+          "endMs": 3100
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:01.830Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-c709e563045b8e9e473929a9",
+      "slideId": null,
+      "sourceSha256": "5f05f8e35fac3de5dd1b15687e8b296ddfaa5896cbfc78bb229eae570083d5a6",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Not my MOMMM asking me to\nget this with her before I leave for\ncollege 😭🥰",
+          "startMs": 0,
+          "endMs": 4066
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:02.917Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 122 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-e7147ac8b75176755e120150",
+      "slideId": null,
+      "sourceSha256": "2435b7e644d5677dac8392a674090c26368b1870b4a796fad11cc8719f7e016a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "4 years at the gym and I just\nNOW find this?!?!",
+          "startMs": 0,
+          "endMs": 3633
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:07.492Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 107 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "slideId": null,
+      "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "20 years of cooking and I just\nfound this? 😳😡😭",
+          "startMs": 0,
+          "endMs": 6366
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:08.041Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 191 decoded frames on 2026-10-16 alongside the performance prompt. Corrected first emoji to the visible flushed face after full-resolution inspection. Wording and remaining emojis unchanged. Existing timing remains approximate. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
+      "slideId": null,
+      "sourceSha256": "17c7306fd6dc9d0def83620bb1757cdd906e9e9e0845559bce9a6930089b2628",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "imagine being scared\nof solo traveling\nwhen THIS exists 🤣💀",
+          "startMs": 0,
+          "endMs": 2966
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:10.941Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 89 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
+      "slideId": null,
+      "sourceSha256": "a2348d4501bba0c87969569e7f5aae8b3e3b63933ed80834a60f5c90b0d3bacf",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "How TF is this legal\nIn CANVA 👹😨🤯😭",
+          "startMs": 0,
+          "endMs": 3567
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:13.352Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-16 alongside the performance prompt. Corrected visible four-emoji sequence after full-resolution inspection. Caption disappears at decoded frame 106 / 3567 ms; corrected prior clip-end timing. Wording unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-def19968a4a8c55c52679591",
+      "slideId": null,
+      "sourceSha256": "6c627bb27ec546ec86da3021a9769d75b6b6a720003f48a8f907a8990dd4f908",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Girls in Seoul 🇰🇷 are WILD\n😂😭💔",
+          "startMs": 0,
+          "endMs": 3233
+        }
+      ],
+      "extractedAt": "2026-10-15T09:08:15.413Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-7351dd660bc41910b9f25453",
+      "slideId": null,
+      "sourceSha256": "b3d94f4ce96c9170c6f1e46a86fbe45fb8f0a9e81ba329b96333b5e3d9658680",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "wait...I think Draco is\nOBSESSED with me?!",
+          "startMs": 0,
+          "endMs": 2933
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:28.859Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 86 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-0c14ee9d885466ad13cf9e52",
+      "slideId": null,
+      "sourceSha256": "365f323663661caafdff955f6ad72ce30e44fc6cb17acb9a4932dc9d463f65d5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "my new obsession: a\ngame where you go\nthrough a fake phone to\nfind a missing girl 🤫",
+          "startMs": 0,
+          "endMs": 2133
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:29.322Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-5be30f0749eec90b5a70bd18",
+      "slideId": null,
+      "sourceSha256": "7d3eee8c771389c88bf94ef30f97930558fad323b3328d32cd61838becf4af33",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you gave a chance to\nthe IT guy and he sent this...\nlike wtf 😭",
+          "startMs": 0,
+          "endMs": 4266
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:36.289Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 126 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-2e28e18f894e3ba7de367ced",
+      "slideId": null,
+      "sourceSha256": "3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My sister is\nactually nuts why\nis this her wedding\ninvitation 😭😭😭",
+          "startMs": 0,
+          "endMs": 5633
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:39.799Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 167 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-d3a67b533f083d26dd5d46f0",
+      "slideId": null,
+      "sourceSha256": "0097678ec0a78858157af61162d0283aabd851dd439f772267a939853ccf4471",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "ive spent 3HOURS book\nshopping and i just found\nthis now... like wtf 😭",
+          "startMs": 0,
+          "endMs": 4000
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:40.658Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 118 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-607bfccda5e91e0d8731fa94",
+      "slideId": null,
+      "sourceSha256": "3205ad7a9a13b1f49e411498ec8a8a028ec6d649d3fcb374381981ec019315ba",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "BRUH 💀 i just found out\nhow my little brother studies\nfor exams 😭",
+          "startMs": 0,
+          "endMs": 4466
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:45.897Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 132 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-e5870158a2ad1494edc92741",
+      "slideId": null,
+      "sourceSha256": "22fa7d27707a2db3a76e1c61ecb4f12e234ac8e7cc1df414612784e6f42437ef",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "BRUH 💀 3 YEARS OF\nSTUDYING AND I ONLY\nJUST FOUND THIS...",
+          "startMs": 0,
+          "endMs": 5733
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:46.757Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 342 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-717396089efc644caf411c79",
+      "slideId": null,
+      "sourceSha256": "04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "WTF 😭 i just found out\nhow my sister studies for her\nexams... 💀",
+          "startMs": 0,
+          "endMs": 5133
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:51.728Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 120 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-bee95bd7a34b5d2a72775282",
+      "slideId": null,
+      "sourceSha256": "cf993840bc2066e17957e9251f423c75b8645f6b9ddb4520cbae03028f200d6e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "WTF did i just find in my\nLAST YEAR OF UNI 😭",
+          "startMs": 0,
+          "endMs": 6033
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:53.570Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 181 decoded frames on 2026-10-16 alongside the performance prompt. Caption disappears at decoded frame 179 / 6033 ms, before the final two caption-free frames; corrected previous full-duration end of 6100 ms. Wording and emoji unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-164ad3e6923d5d0d576114a5",
+      "slideId": null,
+      "sourceSha256": "22ca3cffd2aac8e07271d24b7ea24ccb6989c85b4b4fc28cbf1fdd3803e21b34",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "i can do WHAT in london??? 💀💀",
+          "startMs": 0,
+          "endMs": 2866
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:57.345Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 84 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+      "slideId": null,
+      "sourceSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "italian girls are you OKAY???",
+          "startMs": 0,
+          "endMs": 2734
+        }
+      ],
+      "extractedAt": "2026-10-15T12:52:58.127Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
+      "slideId": null,
+      "sourceSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "paris girls are you OKAY???",
+          "startMs": 0,
+          "endMs": 2900
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:01.012Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-paired-hook-349e499826f7491d91f6b712",
+      "slideId": null,
+      "sourceSha256": "2a7b50e5af6a4ae022ce388de44598b7c5de4a67e7b9bf06e33b076df8fbe02a",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "uhmmm you're telling me i've been cooking for 3\nYEARS and NOW i find this????",
+          "startMs": 0,
+          "endMs": 4600
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:02.859Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 136 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-88b4f433fe4fcb0504aca67f",
+      "slideId": null,
+      "sourceSha256": "3fd1ed03b048203fddd4df7fdae61b2980a0e4eabc8b4d376ac66e9615baa5aa",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Been cooking for 5+ years and NOW i find this??",
+          "startMs": 0,
+          "endMs": 3300
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:04.862Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-c5e3806f418bbe37e864485a",
+      "slideId": null,
+      "sourceSha256": "66bb907a5d4ada74dc2a5312fb098efb056c8dee007212e8bda29c8424fc8b0d",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "3 years saving tiktok\nrecipes and NOW i\nfind this? 💀",
+          "startMs": 0,
+          "endMs": 3566
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:10.347Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 105 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-61eb29067f56267684b7cfe6",
+      "slideId": null,
+      "sourceSha256": "58d47b1374e44a4c83ad4d34a72ac424b4f476ab028d4992f33b805ca212e361",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "a girl in my class just showed\nme what she uses to study 😭",
+          "startMs": 0,
+          "endMs": 2800
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:10.507Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 82 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-095c5d08848977c4a1dda973",
+      "slideId": null,
+      "sourceSha256": "6033dbd8c2a2c8fb849b37224d798bde39f492b2702bd5b58f5a9f1cf74cbad0",
+      "format": "hook",
+      "status": "no_text",
+      "blocks": [],
+      "extractedAt": "2026-10-15T12:53:15.535Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 103 decoded frames on 2026-10-16 alongside the performance prompt. Graphic logo-and-symbol formula only; no remixable caption copy in any decoded frame. Preserved no_text status and empty blocks; no words invented from logos. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-f12c90a72871c0cdaf3503db",
+      "slideId": null,
+      "sourceSha256": "42e1d5861cd1238f8f8bf4fada49c92ebdd7552de9dc061e9455abcd48de2c6c",
+      "format": "hook",
+      "status": "no_text",
+      "blocks": [],
+      "extractedAt": "2026-10-15T12:53:15.712Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 118 decoded frames on 2026-10-16 alongside the performance prompt. Graphic logo-and-symbol formula only; no remixable caption copy in any decoded frame. Preserved no_text status and empty blocks; no words invented from logos. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-2822e820228a01fb4c4273a1",
+      "slideId": null,
+      "sourceSha256": "a94d5b7f3fab41fbf5e10d4e3c03fc1f6469b40839fdf5d6b7a7e72060491466",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I've literally been shopping on amazon for 5\nYEARS and NOW i find this???💀",
+          "startMs": 0,
+          "endMs": 4000
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:19.528Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 118 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-50dd086ef9d1c758d5ae3bb5",
+      "slideId": null,
+      "sourceSha256": "fd68174881fb1e29456a56b5360ff1d4f6052ed31da4e91796dfbe8bbccac4e1",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "= GOATED LEADS",
+          "startMs": 0,
+          "endMs": 2933
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:19.735Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 86 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-a9289ca5bd17288593e63eee",
+      "slideId": null,
+      "sourceSha256": "df879f22de59f37d4556ee97e831745382c60f2273bc51b8fa0a16fe9c2ae87e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "No way I've been shopping on amazon for 4\nYEARS and NOW i find this 💀💀💀",
+          "startMs": 0,
+          "endMs": 3633
+        }
+      ],
+      "extractedAt": "2026-10-15T12:53:22.502Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Creator captions rechecked against all 107 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+      "slideId": null,
+      "sourceSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found a game where I\nneed to stalk a girl's cell\nphone to find out what\nhappened With her",
+          "startMs": 0,
+          "endMs": 1967
+        }
+      ],
+      "extractedAt": "2026-10-15T12:59:25.270Z",
+      "model": "windows-ocr-en-US-v2",
+      "notes": "Scene cleanup approved by user on 19 October 2026. Discarded unrelated tail; retained text clipped to the new source duration without rewriting copy."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-1-5baea1ab7269",
+      "sourceSha256": "5baea1ab726961e9f523f6793f20819f70612aa72870a3d740506f6c17ac4b2d",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine you’re driving a car...",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.007Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 1 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-2-74f2f837d96c",
+      "sourceSha256": "74f2f837d96c8d878c5e630b5ca2fd8551b18bc9ddc4792b67b2ce928f9813f4",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Okay...",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 2 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-3-eaf045962221",
+      "sourceSha256": "eaf045962221f94808293e5c9ac8c33ede076cf61989d344393d0a5a58a4feec",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You’re trying to find an\naddress, but the music is\nplaying loudly. What do you\ndo?",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 3 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-4-dcd2d3e605f9",
+      "sourceSha256": "dcd2d3e605f9f71a1de9833abca3ff1eb0a4f904b870a4673011f39136c4e68e",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I turn it down.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 4 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-5-ed3a6942ecc5",
+      "sourceSha256": "ed3a6942ecc59e043b745e1422ef83bb3cc39d742ed9f127e007542247783658",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Why?",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 5 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-nota-f79553cb5f15c74e",
+      "slideId": "slide-6-9aba9a629ad6",
+      "sourceSha256": "9aba9a629ad6fb3934b4ef7fa7aa708bb63bb14c65048e3be462edc04137d0d5",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So I can focus.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-19T13:09:32.009Z",
+      "model": "manual-visual-review",
+      "notes": "Visually reviewed supplied NOTA slide 6 on 2026-10-19. Original visible caption transcribed in numbered source order; no rewriting. Text is baked into the source image."
+    },
+    {
+      "referenceId": "explore-slideshow-general-649259ba9668dd18",
+      "slideId": "slide-1-c4d26e6aab87",
+      "sourceSha256": "c4d26e6aab8712af16c89e1521ed490b59d3fea380d385724fa4a12ea7beeaca",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "“I don’t feel like studying/working today”",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.461Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-649259ba9668dd18",
+      "slideId": "slide-2-7644f59cd6dd",
+      "sourceSha256": "7644f59cd6dd4fa30dd5ab46fcd39e08677643ef7d64b584f06f459f86217686",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Tell me something that will break my heart so much that it’ll make me work/study",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.463Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-649259ba9668dd18",
+      "slideId": "slide-3-912403411ad7",
+      "sourceSha256": "912403411ad7fba31c3f3d87465445372641c82819f601d3d9d74c37d97cc3d2",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Imagine waking up one day to find that all the people you care about have moved on, achieving their dreams and living fulfilling lives, while you’re still stuck in the same place, paralyzed by inaction. The opportunities you once had are gone, and time lost can never be reclaimed.\nThe person you could have become—the one with the skills, the knowledge, and the confidence—is now just a distant dream, someone you’ll never meet because you didn’t put in the effort when it mattered most. And the worst part? You’ll have to live with that regret forever.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.463Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-1-1b632b100c7e",
+      "sourceSha256": "1b632b100c7e01921d5ae22ee1347aea1aa564978a7afa98168e1671a6b77693",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Your SaaS doesn’t need another feature.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-2-c5e348e64bfb",
+      "sourceSha256": "c5e348e64bfb2fe40665d1757bf3cfa3f62d8b4cdae603dbeff61ca7cab0ba7a",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Then what am I doing wrong?\nYou’re avoiding distribution.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-3-1714b5c3d978",
+      "sourceSha256": "1714b5c3d978a581f97cc8c3c2562e544b9ec49cc3b61e58522943bec11cde4b",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "But I’m building every day.\nI know. Building feels productive, so it looks like progress.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-4-89dab46fb4e3",
+      "sourceSha256": "89dab46fb4e31647445aa7c3cd8a2cad3694f6b514de666e1fb00cd27ec165ea",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Why does posting feel so hard?\nWithout a proven format, 0 views and 0 likes feel personal.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-5-ec43957cf2c9",
+      "sourceSha256": "ec43957cf2c931f36369ddcaf5ce047e5cb95123853666dd63143866b46b22f3",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So I just keep coding?\nYes. AI made coding easier, so it feels safer than posting.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-82d6b7c19da0b3ef",
+      "slideId": "slide-6-162345321e6c",
+      "sourceSha256": "162345321e6cea8193d583707b92958e6a856e693519ee1bf9f4cb062a804e15",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "So what should I do instead?\nMake distribution your next feature.\nUse a proven content format.\nPost the problem.\nShow the demo.\nFind your first users.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.518Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-2f9cd9c161e9df4e",
+      "slideId": "slide-1-58632543f26c",
+      "sourceSha256": "58632543f26c25a37b27160b5045089d9cf583fb654c9de68f4286195667cb19",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I’ve been posting consistently for 1 month and these’re the 5 major things I’ve learned",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.561Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-2f9cd9c161e9df4e",
+      "slideId": "slide-2-79f4af9c561d",
+      "sourceSha256": "79f4af9c561d33c4b1b69a1ea3a04697e5a1d2c7cfc0648196254825b380bc5e",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "1. Post 1-4x a day\nanything that fits ur niche, quality doesn’t need to be perfect. just post and see what sticks\n2. Don’t sleep on stories\nposting to story daily gives tiktok more signals. ur video start reaching new ppl.\n3. Stop just scrolling\nengage on other ppls posts. shows tiktok ur real and need to boost ur stuff\n4. Stop guessing why ur videos flop.\nreel view shows how many ppl actually watch, when they swipe, and where they go. u can fix it instead of overthinking.\n5. Post at random times\ntry different time slots tiktok let u test ur content with different ppl. u might be surprised what works",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.561Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-aa89f92f73637d43",
+      "slideId": "slide-1-a69f9077e105",
+      "sourceSha256": "a69f9077e1050ec87a8923b64a67203763b44bab82f0c6ce9905e7d74e92fb87",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "i’ve been posting consistently for 3 months and these’re the 4 major things i’ve learnt",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.602Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-slideshow-general-aa89f92f73637d43",
+      "slideId": "slide-2-fae07bb6b7bd",
+      "sourceSha256": "fae07bb6b7bdfa971cec196ed89dff53af8a2ec66b6c6c475bfaaccceeb8491d",
+      "format": "slideshow",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "1. don’t sleep on tiktok stories\nposting daily gives tik tok more signals\nand your videos get shown to new ppl.\n2. post 1-4 times daily\ndepending on your niche\nbut quality > quantity.\none good video beats 4 rushed ones.\n3. stop just scrolling\nengage on posts in your niche\nshows tik tok you’re a real account\nand gets your content pushed to new viewers\n4. stop guessing why ur videos flop.\nreel view shows what people actually watch,\nwhen they swipe, and what grabs their attention\nyou stop guessing what works,\nand post smarter.",
+          "startMs": null,
+          "endMs": null
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:52.602Z",
+      "model": "manual-visual-review",
+      "notes": "Visible source copy reviewed against supplied numbered image. Application chrome, timestamps and incidental interface icons omitted. Source wording retained."
+    },
+    {
+      "referenceId": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "slideId": null,
+      "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "You’re telling me this is what the cool girls use for their Pinterest??",
+          "startMs": 0,
+          "endMs": 4100
+        }
+      ],
+      "extractedAt": "2026-10-23T07:31:53.892Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 123 decoded frames of the source. Only the supplied reaction-only 4.1s clip is imported; full download retains an unrelated screen tail and is not the Hook source. Native source audio retained; separate MP3 derived from that same clip, no music invented."
+    },
+    {
+      "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "slideId": null,
+      "sourceSha256": "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you finally understand\nhow to use Claude\nfor marketing",
+          "startMs": 0,
+          "endMs": 3800
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:36.977Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 112 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-ddcfb2950d40f37771058b73",
+      "slideId": null,
+      "sourceSha256": "cd230e98db5d44712ca1541712b3ccc34c241af65c1142a3bb4c5136c581df22",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I could literally KISS\nthe business owner\nwho showed me this",
+          "startMs": 0,
+          "endMs": 3834
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:38.728Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 113 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+      "slideId": null,
+      "sourceSha256": "ddb24f03edb483ef194be7cbe0c74d26a9ec4ae39507642efd2d334759fddf35",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Since when can WhatsApp\ndo THIS??!😭😭",
+          "startMs": 0,
+          "endMs": 2767
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:40.333Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 81 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+      "slideId": null,
+      "sourceSha256": "109ec5d49c4f33800c23a26329107d1ffd26d98b5048c8a210d8534164a1e7c6",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "POV: you found a way to\nmake your texts point you\nback to God",
+          "startMs": 0,
+          "endMs": 2967
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:41.864Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 87 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+      "slideId": null,
+      "sourceSha256": "7e43f6ca3c30d32d362c8370e7e1d82dd722604f4146db11ad1f4fbb0bdceb22",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I love Gen Z because WDYM\nwe made a Bible buddy that\nwill literally text you and\nremind you to spend time\nwith God",
+          "startMs": 0,
+          "endMs": 3400
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:43.542Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 100 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "slideId": null,
+      "sourceSha256": "05738540ee02c011cf73cfe2db7cae40b88c0886af99c23a99704e630bbfc955",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "My husband coded\nme this!!!!",
+          "startMs": 0,
+          "endMs": 1834
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:44.723Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 53 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-44d165d51084f977f5146f69",
+      "slideId": null,
+      "sourceSha256": "b9b0c519f1e061ae9cdc91965cb6797777cee0f763d1e1f94cf0614f1d438f06",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+          "startMs": 0,
+          "endMs": 2800
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:46.100Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 82 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-hook-c15a0f9f2a7c4a28d5330825",
+      "slideId": null,
+      "sourceSha256": "3b75bff5ce95145b5779f91b8bb9a235009e69f4829d756679ee1b6cc0ee79a2",
+      "format": "hook",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Claude Code can't do that 😮‍💨",
+          "startMs": 0,
+          "endMs": 1000
+        }
+      ],
+      "extractedAt": "2026-10-23T10:40:46.983Z",
+      "model": "manual-visual-review",
+      "notes": "Caption visually checked across all 28 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
     }
   ]
 }

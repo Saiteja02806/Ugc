@@ -1,12 +1,17 @@
 import { AI_STUDIO_KLING_PROMPT_MAX_LENGTH, AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH, getAIStudioPromptLengthError, normalizeAIStudioPrompt } from "../ai-studio/prompt-policy";
 import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } from "./workflow-generation-settings";
+import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
+import type { HookStartingFrameSelection } from "./hook-keyframe-client";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "../../worker/src/lib/hook-starting-frame-video";
 
 export type WorkflowKind = "hook" | "phone";
-export type WorkflowImageSource = { name: string; url: string; file?: File };
+export type WorkflowImageSource = { name: string; url: string; file?: File; assetId?: string };
 export type WorkflowTimedSource = { url: string; name?: string; duration?: number | null; file?: File };
 export type WorkflowGenerationDraft = {
   kind: WorkflowKind;
   instructions: string;
+  /** Editable reference directions shown beside the user's own instructions. */
+  referenceInstructions?: string;
   settings: WorkflowGenerationSettings;
   creator: WorkflowImageSource | null;
   referenceImages?: WorkflowImageSource[];
@@ -15,6 +20,7 @@ export type WorkflowGenerationDraft = {
   audioReference: WorkflowTimedSource | null;
   referencesPending?: boolean;
   referencesError?: string | null;
+  startingFrame?: HookStartingFrameSelection | null;
 };
 export type WorkflowGenerationBatch = {
   jobs: { jobId: string; videoId: string }[];
@@ -24,6 +30,12 @@ export type WorkflowGenerationBatch = {
 
 const JOB_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
+
+export function workflowGenerationPrompt(draft: Pick<WorkflowGenerationDraft, "instructions" | "referenceInstructions">) {
+  const own = normalizeAIStudioPrompt(draft.instructions);
+  const reference = normalizeAIStudioPrompt(draft.referenceInstructions ?? "");
+  return reference ? `Reference instructions:\n${reference}\n\nYour instructions:\n${own}` : own;
+}
 
 function selectedWorkflowImages(draft: WorkflowGenerationDraft) {
   const selected = [...(draft.referenceImages ?? (draft.creator ? [draft.creator] : [])), ...(draft.appScreen?.kind === "image" ? [draft.appScreen] : [])];
@@ -35,8 +47,8 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   // A failed replacement may retain the prior preview. Do not submit that
   // stale reference until the user replaces or removes the rejected input.
   if (draft.referencesError) return draft.referencesError;
-  const prompt = normalizeAIStudioPrompt(draft.instructions);
-  if (!prompt) return "Write your instructions before generating a video.";
+  if (!normalizeAIStudioPrompt(draft.instructions)) return "Write your instructions before generating a video.";
+  const prompt = workflowGenerationPrompt(draft);
   const lengthError = getAIStudioPromptLengthError(prompt, draft.settings.model === "kling_3_0" ? AI_STUDIO_KLING_PROMPT_MAX_LENGTH : AI_STUDIO_VIDEO_PROMPT_MAX_LENGTH);
   if (lengthError) return lengthError;
   if (draft.settings.model === "kling_3_0" && prompt.length < 2) return "Kling 3.0 requires a prompt of at least 2 characters.";
@@ -44,26 +56,40 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
   if ((Object.keys(validSettings) as (keyof WorkflowGenerationSettings)[]).some((key) => validSettings[key] !== draft.settings[key])) {
     return "These generation settings are unavailable. Choose a supported model, duration and quality.";
   }
+  if (draft.startingFrame) {
+    if (draft.kind !== "hook") return "Starting-frame Recreate is unavailable in this workflow.";
+    if (!isHookStartingFrameVideoModel(draft.settings.model) || !hookStartingFrameVideoDurations(draft.settings.model).includes(draft.settings.duration)) return "Choose a supported starting-frame model and duration.";
+    const { width, height } = draft.startingFrame;
+    const frameRatio = Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0
+      ? width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : null : null;
+    if (!frameRatio || draft.settings.aspectRatio !== frameRatio) return "Starting-frame animation keeps your approved image's shape. Choose a matching frame.";
+    if (draft.audioReference) return "Starting-frame animation cannot use an audio reference. Remove it and use Sound for generated speech, or remove the starting frame to keep audio guidance.";
+    if (draft.videoReference || draft.creator || draft.referenceImages?.length || draft.appScreen) return "Remove other generation references before animating your approved starting frame.";
+    return null;
+  }
   // Reject before uploading or spending. Never quietly discard an attached input.
   const videos = [draft.videoReference, draft.appScreen?.kind === "video" ? draft.appScreen : null].filter(Boolean) as WorkflowTimedSource[];
-  if ((videos.length || draft.audioReference) && draft.settings.model !== "seedance_2_5") return "Choose Seedance 2.5 to use reference audio or video through OpenRouter. These inputs guide generation; they are not background music or a demo.";
+  const referenceTypeError = getVideoReferenceTypeError(draft.settings.model, videos.length > 0, Boolean(draft.audioReference));
+  if (referenceTypeError) return referenceTypeError;
   if (videos.length > 1) return "Use one reference video: either Choose video or an app recording, not both.";
   for (const source of [...videos, ...(draft.audioReference ? [draft.audioReference] : [])]) {
-    if (!source.file || !Number.isFinite(source.duration) || !source.duration || source.duration <= 0 || source.duration > 30) return "Choose a reference audio or video file up to 30 seconds. Files are not shortened automatically.";
     const audio = source === draft.audioReference;
-    if (!source.file.type.startsWith(audio ? "audio/" : "video/") || !Number.isFinite(source.file.size) || source.file.size <= 0 || source.file.size > (audio ? 25 : 250) * 1024 ** 2) return "Use a playable reference audio file up to 25 MB or video up to 250 MB.";
+    if (!source.file) return "Choose or upload the reference file again.";
+    const referenceError = getVideoTimedReferenceError(draft.settings.model, audio ? "audio" : "video", source.duration, source.file.size);
+    if (referenceError) return referenceError;
+    if (!source.file.type.startsWith(audio ? "audio/" : "video/")) return "Use a playable audio or video reference file.";
   }
   const images = selectedWorkflowImages(draft);
-  const referenceLimit = draft.settings.model === "kling_3_0" ? 2 : 6;
-  const imageLimit = referenceLimit - videos.length - Number(Boolean(draft.audioReference));
+  const policy = getVideoReferencePolicy(draft.settings.model, { hasTimedReferences: videos.length > 0 || Boolean(draft.audioReference) });
+  const imageLimit = policy.maxImages;
   if (images.length > imageLimit) return `This model accepts up to ${imageLimit} image references. Remove an image or choose another model.`;
   for (const image of images) {
-    if (image?.file && (!["image/png", "image/jpeg", "image/webp"].includes(image.file.type) || !Number.isFinite(image.file.size) || image.file.size <= 0 || image.file.size > 20 * 1024 ** 2)) {
-      return "Use a PNG, JPEG or WebP reference image up to 20 MB.";
+    if (image?.file && (!["image/png", "image/jpeg", "image/webp"].includes(image.file.type) || !Number.isFinite(image.file.size) || image.file.size <= 0 || image.file.size > policy.maxImageBytes)) {
+      return `Use a PNG, JPEG or WebP reference image up to ${policy.maxImageBytes / 1024 ** 2} MB with these references.`;
     }
   }
   if (draft.kind === "phone" && draft.appScreen && draft.settings.model === "kling_3_0") {
-    return "Choose Omni Flash 1.1 or an enabled Seedance 2.5 to use an app screenshot. Kling uses its images as first/last frames, not as an app-screen reference.";
+    return "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to use an app screenshot. Kling uses its images as first/last frames.";
   }
   return null;
 }
@@ -106,7 +132,8 @@ export function createWorkflowGenerationClient(dependencies: {
   let submitting = false;
 
   async function prepareImage(image: WorkflowImageSource) {
-    const cached = uploaded.get(image.url);
+    // A saved record can be removed or replaced between explicit generations.
+    const cached = image.assetId ? undefined : uploaded.get(image.url);
     if (cached) return cached;
     dependencies.assertActive();
     const result = await dependencies.uploadImage(image);
@@ -137,11 +164,12 @@ export function createWorkflowGenerationClient(dependencies: {
       dependencies.assertActive();
       // Snapshot the click, so later edits cannot change an in-flight request.
       const settings = { ...draft.settings };
-      const prompt = normalizeAIStudioPrompt(draft.instructions);
+      const prompt = workflowGenerationPrompt(draft);
       const images = selectedWorkflowImages(draft).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;
-      const fingerprint = JSON.stringify({ kind: draft.kind, prompt, settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url });
+      const startingFrame = draft.startingFrame ? { ...draft.startingFrame } : null;
+      const fingerprint = JSON.stringify({ kind: draft.kind, prompt, settings, images: images.map((image) => image.url), video: video?.url, audio: audio?.url, startingFrame: startingFrame ? { assetId: startingFrame.assetId, jobId: startingFrame.jobId, referenceId: startingFrame.referenceId, generateAudio: startingFrame.generateAudio } : null });
       if (pending?.attempted && pending.fingerprint !== fingerprint) {
         throw new Error("The previous request has not been confirmed. Restore its original instructions, references and settings, then retry to recover its saved status before starting a different request.");
       }
@@ -162,6 +190,8 @@ export function createWorkflowGenerationClient(dependencies: {
             const result = uploadedMedia.get(cacheKey) ?? await dependencies.uploadReference(source, kind);
             dependencies.assertActive();
             if (!result.url.startsWith("https://") || !REQUEST_ID.test(result.assetId) || !Number.isFinite(result.duration) || result.duration <= 0 || result.duration > 30) throw new Error("The reference file could not be verified after uploading.");
+            const uploadedReferenceError = getVideoTimedReferenceError(settings.model, kind, result.duration);
+            if (uploadedReferenceError) throw new Error(uploadedReferenceError);
             uploadedMedia.set(cacheKey, result);
             return result;
           }
@@ -173,8 +203,7 @@ export function createWorkflowGenerationClient(dependencies: {
             quantity: settings.quantity,
             resolution: settings.resolution,
             aspectRatio: settings.aspectRatio,
-            avatarImageUrl: referenceImageUrls[0] ?? null,
-            referenceImageUrls,
+            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId, referenceId: startingFrame.referenceId, exploreFormat: "hook", generateAudio: startingFrame.generateAudio } : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
             ...(videoReference ? { referenceVideoUrl: videoReference.url, referenceVideoAssetId: videoReference.assetId, referenceVideoDurationSeconds: videoReference.duration } : {}),
             ...(audioReference ? { referenceAudioUrls: [audioReference.url], referenceAudioAssetIds: [audioReference.assetId] } : {}),
             idempotencyKey: submission.key,

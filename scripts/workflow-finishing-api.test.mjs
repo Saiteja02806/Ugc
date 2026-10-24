@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as inlineSymbols from "../worker/src/lib/explore-inline-symbols.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
@@ -12,7 +13,9 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
+const textFonts = load("worker/src/lib/explore-text-fonts.ts", { "./explore-text-font-metrics.json": { default: JSON.parse(readFileSync(new URL("../worker/src/lib/explore-text-font-metrics.json", import.meta.url), "utf8")) } });
+const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": inlineSymbols, "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"), "./explore-text-fonts.ts": textFonts });
+
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });
@@ -144,6 +147,21 @@ test("Editorial queues through the same owned durable finishing boundary", async
   assert.ok(h.calls.indexOf("create") < h.calls.indexOf("dispatch"));
 });
 
+test("unsupported joined emoji is rejected before queueing new work while accepted receipt recovery stays intact", async () => {
+  const editing = { version: 1, format: "hook", trimStartMs: 0, trimEndMs: 1500, originalVolume: 1, musicVolume: 0,
+    text: { value: "😀\u200d😀", width: .8, y: .2, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 1500 } };
+  for (const draftChanges of [{ editing, subtitles: null }, { subtitles: null, composition: { version: 1, sourceEditing: editing, demoEditing: null, sourceAudioAssetId: null, sourceAudioPlayback: "once" } }]) {
+    const h = harness({ draftChanges, env: { EXPLORE_FORMAT_EDITING_ENABLED: "true" } });
+    const response = await h.start();
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /emoji is not supported/);
+    assert.equal(h.calls.includes("create"), false); assert.equal(h.calls.includes("dispatch"), false);
+    const accepted = harness({ prior: true, draftChanges, env: { EXPLORE_FORMAT_EDITING_ENABLED: "true" } });
+    assert.equal((await accepted.start()).status, 202);
+    assert.equal(accepted.calls.includes("create"), false);
+  }
+});
+
 test("rejects client-chosen owners, URLs, outputs, fingerprints, request mismatch and unsupported draft fields", async () => {
   const bodies = [{ requestKey: key, draft: baseDraft, userId: "other" }, { requestKey: "bad", draft: baseDraft },
     { requestKey: key, draft: { ...baseDraft, sourceAssetId: "https://untrusted/video" } },
@@ -221,6 +239,15 @@ test("storage failures and uncertain provider outcomes are safe, bounded, and ne
   assert.doesNotMatch(JSON.stringify(body), /private-provider|private-storage/); assert.equal(uncertain.calls.includes("dispatch"), false);
   const unknownCode = harness({ prior: true, jobStatus: "failed", errorCode: "constructor" });
   assert.equal((await (await unknownCode.status()).json()).message, "Finishing did not complete. Your original media is unchanged.");
+});
+
+test("unsupported media timing returns actionable safe guidance on recovery without another dispatch", async () => {
+  const h = harness({ prior: true, jobStatus: "failed", errorCode: "COMPOSITION_TIMELINE_UNSUPPORTED" });
+  const body = await (await h.status()).json();
+  assert.equal(body.outcome, "failed");
+  assert.match(body.message, /audio and picture timing.*Re-export.*replace/i);
+  assert.doesNotMatch(JSON.stringify(body), /private-provider|private-storage/);
+  assert.equal(h.calls.includes("dispatch"), false);
 });
 
 test("fingerprints normalize draft key order and bind style, audio playback, kind and transcription policy", () => {

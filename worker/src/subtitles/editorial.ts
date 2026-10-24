@@ -1,11 +1,13 @@
-import { escapeAssText, type SubtitleLayout } from "./captions.js";
-import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement } from "./contracts.js";
+import { escapeAssText, type SubtitleLayout } from "./captions.ts";
+import { SubtitleError, subtitlePlacementGeometry, type SubtitleCue, type SubtitlePlacement } from "./contracts.ts";
 
 export const EDITORIAL_FAMILY = "UGCPilot Editorial Study";
 export const EDITORIAL_RENDER_VERSION = "editorial-v1";
 export type EditorialFont = "lead" | "hero" | "support";
 export type InkBounds = { left: number; top: number; width: number; height: number };
-export type MeasureEditorial = (text: string, size: number, font: EditorialFont) => Promise<InkBounds>;
+export type MeasureEditorial = ((text: string, size: number, font: EditorialFont) => Promise<InkBounds>) & {
+  preload?: (texts: string[], size: number, font: EditorialFont) => Promise<void>;
+};
 export type EditorialBlock = { indices: number[]; font: EditorialFont; size: number; x: number; y: number; ink: InkBounds };
 export type EditorialPage = { cue: SubtitleCue; keywordIndex: number; blocks: EditorialBlock[] };
 const ordinary = new Set("a an the if you're you your my our and but or is are was were be been of for to in on at with this that these those it its too much very up out do did can will".split(" "));
@@ -33,8 +35,10 @@ export async function planEditorialPages(cues: SubtitleCue[], layout: SubtitleLa
   const geometry = subtitlePlacementGeometry(placement);
   const regionTop = layout.height * geometry.editorialTop;
   const regionBottom = layout.height * geometry.editorialBottom;
-  const pages: EditorialPage[] = [];
-  for (const cue of cues) {
+  // Pages are independent. Planning together lets the exact ink measurer batch
+  // requests at each typography step; settled results preserve input order and
+  // finish all owned work before a layout error releases the render directory.
+  const planned = await Promise.allSettled(cues.map(async cue => {
     const keywordIndex = selectEditorialKeyword(cue);
     let accepted: EditorialBlock[] | undefined;
     for (const reduction of [1, .85, .72, .6]) {
@@ -84,9 +88,9 @@ export async function planEditorialPages(cues: SubtitleCue[], layout: SubtitleLa
       accepted = blocks; break;
     }
     if (!accepted) throw new SubtitleError("EDITORIAL_LAYOUT_UNSUPPORTED", "This phrase cannot fit the Editorial style. Choose another style; your transcript will be reused.");
-    pages.push({ cue, keywordIndex, blocks: accepted });
-  }
-  return pages;
+    return { cue, keywordIndex, blocks: accepted };
+  }));
+  return planned.map(result => { if (result.status === "rejected") throw result.reason; return result.value; });
 }
 
 const assTime = (ms: number) => {

@@ -219,6 +219,7 @@ async function requestYouTubeChannelAnalytics(accessToken: string) {
   });
   const response = await fetch(url, {
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const payload = (await response.json().catch(() => null)) as
@@ -273,6 +274,7 @@ async function requestYouTubeUploadedVideos(accessToken: string) {
 async function requestYouTubeDataApi<T>(url: URL, accessToken: string) {
   const response = await fetch(url, {
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const payload = (await response.json().catch(() => null)) as

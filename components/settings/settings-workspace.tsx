@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -35,13 +36,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { InstagramAccountManager } from "@/components/settings/instagram-account-manager";
-import { TikTokBetaAccountManager } from "@/components/settings/tiktok-beta-account-manager";
-import { YouTubeBetaAccountManager } from "@/components/settings/youtube-beta-account-manager";
-import { AppScreenshotsSettings } from "@/components/settings/app-screenshots-settings";
-import { BusinessContextSettings } from "@/components/settings/business-context-settings";
-import { PublishingPreferencesSettings } from "@/components/settings/publishing-preferences-settings";
-import { SupportFeedbackSettings } from "@/components/settings/support-feedback-settings";
 import { useTheme } from "@/components/providers/theme-provider";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { LATEST_PRODUCT_UPDATE } from "@/lib/updates/product-updates";
@@ -50,6 +44,21 @@ import { cn } from "@/lib/utils";
 import { useBillingSubscription } from "@/components/billing/use-billing-subscription";
 import { hasTikTokUiAccess } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
+
+// Keep inactive section dependencies out of the initial Account bundle. Their
+// existing conditional mounts still control reads, feature gates and form state.
+const InstagramAccountManager = dynamic(() => import("@/components/settings/instagram-account-manager").then(module => module.InstagramAccountManager), { loading: SettingsPanelLoading });
+const TikTokBetaAccountManager = dynamic(() => import("@/components/settings/tiktok-beta-account-manager").then(module => module.TikTokBetaAccountManager), { loading: SettingsPanelLoading });
+const YouTubeBetaAccountManager = dynamic(() => import("@/components/settings/youtube-beta-account-manager").then(module => module.YouTubeBetaAccountManager), { loading: SettingsPanelLoading });
+const AppScreenshotsSettings = dynamic(() => import("@/components/settings/app-screenshots-settings").then(module => module.AppScreenshotsSettings), { loading: SettingsPanelLoading });
+const MediaLibraryPanel = dynamic(() => import("@/components/media/media-library-dialog").then(module => module.MediaLibraryPanel), { loading: SettingsPanelLoading });
+const BusinessContextSettings = dynamic(() => import("@/components/settings/business-context-settings").then(module => module.BusinessContextSettings), { loading: SettingsPanelLoading });
+const PublishingPreferencesSettings = dynamic(() => import("@/components/settings/publishing-preferences-settings").then(module => module.PublishingPreferencesSettings), { loading: SettingsPanelLoading });
+const SupportFeedbackSettings = dynamic(() => import("@/components/settings/support-feedback-settings").then(module => module.SupportFeedbackSettings), { loading: SettingsPanelLoading });
+
+function SettingsPanelLoading() {
+  return <p role="status" className="px-5 py-5 text-sm text-muted sm:px-6">Loading settings…</p>;
+}
 
 const SETTINGS_SECTIONS = [
   {
@@ -66,6 +75,11 @@ const SETTINGS_SECTIONS = [
     icon: CreditCard,
     id: "subscription-billing",
     label: "Plan & billing",
+  },
+  {
+    icon: Images,
+    id: "media-library",
+    label: "Media library",
   },
   {
     icon: Images,
@@ -566,6 +580,11 @@ export function SettingsWorkspace() {
           </SettingsSection>
           ) : null}
 
+          {activeSection === "media-library" ? (
+          <SettingsSection id="media-library" description="Manage reusable images and background collections for your slideshows." icon={<Images className="size-5" aria-hidden="true" />} title="Media library">
+            <div className="p-5 sm:p-6"><MediaLibraryPanel /></div>
+          </SettingsSection>
+          ) : null}
           {activeSection === "app-screenshots" ? (
           <SettingsSection
             id="app-screenshots"

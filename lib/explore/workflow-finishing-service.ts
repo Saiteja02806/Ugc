@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION } from "@/worker/src/lib/explore-format-edit";
+import { FORMAT_TEXT_SEQUENCE_RENDER_VERSION, formatTextEmojiError, formatTextOverlays } from "@/worker/src/lib/explore-format-edit";
 import { getBackgroundJobForUser, getMissingBackgroundJobStorageEnvVars, type BackgroundJobRecord } from "@/lib/jobs/background-jobs";
 import { dispatchQueuedBackgroundJobForRecovery } from "@/lib/jobs/background-job-service";
 import { getMissingJobQueueEnvVars } from "@/lib/queues/job-queue";
@@ -12,6 +12,7 @@ import type { SubtitleTranscript } from "@/worker/src/subtitles/contracts";
 
 const terminal = new Set(["completed", "failed", "cancelled"]);
 const safeErrors: Record<string, string> = {
+  COMPOSITION_TIMELINE_UNSUPPORTED: "A selected video's audio and picture timing needs review. Re-export that clip with aligned tracks, then replace it before trying preparation again.",
   SUBTITLE_LANGUAGE_UNSUPPORTED: "Auto subtitles support English speech only.",
   SUBTITLE_DURATION_UNSUPPORTED: "Auto subtitles support up to 60 seconds in total. Your video was not shortened.",
   NO_SPEECH: "No speech was detected. Your original video is unchanged.",
@@ -98,15 +99,27 @@ async function resultFor(store: ExploreFinishingRequestStore, receipt: ExploreFi
 }
 
 /** Callers authenticate the owner and enforce creation entitlement before entering this boundary. */
-export async function startWorkflowFinishingForOwner(owner: string, requestKey: string, rawDraft: unknown) {
+export async function startWorkflowFinishingForOwner(owner: string, requestKey: string, rawDraft: unknown, options: { modernSubtitles?: boolean } = {}) {
   const key = identity(owner, requestKey);
   if (process.env.EXPLORE_FINISHING_ENABLED !== "true") throw new ExploreFinishError("Video finishing is not enabled yet.", 503);
   if (Buffer.byteLength(JSON.stringify(rawDraft) ?? "", "utf8") > 32 * 1024) throw new ExploreFinishError("The finishing draft is too large.", 413);
-  const draft = parseExploreFinishDraft(rawDraft), fingerprint = fingerprintExploreFinish(draft);
+  let draft = parseExploreFinishDraft(rawDraft);
   const store = new ExploreFinishingRequestStore();
   const prior = await store.read(owner, key);
+  // New connector requests use the same bounded warm path as the website.
+  // An omitted version is resolved from an accepted receipt on exact replay:
+  // old requests retain their speech identity and cannot be silently upgraded.
+  if (options.modernSubtitles && draft.subtitles && draft.subtitles.version === undefined && (!prior || prior.draft.subtitles?.version === 2)) {
+    draft = { ...draft, subtitles: { ...draft.subtitles, version: 2 } };
+  }
+  const fingerprint = fingerprintExploreFinish(draft);
   if (prior && (prior.fingerprint !== fingerprint || JSON.stringify(prior.draft) !== JSON.stringify(draft))) throw new ExploreFinishError("This request was already used for different edits.", 409);
   if (!prior) {
+    for (const edit of [draft.editing, draft.composition?.sourceEditing, draft.composition?.demoEditing]) {
+      if (!edit) continue;
+      const emojiError = formatTextOverlays(edit).map(text => formatTextEmojiError(text.value)).find(Boolean);
+      if (emojiError) throw new ExploreFinishError(emojiError);
+    }
     const runtime = videoFinishingRuntime();
     if ((draft.editing || draft.composition) && !runtime.editing) throw new ExploreFinishError("Format video editing is not enabled yet.", 503);
     if ((draft.demoFraming || draft.sourceFraming) && !runtime.framing) throw new ExploreFinishError("Demo framing is not enabled yet.", 503);

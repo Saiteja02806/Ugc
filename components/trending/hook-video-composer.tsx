@@ -734,7 +734,7 @@ export function HookVideoComposer({
                 <Check className="size-4" aria-hidden="true" />
                 Scheduled · View Scheduling
               </Link>
-            ) : (
+            ) : null}
               <button
                 type="button"
                 onClick={() => setScheduleDrawerOpen(true)}
@@ -749,9 +749,8 @@ export function HookVideoComposer({
                 ) : (
                   <CalendarClock className="size-4" aria-hidden="true" />
                 )}
-                Schedule
+                {scheduledPostId ? "Schedule another post" : "Schedule"}
               </button>
-            )}
           </div>
         </footer>
       ) : null}
@@ -1162,7 +1161,7 @@ function DemoSelection({
               Choose existing
             </span>
             <span className="mt-0.5 block text-xs font-medium text-muted">
-              Browse demo videos from Content
+              Browse saved demos
             </span>
           </span>
         </Button>
@@ -1195,9 +1194,9 @@ function DemoPickerDialog({
         className="max-h-[calc(100dvh-1rem)] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-w-[760px]"
       >
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>Choose a demo from Content</DialogTitle>
+          <DialogTitle>Choose from Demo</DialogTitle>
           <DialogDescription>
-            Select one of the demo videos saved in your Content library.
+            Select footage saved on your Demo screen.
           </DialogDescription>
         </DialogHeader>
 
@@ -1246,7 +1245,7 @@ function DemoPickerDialog({
                   No saved demos yet
                 </p>
                 <p className="mt-1 max-w-xs text-sm font-medium text-muted">
-                  Upload a demo here or add one from the Content screen.
+                  Upload a demo here or add one from the Demo screen.
                 </p>
                 <Link
                   href="/library"

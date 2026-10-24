@@ -1,0 +1,1843 @@
+{
+  "version": 1,
+  "reviewDate": "2026-10-19",
+  "scope": "98 active Hook video references; video scene contamination only",
+  "stats": {
+    "references": 98,
+    "decodedFrames": 9773,
+    "clean": 79,
+    "cleaned": 18,
+    "manualReview": 0,
+    "keptByUser": 1,
+    "removedFrames": 22,
+    "audio": "deferred_by_user",
+    "paidModelCalls": 0,
+    "productionChanged": false,
+    "catalogueActivated": false
+  },
+  "policy": "Keep influencer performance; remove separate screen/demo/room tails; retain physical device props beside performer. Audio deferred by user. No paid model calls.",
+  "activation": "staged_only_not_published",
+  "manualDecision": "User explicitly chose to keep Hook18 unchanged and approved all18 clear tail trims.",
+  "items": [
+    {
+      "ordinal": 1,
+      "id": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "sourceSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+      "originalFrameCount": 92,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b.mp4",
+      "sceneDescription": "Seated performer reacts at pink keyboard, covers mouth and reaches toward camera; final frame changes to separate monitor view.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 91,
+      "unwantedRanges": [
+        {
+          "startFrame": 91,
+          "endFrame": 91,
+          "startPtsSeconds": 3.066667,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+      "proposedVideoStorageKey": "explore/paired-references/v1/ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49.mp4",
+      "outputDurationSeconds": 3.066992,
+      "outputFrameCount": 91,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.066667,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "53af5a4f0f6d98dfc516f20a6002c191909535927f0b43fccda6b5eeb909c681",
+      "proposedPerformance": "Follow the original performance and timing: begin seated at the pink keyboard, looking toward screen-right with raised eyebrows, widened eyes and an open mouth. Shift the gaze toward the camera while holding the surprised expression. Lift the hand on screen-right to cover the mouth while the other hand leaves the keyboard and reaches toward the lens. Keep the mouth covered as the camera moves closer and the face shifts toward the edge of the frame. End on the performer in the same reaction scene through the final retained frame. Preserve the pink keyboard, hand contact, curtains, magenta shelf lighting, camera movement and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "slideId": null,
+        "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Computer Science students!!\nThis website is EVERYTHING",
+            "startMs": 0,
+            "endMs": 3067
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:08.393Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–90, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/001"
+    },
+    {
+      "ordinal": 2,
+      "id": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "sourceSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+      "originalFrameCount": 92,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d.mp4",
+      "sceneDescription": "Performer opens laptop, reacts, removes glasses forward and holds them; final frame changes to laptop screen.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 91,
+      "unwantedRanges": [
+        {
+          "startFrame": 91,
+          "endFrame": 91,
+          "startPtsSeconds": 3.066667,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+      "proposedVideoStorageKey": "explore/paired-references/v1/f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d.mp4",
+      "outputDurationSeconds": 3.066992,
+      "outputFrameCount": 91,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.066667,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "3b438c075d7ca55356985d47203c8860d278ecf1543320c8f6e8a4f232980b47",
+      "proposedPerformance": "Follow the original action sequence and timing: begin seated wearing eyeglasses, lift the silver laptop lid at the front of the frame and look toward its screen. Pause, raise the eyebrows, widen the eyes and open the mouth in surprise. Bring both hands to the glasses at the temples, pull them forward off the face and lower them in front of the chest. Keep staring toward the laptop with raised brows and slightly parted lips while holding the glasses; do not put them onto the head. End on the performer in the same reaction scene through the final retained frame. Preserve the glasses, laptop, hand contact, seated position, room lighting, framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+        "slideId": null,
+        "sourceSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "editors, get ready to\nwash dishes for $100/mo 💀🤡",
+            "startMs": 0,
+            "endMs": 3067
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:09.090Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–90, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/002"
+    },
+    {
+      "ordinal": 3,
+      "id": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "sourceSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+      "originalFrameCount": 110,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2.mp4",
+      "sceneDescription": "Reclining performer blinks and widens eyes with sideways glances; final frame changes to hand/stylus and screen.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 109,
+      "unwantedRanges": [
+        {
+          "startFrame": 109,
+          "endFrame": 109,
+          "startPtsSeconds": 3.733333,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+      "proposedVideoStorageKey": "explore/paired-references/v1/8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647.mp4",
+      "outputDurationSeconds": 3.733984,
+      "outputFrameCount": 109,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.733333,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "80c0dabd011747f60c5da123f1f59738e235e721d08e0802614b337f87abb07a",
+      "proposedPerformance": "Follow the original performance and timing: begin reclining against the patterned pillow, looking upward with slightly parted lips and a questioning expression. Briefly blink, bring the eyes toward the camera and widen them while raising the eyebrows. Glance toward screen-right, shift the gaze toward screen-left, then return to a wide-eyed look toward the lens. Hold the incredulous expression before the final sideways glance, with only small head movements and no added hand gesture. End on the performer in the same reaction scene through the final retained frame. Preserve the reclining position, pillow, dark headboard, handheld perspective, natural lighting and trimmed reference duration. Match the source gestures rather than the still pose in the image. Keep this a silent visual reaction: no speech, spoken words, voiceover, singing, lip-sync, music or background audio. Preserve the natural slightly parted lips without adding speaking movements.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+        "slideId": null,
+        "sourceSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "3 years of video editing\nand NOW i find this??? 😳",
+            "startMs": 0,
+            "endMs": 3733
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:12.689Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–108, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/003"
+    },
+    {
+      "ordinal": 4,
+      "id": "explore-paired-hook-b43622d1486957644f3317e6",
+      "sourceSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+      "originalFrameCount": 94,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162.mp4",
+      "sceneDescription": "Performer at desk covers mouth and reaches toward camera; camera rises and tilts. Frame91 remains performer with changed instructional caption;92–93 show separate browser screen.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 92,
+      "unwantedRanges": [
+        {
+          "startFrame": 92,
+          "endFrame": 93,
+          "startPtsSeconds": 3.066667,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
+      "proposedVideoStorageKey": "explore/paired-references/v1/aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1.mp4",
+      "outputDurationSeconds": 3.066992,
+      "outputFrameCount": 92,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.066667,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "4999778efe355bed1a45b9713d2106fe14c675a5f0109279d1067f9545957ae9",
+      "proposedPerformance": "Follow the original performance and timing: begin seated at the dark desk facing the open silver laptop on screen-left, with raised eyebrows, widened eyes and an open mouth. Keep the hand on screen-right near the keyboard while the other hand rises to cover the mouth. Hold the surprised gaze toward the laptop, then reach the screen-right hand toward the lens while keeping the mouth covered. Follow the camera lifting and tilting upward so the face moves toward the lower edge of the frame. End on the performer in the same reaction scene through the final retained frame. Keep the eyeglasses on throughout the reaction. Preserve the laptop, hand contact, window blinds, dark curtains, source lighting, handheld movement and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
+        "slideId": null,
+        "sourceSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Broke people will\nLOVE me after seeing\nTHIS 😭💰",
+            "startMs": 0,
+            "endMs": 3033
+          },
+          {
+            "text": "Go to Pinterest",
+            "startMs": 3033,
+            "endMs": 3067
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:12.425Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–91, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/004"
+    },
+    {
+      "ordinal": 5,
+      "id": "explore-paired-hook-510f7a66546d25863c268477",
+      "sourceSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
+      "originalFrameCount": 96,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d.mp4",
+      "sceneDescription": "Continuous cafe close-up: beverage can near mouth, questioning gaze, index finger beside lips and eyes briefly closed; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/005"
+    },
+    {
+      "ordinal": 6,
+      "id": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "sourceSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+      "originalFrameCount": 112,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c.mp4",
+      "sceneDescription": "Performer drinks from can, lowers it and returns to surprise; final frame changes to desktop screen.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 111,
+      "unwantedRanges": [
+        {
+          "startFrame": 111,
+          "endFrame": 111,
+          "startPtsSeconds": 3.733333,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
+      "proposedVideoStorageKey": "explore/paired-references/v1/583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c.mp4",
+      "outputDurationSeconds": 3.733984,
+      "outputFrameCount": 111,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.733333,
+      "nativeAudioStreams": 1,
+      "nativeAudioPacketsPreserved": true,
+      "originalPerformanceSha256": "ae1f399c51168ce7220b9f1e6c1d568df622234dd549e45533c2267b61f721ed",
+      "proposedPerformance": "Follow the original performance and timing: begin seated in the dim room holding a slender silver-blue beverage can upright in the hand on screen-right. Look just to the right of the camera with widened eyes, raised eyebrows and a rounded open mouth. Raise the can to the lips and take a sustained sip, tilting the can upward and tipping the head back slightly while keeping the eyes wide. Preserve the can rim naturally obscuring the mouth during contact. Lower the can upright toward the chest, purse the lips, glance down toward the can and briefly close the eyes. Open the eyes again and return to the rounded open-mouth expression. End on the performer in the same reaction scene through the final retained frame. Preserve the continuous grip, drinking motion, black shirt, bright frontal face lighting against the dim room, close framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
+        "slideId": null,
+        "sourceSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "How tf is this legal 💀",
+            "startMs": 0,
+            "endMs": 3733
+          },
+          {
+            "text": "Go to “Google”",
+            "startMs": 3733,
+            "endMs": 3734
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:19.212Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–110, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/006"
+    },
+    {
+      "ordinal": 7,
+      "id": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "sourceSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+      "originalFrameCount": 78,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31.mp4",
+      "sceneDescription": "Seated performer raises glasses onto head then covers mouth; final frame changes to laptop with blue pen.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 77,
+      "unwantedRanges": [
+        {
+          "startFrame": 77,
+          "endFrame": 77,
+          "startPtsSeconds": 2.666667,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
+      "proposedVideoStorageKey": "explore/paired-references/v1/a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069.mp4",
+      "outputDurationSeconds": 2.666992,
+      "outputFrameCount": 77,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 2.666667,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "1b06ccacc74660bb7a05326d8c83714c6f606ff90ba7e65883da06da963ce61a",
+      "proposedPerformance": "Follow the original performance and timing: begin seated in the office chair with an open mouth, raised brows and an incredulous gaze just off-camera. The hand on screen-left holds the eyeglass frame at its outer corner while the other arm extends into the foreground. Lift the glasses from the eyes over the forehead onto the top of the head, keeping the mouth open. Release the frame, turn the gaze toward the lens and bring that same hand down across the mouth. Hold the wide-eyed look with the mouth covered and the glasses resting on the head. End on the performer in the same reaction scene through the final retained frame. Preserve the wristwatch, hand-to-glasses contact, printed white shirt, office chair, shelving, blinds, ceiling fan, room lighting, handheld framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+        "slideId": null,
+        "sourceSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Wasted 2 hours editing my\npodcast when THIS exists\n🤯🤯",
+            "startMs": 0,
+            "endMs": 2667
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:20.173Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–76, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/007"
+    },
+    {
+      "ordinal": 8,
+      "id": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
+      "sourceSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
+      "originalFrameCount": 79,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66.mp4",
+      "sceneDescription": "Continuous seated laptop shot with white headphones: interlaced-arm stretch, alternating neck stretch and hands return to keyboard.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/008"
+    },
+    {
+      "ordinal": 9,
+      "id": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
+      "originalFrameCount": 85,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55.mp4",
+      "sceneDescription": "Continuous close-up: performer raises glasses onto head and covers mouth; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/009"
+    },
+    {
+      "ordinal": 10,
+      "id": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4.mp4",
+      "sceneDescription": "Continuous seated close-up: performer raises hand toward mouth and holds surprised expression; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/010"
+    },
+    {
+      "ordinal": 11,
+      "id": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
+      "originalFrameCount": 112,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37.mp4",
+      "sceneDescription": "Continuous performer at laptop with both hands beside head, alternating gaze between laptop and lens; no separate screen shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/011"
+    },
+    {
+      "ordinal": 12,
+      "id": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
+      "originalFrameCount": 73,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57.mp4",
+      "sceneDescription": "Continuous cafe/table shot behind laptop: performer drinks from cup, lowers it and reacts; laptop stays alongside performer, no separate screen shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/012"
+    },
+    {
+      "ordinal": 13,
+      "id": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
+      "originalFrameCount": 101,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4.mp4",
+      "sceneDescription": "Continuous handheld close-up of performer in yellow top, hand from cheek to mouth and back; no separate scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/013"
+    },
+    {
+      "ordinal": 14,
+      "id": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+      "originalFrameCount": 258,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0.mp4",
+      "sceneDescription": "Same performer in pale shirt and room gestures, then changes to quieter seated pose at frame170. All frames retain performer; no screen/demo cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/014"
+    },
+    {
+      "ordinal": 15,
+      "id": "explore-paired-hook-be7df3868a7b06024c0a90d1",
+      "sourceSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4.mp4",
+      "sceneDescription": "Continuous close-up of performer in black top, pursed lips then hand covering mouth and sideways glance; no separate scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/015"
+    },
+    {
+      "ordinal": 16,
+      "id": "explore-paired-hook-b0aead788c4930565401371b",
+      "sourceSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
+      "originalFrameCount": 72,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c.mp4",
+      "sceneDescription": "Continuous vehicle close-up of cap-wearing performer, covers mouth then lowers hand and smiles; no separate scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/016"
+    },
+    {
+      "ordinal": 17,
+      "id": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
+      "sourceSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
+      "originalFrameCount": 63,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2.mp4",
+      "sceneDescription": "Continuous striped-top close-up with hand across forehead and questioning expression; slight handheld move near end, no separate scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/017"
+    },
+    {
+      "ordinal": 18,
+      "id": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+      "originalFrameCount": 88,
+      "status": "keep_by_user",
+      "userDecision": "Keep original airplane reveal unchanged.",
+      "sourceStorageKey": "explore/paired-references/v1/af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188.mp4",
+      "sceneDescription": "Opening frames show airplane window and cabin; camera continuously pans inward to seated performer with headphones around neck, who smiles and glances sideways.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/018"
+    },
+    {
+      "ordinal": 19,
+      "id": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+      "originalFrameCount": 97,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b.mp4",
+      "sceneDescription": "Continuous gray-hoodie reaction: hands over mouth, slide over cheeks to back of head, elbows spread and mouth open; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/019"
+    },
+    {
+      "ordinal": 20,
+      "id": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "sourceSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+      "originalFrameCount": 88,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d.mp4",
+      "sceneDescription": "Performer in yellow overshirt holds forehead, lowers hand and turns toward lens; final frame shows tablet/stylus instead.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 87,
+      "unwantedRanges": [
+        {
+          "startFrame": 87,
+          "endFrame": 87,
+          "startPtsSeconds": 2.933333,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
+      "proposedVideoStorageKey": "explore/paired-references/v1/d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e.mp4",
+      "outputDurationSeconds": 2.933984,
+      "outputFrameCount": 87,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 2.933333,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "15c4d9778c1f839213193d071c6fc0fa36165f8352e61288fcc4aac9437cf254",
+      "proposedPerformance": "Follow the original performance and timing: begin seated with the hand on screen-right held flat across the forehead, looking off screen-right with widened eyes, raised brows and an open mouth. Lean slightly forward while holding that pose. Lift the hand clear of the forehead and lower it out of the upper frame, keeping the startled gaze to screen-right. Briefly close the eyes, turn toward the lens and hold the open-mouth expression. End on the performer in the same reaction scene through the final retained frame. Preserve the light nails and green ring, yellow overshirt, white top, necklaces, blue-lit background, chair, strong face lighting, framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
+        "slideId": null,
+        "sourceSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+            "startMs": 0,
+            "endMs": 2933
+          },
+          {
+            "text": "Open Cantina",
+            "startMs": 2933,
+            "endMs": 2934
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:55.921Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–86, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/020"
+    },
+    {
+      "ordinal": 21,
+      "id": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
+      "sourceSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
+      "originalFrameCount": 94,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e.mp4",
+      "sceneDescription": "Continuous white-top desk reaction: removes glasses, reaches toward camera and covers mouth in final close-up; no separate screen shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/021"
+    },
+    {
+      "ordinal": 22,
+      "id": "explore-paired-hook-59dee735a7c5d1643bc57127",
+      "sourceSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
+      "originalFrameCount": 68,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78.mp4",
+      "sceneDescription": "Continuous stretch behind silver laptop, releases hands then tilts lid upright; laptop remains in performer scene, no separate cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/022"
+    },
+    {
+      "ordinal": 23,
+      "id": "explore-paired-hook-43f2c2d266d23e3af05875d8",
+      "sourceSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
+      "originalFrameCount": 77,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1.mp4",
+      "sceneDescription": "Continuous close-up in cream knit top: holds eyeglass temple, changes expression and removes glasses forward; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/023"
+    },
+    {
+      "ordinal": 24,
+      "id": "explore-paired-hook-62f80506cbbedab0d340f863",
+      "sourceSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
+      "originalFrameCount": 48,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a.mp4",
+      "sceneDescription": "Continuous seated curly-haired performer with hands on head, turns gaze from laptop to lens; no separate screen cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/024"
+    },
+    {
+      "ordinal": 25,
+      "id": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+      "originalFrameCount": 98,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db.mp4",
+      "sceneDescription": "Continuous striped-top close-up: narrow sunglasses removed forward, eyes widen, mouth opens and narrows; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/025"
+    },
+    {
+      "ordinal": 26,
+      "id": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
+      "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
+      "originalFrameCount": 77,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8.mp4",
+      "sceneDescription": "Continuous striped-top close-up with eyeglass temple against lower lip, then lowers glasses and opens mouth; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/026"
+    },
+    {
+      "ordinal": 27,
+      "id": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
+      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
+      "originalFrameCount": 88,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389.mp4",
+      "sceneDescription": "Continuous desk shot: foreground performer covers mouth, colleague enters behind and adjusts glasses while looking at same laptop; no separate cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/027"
+    },
+    {
+      "ordinal": 28,
+      "id": "explore-paired-hook-761c394a83c7b4c06e35e262",
+      "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
+      "originalFrameCount": 111,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b.mp4",
+      "sceneDescription": "Continuous seated laptop shot: performer types, looks toward lens and raises index finger while changing expression; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/028"
+    },
+    {
+      "ordinal": 29,
+      "id": "explore-paired-hook-9309a041061ae5abc6970d52",
+      "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
+      "originalFrameCount": 63,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451.mp4",
+      "sceneDescription": "Continuous close-up: hand covers mouth then lowers to chin, eyes widen and mouth opens; no unrelated scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/029"
+    },
+    {
+      "ordinal": 30,
+      "id": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "sourceSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+      "originalFrameCount": 70,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936.mp4",
+      "sceneDescription": "Continuous smiling mouth-cover close-up with glasses already on head until final frame; frame69 shows separate Valentine laptop webpage.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 69,
+      "unwantedRanges": [
+        {
+          "startFrame": 69,
+          "endFrame": 69,
+          "startPtsSeconds": 2.4,
+          "reason": "Separate screen/demo footage replaces performer at end of clip."
+        }
+      ],
+      "outputSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
+      "proposedVideoStorageKey": "explore/paired-references/v1/c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41.mp4",
+      "outputDurationSeconds": 2.4,
+      "outputFrameCount": 69,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 2.4,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": "d1fab4ffc24d1aca1c69fb6d533ac4daf6ff4f869123c1fbb0998459b5e6dd0f",
+      "proposedPerformance": "Follow the original performance and timing: begin in the close-up with eyeglasses already resting on top of the head and one hand cupped diagonally across the mouth and chin. Look off screen-left with lifted brows and a delighted, emotional smile partly hidden behind the fingers. Bring the gaze toward the lens, glance sideways again and sustain the smile through small blinks and gentle handheld movement, keeping the hand against the face and the glasses on the head. End on the performer in the same reaction scene through the final retained frame. Preserve the pendant necklace, white top, wood-paneled ceiling, warm lighting, close framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+        "slideId": null,
+        "sourceSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV: you gave the IT guy\na chance 😭",
+            "startMs": 0,
+            "endMs": 2400
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:13.642Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–68, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/030"
+    },
+    {
+      "ordinal": 31,
+      "id": "explore-paired-hook-df58806df2ea040df347f267",
+      "sourceSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7.mp4",
+      "sceneDescription": "Continuous blue-top close-up: glasses rise onto head, pout, both hands cover mouth then one lowers; no separate scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/031"
+    },
+    {
+      "ordinal": 32,
+      "id": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
+      "sourceSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
+      "originalFrameCount": 64,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c.mp4",
+      "sceneDescription": "Continuous dark-collared-top close-up: glasses lift onto head and expression grows into broad smile; no separate scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/032"
+    },
+    {
+      "ordinal": 33,
+      "id": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
+      "sourceSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
+      "originalFrameCount": 111,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3.mp4",
+      "sceneDescription": "Continuous curly-haired performer at laptop removes white headphones forward, holds them at chest, then makes dismissive palm gesture; no separate screen cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/033"
+    },
+    {
+      "ordinal": 34,
+      "id": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "sourceSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+      "originalFrameCount": 105,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb.mp4",
+      "sceneDescription": "Continuous tight curly-haired watery-eyed reaction; hand covers mouth then dabs cheek and beneath eye.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/034"
+    },
+    {
+      "ordinal": 35,
+      "id": "explore-paired-hook-f1b5421be14d24803539be89",
+      "sourceSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+      "originalFrameCount": 48,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e.mp4",
+      "sceneDescription": "Continuous skeptical cherry-print-top performer; side glance turns to lens and hand rotates palm-up.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/035"
+    },
+    {
+      "ordinal": 36,
+      "id": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "sourceSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+      "originalFrameCount": 94,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417.mp4",
+      "sceneDescription": "Continuous black-top performer against amber-lit framed wall; parted-mouth surprise and blinks.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/036"
+    },
+    {
+      "ordinal": 37,
+      "id": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "sourceSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+      "originalFrameCount": 63,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc.mp4",
+      "sceneDescription": "Continuous tablet-lit performer in dark room; open-mouth reaction softens to smile and side glance. Tablet remains physically beside performer.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/037"
+    },
+    {
+      "ordinal": 38,
+      "id": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "sourceSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+      "originalFrameCount": 116,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7.mp4",
+      "sceneDescription": "Continuous purple-top close-up; sunglasses lowered then removed, forehead touch near ending.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/038"
+    },
+    {
+      "ordinal": 39,
+      "id": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "sourceSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+      "originalFrameCount": 136,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979.mp4",
+      "sceneDescription": "Performer behind physical tablet looks up skeptically and raises index finger; final frame cuts to separate browser address bar.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 135,
+      "unwantedRanges": [
+        {
+          "startFrame": 135,
+          "endFrame": 135,
+          "reason": "Separate browser address-bar screen replaces performer.",
+          "startPtsSeconds": 4.533333
+        }
+      ],
+      "outputSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+      "proposedVideoStorageKey": "explore/paired-references/v1/84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461.mp4",
+      "outputDurationSeconds": 4.533984,
+      "outputFrameCount": 135,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 4.533333,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin seated behind the tablet in its black keyboard case, looking down toward the screen on screen-right with a neutral expression. Briefly blink, then turn toward the lens, draw the brows together and lean forward into a skeptical, questioning look. Lift the hand on screen-right, extend the index finger in a small cautioning gesture beside the face and hold it while the mouth changes through the source expressions. Keep the other hand low near the keyboard. Preserve the black short-sleeved top, white beaded bracelet, rings, pale wall, soft frontal lighting, framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the skeptical performer holding the raised index finger beside the face; keep the physical tablet in the same scene and do not cut to a browser or screen recording.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+        "slideId": null,
+        "sourceSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "“I use ChatGPT to make\nvideo games 🤮🤮🤮”",
+            "startMs": 0,
+            "endMs": 4533
+          },
+          {
+            "text": "Go to Tesana.ai",
+            "startMs": 4533,
+            "endMs": 4534
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:30.061Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–134, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/039"
+    },
+    {
+      "ordinal": 40,
+      "id": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "sourceSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+      "originalFrameCount": 95,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc.mp4",
+      "sceneDescription": "Headphone-wearing close-up lowers food utensil and briefly covers mouth; final frame cuts to browser address bar.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 94,
+      "unwantedRanges": [
+        {
+          "startFrame": 94,
+          "endFrame": 94,
+          "reason": "Separate browser address-bar screen replaces performer.",
+          "startPtsSeconds": 3.2
+        }
+      ],
+      "outputSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+      "proposedVideoStorageKey": "explore/paired-references/v1/fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57.mp4",
+      "outputDurationSeconds": 3.2,
+      "outputFrameCount": 94,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.2,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin in the close-up wearing black over-ear headphones with a food-topped utensil held at the open mouth, eyes wide and looking upward toward screen-right. Lower the utensil out of view without adding another bite. Hold the mouth open, knit the brows and shift the eyes toward the lens, then upward and sideways again. Raise the hand from screen-right to bring the fingertips across the lips, briefly hold it there and lower it as the camera moves closer. Preserve the headphones staying on, dark sleeveless top, utensil and hand continuity, pale room, strong frontal screen light mixed with warm ceiling light, handheld framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the close performer reaction with the headphones on and the hand lowering near the face; do not cut to a browser or screen recording.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+        "slideId": null,
+        "sourceSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "HOW is this even LEGAL?!?",
+            "startMs": 0,
+            "endMs": 3200
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:32.020Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–93, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/040"
+    },
+    {
+      "ordinal": 41,
+      "id": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "sourceSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+      "originalFrameCount": 142,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f.mp4",
+      "sceneDescription": "Continuous pink-top performer lifts glasses onto head then covers mouth; black caption backing panels remain over footage.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/041"
+    },
+    {
+      "ordinal": 42,
+      "id": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "sourceSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+      "originalFrameCount": 111,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843.mp4",
+      "sceneDescription": "Performer behind tablet reacts delightedly and points toward keys; final frame cuts to separate gameplay laptop and hands.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 110,
+      "unwantedRanges": [
+        {
+          "startFrame": 110,
+          "endFrame": 110,
+          "reason": "Separate laptop gameplay shot replaces performer.",
+          "startPtsSeconds": 3.733333
+        }
+      ],
+      "outputSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+      "proposedVideoStorageKey": "explore/paired-references/v1/48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d.mp4",
+      "outputDurationSeconds": 3.733984,
+      "outputFrameCount": 110,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.733333,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original action sequence and timing: begin seated using the tablet in its black keyboard case with both hands low near the keys, looking toward screen-right. Raise the brows, widen the eyes and open the mouth into delighted surprise while keeping the hands near the keyboard. Look down, lift the hand on screen-left and point the index finger down toward the keys in the source's brief repeated taps, then look up toward the screen again. Hold the open-mouth pleased expression with the finger still pointing low. Preserve the black shirt, bracelet, rings, tablet and keyboard geometry, pale wall, soft room lighting, steady framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the delighted performer looking at the physical tablet with the index finger pointing low toward the keys; do not cut to a separate laptop gameplay shot.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+        "slideId": null,
+        "sourceSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV: How it feels\nfinally making your\ndream game 🔥",
+            "startMs": 0,
+            "endMs": 3400
+          },
+          {
+            "text": "GOOD 😆",
+            "startMs": 3400,
+            "endMs": 3734
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:35.447Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–109, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/042"
+    },
+    {
+      "ordinal": 43,
+      "id": "explore-paired-hook-643978050b8b91c838ce4985",
+      "sourceSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+      "originalFrameCount": 97,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f.mp4",
+      "sceneDescription": "Pink sports-top performer stretches behind laptop then returns to typing; final two frames cut to channel browser thumbnails.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 95,
+      "unwantedRanges": [
+        {
+          "startFrame": 95,
+          "endFrame": 96,
+          "reason": "Separate channel browser and thumbnails replace performer.",
+          "startPtsSeconds": 3.166667
+        }
+      ],
+      "outputSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+      "proposedVideoStorageKey": "explore/paired-references/v1/9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3.mp4",
+      "outputDurationSeconds": 3.166992,
+      "outputFrameCount": 95,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.166667,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin seated at the table behind the open laptop, with one arm reaching off screen-left. Bring the hands together, interlace the fingers, turn the palms outward and extend both arms forward over the table into a stretch. Close the eyes and tilt the head toward the shoulder on screen-right, then straighten and tilt the other way while looking down, keeping the arms extended. Draw the joined hands back toward the chest, release the fingers and lower both hands toward the laptop keyboard to resume working. Preserve the pink sports top, light bottoms, pink watch, ponytail and bangs, laptop placement, bright daylight, pale room with mirror, globe pendant light and plants, original framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the performer returning both hands to the physical laptop keyboard to type; do not cut to the channel browser or thumbnails.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+        "slideId": null,
+        "sourceSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Kids YouTube + AI\n= 💰💰💰",
+            "startMs": 0,
+            "endMs": 3167
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:37.884Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–94, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/043"
+    },
+    {
+      "ordinal": 44,
+      "id": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "sourceSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+      "originalFrameCount": 168,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339.mp4",
+      "sceneDescription": "Continuous yellow-blouse performer drinks from amber tumbler while facing physical tablet, then lowers glass and leans forward.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/044"
+    },
+    {
+      "ordinal": 45,
+      "id": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "sourceSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+      "originalFrameCount": 72,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5.mp4",
+      "sceneDescription": "Continuous reclining performer with hand over mouth and small amused head movements.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/045"
+    },
+    {
+      "ordinal": 46,
+      "id": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "sourceSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+      "originalFrameCount": 72,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878.mp4",
+      "sceneDescription": "Continuous clear-glasses performer lowers mouth-covering hand and reveals restrained tight smile.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/046"
+    },
+    {
+      "ordinal": 47,
+      "id": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "sourceSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "originalFrameCount": 83,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f.mp4",
+      "sceneDescription": "Continuous close-up performer puts on clear glasses and retains hand at outer corner with open-mouth reaction.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/047"
+    },
+    {
+      "ordinal": 48,
+      "id": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "sourceSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+      "originalFrameCount": 113,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd.mp4",
+      "sceneDescription": "Continuous headphone-wearing performer stretches interlaced hands then alternates neck stretches and returns to pink keyboard.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/048"
+    },
+    {
+      "ordinal": 49,
+      "id": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "sourceSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f.mp4",
+      "sceneDescription": "Continuous black-shirt performer removes glasses with both hands then squints and grimaces skeptically.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/049"
+    },
+    {
+      "ordinal": 50,
+      "id": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "sourceSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+      "originalFrameCount": 84,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8.mp4",
+      "sceneDescription": "Continuous dark-room performer turns from side toward lens while index finger remains at lower lip.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/050"
+    },
+    {
+      "ordinal": 51,
+      "id": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+      "originalFrameCount": 96,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5.mp4",
+      "sceneDescription": "Same performer and room throughout: interlaced forward stretch jumps to overhead neck stretch at frame 35, then laptop lid raised. Floating caption/logo overlay is present.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/051"
+    },
+    {
+      "ordinal": 52,
+      "id": "explore-paired-hook-114b58d5c22018e273a346de",
+      "sourceSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+      "originalFrameCount": 104,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43.mp4",
+      "sceneDescription": "Continuous bright-pink-top performer moves both hands from temples inward to cover nose and mouth.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/052"
+    },
+    {
+      "ordinal": 53,
+      "id": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "sourceSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+      "originalFrameCount": 78,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584.mp4",
+      "sceneDescription": "Skeptical close selfie with hand at lower lip moves closer and smiles; final frame cuts away to dim bed/cables scene.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 77,
+      "unwantedRanges": [
+        {
+          "startFrame": 77,
+          "endFrame": 77,
+          "reason": "Separate dim bed/cables view replaces performer.",
+          "startPtsSeconds": 2.8
+        }
+      ],
+      "outputSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+      "proposedVideoStorageKey": "explore/paired-references/v1/dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92.mp4",
+      "outputDurationSeconds": 2.8,
+      "outputFrameCount": 77,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 2.8,
+      "nativeAudioStreams": 1,
+      "nativeAudioPacketsPreserved": true,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin in the close selfie with the hand from screen-left resting at the chin and lower lip, brows tightly furrowed and lips slightly parted. Maintain the skeptical gaze toward the lens, purse the lips briefly, then narrow the eyes into a disbelieving smile as the camera moves closer. Keep the hand near the lower lip throughout, with only small finger and head movements. Remove the dark translucent caption strip with the text. Preserve the dark shirt, fine necklace, rings, pale nails, long straight hair, bright window blinds behind, natural side lighting, handheld movement and retained clip duration. End on the same close performer with the hand at the lower lip and the restrained disbelieving smile; do not cut away to the dim room or bed.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+        "slideId": null,
+        "sourceSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "4 YEARS of Amazon shopping and nobody told\nme about this!!! 👀",
+            "startMs": 0,
+            "endMs": 2800
+          }
+        ],
+        "extractedAt": "2026-10-15T09:07:21.303Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–76, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/053"
+    },
+    {
+      "ordinal": 54,
+      "id": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "sourceSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+      "originalFrameCount": 52,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97.mp4",
+      "sceneDescription": "Towel-wrapped close selfie moves closer and smiles; final two frames show a separate room/table/chairs view with performer absent.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 50,
+      "unwantedRanges": [
+        {
+          "startFrame": 50,
+          "endFrame": 51,
+          "reason": "Separate room/table/chairs view replaces performer.",
+          "startPtsSeconds": 1.766667
+        }
+      ],
+      "outputSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+      "proposedVideoStorageKey": "explore/paired-references/v1/dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8.mp4",
+      "outputDurationSeconds": 1.766992,
+      "outputFrameCount": 50,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 1.766667,
+      "nativeAudioStreams": 1,
+      "nativeAudioPacketsPreserved": true,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin reclining against the cushions with a white towel wrapped around the hair, looking directly toward the lens with brows raised and pinched, lips pursed and eyes wide. Move the handheld camera closer while the mouth opens into a small disbelieving smile, then hold the close expression with subtle head movement. Keep the towel secure and the hands outside the frame. Remove the dark translucent caption strip with the text. Preserve the pale ribbed V-neck top, towel folds, couch cushions, warm room light, changing selfie distance and retained clip duration. End on the close towel-wrapped performer with the small disbelieving smile; do not shift away to the room, table or chair.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+        "slideId": null,
+        "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "No way I’ve been shopping on Amazon for 4 YEARS\nand NOW I find this 💀💀💀",
+            "startMs": 0,
+            "endMs": 1767
+          }
+        ],
+        "extractedAt": "2026-10-15T09:07:22.410Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–49, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/054"
+    },
+    {
+      "ordinal": 55,
+      "id": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "sourceSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+      "originalFrameCount": 140,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9.mp4",
+      "sceneDescription": "Continuous thin-metal-glasses close-up with pen beside cheek; pen-holding hand rises to forehead.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/055"
+    },
+    {
+      "ordinal": 56,
+      "id": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "sourceSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14.mp4",
+      "sceneDescription": "Continuous patterned-shirt curly-haired performer raises hand to cover mouth and holds restrained amused reaction.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/056"
+    },
+    {
+      "ordinal": 57,
+      "id": "explore-paired-hook-743919c25a4f61942184a81b",
+      "sourceSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+      "originalFrameCount": 77,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62.mp4",
+      "sceneDescription": "Continuous blue-shirt performer lifts then lowers red can without drinking, smiles, then covers eyes/forehead.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/057"
+    },
+    {
+      "ordinal": 58,
+      "id": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "sourceSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2.mp4",
+      "sceneDescription": "Continuous blonde close selfie shows surprise then smile, hand sweeps forehead and covers mouth.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/058"
+    },
+    {
+      "ordinal": 59,
+      "id": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "sourceSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+      "originalFrameCount": 57,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b.mp4",
+      "sceneDescription": "Continuous white quarter-zip selfie approaches camera, covers mouth, lowers hand and ends with delighted smile.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/059"
+    },
+    {
+      "ordinal": 60,
+      "id": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "sourceSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+      "originalFrameCount": 82,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1.mp4",
+      "sceneDescription": "Continuous reddish-haired performer covers mouth, smiles, then lowers and reaches hand toward camera.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/060"
+    },
+    {
+      "ordinal": 61,
+      "id": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "sourceSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+      "originalFrameCount": 64,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c.mp4",
+      "sceneDescription": "Continuous seated performer holds pink phone and moves other hand down forehead; phone remains alongside performer.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/061"
+    },
+    {
+      "ordinal": 62,
+      "id": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "sourceSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+      "originalFrameCount": 90,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368.mp4",
+      "sceneDescription": "Continuous navy/green-top selfie with watch-wearing hand over mouth; camera approaches and retreats then hand lowers.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/062"
+    },
+    {
+      "ordinal": 63,
+      "id": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "sourceSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+      "originalFrameCount": 73,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a.mp4",
+      "sceneDescription": "Continuous orange-shirt reclining crying-expression selfie; hand leaves outer eye as head and camera move forward.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/063"
+    },
+    {
+      "ordinal": 64,
+      "id": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "sourceSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+      "originalFrameCount": 91,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288.mp4",
+      "sceneDescription": "Continuous cafe performer with headphones sets camera lower/back, withdraws arm to laptop and holds surprise. Laptop and patrons stay incidental in performer scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/064"
+    },
+    {
+      "ordinal": 65,
+      "id": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "sourceSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+      "originalFrameCount": 123,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca.mp4",
+      "sceneDescription": "Continuous gray-hoodie blonde performer raises hand over mouth, glances sideways and returns gaze; late tilt/light flare retains performer.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/065"
+    },
+    {
+      "ordinal": 66,
+      "id": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "sourceSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50.mp4",
+      "sceneDescription": "Continuous lavender-sweater performer rests chin on sleeve-covered fist; upward gaze, blink and relaxed smile.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/066"
+    },
+    {
+      "ordinal": 67,
+      "id": "explore-paired-hook-caceb6cb43d6e62137cf9892",
+      "sourceSha256": "923b786dd67b219c34d29e4011429fb56a3c1bdfdb9039480423beb595df4631",
+      "originalFrameCount": 93,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/923b786dd67b219c34d29e4011429fb56a3c1bdfdb9039480423beb595df4631.mp4",
+      "sceneDescription": "Continuous close selfie in black puffer jacket, hand at temple, sideways gaze, slow blink and upward eye roll. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/067"
+    },
+    {
+      "ordinal": 68,
+      "id": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
+      "sourceSha256": "d864c622b2a8534724d126def5d50c02369e1dc4641b86bdcc3adcaa30ac26ad",
+      "originalFrameCount": 115,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/d864c622b2a8534724d126def5d50c02369e1dc4641b86bdcc3adcaa30ac26ad.mp4",
+      "sceneDescription": "Continuous car selfie in gray fleece; hands rise across mouth, upward glance, then lower slightly to reveal smile. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/068"
+    },
+    {
+      "ordinal": 69,
+      "id": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
+      "sourceSha256": "759fb407fb2cb8fb19a62fa7aeccd19b2065fe82f73c842fb087937450148f63",
+      "originalFrameCount": 63,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/759fb407fb2cb8fb19a62fa7aeccd19b2065fe82f73c842fb087937450148f63.mp4",
+      "sceneDescription": "Continuous orange-hoodie close selfie; side gaze, closed-eye smile, then opposite-side gaze and broader toothy smile. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/069"
+    },
+    {
+      "ordinal": 70,
+      "id": "explore-paired-hook-c709e563045b8e9e473929a9",
+      "sourceSha256": "5f05f8e35fac3de5dd1b15687e8b296ddfaa5896cbfc78bb229eae570083d5a6",
+      "originalFrameCount": 122,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/5f05f8e35fac3de5dd1b15687e8b296ddfaa5896cbfc78bb229eae570083d5a6.mp4",
+      "sceneDescription": "Continuous turquoise-shirt selfie with faint smirk and gaze shifts; handheld viewpoint rises and moves closer. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/070"
+    },
+    {
+      "ordinal": 71,
+      "id": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "sourceSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+      "originalFrameCount": 92,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376.mp4",
+      "sceneDescription": "Crying performer on pillow, hand lowers from mouth as camera rises; final two frames switch to dark phone alarm display.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 90,
+      "unwantedRanges": [
+        {
+          "startFrame": 90,
+          "endFrame": 91,
+          "reason": "Separate dark phone alarm display replaces influencer at the tail."
+        }
+      ],
+      "outputSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
+      "proposedVideoStorageKey": "explore/paired-references/v1/1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d.mp4",
+      "outputDurationSeconds": 3.1,
+      "outputFrameCount": 90,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0,
+      "sourceStartSeconds": 0,
+      "sourceEndExclusiveSeconds": 3.1,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin lying on the pillow with the hand from screen-right covering the mouth and lower nose, brows strongly pinched and eyes narrowed in a crying expression. Keep the face strained as the camera trembles, then lower the hand away from the mouth and move the head and camera upward from the pillow into a more upright close view. Maintain the downturned mouth and watery-looking eyes with small head motions. End on the upright crying performer before the phone alarm display; retain only the continuous performer segment. Remove the dark translucent caption strip with the text. Preserve the brown patterned sleeveless top, tied-back hair, bedding, floral wall, dim natural room light, original shaky framing and retained performer-segment duration.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+        "slideId": null,
+        "sourceSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "My boyfriend changed my alarm so now I have\nto fly to turn it off 😭😭💔",
+            "startMs": 0,
+            "endMs": 3100
+          }
+        ],
+        "extractedAt": "2026-10-15T09:08:01.830Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–89, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/071"
+    },
+    {
+      "ordinal": 72,
+      "id": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
+      "originalFrameCount": 191,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd.mp4",
+      "sceneDescription": "Continuous seated performer holding purple bottle upright; finger near mouth, brief tongue, side turns and pursed lips. Camera tilts near ending. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/072"
+    },
+    {
+      "ordinal": 73,
+      "id": "explore-paired-hook-e7147ac8b75176755e120150",
+      "sourceSha256": "2435b7e644d5677dac8392a674090c26368b1870b4a796fad11cc8719f7e016a",
+      "originalFrameCount": 107,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/2435b7e644d5677dac8392a674090c26368b1870b4a796fad11cc8719f7e016a.mp4",
+      "sceneDescription": "Continuous couch selfie in blue top; hand moves from forehead to cover mouth, with blinks and side glances. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/073"
+    },
+    {
+      "ordinal": 74,
+      "id": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
+      "sourceSha256": "a2348d4501bba0c87969569e7f5aae8b3e3b63933ed80834a60f5c90b0d3bacf",
+      "originalFrameCount": 111,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/a2348d4501bba0c87969569e7f5aae8b3e3b63933ed80834a60f5c90b0d3bacf.mp4",
+      "sceneDescription": "Continuous seated performer at desk in black shirt; hand rises to cover mouth and remains. Laptop corner belongs to same scene. Caption disappears late; no screen cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/074"
+    },
+    {
+      "ordinal": 75,
+      "id": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
+      "sourceSha256": "17c7306fd6dc9d0def83620bb1757cdd906e9e9e0845559bce9a6930089b2628",
+      "originalFrameCount": 89,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/17c7306fd6dc9d0def83620bb1757cdd906e9e9e0845559bce9a6930089b2628.mp4",
+      "sceneDescription": "Continuous airplane selfie; turns toward window and back with raised brows and small pursed-lip smile. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/075"
+    },
+    {
+      "ordinal": 76,
+      "id": "explore-paired-hook-def19968a4a8c55c52679591",
+      "sourceSha256": "6c627bb27ec546ec86da3021a9769d75b6b6a720003f48a8f907a8990dd4f908",
+      "originalFrameCount": 97,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/6c627bb27ec546ec86da3021a9769d75b6b6a720003f48a8f907a8990dd4f908.mp4",
+      "sceneDescription": "Continuous airplane close selfie; hand moves from lip to cover mouth, sideways gaze and closer camera. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/076"
+    },
+    {
+      "ordinal": 77,
+      "id": "explore-paired-hook-0c14ee9d885466ad13cf9e52",
+      "sourceSha256": "365f323663661caafdff955f6ad72ce30e44fc6cb17acb9a4932dc9d463f65d5",
+      "originalFrameCount": 48,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/365f323663661caafdff955f6ad72ce30e44fc6cb17acb9a4932dc9d463f65d5.mp4",
+      "sceneDescription": "Continuous purple-lit desk shot; performer holds pink phone upright while other hand rests on forehead then nose as head tips back. Phone remains a prop in performer scene.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/077"
+    },
+    {
+      "ordinal": 78,
+      "id": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+      "sourceSha256": "f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b",
+      "originalFrameCount": 48,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b.mp4",
+      "sceneDescription": "Close performer selfie with hand over mouth and widening eyes; final frame switches to phone demonstration in front of tablet.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 47,
+      "unwantedRanges": [
+        {
+          "startFrame": 47,
+          "endFrame": 47,
+          "reason": "Separate phone demonstration in front of tablet replaces influencer in final frame."
+        }
+      ],
+      "outputSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
+      "proposedVideoStorageKey": "explore/paired-references/v1/8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce.mp4",
+      "outputDurationSeconds": 1.966992,
+      "outputFrameCount": 47,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 2.220446049250313e-16,
+      "sourceStartSeconds": 0.1,
+      "sourceEndExclusiveSeconds": 2.066667,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin in close selfie with the hand from screen-right already covering the mouth, eyes extremely wide and looking off screen-left. Keep the hand firmly across the lips and lower nose, move the camera gradually closer and shift the eyes toward the lens near the end while maintaining raised brows. End on the wide-eyed performer with the hand covering the mouth before the separate phone demonstration; retain only the continuous performer segment. Preserve the black sleeveless top, coral-red nails, gold ring, shoulder-length brown hair, purple room light, wall decoration, close handheld perspective and retained performer-segment duration.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+        "slideId": null,
+        "sourceSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "I found a game where I\nneed to stalk a girl's cell\nphone to find out what\nhappened With her",
+            "startMs": 0,
+            "endMs": 1967
+          }
+        ],
+        "extractedAt": "2026-10-15T12:59:25.270Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–46, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/078"
+    },
+    {
+      "ordinal": 79,
+      "id": "explore-paired-hook-7351dd660bc41910b9f25453",
+      "sourceSha256": "b3d94f4ce96c9170c6f1e46a86fbe45fb8f0a9e81ba329b96333b5e3d9658680",
+      "originalFrameCount": 86,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/b3d94f4ce96c9170c6f1e46a86fbe45fb8f0a9e81ba329b96333b5e3d9658680.mp4",
+      "sceneDescription": "Continuous close selfie with curled fingers moving from lower lip to cheek/nose, side gaze and knowing smile. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/079"
+    },
+    {
+      "ordinal": 80,
+      "id": "explore-paired-hook-2e28e18f894e3ba7de367ced",
+      "sourceSha256": "3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8",
+      "originalFrameCount": 167,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8.mp4",
+      "sceneDescription": "Continuous warm-lit close selfie; hand goes from cheek support to mouth cover then temple, surprise softens to smile. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/080"
+    },
+    {
+      "ordinal": 81,
+      "id": "explore-paired-hook-5be30f0749eec90b5a70bd18",
+      "sourceSha256": "7d3eee8c771389c88bf94ef30f97930558fad323b3328d32cd61838becf4af33",
+      "originalFrameCount": 126,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/7d3eee8c771389c88bf94ef30f97930558fad323b3328d32cd61838becf4af33.mp4",
+      "sceneDescription": "Continuous headphone selfie; mouth cover, release to broad smile, cover again and final release, with camera moving closer. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/081"
+    },
+    {
+      "ordinal": 82,
+      "id": "explore-paired-hook-d3a67b533f083d26dd5d46f0",
+      "sourceSha256": "0097678ec0a78858157af61162d0283aabd851dd439f772267a939853ccf4471",
+      "originalFrameCount": 118,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/0097678ec0a78858157af61162d0283aabd851dd439f772267a939853ccf4471.mp4",
+      "sceneDescription": "Continuous black-shirt selfie; forehead hand lifts to temple then covers mouth, ending with blink and gaze to lens. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/082"
+    },
+    {
+      "ordinal": 83,
+      "id": "explore-paired-hook-607bfccda5e91e0d8731fa94",
+      "sourceSha256": "3205ad7a9a13b1f49e411498ec8a8a028ec6d649d3fcb374381981ec019315ba",
+      "originalFrameCount": 132,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/3205ad7a9a13b1f49e411498ec8a8a028ec6d649d3fcb374381981ec019315ba.mp4",
+      "sceneDescription": "Continuous extremely low selfie crop with upper face at bottom and ceiling above; upward stare, minor eye shifts and blinks. No unrelated screen or cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/083"
+    },
+    {
+      "ordinal": 84,
+      "id": "explore-paired-hook-e5870158a2ad1494edc92741",
+      "sourceSha256": "22fa7d27707a2db3a76e1c61ecb4f12e234ac8e7cc1df414612784e6f42437ef",
+      "originalFrameCount": 342,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/22fa7d27707a2db3a76e1c61ecb4f12e234ac8e7cc1df414612784e6f42437ef.mp4",
+      "sceneDescription": "Continuous very low selfie crop with eyes/nose at bottom and ceiling above; subtle brow/eye changes and long ending upward gaze. No unrelated screen or cut in 342 frames.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/084"
+    },
+    {
+      "ordinal": 85,
+      "id": "explore-paired-hook-bee95bd7a34b5d2a72775282",
+      "sourceSha256": "cf993840bc2066e17957e9251f423c75b8645f6b9ddb4520cbae03028f200d6e",
+      "originalFrameCount": 181,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/cf993840bc2066e17957e9251f423c75b8645f6b9ddb4520cbae03028f200d6e.mp4",
+      "sceneDescription": "Continuous hand-over-mouth selfie; upward eye roll and return to lens, then hand slides to cheek late. Caption disappears late; no scene cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/085"
+    },
+    {
+      "ordinal": 86,
+      "id": "explore-paired-hook-717396089efc644caf411c79",
+      "sourceSha256": "04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5",
+      "originalFrameCount": 120,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5.mp4",
+      "sceneDescription": "Continuous temple-hand selfie; restrained smile, blinks and sideways upward glances. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/086"
+    },
+    {
+      "ordinal": 87,
+      "id": "explore-paired-hook-164ad3e6923d5d0d576114a5",
+      "sourceSha256": "22ca3cffd2aac8e07271d24b7ea24ccb6989c85b4b4fc28cbf1fdd3803e21b34",
+      "originalFrameCount": 84,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/22ca3cffd2aac8e07271d24b7ea24ccb6989c85b4b4fc28cbf1fdd3803e21b34.mp4",
+      "sceneDescription": "Continuous white-shirt selfie with red flower accessory; smile, hand rises over mouth and remains as handheld view bobs. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/087"
+    },
+    {
+      "ordinal": 88,
+      "id": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+      "sourceSha256": "fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee",
+      "originalFrameCount": 75,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee.mp4",
+      "sceneDescription": "Restaurant selfie in white shirt; hand rises across smiling mouth, camera moves closer, then final frame switches to dark phone map/display.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 74,
+      "unwantedRanges": [
+        {
+          "startFrame": 74,
+          "endFrame": 74,
+          "reason": "Separate dim phone map/display replaces influencer in final frame."
+        }
+      ],
+      "outputSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
+      "proposedVideoStorageKey": "explore/paired-references/v1/840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300.mp4",
+      "outputDurationSeconds": 2.733984,
+      "outputFrameCount": 74,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0.000001000000000139778,
+      "sourceStartSeconds": 0.066016,
+      "sourceEndExclusiveSeconds": 2.799349,
+      "nativeAudioStreams": 1,
+      "nativeAudioPacketsPreserved": true,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin seated in a low-angle selfie with a small, slightly incredulous closed-mouth smile toward the lens. Lean a little closer, raise the bracelet-wearing hand from screen-left and cover the mouth. Keep the palm across the lips, lift the cheeks and alternate a brief closed-eye smile with a wider-eyed look while the handheld camera moves closer and dips slightly. End on the smiling performer with the hand across the mouth before the phone display; retain only the continuous performer segment. Preserve the white T-shirt, pulled-back hair with loose strands, hoop earrings, ring and stacked bracelets, dark restaurant ceiling, spotlights, warm brick and wall art, mixed warm ambient light, original camera movement and retained performer-segment duration.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+        "slideId": null,
+        "sourceSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "italian girls are you OKAY???",
+            "startMs": 0,
+            "endMs": 2734
+          }
+        ],
+        "extractedAt": "2026-10-15T12:52:58.127Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–73, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/088"
+    },
+    {
+      "ordinal": 89,
+      "id": "explore-paired-hook-6365d336034633aa5070eb48",
+      "sourceSha256": "c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99",
+      "originalFrameCount": 78,
+      "status": "trim_boundary",
+      "approval": "approved_by_user",
+      "sourceStorageKey": "explore/paired-references/v1/c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99.mp4",
+      "sceneDescription": "Yellow-hoodie selfie; sleeve-covered hand rises across smiling mouth and camera moves closer, then final frame switches to phone map/display.",
+      "keepStartFrame": 0,
+      "keepEndFrameExclusive": 77,
+      "unwantedRanges": [
+        {
+          "startFrame": 77,
+          "endFrame": 77,
+          "reason": "Separate phone map/display replaces influencer in final frame."
+        }
+      ],
+      "outputSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+      "proposedVideoStorageKey": "explore/paired-references/v1/8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245.mp4",
+      "outputDurationSeconds": 2.9,
+      "outputFrameCount": 77,
+      "retainedDecodedPixelsExact": true,
+      "maxTimestampErrorSeconds": 0.000001000000000139778,
+      "sourceStartSeconds": 0.066016,
+      "sourceEndExclusiveSeconds": 2.966016,
+      "nativeAudioStreams": 0,
+      "nativeAudioPacketsPreserved": null,
+      "originalPerformanceSha256": null,
+      "proposedPerformance": "Follow the original performance and timing: begin in the low handheld selfie with a broad open-mouth smile and delighted eyes looking toward the lens. Raise the hand inside the long yellow sleeve from screen-right to cover the mouth and nose. Keep the sleeve gathered over the lower face, eyes smiling above it, as the camera wobbles and moves closer and lower. Make small blinks and lift the brows again toward the ending. End on the smiling performer with the yellow sleeve across the mouth before the phone display; retain only the continuous performer segment. Preserve the oversized yellow hoodie with its physical stitched design, loosely tied hair and flyaway strands, bright linear ceiling lights and dark window or panel behind, original indoor lighting, camera movement and retained performer-segment duration.",
+      "proposedRemixText": {
+        "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
+        "slideId": null,
+        "sourceSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "paris girls are you OKAY???",
+            "startMs": 0,
+            "endMs": 2900
+          }
+        ],
+        "extractedAt": "2026-10-15T12:53:01.012Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Scene-cleanup proposal 2026-10-19: kept decoded frames 0–76, removed unrelated tail; original text clipped to retained timing without rewriting wording. Original record and source preserved. Not activated."
+      },
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/089"
+    },
+    {
+      "ordinal": 90,
+      "id": "explore-paired-hook-349e499826f7491d91f6b712",
+      "sourceSha256": "2a7b50e5af6a4ae022ce388de44598b7c5de4a67e7b9bf06e33b076df8fbe02a",
+      "originalFrameCount": 136,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/2a7b50e5af6a4ae022ce388de44598b7c5de4a67e7b9bf06e33b076df8fbe02a.mp4",
+      "sceneDescription": "Continuous close selfie; temple hand lowers, wide eyes become furrowed questioning look with rounded/pursed lips, ending in tighter off-center crop. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/090"
+    },
+    {
+      "ordinal": 91,
+      "id": "explore-paired-hook-88b4f433fe4fcb0504aca67f",
+      "sourceSha256": "3fd1ed03b048203fddd4df7fdae61b2980a0e4eabc8b4d376ac66e9615baa5aa",
+      "originalFrameCount": 97,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/3fd1ed03b048203fddd4df7fdae61b2980a0e4eabc8b4d376ac66e9615baa5aa.mp4",
+      "sceneDescription": "Continuous gray-sleeve selfie; open-mouth surprise becomes mouth cover; camera pulls back then pushes to extreme close-up. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/091"
+    },
+    {
+      "ordinal": 92,
+      "id": "explore-paired-hook-c5e3806f418bbe37e864485a",
+      "sourceSha256": "66bb907a5d4ada74dc2a5312fb098efb056c8dee007212e8bda29c8424fc8b0d",
+      "originalFrameCount": 105,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/66bb907a5d4ada74dc2a5312fb098efb056c8dee007212e8bda29c8424fc8b0d.mp4",
+      "sceneDescription": "Continuous thin-strap-top selfie; upward gaze shifts to lens, wide eyes then pressed-lip wry smile and final upward glance. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/092"
+    },
+    {
+      "ordinal": 93,
+      "id": "explore-paired-hook-61eb29067f56267684b7cfe6",
+      "sourceSha256": "58d47b1374e44a4c83ad4d34a72ac424b4f476ab028d4992f33b805ca212e361",
+      "originalFrameCount": 82,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/58d47b1374e44a4c83ad4d34a72ac424b4f476ab028d4992f33b805ca212e361.mp4",
+      "sceneDescription": "Continuous seated black-top selfie; hand lowers from lips as smile broadens then rises to forehead while gaze turns to lens. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/093"
+    },
+    {
+      "ordinal": 94,
+      "id": "explore-paired-hook-f12c90a72871c0cdaf3503db",
+      "sourceSha256": "42e1d5861cd1238f8f8bf4fada49c92ebdd7552de9dc061e9455abcd48de2c6c",
+      "originalFrameCount": 118,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/42e1d5861cd1238f8f8bf4fada49c92ebdd7552de9dc061e9455abcd48de2c6c.mp4",
+      "sceneDescription": "Continuous desk performer with keyboard; glasses lifted and removed, upward impressed look then restrained gaze. Floating logo equation is overlay, not a scene cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/094"
+    },
+    {
+      "ordinal": 95,
+      "id": "explore-paired-hook-095c5d08848977c4a1dda973",
+      "sourceSha256": "6033dbd8c2a2c8fb849b37224d798bde39f492b2702bd5b58f5a9f1cf74cbad0",
+      "originalFrameCount": 103,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/6033dbd8c2a2c8fb849b37224d798bde39f492b2702bd5b58f5a9f1cf74cbad0.mp4",
+      "sceneDescription": "Continuous red-sweater desk performer; raised hand beside cheek, rounded mouth, upward stare and blink. Keyboard physically present; floating logo equation is overlay.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/095"
+    },
+    {
+      "ordinal": 96,
+      "id": "explore-paired-hook-50dd086ef9d1c758d5ae3bb5",
+      "sourceSha256": "fd68174881fb1e29456a56b5360ff1d4f6052ed31da4e91796dfbe8bbccac4e1",
+      "originalFrameCount": 86,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/fd68174881fb1e29456a56b5360ff1d4f6052ed31da4e91796dfbe8bbccac4e1.mp4",
+      "sceneDescription": "Continuous red-sweater desk performer; joined hands lower from covered mouth to chest, open-mouth upward stare. Keyboard and mat belong to performer scene; logo/caption overlay persists.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/096"
+    },
+    {
+      "ordinal": 97,
+      "id": "explore-paired-hook-2822e820228a01fb4c4273a1",
+      "sourceSha256": "a94d5b7f3fab41fbf5e10d4e3c03fc1f6469b40839fdf5d6b7a7e72060491466",
+      "originalFrameCount": 118,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/a94d5b7f3fab41fbf5e10d4e3c03fc1f6469b40839fdf5d6b7a7e72060491466.mp4",
+      "sceneDescription": "Continuous dark-top close selfie; wide-eyed furrowed stare, blinks and side glance become pursed-lip skepticism as camera moves lower/closer. No unrelated shot.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/097"
+    },
+    {
+      "ordinal": 98,
+      "id": "explore-paired-hook-a9289ca5bd17288593e63eee",
+      "sourceSha256": "df879f22de59f37d4556ee97e831745382c60f2273bc51b8fa0a16fe9c2ae87e",
+      "originalFrameCount": 107,
+      "status": "clean",
+      "sourceStorageKey": "explore/paired-references/v1/df879f22de59f37d4556ee97e831745382c60f2273bc51b8fa0a16fe9c2ae87e.mp4",
+      "sceneDescription": "Continuous low-angle performer shot; magenta phone held early then lowered out of view, upward eye roll and pursed-lip questioning gaze with tighter ending. Phone is a prop, no demo cut.",
+      "audio": "deferred_by_user",
+      "evidenceDirectory": "outputs/hook-reference-audit-2026-10-19/frames/098"
+    }
+  ]
+}

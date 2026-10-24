@@ -1,8 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {fixture,id} from './mcp-account-settings-fixture.mjs';
+import {fixture,id,promotionalPreferenceMigration} from './mcp-account-settings-fixture.mjs';
 import {DEFAULT_PUBLISHING_PREFERENCES} from '../lib/scheduling/publishing-preferences.ts';
+import {readFile} from 'node:fs/promises';
 const patch=(state,preferences)=>({expected_revision:state.publishing_revision,preferences});
+
+test('promotional disclosure defaults off for existing and new accounts and changes independently',async()=>{
+ const h=await fixture({promotionalPreference:false});try{
+   await h.db.query("insert into public.user_publishing_preferences(user_id,contains_synthetic_media,tiktok_allow_comments) values('existing-owner',false,false)");
+   const legacy=await h.read('existing-owner');
+   const input=patch(legacy,{youtubeMadeForKids:true});
+   const receipt=await h.mutate('existing-owner',id(99),'publishing_preferences',input);
+   await h.db.exec(await readFile(await promotionalPreferenceMigration(),'utf8'));
+   assert.deepEqual((await h.db.query("select tiktok_brand_organic,contains_synthetic_media,tiktok_allow_comments from public.user_publishing_preferences where user_id='existing-owner'")).rows,[{tiktok_brand_organic:false,contains_synthetic_media:false,tiktok_allow_comments:false}]);
+   assert.equal((await h.read('new-owner')).publishing_preferences.tiktokBrandOrganic,false);
+   const state=await h.read('existing-owner');
+   await h.mutate('existing-owner',id(1),'publishing_preferences',patch(state,{tiktokBrandOrganic:true}));
+   const enabled=await h.read('existing-owner');
+   assert.equal(enabled.publishing_preferences.tiktokBrandOrganic,true);
+   assert.equal(enabled.publishing_preferences.containsSyntheticMedia,false);
+   assert.equal((await h.read('new-owner')).publishing_preferences.tiktokBrandOrganic,false);
+   await h.mutate('existing-owner',id(2),'publishing_preferences',patch(enabled,{containsSyntheticMedia:true}));
+   const after=await h.read('existing-owner');assert.equal(after.publishing_preferences.tiktokBrandOrganic,true);
+   await h.mutate('existing-owner',id(3),'publishing_preferences',patch(after,{tiktokBrandOrganic:false}));
+   assert.equal((await h.read('existing-owner')).publishing_preferences.tiktokBrandOrganic,false);
+   assert.deepEqual((await h.mutate('existing-owner',id(99),'publishing_preferences',input)).receipt,receipt.receipt,'historical receipts are not rewritten by the migration');
+ }finally{await h.db.close();}
+});
 
 test('empty account reads are pure and use the application defaults without inserting rows',async()=>{
  const h=await fixture();try{

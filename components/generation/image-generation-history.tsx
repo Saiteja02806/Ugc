@@ -72,7 +72,7 @@ export function ImageGenerationHistory({
                         </div>
                         <span className="min-w-0 flex-1">
                           <span className="line-clamp-2 block text-sm font-semibold leading-5 text-foreground">{image.prompt || image.title}</span>
-                          <span className="mt-1.5 block text-[11px] text-muted">{image.aspectRatio} · {formatHistoryTime(image.createdAt)}</span>
+                          <span className="mt-1.5 block text-[11px] text-muted">{image.slideshowGeneration ? `Version ${image.slideshowGeneration.versionIndex} · Slide ${image.slideshowGeneration.slideIndex}/${image.slideshowGeneration.slideCount} · ` : ""}{image.aspectRatio} · {formatHistoryTime(image.createdAt)}</span>
                         </span>
                         <ArrowUpRight className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
                       </button>

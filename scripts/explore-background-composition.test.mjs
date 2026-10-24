@@ -117,7 +117,9 @@ test("Talking Head captions review and export support trimmed opening and demo w
       assert.equal(result.hasBackgroundMusic, false); assert.equal(result.subtitleWordCount, withDemo ? 2 : 1);
       if (captionPreview) assert.ok(result.outputPath.endsWith("speech.wav"));
       else {
-        assert.ok(result.outputPath.endsWith("captioned.mp4"));
+        // The single-pass renderer may compose and burn captions into the same
+        // MP4. Verify its actual pixels/audio below instead of an internal name.
+        assert.ok(result.outputPath.endsWith(".mp4"));
         const ass = await readFile(join(path, "render", "subtitles", "captions.ass"), "utf8");
         assert.match(ass, /personalized/); assert.doesNotMatch(ass, /personally/);
         assert.ok(whitePixels(frame(result.outputPath, .3)) > 20);

@@ -71,15 +71,15 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Keep one request-based instance warm for interactive slideshow edits. Use 0 only when idle savings are preferred over edit latency."
+  description = "Minimum generation instances. Zero scales idle generation down; interactive edits use their separate warm service."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_instance_count" {
-  description = "Maximum concurrent Carousel workers. Keep at 1 until Carousel idea reservation is transactionally safe for parallel writers."
+  description = "Bounded parallel Carousel generation instances, matched to the queue dispatch limit. Increase only after production concurrency verification."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "request_timeout_seconds" {

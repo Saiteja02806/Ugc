@@ -17,7 +17,7 @@ globalThis.fetch=async(input,init)=>{
    return Response.json(data);
  }
  if(url.pathname==='/rest/v1/user_publishing_preferences') {
-   const columns=['user_id','contains_synthetic_media','tiktok_privacy_level','tiktok_allow_comments','youtube_privacy_status','youtube_made_for_kids','youtube_notify_subscribers','updated_at'];
+   const columns=['user_id','contains_synthetic_media','tiktok_privacy_level','tiktok_allow_comments','tiktok_brand_organic','youtube_privacy_status','youtube_made_for_kids','youtube_notify_subscribers','updated_at'];
    if(request.method==='POST') {
      const values=await request.json(),keys=Object.keys(values);assert.ok(keys.every(key=>columns.includes(key)));assert.equal(request.headers.get('prefer').includes('resolution=merge-duplicates'),true);
      const placeholders=keys.map((_,index)=>'$'+(index+1));

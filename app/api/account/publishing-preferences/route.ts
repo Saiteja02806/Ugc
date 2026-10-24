@@ -29,10 +29,13 @@ function failure(error: unknown) {
 }
 
 function responsePreferences(request: Request, preferences: PublishingPreferences) {
-  // Already-open clients validate the original one-field response strictly.
-  return new URL(request.url).searchParams.get("schema") === "2"
-    ? preferences
-    : { containsSyntheticMedia: preferences.containsSyntheticMedia };
+  // Already-open clients validate their original response fields strictly.
+  const schema = new URL(request.url).searchParams.get("schema");
+  if (schema === "3") return preferences;
+  if (schema === "2") {
+    return Object.fromEntries(Object.entries(preferences).filter(([key]) => key !== "tiktokBrandOrganic"));
+  }
+  return { containsSyntheticMedia: preferences.containsSyntheticMedia };
 }
 
 function json(body: unknown, status = 200) {

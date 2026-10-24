@@ -26,7 +26,7 @@ mock.module("@/lib/jobs/background-job-service", { namedExports: { createAndDisp
   return jobs.get(key);
 } } });
 mock.module("@/lib/storage/storage", { namedExports: { isTrustedStorageUrl: (url) => new URL(url).hostname === "storage.example.com" } });
-mock.module("@/lib/media/media-storage", { namedExports: { getMediaAssetForOwner: async ({ assetId, userId }) => {
+mock.module("@/lib/media/media-storage", { namedExports: { getMediaAssetsForOwnerByUrls: async ({ urls, userId }) => [...ownedAssets.values()].filter(asset => asset.user_id === userId && urls.includes(asset.url)), getMediaAssetForOwner: async ({ assetId, userId }) => {
   const asset = ownedAssets.get(assetId); return asset?.user_id === userId ? asset : null;
 } } });
 mock.module("@/lib/explore/hook-video-library", { namedExports: { isExploreHookVideoId: () => false } });
@@ -36,6 +36,9 @@ mock.module("@/lib/billing/subscription-db", { namedExports: {
   getGenerationCreditCost: (_kind, seconds) => seconds * 4,
   reserveBillingCredits: async (input) => { reservations.set(`${input.userId}:${input.idempotencyKey}`, input); },
   releaseBillingCredits: async (input) => { reservations.delete(`${input.userId}:${input.idempotencyKey}`); },
+} });
+mock.module(new URL("../lib/explore/hook-keyframe-result.ts", import.meta.url), { namedExports: {
+  resolveApprovedHookStartingFrame: async () => assert.fail("This legacy-request fixture does not submit starting-frame assets"),
 } });
 const { handleAIStudioVideoGeneration } = await import("../lib/ai-studio/video-generation-api.ts");
 const { createWorkflowGenerationClient } = await import("../lib/explore/workflow-generation-client.ts");
@@ -50,7 +53,13 @@ const draft = (overrides = {}) => ({ kind: "hook", instructions: "A creator expl
 function client(overrides = {}) {
   return createWorkflowGenerationClient({
     assertActive() {}, getOwnerToken: async () => "fake-owner-token", createIdempotencyKey: () => "submission",
-    uploadImage: async (image) => { uploads.push(image); return { url: `https://storage.example.com/${uploads.length}.png` }; },
+    uploadImage: async (image) => {
+      uploads.push(image);
+      const url = `https://storage.example.com/${uploads.length}.png`, id = `image-${uploads.length}`;
+      ownedAssets.set(id, { id, url, user_id: "owner-a", collection: "image", status: "ready", deleted_at: null,
+        mime_type: "image/png", file_size_bytes: 1024 });
+      return { url };
+    },
     uploadReference: async (source, kind) => {
       uploads.push(source);
       const id = kind === "audio" ? audioId : videoId, url = `https://storage.example.com/${kind}.media`;
@@ -82,7 +91,7 @@ test("both workflow clients reach the real API's text-only contract for every av
         assert.equal(job.input.model, model);
         assert.equal(job.input.hookIdea, input.instructions);
         assert.deepEqual(job.input.referenceImageUrls, []);
-        assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "openrouter" : undefined);
+        assert.equal(job.input.provider, model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined);
       }
       assert.equal(reservations.size, quantity);
     }
@@ -103,7 +112,7 @@ test("creator and app screenshots reach the real API as uploaded multi-image gui
   }
 });
 
-test("both Explore workflows send owned Create audio/video to OpenRouter, independently of appended demos", async () => {
+test("both Explore workflows send owned Create audio/video to ReAPI, independently of appended demos", async () => {
   for (const kind of ["hook", "phone"]) {
     jobs.clear(); reservations.clear(); uploads.length = 0;
     const reference = (media) => ({ name: `${media}.media`, url: `blob:${media}`, duration: 30, file: { type: `${media}/${media === "audio" ? "mpeg" : "mp4"}`, size: 1024 } });
@@ -113,7 +122,7 @@ test("both Explore workflows send owned Create audio/video to OpenRouter, indepe
       demo: { url: "blob:not-a-reference" }, demoAudio: { url: "blob:not-reference-audio" },
     }));
     const input = [...jobs.values()][0].input;
-    assert.equal(input.provider, "openrouter");
+    assert.equal(input.provider, "reapi");
     assert.equal(input.referenceVideoAssetId, videoId);
     assert.equal(input.referenceVideoDurationSeconds, 30);
     assert.deepEqual(input.referenceAudioAssetIds, [audioId]);
@@ -121,6 +130,27 @@ test("both Explore workflows send owned Create audio/video to OpenRouter, indepe
     assert.equal(uploads.length, 2);
     assert.equal(reservations.size, 1);
     assert.doesNotMatch(JSON.stringify(input), /blob:|demoAssetId|demoAudioAssetId|backgroundAssetId/);
+  }
+});
+
+test("Talking Head and Hook retain all three reference kinds through their real client and API for WAN", async () => {
+  for (const kind of ["hook", "phone"]) {
+    jobs.clear(); reservations.clear(); uploads.length = 0; ownedAssets.clear();
+    const reference = media => ({ name: `${media}.media`, url: `blob:${media}`, duration: 15,
+      file: { type: `${media}/${media === "audio" ? "mpeg" : "mp4"}`, size: 1024 } });
+    await client().generate(draft({ kind, settings: normalizeWorkflowGenerationSettings({ model: "wan_3_0", duration: 3, durationSeconds: 3 }, true),
+      creator: { name: "creator.png", url: "blob:creator" },
+      videoReference: kind === "hook" ? reference("video") : null,
+      appScreen: kind === "phone" ? { ...reference("video"), kind: "video" } : null,
+      audioReference: reference("audio"),
+    }));
+    const input = [...jobs.values()][0].input;
+    assert.equal(input.provider, "reapi"); assert.equal(input.model, "wan_3_0");
+    assert.deepEqual(input.referenceImageUrls, ["https://storage.example.com/1.png"]);
+    assert.deepEqual(input.referenceAudioUrls, ["https://storage.example.com/audio.media"]);
+    assert.deepEqual(input.referenceAudioDurationSeconds, [15]);
+    assert.equal(input.referenceVideoUrl, "https://storage.example.com/video.media");
+    assert.equal(input.durationSeconds, 3); assert.equal(reservations.size, 1);
   }
 });
 
@@ -132,7 +162,7 @@ test("timed-reference ownership is also checked before Explore's atomic startBat
     method: "POST", headers: { Authorization: "Bearer fake-owner-token" }, body: JSON.stringify(body),
   }), { startBatch: async (batch) => {
     starts++;
-    assert.equal(batch.inputs[0].provider, "openrouter");
+    assert.equal(batch.inputs[0].provider, "reapi");
     assert.deepEqual(batch.inputs[0].referenceAudioAssetIds, [audioId]);
     return new Response(null, { status: 202 });
   } });

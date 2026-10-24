@@ -2,6 +2,7 @@ export type PublishingPreferences = {
   containsSyntheticMedia: boolean;
   tiktokPrivacyLevel: "PUBLIC_TO_EVERYONE" | "SELF_ONLY" | "FOLLOWER_OF_CREATOR" | "MUTUAL_FOLLOW_FRIENDS";
   tiktokAllowComments: boolean;
+  tiktokBrandOrganic: boolean;
   youtubePrivacyStatus: "public" | "private" | "unlisted";
   youtubeMadeForKids: boolean;
   youtubeNotifySubscribers: boolean;
@@ -14,6 +15,7 @@ export const DEFAULT_PUBLISHING_PREFERENCES: PublishingPreferences = {
   containsSyntheticMedia: true,
   tiktokPrivacyLevel: "PUBLIC_TO_EVERYONE",
   tiktokAllowComments: true,
+  tiktokBrandOrganic: false,
   youtubePrivacyStatus: "public",
   youtubeMadeForKids: false,
   youtubeNotifySubscribers: false,
@@ -40,7 +42,7 @@ export function parsePublishingPreferencesUpdate(value: unknown): PublishingPref
     if (key === "youtubePrivacyStatus") {
       return setting !== "public" && setting !== "private" && setting !== "unlisted";
     }
-    return !["containsSyntheticMedia", "tiktokAllowComments", "youtubeMadeForKids", "youtubeNotifySubscribers"].includes(key)
+    return !["containsSyntheticMedia", "tiktokAllowComments", "tiktokBrandOrganic", "youtubeMadeForKids", "youtubeNotifySubscribers"].includes(key)
       || typeof setting !== "boolean";
   })) {
     throw new Error("Choose valid publishing defaults.");

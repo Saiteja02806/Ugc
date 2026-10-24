@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CharacterGenerateRequestSchema } from "./schema.ts";
+import { MAX_CHARACTER_REFERENCES } from "./image-models.ts";
 
 export const CHARACTER_SESSION_IDLE_TIMEOUT_MS = 10 * 60 * 1_000;
 
@@ -8,12 +9,13 @@ export const CharacterClientSessionSchema = z.strictObject({
   pendingRequest: CharacterGenerateRequestSchema.nullable(),
   jobs: z.array(z.strictObject({ jobId: z.uuid(), generationId: z.string().min(1) })),
   selectedCharacterId: z.uuid().nullable(),
+  selectedCharacterIds: z.array(z.uuid()).max(MAX_CHARACTER_REFERENCES).refine((ids) => new Set(ids).size === ids.length).default([]),
   lastActivityAt: z.number().int().nonnegative().nullable().default(null),
   sessionEpoch: z.number().int().nonnegative().default(0),
 });
 export type CharacterClientSession = z.infer<typeof CharacterClientSessionSchema>;
 export const EMPTY_CHARACTER_SESSION: CharacterClientSession = {
-  version: 1, pendingRequest: null, jobs: [], selectedCharacterId: null, lastActivityAt: null, sessionEpoch: 0,
+  version: 1, pendingRequest: null, jobs: [], selectedCharacterId: null, selectedCharacterIds: [], lastActivityAt: null, sessionEpoch: 0,
 };
 
 export function appendCharacterSessionJobs(

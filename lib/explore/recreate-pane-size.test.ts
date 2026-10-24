@@ -3,12 +3,12 @@ import test from "node:test";
 
 import { clampRecreateEditorWidth, recreateEditorDefault, recreateEditorMaximum } from "./recreate-pane-size.ts";
 
-test("the default gives the editor about a third, bounded to 320–420 pixels", () => {
-  assert.equal(recreateEditorDefault(1200), 384);
-  assert.equal(recreateEditorDefault(1500), 420);
-  assert.equal(recreateEditorDefault(1800), 420);
-  assert.equal(recreateEditorDefault(800), 320);
-  assert.equal(recreateEditorDefault(1084), 347);
+test("the approved five-percent wider default is bounded to 336–441 pixels", () => {
+  assert.equal(recreateEditorDefault(1200), 403);
+  assert.equal(recreateEditorDefault(1500), 441);
+  assert.equal(recreateEditorDefault(1800), 441);
+  assert.equal(recreateEditorDefault(800), 336);
+  assert.equal(recreateEditorDefault(1084), 364);
 });
 
 test("the wider default still reserves room for the gallery on small containers", () => {
@@ -35,6 +35,6 @@ test("drag and keyboard sizes clamp at both limits", () => {
   assert.equal(clampRecreateEditorWidth(700, 1200), 560);
   assert.equal(clampRecreateEditorWidth(550, 800), 464);
   assert.equal(clampRecreateEditorWidth(391.8, 1200), 392);
-  assert.equal(clampRecreateEditorWidth(Number.NaN, 1200), 384);
-  assert.equal(clampRecreateEditorWidth(Number.POSITIVE_INFINITY, 800), 320);
+  assert.equal(clampRecreateEditorWidth(Number.NaN, 1200), 403);
+  assert.equal(clampRecreateEditorWidth(Number.POSITIVE_INFINITY, 800), 336);
 });

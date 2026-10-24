@@ -8,9 +8,13 @@ import { useLocalWorkflowMedia, type LocalMediaKind, type LocalWorkflowMedia } f
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import studio from "@/components/explore/workflow-studio.module.css";
+import playerStyles from "@/components/explore/workflow-media-player.module.css";
+import secondary from "@/components/explore/workflow-secondary-action.module.css";
 import { cn } from "@/lib/utils";
 
-export type WorkflowAttachment = ReturnType<typeof useLocalWorkflowMedia>;
+export type WorkflowAttachment = Omit<ReturnType<typeof useLocalWorkflowMedia>, "cancelPending"> & {
+  chooseOwnedAudio?: (assetId: string) => Promise<boolean>;
+};
 
 export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel, className, disabled = false }: {
   attachment: WorkflowAttachment;
@@ -28,7 +32,7 @@ export function WorkflowFilePicker({ attachment, kind, label, icon, buttonLabel,
       if (file) void attachment.choose(file);
       event.target.value = "";
     }} />
-    <Button type="button" variant="outline" aria-label={label} className={cn("h-10 px-3 text-sm", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
+    <Button type="button" variant="outline" aria-label={label} className={cn(kind === "audio" ? secondary.action : "h-10 px-3 text-sm", className)} disabled={disabled || attachment.loading} onClick={() => input.current?.click()}>
       {icon}{attachment.loading ? "Reading file…" : buttonLabel ?? label}
     </Button>
   </>;
@@ -61,7 +65,7 @@ export function WorkflowMediaPlayer({ asset, kind, label, className }: {
   }, [asset.url]);
 
   return kind === "video"
-    ? <video key={asset.url} ref={playerRef} src={asset.url} aria-label={label} controls playsInline preload="metadata" className={cn("aspect-video w-full rounded-2xl bg-black object-contain", className)} />
+    ? <video key={asset.url} ref={playerRef} src={asset.url} width={asset.width ?? undefined} height={asset.height ?? undefined} aria-label={label} controls playsInline preload="metadata" className={cn(playerStyles.video, "rounded-2xl bg-black object-contain", className)} />
     : <audio key={asset.url} ref={playerRef} src={asset.url} aria-label={label} controls preload="metadata" className="h-9 w-full min-w-0" />;
 }
 

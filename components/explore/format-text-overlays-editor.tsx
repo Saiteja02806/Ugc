@@ -1,52 +1,70 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
+import tools from "./format-video-editor.module.css";
 import { Button } from "@/components/ui/button";
 import styles from "@/components/explore/format-workspace.module.css";
-import { applyFormatTextPreset, MAX_FORMAT_TEXT_OVERLAYS, type ExploreFormatText, type FormatTextPreset } from "@/worker/src/lib/explore-format-edit";
+import { applyFormatTextPreset, DEFAULT_FORMAT_TEXT_STYLE, EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily, MAX_FORMAT_TEXT_OVERLAYS, type ExploreFormatText, type FormatTextPreset, type ExploreTextFont, type ExploreTextWeight } from "@/worker/src/lib/explore-format-edit";
+import "./explore-text-fonts.css";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
 
-export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallText = false, timeMs = 0, onSeek }: {
+export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallText = false, fullDuration = false, timeMs = 0, onSeek, styleTarget, showStyleControls = true }: {
   overlays: ExploreFormatText[]; durationMs: number; onChange: (value: ExploreFormatText[]) => void;
-  wallText?: boolean; timeMs?: number; onSeek: (timeMs: number) => void;
+  wallText?: boolean; fullDuration?: boolean; timeMs?: number; onSeek: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
-  const editable = overlays.length ? overlays : [{ value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: durationMs }];
+  const newText = { value: "", width: .8, y: .18, fontSize: 48, ...DEFAULT_FORMAT_TEXT_STYLE };
+  const editable = overlays.length ? overlays : [{ ...newText, startMs: 0, endMs: durationMs }];
   const index = Math.min(selected, editable.length - 1);
   const text = editable[index];
+  const weight = text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700);
+  const automaticTiming = wallText || fullDuration;
+  function changeText(value: ExploreFormatText) {
+    const next = automaticTiming ? { ...value, startMs: 0, endMs: durationMs } : value;
+    onChange(editable.map((overlay, i) => i === index ? next : overlay));
+    // Keep the selected text visible while editing, including paused playback.
+    if (timeMs < next.startMs || timeMs >= next.endMs) onSeek(Math.max(0, Math.min(next.startMs, next.endMs - 1, durationMs - 1)));
+  }
   function update(patch: Partial<ExploreFormatText>) {
-    onChange(editable.map((overlay, i) => i === index ? { ...overlay, ...patch } : overlay));
+    changeText({ ...text, ...patch });
   }
   function add() {
     const previousEnd = editable.at(-1)?.endMs ?? 0;
-    const startMs = Math.min(Math.max(0, Math.round(timeMs), previousEnd), Math.max(0, durationMs - 1000));
-    onChange([...editable, { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs, endMs: durationMs }]);
+    const startMs = wallText ? 0 : Math.min(Math.max(0, Math.round(timeMs), previousEnd), Math.max(0, durationMs - 1000));
+    onChange([...editable, { ...newText, startMs, endMs: durationMs }]);
     setSelected(editable.length); onSeek(startMs);
   }
+  const styleControls = <details className={`${styles.clipTextStyle} ${tools.stylePanel}`} open><summary className="cursor-pointer text-sm font-medium">Text style</summary><div className={`mt-3 ${styles.clipTextStyleFields}`}>
+        <label className="block space-y-2 text-xs text-muted"><span>Text preset{text.font || text.fontWeight !== undefined ? <span className="ml-2 text-[10px]">Customized</span> : null}</span><select aria-label="Text preset" value={text.preset ?? "bold"} onChange={event => changeText(applyFormatTextPreset(text, event.target.value as FormatTextPreset))} className={field}><option value="bold">Bold white</option><option value="snapchat-classic">Snapchat Classic</option></select></label>
+        {text.preset === "snapchat-classic" ? <label className="block space-y-2 text-xs text-muted">Background opacity · {Math.round((text.backgroundOpacity ?? .58) * 100)}%<input aria-label="Caption background opacity" type="range" min={0} max={100} value={(text.backgroundOpacity ?? .58) * 100} onChange={event => update({ backgroundOpacity: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label> : null}
+        <div className={tools.positionColor}><label className="space-y-2 text-xs text-muted">Position<select aria-label="Text position" value={text.y} onChange={event => update({ y: Number(event.target.value) })} className={field}><option value={text.preset === "snapchat-classic" ? .075 : .1}>Top</option><option value={.3}>Middle</option><option value={.55}>Bottom</option>{![text.preset === "snapchat-classic" ? .075 : .1,.3,.55].includes(text.y) ? <option value={text.y}>Custom · {Math.round(text.y * 100)}%</option> : null}</select></label><label className="space-y-2 text-xs text-muted">Color<input type="color" aria-label="Text color" value={text.color} onChange={event => update({ color: event.target.value })} className={field} /></label></div>
+        <label className="block space-y-2 text-xs text-muted">Vertical position · {Math.round(text.y * 1000) / 10}%<input type="range" aria-label="Text vertical position" min={3} max={90} step={.5} value={text.y * 100} onChange={event => update({ y: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
+        <label className="block space-y-2 text-xs text-muted">Width · {Math.round(text.width * 100)}%<input type="range" aria-label="Text width" min={40} max={94} value={text.width * 100} onChange={event => update({ width: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
+        <label className="block space-y-2 text-xs text-muted">Text size · {text.fontSize}<input type="range" aria-label="Text size" min={24} max={84} value={text.fontSize} onChange={event => update({ fontSize: Number(event.target.value) })} className="w-full accent-primary" /></label>
+        {text.preset !== "snapchat-classic" ? <label className="block space-y-2 text-xs text-muted">Outline thickness · {text.outlineWidth ?? 2}<input type="range" aria-label="Text outline thickness" min={0} max={16} step={1} value={text.outlineWidth ?? 2} onChange={event => update({ outlineWidth: Number(event.target.value) })} className="w-full accent-primary" /></label> : null}
+        <div className={tools.fontControls}>
+          <label className="text-xs text-muted">Font<select aria-label="Text font" value={text.font ?? ""} style={{ fontFamily: exploreTextFontFamily(text.font, weight) }} onChange={event => update(event.target.value ? { font: event.target.value as ExploreTextFont } : { font: undefined, fontWeight: undefined })} className={field}><option value="">Original (Arial)</option>{EXPLORE_TEXT_FONTS.map(font => <option key={font.id} value={font.id} style={{ fontFamily: exploreTextFontFamily(font.id, 500) }}>{font.label}</option>)}</select></label>
+          <label className="text-xs text-muted">Weight<select aria-label="Text weight" value={weight} onChange={event => update({ fontWeight: Number(event.target.value) as ExploreTextWeight })} className={field}>{EXPLORE_TEXT_WEIGHTS.filter(item => text.font || item.value !== 500).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        </div>
+      </div></details>;
   return <section className="space-y-3" aria-label="Text overlays">
     <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{wallText ? "Your wall of text" : "Text overlays"}</h2>
       <Button type="button" size="sm" variant="outline" disabled={editable.length >= MAX_FORMAT_TEXT_OVERLAYS || durationMs < 1} onClick={add}>Add text</Button></div>
-    <p className="text-xs leading-5 text-muted">Each text block has its own timing within the trimmed clip.</p>
+    {fullDuration && !wallText ? <p className="text-xs leading-5 text-muted">This text stays on screen for the entire selected hook. Its timing follows your trim.</p> : !wallText ? <p className="text-xs leading-5 text-muted">Each text block has its own timing within the trimmed clip.</p> : null}
     {editable.length > 1 || text.value ? <div className="space-y-2" role="group" aria-label="Text blocks">
       {editable.map((overlay, i) => <div key={i} className="flex items-center gap-2">
         <Button type="button" size="sm" variant={i === index ? "secondary" : "ghost"} className="min-w-0 flex-1 justify-start" aria-pressed={i === index} aria-label={`Edit text block ${i + 1}`} onClick={() => { setSelected(i); onSeek(overlay.startMs); }}>
-          <span className="truncate">{i + 1} · {overlay.value || "Empty text"}</span><span className="ml-auto shrink-0 text-xs text-muted">{overlay.startMs / 1000}–{overlay.endMs / 1000}s</span>
+          <span className="truncate">{i + 1} · {overlay.value || "Empty text"}</span>{!wallText ? <span className="ml-auto shrink-0 text-xs text-muted">{overlay.startMs / 1000}–{overlay.endMs / 1000}s</span> : null}
         </Button>
         <Button type="button" size="icon-sm" variant="ghost" aria-label={`Remove text block ${i + 1}`} onClick={() => { onChange(editable.filter((_, n) => n !== i)); setSelected(Math.max(0, i - 1)); }}>×</Button>
       </div>)}
     </div> : null}
     {text ? <>
-      <label className="block space-y-2 text-xs text-muted">Text block {index + 1}<textarea aria-label={wallText ? "Wall of text" : "Overlay text"} placeholder="Type text to show on this clip…" value={text.value} onChange={event => update({ value: event.target.value })} rows={4} maxLength={600} className={field} /></label>
-      <div className="grid grid-cols-2 gap-3"><label className="space-y-2 text-xs text-muted">Show from (s)<input type="number" aria-label="Text start time" min={0} max={durationMs / 1000} step={.1} value={text.startMs / 1000} onChange={event => update({ startMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label><label className="space-y-2 text-xs text-muted">Until (s)<input type="number" aria-label="Text end time" min={.1} max={durationMs / 1000} step={.1} value={text.endMs / 1000} onChange={event => update({ endMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label></div>
-      <details className={`rounded-lg border border-border ${styles.clipTextStyle}`} open><summary className="cursor-pointer text-sm font-medium">Text style</summary><div className={`mt-3 ${styles.clipTextStyleFields}`}>
-        <label className="block space-y-2 text-xs text-muted">Text preset<select aria-label="Text preset" value={text.preset ?? "bold"} onChange={event => onChange(editable.map((overlay, i) => i === index ? applyFormatTextPreset(text, event.target.value as FormatTextPreset) : overlay))} className={field}><option value="bold">Bold white</option><option value="snapchat-classic">Snapchat Classic</option></select></label>
-        {text.preset === "snapchat-classic" ? <label className="block space-y-2 text-xs text-muted">Background opacity · {Math.round((text.backgroundOpacity ?? .58) * 100)}%<input aria-label="Caption background opacity" type="range" min={0} max={100} value={(text.backgroundOpacity ?? .58) * 100} onChange={event => update({ backgroundOpacity: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label> : null}
-        <div className="grid grid-cols-2 gap-3"><label className="space-y-2 text-xs text-muted">Position<select aria-label="Text position" value={text.y} onChange={event => update({ y: Number(event.target.value) })} className={field}><option value={text.preset === "snapchat-classic" ? .075 : .1}>Top</option><option value={.3}>Middle</option><option value={.55}>Bottom</option>{![text.preset === "snapchat-classic" ? .075 : .1,.3,.55].includes(text.y) ? <option value={text.y}>Custom · {Math.round(text.y * 100)}%</option> : null}</select></label><label className="space-y-2 text-xs text-muted">Color<input type="color" aria-label="Text color" value={text.color} onChange={event => update({ color: event.target.value })} className={field} /></label></div>
-        <label className="block space-y-2 text-xs text-muted">Vertical position · {Math.round(text.y * 1000) / 10}%<input type="range" aria-label="Text vertical position" min={3} max={90} step={.5} value={text.y * 100} onChange={event => update({ y: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
-        <label className="block space-y-2 text-xs text-muted">Width · {Math.round(text.width * 100)}%<input type="range" aria-label="Text width" min={40} max={94} value={text.width * 100} onChange={event => update({ width: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
-        <label className="block space-y-2 text-xs text-muted">Text size · {text.fontSize}<input type="range" aria-label="Text size" min={24} max={84} value={text.fontSize} onChange={event => update({ fontSize: Number(event.target.value) })} className="w-full accent-primary" /></label>
-      </div></details>
+      <label className="block space-y-2 text-xs text-muted">Text block {index + 1}<textarea aria-label={wallText ? "Wall of text" : "Overlay text"} placeholder="Type text to show on this clip…" value={text.value} onChange={event => update({ value: event.target.value })} rows={3} maxLength={600} className={field} /></label>
+      {!automaticTiming ? <div className={tools.textTiming}><label className="space-y-2 text-xs text-muted">Show from (s)<input type="number" aria-label="Text start time" min={0} max={durationMs / 1000} step={.1} value={text.startMs / 1000} onChange={event => update({ startMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label><label className="space-y-2 text-xs text-muted">Until (s)<input type="number" aria-label="Text end time" min={.1} max={durationMs / 1000} step={.1} value={text.endMs / 1000} onChange={event => update({ endMs: Math.round(Number(event.target.value) * 1000) })} className={field} /></label></div> : null}
+      {showStyleControls ? styleTarget ? createPortal(styleControls, styleTarget) : styleControls : null}
     </> : <p className="text-xs text-muted">Add text to show a message at a specific time.</p>}
     <p className="text-xs leading-5 text-muted">Text already inside the original video is part of the footage.</p>
   </section>;

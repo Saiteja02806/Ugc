@@ -1,6 +1,10 @@
 .agents/
 .chrome-carousel-upgrade-check/
 .codex/
+.codex-artifacts/
+.codex-audits/
+.release-worktrees/
+.release-db-*/
 .next/
 .playwright-mcp/
 .tmp/
@@ -11,14 +15,36 @@ local-run-logs/
 node_modules/
 out/
 output/
+outputs/
 tmp/
 tmp-logs/
 worker/dist/
 worker/node_modules/
+artifacts/
+/build/
+coverage/
+landing_page/
+node-compile-cache/
+tinder/
+__pycache__/
+*.pyc
+*.pem
 *.tsbuildinfo
 .tmp-reference-*
 supabase/.temp/
+supabase/supabase/
 design/
+
+# Do not upload plaintext private pilot source material.
+lib/explore/creator-accounts.json
+lib/explore/creator-account-reviews.json
+lib/explore/creator-slideshows.json
+lib/explore/creator-slide-text.json
+lib/explore/creator-account-media/*.png
+lib/explore/creator-account-media/*.mp4
+lib/explore/creator-slideshow-media/*.jpg
+lib/explore/creator-slideshow-media/*.webp
+lib/explore/creator-slideshow-media/*.png
 
 **/.terraform/
 *.tfplan
@@ -38,6 +64,7 @@ ugcpilot_logo__1.png
 ai-studio-images-desktop.png
 auth-desktop.png
 local-landing-page.png
+landing-*.png
 desktop.ini
 folderico-QfzIGG.ico
 design-qa.md

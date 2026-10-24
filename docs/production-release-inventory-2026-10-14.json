@@ -1,0 +1,624 @@
+{
+  "baseCommit": "07a4e516407151d5411f37e05fece468e8dcfdbd",
+  "preparedFrom": "82041ae691b127b7c6fb81c07f2211b46150db60",
+  "note": "All intentional changed/new worktree paths relative to the prior production commit. The inventory omits its own size/hash to avoid a circular digest.",
+  "included": [
+    {
+      "path": ".env.example",
+      "bytes": 15297,
+      "sha256": "30d71a8a94395d0e4e3d4eaec78d7c515e2f56eda3604e16fe04167c82c51e48"
+    },
+    {
+      "path": "CAROUSEL_CONTEXT.md",
+      "bytes": 451396,
+      "sha256": "b38baa8981be6fde4016d83becb3e56c6327ec081120b04b2880b82f0bcf5a1a"
+    },
+    {
+      "path": "app/api/demo/list/route.ts",
+      "bytes": 1535,
+      "sha256": "9e06f34952f3cfcdaf09c9c95a71ac5990905abba15cdead22c1b81c1b144cb3"
+    },
+    {
+      "path": "app/api/demo/sources/route.ts",
+      "bytes": 537,
+      "sha256": "3956a4a3f6edf63c4ec7063694fdc938ceae5fc77f471333239b770c1058eb26"
+    },
+    {
+      "path": "app/api/explore/background-audio/file/route.ts",
+      "bytes": 127,
+      "sha256": "85f3a7ee6bd6b1c8e86ffd402e5b83ff96eb6762274b5d01ff79a04fe0f91f05"
+    },
+    {
+      "path": "app/api/explore/background-audio/route.ts",
+      "bytes": 133,
+      "sha256": "e33f2af523b3a7ee31b890c44eeae010fd2ff2ead81c236610edbb75858d7051"
+    },
+    {
+      "path": "app/e2e/explore-format-preview/page.tsx",
+      "bytes": 5108,
+      "sha256": "773a0618a172c2d71b4a3c70df4933eaf503494f33be278c479cd92d69f6f432"
+    },
+    {
+      "path": "app/library/demos/[demoId]/edit/page.tsx",
+      "bytes": 651,
+      "sha256": "950ec12dea4c9fe96532a8dd19f3ff5baab0e2ee205d1dacc173e31b5dea7653"
+    },
+    {
+      "path": "app/library/loading.tsx",
+      "bytes": 194,
+      "sha256": "940bdfa90ecd39224cbe22087152d81c7c9efc69ba4cc4c3b13f63b2e302783b"
+    },
+    {
+      "path": "app/library/page.tsx",
+      "bytes": 310,
+      "sha256": "60923d9cd0007fe996caa82a698d6f4e87c8e1654e648bd7a0f6dc64a8194c0f"
+    },
+    {
+      "path": "components/demos/demo-editor-shell.tsx",
+      "bytes": 31484,
+      "sha256": "fe71f8a37fb1ded44249a2203f24851d11905ef5bd4658c20c5500ce0bdfac69"
+    },
+    {
+      "path": "components/demos/demos-workspace.tsx",
+      "bytes": 97513,
+      "sha256": "b747c1929c4206aed82be97513e6bca0aa48a0c384f1b1ba137192339bc058ff"
+    },
+    {
+      "path": "components/explore/format-demo-section.tsx",
+      "bytes": 70226,
+      "sha256": "cb7525b226e33605ca1471f34d9b8315d1e881c67cedf113e80c8d16218b1ec3"
+    },
+    {
+      "path": "components/explore/format-demo-workspace.tsx",
+      "bytes": 10598,
+      "sha256": "c39e5282429005afcd40a617c445167e46434dc6fc7c3542fa3bea151cc3a27d"
+    },
+    {
+      "path": "components/explore/format-generation-references.tsx",
+      "bytes": 21985,
+      "sha256": "3dbd08f3efc1cb68bbe48d00e27f37f7e9f8653948369474fb921a342fc4140d"
+    },
+    {
+      "path": "components/explore/format-video-editor.tsx",
+      "bytes": 33373,
+      "sha256": "ea573de65fc3a85f31f9bb77c4765da57b664a16556bf58ddaf1e4abf6b69b2b"
+    },
+    {
+      "path": "components/explore/format-workspace.tsx",
+      "bytes": 55425,
+      "sha256": "0867d9fc95e26b3b1882443aee495cf5faddfc6962f793f094c357f90aa2cf9b"
+    },
+    {
+      "path": "components/explore/hook-workflow-preview.tsx",
+      "bytes": 19696,
+      "sha256": "441fdca18a4fba6baac6c9d2e339151208f866fa798c47000795453dbf02396c"
+    },
+    {
+      "path": "components/explore/remix-text-section.module.css",
+      "bytes": 3836,
+      "sha256": "d648c2e9afc565e07c4c5a329a7b0a3081be7e4cf5a170dab670c546438f2761"
+    },
+    {
+      "path": "components/explore/remix-text-section.tsx",
+      "bytes": 19272,
+      "sha256": "84504d0d2015fb87ee001ddcd04aa37a3d65ac1792c13f57e366126d8ba98aba"
+    },
+    {
+      "path": "components/explore/use-workflow-finishing.ts",
+      "bytes": 23943,
+      "sha256": "3d5798048873408623b811ce4683ab075ce5cb25282e87e3cf6d6341a85da0ac"
+    },
+    {
+      "path": "components/explore/use-workflow-source-video.ts",
+      "bytes": 6033,
+      "sha256": "c57e8a68b4d5e872899553192c0dd55475c09517937aceb0cfbd81a558505dba"
+    },
+    {
+      "path": "components/explore/workflow-audio-reference.tsx",
+      "bytes": 3697,
+      "sha256": "8535eba0d8f87a787e2b10374624289684954cf334d3abd5857bff1ab28d562b"
+    },
+    {
+      "path": "components/explore/workflow-background-audio-picker.tsx",
+      "bytes": 9937,
+      "sha256": "ebf110350859319ad08bc899f693cb4299f0be3ec3101d999a1456e0fe96ce53"
+    },
+    {
+      "path": "components/explore/workflow-caption-editor.module.css",
+      "bytes": 3429,
+      "sha256": "ad384ce40797171e303e2f1c54b2da1322637f299a99ca32550cd96214bd0043"
+    },
+    {
+      "path": "components/explore/workflow-caption-editor.tsx",
+      "bytes": 7742,
+      "sha256": "00e79a8b0e265be4e6ead8fdba23e826d42266e5f14d4655b1f0f5f200958639"
+    },
+    {
+      "path": "components/explore/workflow-caption-overlay.tsx",
+      "bytes": 5758,
+      "sha256": "8666ae6aaa55bf0b926e93fd0fb7b395c8c5490c3a999e41c5e54e9d59cc1c27"
+    },
+    {
+      "path": "components/explore/workflow-composition-panel.tsx",
+      "bytes": 18970,
+      "sha256": "c38336b0d282ab94ff4082bb5632714022b62b26ccbb9426de081d27ef195d89"
+    },
+    {
+      "path": "components/explore/workflow-creation-form.tsx",
+      "bytes": 17040,
+      "sha256": "a4f418766eb0421f76b065105a02b7d48b2f393f632d68ffebe59d36de6b5192"
+    },
+    {
+      "path": "components/explore/workflow-creation.module.css",
+      "bytes": 23955,
+      "sha256": "c4a4c6229a5be32d6c653ff67171ff29625366fe3d361f5c0f49f88cc6e500c7"
+    },
+    {
+      "path": "components/explore/workflow-edit-workspace.tsx",
+      "bytes": 17107,
+      "sha256": "da3b309f5ab034da096d9e67bdf1c867c36b7b5ae865c0c122c07ab48242bc2d"
+    },
+    {
+      "path": "components/explore/workflow-finishing-boundary.tsx",
+      "bytes": 17203,
+      "sha256": "f9d67d1f87fccb6b1a8b3d5b3c2c591e865f5b21cc4d21a421b399ab25e0e36a"
+    },
+    {
+      "path": "components/explore/workflow-preview-canvas.tsx",
+      "bytes": 3285,
+      "sha256": "b0f7143510a6cf8509f4b6fcbca54f4f55f7db3e11c0189567b14059819d6651"
+    },
+    {
+      "path": "components/explore/workflow-reference-preview.module.css",
+      "bytes": 4059,
+      "sha256": "ccfad7168be7cfe193500515dccd4f688368f374cf5b2b298dbf2738cf5368f0"
+    },
+    {
+      "path": "components/explore/workflow-reference-preview.tsx",
+      "bytes": 2527,
+      "sha256": "2e78872075e72de77d9b9ddc3f56404f3ef0bd38f280c980303cc567eb9183a7"
+    },
+    {
+      "path": "components/explore/workflow-section-layout.module.css",
+      "bytes": 13808,
+      "sha256": "ee7cd1f88f68841c4c2e7c4669cf1ab3f77f00cd07dc642ce45f820e05f6c048"
+    },
+    {
+      "path": "components/explore/workflow-subtitle-preview.tsx",
+      "bytes": 3615,
+      "sha256": "cc73ebfe850d1347668b8f5474c95c0db4397254ab14f00c117a71491a2f6d26"
+    },
+    {
+      "path": "components/explore/workflow-video-asset-picker.tsx",
+      "bytes": 4691,
+      "sha256": "f875206c2011dde0acf61a7951b6597f67d91bd70e94e6d339fbe2290a21ebee"
+    },
+    {
+      "path": "components/generation/reference-upload-preview.tsx",
+      "bytes": 4034,
+      "sha256": "5c87da28a406f95f5838aac8038f8fb99de16718eb6f34fc724209c2c25cadac"
+    },
+    {
+      "path": "components/layout/app-sidebar.tsx",
+      "bytes": 24841,
+      "sha256": "b0155221981a852b907918e198b63e7075c1586dfb7b83068724ac96f80530e9"
+    },
+    {
+      "path": "components/library/library-workspace.tsx",
+      "bytes": 28497,
+      "sha256": "c59c4fc924b7ac551c92bba9c822e42bf828047fcbbf4f45060be71a509c8d30"
+    },
+    {
+      "path": "components/pricing/pricing-comparison.tsx",
+      "bytes": 10562,
+      "sha256": "498304801fe03b8ad3eaf5e8b6fd5a7439833104325422fca85b219a515ff428"
+    },
+    {
+      "path": "components/trending/hook-video-composer.tsx",
+      "bytes": 64091,
+      "sha256": "8c0b1839c57ccd04e5eb1ed7831e3c15ca2fa3402bf39a673797e1226c1bbbfd"
+    },
+    {
+      "path": "components/trending/trending-creative-editor.tsx",
+      "bytes": 110026,
+      "sha256": "63da36b9978ba5c5becb7bccef1acace8fd536062346c8545ab9bb62703eaca1"
+    },
+    {
+      "path": "components/video/reference-files-upload.tsx",
+      "bytes": 7048,
+      "sha256": "472c37f07a3f8fde2ad9d6b6edb7be754c3a0923671f88daf09d4e3e72517622"
+    },
+    {
+      "path": "components/video/video-generation-workspace.tsx",
+      "bytes": 92144,
+      "sha256": "607364b285b5e4bbd17c4f05905166e473066fdc594096f6e1f5399c955b42ee"
+    },
+    {
+      "path": "docs/background-audio-library-fix-2026-10-14.md",
+      "bytes": 3820,
+      "sha256": "65de2991162108cb2c9e02189f7a2b8ffe8ec908fa0f73b0b4e779b51130f85a"
+    },
+    {
+      "path": "docs/demo-library-explore-fix-2026-10-14.md",
+      "bytes": 2626,
+      "sha256": "632b9e2e54bea1db228503802be83c78327821d3017b59f466fb847170641fe9"
+    },
+    {
+      "path": "docs/explore-remix-overview-fix-2026-10-14.md",
+      "bytes": 3020,
+      "sha256": "de040855d7b37b6576007975ff6637671698d9690c05d5a5c3fc63cad4dc2bbd"
+    },
+    {
+      "path": "docs/mcp-business-combined-release-2026-10-13.md",
+      "bytes": 8325,
+      "sha256": "d252ba6fac1df38b791026f667f245eb51e9860c4c282809a6e6578c25ff08b8"
+    },
+    {
+      "path": "docs/mcp-goal-progress-2026-10-14.md",
+      "bytes": 14214,
+      "sha256": "28dbcc7d3cde3af41cf0abe57b5b984a174aa37620727970ec4fe58b051a6865"
+    },
+    {
+      "path": "docs/mcp-remaining-work-audit-2026-10-11.md",
+      "bytes": 58704,
+      "sha256": "2be7b53d3e361932b71ae1a3eb7a7e78ef565e6348aeda1f22615b5d91874924"
+    },
+    {
+      "path": "docs/production-release-2026-10-14.md",
+      "bytes": 5276,
+      "sha256": "a6fdcd68fe729def113929a12a2c15efe610ffd2bd57b87b3f9b4f1c53e0d31a"
+    },
+    {
+      "path": "docs/production-release-excluded-paths-2026-10-14.md",
+      "bytes": 5928,
+      "sha256": "dbfc10d64686dd776cef41610e4a0532fb6cac07575aad053c9c9fc51a7147b1"
+    },
+    {
+      "path": "docs/production-release-inventory-2026-10-14.json",
+      "bytes": null,
+      "sha256": null
+    },
+    {
+      "path": "docs/seo-next-implementation-plan-2026-10-14.md",
+      "bytes": 5618,
+      "sha256": "76d2961da913bc35b45a8d368a88bf361e81c95955ce89b537dd43934615f1e9"
+    },
+    {
+      "path": "docs/seo-public-pages-indexing-2026-10-14.json",
+      "bytes": 17650,
+      "sha256": "4c54413e36f92805e8c192806b381b3f7fd3fce1ba30de34745293d01ffe33d3"
+    },
+    {
+      "path": "docs/seo-search-console-baseline-2026-10-14.json",
+      "bytes": 10871,
+      "sha256": "f56ee47fd08ca74db96d38f2effc7e19037d8af4b956c4f78624ca19a164132a"
+    },
+    {
+      "path": "docs/seo-sitemap-guide-live-check-2026-10-14.json",
+      "bytes": 7059,
+      "sha256": "4a44a1a524ec31c516b6a1583ba34a71500fb9d4b5ac819a0ea4ae1831169ad1"
+    },
+    {
+      "path": "docs/talking-head-subtitle-ui-analysis-2026-10-14.md",
+      "bytes": 12127,
+      "sha256": "9dcf84f125ce6af6e6fa55c46dd321d58a5bbe5460fa46419a3faafbb98c47e3"
+    },
+    {
+      "path": "lib/carousel/hyper-hook-editor-contract.test.ts",
+      "bytes": 3966,
+      "sha256": "9ef6f4608d2c04d2ac130936df58b168a0425e955971455109a1a23c491c94ff"
+    },
+    {
+      "path": "lib/demo/content-demo-sources.ts",
+      "bytes": 988,
+      "sha256": "40ad3cd4deb4afd5d766c04a8bf2dda30927c2b7d958add53237ecccfafdd728"
+    },
+    {
+      "path": "lib/edit/routes.ts",
+      "bytes": 522,
+      "sha256": "09b5f8401a99dca79ac4e7ba4ef26226cda7f0748068e5d732c5dc403a808d4c"
+    },
+    {
+      "path": "lib/explore/background-audio-api.ts",
+      "bytes": 3455,
+      "sha256": "a709834496f97980754a918642c7426d3cbed910ee6b198f9f37a74696232060"
+    },
+    {
+      "path": "lib/explore/background-audio-client.ts",
+      "bytes": 1576,
+      "sha256": "4f347dff6b092e668ff9a3621b4bf057ada390527c8abc3c6f56461db8190724"
+    },
+    {
+      "path": "lib/explore/background-audio-library.ts",
+      "bytes": 3817,
+      "sha256": "267419a9eb20b34e0142d66523b61702c8c5f6dbc8dd48c8256fef4b5abdbad5"
+    },
+    {
+      "path": "lib/explore/background-audio-types.ts",
+      "bytes": 316,
+      "sha256": "b558f182e3db12f6aec1bad724bbe7f09a2f4ed3d08ec102c40bf100f3793228"
+    },
+    {
+      "path": "lib/explore/clip-draft-store.ts",
+      "bytes": 4431,
+      "sha256": "f6fc50c2a05b651be4b0d3697ecadd5a8a22c5e504106741ed653b4849332cf1"
+    },
+    {
+      "path": "lib/explore/remix-text-api.test.mjs",
+      "bytes": 14690,
+      "sha256": "de65a8f6c90168034b760e4c65e5bf49ad7673546128875b59beb9cb4211ad6e"
+    },
+    {
+      "path": "lib/explore/remix-text-api.ts",
+      "bytes": 12235,
+      "sha256": "96e4179302b6722b0221e3e02d6e4532218143c11486f62b8bc0fbdbfb9f445a"
+    },
+    {
+      "path": "lib/explore/subtitle-preview-layout.ts",
+      "bytes": 7302,
+      "sha256": "0c50479557c52e18be81810d18d9bb9d2ef30bbf2bd4515008f70a2e66e2bf8e"
+    },
+    {
+      "path": "lib/trending/hook-demo-content-boundary.test.ts",
+      "bytes": 1945,
+      "sha256": "a1c1d9e2d72212ca7483883f873c413291c0fb5df2db20ae4cc0038f95bc3aad"
+    },
+    {
+      "path": "lib/trending/hook-video-client-upload.ts",
+      "bytes": 6666,
+      "sha256": "3b2f1e308f1156f4fc195f8728234b062f8fe0e9a2cc5a42c93175562553438f"
+    },
+    {
+      "path": "public/subtitle-fonts/editorial/OFL.txt",
+      "bytes": 4449,
+      "sha256": "566be814f8e96e93dfa16101331557eb6b5467e9e03f627c0910fe93ca12300e"
+    },
+    {
+      "path": "public/subtitle-fonts/editorial/editorial-500.ttf",
+      "bytes": 194928,
+      "sha256": "5f13e1d5ef46a03c04fc6ff4992049f8c210f205325af113e14a0c19945c1a7e"
+    },
+    {
+      "path": "public/subtitle-fonts/editorial/editorial-500i.ttf",
+      "bytes": 178260,
+      "sha256": "57bae570c64cf2658c32ffeeead42e9941725c0bab620828e900d727f46ee872"
+    },
+    {
+      "path": "public/subtitle-fonts/editorial/editorial-900i.ttf",
+      "bytes": 177676,
+      "sha256": "9c0ef5ecb75545d91831d3239b988bfbd136a4aa2e4ef76cc4b022bec9c514a3"
+    },
+    {
+      "path": "public/subtitle-fonts/serif/InstrumentSerif-Regular.ttf",
+      "bytes": 70012,
+      "sha256": "498efd461f6ddfcb7a111bf9a565709d2085d48201d501ead960d93e84ffbb88"
+    },
+    {
+      "path": "public/subtitle-fonts/serif/OFL.txt",
+      "bytes": 4405,
+      "sha256": "129ed7618959716959f2941fdd5b49e0ad6e6c1d78726761786a00253d865521"
+    },
+    {
+      "path": "public/subtitle-fonts/serif/provenance.json",
+      "bytes": 469,
+      "sha256": "d9730f40aa703100231ee76944175cca5b5ef2eaaf0bc79496508875ba70eb1c"
+    },
+    {
+      "path": "scripts/explore-caption-review.browser.cjs",
+      "bytes": 21985,
+      "sha256": "ead15cfd9b26c1359a2de27d7205019d4ad7c213958126812065059a52db9330"
+    },
+    {
+      "path": "scripts/explore-content-demo.test.mjs",
+      "bytes": 7918,
+      "sha256": "4aadd27857e31d2a18b697d4a4e6ddb235389c42a5d987e565937a9a4bc6d71f"
+    },
+    {
+      "path": "scripts/explore-format-common-editor.test.mjs",
+      "bytes": 33169,
+      "sha256": "339d5da96f2105c5e5a55393bf4167d9950a2b1a29021a501cc1dcefe36f223f"
+    },
+    {
+      "path": "scripts/explore-format-demo-state.test.mjs",
+      "bytes": 54305,
+      "sha256": "144abbffbfd31d6c5b95ac3e698f25165aab4af8c1b8840a5831d0150682198d"
+    },
+    {
+      "path": "scripts/explore-format-generation-ui.test.mjs",
+      "bytes": 36104,
+      "sha256": "cfb39f8687ff582655054a121c8d1955cedf398de7a85f02669dba77fc6ebc5f"
+    },
+    {
+      "path": "scripts/explore-format-reference-upload.test.mjs",
+      "bytes": 16213,
+      "sha256": "023444a86f891fd5dd59f2c4ebf92acb2887fad98184bb5f3d67c9cf399d3a7a"
+    },
+    {
+      "path": "scripts/explore-format-source-workspace.test.mjs",
+      "bytes": 61153,
+      "sha256": "579c786ed202a81954b3a6de29accc22b4c34d85f9103a4abf4f48b78b6699b9"
+    },
+    {
+      "path": "scripts/explore-recreate-source-action.test.mjs",
+      "bytes": 11042,
+      "sha256": "0d746ee3fb4821d4257a2c684a0a1b9ccf17fff58e9cd8195ad7f1da2540ff1c"
+    },
+    {
+      "path": "scripts/explore-reference-tiles.browser.cjs",
+      "bytes": 7996,
+      "sha256": "596cf0c20102851301b89afebb8d04c88f13ecd891ebe061db4e1364c0614c28"
+    },
+    {
+      "path": "scripts/subtitle-preview-parity.browser.cjs",
+      "bytes": 8465,
+      "sha256": "ef577edfce48e88604f88b95ffe7f8bfd80c0cd6f70421d6618f85f27857afdb"
+    },
+    {
+      "path": "scripts/subtitle-preview-player.test.mjs",
+      "bytes": 4756,
+      "sha256": "9ef3504fe490e47238851b64b217dd1f821e1baabac6684079f47a2c6ed86e60"
+    },
+    {
+      "path": "scripts/subtitle-style-parity.audit.mjs",
+      "bytes": 2979,
+      "sha256": "f4f504847752717adb804b64bdabe71b7124fb8f98ad755202810d5c7207c925"
+    },
+    {
+      "path": "scripts/workflow-background-audio.browser.cjs",
+      "bytes": 10838,
+      "sha256": "09d69e86c0ae13be0fd14ee11f8e3b1a3aed79abb20a634c446bb6e320166791"
+    },
+    {
+      "path": "scripts/workflow-background-audio.test.mjs",
+      "bytes": 10162,
+      "sha256": "3a89ec7fce7938fd03da37ee9060820b5775a2d463f8fbe60ab60258afcba1e3"
+    },
+    {
+      "path": "scripts/workflow-caption-overlay.test.mjs",
+      "bytes": 8014,
+      "sha256": "ae86ca45341accba8ca226d15dfaea1e9ed72dacda83b00163bed41a745a86e7"
+    },
+    {
+      "path": "scripts/workflow-composition-panel.test.mjs",
+      "bytes": 32829,
+      "sha256": "57aa6b35e0c5affce74828f0a3c9e9ab34250f7c5e26348a87fbfd7a8f94f6b8"
+    },
+    {
+      "path": "scripts/workflow-creation-form.test.mjs",
+      "bytes": 21978,
+      "sha256": "aa09e2d6bc53a4907732bdeef1df7c0e54f67e76745c20d1628ed398fbbd47f3"
+    },
+    {
+      "path": "scripts/workflow-finishing-ui.test.mjs",
+      "bytes": 54781,
+      "sha256": "4850f84d8dc6fa2952e5ba0767f422abaf99fc28fff6eb7dfd25f2c0e09b91c5"
+    },
+    {
+      "path": "scripts/workflow-source-video-ui.test.mjs",
+      "bytes": 21146,
+      "sha256": "c2bc2dbf476a58dff137e902c4fa9d2e8d848ce1639df91d2d5153a93c0e0641"
+    },
+    {
+      "path": "scripts/workflow-source-video.test.mjs",
+      "bytes": 13412,
+      "sha256": "2b70c6d1a354ff10ec3a319ba3dc47ae9ad3458a1faa41d0f713f3df54cb2952"
+    },
+    {
+      "path": "worker/src/subtitles/editorial.ts",
+      "bytes": 8661,
+      "sha256": "04b15511150c65a15f77e4fb605b1de2e9782a9ee97c1cce881f555711682357"
+    },
+    {
+      "path": "worker/src/subtitles/serif-box-policy.ts",
+      "bytes": 716,
+      "sha256": "e44e2d178140af3c5cbb8613e6e6ebb8081fd53dc587e4e2cca974cad37ec9c7"
+    },
+    {
+      "path": "worker/src/subtitles/serif-box.ts",
+      "bytes": 7150,
+      "sha256": "7eee9e3f7aee470f9e32c936e148fcf9d8ea21495d041b2c5a565269aaa285f9"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "outputs/check-reference-duration.cjs",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/demo-editor-preview.jpg",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/demo-picker-preview.jpg",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/mcp-hook-demo-test-2026-10-13.mp4",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-duration-hook-1342.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-duration-wall_text-1342.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tile-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tile-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles-updated.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/hook-1342-image-video.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/hook-1342-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/hook-1342-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/hook-390-image-video.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/hook-390-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/hook-390-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/remove-check-failure.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-1342-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-1342-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-390-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/talking-head-390-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-1342-image-video.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-1342-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-1342-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-390-multiple.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    },
+    {
+      "path": "outputs/reference-tiles/wall_text-390-single.png",
+      "reason": "Generated local QA artifact; no production runtime role."
+    }
+  ]
+}

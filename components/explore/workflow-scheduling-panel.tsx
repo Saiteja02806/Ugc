@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PostCaptionField } from "@/components/scheduling/post-caption-field";
 import creation from "@/components/explore/workflow-creation.module.css";
 import reviewStyles from "@/components/explore/workflow-schedule-review.module.css";
 import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
@@ -19,8 +20,8 @@ export const SCHEDULE_PLATFORMS = ([
   { value: "youtube", label: "YouTube" },
 ] as const).filter(({ value }) => isSocialPlatformVisible(value));
 
-/** Pure draft form. Authenticated account display is supplied only by a connected workflow. */
-export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imageOnly = false, timezone, presentation, footer }: {
+/** Controlled draft form; connected workflows opt into the account's saved captions. */
+export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imageOnly = false, timezone, presentation, footer, ownerId = null, captionEnabled = false, captionScope = "workflow" }: {
   draft: WorkflowScheduleDraft;
   onChange: (draft: WorkflowScheduleDraft) => void;
   accountsControl?: ReactNode;
@@ -28,6 +29,9 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
   timezone?: string;
   presentation?: "review";
   footer?: ReactNode;
+  ownerId?: string | null;
+  captionEnabled?: boolean;
+  captionScope?: string;
 }) {
   const id = useId();
   const selected = workflowSelectedPlatforms(draft);
@@ -48,9 +52,7 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
     </div>
     {accountsControl}
     <div className={`${creation.scheduleField} ${presentation === "review" ? reviewStyles.contentField : ""}`}>
-      <label htmlFor={`${id}-caption`} className="text-sm font-medium">Post caption</label>
-      <textarea id={`${id}-caption`} name="postCaption" autoComplete="off" rows={4} className={creation.prompt} value={draft.caption} onChange={(event) => onChange({ ...draft, caption: event.target.value })} placeholder="Write your post caption…" aria-describedby={`${id}-caption-help`} />
-      <p id={`${id}-caption-help`} className="text-xs leading-5 text-muted">The caption shown below your social post.</p>
+      <PostCaptionField key={`${ownerId}:${captionScope}`} ownerId={ownerId} enabled={captionEnabled} name="postCaption" value={draft.caption} initialized={draft.captionInitialized} onChange={caption => onChange({ ...draft, caption, captionInitialized: true })} />
     </div>
     <div className={creation.scheduleDateTime} data-schedule-date-time>
       <div className={creation.scheduleField}>
@@ -63,6 +65,7 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
       </div>
     </div>
     <p id={`${id}-timezone`} className="text-xs text-muted">Time zone: {timezone ?? "your device’s time zone"}</p>
+    {selected.includes("tiktok") ? <p className="text-xs leading-5 text-muted">By scheduling, you agree to TikTok’s Music Usage Confirmation.</p> : null}
     {footer}
   </section>;
 }

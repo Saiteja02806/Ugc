@@ -11,6 +11,7 @@ import Link from "next/link";
 
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { productExamples, type ProductExample } from "@/lib/marketing/product-examples";
 
 type Feature = {
   title: string;
@@ -37,6 +38,7 @@ export type SeoLandingPageContent = {
   proof: string;
   workflowLabel: string;
   workflow: readonly Step[];
+  example?: ProductExample;
   features: readonly Feature[];
   featuresTitle: string;
   featuresDescription: string;
@@ -52,11 +54,12 @@ export type SeoLandingPageContent = {
 
 export const seoPageContent = {
   carousel: {
+    example: productExamples.carousel,
     canonicalPath: "/instagram-carousel-maker",
     eyebrow: "Instagram carousel maker",
-    title: "Turn your business story into an Instagram carousel.",
+    title: "Create Instagram carousels from your business context.",
     description:
-      "Start with your website and offer, choose a creative direction, then review a complete carousel before you schedule it for Instagram.",
+      "Turn your product message into a complete Instagram carousel, review every slide, then schedule it to a connected account when it is ready.",
     proof: "Business context → creative direction → human approval",
     workflowLabel: "A carousel is a complete post, not a loose set of slide ideas.",
     workflow: [
@@ -111,7 +114,7 @@ export const seoPageContent = {
       {
         question: "Can I review a carousel before it is scheduled?",
         answer:
-          "Yes. UGCPilot keeps the carousel in review so you can approve the creative before selecting an Instagram account and publish time.",
+          "Yes. UGC Pilot keeps the carousel in review so you can approve the creative before selecting an Instagram account and publish time.",
       },
       {
         question: "Do I need to write a caption before scheduling?",
@@ -120,6 +123,11 @@ export const seoPageContent = {
       },
     ],
     relatedPages: [
+      {
+        title: "Readable video text",
+        description: "Review contrast, text density and a phone preview before sharing a visual explanation.",
+        href: "/guides/readable-video-text",
+      },
       {
         title: "AI UGC video generator",
         description: "Create short-form video alongside your carousel workflow.",
@@ -136,25 +144,26 @@ export const seoPageContent = {
       "Set up your business context, review a complete carousel, and decide what gets published.",
   },
   video: {
+    example: productExamples.video,
     canonicalPath: "/ai-ugc-video-generator",
     eyebrow: "AI UGC video generator",
-    title: "Create short-form videos with a direction your team can stand behind.",
+    title: "Create AI UGC videos for your SaaS or mobile app.",
     description:
-      "Use AI Studio to make a video from a clear prompt and reference media, then keep the finished asset in your content workflow.",
-    proof: "Prompt and reference media → generated video → content workflow",
-    workflowLabel: "Use the reference and the brief to shape the video before it is generated.",
+      "Use AI Studio to make short-form UGC video from a focused prompt and optional reference media, then review and keep the finished asset in your content workflow.",
+    proof: "Focused brief and reference → generated footage → reviewable content workflow",
+    workflowLabel: "Use a real brief and, when it helps, a compatible reference to guide the footage before you generate it.",
     workflow: [
       {
         eyebrow: "Set direction",
         title: "Describe the video you need",
         description:
-          "Start with a focused prompt that names the message, setting, and content direction you want to explore.",
+          "Start with a focused prompt that names the audience, message, setting, and footage direction you want to explore.",
       },
       {
         eyebrow: "Add a reference",
         title: "Bring the right visual context",
         description:
-          "Attach compatible image or video reference media when it helps give the generation a more specific starting point.",
+          "Attach compatible image or video reference media when it gives the generation a more specific creative starting point.",
       },
       {
         eyebrow: "Keep the output",
@@ -163,9 +172,9 @@ export const seoPageContent = {
           "Completed generations are saved to your account so your team can keep working with the result.",
       },
     ],
-    featuresTitle: "Video generation with a focused working surface.",
+    featuresTitle: "Turn a product message into a reviewable video concept.",
     featuresDescription:
-      "AI Studio gives the creative brief, reference choice, and finished assets one shared home.",
+      "Start with a real product message, guide the generated footage, and keep the finished asset available for review in AI Studio.",
     features: [
       {
         title: "A prompt with purpose",
@@ -190,7 +199,12 @@ export const seoPageContent = {
       {
         question: "What is an AI UGC video generator?",
         answer:
-          "It is a tool for creating short-form, creator-style video from a written brief, with optional reference media to guide the result.",
+          "It is a tool for creating short-form, creator-style footage from a written brief. Optional compatible reference media can give the generation more specific visual context.",
+      },
+      {
+        question: "What should I include in an AI UGC video prompt?",
+        answer:
+          "Name the audience, the message they should understand, the setting, the action or mood to show, and any constraints that matter. A focused brief gives the generation a clearer direction than a broad request for a viral video.",
       },
       {
         question: "Can I use reference media when creating a video?",
@@ -198,12 +212,32 @@ export const seoPageContent = {
           "Yes. AI Studio supports compatible image and video references so you can provide more visual context for a generation.",
       },
       {
+        question: "Can generated footage replace a real product demonstration?",
+        answer:
+          "No. Use a real recording or genuine supplied product visual when viewers need proof of a feature. Generated footage can introduce an idea, but it can invent screens, wording, or behavior and should not be presented as evidence of a product capability.",
+      },
+      {
         question: "Where do finished videos go?",
         answer:
-          "Finished generations are saved to your account for use in the rest of your UGCPilot workflow.",
+          "Finished generations are saved to your account for use in the rest of your UGC Pilot workflow.",
+      },
+      {
+        question: "Can I try AI video generation before choosing a paid plan?",
+        answer:
+          "UGC Pilot's pricing page explains the current seven-day trial and the credits available during it. Review that page for the current plan details before you generate or export work for a campaign.",
       },
     ],
     relatedPages: [
+      {
+        title: "Turn a product demo into a short video",
+        description: "Choose one genuine product action, write its opening and review a complete edit.",
+        href: "/guides/product-demo-to-short-video",
+      },
+      {
+        title: "Make on-screen text readable",
+        description: "Check contrast, placement and reading time in the exported video.",
+        href: "/guides/readable-video-text",
+      },
       {
         title: "Instagram carousel maker",
         description: "Create a companion carousel when a message needs more explanation.",
@@ -213,6 +247,11 @@ export const seoPageContent = {
         title: "AI social media manager",
         description: "See how generation fits into a wider content workflow.",
         href: "/ai-social-media-manager",
+      },
+      {
+        title: "Pricing and trial details",
+        description: "Review the current trial, credits, and plan choices before you begin a campaign.",
+        href: "/pricing",
       },
       {
         title: "Mobile app marketing guide",
@@ -254,7 +293,7 @@ export const seoPageContent = {
     ],
     featuresTitle: "A content system for teams with limited time.",
     featuresDescription:
-      "UGCPilot keeps the strategy brief, creative work, and approval decision close enough to move quickly without losing judgment.",
+      "UGC Pilot keeps the strategy brief, creative work, and approval decision close enough to move quickly without losing judgment.",
     features: [
       {
         title: "Work from what you know",
@@ -314,11 +353,12 @@ export const seoPageContent = {
       "Start with your business context, choose a format for one useful message, and build the routine from there.",
   },
   manager: {
+    example: productExamples.manager,
     canonicalPath: "/ai-social-media-manager",
     eyebrow: "AI social media manager",
     title: "Keep social content moving without losing the human decision.",
     description:
-      "UGCPilot brings business context, creative formats, review, and available publishing workflows together so your team can manage the content process in one place.",
+      "UGC Pilot brings business context, creative formats, review, and available publishing workflows together so your team can manage the content process in one place.",
     proof: "Business context → content formats → review → publishing decision",
     workflowLabel: "The work stays connected from the first business brief to the final publish decision.",
     workflow: [
@@ -371,9 +411,9 @@ export const seoPageContent = {
           "It helps a team organize and accelerate parts of the social content process, such as creating formats, reviewing work, and preparing posts for publishing.",
       },
       {
-        question: "Does UGCPilot replace the person managing social media?",
+        question: "Does UGC Pilot replace the person managing social media?",
         answer:
-          "UGCPilot is designed to support the content workflow. The team still decides which ideas represent the business and what should be approved for publishing.",
+          "UGC Pilot is designed to support the content workflow. The team still decides which ideas represent the business and what should be approved for publishing.",
       },
       {
         question: "Can I use the same business context across formats?",
@@ -382,6 +422,11 @@ export const seoPageContent = {
       },
     ],
     relatedPages: [
+      {
+        title: "A practical weekly content plan",
+        description: "Turn customer questions into useful posts using a filled example and copyable brief.",
+        href: "/guides/saas-content-marketing",
+      },
       {
         title: "Social media marketing for startups",
         description: "Turn the workflow into a sustainable founder-led content routine.",
@@ -410,7 +455,7 @@ function toJsonLd(content: SeoLandingPageContent) {
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        name: "UGCPilot",
+        name: "UGC Pilot",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         url: `https://getugcpilot.com${content.canonicalPath}`,
@@ -534,6 +579,33 @@ export function SeoLandingPage({
           </div>
         </div>
       </section>
+
+      {content.example ? (
+        <section id="worked-example" className="scroll-mt-24 border-y border-border bg-card-muted/30 px-4 py-14 sm:px-6 sm:py-18 lg:px-8">
+          <div className="mx-auto max-w-[960px]">
+            <p className="text-sm font-semibold text-primary">A practical example</p>
+            <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-[-0.025em] text-foreground-strong sm:text-3xl">{content.example.title}</h2>
+            <p className="mt-4 text-base leading-7 text-muted">{content.example.introduction}</p>
+            <div className="mt-7 grid gap-7 md:grid-cols-2">
+              <div>
+                <h3 className="font-semibold text-foreground-strong">Starting brief</h3>
+                <p className="mt-3 whitespace-pre-wrap rounded-xl border border-border bg-card p-5 text-sm leading-7">{content.example.input}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground-strong">Planned output</h3>
+                <ol className="mt-3 list-decimal space-y-3 pl-5 text-sm leading-7">
+                  {content.example.output.map((item) => <li key={item}>{item}</li>)}
+                </ol>
+              </div>
+            </div>
+            <h3 className="mt-7 font-semibold text-foreground-strong">What to review</h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-muted">
+              {content.example.review.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+            <p className="mt-5 border-l-2 border-primary pl-4 text-sm leading-7 text-muted">{content.example.limits}</p>
+          </div>
+        </section>
+      ) : null}
 
       <section className="px-4 py-18 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">

@@ -7,6 +7,10 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
   labels   = local.labels
   ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  scaling {
+    max_instance_count = var.max_instance_count
+  }
+
   template {
     service_account                  = var.worker_service_account_email
     timeout                          = "${var.request_timeout_seconds}s"
@@ -25,9 +29,8 @@ resource "google_cloud_run_v2_service" "carousel_worker" {
       }
 
       resources {
-        # Keep one request-based instance warm for interactive edit latency.
-        # Retain the one-instance maximum until database reservation is
-        # explicitly safe for parallel writers.
+        # Process each task inside its HTTP request. Request-based CPU and
+        # zero minimum allow idle generation to scale down automatically.
         cpu_idle          = true
         startup_cpu_boost = true
 

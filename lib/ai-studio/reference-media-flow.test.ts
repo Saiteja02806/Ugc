@@ -26,9 +26,9 @@ test("Kling limits new references while legacy Seedance video jobs remain recove
   assert.match(videoApi, /referenceVideoDurationSeconds,/);
   assert.match(videoApi, /referenceVideoUrl,/);
   assert.match(videoApi, /model !== "seedance_2_5"/);
-  assert.match(videoApi, /Choose Seedance 2.5 to use audio or video references through OpenRouter/);
+  assert.match(videoApi, /Choose WAN 3.0 or Seedance 2.5 to use the attached audio or video references/);
   assert.match(videoApi, /getMediaAssetForOwner/);
-  assert.match(videoApi, /const maxReferences = model === "kling_3_0" \? 2 : 6/);
+  assert.match(videoApi, /const maxReferences = referencePolicy\.maxFiles/);
   assert.match(providerRouting, /input\.model === "kling_3_0"\) return "runway"/);
   assert.match(providerRouting, /input\.model === "seedance_2_5"\) return "runway"/);
   assert.match(videoWorker, /referenceVideoUrl: input\.referenceVideoUrl/);
@@ -89,7 +89,7 @@ test("Wall of Text Recreate carries its reference context and sends the chosen i
 });
 
 test("AI Studio video generation sends the user's prompt without a UGC template", () => {
-  assert.match(videoApi, /hookIdea:[^\n]*prompt,[\s\S]*?promptMode: "direct"/);
+  assert.match(videoApi, /hookIdea:[^\n]*generationPrompt,[\s\S]*?promptMode: "direct"/);
   assert.doesNotMatch(videoApi, /productName: "UGCPilot"/);
   assert.doesNotMatch(videoApi, /productDescription: "Short-form creator content\."/);
   assert.doesNotMatch(videoApi, /cameraStyle: "iphone_selfie"/);

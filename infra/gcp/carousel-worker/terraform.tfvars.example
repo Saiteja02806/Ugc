@@ -20,10 +20,10 @@ queue_name                   = "carousel"
 worker_job_types             = "generate_carousel,render_trending_carousel_edit"
 
 worker_visibility_timeout_seconds = 900
-# Keep one maximum until Carousel reservations are safe for parallel writers.
-# One warm instance avoids cold starts for interactive slideshow edits.
-min_instance_count                = 1
-max_instance_count                = 1
+# Controlled request-based autoscaling; edits have a separate warm service.
+# Match the Carousel queue concurrency. Production concurrency canaries passed.
+min_instance_count                = 0
+max_instance_count                = 2
 request_timeout_seconds           = 300
 cpu                               = "1"
 memory                            = "2Gi"

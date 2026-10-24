@@ -1,8 +1,9 @@
 import type { InstagramInsightsRangeDays } from "./instagram";
+import { ANALYTICS_SNAPSHOT_READ_STALE_MS, INSTAGRAM_ANALYTICS_REFRESH_MS } from "./freshness-policy";
 
-export const INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS = 30 * 60_000;
-export const INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS = 60 * 60_000;
-export const INSTAGRAM_MEDIA_FEED_REFRESH_MS = 60 * 60_000;
+export const INSTAGRAM_ANALYTICS_BROWSER_CACHE_MS = ANALYTICS_SNAPSHOT_READ_STALE_MS;
+export const INSTAGRAM_ACCOUNT_INSIGHTS_REFRESH_MS = INSTAGRAM_ANALYTICS_REFRESH_MS;
+export const INSTAGRAM_MEDIA_FEED_REFRESH_MS = INSTAGRAM_ANALYTICS_REFRESH_MS;
 export const INSTAGRAM_THUMBNAIL_REFRESH_MS = 12 * 60 * 60_000;
 
 const ONE_HOUR_MS = 60 * 60_000;
@@ -22,7 +23,7 @@ export function getInstagramContentRefreshIntervalMs(
   const ageMs = Math.max(0, now - publishedTime);
 
   if (ageMs < ONE_DAY_MS) {
-    return ONE_HOUR_MS;
+    return INSTAGRAM_ANALYTICS_REFRESH_MS;
   }
 
   if (ageMs < SEVEN_DAYS_MS) {

@@ -31,6 +31,7 @@ import {
   getScheduledPostByIdempotency,
   getScheduledPostForUser,
   insertScheduledPost,
+  insertDirectScheduledPost,
   insertScheduledPostTargets,
   listWallTextSchedulesForRender,
   listCancelledScheduleTargetsNeedingCleanup,
@@ -217,11 +218,13 @@ export async function createUserSchedule(params: {
 }) {
   // Only the dedicated Explore reservation API may bind a schedule to an
   // immutable finishing receipt. Generic schedule metadata cannot opt in.
-  if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish"))) {
+  if (Object.keys(params.input?.metadata ?? {}).some(key => key.startsWith("exploreFinish") || key.startsWith("scheduleCreate"))) {
     throw new SchedulingRequestError("Use the Explore workflow to save a video preparation schedule.", 409, "explore_schedule_contract_required");
   }
-  const normalized = await normalizeScheduleCreateInput(params.input);
+  // Recover accepted requests before applying a time-dependent lead check.
+  const normalized = await normalizeScheduleCreateInput(params.input, false);
   assertScheduleTargetSelection(normalized);
+  const creationHash = getDirectScheduleCreationHash(normalized, params.input.useDefaultScheduleTime === true);
 
   if (normalized.source.kind === "wall_text_pending") {
     const assignmentId = getMetadataString(
@@ -267,10 +270,13 @@ export async function createUserSchedule(params: {
     if (existing) {
       return {
         created: false,
-        schedule: existing,
+        schedule: await recoverDirectScheduleCreation(existing, normalized.targets.length > 0 ? creationHash : null, params.userId),
       };
     }
   }
+
+  const plannedTime = getMetadataString(normalized.metadata.plannedScheduledFor);
+  if (plannedTime) assertMinimumScheduleLead(plannedTime);
 
   const source =
     normalized.source.kind === "wall_text_pending"
@@ -327,7 +333,7 @@ export async function createUserSchedule(params: {
     if (existing) {
       return {
         created: false,
-        schedule: existing,
+        schedule: await recoverDirectScheduleCreation(existing, normalized.targets.length > 0 ? creationHash : null, params.userId),
       };
     }
   }
@@ -380,7 +386,7 @@ export async function createUserSchedule(params: {
   });
 
   const postStatus: ScheduledPostStatus = isDraft ? "draft" : "scheduling";
-  const post = await insertScheduledPost({
+  const postInput = {
     caption: normalized.caption,
     idempotency_key: idempotencyKey,
     library_item_id:
@@ -395,9 +401,10 @@ export async function createUserSchedule(params: {
     timezone: normalized.timezone,
     title: normalized.title || source.title,
     user_id: params.userId,
-  });
+  };
 
   if (isDraft) {
+    const post = await insertScheduledPost(postInput);
     const schedule = await getRequiredSchedule({
       postId: post.id,
       userId: params.userId,
@@ -413,42 +420,77 @@ export async function createUserSchedule(params: {
     throw new SchedulingRequestError("Choose a date and time to schedule.");
   }
 
-  const scheduledFor = normalized.scheduledFor;
-  const targetRows = await insertScheduledPostTargets(
-    targetConnections.map((connection) => ({
-      metadata: {},
+  const committed = await insertDirectScheduledPost({
+    post: postInput,
+    requestHash: creationHash,
+    queueName: getQueueNameForJobType("publish_social_post"),
+    targets: targetConnections.map((connection) => ({
       platform: connection.platform,
-      scheduled_for: scheduledFor,
-      scheduled_post_id: post.id,
       settings: connection.settings,
       social_connection_id: connection.id,
-      status: "scheduling",
-      user_id: params.userId,
     })),
-  );
-
-  const { failedCount, scheduledCount } = await scheduleTargetRows({
-    projectId: post.project_id,
-    targetRows,
-    userId: params.userId,
   });
-
-  await markScheduledPostStatus({
-    lastErrorCode: failedCount > 0 ? "scheduler_create_failed" : null,
-    postId: post.id,
-    status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }),
+  const schedule = await reconcileDirectScheduleHandoff({
+    postId: committed.post.id,
     userId: params.userId,
-  });
-
-  const schedule = await getRequiredSchedule({
-    postId: post.id,
-    userId: params.userId,
+    recoverAccepted: !committed.created,
   });
 
   return {
-    created: true,
+    created: committed.created,
     schedule,
   };
+}
+
+function getDirectScheduleCreationHash(input: Awaited<ReturnType<typeof normalizeScheduleCreateInput>>, defaultTime: boolean) {
+  const metadata = { ...input.metadata };
+  // The normalized instant already binds an explicit time. Do not include
+  // derived grace-policy metadata that can change after acceptance. Default
+  // requests recover their first slot instead of hashing a fresh wall clock.
+  for (const key of ["plannedScheduledFor", "scheduledDate", "scheduledTime", "plannedPublishDeadlineAt"]) delete metadata[key];
+  return createHash("sha256").update(stableScheduleFingerprint({
+    caption: input.caption, title: input.title, source: input.source, timezone: input.timezone,
+    scheduledFor: defaultTime ? null : input.scheduledFor, defaultTime, metadata,
+    targets: [...input.targets].sort((a, b) => a.connectionId.localeCompare(b.connectionId)),
+  })).digest("hex");
+}
+
+async function recoverDirectScheduleCreation(existing: ScheduledPost, hash: string | null, userId: string) {
+  if (!hash) return existing;
+  const storedHash = existing.metadata?.scheduleCreateRequestHash;
+  if (storedHash && storedHash !== hash) {
+    throw new SchedulingRequestError("This saved request belongs to different scheduling details. Review its original post in Scheduling.", 409, "schedule_idempotency_conflict");
+  }
+  if (existing.targets?.length === 0) {
+    // Older split writes did not retain a trustworthy destination snapshot.
+    // Keep their identity visible for cancellation; never invent destinations.
+    throw new SchedulingRequestError("This earlier schedule did not save its publishing accounts. Cancel that incomplete post in Scheduling before confirming a new request.", 409, "schedule_creation_incomplete");
+  }
+  if (!storedHash || !existing.targets.some(target => target.status === "scheduling")) return existing;
+  return reconcileDirectScheduleHandoff({ postId: existing.id, userId, recoverAccepted: true });
+}
+
+async function reconcileDirectScheduleHandoff(params: { postId: string; userId: string; recoverAccepted: boolean }) {
+  const schedule = await getRequiredSchedule(params);
+  if (["cancelled", "published", "publishing"].includes(schedule.status)) return schedule;
+  const unresolved = schedule.targets.filter(target => target.status === "scheduling");
+  if (unresolved.some(target => !target.publishJobId)) {
+    throw new SchedulingRequestError("The saved publishing job could not be verified. Review this post in Scheduling.", 409, "schedule_creation_incomplete");
+  }
+  if (unresolved.length) await scheduleTargetRows({
+    projectId: schedule.projectId, userId: params.userId, recoverAccepted: params.recoverAccepted,
+    targetRows: unresolved.map(target => ({ id: target.id, scheduled_for: target.scheduledFor, publish_job_id: target.publishJobId! })),
+  });
+  const current = await getRequiredSchedule(params);
+  if (["cancelled", "published", "publishing"].includes(current.status)) return current;
+  const failedCount = current.targets.filter(target => ["failed", "action_required", "skipped"].includes(target.status)).length;
+  const scheduledCount = current.targets.filter(target => ["scheduled", "publishing", "published"].includes(target.status)).length;
+  // A failed projection write leaves a recoverable scheduling row. Avoid
+  // reporting scheduled while no target has acknowledged its handoff yet.
+  if (current.targets.some(target => target.status === "scheduling")) return current;
+  await markScheduledPostStatus({ postId: current.id, userId: params.userId,
+    status: getPostStatusFromSchedulerCounts({ failedCount, scheduledCount }), lastErrorCode: failedCount ? "scheduler_create_failed" : null });
+  return getRequiredSchedule(params);
 }
 
 export async function scheduleRenderedPost(params: {
@@ -1730,7 +1772,7 @@ function assertScheduleTargetSelection(input: {
   );
 }
 
-async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
+async function normalizeScheduleCreateInput(input: ScheduleCreateInput, enforceLeadTime = true) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new SchedulingRequestError("Send schedule details as JSON.");
   }
@@ -1765,6 +1807,7 @@ async function normalizeScheduleCreateInput(input: ScheduleCreateInput) {
         targets.length > 0 ||
           plannedTargets.length > 0 ||
           Boolean(getMetadataString(rawMetadata.plannedConnectionIds)),
+        enforceLeadTime,
       );
   const metadata = applyTrustedScheduleTimeMetadata(rawMetadata, scheduleTime);
 
@@ -2699,15 +2742,19 @@ async function scheduleTargetRows(params: {
   targetRows: Array<{
     id: string;
     scheduled_for: string;
+    publish_job_id?: string | null;
   }>;
   userId: string;
+  recoverAccepted?: boolean;
 }) {
+  const committedJobs = new Map(params.targetRows.filter(target => target.publish_job_id).map(target => [target.id, target.publish_job_id!]));
   return scheduleTargetRowsWithDependencies(params, {
-    assertMinimumLead: assertTaskCreationBuffer,
-    attachPublishJob: attachPublishJobToScheduleTarget,
+    assertMinimumLead: params.recoverAccepted ? () => undefined : assertTaskCreationBuffer,
+    attachPublishJob: input => committedJobs.has(input.targetId) ? Promise.resolve() : attachPublishJobToScheduleTarget(input),
     createProviderSchedule: createSocialPublishSchedule,
-    createPublishJob: ({ projectId, targetId, userId }) =>
-      createBackgroundJob({
+    createPublishJob: ({ projectId, targetId, userId }) => committedJobs.has(targetId)
+      ? Promise.resolve({ id: committedJobs.get(targetId)! })
+      : createBackgroundJob({
         idempotencyKey: `social-publish:${targetId}`,
         input: { targetId },
         jobType: "publish_social_post",

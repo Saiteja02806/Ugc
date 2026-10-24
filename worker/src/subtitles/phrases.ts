@@ -38,6 +38,17 @@ export async function groupNaturalSubtitleWords(words: TimedWord[], layout: Subt
   }
   const cues: SubtitleCue[] = [];
   for (const chunk of chunks) {
+    if (measure.preload) {
+      const candidates = new Set<string>();
+      for (let i = chunk.length - 1; i >= 0; i--) for (let end = i + 1; end <= Math.min(chunk.length, i + (options.maxWords ?? 6)); end++) {
+        const part = chunk.slice(i, end);
+        if (part.at(-1)!.endMs - part[0].startMs > (options.maxDurationMs ?? 2800) && part.length > 1) break;
+        candidates.add(part.map(word => word.text).join(" "));
+      }
+      // The same bounded contiguous phrases are used by the planner below.
+      // Measurers without batching keep their existing lazy measurement path.
+      await measure.preload([...candidates]);
+    }
     const costs = new Array<number>(chunk.length + 1).fill(Infinity);
     const choices = new Map<number, { end: number; lines: number[][] }>();
     costs[chunk.length] = 0;

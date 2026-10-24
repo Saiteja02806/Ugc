@@ -39,16 +39,17 @@ locals {
       max_retry_duration    = "3600s"
     }
     carousel = {
-      # Do not dispatch parallel Carousel writers until the durable Carousel
-      # assignment reservation is made safe for more than one worker.
-      concurrent_dispatches = 1
+      # Production ownership, claim and image-reservation races passed.
+      # Match the bounded two-instance request-based Carousel service.
+      concurrent_dispatches = 2
       dispatches_per_second = 1
       max_attempts          = 5
       max_retry_duration    = "3600s"
     }
     carousel-edit = {
-      # Interactive rendering gets its own service; generation remains serial.
-      concurrent_dispatches = 1
+      # Match the dedicated edit service's two-instance cap. Generation keeps
+      # its own queue; each edit instance still processes one job at a time.
+      concurrent_dispatches = 2
       dispatches_per_second = 5
       max_attempts          = 5
       max_retry_duration    = "3600s"
@@ -124,6 +125,24 @@ resource "google_project_iam_member" "app_cloud_tasks_enqueuer" {
   project = var.project_id
   role    = "roles/cloudtasks.enqueuer"
   member  = "serviceAccount:${google_service_account.app.email}"
+}
+
+# Recovery must distinguish a healthy queue backlog from a lost delivery.
+# Read only task metadata, scoped to the managed background-job queues.
+resource "google_project_iam_custom_role" "background_task_inspector" {
+  project     = var.project_id
+  role_id     = "ugcBackgroundTaskInspector"
+  title       = "UGC background task inspector"
+  permissions = ["cloudtasks.tasks.get"]
+}
+
+resource "google_cloud_tasks_queue_iam_member" "app_background_task_inspector" {
+  for_each = google_cloud_tasks_queue.background_jobs
+  project  = var.project_id
+  location = var.region
+  name     = each.value.name
+  role     = google_project_iam_custom_role.background_task_inspector.name
+  member   = "serviceAccount:${google_service_account.app.email}"
 }
 
 # The app cancels/reschedules future social posts by deleting their timer task.

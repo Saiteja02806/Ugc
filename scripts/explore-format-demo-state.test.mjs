@@ -11,14 +11,16 @@ import { getReferenceAudioPreview } from "../lib/explore/reference-audio-preview
 import { applyVideoTextRemix } from "../lib/explore/remix-text-edit.ts";
 import { mapSequencePreviewDemoReference } from "../lib/explore/sequence-preview.ts";
 import * as finishingContract from "../worker/src/lib/explore-finishing-contract.ts";
+import * as wallTextEditor from "../lib/explore/wall-text-editor.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 const textFields = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-video-text-fields.tsx", import.meta.url), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
-}).outputText, { exports: textFields, require: () => ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
+}).outputText, { exports: textFields, require: name => name === "@/lib/explore/wall-text-editor" ? wallTextEditor : ({ jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "fragment" }) });
 
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const asset = (n, collection = "video") => ({ id: id(n), status: "ready", collection, durationSeconds: 8, width: 720, height: 1280,
+const asset = (n, collection = "video") => ({ id: id(n), status: "ready", sourceType: collection === "video" ? "demo_upload" : "upload", collection, durationSeconds: 8, width: 720, height: 1280,
   title: `Owned ${collection} ${n}`, url: `/owned-${n}.${collection === "audio" ? "mp3" : "mp4"}`, mimeType: collection === "audio" ? "audio/mpeg" : "video/mp4" });
 const output = n => ({ id: id(n), kind: "media_asset", url: asset(n).url, title: `Opening ${n}` });
 const draft = (demo = 2) => ({ version: 1, demoId: id(demo), audioId: id(4), editing: { ...defaultDemoEdit(8), trimStartMs: 500, trimEndMs: 6500, originalVolume: .35, musicVolume: .6 },
@@ -34,17 +36,18 @@ function text(tree) {
 
 /** Runs the real Demo component and its event/effect callbacks. Child render
  * coordinators stay observable so a test cannot accidentally submit a render. */
-function harness({ owner = "owner", format = "hook", storage = new Map(), owned = [asset(1), asset(2), asset(3), asset(4, "audio"), asset(5)], enabled = true } = {}) {
-  const slots = [], effects = [], selectionReports = [], savedReports = [], queryInputs = [], uploads = [], queryFailures = new Set(), draftSaves = [];
+function harness({ owner = "owner", format = "hook", storage = new Map(), owned = [asset(1), asset(2), asset(3), asset(4, "audio"), asset(5)], enabled = true,
+  getToken = async () => { throw new Error("Test attempted authentication."); }, readAsset = async () => { throw new Error("Test attempted network media loading."); }, readTimeoutMs = 20_000 } = {}) {
+  const slots = [], effects = [], selectionReports = [], savedReports = [], queryInputs = [], uploads = [], queryFailures = new Set(), draftSaves = [], draftInputs = [];
   const ownedAssets = new Map(owned.map(value => [value.id, value]));
   let cursor = 0, needsRender = false, tree, dirty = 0, pendingVideo = null, sourceInput;
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
   const sourceState = { mode: "upload", selected: null, uploaded: null, preview: null, busy: false, error: null };
   const audio = { asset: null, loading: false, error: null, async choose(file) { this.asset = { name: file.name, url: "blob:audio", duration: 8, file }; return true; }, remove() { this.asset = null; } };
-  const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true,
+  const props = { format, videoId: null, opening: null, openingRevision: 0, enabled, active: true, allowDemoAudio: true,
     controlsTarget: { name: "controls" }, actionsTarget: { name: "actions" }, resultsTarget: { name: "results" },
     editActive: true, editControlsTarget: { name: "edit-controls" }, editActionsTarget: { name: "edit-actions" }, editResultsTarget: { name: "edit-results" },
-    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onEditDone() {}, onCreate() {}, onContinue() { props.prepareRequest = (props.prepareRequest ?? 0) + 1; props.scheduleActive = true; },
+    onDirty: () => { dirty++; }, onSaved: result => savedReports.push(result), onSkip() {}, onEdit() {}, onAdd() {}, onEditDone() {}, onCreate() {}, onContinue() { props.prepareRequest = (props.prepareRequest ?? 0) + 1; props.scheduleActive = true; },
     onSelectionChange: present => selectionReports.push(present) };
   function queueEffect(callback, deps, layout = false) {
     const i = cursor++, previous = slots[i];
@@ -82,13 +85,21 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     chooseUpload(file) {
       sourceState.busy = true; sourceState.error = null;
       const callback = sourceInput.onSelected;
+      sourceState.preview = { name: file.name, url: "blob:pending-demo", duration: 8 };
+      sourceInput.onUploadPreview?.(sourceState.preview);
       return new Promise(resolve => { pendingVideo = { file, callback, resolve }; });
     },
+    cancelUpload() { sourceState.busy = false; sourceState.error = null; },
+    removeUpload() { sourceState.busy = false; sourceState.uploaded = null; sourceState.preview = null; },
     clearSelection() { sourceState.selected = null; sourceState.uploaded = null; sourceState.preview = null; sourceState.error = null; sourceState.busy = false; },
     clearUploadError() { sourceState.error = null; },
   };
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
   const imports = {
+    "@/lib/http/read-deadline": { withReadDeadline: (read, signal) => withReadDeadline(read, signal, readTimeoutMs) },
+    "./clip-preview-controls": { ClipPreviewControls: "ClipPreviewControls" },
+    "./clip-trim-timeline": { ClipTrimTimeline: "ClipTrimTimeline" },
+    "./format-video-editor.module.css": { default: new Proxy({}, { get: (_, name) => name }) },
     react, "react/jsx-runtime": jsx, "react-dom": { createPortal: (children, target) => ({ type: "portal", props: { children, target } }) },
     "@tanstack/react-query": { useQuery(input) { queryInputs.push(input); return { data: input.enabled ? ownedAssets.get(input.queryKey.at(-1)) : undefined, isError: queryFailures.has(input.queryKey[0]), refetch() {} }; } },
     "@/contexts/auth-context": { useAuth: () => ({ user: owner ? { uid: owner } : null }) },
@@ -101,20 +112,20 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => audio },
     "@/components/explore/format-video-text-fields": textFields,
     "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: {}, useWorkflowFinishing() { throw new Error("A selection or prop transition cannot dispatch finishing."); } },
+    "@/lib/explore/remix-text-edit": { applyVideoTextRemix },
     "@/lib/explore/format-demo": { defaultDemoEdit, readFormatDemoDraft, trimmedDemoFraming },
     "@/lib/explore/unchanged-hook-source": { canReuseUnchangedHookSource },
     "@/lib/explore/reference-audio-preview": { getReferenceAudioPreview },
     "@/lib/explore/workflow-default-music-client": { loadWorkflowDefaultMusic: async () => { throw new Error("Test attempted default music download."); } },
     "@/lib/explore/sequence-preview": { mapSequencePreviewDemoReference },
-    "@/lib/explore/remix-text-edit": { applyVideoTextRemix },
     "@/worker/src/lib/explore-format-edit": { parseExploreFormatEdit, formatTextLayout, formatTextOverlays },
     "@/worker/src/lib/explore-finishing-contract": finishingContract,
     "@/lib/explore/format-edit-draft": editDraft,
-    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => ({ loaded: true, busy: false, dirty: true, saved: null, error: null, reload() {},
-      async save() { draftSaves.push(normalize(input.content)); return { id: id(99), scope: input.scope, revision: 1, content: input.content }; } }) },
+    "@/components/explore/use-clip-draft-save": { useClipDraftSave: input => { draftInputs.push(input); return { loaded: true, busy: false, dirty: true, saved: null, error: null, reload() {},
+      async save() { draftSaves.push(normalize(input.content)); return { id: id(99), scope: input.scope, revision: 1, content: input.content }; } }; } },
     "@/lib/explore/format-video-source": { formatVideoFromAsset(value) { if (value.status !== "ready" || value.collection !== "video") throw new Error("Choose an owned ready video."); return value; } },
-    "@/lib/firebase/auth": { getCurrentUserIdToken: async () => { throw new Error("Test attempted authentication."); } },
-    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async () => { throw new Error("Test attempted network media loading."); } },
+    "@/lib/firebase/auth": { getCurrentUserIdToken: getToken },
+    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: readAsset },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (...args) => { uploads.push(args); return { asset: asset(4, "audio") }; } },
     "@/components/explore/workflow-creation.module.css": new Proxy({}, { get: (_, name) => name }),
   };
@@ -141,7 +152,7 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
     throw new Error("Demo effects did not settle.");
   }
   const find = (predicate) => nodes(tree).find(predicate);
-  return { render, props, audio, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, draftSaves, get dirty() { return dirty; },
+  return { render, props, audio, storage, ownedAssets, queryInputs, queryFailures, uploads, selectionReports, savedReports, draftSaves, draftInputs, get sourceInput() { return sourceInput; }, get dirty() { return dirty; },
     find, button(label) { const currentLabel = label === "Save final video" || label === "Schedule" ? "Schedule video" : label; const found = find(node => node.type === "Button" && text(node).trim() === currentLabel); assert.ok(found, `Missing ${currentLabel}`); return found; },
     input(label) { const found = find(node => node.props?.["aria-label"] === label); assert.ok(found, `Missing ${label}`); return found; },
     select(value = asset(2)) { render(); const picker = find(node => node.type === "WorkflowVideoAssetPicker"); assert.equal(picker.props.onSelect(value), true); return render(); },
@@ -160,7 +171,226 @@ function harness({ owner = "owner", format = "hook", storage = new Map(), owned 
   };
 }
 
+test("Demo asset restoration cancels pending auth and never starts its stale media request", async () => {
+  let releaseToken, reads = 0;
+  const h = harness({ getToken: () => new Promise(resolve => { releaseToken = resolve; }), readAsset: async () => { reads++; return asset(1); } });
+  h.render({ opening: output(1) });
+  const query = h.queryInputs.findLast(input => input.queryKey[0] === "format-demo-opening");
+  const controller = new AbortController(), pending = query.queryFn({ signal: controller.signal });
+  controller.abort(); await assert.rejects(pending);
+  releaseToken("token"); await new Promise(setImmediate);
+  assert.equal(reads, 0);
+});
+
+test("Demo restored assets bound token waits and pass cancellation through to their owned reads", async () => {
+  const h = harness({ getToken: async () => new Promise(() => {}), readTimeoutMs: 5 }); h.render({ opening: output(1) });
+  const query = h.queryInputs.findLast(input => input.queryKey[0] === "format-demo-opening");
+  await Promise.all([assert.rejects(query.queryFn({ signal: new AbortController().signal }), /took too long/), new Promise(resolve => setTimeout(resolve, 15))]);
+  const seen = [], loaded = harness({ getToken: async owner => { assert.equal(owner, "owner"); return "token"; }, readAsset: async (id, token, options) => { seen.push({ id, token, signal: options.signal }); return asset(1); } });
+  loaded.render({ opening: output(1) });
+  const ready = loaded.queryInputs.findLast(input => input.queryKey[0] === "format-demo-opening");
+  assert.equal((await ready.queryFn({ signal: new AbortController().signal })).id, id(1));
+  assert.equal(seen.length, 1); assert.equal(seen[0].token, "token"); assert.ok(seen[0].signal instanceof AbortSignal);
+});
+
+test("Hook demo preview moves only its visible text block and saves/reopens its position", async () => {
+  const saved = { ...draft(), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0]] } };
+  const block = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 };
+  saved.editing.textOverlays = [block, { ...block, value: "Move this" }, { ...block, value: "Keep this", startMs: 1000 }];
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(saved)]]) }); h.render();
+  const overlay = h.find(n => n.type === "FormatVideoTextOverlay"); assert.ok(overlay);
+  assert.equal(overlay.props.text.value, "Move this", "Blank draft blocks do not shift the target index");
+  overlay.props.onChange({ ...overlay.props.text, x: .65, y: .4 }); h.render();
+  const updated = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.deepEqual(normalize(updated.editing.textOverlays[0]), block);
+  assert.equal(updated.editing.textOverlays[1].x, .65); assert.equal(updated.editing.textOverlays[1].y, .4);
+  assert.deepEqual(normalize(updated.editing.textOverlays[2]), saved.editing.textOverlays[2]);
+  assert.equal(Boolean(h.find(n => n.props?.role === "status" && /crop may cut off/.test(text(n)))), false, "An offset caption inside the full frame has no false crop warning");
+  assert.equal(h.dirty, 1); assert.equal(h.saveRun(), undefined, "Dragging never dispatches rendering");
+  await h.button("Save edits").props.onClick(); assert.equal(h.draftSaves.at(-1).editing.textOverlays[1].x, .65);
+  const reopened = harness({ storage: h.storage }); reopened.render();
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.text.x, .65);
+  reopened.render({ editActive: false, editPreviewActive: true });
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay").props.onChange, undefined, "Overview is read-only");
+  reopened.render({ editActive: true, pendingSource: true });
+  assert.equal(reopened.find(n => n.type === "FormatVideoTextOverlay")?.props.onChange, undefined);
+});
+
+test("Content Edit selects its requested demo over another browser draft and restores all saved settings without rendering", () => {
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(draft(3))]]) });
+  h.render({ contentDemoId: id(2) });
+  assert.equal(h.sourceInput.library, "content");
+  assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).demoId, id(2));
+  const saved = { version: 1, sourceAssetId: id(2), editing: draft().editing, backgroundAssetId: id(4), backgroundPlayback: "repeat", framing: draft().framing,
+    workflowMusic: { enabled: true, assetId: id(4), playback: "once" } };
+  h.draftInputs.at(-1).onRestore(saved, false); h.render();
+  const restored = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.deepEqual(normalize(restored.editing), saved.editing); assert.deepEqual(normalize(restored.framing), saved.framing);
+  assert.equal(restored.audioId, id(4)); assert.equal(restored.backgroundAudioId, id(4)); assert.equal(restored.backgroundPlayback, "once");
+  assert.equal(h.saveRun(), undefined); assert.equal(h.uploads.length, 0);
+});
+
+test("a slow Content restore cannot overwrite current-session demo changes", () => {
+  const h = harness(); h.render({ contentDemoId: id(2) });
+  h.edit("Demo trim start", 2);
+  h.draftInputs.at(-1).onRestore({ version: 1, sourceAssetId: id(2), editing: draft().editing, backgroundAssetId: id(4), backgroundPlayback: "repeat", framing: draft().framing }, false);
+  h.render(); assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).editing.trimStartMs, 2000);
+});
+
+test("Content demo edits reopen and save independently of rendering availability", async () => {
+  const h = harness({ enabled: false }); h.render({ contentDemoId: id(2) });
+  assert.equal(h.draftInputs.at(-1).enabled, true);
+  h.draftInputs.at(-1).onRestore({ version: 1, sourceAssetId: id(2), editing: defaultDemoEdit(8), backgroundAssetId: id(4), backgroundPlayback: "once", framing: null }, false);
+  h.render();
+  assert.equal(h.queryInputs.filter(query => query.queryKey[0] === "format-demo-audio").at(-1).enabled, true);
+  assert.equal(h.button("Save edits").props.disabled, false);
+  await h.button("Save edits").props.onClick(); h.render();
+  assert.equal(h.draftSaves.length, 1); assert.equal(h.draftSaves[0].sourceAssetId, id(2));
+  assert.equal(h.saveRun(), undefined); assert.equal(h.savedReports.length, 0);
+});
+
+test("Hook overview exposes replacement controls but has no separate demo audio track", () => {
+  const saved = { ...draft(2), audioId: id(4) };
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(saved)]]) });
+  const tree = h.render({ allowDemoAudio: false, editActive: false, editPreviewActive: true });
+  const overview = nodes(tree).find(n => n.type === "portal" && n.props.target === h.props.controlsTarget);
+  const source = nodes(overview).find(n => n.props?.["aria-label"] === "Demo video source");
+  assert.ok(source); assert.notEqual(source.props.hidden, true);
+  assert.ok(nodes(source).some(n => n.props?.["data-demo-source"] === "upload"));
+  assert.equal(nodes(overview).some(n => n.props?.["aria-label"] === "Demo sound"), false);
+  assert.equal(nodes(tree).some(n => n.type === "WorkflowSavedAudioPicker"), false);
+  assert.equal(h.queryInputs.some(q => q.queryKey[0] === "format-demo-audio" && q.enabled), false, "Legacy demo-only audio must not enter the Hook mix");
+  assert.equal(h.draftInputs.at(-1).content.backgroundAssetId, null);
+  assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Background audio settings"), "One shared background track remains available");
+  const legacy = harness({ storage: new Map([[`ugc-explore:demo:v1:owner:hook:${id(1)}`, JSON.stringify(saved)]]) });
+  legacy.render({ allowDemoAudio: false, videoId: id(1) });
+  assert.equal(legacy.draftInputs.at(-1).content.backgroundAssetId, null, "Migrating an older opening-scoped draft must not add a demo-only track");
+});
+
+test("Demo Change opens its own asset chooser and cancels without changing the accepted draft", () => {
+  const stored = draft(2), storage = new Map([[draftKey(), JSON.stringify(stored)]]);
+  const h = harness({ storage }); h.render({ editActive: false, editPreviewActive: true });
+  const before = normalize(h.draftInputs.at(-1).content);
+  const change = h.find(n => n.type === "WorkflowClipSourceActions" && n.props.triggerLabel === "Change");
+  assert.equal(change.props.onGenerate, undefined, "A demo cannot start hook generation");
+  change.props.onChooseAssets(); h.render();
+  const picker = h.find(n => n.type === "WorkflowVideoAssetPicker");
+  assert.equal(picker.props.open, true); picker.props.onOpenChange(false); h.render();
+  assert.equal(picker.props.library, "content");
+  assert.equal(picker.props.onSelect({ ...asset(3), sourceType: "generated_video" }), false, "Ordinary Creative Assets cannot replace a demo");
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content), before);
+  assert.equal(h.props.editActive, false); assert.equal(h.dirty, 0);
+  change.props.onChooseAssets(); h.render();
+  h.find(n => n.type === "WorkflowVideoAssetPicker").props.onSelect(asset(3)); h.render();
+  assert.equal(h.draftInputs.at(-1).content.sourceAssetId, id(3));
+  assert.equal(h.props.editActive, false);
+  assert.equal(h.saveRun(), undefined, "Replacement never starts a paid render");
+});
+
+test("demo Edit and Change stay available while uploading, and pending trim survives confirmation", async () => {
+  const h = harness(); h.render({ editActive: false, editPreviewActive: true });
+  const pending = h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload({ name: "slow.mp4" }); h.render();
+  assert.equal(h.button("Edit demo video").props.disabled, false);
+  assert.equal(h.find(n => n.type === "WorkflowClipSourceActions" && n.props.triggerLabel === "Change").props.disabled, false);
+  assert.equal(h.button("Schedule video").props.disabled, true);
+  h.render({ editActive: true });
+  assert.equal(h.button("Save edits").props.disabled, true);
+  assert.equal(h.button("Back to videos").props.disabled, false);
+  const editor = h.find(n => n.type === "portal" && n.props.target === h.props.editControlsTarget);
+  assert.equal(nodes(editor).find(n => n.type === "fieldset").props.disabled, false);
+  h.edit("Demo trim start", 1.5); h.edit("Demo trim end", 6);
+  const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
+  fields.props.onChange({ ...fields.props.editing, text: { value: "Edited during upload", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 4500 } }); h.render();
+  assert.equal(h.storage.get(draftKey()), undefined, "Unconfirmed footage must not overwrite a recoverable accepted draft");
+  h.completeVideoUpload(asset(2)); await pending; h.render();
+  const saved = readFormatDemoDraft(h.storage.get(draftKey()));
+  assert.equal(saved.demoId, id(2)); assert.equal(saved.editing.trimStartMs, 1500); assert.equal(saved.editing.trimEndMs, 6000);
+  assert.equal(saved.editing.text.value, "Edited during upload");
+  assert.equal(h.button("Save edits").props.disabled, false);
+  assert.doesNotMatch(text(h.render()), /Changes appear in the preview immediately\. Save edits to keep them\./);
+});
+
+test("a failed upload discards only its transient edits and restores the accepted demo", async () => {
+  const stored = draft(2), storage = new Map([[draftKey(), JSON.stringify(stored)]]);
+  const h = harness({ storage }); h.render();
+  h.input("Upload or replace demo video").props.onChange({ currentTarget: { files: [{ name: "replacement.mp4" }], value: "" } }); h.render();
+  h.edit("Demo trim start", 2); h.render();
+  assert.deepEqual(JSON.parse(storage.get(draftKey())), stored);
+  h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
+  assert.equal(h.input("Demo trim start").props.value, .5);
+  assert.deepEqual(JSON.parse(storage.get(draftKey())), stored);
+  assert.equal(h.find(n => n.type === "video" && n.props["aria-label"] === "Demo video being edited").props.src, asset(2).url);
+});
+
+test("a replacement superseding another pending upload still restores the original Creative Assets selection on failure", async () => {
+  const h = harness(); h.render(); h.select(asset(3));
+  const original = JSON.parse(h.storage.get(draftKey()));
+  const upload = name => h.input("Upload or replace demo video").props.onChange({ currentTarget: { files: [{ name }], value: "" } });
+  upload("first.mp4"); h.render(); upload("second.mp4"); h.render();
+  h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
+  assert.equal(h.draftInputs.at(-1).sourceAssetId, id(3));
+  assert.deepEqual(JSON.parse(h.storage.get(draftKey())), original);
+});
+
+test("Hook demo editor has only trim/text tools while audio and legacy framing recovery stay in Demo", () => {
+  const stored = draft(2);
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(stored)]]) });
+  const tree = h.render({ allowDemoAudio: false });
+  const editor = nodes(tree).find(n => n.type === "portal" && n.props.target === h.props.editControlsTarget);
+  const overview = nodes(tree).find(n => n.type === "portal" && n.props.target === h.props.controlsTarget);
+  assert.ok(nodes(editor).some(n => n.props?.["aria-label"] === "Demo trim"));
+  assert.ok(nodes(editor).some(n => n.type === "RemixTextSection"));
+  assert.ok(nodes(editor).some(n => n.type === textFields.FormatVideoTextFields));
+  assert.equal(nodes(editor).some(n => n.type === "WorkflowDemoControls" || n.type === "WorkflowFilePicker" || n.type === "WorkflowSavedAudioPicker"), false);
+  assert.doesNotMatch(text(editor), /Crop & zoom|Original sound|Demo sound/);
+  assert.equal(nodes(editor).some(n => n.props?.["aria-label"] === "Demo original volume"), false);
+  const adjustSound = nodes(overview).find(n => n.type === "button" && text(n).trim() === "Adjust demo sound");
+  assert.ok(adjustSound, "Hook Demo keeps the original-sound control as a compact disclosure");
+  assert.equal(adjustSound.props["aria-expanded"], false);
+  assert.equal(nodes(overview).some(n => n.props?.["aria-label"] === "Demo original volume"), false);
+  adjustSound.props.onClick();
+  const expandedTree = h.render();
+  const expandedOverview = nodes(expandedTree).find(n => n.type === "portal" && n.props.target === h.props.controlsTarget);
+  const expandedAdjustSound = nodes(expandedOverview).find(n => n.type === "button" && text(n).trim() === "Adjust demo sound");
+  assert.equal(expandedAdjustSound.props["aria-expanded"], true);
+  assert.ok(nodes(expandedOverview).some(n => n.props?.["aria-label"] === "Demo original volume"));
+  assert.ok(nodes(overview).some(n => n.props?.["aria-label"] === "Background audio settings"));
+  assert.ok(nodes(overview).some(n => n.type === "Button" && text(n) === "Reset demo framing"));
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), stored.framing, "Removing crop tools must not silently rewrite saved media edits");
+});
+
 for (const format of ["hook", "wall_text"]) {
+  test(`${format}: empty Demo card uploads and chooses saved demos without opening the side panel`, async () => {
+    const h = harness(); h.render({ active: false, editActive: false, editPreviewActive: true });
+    const sourceActions = () => h.find(n => n.type === "WorkflowClipSourceActions");
+    assert.ok(sourceActions()); assert.equal(sourceActions().props.label, "demo video");
+    sourceActions().props.onChooseAssets(); h.render();
+    const library = h.find(n => n.type === "WorkflowVideoAssetPicker"); assert.equal(library.props.open, true);
+    assert.equal(library.props.library, "content");
+    assert.equal(h.sourceInput.library, "content"); assert.equal(h.sourceInput.assetLibrary, "content");
+    assert.equal(sourceActions().props.library, "content");
+    library.props.onOpenChange(false); h.render(); assert.equal(h.dirty, 0, "Cancelling the chooser does not change a draft");
+    const pending = sourceActions().props.onUpload({ name: "demo.mp4" }); h.render();
+    assert.equal(h.button("Edit demo video").props.disabled, false, "A pending upload must not trap editing");
+    h.completeVideoUpload(asset(2)); await pending; h.render();
+    assert.equal(h.find(n => n.type === "video" && n.props.src === asset(2).url).props.src, asset(2).url);
+    assert.equal(readFormatDemoDraft(h.storage.get(draftKey())).demoId, id(2));
+    assert.equal(h.saveRun(), undefined, "Uploading does not start a render");
+  });
+  for (const playback of ["once", "repeat"]) test(`${format}: background library selection saves ${playback} and keeps demo edits`, async () => {
+    const stored = { ...draft(), backgroundMusic: false };
+    const h = harness({ format, storage: new Map([[draftKey("owner", format), JSON.stringify(stored)]]) });
+    h.render({ opening: output(1), videoId: id(1), openingRevision: 1 });
+    const picker = h.find(node => node.type === "WorkflowBackgroundAudioPicker");
+    assert.ok(picker); assert.equal(await picker.props.onChoose({ name: "Hook track 01.mp3" }, playback), true); h.render();
+    const next = readFormatDemoDraft(h.storage.get(draftKey("owner", format)));
+    assert.equal(next.backgroundAudioId, id(4)); assert.equal(next.backgroundMusic, true); assert.equal(next.backgroundPlayback, playback);
+    assert.equal(next.audioId, stored.audioId); assert.deepEqual(normalize(next.editing), stored.editing); assert.deepEqual(normalize(next.framing), stored.framing);
+    const savedSpeech = h.find(node => node.type === "WorkflowSavedAudioPicker");
+    assert.ok(savedSpeech, "Demo speech remains a separate personal recording choice");
+    assert.notEqual(savedSpeech.props.attachment, picker.props.attachment);
+    assert.equal(h.uploads.length, 1); assert.equal(h.uploads[0][4].purpose, "explore-demo");
+  });
   test(`${format}: background upload in the overview preserves demo text, trim and its separate audio`, async () => {
     const stored = { ...draft(), audioId: id(4), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0], [7000, 0, 0]] } };
     const h = harness({ format, storage: new Map([[draftKey("owner", format), JSON.stringify(stored)]]) });
@@ -188,7 +418,7 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(readFormatDemoDraft(h.storage.get(draftKey("owner", format))).backgroundMusic, true);
     assert.equal(h.saveRun(), undefined); assert.equal(h.uploads.length, 0);
     h.select(); assert.equal(toggle().props["aria-checked"], true, "Choosing a demo keeps the soundtrack preference");
-    h.button("Remove").props.onClick(); h.render();
+    h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render();
     assert.equal(toggle().props["aria-checked"], true, "Music can accompany an opening without a demo");
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.equal(restored.input("Background audio").props["aria-checked"], true);
@@ -234,7 +464,7 @@ for (const format of ["hook", "wall_text"]) {
     h.edit("Demo trim start", 2); assert.equal(player.currentTime, 2);
     const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
     fields.props.onChange({ ...fields.props.editing, text: { value: "Demo title", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 } }); h.render();
-    h.find(n => n.type === "WorkflowDemoControls").props.onChange({ version: 1, width: .5, height: .5, points: [[0, .25, .4]] }); h.render();
+    h.draftInputs.at(-1).onRestore({ ...h.draftInputs.at(-1).content, workflowMusic: undefined, framing: { version: 1, width: .5, height: .5, points: [[0, .25, .4]] } }, true); h.render();
     assert.match(text(h.find(n => n.props?.role === "status")), /crop may cut off this heading/);
     assert.match(text(h.find(n => n.props?.["aria-label"] === "Demo edit preview")), /Full clip preview/);
   });
@@ -251,12 +481,15 @@ for (const format of ["hook", "wall_text"]) {
     const stored = normalize(readFormatDemoDraft(h.storage.get(draftKey("owner", format))));
     assert.deepEqual(stored.editing.text, overlay);
     h.props.onEditDone = () => h.render({ active: true, editActive: false }); h.render();
-    await h.button("Apply demo edits").props.onClick();
+    await h.button("Save edits").props.onClick();
     assert.equal(h.draftSaves.length, 1, "Apply persists one draft snapshot");
     assert.deepEqual(h.draftSaves[0].editing.text, overlay);
-    assert.equal(h.saveRun(), undefined, "Apply edits does not render the publishing file");
+    assert.equal(h.saveRun(), undefined, "Save edits does not render the publishing file");
+    assert.ok(h.input("Demo trim start"), "Saving keeps the focused editor open");
+    h.button("Back to videos").props.onClick();
     assert.equal(h.input("Selected demo video").props.src, asset(2).url);
-    assert.equal(h.input("Upload demo video").props.type, "file");
+    assert.ok(h.button("Replace demo"), "Sidebar keeps the original replacement control");
+    assert.ok(h.button("Saved demos"), "Sidebar keeps its separate asset-library control");
     assert.equal(h.find(n => n.props?.["aria-label"] === "Demo trim start"), undefined);
     const restored = harness({ format, storage: h.storage }); restored.render({ opening: output(1) });
     assert.deepEqual(normalize(restored.find(n => n.type === textFields.FormatVideoTextFields).props.editing.text), overlay);
@@ -269,7 +502,11 @@ for (const format of ["hook", "wall_text"]) {
     stored.editing.text = { value: "Demo caption", width: .94, y: .075, fontSize: 56, color: "#ffffff", startMs: 100, endMs: 1500, preset: "snapchat-classic", backgroundOpacity: .4 };
     const storage = new Map([[draftKey("owner", format), JSON.stringify(stored)]]);
     const h = harness({ format, storage }); h.render({ opening: output(1), remixReference: { id: "reference-a", format } });
-    assert.equal(h.find(n => n.type === "RemixTextSection"), undefined, "Opening reference remix is never offered for the demo");
+    const remix = h.find(n => n.type === "RemixTextSection");
+    assert.ok(!remix.props.expanded && remix.props.editorNavigation, "Demo keeps Remix as one compact optional entry beside its manual text controls");
+    assert.equal(remix.props.reference, undefined, "Demo remix never inherits the opening reference");
+    assert.equal(remix.props.format, "hook");
+    assert.match(remix.props.targetKey, /^demo:/);
     const fields = h.find(n => n.type === textFields.FormatVideoTextFields);
     fields.props.onChange({ ...fields.props.editing, text: { ...fields.props.editing.text, value: "New demo copy" } });
     h.render();
@@ -283,7 +520,7 @@ for (const format of ["hook", "wall_text"]) {
     const h = harness({ format, storage }); h.props.opening = output(1); h.render();
     assert.equal(h.button("Save final video").props.disabled, false);
     const previousDirty = h.dirty;
-    const pending = h.input("Upload demo video").props.onChange({ currentTarget: { files: [{ name: "invalid.mp4" }], value: "" } });
+    const pending = h.input("Upload or replace demo video").props.onChange({ currentTarget: { files: [{ name: "invalid.mp4" }], value: "invalid.mp4" } });
     h.render(); h.rejectVideoUpload(); await new Promise(setImmediate); h.render();
     assert.ok(h.find(n => n.props?.["aria-label"] === "Selected demo video" && n.props.src === asset(2).url));
     assert.deepEqual(JSON.parse(storage.get(draftKey("owner", format))), stored);
@@ -291,16 +528,16 @@ for (const format of ["hook", "wall_text"]) {
     assert.match(text(h.find(n => n.props?.role === "alert")), /previous demo is kept/);
     assert.equal(h.uploads.length, 0); void pending;
   });
-  test(`${format}: opening replacement blocks Demo actions without turning live upload into preview`, () => {
+  test(`${format}: opening replacement blocks scheduling but leaves independent Demo source controls available`, () => {
     const h = harness({ format }); h.props.pendingSource = true; const tree = h.render();
-    assert.ok(h.find(n => n.type === "fieldset" && n.props.disabled === true));
+    assert.equal(h.find(n => n.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     assert.equal(nodes(tree).some(n => n.type === "DemoSaveRun"), false);
   });
   test(`${format}: a demo can schedule alone, while merging waits for an owned opening`, () => {
     const h = harness({ format }); h.render();
-    assert.equal(h.button("Upload demo").props.disabled, undefined);
-    assert.equal(h.button("Creative Assets").props.disabled, undefined);
+    assert.ok(h.button("Upload demo"));
+    assert.ok(h.button("Saved demos"));
     assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     assert.equal(h.button("Save final video").props.disabled, true);
     h.select();
@@ -318,7 +555,7 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: creating, saving, editing and replacing an opening retain demo trim, framing and audio`, async () => {
     const h = harness({ format }); h.select();
     h.edit("Demo trim start", .5); h.edit("Demo trim end", 6.5); h.edit("Demo original volume", 35);
-    h.find(node => node.type === "WorkflowDemoControls").props.onChange(draft().framing); h.render();
+    h.draftInputs.at(-1).onRestore({ ...h.draftInputs.at(-1).content, workflowMusic: undefined, framing: draft().framing }, true); h.render();
     const audioPicker = h.find(node => node.type === "WorkflowFilePicker" && node.props.label === "Upload demo audio");
     assert.equal(await audioPicker.props.attachment.choose({ name: "music.mp3" }), true); h.render();
     h.edit("Demo added audio volume", 60); h.edit("Demo audio playback", "repeat");
@@ -337,7 +574,7 @@ for (const format of ["hook", "wall_text"]) {
         assert.equal(h.input("Demo trim end").props.value, 6.5);
         assert.equal(h.input("Demo original volume").props.value, 35);
         assert.equal(h.input("Demo audio playback").props.value, "repeat");
-        assert.deepEqual(normalize(h.find(node => node.type === "WorkflowDemoControls").props.value), normalize(draft().framing));
+        assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), normalize(draft().framing));
       }
     }
     assert.equal(h.uploads.length, 1);
@@ -346,9 +583,8 @@ for (const format of ["hook", "wall_text"]) {
   test(`${format}: a demo upload completing after opening selection or replacement remains selected`, async () => {
     const h = harness({ format }); h.render();
     const event = { currentTarget: { files: [{ name: "demo.mp4" }], value: "demo.mp4" } };
-    h.input("Upload demo video").props.onChange(event); h.render();
-    assert.equal(event.currentTarget.value, "");
-    assert.equal(h.find(node => node.type === "fieldset").props.disabled, true);
+    h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload(event.currentTarget.files[0]); h.render();
+    assert.equal(h.find(node => node.type === "fieldset").props.disabled, false);
     h.render({ videoId: id(1), opening: output(1), openingRevision: 1 });
     h.render({ videoId: id(3), opening: null, openingRevision: 2 });
     h.completeVideoUpload(); await Promise.resolve(); h.render();
@@ -390,10 +626,10 @@ test("an opening edit invalidates merge busy state and a finished result even wh
   assert.equal(h.input("Selected demo video").props.src, asset(2).url);
 });
 
-test("a changed opening aspect preserves the demo draft and requires reframing or an explicit reset before merging", () => {
+test("a changed opening aspect preserves the demo draft and requires an explicit legacy framing reset in Demo before merging", () => {
   const h = harness(); h.select(); h.edit("Demo trim start", 1); h.edit("Demo trim end", 7);
   const framing = { version: 1, width: .8, height: .8, points: [[0, .1, .1], [7000, .2, .2]] };
-  h.find(node => node.type === "WorkflowDemoControls").props.onChange(framing); h.render();
+  h.draftInputs.at(-1).onRestore({ ...h.draftInputs.at(-1).content, workflowMusic: undefined, framing }, true); h.render();
   h.render({ opening: output(1), videoId: id(1), openingRevision: 1 });
   assert.equal(h.button("Save final video").props.disabled, false);
   const selected = normalize(readFormatDemoDraft(h.storage.get(draftKey())));
@@ -401,7 +637,7 @@ test("a changed opening aspect preserves the demo draft and requires reframing o
   h.render({ opening: output(3), videoId: id(3), openingRevision: 2 });
   assert.equal(h.input("Selected demo video").props.src, asset(2).url);
   assert.deepEqual(normalize(readFormatDemoDraft(h.storage.get(draftKey()))), selected);
-  assert.deepEqual(normalize(h.find(node => node.type === "WorkflowDemoControls").props.value), framing);
+  assert.deepEqual(normalize(h.draftInputs.at(-1).content.framing), framing);
   assert.equal(h.button("Save final video").props.disabled, true);
   assert.ok(h.find(node => node.props?.role === "alert" && /reframe|framing/i.test(text(node))), "The incompatible crop must be explained before rendering");
   assert.equal(h.saveRun(), undefined);
@@ -437,12 +673,12 @@ test("signed-in preview selection and removal preserve the real workflow draft a
   assert.equal(h.find(node => node.props?.["aria-label"] === "Selected demo video"), undefined);
   assert.equal(storage.get(previewKey), undefined, "Preview must not migrate the legacy opening draft");
   const event = { currentTarget: { files: [{ name: "local-demo.mp4" }], value: "local-demo.mp4" } };
-  h.input("Upload demo video").props.onChange(event); h.render();
+  h.find(n => n.type === "WorkflowClipSourceActions").props.onUpload(event.currentTarget.files[0]); h.render();
   h.completeVideoUpload(null); await Promise.resolve(); h.render();
   assert.equal(h.input("Selected demo video").props.src, "blob:local-demo");
   assert.equal(readFormatDemoDraft(storage.get(previewKey)).demoId, null);
   assert.equal(storage.get(realKey), realDraft);
-  h.button("Remove").props.onClick(); h.render();
+  h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render();
   assert.equal(h.find(node => node.props?.["aria-label"] === "Selected demo video"), undefined);
   assert.equal(storage.get(realKey), realDraft);
   assert.equal(storage.get(legacyKey), legacyDraft);
@@ -474,7 +710,7 @@ test("legacy opening drafts cannot overwrite a selected or explicitly removed wo
   for (const remove of [false, true]) {
     const storage = new Map([[legacyKey, JSON.stringify(draft())]]);
     const h = harness({ storage }); h.select(asset(3));
-    if (remove) { h.button("Remove").props.onClick(); h.render(); }
+    if (remove) { h.find(n => n.props?.["aria-label"] === "Remove demo").props.onClick(); h.render(); }
     h.render({ videoId: id(1) });
     assert.equal(readFormatDemoDraft(storage.get(draftKey())).demoId, remove ? null : id(3));
     if (remove) {
@@ -605,18 +841,18 @@ test("a pending or failed soundtrack selection cannot save or schedule the previ
   h.audio.loading = true;
   h.render({ backgroundScheduling: true, onPendingCompositionChange: value => { composition = value; }, prepareRequest: 1 });
   assert.match(composition.error, /selected media to finish uploading/);
-  assert.equal(h.button("Apply demo edits").props.disabled, true);
+  assert.equal(h.button("Save edits").props.disabled, true);
   assert.equal(h.saveRun(), undefined);
   await assert.rejects(composition.resolve(), /selected media to finish uploading/);
   h.audio.loading = false; h.audio.error = "Selected audio unavailable.";
   h.render();
   assert.equal(composition.error, h.audio.error);
-  assert.equal(h.button("Apply demo edits").props.disabled, true);
+  assert.equal(h.button("Save edits").props.disabled, true);
   assert.equal(h.saveRun(), undefined);
   await assert.rejects(composition.resolve(), /Selected audio unavailable/);
   h.audio.error = null; h.render({ prepareRequest: 0 });
   assert.equal(composition.error, null);
-  assert.equal(h.button("Apply demo edits").props.disabled, false);
+  assert.equal(h.button("Save edits").props.disabled, false);
   assert.equal((await composition.resolve()).sourceAssetId, id(2));
 });
 
@@ -664,3 +900,31 @@ for (const kind of ["demo", "background"]) {
     assert.equal(h.savedReports.length, 0);
   });
 }
+
+
+test("Demo remix applies only to its own draft, retains trim, framing and sound, and saves without rendering", async () => {
+  const stored = draft();
+  stored.framing.height = .5;
+  const openingKey = "ugc-explore:format-draft:v1:owner:hook:opening";
+  const openingDraft = JSON.stringify({ editing: { text: "Keep this hook" } });
+  const storage = new Map([[draftKey(), JSON.stringify(stored)], [openingKey, openingDraft]]);
+  const h = harness({ storage }); h.render({ opening: output(1) });
+  const source = { referenceId: null, slideId: null, sourceSha256: "b".repeat(64), format: "hook", status: "ready", blocks: [{ text: "Demo idea", startMs: 0, endMs: 6000 }], extractedAt: "2026-10-15T12:00:00Z", model: "manual", notes: "" };
+  const remix = h.find(n => n.type === "RemixTextSection");
+  assert.equal(remix.props.reference, undefined);
+  assert.equal(remix.props.onUse({ blocks: ["Try the demo"], heading: "", body: "" }, source), true);
+  h.render();
+  const saved = normalize(readFormatDemoDraft(storage.get(draftKey())));
+  assert.equal(formatTextOverlays(saved.editing)[0].value, "Try the demo");
+  assert.equal(saved.editing.trimStartMs, stored.editing.trimStartMs);
+  assert.equal(saved.editing.trimEndMs, stored.editing.trimEndMs);
+  assert.deepEqual(saved.framing, stored.framing);
+  assert.equal(saved.audioId, stored.audioId);
+  assert.equal(saved.editing.originalVolume, stored.editing.originalVolume);
+  assert.equal(storage.get(openingKey), openingDraft);
+  assert.equal(h.saveRun(), undefined);
+  await h.button("Save edits").props.onClick(); h.render();
+  assert.equal(h.draftSaves.length, 1);
+  assert.equal(formatTextOverlays(h.draftSaves[0].editing)[0].value, "Try the demo");
+  assert.ok(h.input("Demo trim start"));
+});

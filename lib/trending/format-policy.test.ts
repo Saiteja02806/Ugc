@@ -76,7 +76,8 @@ test("Adjust and the first-visit guide filter retained video UI", () => {
   const dialog = readFileSync(new URL("../../components/trending/trending-content-mix-dialog.tsx", import.meta.url), "utf8");
   assert.match(dialog, /const AVAILABLE_MIX_ROWS = MIX_ROWS\.filter/);
   assert.doesNotMatch(dialog, /\{MIX_ROWS\.map/);
-  assert.match(dialog, /editable: data\.editable && !TRENDING_SLIDESHOW_ONLY_ENABLED/);
+  assert.match(dialog, /setMix\(resolveTrendingContentMixForRuntime\(data\.preference\.mix\)\)/);
+  assert.match(dialog, /setSavedMix\(resolveTrendingContentMixForRuntime\(data\.preference\.mix\)\)/);
   const guide = readFileSync(new URL("../../components/trending/trending-first-visit-walkthrough.tsx", import.meta.url), "utf8");
   assert.match(guide, /ALL_STEPS\.filter/);
   assert.match(guide, /step\.kind\.startsWith\("slideshow_"\)/);

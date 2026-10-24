@@ -165,10 +165,10 @@ export function FocusedVideoEditor({
 
     setCurrentTime(videoElement.currentTime);
 
-    if (trimEnd > trimStart && videoElement.currentTime >= trimEnd) {
+    if (!videoElement.paused && trimEnd > trimStart && videoElement.currentTime >= trimEnd) {
       videoElement.pause();
-      videoElement.currentTime = trimStart;
-      setCurrentTime(trimStart);
+      videoElement.currentTime = Math.max(trimStart, trimEnd - .05);
+      setCurrentTime(videoElement.currentTime);
       setIsPreviewPlaying(false);
     }
   }
@@ -215,6 +215,7 @@ export function FocusedVideoEditor({
     nextTrimEnd?: number;
     nextTrimStart?: number;
   }) {
+    setPreviewMode("draft");
     onDraftChange?.(
       normalizeEditableVideoDraftForDuration(
         {
@@ -241,6 +242,7 @@ export function FocusedVideoEditor({
     }
 
     setTrimStart(safeStart);
+    videoRef.current?.pause();
     setTrimMessage(null);
     seekPreview(safeStart);
     emitDraftChange({ nextTrimStart: safeStart });
@@ -260,8 +262,9 @@ export function FocusedVideoEditor({
     }
 
     setTrimEnd(safeEnd);
+    videoRef.current?.pause();
     setTrimMessage(null);
-    seekPreview(safeEnd);
+    seekPreview(Math.max(trimStart, safeEnd - .05));
     emitDraftChange({ nextTrimEnd: safeEnd });
   }
 

@@ -11,6 +11,21 @@ function database() {
 /** JSON-only persistence. This store never submits render jobs or marks media ready. */
 export class ExploreClipDraftStore {
   constructor(private readonly db = database()) {}
+  async listContentDemoEdits(owner: string, sourceAssetIds: string[]) {
+    const edits = new Map<string, { scope: "hook:demo"; revision: number; updatedAt: string }>();
+    for (let offset = 0; offset < sourceAssetIds.length; offset += 100) {
+      const ids = sourceAssetIds.slice(offset, offset + 100);
+      const { data, error } = await this.db.from("explore_clip_drafts").select("user_id,scope,source_asset_id,revision,updated_at")
+        .eq("user_id", owner).eq("scope", "hook:demo").in("source_asset_id", ids);
+      if (error) throw new ExploreClipDraftError("Could not load saved demo edits.", 503);
+      for (const row of data ?? []) {
+        if (row.user_id !== owner || row.scope !== "hook:demo" || !ids.includes(row.source_asset_id) || !Number.isSafeInteger(row.revision) || row.revision < 1 || !Number.isFinite(Date.parse(row.updated_at)))
+          throw new ExploreClipDraftError("Could not verify saved demo edits.", 503);
+        edits.set(row.source_asset_id, { scope: "hook:demo", revision: row.revision, updatedAt: row.updated_at });
+      }
+    }
+    return edits;
+  }
   async read(owner: string, sourceAssetId: string, scope: string) {
     clipDraftScope(scope);
     const { data, error } = await this.db.from("explore_clip_drafts").select("id,user_id,scope,source_asset_id,revision,content,updated_at")

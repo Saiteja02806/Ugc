@@ -30,6 +30,13 @@ import {
 import { rebalanceTrendingContentMix } from "@/lib/trending/content-mix-editor";
 import type { TrendingFeedFormat } from "@/lib/trending/feed-items";
 import { isTrendingFormatEnabled, resolveTrendingContentMixForRuntime, TRENDING_SLIDESHOW_ONLY_ENABLED } from "@/lib/trending/format-policy";
+import {
+  allocateTrendingSlideshowStylesForPack,
+  DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
+  type TrendingSlideshowStyle,
+  type TrendingSlideshowStyleMix,
+  validateTrendingSlideshowStyleMix,
+} from "@/lib/trending/slideshow-style-mix";
 import { cn } from "@/lib/utils";
 
 type ContentMixPayload = {
@@ -44,6 +51,7 @@ type ContentMixPayload = {
   preference: {
     mix: TrendingContentMix;
     preferenceVersion: number;
+    slideshowStyleMix: TrendingSlideshowStyleMix;
     updatedAt: string | null;
   };
 };
@@ -137,6 +145,14 @@ export function TrendingContentMixDialog({
   const [savedMix, setSavedMix] = useState<TrendingContentMix>({
     ...DEFAULT_TRENDING_CONTENT_MIX,
   });
+  const [slideshowStyleMix, setSlideshowStyleMix] =
+    useState<TrendingSlideshowStyleMix>({
+      ...DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
+    });
+  const [savedSlideshowStyleMix, setSavedSlideshowStyleMix] =
+    useState<TrendingSlideshowStyleMix>({
+      ...DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
+    });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -179,9 +195,11 @@ export function TrendingContentMixDialog({
 
         if (controller.signal.aborted) return;
 
-        setPayload({ ...data, editable: data.editable && !TRENDING_SLIDESHOW_ONLY_ENABLED });
+        setPayload(data);
         setMix(resolveTrendingContentMixForRuntime(data.preference.mix));
         setSavedMix(resolveTrendingContentMixForRuntime(data.preference.mix));
+        setSlideshowStyleMix({ ...data.preference.slideshowStyleMix });
+        setSavedSlideshowStyleMix({ ...data.preference.slideshowStyleMix });
         setLoadState("ready");
       } catch (loadError) {
         if (controller.signal.aborted) return;
@@ -209,10 +227,27 @@ export function TrendingContentMixDialog({
       mix,
     });
   }, [mix, payload]);
-  const hasChanges = AVAILABLE_MIX_ROWS.some(
-    ({ format }) =>
-      getMixValue(mix, format) !== getMixValue(savedMix, format),
+  const slideshowStyleAllocation = useMemo(() => {
+    if (!payload || !validateTrendingSlideshowStyleMix(slideshowStyleMix)) {
+      return null;
+    }
+
+    return allocateTrendingSlideshowStylesForPack({
+      localDate: getBrowserLocalDate(),
+      mix: slideshowStyleMix,
+      carouselCount: allocation?.carousel ?? payload.entitlement.dailyLimit,
+    });
+  }, [allocation?.carousel, payload, slideshowStyleMix]);
+  const hasFormatChanges = AVAILABLE_MIX_ROWS.some(
+    ({ format }) => getMixValue(mix, format) !== getMixValue(savedMix, format),
   );
+  const hasSlideshowStyleChanges =
+    slideshowStyleMix.helpfulTips !== savedSlideshowStyleMix.helpfulTips ||
+    slideshowStyleMix.productStoriesCta !==
+      savedSlideshowStyleMix.productStoriesCta;
+  const hasChanges = TRENDING_SLIDESHOW_ONLY_ENABLED
+    ? hasSlideshowStyleChanges
+    : hasFormatChanges || hasSlideshowStyleChanges;
 
   function updateMix(
     format: TrendingFeedFormat,
@@ -222,6 +257,20 @@ export function TrendingContentMixDialog({
     setError(null);
     setMix((current) =>
       rebalanceTrendingContentMix(current, format, nextValue),
+    );
+  }
+
+  function updateSlideshowStyleMix(
+    style: TrendingSlideshowStyle,
+    nextValue: number,
+  ) {
+    const normalized = Math.max(0, Math.min(100, Math.trunc(nextValue)));
+    setNotice(null);
+    setError(null);
+    setSlideshowStyleMix(
+      style === "helpful_tips"
+        ? { helpfulTips: normalized, productStoriesCta: 100 - normalized }
+        : { helpfulTips: 100 - normalized, productStoriesCta: normalized },
     );
   }
 
@@ -242,7 +291,14 @@ export function TrendingContentMixDialog({
       const timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const response = await fetch("/api/trending/content-mix", {
-        body: JSON.stringify({ ...mix, timezone }),
+        body: JSON.stringify({
+          ...mix,
+          slideshow_style_mix: {
+            helpful_tips: slideshowStyleMix.helpfulTips,
+            product_stories_cta: slideshowStyleMix.productStoriesCta,
+          },
+          timezone,
+        }),
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -265,6 +321,8 @@ export function TrendingContentMixDialog({
 
       setSavedMix({ ...data.preference.mix });
       setMix({ ...data.preference.mix });
+      setSavedSlideshowStyleMix({ ...data.preference.slideshowStyleMix });
+      setSlideshowStyleMix({ ...data.preference.slideshowStyleMix });
       setNotice(data.message);
       onApplied(data.applied);
     } catch (saveError) {
@@ -280,19 +338,19 @@ export function TrendingContentMixDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(760px,calc(100dvh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-[540px]">
-        <DialogHeader className="border-b border-border px-5 py-5 pr-14 sm:px-6">
+      <DialogContent className="flex max-h-[min(760px,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-[540px]">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-5 pr-14 sm:px-6">
           <DialogTitle className="text-lg font-semibold text-foreground-strong">
             Adjust content mix
           </DialogTitle>
           <DialogDescription className="leading-5">
             {TRENDING_SLIDESHOW_ONLY_ENABLED
-              ? "Your daily Trending content is 100% slideshows. Use Edit to change an individual slideshow."
+              ? "Your daily Trending content is 100% slideshows. Choose how those slideshows balance helpful teaching and product-led stories."
               : "Choose how your daily Trending content is distributed. You can set any format to 100%. Editing an individual creative remains under Edit."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-5 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           {loadState === "loading" || loadState === "idle" ? (
             <div
               aria-live="polite"
@@ -338,7 +396,10 @@ export function TrendingContentMixDialog({
                       type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => setMix({ ...savedMix })}
+                      onClick={() => {
+                        setMix({ ...savedMix });
+                        setSlideshowStyleMix({ ...savedSlideshowStyleMix });
+                      }}
                     >
                       <RotateCcw data-icon="inline-start" aria-hidden="true" />
                       Undo
@@ -369,8 +430,66 @@ export function TrendingContentMixDialog({
                 </p>
               ) : null}
 
-              <div className="mt-4 space-y-3">
-                {AVAILABLE_MIX_ROWS.map(
+              {TRENDING_SLIDESHOW_ONLY_ENABLED ? (
+                <div className="mt-4 rounded-2xl border border-border/70 bg-card p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-subtle">
+                        Slideshow mix
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        Choose the balance for your next pack
+                      </p>
+                    </div>
+                    {slideshowStyleAllocation ? (
+                      <span className="shrink-0 text-xs tabular-nums text-muted">
+                        {slideshowStyleAllocation.helpful_tips}/
+                        {slideshowStyleAllocation.product_stories_cta} cards
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div
+                    aria-label="Selected slideshow style mix"
+                    className="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-border/70"
+                    role="img"
+                  >
+                    <span
+                      className="bg-primary transition-[width]"
+                      style={{ width: `${slideshowStyleMix.helpfulTips}%` }}
+                    />
+                    <span
+                      className="bg-accent-purple transition-[width]"
+                      style={{ width: `${slideshowStyleMix.productStoriesCta}%` }}
+                    />
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <SlideshowStyleControl
+                      accentColor="var(--primary)"
+                      allocation={slideshowStyleAllocation?.helpful_tips ?? 0}
+                      description="Self-contained ideas and practical steps. No product promotion."
+                      disabled={!payload.editable || saving}
+                      label="Helpful tips"
+                      value={slideshowStyleMix.helpfulTips}
+                      onChange={(value) => updateSlideshowStyleMix("helpful_tips", value)}
+                    />
+                    <SlideshowStyleControl
+                      accentColor="var(--accent-purple)"
+                      allocation={slideshowStyleAllocation?.product_stories_cta ?? 0}
+                      description="Product-oriented stories with a clear call to action."
+                      disabled={!payload.editable || saving}
+                      label="Product stories + CTA"
+                      value={slideshowStyleMix.productStoriesCta}
+                      onChange={(value) =>
+                        updateSlideshowStyleMix("product_stories_cta", value)
+                      }
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {AVAILABLE_MIX_ROWS.map(
                   ({
                     accentColor,
                     format,
@@ -442,8 +561,9 @@ export function TrendingContentMixDialog({
                       </label>
                     );
                   },
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               <div aria-live="polite" className="mt-4 min-h-5">
                 {error ? (
@@ -463,7 +583,7 @@ export function TrendingContentMixDialog({
                 ) : payload.editable ? (
                   <p className="text-xs leading-5 text-muted-subtle">
                     If today&apos;s pack is already prepared, the new balance
-                    starts tomorrow.
+                    starts tomorrow. Existing cards stay unchanged.
                   </p>
                 ) : null}
               </div>
@@ -471,7 +591,7 @@ export function TrendingContentMixDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="m-0 rounded-none px-5 py-4 sm:px-6">
+        <DialogFooter className="m-0 shrink-0 rounded-none px-5 py-4 sm:px-6">
           <Button
             type="button"
             variant="outline"
@@ -499,6 +619,59 @@ export function TrendingContentMixDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SlideshowStyleControl({
+  accentColor,
+  allocation,
+  description,
+  disabled,
+  label,
+  onChange,
+  value,
+}: {
+  accentColor: string;
+  allocation: number;
+  description: string;
+  disabled: boolean;
+  label: string;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  return (
+    <label className="block rounded-xl border border-border/70 bg-card-muted/35 px-3.5 py-3 focus-within:border-border-strong">
+      <span className="flex items-baseline justify-between gap-3">
+        <span>
+          <span className="block text-sm font-semibold text-foreground">{label}</span>
+          <span className="mt-0.5 block text-xs leading-5 text-muted">{description}</span>
+        </span>
+        <span className="shrink-0 text-right">
+          <output className="block text-sm font-semibold tabular-nums text-foreground">
+            {value}%
+          </output>
+          <span className="block text-xs tabular-nums text-muted-subtle">
+            {allocation}/day
+          </span>
+        </span>
+      </span>
+      <input
+        aria-label={`${label} percentage`}
+        aria-valuetext={`${value} percent, ${allocation} per day`}
+        className={CONTENT_MIX_RANGE_CLASS}
+        disabled={disabled}
+        max={100}
+        min={0}
+        step={1}
+        style={{
+          "--mix-accent": accentColor,
+          background: `linear-gradient(to right, ${accentColor} 0 ${value}%, var(--card-muted) ${value}% 100%)`,
+        } as CSSProperties}
+        type="range"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
   );
 }
 

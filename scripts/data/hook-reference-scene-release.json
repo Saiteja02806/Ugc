@@ -1,0 +1,1200 @@
+{
+  "version": 1,
+  "status": "ready_for_deployment",
+  "date": "2026-10-19",
+  "hook18Unchanged": true,
+  "oldObjectsRetained": true,
+  "items": [
+    {
+      "ordinal": 1,
+      "id": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "original": {
+        "id": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "format": "hook",
+        "title": "Hook 01",
+        "instagramUrl": "https://www.instagram.com/reel/Dd4oo1qy_Dc/",
+        "videoStorageKey": "explore/paired-references/v1/4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b.mp4",
+        "audioStorageKey": "explore/paired-references/v1/6feb4242536d4884e397da69f9a156e00a83037103e7eb7377037447325affa7.mp3",
+        "posterStorageKey": "explore/paired-references/v1/4c595977e6e01e2e1114fbacacc1746c222d0081faa9731a2ddbc219f370aeb2.webp",
+        "videoSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+        "audioSha256": "6feb4242536d4884e397da69f9a156e00a83037103e7eb7377037447325affa7",
+        "posterSha256": "4c595977e6e01e2e1114fbacacc1746c222d0081faa9731a2ddbc219f370aeb2",
+        "durationSeconds": 3.1,
+        "audioDurationSeconds": 13.348562,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-12668.mp3",
+        "sourceFolder": "New folder",
+        "previewSha256": "e237f4b72105f4c98c811c745d99dc91866f46b2e2a9acfb5505d9786ceabeca",
+        "previewStorageKey": "explore/paired-references/v1/e237f4b72105f4c98c811c745d99dc91866f46b2e2a9acfb5505d9786ceabeca.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "slideId": null,
+        "sourceSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Computer Science students!!\nThis website is EVERYTHING",
+            "startMs": 0,
+            "endMs": 3067
+          },
+          {
+            "text": "I used to think learning coding\nwould be so difficult",
+            "startMs": 3067,
+            "endMs": 3100
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:08.393Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at the single final screen-view frame 91 / 3067 ms, confirmed using actual frame presentation timestamps. Existing wording, emojis and timing retained; interface text excluded. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 92,
+        "reviewNotes": "All 92 decoded frames inspected sequentially. A monitor view appears only in the last decoded frame; preserve its brief source timing rather than extending it. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated at the pink keyboard, looking toward screen-right with raised eyebrows, widened eyes and an open mouth. Shift the gaze toward the camera while holding the surprised expression. Lift the hand on screen-right to cover the mouth while the other hand leaves the keyboard and reaches toward the lens. Keep the mouth covered as the camera moves closer and the face shifts toward the edge of the frame. Retain the very brief final cut to the monitor view without extending it. Preserve the pink keyboard, hand contact, curtains, magenta shelf lighting, camera movement and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 1,
+        "id": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+        "originalVideoSha256": "4c174ea855a9c746b0c3d84eb4911375cebcab3fd40dc65ee65e6568888fc50b",
+        "videoSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+        "videoStorageKey": "explore/paired-references/v1/ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49.mp4",
+        "previewSha256": "2603344e155c58f9d3480488bcd7d5d277611eea5f7f23cd924be8a34aa6c552",
+        "previewStorageKey": "explore/paired-references/v1/2603344e155c58f9d3480488bcd7d5d277611eea5f7f23cd924be8a34aa6c552.mp4",
+        "durationSeconds": 3.066667,
+        "frames": 91,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "6feb4242536d4884e397da69f9a156e00a83037103e7eb7377037447325affa7"
+      }
+    },
+    {
+      "ordinal": 2,
+      "id": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "original": {
+        "id": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+        "format": "hook",
+        "title": "Hook 02",
+        "instagramUrl": "https://www.instagram.com/reel/Dc66cKZyBph/",
+        "videoStorageKey": "explore/paired-references/v1/600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d.mp4",
+        "audioStorageKey": "explore/paired-references/v1/68f092fc8932ea84b2894ea7c40094758baf87ca98ba37b3dfa1d8fde31f75b7.mp3",
+        "posterStorageKey": "explore/paired-references/v1/d8fac01ec5a8674db95c2878c87ec6e7aadf6aa2b567a4bcf9854e67b7508d49.webp",
+        "videoSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+        "audioSha256": "68f092fc8932ea84b2894ea7c40094758baf87ca98ba37b3dfa1d8fde31f75b7",
+        "posterSha256": "d8fac01ec5a8674db95c2878c87ec6e7aadf6aa2b567a4bcf9854e67b7508d49",
+        "durationSeconds": 3.1,
+        "audioDurationSeconds": 10.501188,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-53581.mp3",
+        "sourceFolder": "New folder (2)",
+        "previewSha256": "dab29b0024d6cef50cb36b6b5ab048a1a8e1c85dea64ab027625b23d125b1d15",
+        "previewStorageKey": "explore/paired-references/v1/dab29b0024d6cef50cb36b6b5ab048a1a8e1c85dea64ab027625b23d125b1d15.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+        "slideId": null,
+        "sourceSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "editors, get ready to\nwash dishes for $100/mo 💀🤡",
+            "startMs": 0,
+            "endMs": 3067
+          },
+          {
+            "text": "1. drop your videos",
+            "startMs": 3067,
+            "endMs": 3100
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:09.090Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at the single final screen-view frame 91 / 3067 ms, confirmed using actual frame presentation timestamps. Existing wording, emojis and timing retained; interface text excluded. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 92,
+        "reviewNotes": "All 92 decoded frames inspected sequentially. Glasses are removed forward and lowered, not pushed onto the head. Laptop view appears only in the final decoded frame. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original action sequence and timing: begin seated wearing eyeglasses, lift the silver laptop lid at the front of the frame and look toward its screen. Pause, raise the eyebrows, widen the eyes and open the mouth in surprise. Bring both hands to the glasses at the temples, pull them forward off the face and lower them in front of the chest. Keep staring toward the laptop with raised brows and slightly parted lips while holding the glasses; do not put them onto the head. Retain the very brief final cut to the laptop screen without extending it. Preserve the glasses, laptop, hand contact, seated position, room lighting, framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 2,
+        "id": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+        "originalVideoSha256": "600ad1c773cc46a5c933124c1e06a2271ee75f332b7326b085971617c7e15a9d",
+        "videoSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+        "videoStorageKey": "explore/paired-references/v1/f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d.mp4",
+        "previewSha256": "6fca9a3af8df09e79e7f3efba9f25428057e1e9f90ec88d2cf1f5847860b9f58",
+        "previewStorageKey": "explore/paired-references/v1/6fca9a3af8df09e79e7f3efba9f25428057e1e9f90ec88d2cf1f5847860b9f58.mp4",
+        "durationSeconds": 3.066667,
+        "frames": 91,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "68f092fc8932ea84b2894ea7c40094758baf87ca98ba37b3dfa1d8fde31f75b7"
+      }
+    },
+    {
+      "ordinal": 3,
+      "id": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "original": {
+        "id": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+        "audioPolicy": "silent",
+        "format": "hook",
+        "title": "Hook 03",
+        "instagramUrl": "https://www.instagram.com/reel/Dd394l1gRWG/",
+        "videoStorageKey": "explore/paired-references/v1/34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2.mp4",
+        "audioStorageKey": "explore/paired-references/v1/2feef130a568eb09ac9f1c96a214483114fddb6ddab835b720d76b594952eb3a.mp3",
+        "posterStorageKey": "explore/paired-references/v1/67efb63ee6469ebc0639720c3312829e67978eb6e5df6ac32d9dc54c2517b76b.webp",
+        "videoSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+        "audioSha256": "2feef130a568eb09ac9f1c96a214483114fddb6ddab835b720d76b594952eb3a",
+        "posterSha256": "67efb63ee6469ebc0639720c3312829e67978eb6e5df6ac32d9dc54c2517b76b",
+        "durationSeconds": 3.766992,
+        "audioDurationSeconds": 31.63425,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-77704.mp3",
+        "sourceFolder": "New folder (3)",
+        "previewSha256": "dfeeb76b655b3de9d2a1f6700a456806748453f48ff87cd9dd00dfcd02aa25f9",
+        "previewStorageKey": "explore/paired-references/v1/dfeeb76b655b3de9d2a1f6700a456806748453f48ff87cd9dd00dfcd02aa25f9.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+        "slideId": null,
+        "sourceSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "3 years of video editing\nand NOW i find this??? 😳",
+            "startMs": 0,
+            "endMs": 3733
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:12.689Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 110 decoded frames on 2026-10-16 alongside the performance prompt. Caption disappears at the single final screen-view frame 109 / 3733 ms, confirmed using actual frame presentation timestamps. Existing wording, flushed-face emoji and timing retained. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 110,
+        "reviewNotes": "All 110 decoded frames rechecked sequentially on 2026-10-19. No hand-to-mouth or glasses gesture in the reclining reaction. Stylus/screen view appears only in final frame 109 at 3733 ms. User rejected the separate spoken soundtrack: source MP4 has no audio stream; use silent preview and enforce silent new output. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin reclining against the patterned pillow, looking upward with slightly parted lips and a questioning expression. Briefly blink, bring the eyes toward the camera and widen them while raising the eyebrows. Glance toward screen-right, shift the gaze toward screen-left, then return to a wide-eyed look toward the lens. Hold the incredulous expression before the final sideways glance, with only small head movements and no added hand gesture. Retain the very brief final cut to a hand holding a stylus beside the screen without extending it. Preserve the reclining position, pillow, dark headboard, handheld perspective, natural lighting and source duration. Match the source gestures rather than the still pose in the image. Keep this a silent visual reaction: no speech, spoken words, voiceover, singing, lip-sync, music or background audio. Preserve the natural slightly parted lips without adding speaking movements."
+      },
+      "replacement": {
+        "ordinal": 3,
+        "id": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+        "originalVideoSha256": "34a041134a52f8619baf2a7c00876f02e1506d7f237a805be666143934ce79c2",
+        "videoSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+        "videoStorageKey": "explore/paired-references/v1/8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647.mp4",
+        "previewSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+        "previewStorageKey": "explore/paired-references/v1/8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647.mp4",
+        "durationSeconds": 3.733333,
+        "frames": 109,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "silent",
+        "originalAudioSha256": "2feef130a568eb09ac9f1c96a214483114fddb6ddab835b720d76b594952eb3a"
+      }
+    },
+    {
+      "ordinal": 4,
+      "id": "explore-paired-hook-b43622d1486957644f3317e6",
+      "original": {
+        "id": "explore-paired-hook-b43622d1486957644f3317e6",
+        "format": "hook",
+        "title": "Hook 04",
+        "instagramUrl": "https://www.instagram.com/reel/Dd3a2QJkoF6/",
+        "videoStorageKey": "explore/paired-references/v1/9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162.mp4",
+        "audioStorageKey": "explore/paired-references/v1/dc6daec886c14046bfded6a9b2101da77f9118964702af5a8e494c94e7eba104.mp3",
+        "posterStorageKey": "explore/paired-references/v1/c2def62b17d7d5b861c7595978ef9d742e5dcbd590106c45cd605860333ea095.webp",
+        "videoSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+        "audioSha256": "dc6daec886c14046bfded6a9b2101da77f9118964702af5a8e494c94e7eba104",
+        "posterSha256": "c2def62b17d7d5b861c7595978ef9d742e5dcbd590106c45cd605860333ea095",
+        "durationSeconds": 3.233984,
+        "audioDurationSeconds": 19.14775,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-75938.mp3",
+        "sourceFolder": "New folder (4)",
+        "previewSha256": "311d71da780446fd2d568ab48dbd1a48744637b6a5b0ea7a2a524b5b1b59c2c1",
+        "previewStorageKey": "explore/paired-references/v1/311d71da780446fd2d568ab48dbd1a48744637b6a5b0ea7a2a524b5b1b59c2c1.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
+        "slideId": null,
+        "sourceSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Broke people will\nLOVE me after seeing\nTHIS 😭💰",
+            "startMs": 0,
+            "endMs": 3033
+          },
+          {
+            "text": "Go to Pinterest",
+            "startMs": 3033,
+            "endMs": 3234
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:12.425Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 94 decoded frames on 2026-10-15 alongside the performance prompt. Original wording, capitalization and emojis preserved; app interface, packaging and incidental scene text excluded. Go to Pinterest begins at decoded frame 91 (3033 ms), before the browser cut; corrected the previous sampled boundary of 3200 ms. Timings rounded to milliseconds from decoded frame presentation timestamps. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 94,
+        "reviewNotes": "All 94 decoded frames inspected sequentially. Glasses remain on. The final three frames change to an instruction caption and then a browser view. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated at the dark desk facing the open silver laptop on screen-left, with raised eyebrows, widened eyes and an open mouth. Keep the hand on screen-right near the keyboard while the other hand rises to cover the mouth. Hold the surprised gaze toward the laptop, then reach the screen-right hand toward the lens while keeping the mouth covered. Follow the camera lifting and tilting upward so the face moves toward the lower edge of the frame. Retain the very brief final transition to the browser screen without extending it. Keep the eyeglasses on throughout the reaction. Preserve the laptop, hand contact, window blinds, dark curtains, source lighting, handheld movement and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 4,
+        "id": "explore-paired-hook-b43622d1486957644f3317e6",
+        "originalVideoSha256": "9ae5adf4194c3c86fc1e6f567c215ebfa106f2960fafbebe1c7daa9b57fe8162",
+        "videoSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
+        "videoStorageKey": "explore/paired-references/v1/aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1.mp4",
+        "previewSha256": "686d2f8fd34beea4142837a8c90cb474f6d424492a966bd220b97ee9ef2441e2",
+        "previewStorageKey": "explore/paired-references/v1/686d2f8fd34beea4142837a8c90cb474f6d424492a966bd220b97ee9ef2441e2.mp4",
+        "durationSeconds": 3.066667,
+        "frames": 92,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "dc6daec886c14046bfded6a9b2101da77f9118964702af5a8e494c94e7eba104"
+      }
+    },
+    {
+      "ordinal": 6,
+      "id": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "original": {
+        "id": "explore-paired-hook-55cb1594a04550147e829d7f",
+        "format": "hook",
+        "title": "Hook 06",
+        "instagramUrl": "https://www.instagram.com/reel/DchdXLQN7Lc/",
+        "videoStorageKey": "explore/paired-references/v1/7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c.mp4",
+        "audioStorageKey": "explore/paired-references/v1/4db3970c7ed1f6df0081ac72cc29d3e7b23f16526bc46e601b3abace5f32ac16.mp3",
+        "posterStorageKey": "explore/paired-references/v1/e2c9f078d66dce47a9a375643fa6ea5ac52acc6a1f3d759627e4fe9f59d56ea4.webp",
+        "videoSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+        "audioSha256": "4db3970c7ed1f6df0081ac72cc29d3e7b23f16526bc46e601b3abace5f32ac16",
+        "posterSha256": "e2c9f078d66dce47a9a375643fa6ea5ac52acc6a1f3d759627e4fe9f59d56ea4",
+        "durationSeconds": 3.766992,
+        "audioDurationSeconds": 21.28975,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-99809.mp3",
+        "sourceFolder": "New folder (6)",
+        "previewSha256": "3a56e1c28fbc5357c5938d21c2ddfa29dc0a77ec9f3e2bf6707670e94d5e79ff",
+        "previewStorageKey": "explore/paired-references/v1/3a56e1c28fbc5357c5938d21c2ddfa29dc0a77ec9f3e2bf6707670e94d5e79ff.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
+        "slideId": null,
+        "sourceSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "How tf is this legal 💀",
+            "startMs": 0,
+            "endMs": 3733
+          },
+          {
+            "text": "Go to “Google”",
+            "startMs": 3733,
+            "endMs": 3767
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:19.212Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 112 decoded frames on 2026-10-15 alongside the performance prompt. Original wording, capitalization and emojis preserved; app interface, packaging and incidental scene text excluded. The final Go to Google caption begins at 3733 ms. Timings rounded to milliseconds from decoded frame presentation timestamps. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 112,
+        "reviewNotes": "All 112 decoded frames inspected sequentially. Performer visibly drinks from the can, unlike Hook 05. Desktop view appears only in the final decoded frame. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated in the dim room holding a slender silver-blue beverage can upright in the hand on screen-right. Look just to the right of the camera with widened eyes, raised eyebrows and a rounded open mouth. Raise the can to the lips and take a sustained sip, tilting the can upward and tipping the head back slightly while keeping the eyes wide. Preserve the can rim naturally obscuring the mouth during contact. Lower the can upright toward the chest, purse the lips, glance down toward the can and briefly close the eyes. Open the eyes again and return to the rounded open-mouth expression. Retain the very brief final cut to the desktop monitor without extending it. Preserve the continuous grip, drinking motion, black shirt, bright frontal face lighting against the dim room, close framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 6,
+        "id": "explore-paired-hook-55cb1594a04550147e829d7f",
+        "originalVideoSha256": "7b3480f16ce26a5b9987ac4b06de5454a1ec538c53a4d2183f6adfb2e9047f4c",
+        "videoSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
+        "videoStorageKey": "explore/paired-references/v1/583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c.mp4",
+        "previewSha256": "6a173de1e58efdb39c989b3147401b44115c79ff5f7ce4b5f19b3137b2cc8d2e",
+        "previewStorageKey": "explore/paired-references/v1/6a173de1e58efdb39c989b3147401b44115c79ff5f7ce4b5f19b3137b2cc8d2e.mp4",
+        "durationSeconds": 3.733333,
+        "frames": 111,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "4db3970c7ed1f6df0081ac72cc29d3e7b23f16526bc46e601b3abace5f32ac16"
+      }
+    },
+    {
+      "ordinal": 7,
+      "id": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "original": {
+        "id": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+        "format": "hook",
+        "title": "Hook 07",
+        "instagramUrl": "https://www.instagram.com/reel/DcvimXKyRlv/",
+        "videoStorageKey": "explore/paired-references/v1/3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31.mp4",
+        "audioStorageKey": "explore/paired-references/v1/6a181d7139ec033ca15fe4577bccbb3f7ff1113d1797c2822491185a80f00ac6.mp3",
+        "posterStorageKey": "explore/paired-references/v1/e40d85c6a1030d0b2b100d1e03dd4dce2392ac032266821fad020bb537e88495.webp",
+        "videoSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+        "audioSha256": "6a181d7139ec033ca15fe4577bccbb3f7ff1113d1797c2822491185a80f00ac6",
+        "posterSha256": "e40d85c6a1030d0b2b100d1e03dd4dce2392ac032266821fad020bb537e88495",
+        "durationSeconds": 2.7,
+        "audioDurationSeconds": 11.337125,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-5333.mp3",
+        "sourceFolder": "New folder (7)",
+        "previewSha256": "e90b3e1ce44a65167ed92ef6b9cfecdcb5163ffdcabfa70ca5042833cce45fdf",
+        "previewStorageKey": "explore/paired-references/v1/e90b3e1ce44a65167ed92ef6b9cfecdcb5163ffdcabfa70ca5042833cce45fdf.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+        "slideId": null,
+        "sourceSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Wasted 2 hours editing my\npodcast when THIS exists\n🤯🤯",
+            "startMs": 0,
+            "endMs": 2700
+          },
+          {
+            "text": "Go to agent.vizard.ai",
+            "startMs": 2667,
+            "endMs": 2700
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:20.173Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-15 alongside the performance prompt. Two creator caption blocks overlap in the final frame: the original podcast caption remains while Go to agent.vizard.ai appears at 2667 ms. Existing wording and timing confirmed, including both exploding-head emojis. Timings checked against decoded frame presentation timestamps and rounded to milliseconds. App interface and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 78,
+        "reviewNotes": "All 78 decoded frames inspected sequentially. Glasses lift onto the head, then the same hand covers the mouth. The final frame cuts to a laptop and blue pen; the original top caption remains and a second caption appears. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated in the office chair with an open mouth, raised brows and an incredulous gaze just off-camera. The hand on screen-left holds the eyeglass frame at its outer corner while the other arm extends into the foreground. Lift the glasses from the eyes over the forehead onto the top of the head, keeping the mouth open. Release the frame, turn the gaze toward the lens and bring that same hand down across the mouth. Hold the wide-eyed look with the mouth covered and the glasses resting on the head. Retain the very brief final cut to the laptop screen with a blue pen pointing across it without extending it. Preserve the wristwatch, hand-to-glasses contact, printed white shirt, office chair, shelving, blinds, ceiling fan, room lighting, handheld framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 7,
+        "id": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+        "originalVideoSha256": "3f033135f589b8aec375a9da45fa876ae2f1c6a51ce5212b14af679ae7c22a31",
+        "videoSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
+        "videoStorageKey": "explore/paired-references/v1/a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069.mp4",
+        "previewSha256": "1b944430380204497afa7f73bdf2db0f267c1d14fbeb23f735affa91484b0205",
+        "previewStorageKey": "explore/paired-references/v1/1b944430380204497afa7f73bdf2db0f267c1d14fbeb23f735affa91484b0205.mp4",
+        "durationSeconds": 2.666667,
+        "frames": 77,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "6a181d7139ec033ca15fe4577bccbb3f7ff1113d1797c2822491185a80f00ac6"
+      }
+    },
+    {
+      "ordinal": 20,
+      "id": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "original": {
+        "id": "explore-paired-hook-17d1208ac2c327913bb321ab",
+        "format": "hook",
+        "title": "Hook 21",
+        "instagramUrl": "https://www.instagram.com/reel/DbHHaXhjwSA/",
+        "videoStorageKey": "explore/paired-references/v1/037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d.mp4",
+        "audioStorageKey": "explore/paired-references/v1/706f8f6f747e110d6e16ca58ee6fab1dd9c7eaa3faff7eacd49717e3b27145d3.mp3",
+        "posterStorageKey": "explore/paired-references/v1/7956a9b0ab8fe58b024c5bbf3037b9a60b70b71cd485f282330acf2188ab28e2.webp",
+        "videoSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+        "audioSha256": "706f8f6f747e110d6e16ca58ee6fab1dd9c7eaa3faff7eacd49717e3b27145d3",
+        "posterSha256": "7956a9b0ab8fe58b024c5bbf3037b9a60b70b71cd485f282330acf2188ab28e2",
+        "durationSeconds": 2.966992,
+        "audioDurationSeconds": 9.351812,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-88884.mp3",
+        "sourceFolder": "New folder (21)",
+        "previewSha256": "6f676ba4fcb5fd0de76e7adfbf00a7ac717f1e1bf5802ae38b215e6aff89d730",
+        "previewStorageKey": "explore/paired-references/v1/6f676ba4fcb5fd0de76e7adfbf00a7ac717f1e1bf5802ae38b215e6aff89d730.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
+        "slideId": null,
+        "sourceSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "I found the best AI Video\nGenerator and it's FREE! 🤯",
+            "startMs": 0,
+            "endMs": 2933
+          },
+          {
+            "text": "Open Cantina",
+            "startMs": 2933,
+            "endMs": 2967
+          }
+        ],
+        "extractedAt": "2026-10-15T07:11:55.921Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 88 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 88,
+        "reviewNotes": "All 88 decoded frames inspected sequentially. Forehead hand lifts away and gaze turns toward lens. Final frame cuts to tablet/stylus. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated with the hand on screen-right held flat across the forehead, looking off screen-right with widened eyes, raised brows and an open mouth. Lean slightly forward while holding that pose. Lift the hand clear of the forehead and lower it out of the upper frame, keeping the startled gaze to screen-right. Briefly close the eyes, turn toward the lens and hold the open-mouth expression. Retain the very brief final cut to a tablet with a white stylus pointing toward an app icon without extending it. Preserve the light nails and green ring, yellow overshirt, white top, necklaces, blue-lit background, chair, strong face lighting, framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 20,
+        "id": "explore-paired-hook-17d1208ac2c327913bb321ab",
+        "originalVideoSha256": "037b9284b7fb11c8c65ae53d4a9442e12c0775273142141e66d2e01094e3727d",
+        "videoSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
+        "videoStorageKey": "explore/paired-references/v1/d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e.mp4",
+        "previewSha256": "b323888f9184ac0df4bebe31377fa0489316db2e0666120a2c4fc72e717fc8e4",
+        "previewStorageKey": "explore/paired-references/v1/b323888f9184ac0df4bebe31377fa0489316db2e0666120a2c4fc72e717fc8e4.mp4",
+        "durationSeconds": 2.933333,
+        "frames": 87,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "706f8f6f747e110d6e16ca58ee6fab1dd9c7eaa3faff7eacd49717e3b27145d3"
+      }
+    },
+    {
+      "ordinal": 30,
+      "id": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "original": {
+        "id": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+        "format": "hook",
+        "title": "Hook 31",
+        "instagramUrl": "https://www.instagram.com/reel/DaLyH9xhodO/",
+        "videoStorageKey": "explore/paired-references/v1/a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936.mp4",
+        "audioStorageKey": "explore/paired-references/v1/fd25c4819266cad9379eafd94c779272cdd85f019db5ad9b6c710e5abb918eb2.mp3",
+        "posterStorageKey": "explore/paired-references/v1/cd5dbf7765e02b458a255d9b8c5c9d8284c733eaa6494cb3b356ae5a455a246b.webp",
+        "videoSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+        "audioSha256": "fd25c4819266cad9379eafd94c779272cdd85f019db5ad9b6c710e5abb918eb2",
+        "posterSha256": "cd5dbf7765e02b458a255d9b8c5c9d8284c733eaa6494cb3b356ae5a455a246b",
+        "durationSeconds": 2.433984,
+        "audioDurationSeconds": 24.26775,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-57766.mp3",
+        "sourceFolder": "New folder (31)",
+        "previewSha256": "50cd20ce50ae1e1c46c1104f7f7f57d5fe7c27a48fc1ae6f8af8b8c338bf131d",
+        "previewStorageKey": "explore/paired-references/v1/50cd20ce50ae1e1c46c1104f7f7f57d5fe7c27a48fc1ae6f8af8b8c338bf131d.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+        "slideId": null,
+        "sourceSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV: you gave the IT guy\na chance 😭",
+            "startMs": 0,
+            "endMs": 2400
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:13.642Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 70 decoded frames on 2026-10-15 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 70,
+        "reviewNotes": "All 70 decoded frames inspected sequentially. Smiling mouth-cover close-up with glasses already on head. Final frame cuts to laptop Valentine webpage; interface copy is not Remix text. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin in the close-up with eyeglasses already resting on top of the head and one hand cupped diagonally across the mouth and chin. Look off screen-left with lifted brows and a delighted, emotional smile partly hidden behind the fingers. Bring the gaze toward the lens, glance sideways again and sustain the smile through small blinks and gentle handheld movement, keeping the hand against the face and the glasses on the head. Retain the very brief final cut to the laptop screen showing a bear illustration and two small buttons without extending it. Preserve the pendant necklace, white top, wood-paneled ceiling, warm lighting, close framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 30,
+        "id": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+        "originalVideoSha256": "a497567243ecedfd5275d3ece558c208422180475b119bf2d2e42e5792e80936",
+        "videoSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
+        "videoStorageKey": "explore/paired-references/v1/c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41.mp4",
+        "previewSha256": "bcdf45eed4257209f5bfb7fdeb041b3c5362254d7ae176a9bbeda48d27b67ed8",
+        "previewStorageKey": "explore/paired-references/v1/bcdf45eed4257209f5bfb7fdeb041b3c5362254d7ae176a9bbeda48d27b67ed8.mp4",
+        "durationSeconds": 2.4,
+        "frames": 69,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "fd25c4819266cad9379eafd94c779272cdd85f019db5ad9b6c710e5abb918eb2"
+      }
+    },
+    {
+      "ordinal": 39,
+      "id": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "original": {
+        "id": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+        "format": "hook",
+        "title": "Hook 40",
+        "instagramUrl": "https://www.instagram.com/reel/DbSFWSWMXRn/",
+        "videoStorageKey": "explore/paired-references/v1/d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979.mp4",
+        "audioStorageKey": "explore/paired-references/v1/021610415dd8fb8c49ce64a7becd1e440354e7e4903a82b27d41e338da63624b.mp3",
+        "posterStorageKey": "explore/paired-references/v1/bc3ef63b3170c6e6b4b4fa1352bb87b7b6fd8382ed077e7c22933ac9303734d2.webp",
+        "videoSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+        "audioSha256": "021610415dd8fb8c49ce64a7becd1e440354e7e4903a82b27d41e338da63624b",
+        "posterSha256": "bc3ef63b3170c6e6b4b4fa1352bb87b7b6fd8382ed077e7c22933ac9303734d2",
+        "durationSeconds": 4.566992,
+        "audioDurationSeconds": 18.416313,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-18614.mp3",
+        "sourceFolder": "New folder (40)",
+        "previewSha256": "fe1a7bb0031dc0a34379ee73b7aa6be9cb177a77df01d0e106870b55de804cf0",
+        "previewStorageKey": "explore/paired-references/v1/fe1a7bb0031dc0a34379ee73b7aa6be9cb177a77df01d0e106870b55de804cf0.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+        "slideId": null,
+        "sourceSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "“I use ChatGPT to make\nvideo games 🤮🤮🤮”",
+            "startMs": 0,
+            "endMs": 4533
+          },
+          {
+            "text": "Go to Tesana.ai",
+            "startMs": 4533,
+            "endMs": 4567
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:30.061Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 136 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 136,
+        "reviewNotes": "All 136 decoded frames inspected sequentially. Neutral tablet use changes to skeptical lean and raised index finger. Last frame cuts to browser with added website caption. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated behind the tablet in its black keyboard case, looking down toward the screen on screen-right with a neutral expression. Briefly blink, then turn toward the lens, draw the brows together and lean forward into a skeptical, questioning look. Lift the hand on screen-right, extend the index finger in a small cautioning gesture beside the face and hold it while the mouth changes through the source expressions. Keep the other hand low near the keyboard. Retain the very brief final cut to the browser address bar without extending it. Preserve the black short-sleeved top, white beaded bracelet, rings, pale wall, soft frontal lighting, framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 39,
+        "id": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+        "originalVideoSha256": "d96f21c28568f28575a7b2e305093c27ff7d8bffcf70e65635d92412b39f9979",
+        "videoSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+        "videoStorageKey": "explore/paired-references/v1/84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461.mp4",
+        "previewSha256": "c8ff5b7dc468fa8361dada1510ef85a2a3707d03d60b76200e67513a97a09040",
+        "previewStorageKey": "explore/paired-references/v1/c8ff5b7dc468fa8361dada1510ef85a2a3707d03d60b76200e67513a97a09040.mp4",
+        "durationSeconds": 4.533333,
+        "frames": 135,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "021610415dd8fb8c49ce64a7becd1e440354e7e4903a82b27d41e338da63624b"
+      }
+    },
+    {
+      "ordinal": 40,
+      "id": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "original": {
+        "id": "explore-paired-hook-5947060ace44a6f7366de20c",
+        "format": "hook",
+        "title": "Hook 41",
+        "instagramUrl": "https://www.instagram.com/reel/DaUKbzdpNFt/",
+        "videoStorageKey": "explore/paired-references/v1/238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc.mp4",
+        "audioStorageKey": "explore/paired-references/v1/3abd4214a1096af4d553213125d42288bb360040dac1df5dec9639dcba5c05cb.mp3",
+        "posterStorageKey": "explore/paired-references/v1/26c574bdfee7db5ee2d46e970a79c074db3311dd6a5207cec8ec2755e9c7d258.webp",
+        "videoSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+        "audioSha256": "3abd4214a1096af4d553213125d42288bb360040dac1df5dec9639dcba5c05cb",
+        "posterSha256": "26c574bdfee7db5ee2d46e970a79c074db3311dd6a5207cec8ec2755e9c7d258",
+        "durationSeconds": 3.233984,
+        "audioDurationSeconds": 21.6555,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-38818.mp3",
+        "sourceFolder": "New folder (41)",
+        "previewSha256": "8d8d2135f15442d9a4834bd1bdc0058237199f11bc4969332c0b9b81c6a4db4f",
+        "previewStorageKey": "explore/paired-references/v1/8d8d2135f15442d9a4834bd1bdc0058237199f11bc4969332c0b9b81c6a4db4f.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+        "slideId": null,
+        "sourceSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "HOW is this even LEGAL?!?",
+            "startMs": 0,
+            "endMs": 3200
+          },
+          {
+            "text": "go to wand.com",
+            "startMs": 3200,
+            "endMs": 3234
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:32.020Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 95 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 95,
+        "reviewNotes": "All 95 decoded frames inspected sequentially. Food-topped utensil lowers from mouth; hand covers lips later, then lowers. Final frame is browser address bar. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin in the close-up wearing black over-ear headphones with a food-topped utensil held at the open mouth, eyes wide and looking upward toward screen-right. Lower the utensil out of view without adding another bite. Hold the mouth open, knit the brows and shift the eyes toward the lens, then upward and sideways again. Raise the hand from screen-right to bring the fingertips across the lips, briefly hold it there and lower it as the camera moves closer. Retain the very brief final cut to the browser address bar without extending it. Preserve the headphones staying on, dark sleeveless top, utensil and hand continuity, pale room, strong frontal screen light mixed with warm ceiling light, handheld framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 40,
+        "id": "explore-paired-hook-5947060ace44a6f7366de20c",
+        "originalVideoSha256": "238734786e58da31765bf87ddf274c550c5709a5a0ae14bf3794f0a021076ebc",
+        "videoSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+        "videoStorageKey": "explore/paired-references/v1/fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57.mp4",
+        "previewSha256": "5f2ebc46b17b77b58300e5ef3ae7381e5d131fc25c648f0eec2dc9997ef269ba",
+        "previewStorageKey": "explore/paired-references/v1/5f2ebc46b17b77b58300e5ef3ae7381e5d131fc25c648f0eec2dc9997ef269ba.mp4",
+        "durationSeconds": 3.2,
+        "frames": 94,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "3abd4214a1096af4d553213125d42288bb360040dac1df5dec9639dcba5c05cb"
+      }
+    },
+    {
+      "ordinal": 42,
+      "id": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "original": {
+        "id": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+        "format": "hook",
+        "title": "Hook 43",
+        "instagramUrl": "https://www.instagram.com/reel/Da8FMjIs4Da/",
+        "videoStorageKey": "explore/paired-references/v1/f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843.mp4",
+        "audioStorageKey": "explore/paired-references/v1/e1e6629b7ce8e2c5074be0772bc8d5285659296d4bdb48323b779c2e9fbce6a0.mp3",
+        "posterStorageKey": "explore/paired-references/v1/fab296bcb297a7234f90f1a93a38bdd0f40974a7bbda3a8bea47f5b0150e4f76.webp",
+        "videoSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+        "audioSha256": "e1e6629b7ce8e2c5074be0772bc8d5285659296d4bdb48323b779c2e9fbce6a0",
+        "posterSha256": "fab296bcb297a7234f90f1a93a38bdd0f40974a7bbda3a8bea47f5b0150e4f76",
+        "durationSeconds": 3.766992,
+        "audioDurationSeconds": 20.1665,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-29502.mp3",
+        "sourceFolder": "New folder (43)",
+        "previewSha256": "1303bb993bf7306a8081705ec70e9787d896b9cac78efa27e3ca1552f3168801",
+        "previewStorageKey": "explore/paired-references/v1/1303bb993bf7306a8081705ec70e9787d896b9cac78efa27e3ca1552f3168801.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+        "slideId": null,
+        "sourceSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV: How it feels\nfinally making your\ndream game 🔥",
+            "startMs": 0,
+            "endMs": 3400
+          },
+          {
+            "text": "GOOD 😆",
+            "startMs": 3400,
+            "endMs": 3767
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:35.447Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 111 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes to GOOD at decoded frame 102 / 3400 ms; corrected prior sampled boundary of 3467 ms. Wording and emojis unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 111,
+        "reviewNotes": "All 111 decoded frames inspected sequentially. Delighted tablet reaction and downward pointing/tapping; caption changes to GOOD near end, followed by a single final gameplay frame. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original action sequence and timing: begin seated using the tablet in its black keyboard case with both hands low near the keys, looking toward screen-right. Raise the brows, widen the eyes and open the mouth into delighted surprise while keeping the hands near the keyboard. Look down, lift the hand on screen-left and point the index finger down toward the keys in the source's brief repeated taps, then look up toward the screen again. Hold the open-mouth pleased expression with the finger still pointing low. Retain the very brief final cut to a laptop displaying gameplay and hands at its keyboard without extending it. Preserve the black shirt, bracelet, rings, tablet and keyboard geometry, pale wall, soft room lighting, steady framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 42,
+        "id": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+        "originalVideoSha256": "f606372bfb66067cc43a6da79e0a34e2c0308b087dd3f9ab6226d8fb945dc843",
+        "videoSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+        "videoStorageKey": "explore/paired-references/v1/48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d.mp4",
+        "previewSha256": "7c913dae946a629cd4b7b0edd875171bb729138dbab47aeffdcb75221b16fff2",
+        "previewStorageKey": "explore/paired-references/v1/7c913dae946a629cd4b7b0edd875171bb729138dbab47aeffdcb75221b16fff2.mp4",
+        "durationSeconds": 3.733333,
+        "frames": 110,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "e1e6629b7ce8e2c5074be0772bc8d5285659296d4bdb48323b779c2e9fbce6a0"
+      }
+    },
+    {
+      "ordinal": 43,
+      "id": "explore-paired-hook-643978050b8b91c838ce4985",
+      "original": {
+        "id": "explore-paired-hook-643978050b8b91c838ce4985",
+        "format": "hook",
+        "title": "Hook 44",
+        "instagramUrl": "https://www.instagram.com/reel/DaiWvV_JH_4/",
+        "videoStorageKey": "explore/paired-references/v1/aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f.mp4",
+        "audioStorageKey": "explore/paired-references/v1/8a296022236435ef01d05a7f6762bd3477d787359e53f79c881064a7f4f6aeb1.mp3",
+        "posterStorageKey": "explore/paired-references/v1/cf77081ddbf27b110ca19d03716249b6ed882aedfaca88ec0164eee7d60fff89.webp",
+        "videoSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+        "audioSha256": "8a296022236435ef01d05a7f6762bd3477d787359e53f79c881064a7f4f6aeb1",
+        "posterSha256": "cf77081ddbf27b110ca19d03716249b6ed882aedfaca88ec0164eee7d60fff89",
+        "durationSeconds": 3.233984,
+        "audioDurationSeconds": 23.013875,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ReelAudio-38987.mp3",
+        "sourceFolder": "New folder (44)",
+        "previewSha256": "67c946e1dab8b3be1a1401338d779fadc26b92efabacd6fc7b8d2dfdd0a6db82",
+        "previewStorageKey": "explore/paired-references/v1/67c946e1dab8b3be1a1401338d779fadc26b92efabacd6fc7b8d2dfdd0a6db82.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+        "slideId": null,
+        "sourceSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Kids YouTube + AI\n= 💰💰💰",
+            "startMs": 0,
+            "endMs": 3167
+          },
+          {
+            "text": "Kids channel clips are\nBLOWING up rn 👀",
+            "startMs": 3167,
+            "endMs": 3234
+          }
+        ],
+        "extractedAt": "2026-10-15T07:12:37.884Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 97 decoded frames on 2026-10-16 alongside the performance prompt. Caption changes at decoded frame 95 / 3167 ms, correcting the previous 3200 ms sampled boundary. Wording and emojis unchanged. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 97,
+        "reviewNotes": "All 97 decoded frames inspected sequentially. Stretch with interlaced fingers, alternating head tilts, return to keyboard; final two frames show channel browser. Caption transition at frame 95 / 3167 ms. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated at the table behind the open laptop, with one arm reaching off screen-left. Bring the hands together, interlace the fingers, turn the palms outward and extend both arms forward over the table into a stretch. Close the eyes and tilt the head toward the shoulder on screen-right, then straighten and tilt the other way while looking down, keeping the arms extended. Draw the joined hands back toward the chest, release the fingers and lower both hands toward the laptop keyboard to resume working. Retain the extremely brief final cut to the channel browser and thumbnails without extending it. Preserve the pink sports top, light bottoms, pink watch, ponytail and bangs, laptop placement, bright daylight, pale room with mirror, globe pendant light and plants, original framing and source duration. Match the source gestures rather than the still pose in the image."
+      },
+      "replacement": {
+        "ordinal": 43,
+        "id": "explore-paired-hook-643978050b8b91c838ce4985",
+        "originalVideoSha256": "aa87646dd8349b6d4d4a4c8572e24e683d34a48fc3702603d4815377f11b259f",
+        "videoSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+        "videoStorageKey": "explore/paired-references/v1/9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3.mp4",
+        "previewSha256": "64f92f2c3885278acde08e0d6b10a015cb7260517b532350cec5fd1c59db75aa",
+        "previewStorageKey": "explore/paired-references/v1/64f92f2c3885278acde08e0d6b10a015cb7260517b532350cec5fd1c59db75aa.mp4",
+        "durationSeconds": 3.166667,
+        "frames": 95,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "8a296022236435ef01d05a7f6762bd3477d787359e53f79c881064a7f4f6aeb1"
+      }
+    },
+    {
+      "ordinal": 53,
+      "id": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "original": {
+        "id": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+        "format": "hook",
+        "title": "Hook 53",
+        "sourceUrl": "https://www.tiktok.com/@viktoriasdiscounts/video/7622494854978735373",
+        "sourcePlatform": "tiktok",
+        "videoStorageKey": "explore/paired-references/v1/ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584.mp4",
+        "audioStorageKey": "explore/paired-references/v1/0b1c22e942f6c7b2f3948cb245bc622debb3dcf18a22290df77cec2410453ad3.mp3",
+        "posterStorageKey": "explore/paired-references/v1/64ee4286be3b43018da67219f7bddd982e6fbb592f7f172e222aa90096add5a0.webp",
+        "videoSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+        "audioSha256": "0b1c22e942f6c7b2f3948cb245bc622debb3dcf18a22290df77cec2410453ad3",
+        "posterSha256": "64ee4286be3b43018da67219f7bddd982e6fbb592f7f172e222aa90096add5a0",
+        "durationSeconds": 2.833984,
+        "audioDurationSeconds": 23.379592,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ssstik.io_1791705416788.mp3",
+        "sourceFolder": "New folder (10)",
+        "previewSha256": "06ea1acf0f015e3efd1b63f2e7f424d7e230f1a8a919c2d9e9309cddd109062b",
+        "previewStorageKey": "explore/paired-references/v1/06ea1acf0f015e3efd1b63f2e7f424d7e230f1a8a919c2d9e9309cddd109062b.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+        "slideId": null,
+        "sourceSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "4 YEARS of Amazon shopping and nobody told\nme about this!!! 👀",
+            "startMs": 0,
+            "endMs": 2833
+          }
+        ],
+        "extractedAt": "2026-10-15T09:07:21.303Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 78,
+        "reviewNotes": "All 78 decoded frames inspected sequentially. Skeptical hand-at-lip selfie moves closer and smiles; final single frame cuts to dim room. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin in the close selfie with the hand from screen-left resting at the chin and lower lip, brows tightly furrowed and lips slightly parted. Maintain the skeptical gaze toward the lens, purse the lips briefly, then narrow the eyes into a disbelieving smile as the camera moves closer. Keep the hand near the lower lip throughout, with only small finger and head movements. Retain the extremely brief final cut to the dim room view without extending it. Remove the dark translucent caption strip with the text. Preserve the dark shirt, fine necklace, rings, pale nails, long straight hair, bright window blinds behind, natural side lighting, handheld movement and original source duration."
+      },
+      "replacement": {
+        "ordinal": 53,
+        "id": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+        "originalVideoSha256": "ec41d3f679f1842fa99d0bb02a810fabc31e7137b34d9f36a114c8b2b4e21584",
+        "videoSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+        "videoStorageKey": "explore/paired-references/v1/dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92.mp4",
+        "previewSha256": "242f603397e82214c099d63455502a50bfca8985655ee4b8061b44dd6a9cb604",
+        "previewStorageKey": "explore/paired-references/v1/242f603397e82214c099d63455502a50bfca8985655ee4b8061b44dd6a9cb604.mp4",
+        "durationSeconds": 2.8,
+        "frames": 77,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "0b1c22e942f6c7b2f3948cb245bc622debb3dcf18a22290df77cec2410453ad3"
+      }
+    },
+    {
+      "ordinal": 54,
+      "id": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "original": {
+        "id": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+        "format": "hook",
+        "title": "Hook 54",
+        "sourceUrl": "https://www.tiktok.com/@viktoriasdiscounts/video/7615847134142745870",
+        "sourcePlatform": "tiktok",
+        "videoStorageKey": "explore/paired-references/v1/f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97.mp4",
+        "audioStorageKey": "explore/paired-references/v1/5b9f6f89f7070b8c193fda6f4655036f050dd92fbfeb37982c8e33a4d1f14dbe.mp3",
+        "posterStorageKey": "explore/paired-references/v1/7fca94d590134ba97f24695c97b9290ef132402a0d7252986cc8ef08e172b4a6.webp",
+        "videoSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+        "audioSha256": "5b9f6f89f7070b8c193fda6f4655036f050dd92fbfeb37982c8e33a4d1f14dbe",
+        "posterSha256": "7fca94d590134ba97f24695c97b9290ef132402a0d7252986cc8ef08e172b4a6",
+        "durationSeconds": 1.833984,
+        "audioDurationSeconds": 246.57,
+        "width": 720,
+        "height": 1280,
+        "audioTitle": "ssstik.io_1791982236080.mp3",
+        "sourceFolder": "New folder (11)",
+        "previewSha256": "d382cd8aa48e84a572a98523ee368fc5a1a765c974d6c8a8d4f068d8d7b9233b",
+        "previewStorageKey": "explore/paired-references/v1/d382cd8aa48e84a572a98523ee368fc5a1a765c974d6c8a8d4f068d8d7b9233b.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+        "slideId": null,
+        "sourceSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "No way I’ve been shopping on Amazon for 4 YEARS\nand NOW I find this 💀💀💀",
+            "startMs": 0,
+            "endMs": 1833
+          }
+        ],
+        "extractedAt": "2026-10-15T09:07:22.410Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 52 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 52,
+        "reviewNotes": "All 52 decoded frames inspected sequentially. Towel-wrapped selfie moves closer, puzzled expression softens to smile; last two frames show room. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin reclining against the cushions with a white towel wrapped around the hair, looking directly toward the lens with brows raised and pinched, lips pursed and eyes wide. Move the handheld camera closer while the mouth opens into a small disbelieving smile, then hold the close expression with subtle head movement. Keep the towel secure and the hands outside the frame. Retain the brief final shift away from the face to the room, table and chair without extending that ending. Remove the dark translucent caption strip with the text. Preserve the pale ribbed V-neck top, towel folds, couch cushions, warm room light, changing selfie distance and full source duration."
+      },
+      "replacement": {
+        "ordinal": 54,
+        "id": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+        "originalVideoSha256": "f476706b28dd64f698b0845938a76756bd8e562c536b15fc2799a074de3fea97",
+        "videoSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+        "videoStorageKey": "explore/paired-references/v1/dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8.mp4",
+        "previewSha256": "ee2e89aa4417066807e560315d9fac00db5206e8a55fd66ea83faf0996b1ad6a",
+        "previewStorageKey": "explore/paired-references/v1/ee2e89aa4417066807e560315d9fac00db5206e8a55fd66ea83faf0996b1ad6a.mp4",
+        "durationSeconds": 1.766667,
+        "frames": 50,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "5b9f6f89f7070b8c193fda6f4655036f050dd92fbfeb37982c8e33a4d1f14dbe"
+      }
+    },
+    {
+      "ordinal": 71,
+      "id": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "original": {
+        "id": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+        "format": "hook",
+        "title": "Hook 71",
+        "sourceUrl": "https://www.tiktok.com/@autumn.pushclock/video/7693299457227525409",
+        "sourcePlatform": "tiktok",
+        "videoStorageKey": "explore/paired-references/v1/e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376.mp4",
+        "audioStorageKey": "explore/paired-references/v1/524a3b08cebf0ca1919ff794848e2ae0011221137d81fe617de2abcb84990f66.mp3",
+        "posterStorageKey": "explore/paired-references/v1/8b9dc2fc2fcb10c61a482ebf76a5fe02b9cd1dce201df592f1c2af11395f94c5.webp",
+        "videoSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+        "audioSha256": "524a3b08cebf0ca1919ff794848e2ae0011221137d81fe617de2abcb84990f66",
+        "posterSha256": "8b9dc2fc2fcb10c61a482ebf76a5fe02b9cd1dce201df592f1c2af11395f94c5",
+        "durationSeconds": 3.233984,
+        "audioDurationSeconds": 19.121633,
+        "width": 576,
+        "height": 1024,
+        "audioTitle": "ssstik.io_1792045532088.mp3",
+        "sourceFolder": "New folder (33)",
+        "previewSha256": "49a4b46ab1b24ba505237cce764289de3eb23ce8a008131a0a5b08d8c0d35aba",
+        "previewStorageKey": "explore/paired-references/v1/49a4b46ab1b24ba505237cce764289de3eb23ce8a008131a0a5b08d8c0d35aba.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+        "slideId": null,
+        "sourceSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "My boyfriend changed my alarm so now I have\nto fly to turn it off 😭😭💔",
+            "startMs": 0,
+            "endMs": 3233
+          }
+        ],
+        "extractedAt": "2026-10-15T09:08:01.830Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 92 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 92,
+        "reviewNotes": "All 92 decoded frames inspected sequentially. Crying selfie; covering hand lowers as viewpoint rises from pillow; last two frames cut to dark alarm screen. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin lying on the pillow with the hand from screen-right covering the mouth and lower nose, brows strongly pinched and eyes narrowed in a crying expression. Keep the face strained as the camera trembles, then lower the hand away from the mouth and move the head and camera upward from the pillow into a more upright close view. Maintain the downturned mouth and watery-looking eyes with small head motions. Retain the extremely brief final two-frame cut to the dark phone alarm display without extending it. Remove the dark translucent caption strip with the text. Preserve the brown patterned sleeveless top, tied-back hair, bedding, floral wall, dim natural room light, original shaky framing and source duration."
+      },
+      "replacement": {
+        "ordinal": 71,
+        "id": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+        "originalVideoSha256": "e6d6160301503c92ad4ac28c926e2ee8251272e611b9c8c42711408ccba99376",
+        "videoSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
+        "videoStorageKey": "explore/paired-references/v1/1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d.mp4",
+        "previewSha256": "bc6b17d18ec9f099b9df7eb6b3ba84b557758de0fe9dec5adfbc0a7ece6649e6",
+        "previewStorageKey": "explore/paired-references/v1/bc6b17d18ec9f099b9df7eb6b3ba84b557758de0fe9dec5adfbc0a7ece6649e6.mp4",
+        "durationSeconds": 3.1,
+        "frames": 90,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "524a3b08cebf0ca1919ff794848e2ae0011221137d81fe617de2abcb84990f66"
+      }
+    },
+    {
+      "ordinal": 78,
+      "id": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+      "original": {
+        "id": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+        "format": "hook",
+        "title": "Hook 78",
+        "sourceUrl": "https://www.tiktok.com/@vero.detective/video/7654722595207564576",
+        "sourcePlatform": "tiktok",
+        "videoStorageKey": "explore/paired-references/v1/f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b.mp4",
+        "audioStorageKey": "explore/paired-references/v1/08a01003df0b6c913a61af51a918be2822dab664413bff6775ec4680fedecc43.mp3",
+        "posterStorageKey": "explore/paired-references/v1/28e5dbea6839a738b5ff9cf038a46036269f35e52ff88790fb634bd21e9c6a48.webp",
+        "videoSha256": "f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b",
+        "audioSha256": "08a01003df0b6c913a61af51a918be2822dab664413bff6775ec4680fedecc43",
+        "posterSha256": "28e5dbea6839a738b5ff9cf038a46036269f35e52ff88790fb634bd21e9c6a48",
+        "durationSeconds": 2.1,
+        "audioDurationSeconds": 15.216355,
+        "width": 576,
+        "height": 1024,
+        "audioTitle": "70be-e1e6-478b-9c95-84673fa5703e.mp3",
+        "sourceFolder": "New folder (2)",
+        "previewSha256": "b501149ada8e8a9c932d1b45de4b48eb777c8bfd764fc062f85cc625e5a7693e",
+        "previewStorageKey": "explore/paired-references/v1/b501149ada8e8a9c932d1b45de4b48eb777c8bfd764fc062f85cc625e5a7693e.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+        "slideId": null,
+        "sourceSha256": "f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "I found a game where I\nneed to stalk a girl's cell\nphone to find out what\nhappened With her",
+            "startMs": 0,
+            "endMs": 2100
+          }
+        ],
+        "extractedAt": "2026-10-15T12:59:25.270Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 48 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 48,
+        "reviewNotes": "All 48 decoded frames inspected sequentially. Mouth stays covered; sideways gaze turns toward lens as camera moves close; final single frame shows phone/tablet. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin in close selfie with the hand from screen-right already covering the mouth, eyes extremely wide and looking off screen-left. Keep the hand firmly across the lips and lower nose, move the camera gradually closer and shift the eyes toward the lens near the end while maintaining raised brows. Retain the single final cut to the hand-held phone in front of the tablet and desk without extending it. Preserve the black sleeveless top, coral-red nails, gold ring, shoulder-length brown hair, purple room light, wall decoration, close handheld perspective and full source duration."
+      },
+      "replacement": {
+        "ordinal": 78,
+        "id": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+        "originalVideoSha256": "f3e60b9928d83cf9afac9ce237f1b043d5c848c6b6e5a5fac8d6a13ebad6980b",
+        "videoSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
+        "videoStorageKey": "explore/paired-references/v1/8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce.mp4",
+        "previewSha256": "83adede62d3031be23789206a038a6548adcd089892e68dbd251d56d9844da6a",
+        "previewStorageKey": "explore/paired-references/v1/83adede62d3031be23789206a038a6548adcd089892e68dbd251d56d9844da6a.mp4",
+        "durationSeconds": 1.966667,
+        "frames": 47,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "08a01003df0b6c913a61af51a918be2822dab664413bff6775ec4680fedecc43"
+      }
+    },
+    {
+      "ordinal": 88,
+      "id": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+      "original": {
+        "id": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+        "format": "hook",
+        "title": "Hook 88",
+        "sourceUrl": "https://www.tiktok.com/@penny.travelss/video/7643522575657749782",
+        "sourcePlatform": "tiktok",
+        "videoStorageKey": "explore/paired-references/v1/fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee.mp4",
+        "audioStorageKey": "explore/paired-references/v1/3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e.mp3",
+        "posterStorageKey": "explore/paired-references/v1/c4e226c7d070db417d076ae3635ff6fe626564abf346969cf49098e220bab481.webp",
+        "videoSha256": "fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee",
+        "audioSha256": "3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e",
+        "posterSha256": "c4e226c7d070db417d076ae3635ff6fe626564abf346969cf49098e220bab481",
+        "durationSeconds": 2.833008,
+        "audioDurationSeconds": 55.484063,
+        "width": 576,
+        "height": 1024,
+        "audioTitle": "ssstik.io_1792061385721 (1).mp3",
+        "sourceFolder": "New folder (12)",
+        "previewSha256": "500958af4591ee4655b7b0891432f50d87ff77e1d9ade9774244649ead4d7f04",
+        "previewStorageKey": "explore/paired-references/v1/500958af4591ee4655b7b0891432f50d87ff77e1d9ade9774244649ead4d7f04.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+        "slideId": null,
+        "sourceSha256": "fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "italian girls are you OKAY???",
+            "startMs": 0,
+            "endMs": 2833
+          }
+        ],
+        "extractedAt": "2026-10-15T12:52:58.127Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 75 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 75,
+        "reviewNotes": "All 75 decoded frames inspected sequentially. Smile becomes mouth cover, closer handheld camera; single final phone-screen frame retained. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin seated in a low-angle selfie with a small, slightly incredulous closed-mouth smile toward the lens. Lean a little closer, raise the bracelet-wearing hand from screen-left and cover the mouth. Keep the palm across the lips, lift the cheeks and alternate a brief closed-eye smile with a wider-eyed look while the handheld camera moves closer and dips slightly. Retain the single final cut to the dim phone screen without extending it. Preserve the white T-shirt, pulled-back hair with loose strands, hoop earrings, ring and stacked bracelets, dark restaurant ceiling, spotlights, warm brick and wall art, mixed warm ambient light, original camera movement and full source duration."
+      },
+      "replacement": {
+        "ordinal": 88,
+        "id": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+        "originalVideoSha256": "fdac8b5b44094500f61a440a10ef2b86986fdbd31e40328b54427bcc967687ee",
+        "videoSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
+        "videoStorageKey": "explore/paired-references/v1/840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300.mp4",
+        "previewSha256": "4404c3eed1abe55fa8673d9265e86e4365c7893bef2dbf0e2d3481a39788625c",
+        "previewStorageKey": "explore/paired-references/v1/4404c3eed1abe55fa8673d9265e86e4365c7893bef2dbf0e2d3481a39788625c.mp4",
+        "durationSeconds": 2.733333,
+        "frames": 74,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e"
+      }
+    },
+    {
+      "ordinal": 89,
+      "id": "explore-paired-hook-6365d336034633aa5070eb48",
+      "original": {
+        "id": "explore-paired-hook-6365d336034633aa5070eb48",
+        "format": "hook",
+        "title": "Hook 89",
+        "sourceUrl": "https://www.tiktok.com/@penny.travelss/video/7634151927692922135",
+        "sourcePlatform": "tiktok",
+        "videoStorageKey": "explore/paired-references/v1/c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99.mp4",
+        "audioStorageKey": "explore/paired-references/v1/3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e.mp3",
+        "posterStorageKey": "explore/paired-references/v1/3cec9b7d0d0a028e26c218b67deab1bf14d8914f5acc8fbe76a0874eb55f12aa.webp",
+        "videoSha256": "c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99",
+        "audioSha256": "3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e",
+        "posterSha256": "3cec9b7d0d0a028e26c218b67deab1bf14d8914f5acc8fbe76a0874eb55f12aa",
+        "durationSeconds": 3,
+        "audioDurationSeconds": 55.484063,
+        "width": 576,
+        "height": 1024,
+        "audioTitle": "ssstik.io_1792061385721 (2).mp3",
+        "sourceFolder": "New folder (13)",
+        "previewSha256": "9ad93149ada3623db2b474ff41e338e4ffc6e2f8b89544507432c03b0d5c6977",
+        "previewStorageKey": "explore/paired-references/v1/9ad93149ada3623db2b474ff41e338e4ffc6e2f8b89544507432c03b0d5c6977.mp4"
+      },
+      "originalText": {
+        "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
+        "slideId": null,
+        "sourceSha256": "c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "paris girls are you OKAY???",
+            "startMs": 0,
+            "endMs": 3000
+          }
+        ],
+        "extractedAt": "2026-10-15T12:53:01.012Z",
+        "model": "windows-ocr-en-US-v2",
+        "notes": "Creator captions rechecked against all 78 decoded frames on 2026-10-16 alongside the performance prompt. Existing wording, capitalization, emojis and caption sequence visually confirmed. Existing timing remains approximate where not individually corrected. App interface, watermarks and incidental scene text excluded. Source claims are not fact-checked."
+      },
+      "originalPrompt": {
+        "version": 2,
+        "sourceSha256": "c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99",
+        "reviewMethod": "all_decoded_frames",
+        "reviewedFrameCount": 78,
+        "reviewNotes": "All 78 decoded frames inspected sequentially. Open-mouth delight becomes sleeve-covered smile; single final phone-screen frame retained. Prompt content reviewed; generation quality not tested.",
+        "performance": "Follow the original performance and timing: begin in the low handheld selfie with a broad open-mouth smile and delighted eyes looking toward the lens. Raise the hand inside the long yellow sleeve from screen-right to cover the mouth and nose. Keep the sleeve gathered over the lower face, eyes smiling above it, as the camera wobbles and moves closer and lower. Make small blinks and lift the brows again toward the ending. Retain the single final cut to the phone screen without extending it. Preserve the oversized yellow hoodie with its physical stitched design, loosely tied hair and flyaway strands, bright linear ceiling lights and dark window or panel behind, original indoor lighting, camera movement and full source duration."
+      },
+      "replacement": {
+        "ordinal": 89,
+        "id": "explore-paired-hook-6365d336034633aa5070eb48",
+        "originalVideoSha256": "c1e8735dc687da502c4a94778da9eff7ab45243bfef4f88060f46870ff92ed99",
+        "videoSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+        "videoStorageKey": "explore/paired-references/v1/8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245.mp4",
+        "previewSha256": "3b10c05e488ba5ee2a922ecb26b03e6ca74fa4c86fa68fbb8252b141453c59ba",
+        "previewStorageKey": "explore/paired-references/v1/3b10c05e488ba5ee2a922ecb26b03e6ca74fa4c86fa68fbb8252b141453c59ba.mp4",
+        "durationSeconds": 2.9,
+        "frames": 77,
+        "sourceAndPreviewDecodedFramesExact": true,
+        "audioPolicy": "paired",
+        "originalAudioSha256": "3d65db4a1dc87283e997b70dc02c595fefe5b9638f40b47c58c5d929e4b08d1e"
+      }
+    }
+  ]
+}

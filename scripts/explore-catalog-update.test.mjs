@@ -119,6 +119,7 @@ function loadHookLibrary(status) {
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./paired-reference-library") return { getPairedExploreVideos: () => [] };
+    if (specifier === "@/worker/src/lib/explore-hook-reference-release") return { isHookReferenceReleaseActive: () => false, getHookReferenceGalleryItems: () => [], getHookReferenceReleaseItems: () => [] };
     if (specifier === "@/lib/explore/hook-video-types") return { getExploreVideoPosterStorageKey: (key) => key.replace(/\.mp4$/, ".webp") };
     if (specifier === "@/lib/storage/storage") return { buildPublicStorageUrl: (key) => `https://example.test/${key}` };
     throw new Error(`Unexpected dependency: ${specifier}`);
@@ -153,8 +154,12 @@ function loadRecreateCatalog(status, environment = "development") {
   const require = (specifier) => {
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
+    if (specifier === "./slideshow-reference-sources.json") return JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8"));
+    if (specifier === "./slideshow-reference-additions.json") return { mediaStatus: "staged", items: [] };
     if (specifier === "./hook-video-library") return library;
     if (specifier === "./wall-text-video-library") return { getExploreWallTextVideos: () => [] };
+    if (specifier === "./reference-video-prompts") return { getReferenceVideoPrompt: () => undefined };
+    if (specifier === "@/worker/src/lib/explore-hook-reference-release") return { isHookReferenceReleaseActive: () => false, getHookReferenceReleaseItems: () => [] };
     if (specifier === "@/lib/storage/storage") return { buildPublicStorageUrl: (key) => `https://example.test/${key}` };
     throw new Error(`Unexpected dependency: ${specifier}`);
   };
@@ -163,15 +168,14 @@ function loadRecreateCatalog(status, environment = "development") {
   return { library: loadedModule.exports, catalog };
 }
 
-test("local Recreate includes all staged additions, with unique Hook labels and no production preview", () => {
+test("local Recreate includes all staged additions, with stable Hook identities and no production preview", () => {
   const { library, catalog } = loadRecreateCatalog("staged");
   const local = library.getLocalRecreateReferences();
   assert.equal(local.length, 14 + catalog.items.length);
   const hooks = local.filter((item) => item.format === "hook");
   assert.equal(hooks.length, 21);
-  assert.equal(new Set(hooks.map((item) => item.title)).size, 21);
-  assert.equal(hooks[14].title, "Hook 15");
-  assert.equal(hooks[20].title, "Hook 21");
+  assert.equal(new Set(hooks.map((item) => item.id)).size, 21);
+  assert.ok(hooks.every(item => item.title === "Hook"));
   assert.equal(hooks[20].videoUrl.startsWith("/api/explore/local-media/"), true);
   assert.equal(library.getRecreateReferences().length, 14);
   assert.equal(loadRecreateCatalog("staged", "production").library.getLocalRecreateReferences().length, 0);
@@ -196,7 +200,7 @@ test("both new slideshow categories use the existing production filters and cate
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   vm.runInNewContext(code, { module: loadedModule, exports: loadedModule.exports });
   const { referenceCategories, filterReferences, interleaveReferenceCategories } = loadedModule.exports;
-  for (const [id, label, count] of [["calory-tracking", "Calory Tracking", 6], ["pet-tracking", "Pet Tracking", 3]]) {
+  for (const [id, label, count] of [["calory-tracking", "Calory Tracking", 6], ["pet-tracking", "Pet Tracking", 3], ["focus", "Focus", 1]]) {
     const category = referenceCategories(references, "slideshow").find((item) => item.id === id);
     assert.equal(category.label, label);
     assert.equal(category.count, count);

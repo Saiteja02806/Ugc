@@ -5,7 +5,7 @@ import test from "node:test";
 import ts from "typescript";
 import * as styles from "../worker/dist/subtitles/styles.js";
 
-function harness() {
+function harness(onCollapse) {
   let cursor = 0, videoProps; const slots = [], effects = [], listeners = new Map();
   const player = {src:null,paused:true,ended:false,currentTime:0,plays:0,loads:0,
     getAttribute: () => player.src, setAttribute: (_name,value) => {player.src=value;}, removeAttribute: () => {player.src=null;},
@@ -24,12 +24,12 @@ function harness() {
   };
   const document = {hidden:false,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};
   let observe;
-  const imports = {react,"@/components/ui/button":{Button:"button"},"@/worker/src/subtitles/styles":styles,"react/jsx-runtime":{jsx:element,jsxs:element}};
+  const imports = {react,"lucide-react":{Minus:"minus"},"@/components/ui/button":{Button:"button"},"@/worker/src/subtitles/styles":styles,"react/jsx-runtime":{jsx:element,jsxs:element}};
   const exported={};
   const code=ts.transpileModule(readFileSync(new URL("../components/explore/workflow-subtitle-preview.tsx",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
   vm.runInNewContext(code,{exports:exported,require:name=>{assert.ok(name in imports);return imports[name];},document,
     IntersectionObserver:class {constructor(callback){observe=callback;} observe(){} disconnect(){}}});
-  return {player,document,listeners,render() {cursor=0;effects.length=0;const tree=exported.WorkflowSubtitlePreview({style:"karaoke"});return {tree,setup:effects[0],videoProps};}, leaveViewport() {observe([{isIntersecting:false}]);}};
+  return {player,document,listeners,render() {cursor=0;effects.length=0;const tree=exported.WorkflowSubtitlePreview({style:"karaoke",onCollapse});return {tree,setup:effects[0],videoProps};}, leaveViewport() {observe([{isIntersecting:false}]);}};
 }
 const nodes = value => Array.isArray(value) ? value.flatMap(nodes) : value && typeof value === "object" ? [value,...nodes(value.props?.children)] : [];
 const button = tree => nodes(tree).find(node=>node.type === "button");
@@ -54,4 +54,14 @@ test("failed preview playback exposes an accessible retry and reuses the selecte
   assert.equal(button(failed).props.children,"Retry example");assert.ok(nodes(failed).some(node=>node.props?.role === "alert"));
   h.player.play=play;button(failed).props.onClick();await new Promise(setImmediate);
   assert.equal(h.player.src,"/subtitle-previews/v1/karaoke.mp4");assert.equal(h.player.paused,false);assert.ok(h.player.loads>0);cleanup();
+});
+
+test("the example keeps playback controls, removes explanatory paragraphs and pauses when collapsed", async () => {
+  let collapsed = 0;
+  const h = harness(() => collapsed++), first = h.render(), cleanup = first.setup();
+  assert.equal(nodes(first.tree).filter(node => node.type === "p").length, 1, "Only the concise style name remains");
+  await button(h.render().tree).props.onClick();
+  const collapse = nodes(h.render().tree).find(node => node.props?.["aria-label"] === "Collapse subtitle appearance");
+  assert.ok(collapse); collapse.props.onClick();
+  assert.equal(collapsed, 1); assert.equal(h.player.paused, true); cleanup();
 });

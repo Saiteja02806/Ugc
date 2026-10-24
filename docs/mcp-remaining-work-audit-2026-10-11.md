@@ -1,5 +1,7 @@
 # Remaining work for complete IDE operation
 
+For the latest capability-by-capability status, live readiness checks and PR map, see [the 14 October goal-progress report](mcp-goal-progress-2026-10-14.md). Historical release paragraphs below do not replace that snapshot.
+
 ## Latest verified checkpoint — 13 October 2026
 
 This checkpoint supersedes older paragraphs labelled “current” below. Complete
@@ -37,8 +39,9 @@ Unreleased candidates:
   907 Explore, 606 worker, 97 scheduling UI, 3 scheduling metadata,
   20 Business Context and 10 onboarding schema cases. CI uses distribution
   FFmpeg with all five required filters; the Avenir test retains exact advance
-  width and compares the explicit face on each platform. New checks after
-  adopting PR #57 remain required. No business migration or promotion occurred.
+  width and compares the explicit face on each platform. Current source `945ddf2a` also passed both Linux application runs,
+  MCP/concurrency, migration guard, local 907 Explore cases and configured build
+  (267 route-table entries, 157 generated static pages). No business migration or promotion occurred.
   Automatic approval review rejected creating production-target stages without
   explicit authorization; neither a stage nor a protection bypass was created.
 

@@ -13,6 +13,21 @@ const library: ExploreVideoLibrary = {
   preview: null,
 };
 
+test("Wall frontend hides removed cached videos and replaces a removed free preview", () => {
+  const client = new QueryClient();
+  const kept = library.items[0];
+  const removed = ["explore-wall-text-08", "explore-wall-text-09"].map(id => ({ ...kept, id }));
+  const options = exploreVideoLibraryQueryOptions({ userId: "user-a", section: "wall_text", load: async () => library });
+  const cached = { items: [...removed, kept], preview: removed[0] };
+  client.setQueryData(options.queryKey, cached);
+  try {
+    const observer = new QueryObserver(client, options);
+    assert.deepEqual(observer.getCurrentResult().data?.items, [kept]);
+    assert.deepEqual(observer.getCurrentResult().data?.preview, kept);
+    assert.deepEqual(client.getQueryData(options.queryKey), cached, "Filtering does not mutate cached history");
+  } finally { client.clear(); }
+});
+
 test("a pending catalog survives loading-state observer updates", async () => {
   const client = new QueryClient();
   let signal: AbortSignal | undefined;
@@ -45,6 +60,7 @@ test("retiring a Wall of Text reference cannot reuse the old cached library", as
   const client = new QueryClient();
   let calls = 0;
   client.setQueryData(["explore-video-library", "user-a", "wall_text"], library);
+  client.setQueryData(["explore-video-library-v2", "user-a", "wall_text"], library);
   try {
     const refreshed = await client.fetchQuery(exploreVideoLibraryQueryOptions({
       userId: "user-a", section: "wall_text",

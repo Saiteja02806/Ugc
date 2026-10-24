@@ -16,16 +16,17 @@ import type { ExploreFinishDraft } from "@/worker/src/lib/explore-finishing-cont
 /** A provisional draft enables review; resolve snapshots every owned upload
  * before confirmation. A changed selection never reuses an older upload. */
 export function useTalkingHeadPendingComposition({ owner, kind, source, demo, demoSource, demoAudio, playback,
-  composition, demoAudioAssetId = null, framing, options, captionDraft, captionsReady, selectionError }: {
+  composition, demoAudioAssetId = null, framing, options, backgroundSource = null, backgroundPlayback = "repeat", captionDraft, captionsReady, selectionError }: {
   owner: string | null; kind: "hook" | "phone"; source: MediaAsset | null;
   demo: LocalWorkflowMedia | null; demoSource?: MediaAsset | null; demoAudio: LocalWorkflowMedia | null;
   playback: "once" | "repeat"; demoAudioAssetId?: string | null; composition?: ExploreClipComposition; framing?: DemoFraming | null;
   options: FinishingOptions; captionDraft: ExploreFinishDraft | null; captionsReady: boolean; selectionError?: string | null;
+  backgroundSource?: MediaAsset | null; backgroundPlayback?: "once" | "repeat";
 }): ExploreScheduleComposition {
   const uploads = useRef(new Map<File, string>()), defaultMusic = useRef<{ id: string; playback: "once" | "repeat" } | null>(null);
   const active = useRef(true);
   useLayoutEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
-  const signature = JSON.stringify([owner, kind, source?.id, demo?.url, demoSource?.id, demoAudio?.url, playback, composition, demoAudioAssetId, framing, options, captionDraft, captionsReady, selectionError]);
+  const signature = JSON.stringify([owner, kind, source?.id, demo?.url, demoSource?.id, demoAudio?.url, playback, composition, demoAudioAssetId, framing, options, backgroundSource?.id, backgroundPlayback, captionDraft, captionsReady, selectionError]);
   const current = useRef(signature);
   useLayoutEffect(() => { current.current = signature; }, [signature]);
   let draft: ExploreFinishDraft | null = null;
@@ -35,8 +36,8 @@ export function useTalkingHeadPendingComposition({ owner, kind, source, demo, de
     const knownDemoAudioId = demoAudioAssetId ?? (demoAudio ? captionDraft?.demoAudioAssetId : null) ?? null;
     if (source) draft = parseExploreFinishDraft({ version: 1, kind, sourceAssetId: source.id,
       demoAssetId: demoSource?.id ?? (demo ? captionDraft?.demoAssetId : null) ?? null, demoAudioAssetId: knownDemoAudioId, demoAudioPlayback: knownDemoAudioId ? playback : "once",
-      backgroundAssetId: options.backgroundMusic ? captionDraft?.backgroundAssetId ?? null : null,
-      backgroundPlayback: options.backgroundMusic ? captionDraft?.backgroundPlayback ?? "once" : "once",
+      backgroundAssetId: options.backgroundMusic ? backgroundSource?.id ?? captionDraft?.backgroundAssetId ?? null : null,
+      backgroundPlayback: options.backgroundMusic ? backgroundSource ? backgroundPlayback : captionDraft?.backgroundPlayback ?? "once" : "once",
       subtitles: options.subtitles ? { language: "en", version: 2, style: options.style, placement: options.placement ?? "bottom",
         ...(options.corrections?.length ? { corrections: options.corrections } : {}) } : null,
       ...(composition ? { composition: { ...composition, demoEditing: demoSource || demo && captionDraft?.demoAssetId ? composition.demoEditing : null } } : {}),

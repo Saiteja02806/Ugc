@@ -9,7 +9,14 @@ export function remixSourceFromJob(input: unknown): RemixTextSource | null {
   if (!record(input)) return null;
   const format = input.exploreFormat ?? input.referenceType;
   if (format === "slideshow") {
-    const sourceUrl = text(input.referenceImageUrl);
+    if (record(input.slideshowReferenceContract) && input.slideshowReferenceContract.version === 4 && Object.hasOwn(input, "slideshowRemixSource")) {
+      const saved = readRemixSource(input.slideshowRemixSource);
+      return saved?.format === "slideshow" ? saved : null;
+    }
+    // New deck outputs retain the selected slide's source, not always slide 1.
+    const roles = record(input.slideshowReferenceContract) ? input.slideshowReferenceContract.styleReferenceIndices : null;
+    const primary = record(input.slideshowGeneration) && Array.isArray(roles) && Number.isInteger(roles[0]) && Array.isArray(input.referenceImageUrls) ? input.referenceImageUrls[Number(roles[0]) - 1] : input.referenceImageUrl;
+    const sourceUrl = text(primary);
     return sourceUrl ? { format, referenceId: null, sourceUrl } : null;
   }
   if ((format === "hook" || format === "wall_text") && input.referenceType === format) {
@@ -31,9 +38,9 @@ export function resolveRemixSource(source: RemixTextSource | null | undefined, r
   for (const reference of references) {
     if (reference.format !== format || reference.id.startsWith("uploaded:")) continue;
     if (format === "slideshow") {
-      const slide = reference.slides.find(slide => slide.url === source.sourceUrl);
+      const slide = reference.slides.find(slide => slide.url === source.sourceUrl || slide.generationUrl === source.sourceUrl);
       if (slide) return { reference, slideId: slide.id };
-    } else if (reference.id === source.referenceId && (!source.sourceUrl || reference.videoUrl === source.sourceUrl)) return { reference, slideId: null };
+    } else if (reference.id === source.referenceId && (reference.creatorAccountId || !source.sourceUrl || reference.videoUrl === source.sourceUrl)) return { reference, slideId: null };
   }
   return empty;
 }

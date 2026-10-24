@@ -41,7 +41,7 @@ export function PublishingPreferencesSettings() {
 
   return <section aria-labelledby="publishing-defaults-heading" className="space-y-4 border-t border-border px-5 py-5 sm:px-6">
     <div><h3 id="publishing-defaults-heading" className="text-sm font-bold text-foreground-strong">Publishing defaults</h3>
-      <p className="mt-1 text-sm leading-6 text-muted">New Trending posts use these defaults. Existing schedules keep their settings.</p></div>
+      <p className="mt-1 text-sm leading-6 text-muted">New posts use these defaults. Existing schedules keep their settings.</p></div>
     <label className="flex items-center justify-between gap-4 text-sm font-semibold">
       <span>Contains AI-generated content by default</span>
       <input type="checkbox" checked={value.containsSyntheticMedia} disabled={disabled} onChange={(event) => update("containsSyntheticMedia", event.target.checked)} className="size-4 accent-primary" />
@@ -61,6 +61,13 @@ export function PublishingPreferencesSettings() {
         <span>Allow comments</span>
         <input type="checkbox" checked={value.tiktokAllowComments} onChange={(event) => update("tiktokAllowComments", event.target.checked)} className="size-4 accent-primary" />
       </label>
+      <div className="space-y-2">
+        <label className="flex items-center justify-between gap-4 text-sm font-semibold">
+          <span>Label posts as promotional content</span>
+          <input type="checkbox" checked={value.tiktokBrandOrganic} aria-describedby="tiktok-promotional-content-description" onChange={(event) => update("tiktokBrandOrganic", event.target.checked)} className="size-4 accent-primary" />
+        </label>
+        <p id="tiktok-promotional-content-description" className="text-sm leading-6 text-muted">Off by default. Turn on for posts promoting your own brand, product or business. TikTok will display “Promotional content”. This is separate from AI content disclosure and paid partnerships.</p>
+      </div>
       <p className="text-sm leading-6 text-muted">Applies to new posts. Account restrictions may limit visibility or turn comments off.</p>
     </fieldset>
     <fieldset disabled={disabled} className="space-y-4 border-t border-border pt-4">

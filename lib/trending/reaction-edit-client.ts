@@ -7,6 +7,7 @@ export async function fetchReactionTextEdit(
   signal?: AbortSignal,
 ): Promise<ReactionTextEditRecord> {
   const token = await getCurrentUserIdToken();
+  signal?.throwIfAborted();
   if (!token) throw new Error("Sign in before editing this Reaction Reel.");
   const response = await fetch(`/api/trending/reactions/${item.creativeId}/edit?assignmentId=${encodeURIComponent(item.assignmentId)}`, {
     method: body ? "PATCH" : "GET",

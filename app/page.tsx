@@ -1,35 +1,46 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import {
   ArrowDown,
   CreditCard,
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
-import landingLogo from "@/app/logo.png";
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingBottomCta } from "@/components/marketing/landing-bottom-cta";
 import { LandingComparisonSection } from "@/components/marketing/landing-comparison-section";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { LandingLogo } from "@/components/marketing/landing-logo";
 import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcase";
 import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
 import { LandingContentShowcase } from "@/components/marketing/landing-content-showcase";
-import { AUTH_SESSION_COOKIE_NAME } from "@/lib/firebase/auth-session";
 import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 
 const authHref = "/sign-in";
+const homepageTitle = "UGC Pilot — AI UGC Video & Content Studio";
+const homepageDescription =
+  "Create UGC video ideas, visuals, and short videos with AI. Review, organize, and prepare every asset for publishing in UGC Pilot.";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://getugcpilot.com/" },
   title: {
-    absolute: `UGCPilot — ${visibleSocialPlatformList} Content Workspace`,
+    absolute: homepageTitle,
   },
-  description:
-    `Create video-first content and approved publishing workflows for ${visibleSocialPlatformList} in one workspace.`,
+  description: homepageDescription,
+  openGraph: {
+    type: "website",
+    url: "https://getugcpilot.com/",
+    siteName: "UGC Pilot",
+    title: homepageTitle,
+    description: homepageDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: homepageTitle,
+    description: homepageDescription,
+  },
 };
 
 const workflowSteps = [
@@ -61,7 +72,7 @@ const workflowSteps = [
 
 const productFooterLinks = [
   { label: "Multi-platform publishing", href: "#multi-platform" },
-  { label: "Try UGCPilot", href: "/try-ugcpilot" },
+  { label: "Try UGC Pilot", href: "/try-ugcpilot" },
   { label: "Founder marketing guides", href: "/guides" },
   { label: "Instagram carousel maker", href: "/instagram-carousel-maker" },
   { label: "AI UGC video generator", href: "/ai-ugc-video-generator" },
@@ -93,9 +104,10 @@ const legalFooterLinks = [
   { label: "Cookie Policy", href: "/cookies" },
 ];
 
-export default async function Home() {
-  const initialHasSession =
-    (await cookies()).get(AUTH_SESSION_COOKIE_NAME)?.value === "1";
+export default function Home() {
+  // Shared, prerendered HTML. The auth actions reconcile the browser session
+  // after hydration, including email-verification and signed-in destinations.
+  const initialHasSession = false;
 
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -111,16 +123,16 @@ export default async function Home() {
 
             <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
-                Create. Discover. Publish.
+                Meet your SaaS&apos;s
               </span>
               <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                Keep your content moving.
+                new content creator.
               </span>
             </h1>
 
             <p className="mx-auto mt-7 max-w-[740px] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Create content for your business. Review it, choose your accounts,
-              and schedule to {visibleSocialPlatformList} from one workspace.
+              Create an AI influencer for your SaaS, make videos that show what
+              it does, and schedule them across your social channels.
             </p>
 
             <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-5">
@@ -183,7 +195,7 @@ export default async function Home() {
           <div className="mb-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs sm:text-sm font-medium text-muted text-center">
             <span className="flex items-center gap-1.5">
               <Zap className="size-4 text-amber-500" aria-hidden="true" />
-              <span>2-minute setup</span>
+              <span>Start with your business context</span>
             </span>
             <span className="hidden sm:inline text-border-strong">•</span>
             <span className="flex items-center gap-1.5">
@@ -193,7 +205,7 @@ export default async function Home() {
             <span className="hidden sm:inline text-border-strong">•</span>
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
-              <span>100% human approval</span>
+              <span>Review before scheduling</span>
             </span>
           </div>
 
@@ -242,17 +254,12 @@ export default async function Home() {
       <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
           <div>
-            <div className="flex items-center gap-3">
-              <Image
-                src={landingLogo}
-                alt=""
-                sizes="36px"
-                className="size-9 rounded-md object-contain"
-              />
+            <div className="flex items-center gap-2">
+              <LandingLogo />
               <div>
                 <p className="font-semibold text-foreground-strong">UGCPilot</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  {visibleSocialPlatformList} content workspace
+                  AI UGC video &amp; content studio
                 </p>
               </div>
             </div>

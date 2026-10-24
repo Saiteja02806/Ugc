@@ -1,0 +1,34 @@
+{
+  "preparedOn": "2026-10-22",
+  "kind": "Local edit of an existing public UGC Pilot showcase recording",
+  "source": {
+    "path": "public/marketing/showcase-part2/application-demo.mp4",
+    "bytes": 7088295,
+    "sha256": "d121ac6bad647515865a070f2314aba71345023faf37c578f5ceebfbccaddd70",
+    "durationSeconds": 137.81,
+    "publicPath": "/marketing/showcase-part2/application-demo.mp4",
+    "captureDate": "Not established; the recorded interface predates this guide update"
+  },
+  "excerpt": {
+    "path": "public/marketing/guides/add-product-demo-excerpt.mp4",
+    "bytes": 218200,
+    "sha256": "ba71b46230f7ee7f37666ae5086506ae8c5777030cfdfdad376b45b3c8c83b1b",
+    "startSeconds": 18,
+    "durationSeconds": 10,
+    "width": 1280,
+    "height": 720,
+    "hasAudio": false,
+    "fullDecodePassed": true
+  },
+  "poster": {
+    "path": "public/marketing/guides/add-product-demo-poster.jpg",
+    "bytes": 29320,
+    "sha256": "77419c7fa59c6104170447467f728ca5e974f21df2e387f5b7d3795ed5c069be"
+  },
+  "limitations": [
+    "Historical interface, not a fresh walkthrough or current production acceptance.",
+    "Shows opening selection, demo attachment and entry into review; does not establish publication or customer outcomes.",
+    "Trimmed locally using FFmpeg, not exported from the UGC Pilot editor.",
+    "Fresh production capture was blocked by HTTP 402 DEPLOYMENT_DISABLED on both domains."
+  ]
+}

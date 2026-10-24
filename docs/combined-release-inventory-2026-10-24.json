@@ -1,0 +1,951 @@
+{
+  "date": "2026-10-24",
+  "scope": "Every intentional Git-visible change; only this self-referential inventory omits its own content hash",
+  "files": [
+    {
+      "status": " M",
+      "path": "CAROUSEL_CONTEXT.md",
+      "sha256": "9e49a17065b25b35ecf3bce355d9551bdd2655a22e4c51287cb58ba2141cd9d9"
+    },
+    {
+      "status": " M",
+      "path": "EXPLORE_CONTEXT.md",
+      "sha256": "83742b44205e8e97c443a61638ac6a660a1b2d323e8c180f071d87edae27c665"
+    },
+    {
+      "status": " M",
+      "path": "app/api/media/[assetId]/route.ts",
+      "sha256": "060b3a78e61ea71f083c2048674ecd543879737ab20f9779924e8df2259b210f"
+    },
+    {
+      "status": " M",
+      "path": "app/api/trending/creatives/[format]/[creativeId]/edit/route.ts",
+      "sha256": "4c9d495d6c920a74e493bb251cbec9897d3dc3b5f4ddf75ddcf6094503d2c8c3"
+    },
+    {
+      "status": " M",
+      "path": "app/page.tsx",
+      "sha256": "c6977f06abc9aaff3ec7e189be36cb2387c7c0f615c7c428b0e7b00ecd47386b"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/format-generation-references.tsx",
+      "sha256": "b6e4f699ffa252307fa90229af683c77b3de333e4b4c983abfc361b50774d3a3"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/format-person-image-picker.module.css",
+      "sha256": "26798a5d0c48c3812e33d10418285e23399b7b34ff68e12b227daa1e4342f685"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/format-schedule-panel.tsx",
+      "sha256": "c7911638ec5ffcb2c5835361474c7ae8f6bbdfffa2737854aa090791e43c8a55"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/hook-starting-frame-workspace.module.css",
+      "sha256": "48e1c607ef17519ba90f6a5cf9fd4add3f60bdcafdcd41d082617227b0c1c00a"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/hook-starting-frame-workspace.tsx",
+      "sha256": "6dcf0e153ce5bf8feb452db03b5ae46f6ae843526aa2eb2fe9fdb9eae29853c9"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/hook-workflow-preview.tsx",
+      "sha256": "7ee1896af8ffe1770aef17681a8ed671118bec8d16ca4ac42207f9d8dc7aa94b"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/pending-schedule-panel.tsx",
+      "sha256": "43cbd3b362f3f2a13a748d38bbaadf563517f1a83d50f881234a8e5222eafc37"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/phone-workflow-preview.tsx",
+      "sha256": "cc007860233667aa78c627155d120b13466d79beff0b6ad885f3498df725c507"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/recreate-workspace.tsx",
+      "sha256": "b577e8018304f595bcddbdb8adc00a13fb2aedc205788330a68af2baa503cd72"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/talking-head-schedule-review.tsx",
+      "sha256": "8ff1c928905942bc2020bac4b724590defb7b908bc921f7e6dc11850e465272b"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/use-cover-playback.ts",
+      "sha256": "0602f8d8726b6e6c90b7fce01cdc3836d6b75439272e2bd899c29158f8f9510c"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/workflow-image-library.tsx",
+      "sha256": "4e3f5c805bcc44986199a9a418aea61cda4c3fa9edeb6b943e7465315821d590"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/workflow-preview-canvas.tsx",
+      "sha256": "dde7563c37a18869d48709ec9d5d1d81bf2cd9d05ecd81c54228eb32429de78f"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/workflow-schedule-review.module.css",
+      "sha256": "c9c9ddceb2ef7f41b2e830ae21a0c90465b5ba18d14e36871a74a7ba229269a0"
+    },
+    {
+      "status": " M",
+      "path": "components/explore/workflow-scheduling-panel.tsx",
+      "sha256": "cbdf3a6912521db207b60c314c51196a7d91e1e76f8fa2ce8d225ae6b2497a7c"
+    },
+    {
+      "status": " M",
+      "path": "components/marketing/landing-header.tsx",
+      "sha256": "2e655d16002fa05f442bc23ca72435c95c58c828f3c6dab4391de19c37bb4fcb"
+    },
+    {
+      "status": " M",
+      "path": "components/marketing/landing-logo.tsx",
+      "sha256": "61f1927658092c5b58490ce890e4d69cf8f3a85ff91d4002d2a18ecc5fb44ea2"
+    },
+    {
+      "status": " M",
+      "path": "components/social/platform-selection-modal.tsx",
+      "sha256": "60305493b284a29f194bdba8e157bfc076e8c99a87258d472969942a9263f290"
+    },
+    {
+      "status": " M",
+      "path": "components/trending/hook-video-schedule-drawer.tsx",
+      "sha256": "928a08bcba8673eb7e77f7425612b73dd3afd2c425481ac2b6f9889d87603798"
+    },
+    {
+      "status": " M",
+      "path": "components/trending/trending-creative-editor.tsx",
+      "sha256": "974c224469cff5483989597f99a4c23d1e644e44c60ae6b92f7c8e89b0a71864"
+    },
+    {
+      "status": " M",
+      "path": "components/trending/trending-workspace.tsx",
+      "sha256": "b072975b7a10a671513b8a0d27550a16f00f6b4f48c3494aab4c6ad2a3c58eb8"
+    },
+    {
+      "status": " M",
+      "path": "components/video/video-generation-workspace.tsx",
+      "sha256": "a8ffcffa13df3d66f4b10337f9f254a8ca30b0fc09c7bcec24e5ef749152e058"
+    },
+    {
+      "status": " M",
+      "path": "components/video/video-results.module.css",
+      "sha256": "082ef53eef97e2d265a8e62d510bb7ad327c719e7ac1f46c3b297af6ac1c3bc8"
+    },
+    {
+      "status": " M",
+      "path": "docs/seo-organic-visibility-plan-2026-10-22.md",
+      "sha256": "f9454528160d286bc15a4ec2a7e5e867baea21807b391c8ff10ee9ff0a415921"
+    },
+    {
+      "status": " M",
+      "path": "infra/gcp/README.md",
+      "sha256": "56a58b244252425e2a6f85702cd15e25a398a360b764f0cb437d26ee98425f51"
+    },
+    {
+      "status": " M",
+      "path": "infra/gcp/carousel-worker/edit-worker.tf",
+      "sha256": "88a84878f860aa4279d3fe40d4c6f1ae3d4c1b4ba05423b65dd066815f740bc1"
+    },
+    {
+      "status": " M",
+      "path": "infra/gcp/foundation/cloud-tasks.tf",
+      "sha256": "f27e3ee593d2e7fe29a7d3bb5962734e1cbefdba6ae783366660a52461b5a324"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/format-schedule-draft.ts",
+      "sha256": "8e50051543a6fa935a40942bde1750c12202b8ad4d794a88cdb38f824417fab8"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-client.ts",
+      "sha256": "8cbdd3319d0b59d5466ead3ca1c21c43ab7f58e2d89a8419cd4129b159f20736"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-draft.ts",
+      "sha256": "4b49e2686f6515aed6789386bf299f03fe1397602d0b29d3ab3765635ff72071"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-generation-api.test.mjs",
+      "sha256": "880ccd14df65e23ad9f9c99d03054cc4f5a52231045f6ddad1d10999a52218af"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-generation-api.ts",
+      "sha256": "56407eafcbbceb56601ae7fb274682302a2c1d60f361995b620a1149f3c42135"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-image-prompt.test.ts",
+      "sha256": "47396be34cf5af122a590811ea1824faeafe8192cf67af302074125dd9ddbe3c"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-image-prompt.ts",
+      "sha256": "5a8850667028cf4b781bf17a816b7e68890ecfdc166f1f923c8930ac963976e8"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-motion.test.ts",
+      "sha256": "51c4d7ea947e355074fd488a848ad049b9c7c71ae5cd69d04f338e34bb7ecaa7"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-motion.ts",
+      "sha256": "4891287993e6724082e55f422884d64b2af0cf1f7c17131de04c884146a6d86c"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-prompt-preview.ts",
+      "sha256": "8593168e4510e08219b4c11f7a582c176a079e3267b7adb9fe831c2d477eb34d"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-result.test.mjs",
+      "sha256": "58506e8a0c4180024358269f942aa475a5524f9291fec0297f84f6c0d0207d78"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-result.ts",
+      "sha256": "63fc86988ad9b176681313cb8659478116037bd68d67aae47238e7ec40b3b606"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-keyframe-variations.ts",
+      "sha256": "cdf8a1c2e9a89592a2a0d0f83ab2ab30092ee670e44fc0e9a95fa5f991aa48b1"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-source-frame-api.test.mjs",
+      "sha256": "3bda1371683e74598162a84169cbf2d2e729ad48f4e9289ccde9119078f74a46"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-source-frame-api.ts",
+      "sha256": "d16eafb82ab889b4700d1bdc9d72ff0b7ad164bd783d322e383e766c89d465f2"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-source-frame.ts",
+      "sha256": "65f3d2a52c67b961ea198654e6a74afe3d1991e87fba3ec296368874fbcfd8b5"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-starting-frame-client.ts",
+      "sha256": "7efccc41dd6054a6cb188f87fe7122f5f427e824fecc2ffd8ac93e36b0ee55c7"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-starting-frame-history.test.mjs",
+      "sha256": "0eb5acd1fe21892299ff6a782198bb7a1fca95cc28c7d3df232cd9724f5d15c7"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/hook-starting-frame-history.ts",
+      "sha256": "d5bf574601b929261aa93d9d533b4fa657ad4f3f5cf00abb50144a6a9ecb83a1"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/pending-schedule-client.test.ts",
+      "sha256": "a8f75426ab85d892a996c148367e1eb264b7002d153562102715dc9b412341b5"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/remix-text-api.test.mjs",
+      "sha256": "20ccff6533a7130f7d372351edd461a778195b64eed898f7c8c2c1a7449ac789"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/remix-text-api.ts",
+      "sha256": "0bfe223e1b92e6b35dc072da65a0c2de85f299f660193d7aebccaff7bb402964"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/remix-text-prompt.ts",
+      "sha256": "2a229f91a5f3dd1b1d0529aff6e75c1b35b199ac8e7816545480625d63e5d816"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/remix-text.test.ts",
+      "sha256": "41a79d40951f7df68e8dad5d1f1099871639d6ce6a05b6ae266d3f68c458dca5"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/workflow-scheduling-draft.ts",
+      "sha256": "5f3306d8cddc33dc3a97bb28d9471a9939a526fbc1300af121bb73872fcfc186"
+    },
+    {
+      "status": " M",
+      "path": "lib/explore/workflow-session.test.mjs",
+      "sha256": "27fef416784768416e80136b345bebacc84bf7b275eb06bc57111c10ef06806b"
+    },
+    {
+      "status": " M",
+      "path": "lib/social/platform-visibility.test.mjs",
+      "sha256": "a85b278a20dea5c7c3022b6a537ce19fc1bb22b0c671e06131770dffe22d6cfd"
+    },
+    {
+      "status": " M",
+      "path": "lib/trending/trending-platform-scheduling-ui.test.mjs",
+      "sha256": "cb716f4f543dea00a0b6bea27b2f3de3c875473104fc6bdad09578a09abd8b7a"
+    },
+    {
+      "status": " M",
+      "path": "next.config.ts",
+      "sha256": "06438feef1e03bf894ada4d2e1c1ac8cda25deef0bf394a96d93a503fbb6f553"
+    },
+    {
+      "status": " M",
+      "path": "scripts/explore-format-common-editor.test.mjs",
+      "sha256": "cae9b013888b8ae0d1c35263ff441823a1c6f9d29c296248526e8c8d5010f3f1"
+    },
+    {
+      "status": " M",
+      "path": "scripts/explore-format-reference-upload.test.mjs",
+      "sha256": "d77503cfe5faac8ce5be154463bcf0ce0167c80860f6b5c8c5720a0904effd4b"
+    },
+    {
+      "status": " M",
+      "path": "scripts/explore-format-schedule-draft.test.mjs",
+      "sha256": "0cad665cbe1441ac046934cca27751b9aeec2029ab850ba0a9372902f3689b3a"
+    },
+    {
+      "status": " M",
+      "path": "scripts/explore-format-video-worker.test.mjs",
+      "sha256": "d568c455eed331a72d47d7dcf91fa647052d2446c9305c279cd1cc30958cdd77"
+    },
+    {
+      "status": " M",
+      "path": "scripts/explore-reference-audio-job.test.mjs",
+      "sha256": "ce797e773be3bd41d7324aa447b18f1de97d21a234a81dadad72e95a0be06a1a"
+    },
+    {
+      "status": " M",
+      "path": "scripts/explore-reference-audio.test.mjs",
+      "sha256": "28dae4f634c2a368ee9a0d62c56a2ed9500960e67c80d4a7ac9ff79c608a472d"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-local-starting-frame-preview.test.mjs",
+      "sha256": "36429423c879f26b5c155d5737c943e105a20272aaa1bd700605792fde4d4b84"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-reference-new-batch-release.test.mjs",
+      "sha256": "a5c436e433499fbaaf146d006f68259e6d25dfb86c659985df49509061ab8a67"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-reference-prompts-release.test.mjs",
+      "sha256": "37a3693a67c14b174f870178d667606821d11802636cdd033ff24e4d7a080b94"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-reference-release-staging.test.mjs",
+      "sha256": "f2a7d75809df73fac0d1d6e7b93a3fb5651ad1417213338912ef15058a236e5e"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-reference-release.test.mjs",
+      "sha256": "973938cfe7746b40211ef7a964be35002887895fcfcc03febaee3b5332264e51"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-reference-scene-audit.test.mjs",
+      "sha256": "da46e90ebc5ac465cc1de8b49830e9769c3efe02da303d8b8d5377221ec7bf00"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-scene-release.test.mjs",
+      "sha256": "296395604361f4aef5b2e692d4516774ed504876849c4b0d413b58912d487d69"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-starting-frame-client.test.mjs",
+      "sha256": "ebe85fdbcb719ae6e4e6c8de5940bea4dceeae9a7fb2e8896d937d8503e3d57c"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-starting-frame-ui.test.mjs",
+      "sha256": "ddc4d07de316c90f95117ea62742642610fa9bf4269c7c030f9d15d5b68be2f2"
+    },
+    {
+      "status": " M",
+      "path": "scripts/hook-video-audio-lock-schema-contract.test.mjs",
+      "sha256": "679fbae84ab5ec33edccd02b877ea5e49f8bd6ad52bcbb732f437f07a71d5676"
+    },
+    {
+      "status": " M",
+      "path": "scripts/reference-cover-playback.test.mjs",
+      "sha256": "8026f20918b843bbc83eb21fad0bec87dc3a643d7d8a8f9f6070006620c94acf"
+    },
+    {
+      "status": " M",
+      "path": "scripts/simple-repeat-scheduling.browser.cjs",
+      "sha256": "ee1c85e65a3c98d2276b72e1d61a08e40187b691c76a805c6450e0125d62df7f"
+    },
+    {
+      "status": " M",
+      "path": "scripts/trending-carousel-text.browser.cjs",
+      "sha256": "1e22594c51d0071b0444926de5903e68afb4635bb79a05ead3f13e24a6b368af"
+    },
+    {
+      "status": " M",
+      "path": "scripts/trending-history-recovery.browser.cjs",
+      "sha256": "17f9e05f90ecf9e4d951472492a9c17cf5b963288d3f9faf76d8f12699094268"
+    },
+    {
+      "status": " M",
+      "path": "scripts/trending-publishing-preferences.browser.cjs",
+      "sha256": "30a29bbec67017be757e0e4690c4755aeddca1b05539acb8e5abbbbb4d247f78"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-composition-panel.test.mjs",
+      "sha256": "ab02378159438ac02cd9f56e31c6ec4a0396ae2cf488594231213e3db91b494c"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-generation-api-contract.test.mjs",
+      "sha256": "d8d01bc3623abf319860a72fa596a753210c5144bfc0346c037ae37fab71f5e9"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-generation-recovery.test.mjs",
+      "sha256": "5a3da31537d751fb5372308bd6563b225b21be891773f1e59287610088fe2c05"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-image-library.browser.cjs",
+      "sha256": "cc113ca2be22a2d3b7342038ddbc669d5088f42118bceba892395b781d5d98dc"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-provider-errors.test.mjs",
+      "sha256": "4c54358b439d73edfe6922366780971c124ddb2e22ea3d7869c57b3563ad4e31"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-reference-inputs-ui.test.mjs",
+      "sha256": "bfedc5ba8d3e32abd56e029ba34b9851bb0a3db82ebd18cd178bf2d8dfe9c341"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-sections.test.mjs",
+      "sha256": "b860bb4a9c070ab2728f32f08ab316ccfbd7cad0f421748db22fd0cd2f6206df"
+    },
+    {
+      "status": " M",
+      "path": "scripts/workflow-studio-ui.test.mjs",
+      "sha256": "e99cb893456021e33aa4d356722c88ed7d27727c0b0b768b66253e4d8a72c3bc"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/jobs/generate-hook-video.test.mjs",
+      "sha256": "b620ed8858aca525a7290d3b0f7a605934baccd3a09b550dd946e629ad6dd1ed"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/jobs/generate-image.test.mjs",
+      "sha256": "1ed0e6e0a259c02682d5c948139e3db65e337494502771bba23be609c63f3ee4"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/jobs/generate-image.ts",
+      "sha256": "c27c2c280412b7bfa1cc4451a51e636eaca3460b0898cd7c9c90d23224aa5d04"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/jobs/render-trending-carousel-edit.test.ts",
+      "sha256": "5e4da99d65b7858eea8af387c4d69836028192a2847f3b03cc362d3364a7ccd0"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/jobs/render-trending-carousel-edit.ts",
+      "sha256": "79a3f1cf9868628eec8bb515a1a2dd88a5dc556d7bbaea70bca358f55368f754"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/lib/explore-hook-reference-new-batch-release.json",
+      "sha256": "5612aca3ff66ae7692dd095449cdf42fe2d5f0a528c364c0ce46c2fe62d4a2b4"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/lib/explore-hook-reference-release.json",
+      "sha256": "09a6e028a87d3d8378972fe345f7ed8bc8714aa0050a86b2c894fee59b62a749"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/lib/hook-keyframe-generation-contract.ts",
+      "sha256": "eee1da0d1f44259fa2ee8ef733223c6561c7e2d8e43a7ff31c11168f9066eee0"
+    },
+    {
+      "status": " M",
+      "path": "worker/src/lib/hook-keyframe-image-model.ts",
+      "sha256": "d230593c5d53dd5c6502bf251c8f33dcb2f79a58a954c83bc39321df7b6a20b0"
+    },
+    {
+      "status": "??",
+      "path": "app/api/account/saved-captions/route.ts",
+      "sha256": "b223686f5c58436ae4702621b481ebf154b87ba706d52b087c978ac2cf78fca1"
+    },
+    {
+      "status": "??",
+      "path": "components/explore/inline-photo-picker.tsx",
+      "sha256": "e2dfcd14ebedc907bbdc31d5dd3656210d73fe909a20ab99c2390630cfc01306"
+    },
+    {
+      "status": "??",
+      "path": "components/explore/starting-frame-image.tsx",
+      "sha256": "f49748083f5162cc2ed38590b1a745ae4ab1b81682d1eece01c56f0a85b801af"
+    },
+    {
+      "status": "??",
+      "path": "components/scheduling/post-caption-field.module.css",
+      "sha256": "3ba204a246b11823a843cefc58104bafd07e39052f3b34657d5709e5647dc21c"
+    },
+    {
+      "status": "??",
+      "path": "components/scheduling/post-caption-field.tsx",
+      "sha256": "4a78f06d73ca7ad82fd93e237fea75c22175a6d3f6286fb0324c860370d12471"
+    },
+    {
+      "status": "??",
+      "path": "components/scheduling/use-saved-captions.ts",
+      "sha256": "9cf5aa0be12d000ec61e1cfe5643f840c247004869f1ff5a04fc1ba149654ac4"
+    },
+    {
+      "status": "??",
+      "path": "docs/approved-hook-frame-selections-2026-10-24.json",
+      "sha256": "1d731d1ce482ab14f9fdf77914bdb1c099a71ba7f10a7594b9e8b38cf23879d1"
+    },
+    {
+      "status": "??",
+      "path": "docs/cleaner-hook-frame-implementation-2026-10-24.md",
+      "sha256": "88ad412dd326cd06527c6bd7f51c36421b5397520365d06b5ba92c3f026378d6"
+    },
+    {
+      "status": "??",
+      "path": "docs/cleaner-hook-frame-rollout-plan-2026-10-24.md",
+      "sha256": "92f13111fcd6aeb89e8a8f670476c450478fda5659b4f23a3e75698348ddaedc"
+    },
+    {
+      "status": "??",
+      "path": "docs/clearer-source-frame-hook29-2026-10-24.md",
+      "sha256": "5b41f20c47e6d317a93cd36483c9b6c0523a008ddfd1aeab4ec747c022cdcdba"
+    },
+    {
+      "status": "??",
+      "path": "docs/clearer-source-frame-pilot-2026-10-24.md",
+      "sha256": "f873ac692641bf2d7ad8cdb94f0f76936ac81ecfebb74454e0a9cfbef6193a83"
+    },
+    {
+      "status": "??",
+      "path": "docs/clearer-source-frame-validation-plan-2026-10-23.md",
+      "sha256": "8cb5d14ce7718a2a4bc98f32f0bfa7c4d54643fd6393a95f746f1daa4a4a91c2"
+    },
+    {
+      "status": "??",
+      "path": "docs/combined-release-2026-10-24.md",
+      "sha256": "67eeaa1d9aa2c0b0f3c1aae91390cf1020abf4ba14c3fa39c3ed41dadbecf8ca"
+    },
+    {
+      "status": "??",
+      "path": "docs/combined-release-excluded-paths-2026-10-24.md",
+      "sha256": "fc71ec85c28956fcfa0b465a3071d770230d311947300fd1d498076a5d19421d"
+    },
+    {
+      "status": "??",
+      "path": "docs/explore-person-picker-implementation-2026-10-23.md",
+      "sha256": "764f7373118a3a3bd3837016328617e67e1d774f4e9073eae914c91cdf95f556"
+    },
+    {
+      "status": "??",
+      "path": "docs/explore-scheduling-visibility-review-2026-10-23.md",
+      "sha256": "635283f6b332902eb24f0b809b29129f405c94bd219d4cb9414aaa9e083364b8"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-frame-decisions-2026-10-24.md",
+      "sha256": "8b5cbe5d5bdeb609a91829eec2e1e44faf7d453606c7b5c478e19eb64452c144"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-minimal-v6-2026-10-23.md",
+      "sha256": "26d3144cd95d11ea0f36944d9eb43e0e8fb3c1f062931ac818e6695286353c09"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-minimal-v6-paid-review-2026-10-23.md",
+      "sha256": "84f44786a974dd378bdaeb5aaac23029a64fb608076898af41c0bf36d98d9d4a"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-minimal-v6-results-2026-10-23.json",
+      "sha256": "c96e8bd3b8eb7ecad3cc0753a8d4ecb9921fc36fe4778e2a66f314c5e14c5944"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-prompt-comparison-2026-10-23.json",
+      "sha256": "21484ec0a245ea26d025e64baa9e1c9d0c91567c0f3e71e566f8f42d66e3b56c"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-prompt-followup-2026-10-23.json",
+      "sha256": "00f2bf321ab192620eef7e034133ccec21c31b6cc00aeb9040c518aebc81499b"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-prompt-review-2026-10-23.md",
+      "sha256": "adae21978fcbd1fd11890dd5a423d3683eeeff27890632b5e089ba39e90d12a4"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-quality-audit-2026-10-23.md",
+      "sha256": "3d38848c98a820d552b9201a6ce2f34753fd8f7b07820cc2f672229eea51a1b6"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-quality-samples-2026-10-23.json",
+      "sha256": "3fb9913d8bb248026bb34cecd9ec3df24848408c819c831e953194143c3b3f9e"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-role-v7-2026-10-23.md",
+      "sha256": "51368cfea7f54654ccdddea2d0f4af12fe6d9f20c8c18e8903459086587f3606"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-role-v7-adoption-2026-10-23.md",
+      "sha256": "71f7255704c8f3ad10e99b1ffbe97fb1d77187addbde1c5dfe1473d0f6a49656"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-role-v7-paid-review-2026-10-23.md",
+      "sha256": "c0b084658ffbba77f5cd4cf09ae70b4cee5d37fa8c51e205298ce5420aee2511"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-role-v7-results-2026-10-23.json",
+      "sha256": "974baa70a38eb0a92fe83d2933a688bf0bb87d333912cf758ff86eaa495ae65e"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-source-voice-examples-2026-10-23.json",
+      "sha256": "56707b02d4f469e0ae46c5723eb012098f542cb973cc0bd82f9819dc88ffcc7c"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-source-voice-review-2026-10-23.md",
+      "sha256": "82a114178cc3672483947d60f5cf32d9df0728425a39cd9dc039d5408026beb2"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-source-voice-v5-2026-10-23.md",
+      "sha256": "d949a7bf4dc0097e474eafd3bc5db3a28c6d61840e74b5c281c6fbfb5c7ff0b7"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-source-voice-v5-paid-review-2026-10-23.md",
+      "sha256": "4f37f143a986bd63a5bbdd877441fc24ca5350cccb1efce0687f4ed6aa842e4b"
+    },
+    {
+      "status": "??",
+      "path": "docs/hook-remix-source-voice-v5-results-2026-10-23.json",
+      "sha256": "36de7bca493b9482c571cf609fab47089839bfeb2322ce336c45c664cdf60bca"
+    },
+    {
+      "status": "??",
+      "path": "docs/opening-frame-audit-2026-10-24.md",
+      "sha256": "8ae01b57e47a36ee2b937a762dd825b049ccb9bca58f02453bae3d4f368adffc"
+    },
+    {
+      "status": "??",
+      "path": "docs/saved-post-captions-2026-10-23.md",
+      "sha256": "30918e09fbb5d884734b6c427b796043a6b7d84f6f722cde46cb9283d95f11a2"
+    },
+    {
+      "status": "??",
+      "path": "docs/slideshow-business-context-root-cause-2026-10-23.md",
+      "sha256": "6e600a326aac2144f742c8ccb57ed8d78e8f43153be18ce9d454108ca4373f41"
+    },
+    {
+      "status": "??",
+      "path": "docs/starting-frame-prompt-pilot-2026-10-23.md",
+      "sha256": "ef01ddeab16ad78909763dd55a3de131bec2996b6a51030316ad50bda86d6f9a"
+    },
+    {
+      "status": "??",
+      "path": "docs/starting-frame-prompt-validation-2026-10-23.md",
+      "sha256": "13df881cd1d08a15e53a8b94f90239f571bcfdf1f7e0379fafc87c6c29d2bd7c"
+    },
+    {
+      "status": "??",
+      "path": "docs/starting-frame-seedream-pilot-2026-10-23.md",
+      "sha256": "a9e78790dee3348eff7aa9b3e19b179ed33b7de6d4f41edbe01bd6fc4275e6db"
+    },
+    {
+      "status": "??",
+      "path": "docs/starting-frame-simplification-review-2026-10-23.md",
+      "sha256": "90cbc60f6995910f753b69354a4f75837cd873c2fa287ad8d88a287b0cb8e69b"
+    },
+    {
+      "status": "??",
+      "path": "docs/starting-frame-v5-candidate-2026-10-23.md",
+      "sha256": "0f4cd6f5481dca7a11684f9ddb041dd0e89fcc4f923f0344bb51c795bf21e04a"
+    },
+    {
+      "status": "??",
+      "path": "docs/starting-frame-v6-candidate-2026-10-23.md",
+      "sha256": "c9d0d6b00d097474b458a1575b21098a13d35c36f6a7977da983b61eb9017bcd"
+    },
+    {
+      "status": "??",
+      "path": "docs/trending-edit-recovery-2026-10-24.md",
+      "sha256": "765768405041fad3c99670f7bd6189644320a18222cc536aa1d650d355d21003"
+    },
+    {
+      "status": "??",
+      "path": "lib/explore/hook-curated-frames.test.ts",
+      "sha256": "5e079368e69328bf45ff36a7dbc20364b8a34e5e059aaba5a9cccdfe8ce971ec"
+    },
+    {
+      "status": "??",
+      "path": "lib/explore/hook-curated-motion.ts",
+      "sha256": "526b2d99a4fdf9c5f83a20cad45ee699c5570d7dd02ffe5613d67c8cba79bb73"
+    },
+    {
+      "status": "??",
+      "path": "lib/explore/hook-remix-minimal-prompt.ts",
+      "sha256": "6605e0efa55c453dcca2f4315b5c8c565edc8a44fb6352fe1b0f990c4974f6f0"
+    },
+    {
+      "status": "??",
+      "path": "lib/explore/hook-remix-role-prompt.ts",
+      "sha256": "f01d4727e07d5e8251ead1a7e8f28a3eae87f1d5c722a2f0877ed948bd2c2608"
+    },
+    {
+      "status": "??",
+      "path": "lib/explore/hook-remix-source-voice-prompt.ts",
+      "sha256": "2f15d66d9dae74223e18a65883e6a6da8522b02878e2ec69dc683e855a10056f"
+    },
+    {
+      "status": "??",
+      "path": "lib/explore/starting-frame-error.ts",
+      "sha256": "030725839395c971a21b7ad5c9c94ac13a0fb24b62150384adcd2c448c5d2d11"
+    },
+    {
+      "status": "??",
+      "path": "lib/scheduling/saved-captions-client.test.mjs",
+      "sha256": "9fe16a3430da889836cedbce8bd83a32a5015c68de31e7efa960234455af39bf"
+    },
+    {
+      "status": "??",
+      "path": "lib/scheduling/saved-captions-client.ts",
+      "sha256": "794d0aed17435f046491144a45245624611480f062bb9490b7a4063bc59a9d75"
+    },
+    {
+      "status": "??",
+      "path": "lib/scheduling/saved-captions-db.ts",
+      "sha256": "c8e221a9250e5e5d9e2a6c2ba65f045a4efffd3ba870926a22be2c4e7bcb5fab"
+    },
+    {
+      "status": "??",
+      "path": "lib/scheduling/saved-captions.test.mjs",
+      "sha256": "4f236b9ef98ae8d289c5be35dad7c87974a91f7e870a25a0d1ae6efe9515956d"
+    },
+    {
+      "status": "??",
+      "path": "lib/scheduling/saved-captions.ts",
+      "sha256": "f33cd684666cf197e47cb48ccac86e6be8f6570bfb0db34433fdd941768b6e75"
+    },
+    {
+      "status": "??",
+      "path": "lib/trending/carousel-edit-save-route.test.mjs",
+      "sha256": "352baa747abfeaa125aeb1a5ba342b98ae5b0891980d146f14f0af3a60ea8259"
+    },
+    {
+      "status": "??",
+      "path": "lib/trending/creative-edit-client.test.mjs",
+      "sha256": "4d195bb9316b8c9b7940e37bd0405e33463e3bbcd549c71d524f49a19f724ba5"
+    },
+    {
+      "status": "??",
+      "path": "lib/trending/creative-edit-client.ts",
+      "sha256": "49fcadacf366017cee1935b39b35edb1e31d8c69a5f91234429e749f09977bc9"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/0c190388a0b7266f3e7090ede4812fe2d0f0a9b2812dbbd368ef59bf361cae32.png",
+      "sha256": "0c190388a0b7266f3e7090ede4812fe2d0f0a9b2812dbbd368ef59bf361cae32"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/18ff0751a0ebbd85c868203d5c41288251231b951645b8a28222e3bb8b2909f8.png",
+      "sha256": "18ff0751a0ebbd85c868203d5c41288251231b951645b8a28222e3bb8b2909f8"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/1b7b340e895a543cc146a509a97ffa2a99aac0628f2df27d5879629861cc24d5.png",
+      "sha256": "1b7b340e895a543cc146a509a97ffa2a99aac0628f2df27d5879629861cc24d5"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/306b9ffa943ecd5f42a5c9146f95d81672e8d8a405680701d379a8f79f280395.png",
+      "sha256": "306b9ffa943ecd5f42a5c9146f95d81672e8d8a405680701d379a8f79f280395"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/3b87d035729e1054f3b51b0d7ae852b43d0db3751afd6e625094311136833869.png",
+      "sha256": "3b87d035729e1054f3b51b0d7ae852b43d0db3751afd6e625094311136833869"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/44eb7a339ce0ac2069c993b3743a13042dfb8f11d7f48a9d1a9e92a684c95a3c.png",
+      "sha256": "44eb7a339ce0ac2069c993b3743a13042dfb8f11d7f48a9d1a9e92a684c95a3c"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/550cf6ef15e99970947f9c5642fdd32bcf1e147e85548310d0aa483fa65844c8.png",
+      "sha256": "550cf6ef15e99970947f9c5642fdd32bcf1e147e85548310d0aa483fa65844c8"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/64b827eabdc4a93d951f7b1810760314d4504d0524e9909c26f55ac30440af54.png",
+      "sha256": "64b827eabdc4a93d951f7b1810760314d4504d0524e9909c26f55ac30440af54"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/82520d58dfb044387e85086923645edef93c11c11cfb086c338933a9249eb45a.png",
+      "sha256": "82520d58dfb044387e85086923645edef93c11c11cfb086c338933a9249eb45a"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/9cd8be661501d42556ca385f851083ccba8bdce4e16b832b92ff39f66d1fed17.png",
+      "sha256": "9cd8be661501d42556ca385f851083ccba8bdce4e16b832b92ff39f66d1fed17"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/b15db17d5ef51954dd2094e9b323c3f157a14346325cb7fabcc183b786885ab4.png",
+      "sha256": "b15db17d5ef51954dd2094e9b323c3f157a14346325cb7fabcc183b786885ab4"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/b3fcc0eff8bfc5c5c10fec3967d55c02c336223fc341c83c0f71d94500759bcf.png",
+      "sha256": "b3fcc0eff8bfc5c5c10fec3967d55c02c336223fc341c83c0f71d94500759bcf"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/b6375e7b662d59f0e16689f063ce3a6772f91d4de38769a3e9d4f7194e6ef775.png",
+      "sha256": "b6375e7b662d59f0e16689f063ce3a6772f91d4de38769a3e9d4f7194e6ef775"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/bcbcdb626f01e5560069fd17a94fbc63140f6b5ca1922ddc509b3652fe0f5522.png",
+      "sha256": "bcbcdb626f01e5560069fd17a94fbc63140f6b5ca1922ddc509b3652fe0f5522"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/c4f75feb52ab573bd666355460d6a283207899644aaf46b0045ebdff80d04195.png",
+      "sha256": "c4f75feb52ab573bd666355460d6a283207899644aaf46b0045ebdff80d04195"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/d40f67c77defcca9d965196d631c45e0639841c80a4f4c9951096980a68fca44.png",
+      "sha256": "d40f67c77defcca9d965196d631c45e0639841c80a4f4c9951096980a68fca44"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451.png",
+      "sha256": "d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/f4dd3794412fba430a2850d6d603223ec2c18a1adf1bdd7bdfd2f1fe12e1a0e8.png",
+      "sha256": "f4dd3794412fba430a2850d6d603223ec2c18a1adf1bdd7bdfd2f1fe12e1a0e8"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/f70c493971c408e0d29252fbd43857564903e578c4c11197c683dbd78b50ceec.png",
+      "sha256": "f70c493971c408e0d29252fbd43857564903e578c4c11197c683dbd78b50ceec"
+    },
+    {
+      "status": "??",
+      "path": "public/explore/curated-hook-frames/v1/fe423eef490d997f85dedb5b465e09a62a77a4f0c82f48b29cc10caa0ec0fbf5.png",
+      "sha256": "fe423eef490d997f85dedb5b465e09a62a77a4f0c82f48b29cc10caa0ec0fbf5"
+    },
+    {
+      "status": "??",
+      "path": "scripts/explore-compact-video-results.browser.cjs",
+      "sha256": "06ccfb7530c5326f657d406861734073144691840edf52279c78e2263976404f"
+    },
+    {
+      "status": "??",
+      "path": "scripts/explore-person-picker.browser.cjs",
+      "sha256": "3c5c0524815110288ef3643e63b1f7cf0fd2c346ca3b97ed7ad140049d12e778"
+    },
+    {
+      "status": "??",
+      "path": "scripts/hook-remix-prompt-pilot.mjs",
+      "sha256": "01f3aae5109baa9fd346caf9e51ce170a26228f179c294e5853313fe48f8366a"
+    },
+    {
+      "status": "??",
+      "path": "scripts/saved-captions-db.test.mjs",
+      "sha256": "6017def541d91763c066c3735befe07a06726fe7b6b1621ef1cc9e156e36dc56"
+    },
+    {
+      "status": "??",
+      "path": "scripts/saved-captions-hook.test.mjs",
+      "sha256": "100475d102c3dc27cac6a0dd0d27af11f2c6d5b4167897921290ef605c827e2d"
+    },
+    {
+      "status": "??",
+      "path": "scripts/saved-captions.browser.cjs",
+      "sha256": "4c0448a5004775194bb916f705a0f3cfc1503b9360ba8385886a67adc45d82c5"
+    },
+    {
+      "status": "??",
+      "path": "scripts/starting-frame-model-extension.test.mjs",
+      "sha256": "96e1d92ca62ecc34e5d4b62422bf961d5e25364e1e55b1e0d2c721bb2ce9e64f"
+    },
+    {
+      "status": "??",
+      "path": "supabase/migrations/20261024061601_saved_post_captions.sql",
+      "sha256": "afa55d36d4f6034e7406e8a2f0138945806ee622c18fada8ae508a6f85f87310"
+    },
+    {
+      "status": "??",
+      "path": "worker/src/jobs/render-trending-carousel-edit-concurrency.test.ts",
+      "sha256": "bf4e44ed546a259edfbb9b0fdaac7cdef70e276ffc2fe551a167bf34252edecf"
+    },
+    {
+      "status": "??",
+      "path": "worker/src/lib/hook-curated-frames.json",
+      "sha256": "c6f47fc64abcc2e8d330f7d46985eea991cbace8b61f92b1bde6bf28e7530dd6"
+    },
+    {
+      "status": "??",
+      "path": "worker/src/lib/hook-curated-frames.ts",
+      "sha256": "5d704d06b5c7240256d04887e859a7925113ae1c1f070c62c2c965e845773c2a"
+    },
+    {
+      "status": "??",
+      "path": "docs/combined-release-inventory-2026-10-24.json",
+      "sha256": null
+    }
+  ]
+}

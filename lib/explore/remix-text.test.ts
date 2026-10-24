@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ReferenceTextSchema, validateRemixDraft, validateRemixOutput, type ReferenceText } from "./reference-text.ts";
+import { ReferenceTextSchema, RemixRequestSchema, validateRemixDraft, validateRemixOutput, type ReferenceText } from "./reference-text.ts";
 import { applyVideoTextRemix } from "./remix-text-edit.ts";
 import { readRemixTextDraft } from "./remix-text-draft.ts";
-import { remixTextPrompt } from "./remix-text-prompt.ts";
+import { remixTextPrompt, remixTextSystemPrompt, remixTextPromptVersion, REMIX_TEXT_SYSTEM_PROMPT } from "./remix-text-prompt.ts";
 import { remixInputSource } from "./remix-text-input.ts";
 import { parseExploreFormatEdit } from "../../worker/src/lib/explore-format-edit.ts";
 
@@ -75,4 +75,27 @@ test("a reviewed draft survives reloads, including unfinished edits, without cha
 test("provider payload includes verbatim source blocks and server business facts", () => {
   const context = { businessName: "Acme", productSummary: "Helpful product" };
   assert.deepEqual(JSON.parse(remixTextPrompt(source, context, "Keep the structure")), { format: "hook", referenceText: source.blocks.map(b => b.text), businessContext: context, additionalInstructions: "Keep the structure" });
+});
+
+test("the retained experimental Hook prompt has source budgets; it is not the application prompt", () => {
+  const short = { ...source, blocks: [{ text: "A short hook", startMs: 0, endMs: 3000 }] };
+  const longer = { ...source, blocks: [{ text: "a".repeat(100), startMs: 0, endMs: 3000 }] };
+  assert.match(remixTextSystemPrompt("hook", short), /^Hard output budget for this request: at most 80 total characters/);
+  assert.match(remixTextSystemPrompt("hook", longer), /^Hard output budget for this request: at most 130 total characters/);
+  for (const format of ["wall_text", "slideshow"] as const) {
+    assert.equal(remixTextSystemPrompt(format, source), REMIX_TEXT_SYSTEM_PROMPT);
+    assert.equal(remixTextPromptVersion(format), 2);
+  }
+  assert.equal(remixTextPromptVersion("hook"), 4);
+});
+
+
+test("the single editable remix box accepts copy and guidance up to its shared 6,000-character limit", () => {
+  const combined = "Source copy and wording preferences. ".repeat(100);
+  const request = { requestKey: "00000000-0000-4000-8000-000000000001", referenceId: source.referenceId, slideId: null, instructions: combined, referenceBlocks: [combined], format: "hook" };
+  const parsed = RemixRequestSchema.parse(request);
+  assert.equal(parsed.instructions, combined.trim());
+  assert.equal(JSON.parse(remixTextPrompt(source, { businessName: "Acme" }, parsed.instructions)).additionalInstructions, combined.trim());
+  assert.equal(readRemixTextDraft(JSON.stringify({ version: 1, ...parsed, outcome: "uncertain" }))?.instructions, combined.trim());
+  assert.throws(() => RemixRequestSchema.parse({ ...request, instructions: "x".repeat(6001) }));
 });

@@ -3,17 +3,19 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { readSlideshowGenerationSlot } from "../worker/src/lib/slideshow-generation-batch.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
 
 function load(file, imports, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
+  vm.runInNewContext(code, { exports, require: name => { if (name === "@/lib/http/read-deadline") return { withReadDeadline }; if (name === "@/worker/src/lib/slideshow-generation-batch") return { readSlideshowGenerationSlot }; assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
 
-const image = (overrides = {}) => ({ id: "owned-image", collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", fileName: "reference.png", projectId: "ai-studio", ...overrides });
+const image = (overrides = {}) => ({ id: "owned-image", collection: "image", status: "ready", sourceType: "upload", mimeType: "image/png", fileName: "reference.png", projectId: "explore-reference", ...overrides });
 function client({ assets = [image()], asset = image(), token = "owner-token", status = 200, ok = true } = {}) {
   const reads = [], owners = [];
   const imageLibrary = load("lib/explore/format-reference-images.ts", {
@@ -24,8 +26,8 @@ function client({ assets = [image()], asset = image(), token = "owner-token", st
 }
 
 test("saved image listing keeps user uploads and excludes catalogue copies and unsupported or unfinished media", async () => {
-  const h = client({ assets: [image(), image({ id: "new-upload", projectId: "explore-reference" }), image({ id: "catalog", projectId: "explore-catalog-reference" }),
-    image({ id: "old-catalog", fileName: "creator-reference-01.png" }), image({ id: "user-same-name", projectId: "explore-reference", fileName: "creator-reference-01.png" }),
+  const h = client({ assets: [image(), image({ id: "studio", projectId: "ai-studio" }), image({ id: "carousel", projectId: "trending-carousel-slide" }), image({ id: "unclassified", projectId: null }), image({ id: "new-upload", projectId: "explore-reference" }), image({ id: "catalog", projectId: "explore-catalog-reference" }),
+    image({ id: "old-catalog", projectId: "ai-studio", fileName: "creator-reference-01.png" }), image({ id: "user-same-name", projectId: "explore-reference", fileName: "creator-reference-01.png" }),
     image({ id: "failed", status: "failed" }), image({ id: "pending", status: "uploading" }), image({ id: "video", collection: "video" }),
     image({ id: "generated", sourceType: "generated_image" }), image({ id: "gif", mimeType: "image/gif" }), image({ id: "jpeg", mimeType: "image/jpeg" }), image({ id: "webp", mimeType: "image/webp" }),
   ] });
@@ -33,9 +35,9 @@ test("saved image listing keeps user uploads and excludes catalogue copies and u
   const result = await h.fetchFormatReferenceImages("owner-a", controller.signal);
   assert.equal(JSON.stringify(result.map(asset => asset.id)), JSON.stringify(["owned-image", "new-upload", "user-same-name", "jpeg", "webp"]));
   assert.deepEqual(h.owners, ["owner-a"]);
-  assert.equal(h.reads[0].url, "/api/media?collection=image&sourceTypes=upload");
+  assert.equal(h.reads[0].url, "/api/media?collection=image&sourceTypes=upload&projectId=explore-reference");
   assert.equal(h.reads[0].options.headers.Authorization, "Bearer owner-token");
-  assert.equal(h.reads[0].options.cache, "no-store"); assert.equal(h.reads[0].options.signal, controller.signal);
+  assert.equal(h.reads[0].options.cache, "no-store"); assert.ok(h.reads[0].options.signal instanceof AbortSignal);
   // A fresh picker loads from the account API again, rather than browser-local URLs.
   assert.equal((await h.fetchFormatReferenceImages("owner-a"))[0].id, "owned-image"); assert.equal(h.reads.length, 2);
 });
@@ -71,6 +73,29 @@ test("list failures are reported without presenting a false empty library", asyn
   }
 });
 
+test("Explore origin filtering happens in the owner-scoped database query; other media lists stay broad", async () => {
+  const calls = [];
+  const query = { then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve); } };
+  for (const method of ["select", "eq", "is", "in", "order"]) {
+    query[method] = (...args) => { calls.push([method, ...args]); return query; };
+  }
+  const storage = load("lib/media/media-storage.ts", {
+    "server-only": {},
+    "@supabase/supabase-js": { createClient: () => ({ from: name => { assert.equal(name, "media_assets"); return query; } }) },
+    "@/lib/media/types": { mediaCollections: ["image"] },
+    "@/lib/media/media-delivery": {},
+    "@/lib/storage/storage": {},
+    "@/worker/src/lib/explore-reference-soundtrack": {},
+  }, { process: { env: { SUPABASE_URL: "https://example.test", SUPABASE_SERVICE_ROLE_KEY: "test-only" } } });
+  await storage.listMediaAssets({ userId: "owner-a", collection: "image", sourceTypes: ["upload"], projectId: "explore-reference" });
+  assert.ok(calls.some(call => JSON.stringify(call) === '["eq","user_id","owner-a"]'));
+  assert.ok(calls.some(call => JSON.stringify(call) === '["eq","project_id","explore-reference"]'));
+  assert.ok(calls.some(call => JSON.stringify(call) === '["is","deleted_at",null]'));
+  calls.length = 0;
+  await storage.listMediaAssets({ userId: "owner-a", collection: "image" });
+  assert.ok(!calls.some(call => call[1] === "project_id"));
+});
+
 test("image uploads persist the chosen origin through the existing prepare, upload and completion flow", async () => {
   for (const purpose of ["explore-reference", "explore-catalog-reference", undefined]) {
     const requests = [], owners = [], released = [];
@@ -99,7 +124,7 @@ test("image uploads persist the chosen origin through the existing prepare, uplo
     assert.equal(requests.length, 3); assert.equal(requests[1].options.method, "PUT"); assert.equal(requests[1].options.body, file);
     assert.equal(requests[0].options.headers.Authorization, "Bearer owner-token"); assert.equal(requests[2].options.headers.Authorization, "Bearer owner-token");
     const reopened = client({ assets: [selected.asset] });
-    assert.equal((await reopened.fetchFormatReferenceImages("owner-a")).length, purpose === "explore-catalog-reference" ? 0 : 1);
+    assert.equal((await reopened.fetchFormatReferenceImages("owner-a")).length, purpose === "explore-reference" ? 1 : 0);
   }
 });
 
@@ -115,18 +140,19 @@ test("the existing media API authenticates list and single-image requests and ig
   const types = load("lib/media/types.ts", {});
   const list = load("app/api/media/route.ts", {
     "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) },
+    "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) },
     "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
     "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media, "@/lib/media/types": types,
     "@/lib/media/media-library-visibility": load("lib/media/media-library-visibility.ts", {}),
   }, { Response, URL, console });
-  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
+  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) }, "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
     "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
     "@/lib/explore/remix-source": load("lib/explore/remix-source.ts", {}) }, { Response, URL, console });
-  const url = "https://www.getugcpilot.com/api/media?collection=image&sourceTypes=upload&userId=owner-b";
+  const url = "https://www.getugcpilot.com/api/media?collection=image&sourceTypes=upload&projectId=explore-reference&userId=owner-b";
   assert.equal((await list.GET(new Request(url))).status, 401); assert.equal(calls.length, 0);
   const response = await list.GET(new Request(url, { headers: { Authorization: "Bearer owner-token" } }));
   assert.equal(response.status, 200); assert.equal(response.headers.get("Cache-Control"), "no-store");
-  assert.equal(calls[0].userId, "owner-a"); assert.equal(calls[0].collection, "image"); assert.equal(JSON.stringify(calls[0].sourceTypes), JSON.stringify(["upload"]));
+  assert.equal(calls[0].projectId, "explore-reference"); assert.equal(calls[0].userId, "owner-a"); assert.equal(calls[0].collection, "image"); assert.equal(JSON.stringify(calls[0].sourceTypes), JSON.stringify(["upload"]));
   const request = new Request(url, { headers: { Authorization: "Bearer owner-token" } });
   assert.equal((await get.GET(request, { params: Promise.resolve({ assetId: "foreign-image" }) })).status, 404);
   assert.equal(calls.at(-1).userId, "owner-a");

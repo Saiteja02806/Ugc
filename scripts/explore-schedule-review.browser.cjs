@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/explore-
 fs.mkdirSync(out, { recursive: true });
 const file = (name, value) => fs.writeFileSync(path.join(out, name), value);
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+file("css.cjs", `const names={};module.exports=function(source){const css=source.replace(/\\.([a-zA-Z_][\\w-]*)/g,(_,name)=>'.'+(names[name]='schedule_'+name));return 'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.head.append(style);export default '+JSON.stringify(names)+';';};`);
 file("auth.ts", "export const getCurrentUserIdToken=async()=> 'local-review';");
 file("timezone.ts", "export const useAccountTimeZone=()=> 'Asia/Calcutta';");
 file("entry.tsx", `import {createRoot} from 'react-dom/client';import {ScheduleEditor} from '@/components/scheduling/schedule-editor';import {PublishingPreferencesSettings} from '@/components/settings/publishing-preferences-settings';
@@ -20,16 +21,17 @@ const final={id:'00000000-0000-4000-8000-000000000010',sourceType:'combined_vide
 const hook={...final,id:'00000000-0000-4000-8000-000000000011',sourceType:'user_video',title:'Original hook',durationLabel:'8s'};
 const accounts=['instagram','tiktok','youtube'].map((platform,index)=>({id:'account-'+platform,platform,status:'connected',platformAccountName:'Local '+platform,platformAccountUsername:'fixture',scopes:platform==='instagram'?['instagram_business_content_publish']:platform==='tiktok'?['video.publish']:['https://www.googleapis.com/auth/youtube.upload'],supportsBackgroundRefresh:true}));
 const selected=(params.get('platforms')??'instagram').split(',');
-createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?'hook_and_secondary':'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate='2026-12-01' initialScheduledTime='10:30' minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
+createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor presentation={params.get('presentation')==='workflow'?'workflow':'modal'} finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?undefined:'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate={params.get('date')??'2026-12-01'} initialScheduledTime={params.get('time')??'10:30'} minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onUploadVideo={manual?async file=>({...final,id:'direct-upload',sourceType:'user_video',title:file.name}):undefined} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
 
 async function main() {
   await new Promise((resolve, reject) => {
-    const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], alias: { "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/components/providers/account-timezone-provider": path.join(out, "timezone.ts"), "@": root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }] } });
+    const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], alias: { "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/components/providers/account-timezone-provider": path.join(out, "timezone.ts"), "@": root } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.css$/, use: path.join(out, "css.cjs") }] } });
     compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve()));
   });
   let preferences = { containsSyntheticMedia: false }, preferenceDelay = 0, preferenceFailure = false;
   const writes = [], errors = [];
-  const css = require('./compiled-browser-css.cjs')(root);
+  const css = (await require("postcss")([require("@tailwindcss/postcss")({ base: root })])
+    .process(fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "../components";'), { from: path.join(root, "app/globals.css") })).css;
   const json = (res, body) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://fixture");
@@ -57,6 +59,34 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on("pageerror", error => errors.push(error.message));
   try {
+    await page.clock.setFixedTime(new Date("2026-10-14T09:10:30Z"));
+    await page.goto(base + "/?presentation=workflow&date=2026-10-14&time=02:49");
+    const timePicker = page.getByRole("button", { name: "Choose publish time, currently 02:49 AM", exact: true });
+    await timePicker.waitFor();
+    assert.equal(await page.getByRole("button", { name: "Choose date and time", exact: true }).isDisabled(), true);
+    assert.match(await page.locator("#schedule-clock-help").innerText(), /Now: 2026-10-14 02:40 PM.*Asia\/Calcutta[\s\S]*Earliest: 2026-10-14 02:46 PM/);
+    await timePicker.click();
+    await page.getByRole("group", { name: "AM/PM", exact: true }).getByRole("button", { name: "PM", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    assert.equal(await page.locator('input[name="scheduledTime"]').inputValue(), "14:49");
+    assert.equal(await page.locator("#schedule-time-feedback").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Schedule post", exact: true }).isEnabled(), true);
+    assert.equal(await page.evaluate(() => window.__submission), undefined);
+    await page.getByRole("button", { name: "Schedule post", exact: true }).click();
+    const afternoon = await page.evaluate(() => window.__submission);
+    assert.equal(afternoon.scheduledTime, "14:49"); assert.equal(afternoon.scheduledFor, "2026-10-14T09:19:00.000Z");
+    await page.screenshot({ path: path.join(out, "schedule-afternoon-corrected.png"), fullPage: true });
+    console.log("PASS screenshot regression: explicit PM clears the warning and submits 14:49 IST at the correct UTC instant");
+
+    await page.clock.setFixedTime(new Date("2026-10-14T18:27:30Z"));
+    await page.goto(base + "/?presentation=workflow&date=2026-10-14&time=23:59");
+    await page.getByRole("button", { name: "Use next available time", exact: true }).click();
+    assert.equal(await page.locator('input[name="scheduledDate"]').inputValue(), "2026-10-15");
+    assert.equal(await page.locator('input[name="scheduledTime"]').inputValue(), "00:04");
+    assert.equal(await page.evaluate(() => window.__submission), undefined);
+    assert.equal(await page.getByRole("button", { name: "Schedule post", exact: true }).isEnabled(), true);
+    console.log("PASS next available time crosses midnight with a confirmation buffer and never submits automatically");
+    await page.clock.setFixedTime(new Date("2026-10-14T09:10:30Z"));
     await page.goto(base);
     await page.getByRole("button", { name: "Schedule post", exact: true }).waitFor();
     assert.equal(await page.getByRole("heading", { name: "Final video", exact: true }).count(), 1);
@@ -89,6 +119,7 @@ async function main() {
     const tiktok = await page.evaluate(() => window.__submission.targets[0].settings);
     assert.equal(tiktok.privacyLevel, "PUBLIC_TO_EVERYONE"); assert.equal(tiktok.allowComment, true);
     assert.equal(tiktok.allowDuet, false); assert.equal(tiktok.containsSyntheticMedia, true);
+    assert.equal(tiktok.brandOrganic, false);
     assert.equal(writes.length, 0, "Per-post changes must not overwrite account defaults");
     console.log("PASS TikTok requires an explicit visibility, opt-in interactions and preserves per-post disclosure override");
 
@@ -108,15 +139,41 @@ async function main() {
     await page.getByRole("button", { name: "Save publishing defaults", exact: true }).click();
     await page.getByText("Publishing defaults saved for your account.", { exact: true }).waitFor();
     await page.reload(); await page.waitForFunction(() => !document.querySelector('input[type="checkbox"]')?.disabled);
-    assert.equal(await setting.isChecked(), true); assert.deepEqual(writes, [{containsSyntheticMedia:true,tiktokPrivacyLevel:"PUBLIC_TO_EVERYONE",tiktokAllowComments:true,youtubePrivacyStatus:"public",youtubeMadeForKids:false,youtubeNotifySubscribers:false}]);
+    assert.equal(await setting.isChecked(), true); assert.deepEqual(writes, [{containsSyntheticMedia:true,tiktokPrivacyLevel:"PUBLIC_TO_EVERYONE",tiktokAllowComments:true,tiktokBrandOrganic:false,youtubePrivacyStatus:"public",youtubeMadeForKids:false,youtubeNotifySubscribers:false}]);
     console.log("PASS account preference saves, restores and does not overwrite explicit per-post edits");
 
-    await page.goto(base + "/?mode=manual");
-    await page.getByText("Hook clip", { exact: true }).first().waitFor();
-    assert.ok(await page.getByText("Secondary clip", { exact: true }).count() >= 1);
+    preferences = { ...preferences, tiktokBrandOrganic: true };
+    await page.goto(base + "/?platforms=tiktok");
+    await visibility.selectOption("PUBLIC_TO_EVERYONE");
     await page.getByRole("button", { name: "Schedule post", exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__submission.clipSelection), "hook_and_secondary");
-    console.log("PASS ordinary scheduler retains its two-clip composition flow");
+    await page.waitForFunction(() => window.__submission);
+    assert.equal(await page.evaluate(() => window.__submission.targets[0].settings.brandOrganic), true);
+    assert.equal(await page.evaluate(() => window.__submission.targets[0].settings.brandedContent), false);
+    preferences = { ...preferences, tiktokBrandOrganic: false };
+    console.log("PASS scheduler applies the saved promotional preference independently from AI disclosure");
+
+    await page.goto(base + "/?mode=manual");
+    await page.getByText("Video clip", { exact: true }).waitFor();
+    assert.equal(await page.getByText("Hook clip", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Secondary clip", { exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: /^Change selected video/ }).count(), 1);
+    await page.getByRole("button", { name: /^Change selected video/ }).click();
+    await page.getByRole("button", { name: /Original hook.*Choose/ }).click();
+    await page.getByRole("button", { name: "Schedule post", exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__submission.clipSelection), "secondary_only");
+    assert.equal(await page.evaluate(() => window.__submission.scheduledSource.id), "00000000-0000-4000-8000-000000000011");
+    assert.equal(await page.evaluate(() => window.__submission.useOpeningClip), false);
+    await page.getByLabel("Upload video clip", { exact: true }).setInputFiles({ name: "Uploaded single clip.mp4", mimeType: "video/mp4", buffer: Buffer.from("fixture-upload") });
+    await page.getByRole("button", { name: "Change selected video, currently Uploaded single clip.mp4", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Schedule post", exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__submission.scheduledSource.id), "direct-upload");
+    assert.equal(await page.evaluate(() => window.__submission.openingMedia), null);
+    await page.screenshot({path:path.join(out,"single-video-scheduler-desktop.png"),fullPage:true});
+    console.log("PASS ordinary scheduler chooses or uploads exactly one video and submits no opening clip");
+    await page.setViewportSize({width:390,height:844}); await page.goto(base + "/?mode=manual");
+    await page.getByText("Video clip", { exact: true }).waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({path:path.join(out,"single-video-scheduler-mobile.png"),fullPage:true});
 
     await page.setViewportSize({width:390,height:844}); await page.goto(base);
     await page.getByRole("button", { name: "Schedule post", exact: true }).waitFor();

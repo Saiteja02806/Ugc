@@ -329,7 +329,7 @@ export type SocialPublishAccountLaneUpdate = Partial<{
   updated_at: string;
 }>;
 
-export type GenerationProvider = "gemini" | "higgsfield" | "openai" | "openrouter" | "runway" | "veo";
+export type GenerationProvider = "gemini" | "higgsfield" | "openai" | "openrouter" | "reapi" | "runway" | "veo";
 
 export type GenerationProviderOperationStatus =
   | "failed"

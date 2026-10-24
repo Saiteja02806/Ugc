@@ -39,6 +39,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { usePublishingPreferencesDefault } from "@/components/scheduling/use-publishing-preferences-default";
+import { PostCaptionDefault, PostCaptionField } from "@/components/scheduling/post-caption-field";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import {
   invalidateAccountSchedules,
@@ -101,6 +102,7 @@ export type WallTextSchedulePlatformContext = {
 
 export type ReactionSchedulePlatformContext = {
   assignmentId: string;
+  requestKey: string;
   contentType: "reaction";
   coverUrl?: string | null;
   returnTo: "trending";
@@ -240,7 +242,11 @@ export function PlatformSelectionModal({
   const [tiktokCapabilities, setTikTokCapabilities] = useState<
     Record<string, TikTokCapabilitiesState>
   >({});
-  const [caption, setCaption] = useState("");
+  const [captionState, setCaptionState] = useState({ owner: accountId, text: "", initialized: false });
+  const caption = captionState.owner === accountId ? captionState.text : "";
+  const captionInitialized = captionState.owner === accountId && captionState.initialized;
+  function setCaption(text: string) { setCaptionState(previous => ({ owner: accountId, text, initialized: previous.owner === accountId && previous.initialized })); }
+  function setCaptionInitialized(initialized: boolean) { setCaptionState(previous => ({ owner: accountId, text: previous.owner === accountId ? previous.text : "", initialized })); }
   const [timezoneOverride, setTimezone] = useState<string | null>(null);
   const timezone = timezoneOverride ?? defaultTimezone;
   const [scheduledDateOverride, setScheduledDate] = useState<string | null>(null);
@@ -486,6 +492,8 @@ export function PlatformSelectionModal({
       ...(connection.platform === "tiktok" ? {
         privacyLevel: publishingPreferences.tiktokPrivacyLevel,
         allowComment: publishingPreferences.tiktokAllowComments,
+        brandOrganic: publishingPreferences.tiktokBrandOrganic,
+        commercialContentDisclosureEnabled: publishingPreferences.tiktokBrandOrganic,
       } : {}),
       ...(connection.platform === "youtube" ? {
         privacyStatus: publishingPreferences.youtubePrivacyStatus,
@@ -500,7 +508,7 @@ export function PlatformSelectionModal({
       } : {}),
       }];
     }),
-  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, publishingSettingsOverrides, tiktokCapabilities]);
+  ), [connections, publishingPreferences.containsSyntheticMedia, publishingPreferences.tiktokPrivacyLevel, publishingPreferences.tiktokAllowComments, publishingPreferences.tiktokBrandOrganic, publishingPreferences.youtubePrivacyStatus, publishingPreferences.youtubeMadeForKids, publishingPreferences.youtubeNotifySubscribers, publishingSettingsOverrides, tiktokCapabilities]);
   const usesPublishingPreferences = selectedConnections.some(
     (connection) => connection.platform !== "instagram",
   );
@@ -563,6 +571,7 @@ export function PlatformSelectionModal({
     setPublishingSettings({});
     setTikTokCapabilities({});
     setCaption("");
+    setCaptionInitialized(false);
     setTimezone(null);
     setScheduledDate(null);
     setScheduledTime(null);
@@ -823,6 +832,7 @@ export function PlatformSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      <PostCaptionDefault ownerId={user?.uid ?? null} enabled={open && !submitting} value={caption} initialized={captionInitialized} onChange={value => { setCaptionInitialized(true); setCaption(value); }} />
       <DialogContent
         className="instagram-theme max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[22px] border border-border bg-card p-0 text-foreground shadow-floating ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
         showCloseButton={!submitting}
@@ -987,6 +997,8 @@ export function PlatformSelectionModal({
           ) : step === "details" ? (
             <DetailsStep
               caption={caption}
+              ownerId={user?.uid ?? null}
+              captionInitialized={captionInitialized}
               contentKind={contentKind}
               context={context}
               publishingSettings={publishingSettings}
@@ -996,7 +1008,7 @@ export function PlatformSelectionModal({
               onRetryPreferences={publishingPreferences.retry}
               selectedConnections={selectedConnections}
               tiktokCapabilities={tiktokCapabilities}
-              onCaptionChange={setCaption}
+              onCaptionChange={value => { setCaptionInitialized(true); setCaption(value); }}
               onChangeSetting={updatePublishingSetting}
               onRetryTikTok={loadTikTokCapabilities}
             />
@@ -1363,6 +1375,8 @@ function AccountsStep({
 
 function DetailsStep({
   caption,
+  ownerId,
+  captionInitialized,
   contentKind,
   context,
   onCaptionChange,
@@ -1377,6 +1391,8 @@ function DetailsStep({
   tiktokCapabilities,
 }: {
   caption: string;
+  ownerId: string | null;
+  captionInitialized: boolean;
   contentKind: ScheduleContentKind;
   context: SchedulePlatformContext | null;
   onCaptionChange: (value: string) => void;
@@ -1435,35 +1451,15 @@ function DetailsStep({
       </div>
 
       <div className="grid content-start gap-5">
-        <label className="block rounded-card border border-border bg-card p-4 sm:p-5">
-          <span className="text-sm font-semibold text-foreground">
-            Post caption{" "}
-            <span className="font-normal text-muted-foreground">
-              (optional)
-            </span>
-          </span>
-          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-            {hasTikTokDestination
+        <div className="rounded-card border border-border bg-card p-4 sm:p-5">
+          <PostCaptionField applyDefault={false} ownerId={ownerId} value={caption} initialized={captionInitialized} onChange={onCaptionChange} description={hasTikTokDestination
               ? "This appears with the TikTok post, separate from the text on the media."
               : isWallText
                 ? "Add context to accompany this Text Reel. This appears in the Instagram post caption, separate from the on-screen text."
                 : isReel
                   ? "This appears in the Instagram post caption, separate from the text in the Reaction Reel."
-                  : "This appears below the carousel on Instagram, separate from the text on the slides."}
-          </span>
-          <textarea
-            name="caption"
-            rows={4}
-            maxLength={5000}
-            value={caption}
-            onChange={(event) => onCaptionChange(event.target.value)}
-            placeholder="Leave blank to publish without a caption."
-            className="mt-3 min-h-28 w-full resize-y rounded-control border border-border bg-card-muted px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
-          />
-          <span className="mt-1 block text-right text-xs text-muted-foreground">
-            {caption.length}/5000
-          </span>
-        </label>
+                  : "This appears below the carousel on Instagram, separate from the text on the slides."} />
+        </div>
 
         {selectedConnections.some(
           (connection) => connection.platform === "instagram",

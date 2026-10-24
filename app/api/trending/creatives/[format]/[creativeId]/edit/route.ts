@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { parseCarouselManualTextStyle } from "@/lib/carousel/manual-text";
 
 import {
   FirebaseAuthRequestError,
@@ -73,6 +74,10 @@ const CAROUSEL_PATCH_SCHEMA = z
             slideNumber: z.number().int().min(1).max(20),
             subtext: z.string().max(360),
             textPosition: POSITION_SCHEMA,
+            textStyle: z.unknown().optional().transform((value, context) => {
+              try { return parseCarouselManualTextStyle(value); }
+              catch { context.addIssue({ code: "custom", message: "Choose a valid slideshow font, size and color." }); return z.NEVER; }
+            }),
           })
           .strip(),
       )
@@ -211,7 +216,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    const current = await loadTrendingCreativeEditor({
+    // Carousel patches are complete; saveTrendingCreativeEditor already loads
+    // authoritative defaults and validates ownership/revision/source admission.
+    const current = scope.value.format === "carousel" ? null : await loadTrendingCreativeEditor({
       assignmentId: parsed.data.assignmentId,
       creativeId: scope.value.creativeId,
       format: scope.value.format,
@@ -244,21 +251,21 @@ export async function PATCH(request: Request, context: RouteContext) {
             userId: auth.userId,
           },
           {
-            beforeDispatch: (createdJob) =>
-              attachTrendingCreativeEditRenderJob({
+            beforeDispatch: async (createdJob) => {
+              const queued = await attachTrendingCreativeEditRenderJob({
                 editId,
                 jobId: createdJob.id,
                 revision: edit.revision,
                 userId: auth.userId,
-              }).then(() => undefined),
+              });
+              edit = { ...edit, renderState: queued.render_status,
+                renderJobId: queued.render_job_id, renderError: queued.render_error,
+                updatedAt: queued.updated_at };
+            },
           },
         );
-        edit = await loadTrendingCreativeEditor({
-          assignmentId: parsed.data.assignmentId,
-          creativeId: scope.value.creativeId,
-          format: scope.value.format,
-          userId: auth.userId,
-        });
+        // Return the durable queued snapshot. A post-dispatch read failure must
+        // never mark an accepted worker job failed. Status reads collect output.
       } catch (error) {
         await markTrendingCreativeEditRenderFailed({
           editId,
@@ -291,7 +298,7 @@ function toSaveInput(
     | z.infer<typeof CAROUSEL_PATCH_SCHEMA>
     | z.infer<typeof HOOK_PATCH_SCHEMA>
     | z.infer<typeof WALL_PATCH_SCHEMA>,
-  current: Awaited<ReturnType<typeof loadTrendingCreativeEditor>>,
+  current: Awaited<ReturnType<typeof loadTrendingCreativeEditor>> | null,
 ): TrendingCreativeEditSaveInput {
   if (format === "carousel" && "slides" in data) {
     return {
@@ -308,7 +315,7 @@ function toSaveInput(
   if (
     format === "hook_video" &&
     "hookText" in data &&
-    current.content.format === "hook_video"
+    current?.content.format === "hook_video"
   ) {
     return {
       assignmentId: data.assignmentId,
@@ -325,7 +332,7 @@ function toSaveInput(
   if (
     format === "wall_text" &&
     "fullText" in data &&
-    current.content.format === "wall_text"
+    current?.content.format === "wall_text"
   ) {
     return {
       assignmentId: data.assignmentId,

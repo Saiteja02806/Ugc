@@ -55,7 +55,7 @@
 .demoSourceActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .demoSequence { width: 100%; max-width: 960px; margin-inline: auto; padding: 28px; }
 .demoPreviewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
-.sequencePlayer { aspect-ratio: 16 / 9; max-height: 55dvh; border: 1px solid var(--border); border-radius: 12px; object-fit: contain; }
+.sequencePlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 55dvh; align-self: center; border: 1px solid var(--border); border-radius: 12px; object-fit: contain; }
 .sequencePlaceholder { display: flex; width: 100%; min-height: 180px; height: auto; aspect-ratio: 16 / 9; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px dashed var(--border); border-radius: 12px; padding: 16px; font-size: 13px; color: var(--muted); }
 .sequencePlaceholder .videoStartActions > button { min-height: 88px; }
 @media (max-width: 767px) {
@@ -68,6 +68,11 @@
 .sourcePreview > p { max-width: 100%; }
 .sourcePlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 60dvh; object-fit: contain; border-radius: 8px; background: transparent; }
 .instructionsField { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.composer .referencePromptSection { min-width: 0; }
+.composer .referencePromptSection > div > span { font-size: 13px; line-height: 20px; }
+.composer .referencePromptSection .referencePromptAction { width: auto; min-height: 32px; padding: 4px 6px; font-size: 12px; line-height: 18px; font-weight: 400; }
+.composer .referencePromptSection textarea { font-size: 13px; line-height: 20px; }
+@media (pointer: coarse) { .composer .referencePromptSection .referencePromptAction { min-height: 44px; } }
 .composer :global(.sr-only), .composition :global(.sr-only) { margin: 0; }
 .sectionTitle { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.02em; }
 
@@ -92,6 +97,23 @@
 .prompt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .composer .instructionsField .promptWithAttachments { min-height: 144px; height: 160px; padding-bottom: 72px; }
 
+/* One prompt field, with a reserved footer for attachments and the rewrite action. */
+.promptWithAction {
+  padding-bottom: 64px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 8px;
+  background: var(--card-muted);
+}
+.promptWithAction:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.composer .instructionsField .promptWithAction .prompt {
+  height: 160px;
+  min-height: 144px;
+  border: 0;
+  padding-bottom: 10px;
+  background: transparent;
+}
+.promptWithAction .prompt:focus-visible { outline: none; }
+
 /* First row: Model + Duration. Second row: Quality + Videos + Ratio. */
 .settingsGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px 10px; }
 .settingField { display: flex; min-width: 0; flex-direction: column; gap: 4px; grid-column: span 2; }
@@ -99,7 +121,7 @@
 .settingsGrid.imageSettings > .settingField { grid-column: span 3; }
 .settingsGrid.imageSettings > .settingField:first-child { grid-column: 1 / -1; }
 .settingField > span { font-size: 12px; line-height: 16px; }
-.settingField > button {
+.settingField > button, .settingField > .referenceDuration {
   width: 100%;
   min-width: 0;
   height: 36px;
@@ -111,6 +133,8 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 45%, transparent);
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
+.settingField > .referenceDuration { display: flex; align-items: center; justify-content: flex-start; gap: 6px; }
+.referenceTimingHint { color: var(--muted); font-size: 11px; line-height: 16px; }
 .settingField > button:hover { box-shadow: inset 0 0 0 1px var(--muted); }
 .settingField > button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .settingField > button > svg { flex-shrink: 0; width: 12px; }
@@ -124,6 +148,8 @@
 .classicReference button:is([data-state="empty"], [data-state="available"]) > svg:first-child { width: 22px; height: 22px; }
 .classicReference button:is([data-state="empty"], [data-state="available"]) > svg:last-child { display: none; }
 .classicReference button:is([data-state="empty"], [data-state="available"]) > span { font-size: 12px; line-height: 18px; }
+.primaryAction[data-compact="true"] { width: auto; min-width: 128px; min-height: 36px; height: 36px; padding: 0 14px; font-size: 13px; }
+@media (pointer: coarse) { .primaryAction[data-compact="true"] { min-height: 44px; height: 44px; } }
 .referenceButton {
   position: relative;
   display: flex;
@@ -159,11 +185,14 @@
 .composition, .scheduling { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
 .editMediaGrid { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
 .uploadCard { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.uploadCard[hidden] { display: none; }
 .uploadCard > .finishRow { min-height: 24px; gap: 4px; }
 .uploadCard h3 { min-width: 0; }
 .uploadCard p { margin: 0; }
 .editUploadButton { position: relative; width: 100%; height: 160px; min-height: 144px; min-width: 0; flex-direction: column; gap: 10px; border: 1px solid color-mix(in srgb, var(--border) 55%, transparent); border-radius: 14px; background: var(--card-muted); padding: 12px 6px; font-size: 13px; font-weight: 500; white-space: normal; transition: border-color 160ms ease, background-color 160ms ease; }
-.editUploadButton.editAudioButton { height: 44px; min-height: 44px; flex: none; flex-direction: row; gap: 10px; padding: 10px 12px; border-radius: 12px; }
+.editUploadButton.editAudioButton { width: fit-content; height: auto; min-height: 34px; flex: none; flex-direction: row; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 20px; }
+.demoPreviewAction { width: fit-content; height: auto; min-height: 34px; flex: none; flex-direction: row; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 20px; }
+.editAudioButton > svg { width: 16px; height: 16px; }
 .demoSourceCards { display: flex; flex-wrap: wrap; gap: 12px; }
 .demoSourceCards > .editUploadButton { width: 128px; height: 128px; min-height: 128px; aspect-ratio: 1; border-radius: 14px; }
 .iconWell { display: flex; width: 36px; height: 36px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 50%; background: var(--card); color: var(--foreground); }
@@ -204,11 +233,34 @@
 .editWorkspace { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 24px; padding: 24px; }
 .editWorkspace > div:first-child .sectionHelp { margin-top: 6px; }
 .sequenceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); align-items: stretch; gap: 12px; }
+.sequenceGrid[data-demo-selected="false"]:not([data-kind="hook"]) { grid-template-columns: minmax(0, 1fr); }
+.editSequence { min-height: 280px; height: min(60dvh, 620px); flex: none; }
 .segment { display: flex; min-width: 0; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; }
+/* Result choices sit below their own preview. Keep this specific control compact
+   even though a column flex container stretches unclassified direct children. */
+.segment > :global(button[aria-pressed]) { width: fit-content; max-width: 100%; min-height: 40px; height: auto; align-self: center; padding-inline: 18px; white-space: normal; }
+.segmentActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.segmentHeader { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.segmentHeader { min-height: 24px; }
+.sequenceGrid[data-kind="hook"] { --segment-preview-height: clamp(280px, 100dvh - 380px, 540px); }
+.sequenceGrid[data-kind="hook"] .segmentMedia { display: flex; min-width: 0; height: var(--segment-preview-height); flex: none; align-items: center; justify-content: center; }
+.sequenceGrid[data-kind="hook"] .segmentMedia > .editSequence { width: 100%; height: 100%; min-height: 0; }
+.sequenceGrid[data-kind="hook"] .segmentMedia > .demoPlayer { max-height: 100%; }
+.segmentActions > button { width: auto; max-width: 100%; min-height: 34px; height: auto; white-space: normal; padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+.segment > .segmentActions { margin-top: auto; padding-top: 4px; }
+.segment:has([data-workflow-empty-segment]) { border-style: dashed; }
+.captionPosition { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-top: 12px; }
+.captionPositionChoices { display: inline-flex; flex: none; max-width: 100%; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); }
+.captionPositionChoices > button { min-width: 52px; min-height: 32px; height: auto; padding: 5px 9px; border-radius: 5px; font-size: 12px; }
+.captionPositionChoices > button[aria-pressed="true"] { background: color-mix(in srgb, var(--primary) 14%, var(--card)); color: var(--primary); font-weight: 600; }
+@media (pointer: coarse) { .segmentActions > button, .captionPositionChoices > button, .editUploadButton.editAudioButton, .demoPreviewAction { min-height: 44px; } }
+.previewAction { width: fit-content; max-width: 100%; min-height: 40px; align-self: center; padding-inline: 24px; }
 .segmentEmpty { display: flex; min-height: 220px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; text-align: center; }
 .segmentEmpty p { max-width: 240px; margin: 0; font-size: 13px; line-height: 22px; color: var(--muted); }
+.sequenceGrid[data-kind="hook"] { justify-content: center; grid-template-columns: minmax(0, 480px) 20px minmax(0, 480px); }
+.sequenceGrid[data-kind="hook"] .segmentEmpty { width: min(100%, calc(var(--segment-preview-height) * 9 / 16)); height: 100%; aspect-ratio: 9 / 16; min-height: 0; flex: none; margin-inline: auto; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-muted); }
 .sequenceArrow { width: 20px; height: 20px; align-self: center; color: var(--muted); }
-.demoPlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: 320px; align-self: center; border-radius: 6px; background: transparent; }
+.demoPlayer { aspect-ratio: auto; width: auto; height: auto; max-width: 100%; max-height: min(60dvh, 620px); align-self: center; border-radius: 6px; background: transparent; }
 .audioSummary { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: var(--card); }
 .postEmpty { display: flex; min-height: 240px; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
 .captionPreview { min-width: 0; padding: 16px; border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent); }
@@ -217,6 +269,7 @@
 @media (max-width: 639px) {
   .editWorkspace { padding: 20px 16px; }
   .sequenceGrid { grid-template-columns: minmax(0, 1fr); }
+  .sequenceGrid[data-kind="hook"] { grid-template-columns: minmax(0, 420px); }
   .sequenceArrow { justify-self: center; transform: rotate(90deg); }
   .segmentEmpty { min-height: 140px; }
 }
@@ -232,7 +285,7 @@
 
 @media (max-width: 1023px) {
   .sourceModes > button, .sourceSummary > button { min-width: 44px; min-height: 44px; }
-  .settingField > button, .scheduleDateTime input { height: 44px; }
+  .settingField > button, .settingField > .referenceDuration, .scheduleDateTime input { height: 44px; }
   .helpButton { width: 44px; height: 44px; }
 }
 

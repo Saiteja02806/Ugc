@@ -1,6 +1,9 @@
 import { generateGeminiImageBuffer, generateGemini3ProImageBuffer, GEMINI_3_PRO_IMAGE_MODEL } from "../lib/gemini-image.js";
-import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL } from "../lib/openai-image.js";
+import { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL, SLIDESHOW_FLARE_IMAGE_MODEL } from "../lib/openai-image.js";
+import { readSlideshowGenerationSlot, slideshowSlotPrompt, type SlideshowGenerationSlot } from "../lib/slideshow-generation-batch.js";
+import { parseSlideshowBusinessContext, slideshowBusinessContextPrompt, type SlideshowBusinessContext } from "../lib/slideshow-business-context.js";
 import { generateSeedreamImageBuffer, SEEDREAM_5_PRO_IMAGE_MODEL } from "../lib/seedream-image.js";
+import { generateOpenRouterSeedreamImage } from "../lib/openrouter-seedream-image.js";
 import {
   assertProviderOperationCanContinue,
   createGenerationRequestFingerprint,
@@ -28,6 +31,9 @@ import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import { parseImageReferenceContext } from "../lib/image-reference-context.js";
 import { slideshowReferencePrompt, slideshowReferenceImagesPrompt } from "../lib/slideshow-reference-prompt.js";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "../lib/slideshow-generation-contract.js";
+import { isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, hookKeyframeSceneBytesMatch, hookKeyframeProviderImageLabels, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
+import { downloadReferenceImageContext } from "../lib/reference-image-download.js";
+import { resolveCreatorSceneDelivery } from "../lib/creator-scene-delivery.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -35,7 +41,10 @@ const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 type GenerateImageInput = {
   aspectRatio: AIStudioImageRatio;
   generationId: string;
-  model: "gpt_image" | "gpt_image_2_5" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  model: "gpt_image" | "gpt_image_2_5" | "gpt_image_2_5_flare" | "gemini_3_pro" | "nano_banana_2" | "seedream_5_pro";
+  provider?: "runway" | "openrouter";
+  slideshowGeneration?: SlideshowGenerationSlot;
+  slideshowBusinessContext?: SlideshowBusinessContext;
   prompt: string;
   referenceImageUrl?: string;
   referenceImageUrls?: string[];
@@ -43,6 +52,7 @@ type GenerateImageInput = {
   additionalReferenceStartIndex?: number;
   regenerationReferenceIndex?: number;
   slideshowReferenceContract?: SlideshowReferenceContract;
+  hookKeyframe?: HookKeyframeGenerationReceipt;
 };
 
 function getInput(job: BackgroundJobRow): GenerateImageInput {
@@ -69,12 +79,33 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   }
 
   const model = getImageModel(job.input_json.model);
+  const provider = job.input_json.provider;
+  if (provider !== undefined && (model !== "seedream_5_pro" || provider !== "runway" && provider !== "openrouter")) {
+    throw new ProviderRequestNotSubmittedError("This image job has an unsupported provider route.");
+  }
+  const characterReferenceContext = promptDrivenCharacter && job.input_json.exploreFormat === undefined;
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
+  const hookKeyframe = job.input_json.hookKeyframe === undefined ? undefined : parseHookKeyframeGenerationReceipt(job.input_json.hookKeyframe);
+  if (hookKeyframe && model === "seedream_5_pro" && provider !== "openrouter") throw new ProviderRequestNotSubmittedError("Starting-frame Seedream jobs require the saved OpenRouter route.");
+  if (job.input_json.hookKeyframe !== undefined && (!hookKeyframe || !["hook", "wall_text"].includes(String(job.input_json.exploreFormat)) ||
+    job.input_json.slideshowReferenceContract !== undefined || job.input_json.slideshowGeneration !== undefined ||
+    job.input_json.slideshowBusinessContext !== undefined || job.input_json.subjectReferenceIndex !== undefined ||
+    job.input_json.additionalReferenceStartIndex !== undefined || job.input_json.regenerationReferenceIndex !== undefined ||
+    job.input_json.characterSource !== undefined || !isHookKeyframeImageInput({ receipt: hookKeyframe, ownerId: job.user_id,
+      model, aspectRatio: String(job.input_json.aspectRatio), prompt: prompt.trim(), referenceImageUrl, referenceImageUrls }))) {
+    throw new ProviderRequestNotSubmittedError("This Hook starting-image contract could not be verified.");
+  }
   const slideshowReferenceContract = job.input_json.slideshowReferenceContract === undefined ? undefined
     : parseSlideshowReferenceContract(job.input_json.slideshowReferenceContract, referenceImageUrls?.length ?? (referenceImageUrl ? 1 : 0));
-  if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
-  if (referenceImageUrls && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "nano_banana_2"].includes(model))) {
+  const slideshowGeneration = readSlideshowGenerationSlot(job.input_json.slideshowGeneration);
+  const slideshowBusinessContext = parseSlideshowBusinessContext(job.input_json.slideshowBusinessContext);
+  if (job.input_json.slideshowBusinessContext !== undefined && (!slideshowBusinessContext || job.input_json.exploreFormat !== "slideshow") || slideshowGeneration && !slideshowBusinessContext) throw new ProviderRequestNotSubmittedError("This slideshow job requires its saved business context.");
+  if (job.input_json.slideshowGeneration !== undefined && (!slideshowGeneration || job.input_json.exploreFormat !== "slideshow")) throw new ProviderRequestNotSubmittedError("Invalid slideshow output position.");
+  if (slideshowReferenceContract && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) throw new ProviderRequestNotSubmittedError("This image job does not support the slideshow reference contract.");
+  if (slideshowReferenceContract?.version === 4 && slideshowGeneration && slideshowReferenceContract.plan!.outputSlideIndex !== slideshowGeneration.slideIndex) throw new ProviderRequestNotSubmittedError("The saved slide plan does not match this output position.");
+  if (referenceImageUrls && characterReferenceContext && referenceImageUrls.length > 10) throw new ProviderRequestNotSubmittedError("Choose up to 10 influencer references.");
+  if (referenceImageUrls && !characterReferenceContext && !hookKeyframe && (job.input_json.exploreFormat !== "slideshow" || !["gpt_image_2_5", "gpt_image_2_5_flare", "nano_banana_2"].includes(model))) {
     throw new Error("This image job does not support slideshow reference context.");
   }
   if (referenceImageUrls && referenceImageUrl && referenceImageUrls[0] !== referenceImageUrl) {
@@ -96,13 +127,17 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
     aspectRatio: getAspectRatio(job.input_json.aspectRatio),
     generationId: generationId.trim(),
     model,
+    ...(provider === undefined ? {} : { provider }),
     prompt: prompt.trim(),
     referenceImageUrl: referenceImageUrls?.[0] ?? referenceImageUrl,
     referenceImageUrls,
+    ...(hookKeyframe ? { hookKeyframe } : {}),
     ...(subjectReferenceIndex === undefined ? {} : { subjectReferenceIndex: subjectReferenceIndex as number }),
     ...(additionalReferenceStartIndex === undefined ? {} : { additionalReferenceStartIndex }),
     ...(regenerationReferenceIndex === undefined ? {} : { regenerationReferenceIndex: regenerationReferenceIndex as number }),
     ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
+    ...(slideshowGeneration ? { slideshowGeneration } : {}),
+    ...(slideshowBusinessContext ? { slideshowBusinessContext } : {}),
   };
 }
 
@@ -111,23 +146,31 @@ export async function runGenerateImageJob(
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {
   const input = getInput(job);
-  const providerPrompt = input.slideshowReferenceContract
-    ? slideshowGenerationPrompt(input.prompt, input.aspectRatio, input.slideshowReferenceContract)
+  const preserveReference = input.slideshowReferenceContract?.version === 3 || input.slideshowReferenceContract?.version === 4;
+  const contextualPrompt = input.slideshowBusinessContext ? slideshowBusinessContextPrompt(input.prompt, input.slideshowBusinessContext, preserveReference) : input.prompt;
+  const slidePrompt = input.slideshowGeneration ? slideshowSlotPrompt(contextualPrompt, input.slideshowGeneration, preserveReference) : contextualPrompt;
+  const referencePrompt = input.slideshowReferenceContract
+    ? slideshowGenerationPrompt(slidePrompt, input.aspectRatio, input.slideshowReferenceContract)
     : input.additionalReferenceStartIndex
-    ? slideshowReferenceImagesPrompt(input.prompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
+    ? slideshowReferenceImagesPrompt(slidePrompt, input.referenceImageUrls!.length, input.additionalReferenceStartIndex, input.regenerationReferenceIndex)
     : input.subjectReferenceIndex
-    ? slideshowReferencePrompt(input.prompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
-    : input.prompt;
-  if (input.slideshowReferenceContract && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
+    ? slideshowReferencePrompt(slidePrompt, input.referenceImageUrls!.length, input.subjectReferenceIndex)
+    : slidePrompt;
+  const providerPrompt = input.slideshowReferenceContract?.version === 4 && input.slideshowBusinessContext
+    ? slideshowBusinessContextPrompt(referencePrompt, input.slideshowBusinessContext, true) : referencePrompt;
+  if ((input.slideshowReferenceContract || input.slideshowBusinessContext || input.slideshowGeneration) && providerPrompt.length > 32_000) throw new ProviderRequestNotSubmittedError("Shorten the slideshow instructions to fit within 32,000 characters including reference guidance.");
   const userId = getPathSegment(job.user_id, "user");
   const projectId = getPathSegment(job.project_id, "default");
   const outputKey = `images/generated/${userId}/${projectId}/${input.generationId}.png`;
-  const provider = input.model === "seedream_5_pro" ? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
+  // Jobs admitted before the OpenRouter switch have no route field. Keep their
+  // Runway operation key and fingerprint so recovery cannot spend twice.
+  const provider = input.model === "seedream_5_pro" ? input.provider ?? "runway" : input.model === "nano_banana_2" || input.model === "gemini_3_pro" ? "gemini" : "openai";
   const stagingKey = `generation-staging/${job.id}/${provider}-image-source.png`;
   const existingOutput = await getStoredObject(outputKey);
+  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   if (existingOutput) {
-    return buildOutput(input, existingOutput, provider);
+    return buildOutput(input, existingOutput, provider, providerPrompt, dimensions);
   }
 
   await context.checkpoint({
@@ -139,6 +182,7 @@ export async function runGenerateImageJob(
     aspectRatio: input.aspectRatio,
     generationId: input.generationId,
     model: input.model,
+    ...(input.provider === undefined ? {} : { provider: input.provider }),
     outputKey,
     prompt: input.prompt,
     referenceImageUrl: input.referenceImageUrl ?? null,
@@ -148,6 +192,9 @@ export async function runGenerateImageJob(
     ...(input.additionalReferenceStartIndex ? { additionalReferenceStartIndex: input.additionalReferenceStartIndex } : {}),
     ...(input.regenerationReferenceIndex ? { regenerationReferenceIndex: input.regenerationReferenceIndex } : {}),
     ...(input.slideshowReferenceContract ? { slideshowReferenceContract: input.slideshowReferenceContract } : {}),
+    ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
+    ...(input.slideshowBusinessContext ? { slideshowBusinessContext: input.slideshowBusinessContext } : {}),
+    ...(input.hookKeyframe ? { hookKeyframe: input.hookKeyframe } : {}),
   });
   const reservation = await context.store.reserveGenerationProviderOperation({
     jobId: job.id,
@@ -157,30 +204,49 @@ export async function runGenerateImageJob(
   });
   let generatedImageBuffer: Buffer;
 
-  if (input.model === "gemini_3_pro" || input.model === "seedream_5_pro") {
+  if (input.model === "gemini_3_pro" || input.model === "seedream_5_pro" && provider === "runway") {
     generatedImageBuffer = await generateDurableImageForJob(job, context, input, reservation, stagingKey, operationKey);
   } else if (reservation.shouldSubmit) {
     let generated;
 
     try {
       const referenceImageUrl = input.referenceImageUrl
-        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
+        ? input.hookKeyframe ? resolveCreatorSceneDelivery(await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? ""), input.hookKeyframe)
+          : await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
       const referenceImages = input.referenceImageUrls
         ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
         : referenceImageUrl;
+      const plan = input.slideshowReferenceContract?.version === 4 ? input.slideshowReferenceContract.plan : undefined;
+      const hook = input.hookKeyframe;
+      if (hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model)) {
+        const downloaded = await downloadReferenceImageContext(referenceImages as string[]);
+        if (downloaded.length !== hook.personImageAssetIds.length + 1 || !hookKeyframeSceneBytesMatch(hook, downloaded[0])) throw new ProviderRequestNotSubmittedError("The starting frame does not match its verified source. No image generation was submitted.");
+      }
+      const hookLabels = hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model) ? hookKeyframeProviderImageLabels(hook.personImageAssetIds.length, hook.promptVersion === 1 ? 2 : hook.promptVersion) : undefined;
+      const labelledPrompt = hookLabels ? `${providerPrompt}\n\nIMAGE INPUT ORDER:\n${hookLabels.join("\n")}` : providerPrompt;
+      if (input.model === "seedream_5_pro" && labelledPrompt.length > 4_000) throw new ProviderRequestNotSubmittedError("Shorten the Seedream image instructions to fit its 4,000-character limit including image roles.");
+      const referenceLabels = hookLabels ?? (plan ? input.referenceImageUrls!.map((_, index) => plan.images.filter(image => image.imageIndex === index + 1).map(image => `${image.label} (${image.role})`).join("; ")) : undefined);
       generated =
-        input.model === "nano_banana_2"
-          ? await generateGeminiImageBuffer(
+        input.model === "seedream_5_pro"
+          ? await generateOpenRouterSeedreamImage({
+              prompt: labelledPrompt, aspectRatio: input.aspectRatio,
+              referenceImageUrl,
+              ...(input.referenceImageUrls ? { referenceImageUrls: referenceImages as string[] } : {}),
+            })
+          : input.model === "nano_banana_2"
+          ? referenceLabels ? await generateGeminiImageBuffer(providerPrompt, input.aspectRatio, referenceImages, undefined, referenceLabels) : await generateGeminiImageBuffer(
               providerPrompt,
               input.aspectRatio,
               referenceImages,
+              ...(input.hookKeyframe && input.hookKeyframe.promptVersion >= 2 ? [input.hookKeyframe] as const : []),
             )
           : await generateOpenAiImageBuffer(
-              providerPrompt,
+              labelledPrompt,
               input.aspectRatio,
               referenceImages,
-              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : undefined,
-              Boolean(input.slideshowReferenceContract),
+              input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : input.model === "gpt_image_2_5_flare" ? SLIDESHOW_FLARE_IMAGE_MODEL : undefined,
+              Boolean(input.slideshowReferenceContract || input.hookKeyframe),
+              ...(referenceLabels ? [referenceLabels] as const : []),
             );
     } catch (error) {
       return persistProviderSubmissionFailure({
@@ -191,9 +257,13 @@ export async function runGenerateImageJob(
       });
     }
 
+    const providerMetadata = {
+      model: generated.model,
+      ...("costUsd" in generated && typeof generated.costUsd === "number" ? { costUsd: generated.costUsd } : {}),
+    };
     await context.store.markGenerationProviderSucceeded({
       jobId: job.id,
-      metadata: { model: generated.model },
+      metadata: providerMetadata,
       operationKey,
       providerOperationId: generated.requestId ?? undefined,
     });
@@ -206,7 +276,7 @@ export async function runGenerateImageJob(
     await context.store.markGenerationProviderSucceeded({
       jobId: job.id,
       metadata: {
-        model: generated.model,
+        ...providerMetadata,
         stagingKey: staged.key,
       },
       operationKey,
@@ -239,9 +309,9 @@ export async function runGenerateImageJob(
   const imageBuffer = await prepareAIStudioImageOutput(
     generatedImageBuffer,
     input.aspectRatio,
-    { preserveComposition: Boolean(input.slideshowReferenceContract) },
+    { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe),
+      ...(input.hookKeyframe && input.hookKeyframe.version !== 1 && input.hookKeyframe.promptVersion >= 2 ? { cropNearRatioPadding: true } : {}) },
   );
-  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   await context.checkpoint({
     progress: 90,
@@ -268,7 +338,7 @@ export async function runGenerateImageJob(
     outputUrl: uploaded.url,
   });
 
-  return buildOutput(input, uploaded, provider);
+  return buildOutput(input, uploaded, provider, providerPrompt, dimensions);
 }
 
 async function generateDurableImageForJob(
@@ -291,11 +361,18 @@ async function generateDurableImageForJob(
       return await downloadStoredObjectBuffer(savedStagingKey);
     }
     let acceptedOperationId = operationId;
+    const referenceImageUrls = input.referenceImageUrls && action === "submit"
+      ? await Promise.all(input.referenceImageUrls.map(async (url, index) => {
+        const resolved = await resolveOwnedPrivateMediaUrl(url, job.user_id ?? "");
+        return index === 0 && input.hookKeyframe ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
+      })) : input.referenceImageUrls;
     const buffer = await generate({
       aspectRatio: input.aspectRatio,
       prompt: input.prompt,
-      referenceImageUrl: action === "submit" && input.referenceImageUrl
-        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl,
+      referenceImageUrl: referenceImageUrls?.[0] ?? (action === "submit" && input.referenceImageUrl
+        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : input.referenceImageUrl),
+      ...(referenceImageUrls ? { referenceImageUrls } : {}),
+      ...(input.hookKeyframe && input.hookKeyframe.promptVersion >= 2 ? { hookKeyframe: input.hookKeyframe } : {}),
       providerOperationId: operationId,
       onOperationCreated: async (providerOperationId) => {
         await context.store.markGenerationProviderSubmitted({ jobId: job.id, operationKey, providerOperationId });
@@ -335,17 +412,22 @@ async function generateDurableImageForJob(
 function buildOutput(
   input: GenerateImageInput,
   uploaded: { key: string; url: string },
-  provider: "gemini" | "openai" | "runway",
+  provider: "gemini" | "openai" | "runway" | "openrouter",
+  effectivePrompt: string,
+  dimensions: { width: number; height: number },
 ) {
-  const dimensions = getAIStudioImageDimensions(input.aspectRatio);
 
   return {
     fileSizeBytes: undefined,
     generationId: input.generationId,
+    ...(input.hookKeyframe ? { hookKeyframe: input.hookKeyframe } : {}),
+    ...(input.slideshowGeneration ? { slideshowGeneration: input.slideshowGeneration } : {}),
     height: dimensions.height,
     key: uploaded.key,
     ok: true,
     model: input.model,
+    prompt: input.prompt,
+    effectivePrompt,
     provider,
     ratio: input.aspectRatio,
     url: uploaded.url,
@@ -354,7 +436,7 @@ function buildOutput(
 }
 
 function getImageModel(value: Json | undefined) {
-  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "seedream_5_pro") return value;
+  if (value === "gemini_3_pro" || value === "nano_banana_2" || value === "gpt_image" || value === "gpt_image_2_5" || value === "gpt_image_2_5_flare" || value === "seedream_5_pro") return value;
   if (value === undefined || value === null) return "gpt_image";
   throw new ProviderRequestNotSubmittedError("generate_image received an unsupported image model.");
 }

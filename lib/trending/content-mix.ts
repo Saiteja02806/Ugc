@@ -66,10 +66,12 @@ export function validateTrendingContentMix(mix: TrendingContentMix) {
   );
 }
 
-export function resolveTrendingContentMixPreference(params: {
+export function resolveTrendingContentMixPreference<
+  TPreference extends TrendingContentMixPreference,
+>(params: {
   planKey: string;
-  preference: TrendingContentMixPreference;
-}): TrendingContentMixPreference {
+  preference: TPreference;
+}): TPreference & { mix: TrendingContentMix } {
   if (params.planKey === "free" && params.preference.updatedAt === null) {
     return {
       ...params.preference,

@@ -55,6 +55,9 @@ export function AiStudioComposer({
   portalTarget,
   promptHelper,
   promptLabel,
+  promptSupplement,
+  promptAction,
+  promptFeedback,
   settingsSummary,
   actionsTarget,
   referenceControls,
@@ -93,6 +96,9 @@ export function AiStudioComposer({
   portalTarget?: HTMLElement | null;
   promptHelper?: string;
   promptLabel?: string;
+  promptSupplement?: ReactNode;
+  promptAction?: ReactNode;
+  promptFeedback?: ReactNode;
   settingsSummary?: string;
   actionsTarget?: HTMLElement | null;
   referenceControls?: ReactNode;
@@ -146,9 +152,10 @@ export function AiStudioComposer({
       {contextBanner}
       {referenceControls}
       <div className={focused.brief}>
+        {promptSupplement}
         <label htmlFor={promptId}>{promptLabel ?? "What should the creator say and do?"}</label>
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-destructive" : undefined}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
-        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)} aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(focused.prompt, promptAttachmentControl && creation.promptWithAttachments)} />{promptAttachmentControl}</div>
+        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)} aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(focused.prompt, (promptAttachmentControl || promptAction) && creation.promptWithAttachments)} />{promptAttachmentControl}</div>
       </div>
       <div role="group" aria-label={settingsLabel} className={focused.primarySettings}>{grouped ? [fields[0], fields[1], fields[4]] : fields}</div>
       {grouped ? <details className={focused.output}><summary>Output settings<span>{outputSummary}</span><ChevronDown aria-hidden="true" className="size-4" /></summary><div role="group" aria-label="Output settings" className={focused.outputFields}>{fields[2]}{fields[3]}</div></details> : null}
@@ -160,16 +167,20 @@ export function AiStudioComposer({
   if (layout === "workflow" && workflowDesign === "classic") {
     const actions = <div className="space-y-2">
       <div className="flex items-center justify-between gap-2"><p role="status" className="text-xs leading-5 text-muted">{accessMessage}</p>{secondaryActions ? <div className="flex shrink-0 gap-2">{secondaryActions}</div> : null}</div>
-      <Button type="submit" form={formId} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button>
+      <div className={ariaLabel === "Image prompt" ? "flex justify-end" : undefined}><Button type="submit" form={formId} data-compact={ariaLabel === "Image prompt" || undefined} aria-label={generateLabel} disabled={generateDisabled || promptTooLong} className={creation.primaryAction}>{isGenerating ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Generating…</> : generateLabel}</Button></div>
     </div>;
     const content = <form id={formId} data-layout="workflow" data-workflow-design="classic" noValidate onSubmit={onSubmit} className={creation.composer}>
       {referenceControls}
+      {process.env.NODE_ENV === "development" && isValidElement<{ "data-music-layout-review"?: boolean }>(contextBanner) && contextBanner.props["data-music-layout-review"] ? contextBanner : null}
       <div className={creation.instructionsField}>
+        {promptSupplement}
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
-        <div className="relative"><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
-          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, promptAttachmentControl && creation.promptWithAttachments)} />
-          {promptAttachmentControl}
+        <div data-prompt-editor className={cn("relative", promptAction && creation.promptWithAction)}><textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
+          aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId} placeholder={placeholder} className={cn(creation.prompt, (promptAttachmentControl || promptAction) && creation.promptWithAttachments)} />
+          {promptAttachmentControl ? <div className={promptAction ? "[&>div]:right-14" : undefined}>{promptAttachmentControl}</div> : null}
+          {promptAction ? <div className="absolute right-3 bottom-3">{promptAction}</div> : null}
         </div>
+        {promptFeedback}
         <p id={promptHelperId} role={promptTooLong ? "alert" : undefined} className={promptTooLong ? "text-xs leading-5 text-destructive" : "sr-only"}>{promptTooLong ? `Shorten your instructions by ${excessCharacters} characters.` : promptHelper}</p>
       </div>
       <div role="group" aria-label={settingsLabel} className={cn(creation.settingsGrid, settingsClassName)}>{settings}</div>
@@ -199,6 +210,7 @@ export function AiStudioComposer({
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {contextBanner}
       <div className="space-y-2">
+        {promptSupplement}
         <label htmlFor={promptId} className="block text-sm font-medium">{promptLabel ?? "Your instructions"}</label>
         <textarea id={promptId} name={name} value={prompt} rows={4} autoComplete="off" onChange={event => onPromptChange(event.target.value)}
           aria-label={ariaLabel} aria-invalid={promptTooLong} aria-describedby={promptHelperId}

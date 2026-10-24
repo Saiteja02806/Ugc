@@ -19,6 +19,7 @@ function runtime() {
     useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === "function" ? value() : value; return [slots[i], v => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; },
     useEffect(fn, deps) { const i = cursor++, prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
+    useLayoutEffect(fn, deps) { const i = cursor++, prior = slots[i]; if (!prior || deps.some((v, n) => !Object.is(v, prior.deps[n]))) effects.push(() => { prior?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); },
   }, render(fn) { cursor = 0; const tree = fn(); while (effects.length) effects.shift()(); return tree; }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
 }
 function load(path, imports, globals = {}) {
@@ -68,14 +69,14 @@ test("reuse footer continues only when ready and edit/schedule keep their existi
   let continued = 0;
   for (const disabled of [true, false]) {
     const tree = mod.WorkflowCreationPanel({ kind: "hook", section: "create", create: { disabled, busy: false, message: "Choose a video", onAction: () => continued++ } });
-    const buttons = nodes(tree).filter(n => n.type === "button"); assert.equal(buttons.length, 1); assert.equal(text(buttons[0]), "Continue to edit"); assert.equal(buttons[0].props.disabled, disabled);
+    const buttons = nodes(tree).filter(n => n.type === "button"); assert.equal(buttons.length, 1); assert.equal(text(buttons[0]), "Continue"); assert.equal(buttons[0].props.disabled, disabled);
     if (!disabled) buttons[0].props.onClick();
   }
   assert.equal(continued, 1);
   const action = { disabled: false, busy: false, message: "Ready", onAction() {}, refresh() {} };
   for (const section of ["edit", "schedule"]) {
     const tree = mod.WorkflowCreationPanel({ kind: "phone", section, create: { message: "Wrong message" }, edit: action, schedule: action });
-    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Prepare final video" : "Review schedule"]);
+    assert.deepEqual(nodes(tree).filter(n => n.type === "button").map(text), [section === "edit" ? "Prepare final video" : "Schedule post"]);
     assert.ok(!text(tree).includes("Wrong message"));
   }
 });
@@ -90,9 +91,16 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       querySelector() { return { focus(options) { focusCalls.push(options); } }; },
       scrollIntoView(options) { scrollCalls.push(options); pageScroll = 0; },
     };
-    const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true };
-    const finishing = { options: {}, setOptions() {}, output: null, captions: { transcript: null }, edit: { busy: false } };
+    const selection = { ownerId: "owner", mode: "generate", source: asset, preview: { name: asset.title, url: asset.url, duration: 5 }, ready: true, dirty: true, busy: false, error: null, restoreOwned() {}, ownedForMode() { return null; }, setMode() {}, chooseUpload() {}, removeUpload() {}, clearUploadError() {}, clearSelection() {} };
+    const recovery = { loaded: true, error: null, recoveryRevision: 0, session: { section: "create", scheduleDraft: {}, sourceMode: "generate", generationSettings: { model: "seedance_2_5", aspectRatio: "9:16" }, instructions: "", localReferences: false, demoAudioPlayback: "once", demoFraming: null, demoAssetId: null, sourceAssetId: null, pendingSource: false, generatedAssetId: null, generatedSelectionCleared: false, options: {} }, assets: { source: null, demo: null, demoAudio: null }, problems: {}, acceptAsset() { return true; }, update() {}, clearMedia() {}, clearProblem() {}, markPending() {}, retry() {}, reset() {} };
+    const localMedia = { asset: null, loading: false, error: null, choose: async () => false, chooseRemote: async () => false, remove() {}, cancelPending() {}, clearError() {} };
+    const generationRun = { selected: asset, results: [], busy: false, error: null, onGenerate() {} };
+    const finishing = { options: {}, setOptions() {}, output: null, pendingComposition: null, captions: { transcript: null }, music: { source: null, playback: "repeat", selectionError: null }, edit: { busy: false }, schedule: { busy: false } };
     const imports = {
+      "next/dynamic": { default: () => "starting-frame-preparation" },
+      "next/image": { default: "image" },
+      "./use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, ready: true, error: null, setFrame() {}, retry() {} }) },
+      "@/worker/src/lib/hook-starting-frame-video": { isHookStartingFrameVideoModel: () => true, hookStartingFrameVideoDurations: () => [4, 8] },
       "./pending-schedule-panel": { PendingExploreSchedulePanel: "pending-schedule", useBackgroundScheduleAvailability: () => ({ data: false }) },
       react: rt.react, "react/jsx-runtime": jsx, "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", Panel: "tabs-panel" } }, "lucide-react": { ArrowLeft: "arrow", BookOpen: "book" }, "next/link": { default: "link" },
       "@/components/ui/button": { Button: "button" },
@@ -100,24 +108,35 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       "@/components/ui/quiet-scrollbar.module.css": css,
       "@/components/explore/workflow-section-navigation": { WorkflowSectionNavigation: "section-nav", WorkflowSectionHeading: "section-heading", useWorkflowSectionOrientation: () => "vertical" },
       "next/navigation": { useSearchParams: () => new URLSearchParams() },
+      "@/components/providers/account-timezone-provider": { useAccountTimeZone: () => "UTC" },
       "@/components/explore/workflow-section-layout.module.css": css,
       "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo: () => selection },
+      "@/components/explore/use-workflow-session": { useWorkflowSession: () => recovery },
       "@/components/explore/use-workflow-generation-settings": { useWorkflowGenerationSettings: () => ({ dirty: false, settings: { aspectRatio: "9:16" }, changeSettings() {} }) },
-      "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children(null) },
+      "@/lib/explore/workflow-generation-settings": { createWorkflowGenerationSettings: () => recovery.session.generationSettings, normalizeWorkflowGenerationSettings: value => value },
+      "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo: async () => { throw Error("Unexpected demo upload"); } },
+      "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async () => ({ asset }) },
+      "@/components/explore/workflow-generation-boundary": { WorkflowAccountBoundary: ({children}) => children("owner"), WorkflowGenerationBoundary: ({children}) => children(generationRun) },
       "@/components/explore/workflow-finishing-boundary": { WorkflowFinishingBoundary: ({ children }) => children(finishing) },
-      "@/components/explore/talking-head-clip-editing": { TalkingHeadClipEditing: ({ children, source, sourcePreview, demo, demoFraming }) => children({ source, sourcePreview, demoSource: null, demo: demo.asset, demoFraming, editing: false, busy: false, controls: null, preview: null, actions: null }) },
+      "@/components/explore/talking-head-clip-editing": { TalkingHeadClipEditing: ({ children, source, sourcePreview, demo, demoFraming }) => children({ source, sourcePreview, demoSource: null, demo: demo.asset, demoFraming, openingState: null, demoState: null, openingPreview: null, demoPreview: null, editing: false, busy: false, error: null, controls: null, preview: null, actions: null, openOpening() {}, openDemo() {} }) },
       "@/components/explore/talking-head-schedule-review": { TalkingHeadScheduleSummary: "schedule-summary", TalkingHeadScheduleActions: "schedule-actions" },
       "@/components/explore/workflow-schedule-review.module.css": css,
       "@/components/explore/talking-head-schedule-preview.module.css": css,
+      "@/components/explore/workflow-clip-source-actions": { WorkflowClipSourceActions: "source-actions" },
+      "@/components/explore/workflow-video-asset-picker": { WorkflowVideoAssetPicker: "video-picker" },
       "@/components/explore/workflow-video-source-section": { WorkflowVideoSourceSection: "source-section" },
       "@/components/explore/workflow-creation-panel": { WorkflowCreationPanel: "creation-panel" },
       "@/components/explore/workflow-composition-panel": { WorkflowCompositionPanel: "composition-panel" },
       "@/components/explore/workflow-edit-workspace": { WorkflowEditWorkspace: "edit-workspace", WorkflowScheduleWorkspace: "schedule-workspace" },
       "@/components/explore/workflow-scheduling-panel": { EMPTY_SCHEDULE_DRAFT: {}, WorkflowSchedulingPanel: "scheduling-panel" },
       "@/components/explore/workflow-preview-canvas": { WorkflowPreviewCanvas: "preview-canvas" },
-      "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => ({ asset: null }) },
-      "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null }) },
-      "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => ({ asset: null }) },
+      "@/components/explore/use-local-workflow-media": { useLocalWorkflowMedia: () => localMedia },
+      "./use-talking-head-reference": { useTalkingHeadReference: () => ({ videoReference: localMedia, selectedId: null, instructions: "", query: { data: [], isPending: false, isError: false }, choose: async () => true }) },
+      "./talking-head-references": { TalkingHeadReferences: "talking-references" },
+      "./talking-head-references.module.css": css,
+      "@/components/explore/use-local-workflow-images": { useLocalWorkflowImages: () => ({ asset: null, assets: [], loading: false, error: null, remove() {}, clearError() {} }) },
+      "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: () => ({ maxImages: 6 }) },
+      "@/components/explore/use-local-app-screen": { useLocalAppScreen: () => localMedia },
       "@/components/explore/workflow-connected-accounts": { WorkflowConnectedAccounts: "accounts" },
       "@/lib/explore/workflow-scheduling-draft": { workflowSelectedAccounts: () => [], workflowSelectedPlatforms: () => [], selectWorkflowAccount() {} },
       "@/lib/utils": { cn: (...values) => values.join(" ") }, "@/components/explore/workflow-creation.module.css": css, "@/components/explore/workflow-studio.module.css": css,
@@ -130,6 +149,27 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     assert.equal(preview(tree).props.hidden, kind !== "hook", "Talking Head preview is visible by default");
     if (kind === "hook") {
       assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.heading, undefined, "Talking Head has no redundant heading or hide control");
+      const viewButton = label => nodes(tree).find(n => n.type === "button" && text(n) === label);
+      const visible = node => !nodes(tree).some(ancestor => ancestor.props.hidden && nodes(ancestor.props.children).includes(node));
+      generationRun.selected = null; tree = render();
+      viewButton("Your videos").props.onClick(); tree = render();
+      assert.equal(visible(nodes(tree).find(n => n.type === "edit-workspace")), true, "Empty Create uses the real hook/demo cards");
+      assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo, null);
+      assert.equal(visible(nodes(tree).find(n => n.type === "preview-canvas")), false, "Generic generation placeholder is hidden");
+      viewButton("References").props.onClick(); tree = render();
+      assert.equal(visible(nodes(tree).find(n => n.type === "talking-references")), true);
+      assert.equal(visible(nodes(tree).find(n => n.type === "edit-workspace")), false);
+      generationRun.selected = asset;
+      viewButton("Your videos").props.onClick(); tree = render();
+      assert.equal(nodes(tree).filter(n => n.type === "edit-workspace").length, 1);
+      assert.equal(viewButton("Generated videos"), undefined);
+      nodes(tree).find(n => n.type === "preview-canvas").props.generation.onGenerate();
+      generationRun.busy = true; tree = render();
+      assert.equal(visible(nodes(tree).find(n => n.type === "preview-canvas")), true);
+      viewButton("Your videos").props.onClick(); tree = render();
+      assert.equal(visible(nodes(tree).find(n => n.type === "edit-workspace")), true, "Users can return to selected clips during generation");
+      assert.equal(nodes(tree).find(n => n.type === "preview-canvas").props.generation.busy, true, "Generation remains mounted and keeps polling");
+      generationRun.busy = false;
     }
     nodes(tree).find(n => n.type === "composer").props.onInstructionsChange("Keep my original prompt");
     selection.mode = "upload"; tree = render();
@@ -138,12 +178,33 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt");
     assert.equal(nodes(tree).find(n => n.props.className === "generationFields").props.hidden, true);
     assert.equal(nodes(tree).filter(n => n.type === "source-section").length, 1);
-    assert.equal(nodes(tree).find(n => n.type === "preview-canvas").props.source.url, asset.url);
+    if (kind === "hook") {
+      nodes(tree).find(n => n.type === "button" && text(n) === "Your videos").props.onClick(); tree = render();
+      assert.equal(nodes(tree).filter(n => n.type === "edit-workspace").length, 1, "Create uses the single mounted Demo overview");
+      assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo.id, asset.id);
+    } else assert.equal(nodes(tree).find(n => n.type === "preview-canvas").props.source.url, asset.url);
     nodes(tree).find(n => n.type === "creation-panel").props.create.onAction(); tree = render();
     assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
     assert.equal(preview(tree).props.hidden, false);
-    assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo.id, asset.id);
+    assert.equal(nodes(tree).find(n => n.type === (kind === "hook" ? "edit-workspace" : "schedule-workspace")).props[kind === "hook" ? "generatedVideo" : "source"].id, asset.id);
     if (kind === "hook") {
+      const workspace = nodes(tree).find(n => n.type === "edit-workspace");
+      const sourceMenu = nodes(workspace.props.sourceActions).find(n => n.type === "source-actions");
+      const demoMenu = nodes(workspace.props.demoSourceActions).find(n => n.type === "source-actions");
+      assert.equal(demoMenu.props.library, "content");
+      const sidebarDemoMenu = nodes(nodes(tree).find(n => n.type === "composition-panel").props.demoSourceActions).find(n => n.type === "source-actions");
+      assert.equal(sidebarDemoMenu.props.library, "content", "Sidebar and preview use the same Demo inventory");
+      assert.equal(sourceMenu.props.triggerLabel, "Change");
+      sourceMenu.props.onChooseAssets(); tree = render();
+      let picker = nodes(tree).find(n => n.type === "video-picker");
+      assert.equal(picker.props.open, true); picker.props.onOpenChange(false); tree = render();
+      assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
+      assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo, asset);
+      const acceptedDemos = []; recovery.acceptAsset = (role, value) => { acceptedDemos.push([role,value.id]); return true; };
+      demoMenu.props.onChooseAssets(); tree = render(); picker = nodes(tree).find(n => n.type === "video-picker");
+      assert.match(picker.props.description, /Demo screen/); assert.equal(picker.props.library,"content"); assert.equal(picker.props.onSelect({...asset,id:"ordinary-video"}),false); assert.equal(picker.props.onSelect({...asset,id:"replacement-demo",sourceType:"demo_upload"}), true);
+      assert.deepEqual(acceptedDemos, [["demo","replacement-demo"]]); picker.props.onOpenChange(false); tree = render();
+      assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
       assert.equal(pageScroll, 0, "A real stage change reveals the workflow heading even when the document scrolled");
       assert.deepEqual(scrollCalls.map(value => [value.block, value.behavior]), [["start", "instant"]]);
       assert.deepEqual(panels.map(panel => panel.scrollTop), [0, 0]);
@@ -164,13 +225,36 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       nodes(tree).find(n => n.type === "scheduling-panel").props.footer.props.onBackToEdit(); tree = render();
       assert.equal(nodes(tree).find(n => n.type === "scheduling-panel").props.draft.caption, "Keep this schedule caption");
     }
-    nodes(tree).find(n => n.type === "edit-workspace").props.onChangeSource(); tree = render();
+    nodes(tree).find(n => n.type === (kind === "hook" ? "edit-workspace" : "schedule-workspace")).props.onChangeSource(); tree = render();
     selection.mode = "generate"; tree = render(); assert.equal(nodes(tree).find(n => n.props.className === "generationFields").props.hidden, false);
     assert.equal(nodes(tree).find(n => n.type === "composer").props.instructions, "Keep my original prompt"); rt.unmount();
   }
 });
 
-test("Creative Assets fetch is owner-authenticated, excludes unfinished/non-video rows, and does no work while closed", async () => {
+test("Content Demo picker uses its own inventory and cache, excluding ordinary creative videos", async () => {
+  const rt = runtime(), calls = [];
+  let query, data;
+  const policy = load("lib/explore/workflow-source-video.ts", {});
+  const demo = { id: "00000000-0000-4000-8000-000000000001", status: "ready", sourceType: "demo_upload", collection: "video", mimeType: "video/mp4", url: "/demo.mp4", title: "My demo" };
+  const mod = load("components/explore/workflow-video-asset-picker.tsx", {
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    "@tanstack/react-query": { useQuery: input => { query = input; return { data, isPending: !data }; } },
+    "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
+    "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
+    "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },
+  }, { fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [demo, { ...demo, sourceType: "generated_video", id: "00000000-0000-4000-8000-000000000002" }] }); } });
+  const props = { open: false, library: "content", ownerId: "owner", onSelect() { return true; }, onOpenChange() {} };
+  rt.render(() => mod.WorkflowVideoAssetPicker(props)); assert.equal(query.enabled, false); assert.equal(calls.length, 0);
+  props.open = true; rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.deepEqual(Array.from(query.queryKey), ["explore-source-videos", "owner", "content"]);
+  data = await query.queryFn({ signal: new AbortController().signal });
+  const tree = rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.equal(calls[0].url, "/api/demo/sources"); assert.equal(calls[0].headers.Authorization, "Bearer owned-token");
+  assert.equal(nodes(tree).filter(n => n.type === "button" && "aria-pressed" in n.props).length, 1);
+  assert.match(text(tree).replace(/\s+/g, " "), /Choose from Demo/); rt.unmount();
+});
+
+test("Creative Assets fetch is owner-authenticated, excludes demos/unfinished/non-video rows, and does no work while closed", async () => {
   const rt = runtime(), calls = [], selected = [];
   const client = new QueryClient();
   let observer, unsubscribe;
@@ -184,7 +268,7 @@ test("Creative Assets fetch is owner-authenticated, excludes unfinished/non-vide
     "@tanstack/react-query": { useQuery }, "@/lib/http/read-deadline": { withReadDeadline },
     "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
     "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },
-  }, { AbortSignal, fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [asset, { ...asset, id: "00000000-0000-4000-8000-000000000002", status: "uploading" }, { ...asset, mimeType: "image/png" }] }); } });
+  }, { AbortSignal, fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [asset, { ...asset, id: "00000000-0000-4000-8000-000000000002", status: "uploading" }, { ...asset, mimeType: "image/png" }, { ...asset, id: "00000000-0000-4000-8000-000000000003", sourceType: "demo_upload" }] }); } });
   const props = { open: false, ownerId: "owner", onSelect: value => { selected.push(value); return true; }, onOpenChange() {} };
   const render = () => rt.render(() => mod.WorkflowVideoAssetPicker(props));
   render(); await tick(); assert.equal(calls.length, 0); props.open = true; render(); await tick();

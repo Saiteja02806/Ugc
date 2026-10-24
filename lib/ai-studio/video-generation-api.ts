@@ -19,15 +19,22 @@ import {
   AI_STUDIO_VIDEO_MODELS,
   isAIStudioVideoModelAvailable,
   getAIStudioVideoModelLabel,
+  getAIStudioVideoDurations,
   getAIStudioVideoResolutions,
 } from "@/lib/ai-studio/generation-settings";
 import { isExploreHookVideoId } from "@/lib/explore/hook-video-library";
 import { isExploreWallTextVideoId } from "@/lib/explore/wall-text-video-library";
 import { getGenerationReferenceSoundtrack } from "@/worker/src/lib/explore-reference-soundtrack";
+import { personReferenceRoles } from "@/lib/explore/person-reference";
+import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
+import { buildStartingFrameAnimationPrompt } from "@/lib/explore/starting-frame-workflow";
+import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 
 import { getExploreVideoPromptMaxLength, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS } from "@/lib/explore/format-generation-prompt";
 import { resolveGalleryGenerationVideo } from "@/lib/explore/generation-video-reference";
-import { OMNI_EDIT_MAX_VIDEO_BYTES, OMNI_EDIT_MAX_VIDEO_SECONDS } from "@/worker/src/lib/video-reference-input";
+import { canAccessCreatorAccounts, isCreatorAccountReference } from "@/lib/explore/creator-account-access";
+import { OMNI_EDIT_MAX_VIDEO_SECONDS } from "@/worker/src/lib/video-reference-input";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
   getBackgroundJobById,
@@ -36,7 +43,8 @@ import {
 } from "@/lib/jobs/background-jobs";
 import { createAndDispatchBackgroundJob } from "@/lib/jobs/background-job-service";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorageUrl } from "@/lib/media/media-reference";
-import { getMediaAssetForOwner } from "@/lib/media/media-storage";
+import { getMediaAssetForOwner, getMediaAssetsForOwnerByUrls } from "@/lib/media/media-storage";
+import { getVideoReferencePolicy, getVideoTimedReferenceError } from "@/lib/ai-studio/video-reference-policy";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -50,6 +58,8 @@ type GenerateVideoRequest = {
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
   referenceImageUrls?: unknown;
+  imageReferencePurpose?: unknown;
+  generateAudio?: unknown;
   referenceAudioUrls?: unknown;
   referenceAudioAssetIds?: unknown;
   hookIdea?: unknown;
@@ -67,9 +77,14 @@ type GenerateVideoRequest = {
   referenceUrl?: unknown;
   durationSeconds?: unknown;
   resolution?: unknown;
+  startingFrameAssetId?: unknown;
+  startingFrameJobId?: unknown;
 };
 
 function referenceSoundtrackInput(body: GenerateVideoRequest | null) {
+  // New explicit sound controls own the entire soundtrack. Do not overwrite
+  // requested speech with automatically paired gallery music.
+  if (body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text") return {};
   const reference = getGenerationReferenceSoundtrack({ referenceId: body?.referenceId, referenceType: body?.referenceType, exploreFormat: body?.exploreFormat });
   return reference ? { referenceSoundtrack: { version: 1, referenceId: reference.id, audioSha256: reference.audioSha256, volume: .2 } } : {};
 }
@@ -173,7 +188,36 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const body = (await request.json().catch(() => null)) as
     | GenerateVideoRequest
     | null;
+  if (isCreatorAccountReference(body?.referenceId) && !canAccessCreatorAccounts(user)) return NextResponse.json({ ok: false, error: "This reference is unavailable." }, { status: 404 });
+  if (isCreatorAccountReference(body?.referenceId) && !body?.startingFrameAssetId) return NextResponse.json({ ok: false, error: "Choose Recreate and approve a starting image for this private reference first." }, { status: 400 });
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
+  const usesStartingFrame = body?.startingFrameAssetId !== undefined || body?.startingFrameJobId !== undefined;
+  if (usesStartingFrame) {
+    if (process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION !== "true") {
+      return NextResponse.json({ ok: false, error: "Starting-frame animation is not available yet." }, { status: 404 });
+    }
+    if ((body?.exploreFormat !== "hook" && body?.exploreFormat !== "wall_text") || !isHookStartingFrameVideoModel(body.model) ||
+      typeof body.startingFrameAssetId !== "string" || !UUID_PATTERN.test(body.startingFrameAssetId) ||
+      typeof body.startingFrameJobId !== "string" || !UUID_PATTERN.test(body.startingFrameJobId)) {
+      return NextResponse.json({ ok: false, error: "Choose a generated Hook starting image and a supported animation model." }, { status: 400 });
+    }
+    const faceCount = Array.isArray(body.referenceImageUrls) ? body.referenceImageUrls.length : 0;
+    if (faceCount && (!hookStartingFrameFaceReferenceLimit(body.model) || faceCount > hookStartingFrameFaceReferenceLimit(body.model))) {
+      return NextResponse.json({ ok: false, error: "Use Omni Flash 1.1 with up to 5 optional face photos, or remove the face references before choosing another animation model." }, { status: 400 });
+    }
+    if ((faceCount && body.imageReferencePurpose !== "person") || (!faceCount && body.imageReferencePurpose !== undefined)) {
+      return NextResponse.json({ ok: false, error: "Use the additional images as face references for the same person." }, { status: 400 });
+    }
+    if (body.avatarImageUrl || body.referenceVideoUrl || body.referenceVideoAssetId ||
+      body.referenceVideoDurationSeconds != null || body.referenceVideoMode !== undefined || body.useGalleryVideoReference === true ||
+      (Array.isArray(body.referenceAudioUrls) && body.referenceAudioUrls.length) ||
+      (Array.isArray(body.referenceAudioAssetIds) && body.referenceAudioAssetIds.length) || body.referenceUrl) {
+      return NextResponse.json({ ok: false, error: "Keep the approved starting image and optional face photos. Remove source videos and audio references; use Sound on for generated audio." }, { status: 400 });
+    }
+    if (typeof body.durationSeconds !== "number" || !hookStartingFrameVideoDurations(body.model).includes(body.durationSeconds)) {
+      return NextResponse.json({ ok: false, error: `Choose a whole-number starting-frame duration from ${body.model === "seedance_2_5" ? 4 : 3} to ${body.model === "google_omni" ? 10 : 15} seconds.` }, { status: 400 });
+    }
+  }
   if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
     return NextResponse.json({ ok: false, error: "Choose 1, 2, 3 or 4 videos." }, { status: 400 });
   }
@@ -202,6 +246,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const audioAssetIdsInput = body?.referenceAudioAssetIds;
   const referenceAudioUrls = Array.isArray(audioUrlsInput) ? audioUrlsInput.map(cleanHttpsUrl) : [];
   const referenceAudioAssetIds = Array.isArray(audioAssetIdsInput) ? audioAssetIdsInput : [];
+  const referenceAudioDurationSeconds: number[] = [];
   let referenceVideoDurationSeconds = cleanReferenceVideoDuration(
     body?.referenceVideoDurationSeconds,
   );
@@ -211,29 +256,37 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     return NextResponse.json({ error: "Choose a supported video model.", ok: false }, { status: 400 });
   }
   const model = parseAIStudioVideoModel(body?.model);
+  const referencePolicy = getVideoReferencePolicy(model, { allowOmniVideo: Boolean(body?.exploreFormat), hasTimedReferences: Boolean(referenceVideoUrl || referenceAudioUrls.length || body?.useGalleryVideoReference) });
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "hook" && body.exploreFormat !== "wall_text") {
     return NextResponse.json({ error: "Choose a video workflow.", ok: false }, { status: 400 });
   }
-  if (body?.exploreFormat && model !== "google_omni" && model !== "wan_3_0") {
+  if (body?.exploreFormat && model !== "google_omni" && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Choose the workflow's supported video model.", ok: false }, { status: 400 });
   }
   const useGalleryVideoReference = body?.useGalleryVideoReference === true;
   if ((body?.useGalleryVideoReference !== undefined && typeof body.useGalleryVideoReference !== "boolean") ||
-      (body?.referenceVideoMode !== undefined && body.referenceVideoMode !== "edit")) {
+      (body?.referenceVideoMode !== undefined && body.referenceVideoMode !== "edit" && body.referenceVideoMode !== "reference")) {
     return NextResponse.json({ error: "Choose a supported video reference mode.", ok: false }, { status: 400 });
   }
-  const referenceVideoMode = body?.referenceVideoMode === "edit" || useGalleryVideoReference ||
-    Boolean(body?.exploreFormat && model === "google_omni" && referenceVideoUrl && referenceImageUrls.length)
+  const referenceVideoMode = body?.referenceVideoMode === "edit" || (body?.referenceVideoMode === undefined && ((useGalleryVideoReference && model === "google_omni") ||
+    Boolean(body?.exploreFormat && model === "google_omni" && referenceVideoUrl && referenceImageUrls.length)))
     ? "edit" : undefined;
-  if (referenceVideoMode && (!body?.exploreFormat || model !== "google_omni" || (!referenceVideoUrl && !useGalleryVideoReference))) {
-    return NextResponse.json({ error: "Use Google Omni in a video workflow to edit a video with image references.", ok: false }, { status: 400 });
+  if (referenceVideoMode && (!body?.exploreFormat || (model !== "google_omni" && model !== "seedance_2_5") || (!referenceVideoUrl && !useGalleryVideoReference))) {
+    return NextResponse.json({ error: "Use Seedance 2.5 or Google Omni with a source video to edit footage. This model only supports reference-guided creation here.", ok: false }, { status: 400 });
   }
   if (useGalleryVideoReference) {
+    if (!body?.exploreFormat || model !== "google_omni" && model !== "seedance_2_5" && model !== "wan_3_0") {
+      return NextResponse.json({ error: "Choose a supported model in this video workflow to use a gallery video reference.", ok: false }, { status: 400 });
+    }
     if (body?.referenceVideoUrl || body?.referenceVideoAssetId || body?.referenceVideoDurationSeconds != null) {
       return NextResponse.json({ error: "Choose either a gallery video or an uploaded video as the source.", ok: false }, { status: 400 });
     }
     try {
-      const gallery = await resolveGalleryGenerationVideo(body?.referenceId, body?.exploreFormat);
+      const gallery = await resolveGalleryGenerationVideo(body?.referenceId, body?.exploreFormat, model === "seedance_2_5" ? 30 : model === "wan_3_0" ? 15 : 10);
+      if (model === "seedance_2_5") {
+        const referenceError = getVideoTimedReferenceError(model, "video", gallery.durationSeconds);
+        if (referenceError) return NextResponse.json({ error: referenceError, ok: false }, { status: 400 });
+      }
       referenceVideoUrl = gallery.url;
       referenceVideoDurationSeconds = gallery.durationSeconds;
     } catch (error) {
@@ -241,11 +294,55 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     }
   }
   const isFormatVideoReference = Boolean(body?.exploreFormat && referenceVideoUrl && model === "google_omni");
-  const durationSeconds = referenceVideoMode ? Math.max(3, Math.ceil(referenceVideoDurationSeconds ?? 3))
+  const durationSeconds = referenceVideoMode ? model === "seedance_2_5" ? Math.ceil(referenceVideoDurationSeconds ?? 4) : Math.max(3, Math.round(referenceVideoDurationSeconds ?? 3))
     : isFormatVideoReference ? 3 : parseAIStudioVideoDuration(body?.durationSeconds);
   const resolution = parseAIStudioVideoResolution(body?.resolution);
+  if (!referenceVideoMode && !isFormatVideoReference && body?.durationSeconds !== undefined && (
+    typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) ||
+    !getAIStudioVideoDurations(model).some(seconds => seconds === body.durationSeconds)
+  )) {
+    const durations = getAIStudioVideoDurations(model);
+    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} supports whole-number durations from ${durations[0]} to ${durations.at(-1)} seconds.`, ok: false }, { status: 400 });
+  }
+  if (body?.resolution !== undefined && !getAIStudioVideoResolutions(model).some(value => value === body.resolution)) {
+    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} supports ${getAIStudioVideoResolutions(model).join(" or ")} video quality.`, ok: false }, { status: 400 });
+  }
+  if (body?.aspectRatio !== undefined && body.aspectRatio !== "9:16" && body.aspectRatio !== "16:9") {
+    return NextResponse.json({ error: "Choose portrait 9:16 or landscape 16:9.", ok: false }, { status: 400 });
+  }
   if (!isAIStudioVideoModelAvailable(model)) {
     return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} is temporarily unavailable. Choose another video model.`, ok: false }, { status: 503 });
+  }
+  let startingFrame: Awaited<ReturnType<typeof resolveApprovedHookStartingFrame>> | undefined;
+  if (usesStartingFrame) {
+    try {
+      startingFrame = await resolveApprovedHookStartingFrame({
+        assetId: body!.startingFrameAssetId as string,
+        imageJobId: body!.startingFrameJobId as string,
+        ownerId: user.uid,
+      });
+      if (isCreatorAccountReference(startingFrame.referenceId) && !canAccessCreatorAccounts(user)) return NextResponse.json({ ok: false, error: "This reference is unavailable." }, { status: 404 });
+      if ((body?.referenceId !== undefined && body.referenceId !== startingFrame.referenceId) ||
+        body?.exploreFormat !== startingFrame.exploreFormat ||
+        (body?.referenceType !== undefined && body.referenceType !== startingFrame.exploreFormat)) {
+        return NextResponse.json({ ok: false, error: "The starting image belongs to a different Hook reference. Choose it again." }, { status: 400 });
+      }
+      if (referenceImageUrls.includes(startingFrame.imageUrl)) {
+        return NextResponse.json({ ok: false, error: "Keep the starting frame separate. Choose clear photos of the same person as optional face references." }, { status: 400 });
+      }
+      // The provider animates the generated full-scene asset, not the source
+      // video's frame. Verify that actual output's stored shape before billing.
+      const { width, height, ratio } = startingFrame.output;
+      const validDimensions = typeof width === "number" && typeof height === "number" &&
+        Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0;
+      const imageRatio = validDimensions ? width * 16 === height * 9 ? "9:16" : width * 9 === height * 16 ? "16:9" : null : null;
+      if (!imageRatio || ratio !== imageRatio || aspectRatio !== imageRatio) {
+        return NextResponse.json({ ok: false, error: "Starting-frame animation keeps the approved image's shape. Choose its matching aspect ratio." }, { status: 400 });
+      }
+    } catch (error) {
+      const status = error instanceof Error && "status" in error && typeof error.status === "number" && [400, 404, 409, 503].includes(error.status) ? error.status : 503;
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Could not verify the approved starting image. No generation was started." }, { status });
+    }
   }
   const isExploreRecreate =
     (body?.referenceType === "hook" && isExploreHookVideoId(body?.referenceId)) ||
@@ -271,6 +368,28 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
+  if (body?.imageReferencePurpose !== undefined &&
+      ((!body.exploreFormat || !referenceImageUrls.length) ||
+       (body.imageReferencePurpose !== "person" && body.imageReferencePurpose !== "general"))) {
+    return NextResponse.json({ error: "Choose Person photos or Other images for the selected workflow images.", ok: false }, { status: 400 });
+  }
+  const personPhotos = body?.imageReferencePurpose === "person";
+  const imageRoles = personPhotos ? personReferenceRoles(referenceImageUrls as string[]) : undefined;
+  const soundWorkflow = body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text";
+  if (body?.generateAudio !== undefined && typeof body.generateAudio !== "boolean") {
+    return NextResponse.json({ error: "Choose Sound on or Sound off before generating.", ok: false }, { status: 400 });
+  }
+  const generateAudio = soundWorkflow ? body?.generateAudio === true : undefined;
+  const inputInstructions = startingFrame ? { intent: "animate_starting_frame", instructions: "" } : buildExploreGenerationInstructions({ model, personPhotos,
+    imageCount: referenceImageUrls.length, hasVideo: Boolean(referenceVideoUrl || useGalleryVideoReference), generateAudio, referenceVideoMode });
+  let generationPrompt: string;
+  try {
+    generationPrompt = startingFrame ? buildStartingFrameAnimationPrompt({ workflow: startingFrame.workflow ?? "hook", directions: prompt, durationSeconds, generateAudio: generateAudio === true })
+      : inputInstructions.instructions ? `${inputInstructions.instructions}\n\n${prompt}` : prompt;
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Review the animation directions before generating." }, { status: 400 });
+  }
+
   if (
     (audioUrlsInput !== undefined && !Array.isArray(audioUrlsInput)) ||
     (audioAssetIdsInput !== undefined && !Array.isArray(audioAssetIdsInput)) ||
@@ -285,25 +404,31 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       { status: 400 },
     );
   }
-  if (body?.exploreFormat && referenceAudioUrls.length) {
+  if (body?.exploreFormat && referenceAudioUrls.length && model !== "seedance_2_5" && model !== "wan_3_0") {
     return NextResponse.json({ error: "Add narration in Edit video; voice references are not used in this workflow.", ok: false }, { status: 400 });
   }
-  if (referenceVideoMode && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS || referenceImageUrls.length > 5)) {
-    return NextResponse.json({ error: "Use up to five images with a reference video up to 10 seconds.", ok: false }, { status: 400 });
+  if (referenceVideoMode && model === "seedance_2_5" && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds < 4 || referenceVideoDurationSeconds > 30)) {
+    return NextResponse.json({ error: "Seedance editing requires a source video from 4 to 30 seconds. Choosing a longer output does not lengthen the source. Use a longer source or choose Create from reference.", ok: false }, { status: 400 });
+  }
+  if (referenceVideoMode && model === "google_omni" && (!referenceVideoDurationSeconds || referenceVideoDurationSeconds > OMNI_EDIT_MAX_VIDEO_SECONDS)) {
+    return NextResponse.json({ error: "Use a reference video up to 10 seconds.", ok: false }, { status: 400 });
   }
   if (isFormatVideoReference && !referenceVideoMode && (referenceImageUrls.length || !referenceVideoDurationSeconds || referenceVideoDurationSeconds > 3)) {
     return NextResponse.json({ error: "Choose one optional image or a video reference up to 3 seconds.", ok: false }, { status: 400 });
   }
-  if ((referenceAudioUrls.length || referenceVideoUrl) && model !== "seedance_2_5" && !isFormatVideoReference) {
+  if ((referenceAudioUrls.length || referenceVideoUrl) && model !== "seedance_2_5" && model !== "wan_3_0" && !isFormatVideoReference) {
     return NextResponse.json(
-      { error: "Choose Seedance 2.5 to use audio or video references through OpenRouter. Other models support image references only.", ok: false },
+      { error: "Choose WAN 3.0 or Seedance 2.5 to use the attached audio or video references. This model supports image references here.", ok: false },
       { status: 400 },
     );
   }
   if (referenceAudioUrls.length > 1) {
     return NextResponse.json({ error: "Use one audio reference in UGC Pilot.", ok: false }, { status: 400 });
   }
-  const maxReferences = model === "kling_3_0" ? 2 : 6;
+  const maxReferences = referencePolicy.maxFiles;
+  if (referenceImageUrls.length > referencePolicy.maxImages) {
+    return NextResponse.json({ error: `${getAIStudioVideoModelLabel(model)} accepts up to ${referencePolicy.maxImages} reference images in UGC Pilot. Remove an image or choose another model.`, ok: false }, { status: 400 });
+  }
   if (referenceImageUrls.length + referenceAudioUrls.length + (referenceVideoUrl ? 1 : 0) > maxReferences) {
     return NextResponse.json(
       { error: `This model accepts up to ${maxReferences} reference files in UGC Pilot.`, ok: false },
@@ -336,6 +461,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       { status: 400 },
     );
   }
+  if (model === "wan_3_0" && referenceVideoUrl && referenceVideoDurationSeconds! > referencePolicy.maxVideoDuration) {
+    return NextResponse.json({ error: "WAN 3.0 video references must be 15 seconds or shorter. Choose a shorter reference; videos are not trimmed automatically.", ok: false }, { status: 400 });
+  }
 
   if (!isAIStudioVideoResolutionSupported(model, resolution)) {
     const supportedResolutions = getAIStudioVideoResolutions(model).join(" or ");
@@ -366,7 +494,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
     );
   }
 
-  if (model === "seedance_2_5" && body?.durationSeconds !== undefined && (
+  if (model === "seedance_2_5" && !referenceVideoMode && body?.durationSeconds !== undefined && (
     typeof body.durationSeconds !== "number" || !Number.isInteger(body.durationSeconds) ||
     body.durationSeconds < 4 || body.durationSeconds > 30
   )) {
@@ -404,7 +532,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
 
   const promptLengthError = getAIStudioPromptLengthError(
     prompt,
-    getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined }),
+    startingFrame ? 6_000 : getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(referenceVideoUrl), referenceVideoMode, format: body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? body.exploreFormat : undefined, personPhotos, imageCount: referenceImageUrls.length, generateAudio }),
   );
 
   if (promptLengthError) {
@@ -421,6 +549,19 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   // A trusted storage host does not prove ownership. Resolve timed references
   // before billing or freezing an Explore receipt; never silently discard them.
   try {
+    if ((usesStartingFrame || model === "wan_3_0" && (referenceAudioUrls.length || referenceVideoUrl)) && referenceImageUrls.length) {
+      const images = await getMediaAssetsForOwnerByUrls({ urls: referenceImageUrls as string[], userId: user.uid });
+      for (const url of referenceImageUrls) {
+        const asset = images.find(image => image.url === url);
+        if (!asset || asset.user_id !== user.uid || asset.deleted_at !== null || asset.status !== "ready" ||
+          (asset.collection !== "image" && !(usesStartingFrame && asset.collection === "influencer")) ||
+          !["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(asset.mime_type) ||
+          typeof asset.file_size_bytes !== "number" || !Number.isFinite(asset.file_size_bytes) ||
+          asset.file_size_bytes <= 0 || asset.file_size_bytes > referencePolicy.maxImageBytes) {
+          return NextResponse.json({ error: usesStartingFrame ? "Choose your own ready PNG, JPEG or WebP face photos up to 20 MB." : "Choose your own ready PNG, JPEG or WebP reference images up to 16 MB when using audio or video with WAN 3.0.", ok: false }, { status: 400 });
+        }
+      }
+    }
     const references = [
       ...referenceAudioUrls.map((url, index) => ({ kind: "audio" as const, url, id: referenceAudioAssetIds[index] as string })),
       ...(referenceVideoUrl && referenceVideoAssetId ? [{ kind: "video" as const, url: referenceVideoUrl, id: referenceVideoAssetId }] : []),
@@ -434,14 +575,25 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           asset.status !== "ready" || asset.collection !== reference.kind || asset.url !== reference.url ||
           !asset.mime_type.startsWith(`${reference.kind}/`) ||
           typeof asset.file_size_bytes !== "number" || !Number.isFinite(asset.file_size_bytes) || asset.file_size_bytes <= 0 ||
-          asset.file_size_bytes > (reference.kind === "audio" ? 25 * 1024 ** 2 : referenceVideoMode ? OMNI_EDIT_MAX_VIDEO_BYTES : 250 * 1024 ** 2) ||
-          typeof asset.duration_seconds !== "number" || !Number.isFinite(asset.duration_seconds) || asset.duration_seconds <= 0 || asset.duration_seconds > 30 ||
+          typeof asset.duration_seconds !== "number" || !Number.isFinite(asset.duration_seconds) || asset.duration_seconds <= 0 ||
           (reference.kind === "video" && asset.duration_seconds !== referenceVideoDurationSeconds)) {
-        return NextResponse.json({ error: `Choose your own ready reference ${reference.kind} file up to 30 seconds. Its saved URL, type and duration must match.`, ok: false }, { status: 400 });
+        return NextResponse.json({ error: `Choose your own ready reference ${reference.kind} file up to ${model === "wan_3_0" ? 15 : 30} seconds. Its saved URL, type and duration must match.`, ok: false }, { status: 400 });
       }
+      const referenceError = getVideoTimedReferenceError(model, reference.kind, asset.duration_seconds, asset.file_size_bytes, { allowOmniVideo: isFormatVideoReference });
+      if (referenceError) return NextResponse.json({ error: referenceError, ok: false }, { status: 400 });
+      if ((model === "seedance_2_5" || model === "wan_3_0") && !(reference.kind === "audio"
+        ? ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"]
+        : ["video/mp4", "video/quicktime"]).includes(asset.mime_type)) {
+        return NextResponse.json({ error: reference.kind === "audio" ? "Choose an MP3 or WAV reference audio file." : "Choose an MP4 or MOV reference video file.", ok: false }, { status: 400 });
+      }
+      if (reference.kind === "audio" && (model === "wan_3_0" || model === "seedance_2_5")) referenceAudioDurationSeconds.push(asset.duration_seconds);
     }
   } catch {
     return NextResponse.json({ error: "Could not verify your reference uploads. No generation was started. Try again after your files are available.", ok: false }, { status: 503 });
+  }
+
+  if (model === "wan_3_0" && referenceVideoUrl && (referenceVideoDurationSeconds ?? 0) + durationSeconds > 30) {
+    return NextResponse.json({ error: "For WAN 3.0, reference video plus output must fit within 30 seconds. Choose a shorter reference or output duration.", ok: false }, { status: 400 });
   }
 
   const missingRuntimeEnv = getMissingRuntimeEnv();
@@ -449,9 +601,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   if (missingRuntimeEnv.length > 0) {
     return NextResponse.json(
       {
-        error: `Video generation is not configured. Add ${missingRuntimeEnv.join(
-          ", ",
-        )}.`,
+        error: "Video generation is temporarily unavailable. No video was started. Try again later.",
         ok: false,
       },
       { status: 501 },
@@ -459,6 +609,16 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   }
 
   const projectId = "ai-studio";
+  // ReAPI is a distinct provider. Freeze it on new requests; keep recorded
+  // OpenRouter/Runway/Higgsfield jobs on their existing recovery adapters.
+  const provider = usesStartingFrame ? hookStartingFrameVideoProvider(model) ?? undefined
+    : model === "seedance_2_5" || model === "wan_3_0" ? "reapi" : undefined;
+  const startingFrameInput = startingFrame ? {
+    startingFrameAssetId: startingFrame.assetId,
+    startingFrameJobId: startingFrame.imageJobId,
+    startingFrameImageUrl: startingFrame.imageUrl,
+    startingFrameReceipt: startingFrame.receipt as unknown as Json,
+  } : {};
   const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );
@@ -469,19 +629,23 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       userId: user.uid,
       inputs: Array.from({ length: quantity }, (_, index) => ({
         aspectRatio, avatarImageUrl, referenceImageUrls, referenceAudioUrls,
+        ...(imageRoles ? { personReference: imageRoles } : {}),
+        ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
         ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
+        ...(referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds } : {}),
         ...(referenceVideoAssetId ? { referenceVideoAssetId } : {}),
         batchIndex: index + 1, batchSize: quantity, durationSeconds,
-        hookIdea: body?.exploreFormat === "wall_text" ? `${prompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : prompt, model,
+        hookIdea: body?.exploreFormat === "wall_text" ? `${generationPrompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : generationPrompt, model,
         ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" ? { exploreFormat: body.exploreFormat } : {}),
-        ...(model === "seedance_2_5" || model === "wan_3_0" ? { provider: "openrouter" } : {}),
+        ...(provider ? { provider } : {}),
         promptMode: "direct", projectId,
         referenceVideoDurationSeconds, referenceVideoUrl,
         ...(referenceVideoMode ? { referenceVideoMode } : {}),
-        referenceId: typeof body?.referenceId === "string" ? body.referenceId : null,
-        referenceType: useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
-        referenceUrl: useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
+        referenceId: startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
+        referenceType: startingFrame ? startingFrame.exploreFormat : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
+        referenceUrl: isCreatorAccountReference(startingFrame?.referenceId) ? null : useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
         ...referenceSoundtrackInput(body),
+        ...startingFrameInput,
         resolution, userId: user.uid, videoId: crypto.randomUUID(),
       })),
     });
@@ -513,27 +677,31 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           avatarImageUrl,
           referenceImageUrls,
+          ...(imageRoles ? { personReference: imageRoles } : {}),
+          ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
           referenceAudioUrls,
           ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds: referenceAudioAssetIds as string[] } : {}),
+          ...(referenceAudioDurationSeconds.length ? { referenceAudioDurationSeconds } : {}),
           ...(referenceVideoAssetId ? { referenceVideoAssetId } : {}),
           batchIndex: index + 1,
           batchSize: quantity,
           durationSeconds,
-          hookIdea: body?.exploreFormat === "wall_text" ? `${prompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : prompt,
+          hookIdea: body?.exploreFormat === "wall_text" ? `${generationPrompt}\n${WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS}` : generationPrompt,
           model,
-          ...(model === "seedance_2_5" || model === "wan_3_0" ? { provider: "openrouter" } : {}),
+          ...(provider ? { provider } : {}),
           promptMode: "direct",
           projectId,
           referenceVideoDurationSeconds,
           referenceVideoUrl,
           ...(referenceVideoMode ? { referenceVideoMode } : {}),
           referenceId:
-            typeof body?.referenceId === "string" ? body.referenceId : null,
+            startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
           referenceType:
-            useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
+            startingFrame ? startingFrame.exploreFormat : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
           referenceUrl:
-            useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
+            isCreatorAccountReference(startingFrame?.referenceId) ? null : useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
           ...referenceSoundtrackInput(body),
+          ...startingFrameInput,
           resolution,
           userId: user.uid,
           videoId,

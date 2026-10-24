@@ -31,7 +31,7 @@ export default function ConnectAiPage() {
       <div className="mx-auto max-w-6xl px-5 pb-16 pt-12 sm:px-8 sm:pt-16">
         <section className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <p className="text-sm font-semibold text-primary">Connect your AI · Private beta</p>
+            <p className="text-sm font-semibold text-primary">Connect your AI</p>
             <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-5xl">Your next image or video starts with a conversation.</h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-muted">Connect UGC Pilot once. Describe what you want in Codex, ChatGPT, or Claude, and let your AI create it and bring back the result.</p>
             <p className="mt-4 text-sm leading-6 text-muted">Use your own UGC Pilot account. Generation uses your UGC Pilot plan and credits.</p>
@@ -57,19 +57,19 @@ export default function ConnectAiPage() {
         <section className="mt-12 grid gap-6 border-t border-border pt-8 md:grid-cols-2">
           <div>
             <h2 className="text-lg font-semibold">Take the setup with you</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">The beta bundle includes connection settings, editing, reference, group and Library workflows, local media/audio transfer helpers, and a setup guide. Install it through a supported plugin flow; uploading it into a chat alone does not connect your account.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">The bundle includes connection settings, creative workflows, editing, reference, group and Library workflows, local media/audio transfer helpers, and a setup guide. Install it through a supported plugin flow; uploading it into a chat alone does not connect your account.</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href="/downloads/ugc-pilot-0.1.15.zip" download className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+              <a href="/downloads/ugc-pilot-0.2.1.zip" download className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
                 <Download className="size-4" aria-hidden="true" />Download plugin bundle
               </a>
-              <a href="/downloads/ugc-pilot-0.1.15-setup.md" download className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Download setup guide</a>
-              <a href="/downloads/ugc-pilot-0.1.15.zip.sha256" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Verify download</a>
+              <a href="/downloads/ugc-pilot-0.2.1-setup.md" download className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Download setup guide</a>
+              <a href="/downloads/ugc-pilot-0.2.1.zip.sha256" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Verify download</a>
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5">
             <h2 className="text-lg font-semibold">What you can create today</h2>
             <p className="mt-2 text-sm leading-6 text-muted">Generate images and short videos, upload hook/demo clips from a supported IDE, attach demos, and retrieve finished media. Open and save Edit drafts, then export a selected revision when enabled.</p>
-            <p className="mt-3 text-sm leading-6 text-muted">Local file transfer needs Node.js and ffprobe in your IDE. Full application access, including carousels and social publishing, remains in development. Codex and Claude workflow verification is still in progress.</p>
+            <p className="mt-3 text-sm leading-6 text-muted">Local file transfer needs Node.js and ffprobe in your IDE. Full application access, including carousels and social publishing, remains in development. Public directory availability is pending platform review.</p>
             <Link href="/ai-studio" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open AI Studio<ArrowRight className="size-4" aria-hidden="true" /></Link>
           </div>
         </section>

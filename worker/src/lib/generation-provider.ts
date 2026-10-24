@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { RetryableJobError } from "../retryable-job-error.js";
+import { RetryableJobError } from "../retryable-job-error.ts";
+import { isProviderBalanceFailure } from "./provider-balance.ts";
 import type { SupabaseJobStore } from "./supabase.js";
 
 export class ProviderRequestNotSubmittedError extends Error {
@@ -36,6 +37,19 @@ export class ProviderOperationPollingError extends Error {
   }
 }
 
+/** The provider finished; recovery must collect that task, never submit again. */
+export class ProviderOutputCollectionError extends RetryableJobError {
+  constructor(reason: "missing_output" | "untrusted_output_url" | "download_failed") {
+    const messages = {
+      missing_output: "The provider completed the video but returned no output link.",
+      untrusted_output_url: "The provider completed the video but its output link was not accepted.",
+      download_failed: "The provider completed the video but its output could not be downloaded.",
+    };
+    super(messages[reason], { code: "PROVIDER_OUTPUT_COLLECTION_FAILED", retryAfterSeconds: 30 });
+    this.name = "ProviderOutputCollectionError";
+  }
+}
+
 export class ProviderSubmissionUncertainError extends Error {
   readonly code = "provider_submission_uncertain";
 
@@ -44,6 +58,15 @@ export class ProviderSubmissionUncertainError extends Error {
       "The provider may have accepted this generation, so it was stopped instead of submitting a duplicate paid request.",
     );
     this.name = "ProviderSubmissionUncertainError";
+  }
+}
+
+export class ProviderInsufficientCreditsError extends Error {
+  readonly code = "PROVIDER_INSUFFICIENT_CREDITS";
+
+  constructor(cause: unknown) {
+    super("The generation provider's credit balance is too low. Contact support before starting a new generation.", { cause });
+    this.name = "ProviderInsufficientCreditsError";
   }
 }
 
@@ -103,6 +126,10 @@ export async function persistProviderSubmissionFailure(params: {
       );
     }
 
+    if (isProviderBalanceFailure(getStringErrorField(params.error, "code"), message)) {
+      throw new ProviderInsufficientCreditsError(params.error);
+    }
+
     throw params.error instanceof Error
       ? params.error
       : new Error("The generation provider rejected the request.");
@@ -131,6 +158,9 @@ export function toProviderPollingRetry(error: unknown) {
 }
 
 function classifySubmissionFailure(error: unknown) {
+  if (isProviderBalanceFailure(getStringErrorField(error, "code"), getErrorMessage(error))) {
+    return "permanent_rejection";
+  }
   if (error instanceof ProviderRequestNotSubmittedError) {
     return error.retryable ? "retryable_rejection" : "permanent_rejection";
   }
@@ -167,6 +197,9 @@ function getRetryAfterSeconds(error: unknown) {
 }
 
 function getErrorCode(error: unknown) {
+  if (isProviderBalanceFailure(getStringErrorField(error, "code"), getErrorMessage(error))) {
+    return "PROVIDER_INSUFFICIENT_CREDITS";
+  }
   if (error instanceof ProviderRequestNotSubmittedError) {
     return error.retryable
       ? "request_not_submitted_retryable"
@@ -192,7 +225,7 @@ function isKnownPermanentProviderConfigurationError(error: unknown) {
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+  return error instanceof Error ? error.message : getStringErrorField(error, "message") ?? String(error);
 }
 
 function getNumericErrorField(error: unknown, ...fields: string[]) {

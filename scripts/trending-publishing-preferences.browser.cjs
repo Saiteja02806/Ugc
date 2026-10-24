@@ -13,6 +13,7 @@ const root = path.resolve(__dirname, ".."), out = path.join(root, ".tmp/trending
 fs.mkdirSync(out, { recursive: true });
 const file = (name, value) => fs.writeFileSync(path.join(out, name), value);
 file("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=source=>ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
+file("css-loader.cjs", `const fs=require('node:fs'),path=require('node:path');module.exports=function(s){const p='ui_'+path.basename(this.resourcePath).replace(/[^a-z]/gi,'_')+'_';const m={};s=s.replace(/\\.([a-zA-Z_][\\w-]*)/g,(_,n)=>{m[n]=p+n;return '.'+p+n});fs.appendFileSync(${JSON.stringify(path.join(out,"modules.css"))},s+'\\n');return 'export default '+JSON.stringify(m)};`);
 file("auth.ts", "export const getCurrentUserIdToken=async()=> 'local-preferences';");
 file("context.ts", "export const useAuth=()=>({user:{uid:'local-owner',email:'verified@example.com',emailVerified:true}});");
 file("timezone.ts", "export const useAccountTimeZone=()=> 'Asia/Calcutta';");
@@ -23,13 +24,14 @@ function App(){const[open,setOpen]=useState(true);return mode==='preferences'?<P
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);`);
 
 async function main() {
+  file("modules.css", "");
   await new Promise((resolve, reject) => {
     const compiler = webpack({ mode: "development", devtool: false, context: root, entry: path.join(out, "entry.tsx"), output: { path: out, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], alias: {
       "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/contexts/auth-context": path.join(out, "context.ts"),
       "../firebase/auth": path.join(out, "auth.ts"),
       "@/components/providers/account-timezone-provider": path.join(out, "timezone.ts"),
       "@/components/social/use-social-oauth-popup": path.join(out, "popup.ts"), "@": root,
-    } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }] } });
+    } }, module: { rules: [{ test: /\.tsx?$/, use: path.join(out, "loader.cjs") }, { test: /\.css$/, use: path.join(out, "css-loader.cjs") }] } });
     compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve()));
   });
   const accounts = ["instagram", "tiktok", "youtube"].map((platform) => ({
@@ -37,21 +39,28 @@ async function main() {
     platformAccountName: `Local ${platform}`, platformAccountUsername: "fixture", supportsBackgroundRefresh: true,
     scopes: platform === "instagram" ? ["instagram_business_content_publish"] : platform === "tiktok" ? ["video.publish"] : ["https://www.googleapis.com/auth/youtube.upload"],
   }));
-  const defaults = { containsSyntheticMedia: true, tiktokPrivacyLevel: "PUBLIC_TO_EVERYONE", tiktokAllowComments: true, youtubePrivacyStatus: "public", youtubeMadeForKids: false, youtubeNotifySubscribers: false };
+  const defaults = { containsSyntheticMedia: true, tiktokPrivacyLevel: "PUBLIC_TO_EVERYONE", tiktokAllowComments: true, tiktokBrandOrganic: false, youtubePrivacyStatus: "public", youtubeMadeForKids: false, youtubeNotifySubscribers: false };
   let preferences = { ...defaults }, holdPreferences = false, failure = false, commentsDisabled = false, capabilitiesFailure = false, directPostAudited = true;
   let privacyLevels = ["PUBLIC_TO_EVERYONE", "SELF_ONLY"];
   const pendingPreferences = [];
   const releasePreferences = () => { holdPreferences = false; pendingPreferences.splice(0).forEach(resolve => resolve()); };
   const writes = [], errors = [];
-  const css = require('./compiled-browser-css.cjs')(root);
-  assert.ok(css.length, "Compile the local app before running the browser fixture");
+  const captionId = "00000000-0000-4000-8000-000000000001";
+  const defaultCaption = "A saved caption from Trending.\n\n#BuildInPublic";
+  let captions = { revision: 1, captions: [{ id: captionId, text: defaultCaption }], defaultId: captionId };
+  const css = (await require("postcss")([require("@tailwindcss/postcss")({ base: root })])
+    .process(fs.readFileSync(path.join(root, "app/globals.css"), "utf8").replace('@import "tailwindcss";', '@import "tailwindcss" source(none);\n@source "../components";'), { from: path.join(root, "app/globals.css") })).css;
   const json = (res, body) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://fixture");
     if (url.pathname === "/" || url.pathname === "/settings") { res.setHeader("Content-Type", "text/html"); return res.end('<html class="dark"><head><link rel="stylesheet" href="/style.css"/><style>body{margin:0;font-family:Arial;background:#101312;color:white}</style></head><body><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script></body></html>'); }
     if (url.pathname === "/bundle.js") { res.setHeader("Content-Type", "text/javascript"); return res.end(fs.readFileSync(path.join(out, "bundle.js"))); }
-    if (url.pathname === "/style.css") { res.setHeader("Content-Type", "text/css"); return res.end(css); }
+    if (url.pathname === "/style.css") { res.setHeader("Content-Type", "text/css"); return res.end(css + fs.readFileSync(path.join(out,"modules.css"),"utf8")); }
     if (url.pathname.startsWith("/api/")) assert.equal(req.headers.authorization, "Bearer local-preferences");
+    if (url.pathname === "/api/account/saved-captions") {
+      if (req.method === "PUT") { let body=""; for await (const chunk of req) body+=chunk; const next=JSON.parse(body); if(next.revision!==captions.revision){res.statusCode=409;return json(res,{ok:false,message:"Changed in another tab"});} captions={...next,revision:next.revision+1}; }
+      return json(res,{ok:true,library:captions});
+    }
     if (url.pathname === "/api/account/publishing-preferences") {
       if (req.method === "PUT") { let body = ""; for await (const chunk of req) body += chunk; preferences = { ...preferences, ...JSON.parse(body) }; writes.push({ ...preferences }); }
       else assert.equal(req.method, "GET");
@@ -112,12 +121,15 @@ async function main() {
     const tiktokVisibility = tiktokDefaults.getByRole("combobox", { name: "Visibility", exact: true });
     assert.equal(await tiktokVisibility.inputValue(), "PUBLIC_TO_EVERYONE");
     assert.equal(await tiktokDefaults.getByRole("checkbox", { name: "Allow comments", exact: true }).isChecked(), true);
+    const promotional = tiktokDefaults.getByRole("checkbox", { name: "Label posts as promotional content", exact: true });
+    assert.equal(await promotional.isChecked(), false);
     const visibility = page.getByRole("group", { name: "YouTube defaults", exact: true }).getByRole("combobox", { name: "Visibility", exact: true });
     assert.equal(await visibility.inputValue(), "public");
     assert.equal(await page.getByRole("checkbox", { name: "Made for kids", exact: true }).isChecked(), false);
     await setting.uncheck();
     await tiktokVisibility.selectOption("SELF_ONLY");
     await tiktokDefaults.getByRole("checkbox", { name: "Allow comments", exact: true }).uncheck();
+    await promotional.check();
     await visibility.selectOption("unlisted");
     await page.getByRole("checkbox", { name: "Notify subscribers", exact: true }).check();
     await page.getByRole("button", { name: "Save publishing defaults", exact: true }).click();
@@ -128,9 +140,21 @@ async function main() {
     assert.equal(await visibility.inputValue(), "unlisted");
     assert.equal(await tiktokVisibility.inputValue(), "SELF_ONLY");
     assert.equal(await tiktokDefaults.getByRole("checkbox", { name: "Allow comments", exact: true }).isChecked(), false);
-    assert.deepEqual(writes, [{ ...defaults, containsSyntheticMedia: false, tiktokPrivacyLevel: "SELF_ONLY", tiktokAllowComments: false, youtubePrivacyStatus: "unlisted", youtubeNotifySubscribers: true }]);
+    assert.equal(await promotional.isChecked(), true);
+    assert.deepEqual(writes, [{ ...defaults, containsSyntheticMedia: false, tiktokPrivacyLevel: "SELF_ONLY", tiktokAllowComments: false, tiktokBrandOrganic: true, youtubePrivacyStatus: "unlisted", youtubeNotifySubscribers: true }]);
     await page.screenshot({ path: path.join(out, "settings-defaults.png"), fullPage: true });
-    console.log("PASS Settings saves and restores TikTok visibility/comments, AI disclosure and YouTube defaults");
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: path.join(out, "settings-promotional-mobile.png"), fullPage: true });
+    await promotional.uncheck();
+    await page.getByRole("button", { name: "Save publishing defaults", exact: true }).click();
+    await page.getByText("Publishing defaults saved for your account.", { exact: true }).waitFor();
+    await page.reload();
+    await page.waitForFunction(() => !document.querySelector('input[type="checkbox"]')?.disabled);
+    assert.equal(await promotional.isChecked(), false);
+    await page.setViewportSize({ width: 1366, height: 680 });
+    await page.screenshot({ path: path.join(out, "settings-promotional-off-desktop.png"), fullPage: true });
+    console.log("PASS Settings defaults promotional disclosure off, saves/restores on and off, keeps AI disclosure separate and fits mobile");
 
     for (const mode of ["modal", "drawer"]) {
       const writesBeforePublishing = writes.length;
@@ -143,11 +167,25 @@ async function main() {
       releasePreferences();
       await ready();
       assert.equal(await disclosure().count(), 0);
+      const caption = page.getByRole("textbox", { name: "Post caption" });
+      await page.waitForFunction(expected => document.querySelector('textarea[name="caption"]')?.value === expected, defaultCaption);
+      await caption.fill("Saved from " + mode + "\n\n#UGCPilot");
+      await page.getByRole("button", { name: "Save caption", exact: true }).click();
+      await page.getByText("Caption saved.", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "Clear post caption", exact: true }).click();
+      assert.equal(await caption.inputValue(), "");
+      await page.getByRole("button", { name: /Saved captions/ }).click();
+      await page.getByRole("button", { name: "Use caption", exact: true }).first().click();
+      assert.equal(await caption.inputValue(), defaultCaption);
+      await page.getByRole("button", { name: /Saved captions/ }).click();
       await page.screenshot({ path: path.join(out, mode + "-1366x680.png"), fullPage: true });
       const settings = await submit(mode);
+      assert.equal(await page.evaluate(() => window.__submission.caption), defaultCaption);
       assert.equal(settings.containsSyntheticMedia, false);
       assert.equal(settings.privacyLevel, "SELF_ONLY");
       assert.equal(settings.allowComment, false);
+      assert.equal(settings.brandOrganic, false);
+      assert.equal(settings.brandedContent, false);
       console.log("PASS " + mode + " waits for saved defaults and submits them without per-post questions");
 
       await page.setViewportSize({ width: 390, height: 844 });
@@ -166,6 +204,7 @@ async function main() {
       assert.equal(initial.containsSyntheticMedia, true);
       assert.equal(initial.privacyLevel, "PUBLIC_TO_EVERYONE");
       assert.equal(initial.allowComment, true);
+      assert.equal(initial.brandOrganic, false, "AI disclosure must not enable promotional labeling");
       assert.equal(writes.length, writesBeforePublishing, "Publishing must not overwrite account defaults");
       console.log("PASS " + mode + " uses Everyone/comments-on defaults with no questions or horizontal overflow on mobile");
 
@@ -198,6 +237,7 @@ async function main() {
       await popup.waitForFunction(() => !document.querySelector('input[type="checkbox"]')?.disabled);
       await popupTikTok.getByRole("combobox", { name: "Visibility", exact: true }).selectOption("SELF_ONLY");
       await popupTikTok.getByRole("checkbox", { name: "Allow comments", exact: true }).uncheck();
+      await popupTikTok.getByRole("checkbox", { name: "Label posts as promotional content", exact: true }).check();
       await popup.getByRole("button", { name: "Save publishing defaults", exact: true }).click();
       await popup.getByText("Publishing defaults saved for your account.", { exact: true }).waitFor();
       await popup.close();
@@ -209,6 +249,9 @@ async function main() {
       const updated = await submit(mode);
       assert.equal(updated.privacyLevel, "SELF_ONLY");
       assert.equal(updated.allowComment, false);
+      assert.equal(updated.brandOrganic, true);
+      assert.equal(updated.commercialContentDisclosureEnabled, true);
+      assert.equal(updated.brandedContent, false);
       assert.equal(await page.evaluate(() => window.__submission.caption), "Keep this caption while changing defaults");
       console.log("PASS " + mode + " opens Settings Preferences and refreshes saved defaults without losing the caption");
     }

@@ -1,0 +1,144 @@
+{
+  "broadSituations": [
+    "Campaign planning and reporting are scattered across tools.",
+    "Missed follow-ups.",
+    "Connect planning, follow-up, and reporting."
+  ],
+  "concept": "Discover essential tips for effective campaign management.",
+  "contentStrategy": {
+    "angle": "Provide six actionable tips for better campaign management.",
+    "contentFormatId": "list",
+    "hookFamilyId": "surprise"
+  },
+  "grounding": {
+    "anchorId": "product_detail:product_summary"
+  },
+  "slides": [
+    {
+      "ctaText": null,
+      "body": null,
+      "headline": "6 tips for effective campaign management",
+      "formatRole": "cover_hook",
+      "imageDirection": "A visually appealing list of tips displayed on a digital screen.",
+      "listItems": [],
+      "slideNumber": 1,
+      "slideType": "hook",
+      "textMode": "single_statement"
+    },
+    {
+      "ctaText": null,
+      "body": null,
+      "headline": null,
+      "formatRole": "items_1_2",
+      "imageDirection": "A checklist with two items ticked off and two remaining.",
+      "listItems": [
+        "Set clear objectives for each campaign.",
+        "Use a shared calendar for deadlines."
+      ],
+      "slideNumber": 2,
+      "slideType": "benefit",
+      "textMode": "checklist"
+    },
+    {
+      "ctaText": null,
+      "body": null,
+      "headline": null,
+      "formatRole": "items_3_4",
+      "imageDirection": "A digital workspace showing tasks being assigned and tracked.",
+      "listItems": [
+        "Conduct regular team check-ins.",
+        "Document all decisions and changes."
+      ],
+      "slideNumber": 3,
+      "slideType": "benefit",
+      "textMode": "checklist"
+    },
+    {
+      "ctaText": null,
+      "body": null,
+      "headline": null,
+      "formatRole": "items_5_6",
+      "imageDirection": "A dashboard displaying campaign metrics and performance indicators.",
+      "listItems": [
+        "Utilize project management tools for tracking.",
+        "Review and adjust strategies based on feedback."
+      ],
+      "slideNumber": 4,
+      "slideType": "benefit",
+      "textMode": "checklist"
+    },
+    {
+      "ctaText": null,
+      "body": {
+        "firstWords": [
+          "To",
+          "enhance",
+          "your",
+          "campaign",
+          "management,",
+          "check",
+          "the",
+          "approval",
+          "document",
+          "for",
+          "clarity."
+        ],
+        "secondWords": [
+          "Ensure",
+          "all",
+          "stakeholders",
+          "agree",
+          "on",
+          "the",
+          "final",
+          "details",
+          "before",
+          "launching."
+        ]
+      },
+      "headline": null,
+      "formatRole": "practical_extension",
+      "imageDirection": "A close-up of a campaign approval document with highlighted sections and notes.",
+      "listItems": [],
+      "slideNumber": 5,
+      "slideType": "benefit",
+      "textMode": "headline_body"
+    },
+    {
+      "ctaText": null,
+      "body": {
+        "firstWords": [
+          "Take",
+          "a",
+          "moment",
+          "to",
+          "review",
+          "your",
+          "current",
+          "campaign",
+          "process."
+        ],
+        "secondWords": [
+          "Identify",
+          "areas",
+          "for",
+          "improvement",
+          "and",
+          "implement",
+          "changes",
+          "to",
+          "enhance",
+          "your",
+          "workflow."
+        ]
+      },
+      "headline": null,
+      "formatRole": "takeaway_cta",
+      "imageDirection": "A computer screen displaying campaign data and analytics in a clear layout.",
+      "listItems": [],
+      "slideNumber": 6,
+      "slideType": "cta",
+      "textMode": "cta_takeaway"
+    }
+  ]
+}

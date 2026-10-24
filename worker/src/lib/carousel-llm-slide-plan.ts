@@ -1,5 +1,7 @@
 import OpenAI from "openai";
-import { buildCountedBodyRepairSchema, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
+import { CAROUSEL_BATCH_POSITION_KEYS, readCarouselBatchPositions } from "./carousel-batch-positions.js";
+import { applyScopedPlanRepair, buildScopedPlanRepairSchema, getScopedPlanRepair } from "./carousel-scoped-plan-repair.js";
+import { buildCountedBodyRepairSchema, decodeCountedPlanBodies, getCountedBodyRepairSlides, parseCountedBodyRepair, validateCountedBodyRepairPolicy, withCountedPlanBodies, type CarouselCountedBodyRepairPolicy } from "./carousel-counted-body-repair.js";
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
 import type {
@@ -39,7 +41,7 @@ import { CAROUSEL_TEXT_MODEL } from "./carousel-text-model.js";
 import { CAROUSEL_TEXT_PRESENTATION_GUIDANCE, CAROUSEL_HOOK_COPY_GUIDANCE, CAROUSEL_HOOK_MIN_WORDS, CAROUSEL_HOOK_MAX_WORDS, CAROUSEL_BODY_BLOCK_MAX_LINES, CAROUSEL_HEADING_FONT_SIZE, getCarouselBodyBlocks, getCarouselHookStatementIssue, normalizeCarouselText } from "./carousel-text-presentation.js";
 
 export const CAROUSEL_CONTENT_PLANNER_VERSION =
-  "llm-carousel-planner-v54-body-count-feedback";
+  "llm-carousel-planner-v59-scoped-visual-repair";
 export const CAROUSEL_V1_ASSIGNMENT_REQUIRED_ERROR =
   "Carousel V1 requires exactly six slides plus a backend-selected content format and compatible hook family.";
 
@@ -52,7 +54,7 @@ const MAX_HEADLINE_LENGTH = 100;
 const MAX_CTA_LENGTH = 68;
 const MAX_IMAGE_DIRECTION_LENGTH = 180;
 const MAX_LIST_ITEM_LENGTH = 88;
-const MIN_REQUIRED_BODY_WORDS = 18;
+const MIN_REQUIRED_BODY_WORDS = 1;
 const FIRST_SLIDE_MIN_BODY_WORDS = 4;
 const FIRST_SLIDE_MAX_BODY_WORDS = 12;
 const FIRST_SLIDE_MIN_HEADLINE_WORDS = CAROUSEL_HOOK_MIN_WORDS;
@@ -62,7 +64,7 @@ const FIRST_SLIDE_MIN_HEADLINE_WORDS = CAROUSEL_HOOK_MIN_WORDS;
 const FIRST_SLIDE_MAX_HEADLINE_LENGTH = 100;
 const FIRST_SLIDE_MAX_HEADLINE_WORDS = CAROUSEL_HOOK_MAX_WORDS;
 const FOLLOWUP_SLIDE_MAX_BODY_WORDS = 30;
-const MIN_HEADLINE_WORDS = 3;
+const MIN_HEADLINE_WORDS = 1;
 const MAX_HEADLINE_WORDS = 10;
 const FIRST_SLIDE_HOOK_COPY_GUIDANCE =
   `${CAROUSEL_HOOK_COPY_GUIDANCE} ${CAROUSEL_HOOK_MAX_WORDS} words remains the absolute limit. Use short, natural wording so it stays within four centred display lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px. Put the hook in headline and set body to null: Slide 1 has no subtitle, supporting copy, or second text layer. Never use ALL CAPS. The hook is centered over the image, so imageDirection must leave a clear, calm central text zone rather than reserving empty space only at the bottom.`;
@@ -150,9 +152,12 @@ export type CarouselPlanValidationIssue = {
     | "recent_repetition"
     | "render_fit"
     | "repeated_punctuation"
+    | "nearby_word_repetition"
+    | "solution_tone"
     | "story_structure"
     | "story_repetition"
     | "unresolved_placeholder"
+    | "unsafe_visual_direction"
     | "unsupported_claim";
   message: string;
   slideNumber: number | null;
@@ -230,6 +235,26 @@ export type CarouselBatchContentPlanItem = {
   replacementForFormatId: CarouselContentFormatId | null;
   slotIndex: number;
 };
+
+export type CarouselBatchPlanningFailure = {
+  slotIndex: number;
+  message: string;
+  initialIssues: CarouselPlanValidationIssue[];
+  finalIssues: CarouselPlanValidationIssue[];
+  rawLlmResponse: { initial: string; repair: string | null };
+};
+
+class CarouselBatchItemRepairError extends Error {
+  constructor(message: string, readonly issues: CarouselPlanValidationIssue[], readonly repairResponse: string | null, cause: unknown) {
+    super(message, { cause });
+  }
+}
+
+export class CarouselPartialBatchPlanningError extends Error {
+  constructor(public readonly completedItems: CarouselBatchContentPlanItem[], public readonly failures: CarouselBatchPlanningFailure[]) {
+    super(`Some Carousel plans failed validation: ${failures.map((error) => error.message).join("; ")}`);
+  }
+}
 
 export type ResolvedCarouselContentStrategy = {
   angle: string;
@@ -505,7 +530,7 @@ export async function buildCarouselContentPlanBatch(
   if (
     input.items.length !== 5 ||
     new Set(input.items.map((item) => item.slotIndex)).size !== 5 ||
-    input.items.some((item) => item.slotIndex < 0 || item.slotIndex > 4)
+    input.items.some((item) => !Number.isInteger(item.slotIndex) || item.slotIndex < 0 || item.slotIndex > 4)
   ) {
     throw new Error("A Carousel content batch must contain slots 0 through 4 exactly once.");
   }
@@ -544,14 +569,16 @@ export async function buildCarouselContentPlanBatch(
 
   try {
     const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 8_500,
+      max_completion_tokens: input.bodyRepairPolicy ? 12_000 : 8_500,
       messages: buildBatchPlannerMessages(input, requested),
       model,
       response_format: {
         type: "json_schema",
         json_schema: {
           name: "carousel_content_batch",
-          schema: buildCarouselContentBatchSchema(requested),
+          schema: input.bodyRepairPolicy
+            ? withCountedPlanBodies(buildCarouselContentBatchSchema(requested))
+            : buildCarouselContentBatchSchema(requested),
           strict: true,
         },
       },
@@ -563,20 +590,7 @@ export async function buildCarouselContentPlanBatch(
       throw new Error("OpenAI returned no Carousel batch content.");
     }
 
-    const batchRecord = asRecord(JSON.parse(batchRawResponse), "carousel batch");
-    if (!Array.isArray(batchRecord.items) || batchRecord.items.length !== 5) {
-      throw new Error("Carousel batch response must contain exactly five items.");
-    }
-
-    const rawBySlot = new Map<number, Record<string, unknown>>();
-    for (const value of batchRecord.items) {
-      const record = asRecord(value, "carousel batch item");
-      const slotIndex = getInteger(record.slotIndex, "batch slotIndex");
-      if (slotIndex < 0 || slotIndex > 4 || rawBySlot.has(slotIndex)) {
-        throw new Error("Carousel batch response contains an invalid or duplicate slotIndex.");
-      }
-      rawBySlot.set(slotIndex, record);
-    }
+    const rawBySlot = readCarouselBatchPositions(JSON.parse(batchRawResponse));
 
     const completed: CarouselBatchContentPlanItem[] = [];
     const pendingRepairs: Array<{
@@ -619,9 +633,10 @@ export async function buildCarouselContentPlanBatch(
 
       try {
         const parsed = parseCarouselContentPlanShape(
-          rawItem.plan,
+          input.bodyRepairPolicy ? decodeCountedPlanBodies(rawItem.plan) : rawItem.plan,
           CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
           requestedItem.context,
+          true,
         );
         const validation = evaluateCarouselContentPlanForPublishing({
           analysis: input.analysis,
@@ -685,70 +700,87 @@ export async function buildCarouselContentPlanBatch(
       }
     }
 
+    const repairFailures: CarouselBatchPlanningFailure[] = [];
     for (const pending of pendingRepairs) {
-      const replacement =
-        pending.status === "not_applicable"
-          ? selectCarouselBatchReplacement(
-              completed,
-              pending.requestedItem.item.slotIndex,
-            )
-          : null;
-      const actualFormatId =
-        replacement?.actualContentFormatId ?? pending.requestedItem.context.format.id;
-      const actualHookFamilyId =
-        replacement?.actualHookFamilyId ?? pending.requestedItem.context.hookFamily.id;
-      const repairInput = {
-        ...pending.requestedItem.planInput,
-        contentFormatId: actualFormatId,
-        hookFamilyId: actualHookFamilyId,
-        hookTemplateId: replacement ? null : pending.requestedItem.planInput.hookTemplateId,
-        hookTemplateVersion: replacement
-          ? null
-          : pending.requestedItem.planInput.hookTemplateVersion,
-        recentHistory: workingHistory,
-      } satisfies CarouselContentPlanInput;
-      const repairContext = getGrammarGenerationContext(
-        repairInput,
-        CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-      );
-      const repairedPlan = await buildSingleBatchItemRepair({
-        context: repairContext,
-        input: repairInput,
-        issues: pending.issues,
-        model,
-        rawItem: pending.rawItem,
-        replacement: Boolean(replacement),
-      });
+      try {
+        const replacement =
+          pending.status === "not_applicable"
+            ? selectCarouselBatchReplacement(
+                completed,
+                pending.requestedItem.item.slotIndex,
+              )
+            : null;
+        const actualFormatId =
+          replacement?.actualContentFormatId ?? pending.requestedItem.context.format.id;
+        const actualHookFamilyId =
+          replacement?.actualHookFamilyId ?? pending.requestedItem.context.hookFamily.id;
+        const repairInput = {
+          ...pending.requestedItem.planInput,
+          contentFormatId: actualFormatId,
+          hookFamilyId: actualHookFamilyId,
+          hookTemplateId: replacement ? null : pending.requestedItem.planInput.hookTemplateId,
+          hookTemplateVersion: replacement
+            ? null
+            : pending.requestedItem.planInput.hookTemplateVersion,
+          recentHistory: workingHistory,
+        } satisfies CarouselContentPlanInput;
+        const repairContext = getGrammarGenerationContext(
+          repairInput,
+          CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
+        );
+        const repairedPlan = await buildSingleBatchItemRepair({
+          context: repairContext,
+          input: repairInput,
+          issues: pending.issues,
+          model,
+          rawItem: pending.rawItem,
+          replacement: Boolean(replacement),
+        });
 
-      completed.push({
-        actualContentFormatId: repairContext.format.id,
-        actualHookFamilyId: repairContext.hookFamily.id,
-        actualHookTemplateId: repairedPlan.validationResult
-          .hookTemplateFallbackUsed
-          ? null
-          : repairContext.hookTemplate?.id ?? null,
-        actualHookTemplateVersion: repairedPlan.validationResult
-          .hookTemplateFallbackUsed
-          ? null
-          : repairContext.hookTemplate?.version ?? null,
-        assignedContentFormatId: pending.requestedItem.context.format.id,
-        plan: repairedPlan,
-        replacementForFormatId: replacement
-          ? pending.requestedItem.context.format.id
-          : null,
-        slotIndex: pending.requestedItem.item.slotIndex,
-      });
-      workingHistory = mergeCarouselRecentContentHistory(
-        [summarizeContentPlan(repairedPlan)],
-        workingHistory,
-      );
+        completed.push({
+          actualContentFormatId: repairContext.format.id,
+          actualHookFamilyId: repairContext.hookFamily.id,
+          actualHookTemplateId: repairedPlan.validationResult
+            .hookTemplateFallbackUsed
+            ? null
+            : repairContext.hookTemplate?.id ?? null,
+          actualHookTemplateVersion: repairedPlan.validationResult
+            .hookTemplateFallbackUsed
+            ? null
+            : repairContext.hookTemplate?.version ?? null,
+          assignedContentFormatId: pending.requestedItem.context.format.id,
+          plan: repairedPlan,
+          replacementForFormatId: replacement
+            ? pending.requestedItem.context.format.id
+            : null,
+          slotIndex: pending.requestedItem.item.slotIndex,
+        });
+        workingHistory = mergeCarouselRecentContentHistory(
+          [summarizeContentPlan(repairedPlan)],
+          workingHistory,
+        );
+      } catch (error) {
+        repairFailures.push({
+          slotIndex: pending.requestedItem.item.slotIndex,
+          message: getErrorMessage(error),
+          initialIssues: pending.issues,
+          finalIssues: error instanceof CarouselBatchItemRepairError ? error.issues : [createInvalidPlanIssue(error)],
+          rawLlmResponse: { initial: JSON.stringify(pending.rawItem), repair: error instanceof CarouselBatchItemRepairError ? error.repairResponse : null },
+        });
+      }
     }
 
-    return completed.sort((left, right) => left.slotIndex - right.slotIndex).map((item) => input.bodyRepairPolicy
+    const results = completed.sort((left, right) => left.slotIndex - right.slotIndex).map((item) => input.bodyRepairPolicy
       ? { ...item, plan: { ...item.plan, plannerVersion: `${item.plan.plannerVersion}-${input.bodyRepairPolicy.version}`,
           validationResult: { ...item.plan.validationResult, bodyRepairPolicyVersion: input.bodyRepairPolicy.version } } }
       : item);
+    if (repairFailures.length > 0) {
+      if (input.bodyRepairPolicy) throw new CarouselPartialBatchPlanningError(results, repairFailures);
+      throw new AggregateError(repairFailures, repairFailures.map((error) => error.message).join("; "));
+    }
+    return results;
   } catch (error) {
+    if (error instanceof CarouselPartialBatchPlanningError) throw error;
     throw new Error(
       `Carousel Structure 1 batch planning failed after validation repair: ${getErrorMessage(error)}`,
       { cause: error },
@@ -800,6 +832,7 @@ function parseCarouselContentPlanShape(
   value: unknown,
   requestedSlideCount: number,
   grammarContext: CarouselGrammarGenerationContext | null = null,
+  collectVisualIssues = false,
 ) {
   const slideCount = clampSlideCount(requestedSlideCount);
   const record = asRecord(value, "carousel plan");
@@ -931,7 +964,7 @@ function parseCarouselContentPlanShape(
       throw new Error("Optional CTA text belongs on the final slide only.");
     }
 
-    if (index !== 0 && hasProhibitedVisualSubject(imageDirection)) {
+    if (!collectVisualIssues && index !== 0 && hasProhibitedVisualSubject(imageDirection)) {
       throw new Error(
         `Slide ${index + 1} image direction includes a prohibited human subject.`,
       );
@@ -1183,7 +1216,7 @@ function countWords(value: string) {
   return value.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?/g)?.length ?? 0;
 }
 
-function hasNearbyRepeatedCopy(value: string) {
+function getNearbyRepeatedCopy(value: string): string | null {
   const tokens = normalizeValidationText(value).split(/\s+/).filter(Boolean);
   const repeatedConnectors = new Set(["by", "for", "from", "to", "with"]);
   const ignoredContentWords = new Set([
@@ -1218,7 +1251,7 @@ function hasNearbyRepeatedCopy(value: string) {
           ["and", "but", "or", "while"].includes(between),
         )
       ) {
-        return true;
+        return token;
       }
 
       if (
@@ -1227,12 +1260,12 @@ function hasNearbyRepeatedCopy(value: string) {
         !ignoredContentWords.has(token) &&
         getCopyWordRoot(token) === getCopyWordRoot(nextToken)
       ) {
-        return true;
+        return token;
       }
     }
   }
 
-  return false;
+  return null;
 }
 
 function getCopyWordRoot(value: string) {
@@ -1500,10 +1533,11 @@ export function validateCarouselContentPlan(
     ...plan.broadSituations,
   ].filter((value): value is string => Boolean(value));
 
-  if (planLevelCopy.some(hasGenericCopy)) {
+  const genericPlanPhrase = planLevelCopy.map(getGenericCopyPhrase).find(Boolean);
+  if (genericPlanPhrase) {
     issues.push({
       code: "generic_copy",
-      message: "The concept or angle is generic instead of specific to saved evidence.",
+      message: `The concept or angle is generic instead of specific to saved evidence. Replace the phrase "${genericPlanPhrase}" with a concrete decision or check.`,
       slideNumber: null,
     });
   }
@@ -1530,8 +1564,8 @@ export function validateCarouselContentPlan(
 
     if (slide.slideType === "solution" && isProblemFramedCopy(slide.body)) {
       issues.push({
-        code: "story_structure",
-        message: "A consequence or friction slide cannot be labeled as a solution.",
+        code: "solution_tone",
+        message: "Solution wording may emphasize friction; consider making the recommended action clearer.",
         slideNumber: slide.slideNumber,
       });
     }
@@ -1619,17 +1653,27 @@ export function validateCarouselContentPlan(
       }
 
       // Conversational lowercase is an authored style, not a grammar defect.
+      const repeatedBodyWord = slide.body.match(/\b([a-z][a-z'-]{2,})\s+\1\b/i)?.[1];
+      const nearbyRepeatedWord = getNearbyRepeatedCopy(slide.body);
+      if (!repeatedBodyWord && nearbyRepeatedWord) {
+        issues.push({
+          code: "nearby_word_repetition",
+          message: `Body copy uses "${nearbyRepeatedWord}" nearby; consider varying the wording if it improves clarity.`,
+          slideNumber: slide.slideNumber,
+        });
+      }
       if (
-        /\b([a-z][a-z'-]{2,})\s+\1\b/i.test(slide.body) ||
+        repeatedBodyWord ||
         /\bplanning and reporting\b(?:\s+[a-z'-]+){0,5}\s+creates\b/i.test(
           slide.body,
         ) ||
-        hasNearbyRepeatedCopy(slide.body) ||
         /\s+[,.!?]/.test(slide.body)
       ) {
         issues.push({
           code: "grammar",
-          message: "Body copy contains a grammar or spacing problem.",
+          message: repeatedBodyWord
+            ? `Body copy duplicates the adjacent word "${repeatedBodyWord}". Remove the accidental duplicate.`
+            : "Body copy contains a grammar or spacing problem. Fix plural subject agreement and remove spaces before punctuation.",
           slideNumber: slide.slideNumber,
         });
       }
@@ -1662,10 +1706,11 @@ export function validateCarouselContentPlan(
       });
     }
 
-    if (texts.some(hasGenericCopy)) {
+    const genericSlidePhrase = texts.map(getGenericCopyPhrase).find(Boolean);
+    if (genericSlidePhrase) {
       issues.push({
         code: "generic_copy",
-        message: "Copy is generic instead of specific to the supplied evidence.",
+        message: `Copy is generic instead of specific to the supplied evidence. Replace the phrase "${genericSlidePhrase}" with a concrete decision or check.`,
         slideNumber: slide.slideNumber,
       });
     }
@@ -1845,7 +1890,17 @@ export function partitionCarouselContentPlanValidationIssues(
   const advisoryIssues: CarouselPlanValidationIssue[] = [];
 
   for (const issue of dedupeValidationIssues([...issues])) {
-    if (issue.code === "hook_alignment" || issue.code === "hook_quality") {
+    // These lexical/style heuristics cannot establish semantic correctness.
+    // Preserve their diagnostics without spending repairs or failing a useful
+    // plan for natural paraphrasing, punctuation, or repeated function words.
+    // Verified anchor identity, factual claims, actual duplicate copy, format,
+    // non-promotional helpful tips, image safety and measured fit stay blocking.
+    if (
+      issue.code === "hook_alignment" || issue.code === "hook_quality" ||
+      issue.code === "nearby_word_repetition" || issue.code === "solution_tone" ||
+      issue.code === "multiple_ideas" || issue.code === "generic_copy" ||
+      issue.code === "grounding_disconnected"
+    ) {
       advisoryIssues.push(issue);
     } else {
       blockingIssues.push(issue);
@@ -1865,13 +1920,72 @@ function evaluateCarouselContentPlanForPublishing(params: {
   recentHistory: readonly CarouselRecentAcceptedCopy[] | undefined;
 }) {
   return partitionCarouselContentPlanValidationIssues([
+    ...params.plan.slides.flatMap((slide): CarouselPlanValidationIssue[] => slide.slideNumber > 1 && hasProhibitedVisualSubject(slide.imageDirection)
+      ? [{ code: "unsafe_visual_direction", slideNumber: slide.slideNumber,
+        message: "Image direction must describe objects and text-safe space only. Remove all human-subject terms, including team/customer labels; preserve the visible copy." }]
+      : []),
     ...validateCarouselContentPlan(params.plan, params.analysis),
+    ...validateHelpfulTipsPlan(params.plan, params.analysis),
     ...validateCarouselPlanGrounding(params.plan, params.groundingCandidates),
     ...validateCarouselRecentContentRepetition(
       params.plan,
       params.recentHistory,
     ),
   ]);
+}
+
+/**
+ * Structure 1 is the Helpful tips product surface. Its value must stand on its
+ * own: a card that promotes the owner's product belongs to Structure 2, not a
+ * helpful-tip slot selected by the account mixer.
+ */
+function validateHelpfulTipsPlan(
+  plan: Pick<CarouselContentPlan, "slides">,
+  analysis?: WebsiteBusinessAnalysis,
+) {
+  const issues: CarouselPlanValidationIssue[] = [];
+  const normalizedBusinessName = normalizeValidationText(
+    analysis?.businessName ?? "",
+  );
+
+  for (const slide of plan.slides) {
+    const texts = [
+      slide.headline,
+      slide.body,
+      ...(slide.listItems ?? []),
+    ].filter((value): value is string => Boolean(value));
+
+    if (typeof slide.ctaText === "string" && slide.ctaText.trim()) {
+      issues.push({
+        code: "unsupported_claim",
+        message: "Helpful tips cannot include a call to action.",
+        slideNumber: slide.slideNumber,
+      });
+    }
+
+    for (const text of texts) {
+      const normalized = normalizeValidationText(text);
+      const namesBusiness =
+        normalizedBusinessName.length >= 3 &&
+        normalized.includes(normalizedBusinessName);
+      const promotesProduct =
+        /\b(?:get started|sign up|book a demo|try our|download our|install our|visit our|our app|our platform|our tool)\b/i.test(
+          text,
+        );
+
+      if (namesBusiness || promotesProduct) {
+        issues.push({
+          code: "unsupported_claim",
+          message:
+            "Helpful tips must teach without naming or promoting the business or product.",
+          slideNumber: slide.slideNumber,
+        });
+        break;
+      }
+    }
+  }
+
+  return issues;
 }
 
 function hasUnsupportedPreciseNumber(value: string, evidenceText: string) {
@@ -2007,7 +2121,7 @@ function validateCarouselPlanGrounding(
   if (!hasGroundingTerm(plan.concept, candidate.matchTerms)) {
     issues.push({
       code: "grounding_disconnected",
-      message: "Carousel concept does not connect to its selected verified grounding.",
+      message: `Carousel concept does not connect to its selected verified grounding. Keep anchor ${candidate.anchorId} and naturally use one of its terms: ${candidate.matchTerms.join(", ")}.`,
       slideNumber: null,
     });
   }
@@ -2022,7 +2136,7 @@ function validateCarouselPlanGrounding(
   if (!hasGroundingTerm(middleSlides, candidate.matchTerms)) {
     issues.push({
       code: "grounding_disconnected",
-      message: "Carousel middle slides do not deliver the selected verified grounding.",
+      message: `Carousel middle slides do not deliver the selected verified grounding. Keep anchor ${candidate.anchorId} and naturally use one of its terms: ${candidate.matchTerms.join(", ")}.`,
       slideNumber: 3,
     });
   }
@@ -2055,9 +2169,11 @@ function getTokenOverlap(left: string, right: string) {
 }
 
 function hasGenericCopy(value: string) {
-  return /\b((?:achieve|enjoy|experience|gain) (?:better|greater|improved|more)|better (?:efficiency|management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|improved (?:clarity|organization|outcomes?|results?)|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|single platform|stay on top|streamline your workflow|transform your (?:campaign management|workflow)|unified platform|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i.test(
-    value,
-  );
+  return Boolean(getGenericCopyPhrase(value));
+}
+
+function getGenericCopyPhrase(value: string) {
+  return value.match(/\b((?:achieve|enjoy|experience|gain) (?:better|greater|improved|more)|better (?:efficiency|management|organization|outcomes?|results?)|boost your productivity|effectively|efficiently|effortlessly|enhance your marketing efforts|game changer|improved (?:clarity|organization|outcomes?|results?)|make every day count|next level|one workspace for everything|save time(?: faster)?|seamless(?:ly)?|single platform|stay on top|streamline your workflow|transform your (?:campaign management|workflow)|unified platform|unify your (?:planning and reporting|workflow)|unlock efficiency|with ease|work smarter)\b/i)?.[0] ?? null;
 }
 
 function dedupeValidationIssues(issues: CarouselPlanValidationIssue[]) {
@@ -2140,7 +2256,7 @@ function buildGrammarPlannerMessages(
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The resolved combined Structure 1 format is one renderer contract: its Slide 1 instruction may contain an optional hook overlay, while its Slides 2-6 instructions retain the base content structure. Keep the base content-format ID, hook-family ID, and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Slides 2-6 visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words. Slide 1 may describe a person or face only when an approved Hook-category asset is available; it must not request an unreviewed human scene.",
+        "You are a senior Instagram carousel strategist. Use the broad creative seed, emotion, and optional private creative brief to invent a fresh, coherent angle. The private brief is context only: do not mention its labels or force every part into visible copy. The resolved combined Structure 1 format is one renderer contract: its Slide 1 instruction may contain an optional hook overlay, while its Slides 2-6 instructions retain the base content structure. Keep the base content-format ID, hook-family ID, and required slide fields. Return only the requested JSON. Do not invent precise claims, metrics, proof, or guarantees. Slides 2-6 visual directions must describe only objects, surfaces, rooms, food, devices, documents, or still-life details and must never contain human-related words. Slide 1 may describe a person or face only when an approved Hook-category asset is available; it must not request an unreviewed human scene." + (input.bodyRepairPolicy ? `\n${COUNTED_PLAN_BODY_GUIDANCE}` : ""),
     },
     {
       role: "user" as const,
@@ -2154,6 +2270,7 @@ function buildGrammarPlannerMessages(
         JSON.stringify(input.planningBrief),
         "",
         "Selection rules:",
+        input.bodyRepairPolicy ? COUNTED_PLAN_BODY_GUIDANCE : null,
         "- contentFormatId and hookFamilyId must exactly match the backend-selected values.",
         "- Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation; never invent a fact or force a product name into every slide.",
         "- Treat creativeSeed as an open starting point, not finished copy or a compulsory plot.",
@@ -2161,11 +2278,11 @@ function buildGrammarPlannerMessages(
         "- Use the private creative brief as human specificity and factual direction, not as a fixed storyline or a replacement for the selected format.",
         "- Avoid wording and close paraphrases from recentAcceptedCopy.",
         "- Follow every supplied slide role, slideType, allowed text mode, item count, and instruction exactly.",
-        "- Slide 6 must retain useful, self-contained value. An optional CTA may accompany that value on this same slide only.",
+        "- Helpful tips are self-contained teaching. Do not name or promote the business, product, app, platform, or service. ctaText must be null on every slide, including Slide 6. End with a practical action or decision.",
         "",
         "Writing rules:",
         "- Use simple, natural language and one main idea per slide.",
-        "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement.",
+        "- Prioritize useful content over promotion. Do not turn the carousel into an advertisement or mention the business or product in visible copy.",
         "- Hook wording must be completely fresh and must follow the selected hook family without copying examples or history.",
         grammarContext.hookTemplate
           ? "- Apply the selected hook template only to Slide 1 as a structural pattern; adapt its {topic} placeholder naturally, rather than copying it verbatim. Do not let it change Slides 2-6, their selected format roles, or the Slide 1 copy budget."
@@ -2175,7 +2292,7 @@ function buildGrammarPlannerMessages(
           : null,
         `- On Slides 2-6, headlines are optional. When present, use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words, at most ${MAX_HEADLINE_LENGTH} characters, and no more than two visual lines. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters.`,
         `- Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in Inter Medium at 500 weight (hard maximum 600), centered at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. The one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. A short first-person problem or changed belief can leave a strong open loop; explain the story on Slides 2-6.`,
-        `- On non-list Slides 2-6, body copy must be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use only their configured listItems and body: null; the prose word minimum does not apply to listItems.`,
+        `- On non-list Slides 2-6, body copy must be one or two short body blocks separated by \\n\\n. Prefer concise, complete wording; shorter useful bodies are valid and have no minimum word count. Never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use only their configured listItems and body: null; the prose word minimum does not apply to listItems.`,
         `- Slides 2-6 use centered Inter Regular or Medium at fixed ${CAROUSEL_FIXED_FONT_SIZE}px type. Their actual headlines receive one measured white SVG background with dark text; body and list text remain white directly on the image. Slide 1 never uses the white SVG background: its cover hook is white Medium display text with a thin black outline over the unchanged image blend. Headlines remain optional: never add one merely to obtain the SVG background. Slides 2-6 body copy must fit within ${getCarouselStructure1BodyMaxLines(2)} lines; each list item within two; list groups within eight total. The renderer will not shrink or truncate copy.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "- List slides must use the exact configured number of short listItems and set body to null. Headlines are normally null. Never repeat listItems in body or add a second text layer for decoration.",
@@ -2187,16 +2304,17 @@ function buildGrammarPlannerMessages(
         "- Slide 1 imageDirection may describe a person or face only when that scene is supported by the approved Hook image category; otherwise use an object-only scene. Slides 2-6 imageDirection must name one concrete object-only scene and useful text-safe space.",
         "- Never request an unreviewed human scene. On Slides 2-6, do not write humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers in imageDirection, even as exclusions.",
         "- formatRole must exactly match the configured role for its slide number.",
-        "- ctaText is optional on Slide 6 only; it must be null on Slides 1-5 and must not replace promised value.",
+        "- ctaText must be null on every slide. Helpful tips end with a practical action or decision, never a CTA.",
         "",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
         "Verified grounding anchors:",
         JSON.stringify(
-          grammarContext.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+          grammarContext.groundingCandidates.map(({ anchorId, kind, sourceFact, matchTerms }) => ({
             anchorId,
             kind,
             sourceFact,
+            matchTerms,
           })),
         ),
         "",
@@ -2224,10 +2342,11 @@ function buildBatchPlannerMessages(
   const assignments = requested.map(({ context, item }) => ({
     creativeSeed: item.creativeSeed,
     emotion: item.emotion,
-    groundingCandidates: context.groundingCandidates.map(({ anchorId, kind, sourceFact }) => ({
+    groundingCandidates: context.groundingCandidates.map(({ anchorId, kind, sourceFact, matchTerms }) => ({
       anchorId,
       kind,
       sourceFact,
+      matchTerms,
     })),
     privateCreativeBrief: item.planningBrief,
     combinedFormat: {
@@ -2260,20 +2379,22 @@ function buildBatchPlannerMessages(
       rules: context.hookFamily.rules,
       useWhen: context.hookFamily.useWhen,
     },
-    slotIndex: item.slotIndex,
+    outputKey: CAROUSEL_BATCH_POSITION_KEYS[item.slotIndex],
   }));
 
   return [
     {
       role: "system" as const,
       content:
-        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, an optional private creative brief, a resolved combined Structure 1 format, and a hook family. The combined format may overlay only its Slide 1 instruction; Slides 2-6 retain the base content structure. Private briefs add human specificity but are not visible labels or compulsory scripts. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON.",
+        "You are a senior Instagram carousel strategist. Produce one controlled batch of exactly five independent Carousels. Each slot has a broad creative seed, a required emotion, an optional private creative brief, a resolved combined Structure 1 format, and a hook family. The combined format may overlay only its Slide 1 instruction; Slides 2-6 retain the base content structure. Private briefs add human specificity but are not visible labels or compulsory scripts. Keep the required IDs and fields, but freely develop the idea and wording. Avoid repetition against exact accepted copy and within this batch. Return only the requested JSON." + (input.bodyRepairPolicy ? `\n${COUNTED_PLAN_BODY_GUIDANCE}` : ""),
     },
     {
       role: "user" as const,
       content: [
         "Generate all five assigned Carousels as one high-quality batch.",
+        ...(input.bodyRepairPolicy ? [COUNTED_PLAN_BODY_GUIDANCE] : []),
         "For each slot, return status ready with a complete plan, or status not_applicable with plan null and a specific reason.",
+        "Return items as an object with exactly the assigned first, second, third, fourth and fifth keys. Match each outputKey to its own brief, format and hook family. Do not return position identifiers such as slotIndex or candidateIndex; the backend owns those positions.",
         "Do not mark a format not_applicable merely because another format is easier.",
         "Every ready item must use the exact format and hook-family IDs assigned to that slot.",
         "Develop each creativeSeed differently and let its emotion guide the tone without forcing a fixed story arc.",
@@ -2281,16 +2402,16 @@ function buildBatchPlannerMessages(
         "Every ready plan must select one supplied grounding.anchorId. Its concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent an anchor, and do not merely repeat a product name on every slide.",
         "Write fresh hooks and slide copy that do not copy recentAcceptedCopy or another item in this response.",
         "When a slot's combinedFormat.hookOverlay source is template, use that pattern only for Slide 1. Adapt {topic}; never copy it verbatim, do not change Slides 2-6 or their format roles, and never increase the Slide 1 copy budget. For adapt_if_unsupported claims, remove or soften unsupported personal, time, metric, or performance promises.",
-        "Use simple, specific, natural copy. Prioritize useful information over promotion.",
+        "Use simple, specific, natural copy. Helpful tips are self-contained teaching: never name or promote the business, product, app, platform, or service, and keep ctaText null on every slide.",
         `Optional headlines on Slides 2-6 must use ${MIN_HEADLINE_WORDS}-${MAX_HEADLINE_WORDS} words and at most ${MAX_HEADLINE_LENGTH} characters. Slide 1 requires one ${FIRST_SLIDE_MIN_HEADLINE_WORDS}-${FIRST_SLIDE_MAX_HEADLINE_WORDS}-word headline hook, at most ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Headlines remain optional and are never added merely to obtain the white SVG treatment.`,
         `Slide 1 is a social slideshow cover. ${FIRST_SLIDE_HOOK_COPY_GUIDANCE} It is rendered in centered Inter Medium at 500 weight (hard maximum 600) and ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px, with a thin black outline and no added gradient. Its one hook must fit within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines. The renderer never shrinks or truncates copy. Give a specific reason to swipe through a tension, outcome, contrast, mistake, useful promise, or curiosity gap.`,
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
-        `Non-list Slides 2-6 body copy must be one or two short body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30); count words before returning, and never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use their exact configured short listItems and body: null; do not duplicate the list in a prose body or apply the prose word minimum to listItems.`,
+        `Non-list Slides 2-6 body copy must be one or two short body blocks separated by \\n\\n. Prefer concise, complete wording; shorter useful bodies are valid and have no minimum word count. Never exceed ${FOLLOWUP_SLIDE_MAX_BODY_WORDS} words or ${FOLLOWUP_SLIDE_MAX_BODY_LENGTH} characters. List slides use their exact configured short listItems and body: null; do not duplicate the list in a prose body or apply the prose word minimum to listItems.`,
         "Never invent numbers, product capabilities, proof, customers, brands, health claims, financial claims, or guaranteed outcomes.",
         "Avoid generic copy such as boost productivity, streamline your workflow, save time, work smarter, unlock efficiency, or next level.",
         "Follow every format role, slide type, allowed text mode, and list-item count exactly.",
         "Return listItems as an empty array whenever that slide role has no configured listItemCount.",
-        "Slide 1 is the assigned reader-first cover. Slide 6 is a useful, self-contained takeaway. ctaText is optional on Slide 6 only; it must be null on Slides 1-5 and must not replace promised value.",
+        "Slide 1 is the assigned reader-first cover. Slide 6 is a useful, self-contained takeaway and practical action. ctaText must be null on every slide.",
         "Slide 1 imageDirection may describe a person or face only when that scene is supported by the approved Hook image category; otherwise use an object-only scene. Slides 2-6 imageDirection must describe only concrete object-only scenes and text-safe space, and never mention humans, people, faces, hands, bodies, silhouettes, teams, customers, or workers, even as exclusions.",
         "Minimal business context:",
         JSON.stringify({ businessDescription: input.businessDescription }),
@@ -2298,10 +2419,19 @@ function buildBatchPlannerMessages(
         JSON.stringify(assignments),
         "Last accepted Carousel copies (exact visible text):",
         JSON.stringify(normalizeRecentHistory(input.recentHistory)),
+        ...(input.bodyRepairPolicy ? [COUNTED_PLAN_BODY_GUIDANCE] : []),
       ].join("\n"),
     },
   ];
 }
+
+const COUNTED_PLAN_BODY_GUIDANCE = [
+  "COUNTED BODY TRANSPORT: firstWords and secondWords are arrays of SINGLE WORDS, never phrases. For example [\"Keep\",\"the\",\"campaign\",\"context\",\"beside\",\"the\",\"next\",\"clear\",\"decision.\"] is nine words; [\"Keep the campaign context\"] is invalid. Use firstWords for one complete thought. secondWords may be empty or contain a second complete thought. Both arrays together must contain 1-30 words; there is no prose minimum to pad toward. Each thought must fit three lines at the fixed font size. The server joins them with a blank line; do not return a string body or put whitespace inside a word.",
+  "WRITE SPECIFIC TEACHING: choose one supplied grounding anchor, and use its concrete matchTerms naturally in the concept and middle slides. For each slide teach one usable step, check, example, distinction or decision. The second sentence explains the same step's reason or application. Avoid vague summaries such as better results, stay organized, improve efficiency, smoother workflows or team success. Slide 5 adds a fresh application; Slide 6 gives a concrete action the reader can do without the product. No product names, promotion, invented results or CTAs.",
+  "FINAL COPY CHECK: the concept and middle slides visibly connect to the chosen anchor using its actual terms. Avoid repeating a content word within each body, including singular/plural variants. Every Slide 5 teaches a new concrete check or example with a named artifact and decision; it must not summarize benefits. Every Slide 6 describes an action involving an artifact and a decision, not a request to start implementing tips or a promise of better results. List entries are short, concrete checks rather than general encouragement.",
+  "FOLLOW-UP PRESENTATION: prefer headline null and body_only when allowed; use cta_takeaway on Slide 6. If a heading is required, it must add a distinct idea rather than repeat the body. Use short ordinary words so each sentence fits three lines at 48px. Covers and configured list slides keep body null and list counts unchanged.",
+  "VISUAL DIRECTIONS: Slides 2-6 describe physical objects only. Describe the tools, paper, screen, food, room or other relevant objects themselves. Never describe a team, people, faces, hands, customers or workers, even in exclusions or a diagram label. This restriction applies to imageDirection, not to useful written advice. Preserve all assigned format roles, factual checks and no-CTA rules.",
+].join("\n");
 
 function buildCarouselContentBatchSchema(
   requested: Array<{
@@ -2313,8 +2443,8 @@ function buildCarouselContentBatchSchema(
     additionalProperties: false,
     properties: {
       items: {
-        items: {
-          anyOf: requested.map(({ context, item }) => ({
+        additionalProperties: false,
+        properties: Object.fromEntries(requested.map(({ context, item }) => [CAROUSEL_BATCH_POSITION_KEYS[item.slotIndex]!, {
             additionalProperties: false,
             properties: {
               notApplicableReason: {
@@ -2332,19 +2462,16 @@ function buildCarouselContentBatchSchema(
                   { type: "null" },
                 ],
               },
-              slotIndex: { enum: [item.slotIndex], type: "integer" },
               status: {
                 enum: ["ready", "not_applicable"],
                 type: "string",
               },
             },
-            required: ["notApplicableReason", "plan", "slotIndex", "status"],
+            required: ["notApplicableReason", "plan", "status"],
             type: "object",
-          })),
-        },
-        maxItems: 5,
-        minItems: 5,
-        type: "array",
+          }])),
+        required: [...CAROUSEL_BATCH_POSITION_KEYS],
+        type: "object",
       },
     },
     required: ["items"],
@@ -2359,8 +2486,13 @@ async function buildSingleBatchItemRepair(params: {
   model: string;
   rawItem: Record<string, unknown>;
   replacement: boolean;
+  repairPass?: number;
+  repairHistory?: string[];
+  repairShapeFailure?: string;
 }) {
   let repairRawResponse: string | null = null;
+  const repairHistory = [...(params.repairHistory ?? [])];
+  let finalRepairIssues: CarouselPlanValidationIssue[] | null = null;
   let originalPlan: ReturnType<typeof parseCarouselContentPlanShape> | null =
     null;
 
@@ -2368,9 +2500,10 @@ async function buildSingleBatchItemRepair(params: {
     if (params.rawItem.status === "ready") {
       try {
         originalPlan = parseCarouselContentPlanShape(
-          params.rawItem.plan,
+          params.input.bodyRepairPolicy ? decodeCountedPlanBodies(params.rawItem.plan) : params.rawItem.plan,
           CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
           params.context,
+          true,
         );
       } catch {
         originalPlan = null;
@@ -2383,11 +2516,20 @@ async function buildSingleBatchItemRepair(params: {
     );
     const countedSlides = validateCountedBodyRepairPolicy(params.input.bodyRepairPolicy) && originalPlan && !params.replacement
       ? getCountedBodyRepairSlides(originalPlan.slides, params.issues) : null;
+    const scopedRepair = params.input.bodyRepairPolicy && originalPlan && !params.replacement && !countedSlides
+      ? getScopedPlanRepair(originalPlan, params.issues) : null;
     const completion = await getOpenAIClient().chat.completions.create({
-      max_completion_tokens: 1_800,
-      messages: countedSlides ? [
-        { role: "system", content: "Repair only the requested carousel body fields. Return two arrays of 9-12 individual words for each body: firstWords and secondWords. Join words into two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with 18-24 words total and at most 300 characters. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
+      max_completion_tokens: params.input.bodyRepairPolicy ? 3_000 : 1_800,
+      messages: scopedRepair ? [
+        { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the exact fields requested by the schema. All other plan fields are frozen and must not be returned or rewritten. For imageDirectionsBySlide change only the specified hidden image descriptions: name physical objects and useful text-safe space. Remove human-subject words even in labels such as team input or customer notes; describe a form, notes or screen directly. Never rewrite headlines, body copy, facts, roles or grounding to fix image metadata. For requested copy fields, keep the selected grounding anchor and correct only the named validation issues. Never add claims or promotion." },
+        { role: "user", content: JSON.stringify({ scope: scopedRepair, issues: params.issues,
+          repairShapeFailure: params.repairShapeFailure,
+          grounding: params.context.groundingCandidates, frozenPlan: originalPlan,
+          businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief }) },
+      ] : countedSlides ? [
+        { role: "system", content: COUNTED_PLAN_BODY_GUIDANCE + "\nRepair only the requested carousel body fields. Return firstWords and secondWords arrays of individual words for each body; secondWords may be empty. Join words into one or two natural complete thoughts, not filler. One idea per slide. No headings, metadata, list, CTA or full plan. Keep the existing business facts, meaning and assigned role; invent no product feature, customer story, result or measurement. Words have no whitespace, with punctuation attached. The two arrays become the same legacy body string separated by a blank line, with at most 30 words total and at most 300 characters; do not pad shorter useful copy. Each block must fit three lines at fixed 48px. Preserve every other field. Slide 6 gives a concrete useful action or decision." },
         { role: "user", content: JSON.stringify({ businessDescription: params.input.businessDescription, planningBrief: params.input.planningBrief, grounding: params.context.groundingCandidates,
+          repairShapeFailure: params.repairShapeFailure,
           issues: params.issues, frozenPlan: originalPlan,
           bodiesToReplace: countedSlides.map((n) => ({ slideNumber: n, currentBody: originalPlan!.slides[n - 1]!.body, role: originalPlan!.slides[n - 1]!.formatRole })),
         }) },
@@ -2402,6 +2544,7 @@ async function buildSingleBatchItemRepair(params: {
               : "This is an isolated repair for one broken item from a five-Carousel batch. Correct only this item.",
             "Validation or applicability issue:",
             JSON.stringify(params.issues),
+            params.repairShapeFailure ? `The previous repair had invalid output shape: ${params.repairShapeFailure}` : "",
             "Original batch item:",
             JSON.stringify(params.rawItem),
           ].join("\n"),
@@ -2411,11 +2554,11 @@ async function buildSingleBatchItemRepair(params: {
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: countedSlides ? "counted_carousel_body_repair" : "repaired_carousel_batch_item",
-          schema: countedSlides ? buildCountedBodyRepairSchema(countedSlides) : buildCarouselContentPlanSchema(
-            CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-            params.context,
-          ),
+          name: scopedRepair ? "scoped_carousel_batch_repair" : countedSlides ? "counted_carousel_body_repair" : "repaired_carousel_batch_item",
+          schema: scopedRepair ? buildScopedPlanRepairSchema(originalPlan!, scopedRepair) : countedSlides ? buildCountedBodyRepairSchema(countedSlides)
+            : params.input.bodyRepairPolicy
+              ? withCountedPlanBodies(buildCarouselContentPlanSchema(CAROUSEL_STRUCTURE_1_SLIDE_COUNT, params.context))
+              : buildCarouselContentPlanSchema(CAROUSEL_STRUCTURE_1_SLIDE_COUNT, params.context),
           strict: true,
         },
       },
@@ -2423,14 +2566,31 @@ async function buildSingleBatchItemRepair(params: {
     });
     repairRawResponse = completion.choices[0]?.message.content ?? null;
     if (!repairRawResponse) throw new Error("OpenAI returned no repaired batch item.");
+    repairHistory.push(repairRawResponse);
 
-    const replacements = countedSlides ? parseCountedBodyRepair(JSON.parse(repairRawResponse), countedSlides) : null;
-    const parsedRepair = parseCarouselContentPlanShape(
-      replacements ? { ...originalPlan, slides: originalPlan!.slides.map((slide) => replacements.has(slide.slideNumber)
-        ? { ...slide, body: replacements.get(slide.slideNumber)!, subtext: replacements.get(slide.slideNumber)! } : slide) } : JSON.parse(repairRawResponse),
+    let parsedRepair: ReturnType<typeof parseCarouselContentPlanShape>;
+    try {
+      const replacements = countedSlides ? parseCountedBodyRepair(JSON.parse(repairRawResponse), countedSlides) : null;
+      parsedRepair = parseCarouselContentPlanShape(
+      scopedRepair ? applyScopedPlanRepair(originalPlan!, scopedRepair, JSON.parse(repairRawResponse))
+        : replacements ? { ...originalPlan, slides: originalPlan!.slides.map((slide) => replacements.has(slide.slideNumber)
+        ? { ...slide, body: replacements.get(slide.slideNumber)!, subtext: replacements.get(slide.slideNumber)! } : slide) }
+        : params.input.bodyRepairPolicy ? decodeCountedPlanBodies(JSON.parse(repairRawResponse)) : JSON.parse(repairRawResponse),
       CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
       params.context,
-    );
+      true,
+      );
+    } catch (error) {
+      // A malformed model repair previously escaped before the second-pass
+      // branch. Spend the existing bounded second repair on the named shape
+      // failure; a provider error/empty response never enters this branch.
+      if (params.input.bodyRepairPolicy && !params.repairPass) {
+        return await buildSingleBatchItemRepair({ ...params,
+          repairShapeFailure: getErrorMessage(error), repairPass: 1, repairHistory,
+        });
+      }
+      throw error;
+    }
     const repaired =
       originalPlan && hasOnlySlideOneCoverFitIssues(params.issues)
         ? replaceOnlySlideOne(originalPlan, parsedRepair)
@@ -2442,6 +2602,7 @@ async function buildSingleBatchItemRepair(params: {
       recentHistory: params.input.recentHistory,
     });
     const finalIssues = repairedValidation.blockingIssues;
+    finalRepairIssues = finalIssues;
     if (finalIssues.length > 0) {
       if (
         params.context.hookTemplate &&
@@ -2479,6 +2640,16 @@ async function buildSingleBatchItemRepair(params: {
         });
       }
 
+      if (params.input.bodyRepairPolicy && !params.repairPass) {
+        return await buildSingleBatchItemRepair({
+          ...params,
+          rawItem: { ...params.rawItem, status: "ready", plan: repaired },
+          issues: finalIssues,
+          replacement: false,
+          repairPass: 1,
+          repairHistory,
+        });
+      }
       throw new Error(formatValidationIssues(finalIssues));
     }
 
@@ -2504,9 +2675,12 @@ async function buildSingleBatchItemRepair(params: {
       },
     });
   } catch (error) {
-    throw new Error(
+    if (error instanceof CarouselBatchItemRepairError) throw error;
+    throw new CarouselBatchItemRepairError(
       `Carousel Structure 1 isolated batch repair failed: ${getErrorMessage(error)}`,
-      { cause: error },
+      finalRepairIssues?.length ? finalRepairIssues : [createInvalidPlanIssue(error)],
+      repairHistory.length ? repairHistory.join("\n\n--- Structure 1 repair attempt ---\n\n") : null,
+      error,
     );
   }
 }
@@ -2768,7 +2942,7 @@ function buildRepairMessages(params: {
         hasSlideOneCoverFitFailure
           ? `Slide 1 exceeded its fixed cover budget. Replace it with a shorter, simpler single hook that fits within ${CAROUSEL_STRUCTURE_1_COVER_MAX_LINES} lines at ${CAROUSEL_STRUCTURE_1_COVER_FONT_SIZE}px and ${FIRST_SLIDE_MAX_HEADLINE_LENGTH} characters. Do not add a subtitle or support line to solve the overflow.`
           : null,
-        "Each non-list body on Slides 2-6 must be one or two complete, specific body blocks separated by \\n\\n. Aim for 20-24 words (the hard accepted range is 18-30), count words before returning, keep it at most 300 characters, and fit it within ten visual lines at the fixed 48px body size, with at most three lines per block. Normally use two blocks of 9-12 words each so their combined body reaches the minimum. The listed actual counts exclude the headline and CTA: neither can supply missing body words. A short closing slogan does not satisfy Slide 6; give a concrete useful action or decision. List slides must return body: null and their exact configured short listItems; never duplicate listItems in body or apply the prose word minimum to the list.",
+        "Each non-list body on Slides 2-6 must be one or two complete, specific body blocks separated by \\n\\n. Shorter useful bodies are valid; do not pad to a minimum word count, keep it at most 30 words and 300 characters, and fit it within ten visual lines at the fixed 48px body size, with at most three lines per block. Use one or two complete thoughts; a second block is optional. The listed actual counts exclude the headline and CTA. A short closing slogan does not satisfy Slide 6; give a concrete useful action or decision. List slides must return body: null and their exact configured short listItems; never duplicate listItems in body or apply a prose word minimum to the list.",
         "List modes may use at most eight total visual lines, with at most two lines per item.",
         "Remove repeated punctuation, fragments, generic copy, unsupported claims, repeated ideas, headline/body repetition, and grammar errors such as lead to missed leads.",
         "Do not repeat a connector within one short sentence, such as for better management for clearer decisions.",
@@ -2777,7 +2951,7 @@ function buildRepairMessages(params: {
         "Never use these phrases: boost productivity, effectively, efficiently, effortlessly, enhance your marketing efforts, seamless, streamline your workflow, transform your campaign management, unify your planning and reporting, unlock efficiency, with ease, next level, one workspace for everything, save time, stay on top, or work smarter.",
         CAROUSEL_TEXT_PRESENTATION_GUIDANCE,
         "Select one supplied grounding.anchorId. The concept and Slides 3-5 must naturally develop that verified workflow, product detail, or user situation. Do not invent a grounding fact or force a product name into every slide.",
-        "The final slide must be a self-contained takeaway using normal body content. An optional short CTA may accompany Slide 6 only.",
+        "The final slide must be a self-contained takeaway using normal body content and a practical action. ctaText must remain null on every slide; never name or promote the business or product.",
         "Every role without a configured listItemCount must return listItems as an empty array.",
         hasRecentRepetition
           ? "Preserve contentFormatId, hookFamilyId, formatRole, slideType, configured text modes, list-item counts, seed, and emotion. Rewrite only enough to avoid close wording repetition."
@@ -2969,14 +3143,16 @@ function buildCarouselContentSlideSchema(
     return {
       additionalProperties: false,
       properties: {
-        ctaText: index === slideCount - 1 ? { anyOf: [{ type: "string", minLength: 1, maxLength: MAX_CTA_LENGTH }, { type: "null" }] } : { type: "null" },
+        // Helpful tips are reader-first teaching. The final slide is a
+        // practical takeaway role, never a product call to action.
+        ctaText: { type: "null" },
         body:
           index === 0 || configuredListItemCount !== undefined
             ? { type: "null" }
             : {
                 anyOf: [
                   {
-                    description: "Non-list body only: 18-30 words total excluding headline and ctaText. Aim for 20-24 words across two short, complete thoughts of 9-12 words each, separated by a blank line. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
+                    description: "Non-list body only: nonempty useful copy with at most 30 words total excluding the headline. Use one or two short, complete thoughts separated by a blank line; do not pad to a minimum word count. Each thought fits three lines at fixed 48px. Slide 6 needs a useful action or decision, not a short slogan. Count this field alone; preserve the assigned role and factual meaning.",
                     maxLength: maximumBodyLength,
                     minLength: 1,
                     type: "string",

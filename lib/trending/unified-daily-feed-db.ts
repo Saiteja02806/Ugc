@@ -11,6 +11,11 @@ import {
   type TrendingContentMix,
   validateTrendingContentMix,
 } from "@/lib/trending/content-mix";
+import {
+  DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX,
+  type TrendingSlideshowStyleMix,
+  validateTrendingSlideshowStyleMix,
+} from "@/lib/trending/slideshow-style-mix";
 import type { TrendingFeedFormat } from "@/lib/trending/feed-items";
 
 const CONTENT_MIX_TABLE = "trending_content_mix_preferences";
@@ -27,6 +32,7 @@ export type TrendingPlanEntitlement = {
 export type TrendingContentMixPreference = {
   mix: TrendingContentMix;
   preferenceVersion: number;
+  slideshowStyleMix: TrendingSlideshowStyleMix;
   updatedAt: string | null;
 };
 
@@ -42,6 +48,8 @@ export type DailyTrendingFeedRecord = {
   planDisplayName: string;
   planKey: string;
   preferenceVersion: number;
+  slideshowStyleMix: TrendingSlideshowStyleMix;
+  slideshowStyleMixEnabled: boolean;
   status: "completed" | "failed" | "preparing" | "ready";
   timezone: string;
   updatedAt: string;
@@ -72,14 +80,17 @@ type DailyFeedRow = {
   created_at: string;
   daily_limit: number;
   hook_video_percent: number;
+  helpful_tips_percent: number;
   id: string;
   last_error: string | null;
   local_date: string;
   plan_display_name: string;
   plan_key: string;
   preference_version: number;
+  product_stories_cta_percent: number;
   reaction_percent: number;
   status: DailyTrendingFeedRecord["status"];
+  slideshow_style_mix_enabled: boolean;
   timezone: string;
   updated_at: string;
   user_id: string;
@@ -159,7 +170,7 @@ export async function getTrendingContentMixPreference(
 ): Promise<TrendingContentMixPreference> {
   const { data, error } = await getClient()
     .from(CONTENT_MIX_TABLE)
-    .select("carousel_percent,hook_video_percent,preference_version,reaction_percent,updated_at,wall_text_percent")
+    .select("carousel_percent,helpful_tips_percent,hook_video_percent,preference_version,product_stories_cta_percent,reaction_percent,updated_at,wall_text_percent")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -171,6 +182,7 @@ export async function getTrendingContentMixPreference(
     return {
       mix: { ...DEFAULT_TRENDING_CONTENT_MIX },
       preferenceVersion: 1,
+      slideshowStyleMix: { ...DEFAULT_TRENDING_SLIDESHOW_STYLE_MIX },
       updatedAt: null,
     };
   }
@@ -186,27 +198,44 @@ export async function getTrendingContentMixPreference(
     throw new Error("The saved Trending content mix is invalid.");
   }
 
+  const slideshowStyleMix: TrendingSlideshowStyleMix = {
+    helpfulTips: data.helpful_tips_percent,
+    productStoriesCta: data.product_stories_cta_percent,
+  };
+
+  if (!validateTrendingSlideshowStyleMix(slideshowStyleMix)) {
+    throw new Error("The saved Trending slideshow style mix is invalid.");
+  }
+
   return {
     mix,
     preferenceVersion: data.preference_version,
+    slideshowStyleMix,
     updatedAt: data.updated_at,
   };
 }
 
 export async function saveTrendingContentMixPreference(params: {
   mix: TrendingContentMix;
+  slideshowStyleMix: TrendingSlideshowStyleMix;
   userId: string;
 }) {
   if (!validateTrendingContentMix(params.mix)) {
     throw new Error("The Trending content mix must total 100% and respect format limits.");
   }
 
+  if (!validateTrendingSlideshowStyleMix(params.slideshowStyleMix)) {
+    throw new Error("The Trending slideshow style mix must total 100%.");
+  }
+
   const { data, error } = await getClient().rpc(
     "save_trending_content_mix_preference",
     {
       p_carousel_percent: params.mix.carousel,
+      p_helpful_tips_percent: params.slideshowStyleMix.helpfulTips,
       p_hook_video_percent: params.mix.hook_video,
       p_reaction_percent: params.mix.reaction ?? 0,
+      p_product_stories_cta_percent: params.slideshowStyleMix.productStoriesCta,
       p_user_id: params.userId,
       p_wall_text_percent: params.mix.wall_text,
     },
@@ -221,6 +250,7 @@ export async function saveTrendingContentMixPreference(params: {
   return {
     mix: params.mix,
     preferenceVersion: data,
+    slideshowStyleMix: params.slideshowStyleMix,
     updatedAt: new Date().toISOString(),
   } satisfies TrendingContentMixPreference;
 }
@@ -244,11 +274,14 @@ export async function ensureDailyTrendingFeedPlan(params: {
       p_daily_limit: params.entitlement.dailyLimit,
       p_formats: params.formats,
       p_hook_video_percent: params.preference.mix.hook_video,
+      p_helpful_tips_percent: params.preference.slideshowStyleMix.helpfulTips,
       p_local_date: params.localDate,
       p_plan_display_name: params.entitlement.displayName,
       p_plan_key: params.entitlement.planKey,
       p_preference_version: params.preference.preferenceVersion,
       p_reaction_percent: params.preference.mix.reaction ?? 0,
+      p_product_stories_cta_percent:
+        params.preference.slideshowStyleMix.productStoriesCta,
       p_timezone: params.timezone,
       p_user_id: params.userId,
       p_wall_text_percent: params.preference.mix.wall_text,
@@ -584,6 +617,13 @@ export async function getDailyTrendingFeed(feedId: string, userId: string) {
   };
 }
 
+export async function findOwnedDailyTrendingFeed(feedId: string, userId: string) {
+  const { data, error } = await getClient().from(DAILY_FEEDS_TABLE)
+    .select("id").eq("id", feedId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(`Could not read the saved Trending quota: ${error.message}`);
+  return data ? getDailyTrendingFeed(data.id, userId) : null;
+}
+
 export async function getDailyTrendingFeedForDate(params: {
   localDate: string;
   userId: string;
@@ -716,6 +756,11 @@ function mapFeed(row: DailyFeedRow): DailyTrendingFeedRecord {
     planDisplayName: row.plan_display_name,
     planKey: row.plan_key,
     preferenceVersion: row.preference_version,
+    slideshowStyleMix: {
+      helpfulTips: row.helpful_tips_percent,
+      productStoriesCta: row.product_stories_cta_percent,
+    },
+    slideshowStyleMixEnabled: row.slideshow_style_mix_enabled,
     status: row.status,
     timezone: row.timezone,
     updatedAt: row.updated_at,

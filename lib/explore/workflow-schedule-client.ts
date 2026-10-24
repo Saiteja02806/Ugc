@@ -1,7 +1,24 @@
 import { isExploreUuid } from "../../worker/src/lib/explore-finishing-contract.ts";
 import type { ScheduleCreateInput, ScheduledPost } from "../scheduling/types.ts";
 
-export type ScheduleReceipt = { version: 1; owner: string; kind: "hook" | "phone"; input: ScheduleCreateInput; scheduleId?: string };
+// Only an explicit validation rejection permits editing a durable request.
+// Network failures and missing status reads still preserve the exact input.
+export class ScheduleRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ScheduleRequestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+export function isScheduleTimeRejected(error: unknown) {
+  return error instanceof ScheduleRequestError && error.status === 409 && error.code === "schedule_time_too_soon";
+}
+export const SCHEDULE_TIME_REJECTED_MESSAGE = "Choose a future date and time, then click Schedule post.";
+
+export type ScheduleReceipt = { version: 1; owner: string; kind: "hook" | "phone"; input: ScheduleCreateInput; scheduleId?: string; timeRejected?: true };
 export function readScheduleReceipt(raw: string | null, owner: string, kind: "hook" | "phone", sourceKind: "media_asset" | "library_item" = "media_asset"): ScheduleReceipt | null {
   if (!raw) return null;
   if (raw.length > 32768) throw new Error("The saved schedule could not be verified.");
@@ -15,6 +32,7 @@ export function readScheduleReceipt(raw: string | null, owner: string, kind: "ho
       typeof input.scheduledFor !== "string" || !Number.isFinite(Date.parse(input.scheduledFor)) ||
       typeof input.timezone !== "string" || input.timezone.length > 100 ||
       typeof input.caption !== "string" || input.caption.length > 10000 ||
+      (v.timeRejected !== undefined && v.timeRejected !== true) ||
       (v.scheduleId !== undefined && !isExploreUuid(v.scheduleId))) throw new Error("The saved schedule could not be verified. Review Scheduling before starting another.");
   return v;
 }
@@ -28,8 +46,8 @@ export function verifySavedSchedule(value: unknown, saved: ScheduleReceipt): Sch
   return s;
 }
 export function scheduleReceiptMessage(schedule: ScheduledPost): string {
-  if (schedule.status === "scheduled") return "Your post is scheduled. Review it in Scheduling.";
+  if (schedule.status === "scheduled") return "Post scheduled";
   if (schedule.status === "published") return "Your post is published. Review it in Scheduling.";
   if (["failed", "partially_failed", "cancelled"].includes(schedule.status)) return "Your saved post needs review in Scheduling.";
-  return "Your schedule is saved. Check Scheduling for account actions or pending preparation.";
+  return "Post scheduled. Check Scheduling for account actions or pending preparation.";
 }

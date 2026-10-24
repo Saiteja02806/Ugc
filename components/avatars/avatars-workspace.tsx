@@ -13,6 +13,7 @@ import {
   Video,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -544,6 +545,7 @@ export function AvatarsWorkspace({
               variant="dark"
             />
           ) : activeTab === "images" ? (
+            <div className="space-y-4"><Link href="/settings#media-library" className="text-sm font-medium underline underline-offset-4">Manage image library and collections</Link>
             <UserMediaCollection
               collection="image"
               title="Image library"
@@ -552,6 +554,7 @@ export function AvatarsWorkspace({
               emptyDescription="Upload an image or create one in the workspace. Your real assets will appear here."
               variant="dark"
             />
+            </div>
           ) : (
             <SavedCreativeAssetsTab />
           )}

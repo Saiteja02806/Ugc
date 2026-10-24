@@ -101,13 +101,13 @@ variable "worker_visibility_timeout_seconds" {
 }
 
 variable "min_instance_count" {
-  description = "Minimum HTTP receiver instances. The optional interactive Explore mode keeps at least one warm."
+  description = "Service-wide minimum HTTP receiver instances. Use 1 for a warm production receiver or 0 for idle scale-down; revision minimums stay zero."
   type        = number
   default     = 0
 }
 
 variable "enable_interactive_explore_finishing" {
-  description = "Use the existing authenticated HTTP service for Explore captions/finishing only, with one warm instance. Adds idle instance charges; enable after reviewing the plan and setting the app's GCP_EXPLORE_FINISH_TASK_URL to this service's /tasks/jobs endpoint. Heavy render jobs retain the launcher."
+  description = "Use the existing authenticated HTTP service for Explore captions/finishing only. Scale-down follows min_instance_count; zero accepts a cold first request. Set the app's GCP_EXPLORE_FINISH_TASK_URL to this service's /tasks/jobs endpoint. Heavy render jobs retain the launcher."
   type        = bool
   default     = false
 }

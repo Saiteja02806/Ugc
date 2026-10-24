@@ -1,0 +1,7 @@
+.controls { display: flex; width: 100%; max-width: 480px; min-width: 0; align-items: center; justify-content: center; gap: 6px; }
+.controls > button { width: 32px; height: 36px; min-width: 32px; flex: none; padding: 6px; }
+.controls > button svg { width: 16px; height: 16px; }
+.controls > input { width: 100%; min-width: 24px; flex: 1; accent-color: var(--primary); }
+.controls > span { flex: none; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+:global(section):has(> .controls):fullscreen { justify-content: center; padding: 20px; background: var(--background); color: var(--foreground); }
+@media (pointer: coarse) { .controls > button { width: 36px; height: 44px; min-width: 36px; } }

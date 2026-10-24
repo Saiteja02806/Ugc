@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { fetchReactionTextEdit } from "@/lib/trending/reaction-edit-client";
 import { ReactionTextEditRequestSchema, type ReactionTextEditRecord } from "@/lib/trending/reaction-edit-contract";
 import type { TrendingReactionFeedItem } from "@/lib/trending/feed-items";
+import { pollInForeground } from "@/lib/http/foreground-polling";
+import { withReadDeadline } from "@/lib/http/read-deadline";
 
 export function ReactionTextEditor({ item, onClose, onUpdated }: {
   item: TrendingReactionFeedItem;
@@ -17,6 +19,8 @@ export function ReactionTextEditor({ item, onClose, onUpdated }: {
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pollRevision, setPollRevision] = useState(0);
+  const initializedIdentity = useRef<string | null>(null);
   const updatedRef = useRef(onUpdated);
   useEffect(() => { updatedRef.current = onUpdated; }, [onUpdated]);
   const preparing = edit?.state === "preparing";
@@ -24,28 +28,21 @@ export function ReactionTextEditor({ item, onClose, onUpdated }: {
 
   useEffect(() => {
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-    let initialized = false;
+    const identity = JSON.stringify([assignmentId, creativeId]);
     async function refresh() {
-      try {
-        const result = await fetchReactionTextEdit({ assignmentId, creativeId }, undefined, controller.signal);
-        if (controller.signal.aborted) return;
-        setEdit(result);
-        setError(null);
-        if (!initialized) setText(result.text);
-        initialized = true;
-        updatedRef.current(result);
-        if (result.state === "preparing") timer = setTimeout(refresh, 2500);
-      } catch (cause) {
-        if (!controller.signal.aborted) {
-          setError(cause instanceof Error ? cause.message : "Could not refresh this Reaction Reel.");
-          timer = setTimeout(refresh, 5000);
-        }
-      }
+      const result = await withReadDeadline(signal => fetchReactionTextEdit({ assignmentId, creativeId }, undefined, signal), controller.signal);
+      if (controller.signal.aborted) return;
+      setEdit(result);
+      setError(null);
+      if (initializedIdentity.current !== identity) setText(result.text);
+      initializedIdentity.current = identity;
+      updatedRef.current(result);
+      if (result.state !== "preparing") stop();
     }
-    void refresh();
-    return () => { controller.abort(); clearTimeout(timer); };
-  }, [assignmentId, creativeId, preparing]);
+    const stop = pollInForeground({ poll: refresh, intervalMs: 2500, maxErrorIntervalMs: 20000, immediate: true,
+      onError: cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not refresh this Reaction Reel."); } });
+    return () => { controller.abort(); stop(); };
+  }, [assignmentId, creativeId, pollRevision]);
 
   async function save() {
     if (!edit || saving || preparing) return;
@@ -65,6 +62,7 @@ export function ReactionTextEditor({ item, onClose, onUpdated }: {
       if (result) { setEdit(result); updatedRef.current(result); }
     } finally {
       setSaving(false);
+      setPollRevision(value => value + 1);
     }
   }
 

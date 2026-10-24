@@ -64,7 +64,9 @@ test("only Carousel opts into measured containment; saved renders and other edit
   const editor = readFileSync(new URL("../../components/trending/trending-creative-editor.tsx", import.meta.url), "utf8");
   const overlay = readFileSync(new URL("../../components/trending/carousel-draggable-overlay.tsx", import.meta.url), "utf8");
   assert.equal((editor.match(/<CarouselDraggableOverlay\b/g) ?? []).length, 1);
-  assert.equal((editor.match(/<DraggableOverlay\b/g) ?? []).length, 2);
+  assert.equal((editor.match(/<DraggableOverlay\b/g) ?? []).length, 1);
+  assert.equal((editor.match(/<WallTextEditOverlay\b/g) ?? []).length, 1);
+  assert.match(editor, /layoutFits=\{movementLayout\.fits\}/);
   assert.match(editor, /enabled=\{!showExactRender\}/);
   assert.match(overlay, /new ResizeObserver/);
   assert.match(overlay, /document\.fonts\.ready/);

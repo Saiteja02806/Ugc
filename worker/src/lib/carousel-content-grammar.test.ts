@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
-import { CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
+import countedSyntheticFixture from "./carousel-config/counted-body-synthetic-fixture.json" with { type: "json" };
+import { decodeCountedPlanBodies, CAROUSEL_COUNTED_BODY_REPAIR_VERSION } from "./carousel-counted-body-repair.js";
 import test from "node:test";
+import { CAROUSEL_BATCH_POSITION_KEYS } from "./carousel-batch-positions.js";
+
+// Fixtures explicitly address keys; production responses no longer choose indexes.
+function providerContent(value: unknown) {
+  const batch = value as { items?: Array<{ slotIndex: number; [key: string]: unknown }> };
+  if (!Array.isArray(batch?.items)) return value;
+  return { items: Object.fromEntries(batch.items.map(({ slotIndex, ...item }) => [CAROUSEL_BATCH_POSITION_KEYS[slotIndex]!, item])) };
+}
 
 import type { WebsiteBusinessAnalysis } from "../types.js";
 import {
@@ -12,6 +21,7 @@ import { getCarouselHookTemplate } from "./carousel-hook-templates.js";
 import {
   buildCarouselContentPlan,
   buildCarouselContentPlanBatch,
+  CarouselPartialBatchPlanningError,
   parseCarouselContentPlanForAssignment,
   partitionCarouselContentPlanValidationIssues,
   validateCarouselContentPlan,
@@ -40,6 +50,176 @@ const analysis: WebsiteBusinessAnalysis = {
   valueProps: ["Connect planning, follow-up, and reporting"],
   visualKeywords: ["paper calendar", "organized desk"],
 };
+
+test("a provider-produced synthetic counted plan passes all publishing checks without rewriting copy", () => {
+  const decoded = decodeCountedPlanBodies(countedSyntheticFixture);
+  const checked = parseCarouselContentPlanForAssignment(decoded, {
+    analysis, contentFormatId: "list", hookFamilyId: "surprise", recentHistory: [], slideCount: 6,
+  });
+  assert.deepEqual(checked.blockingIssues, []);
+  for (const slide of checked.plan.slides) assert.equal(slide.ctaText, null);
+  assert.equal(checked.plan.slides[4]!.body, countedSyntheticFixture.slides[4]!.body!.firstWords.join(" ")
+    + "\n\n" + countedSyntheticFixture.slides[4]!.body!.secondWords.join(" "));
+});
+
+test("Structure 1 accepts natural repetition and paraphrasing without rewriting useful advice", () => {
+  const fixture = decodeCountedPlanBodies(countedSyntheticFixture) as ReturnType<typeof createFixture>;
+  fixture.grounding.anchorId = "workflow:main_problem";
+  fixture.concept = "How to stop details disappearing between apps";
+  fixture.slides[4]!.body = "Move the launch note to one folder for review.\n\nLink the draft to its approval so edits stay visible.";
+  const accepted = parseCarouselContentPlanForAssignment(fixture, {
+    analysis, contentFormatId: "list", hookFamilyId: "surprise", recentHistory: [], slideCount: 6,
+  });
+  assert.deepEqual(accepted.blockingIssues, []);
+  for (const code of ["nearby_word_repetition", "grounding_disconnected"]) {
+    assert.ok(accepted.advisoryIssues.some((issue) => issue.code === code), code);
+  }
+  assert.equal(accepted.plan.slides[4]!.body, fixture.slides[4]!.body);
+});
+
+test("Structure 1 language relaxation keeps publishing integrity checks blocking", () => {
+  const codes = ["body_length", "body_word_limit", "grounding_missing", "grounding_unsupported",
+    "grammar", "headline_body_repetition", "headline_length", "hook_structure", "incomplete_ending",
+    "invalid_plan", "recent_repetition", "render_fit", "repeated_punctuation", "story_structure",
+    "story_repetition", "unresolved_placeholder", "unsupported_claim"] as const;
+  const issues = codes.map((code) => ({ code, message: `Integrity check: ${code}`, slideNumber: null }));
+  const partitioned = partitionCarouselContentPlanValidationIssues(issues);
+  assert.deepEqual(partitioned.blockingIssues, issues);
+  assert.deepEqual(partitioned.advisoryIssues, []);
+});
+
+test("Structure 1 accepts useful action wording and short sentences with advisory diagnostics", () => {
+  const format = CAROUSEL_CONTENT_GRAMMAR.formats.find((candidate) =>
+    candidate.slides.some((slide) => slide.slideType === "solution" && !slide.listItemCount),
+  )!;
+  assert.ok(format);
+  const hookFamilyId = format.compatibleHookFamilies[0]!;
+  const fixture = createFixture(format.id, hookFamilyId);
+  const slide = fixture.slides.find((slide) => slide.slideType === "solution" && !slide.listItems.length)!;
+  slide.body = "Record the missing approval beside the launch note today.\n\nAdd a short owner comment before the next review starts.";
+  const input = { analysis, contentFormatId: format.id, hookFamilyId, recentHistory: [], slideCount: 6 };
+  const accepted = parseCarouselContentPlanForAssignment(fixture, input);
+  assert.deepEqual(accepted.blockingIssues, []);
+  assert.ok(accepted.advisoryIssues.some((issue) => issue.code === "solution_tone"));
+
+  slide.body = "Check the launch note. Confirm its owner before review.\n\nStore feedback beside the draft so changes remain visible.";
+  const shortSentences = parseCarouselContentPlanForAssignment(fixture, input);
+  assert.deepEqual(shortSentences.blockingIssues, []);
+  assert.ok(shortSentences.advisoryIssues.some((issue) => issue.code === "multiple_ideas"));
+});
+
+test("Structure 1 retains all five style-advisory plans without spending repair calls", async () => {
+  const assignments = [
+    { contentFormatId: "how_to", hookFamilyId: "curiosity" },
+    { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
+    { contentFormatId: "before_after", hookFamilyId: "specific_outcome" },
+    { contentFormatId: "comparison", hookFamilyId: "question" },
+    { contentFormatId: "list", hookFamilyId: "surprise" },
+  ];
+  const fixtures = assignments.map((assignment, index) => {
+    const plan = createDistinctBatchFixture(assignment.contentFormatId, assignment.hookFamilyId, index);
+    plan.concept = `Work smarter: ${plan.concept}`;
+    return plan;
+  });
+  const previousFetch = globalThis.fetch;
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-advisory-batch";
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    assert.equal(calls, 1, "Style advisories must not request a repair");
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(providerContent({
+      items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })),
+    })) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const result = await buildCarouselContentPlanBatch({
+      analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION },
+      items: assignments.map((assignment, slotIndex) => ({ ...assignment, slotIndex, candidateIndex: slotIndex,
+        creativeSeed: `Campaign ${slotIndex}`, emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })),
+    });
+    assert.equal(result.length, 5);
+    assert.equal(calls, 1);
+    for (const item of result) {
+      assert.equal(item.plan.validationResult.ok, true);
+      assert.ok(item.plan.validationResult.advisoryIssues.some((issue) => issue.code === "generic_copy"));
+      assert.equal(item.plan.concept, fixtures[item.slotIndex]!.concept);
+    }
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
+test("backend batch positions must be exactly the five integer slots before calling the provider", async () => {
+  for (const slots of [[0, 1, 2, 3, 3], [0, 1, 2, 3, 3.5], [0, 1, 2, 3, NaN], [0, 1, 2, 3, 5]]) {
+    await assert.rejects(buildCarouselContentPlanBatch({ analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      items: slots.map(slotIndex => ({ contentFormatId: "how_to", hookFamilyId: "curiosity", slotIndex, candidateIndex: slotIndex,
+        creativeSeed: "Campaign", emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })),
+    }), /slots 0 through 4 exactly once/);
+  }
+});
+
+test("backend-owned keys preserve brief mapping and repair only a missing assigned item", async () => {
+  const assignments = [
+    { contentFormatId: "how_to", hookFamilyId: "curiosity" },
+    { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
+    { contentFormatId: "before_after", hookFamilyId: "specific_outcome" },
+    { contentFormatId: "comparison", hookFamilyId: "question" },
+    { contentFormatId: "list", hookFamilyId: "surprise" },
+  ];
+  const fixtures = assignments.map((a, i) => createDistinctBatchFixture(a.contentFormatId, a.hookFamilyId, i));
+  const previousFetch = globalThis.fetch, previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-fixed-position-missing-item";
+  let calls = 0;
+  globalThis.fetch = async (_input, init) => {
+    const request = JSON.parse(String(init?.body)); calls++;
+    let content: unknown;
+    if (calls === 1) {
+      const schema = request.response_format.json_schema.schema;
+      assert.equal(schema.properties.items.type, "object");
+      assert.deepEqual(schema.properties.items.required, [...CAROUSEL_BATCH_POSITION_KEYS]);
+      assert.equal(JSON.stringify(schema).includes('"slotIndex"'), false);
+      const items = Object.fromEntries([...CAROUSEL_BATCH_POSITION_KEYS].reverse().filter(key => key !== "second")
+        .map(key => [key, { plan: fixtures[CAROUSEL_BATCH_POSITION_KEYS.indexOf(key)], status: "ready", notApplicableReason: null }]));
+      content = { items };
+    } else {
+      assert.equal(calls, 2, "Only the missing second slot may require a repair");
+      assert.equal(request.response_format.json_schema.name, "repaired_carousel_batch_item");
+      content = fixtures[1];
+    }
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const result = await buildCarouselContentPlanBatch({ analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      items: assignments.map((assignment, slotIndex) => ({ ...assignment, slotIndex, candidateIndex: slotIndex + 100,
+        creativeSeed: `Campaign ${slotIndex}`, emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })).reverse(),
+    });
+    assert.equal(calls, 2);
+    assert.deepEqual(result.map(item => item.slotIndex), [0, 1, 2, 3, 4]);
+    for (const item of result) {
+      assert.equal(item.actualContentFormatId, assignments[item.slotIndex]!.contentFormatId);
+      assert.equal(item.plan.concept, fixtures[item.slotIndex]!.concept);
+      assert.equal(item.plan.validationResult.repairAttempted, item.slotIndex === 1);
+    }
+  } finally { globalThis.fetch = previousFetch; if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey; }
+});
+
+test("Structure 1 accepts a short body and a heading wrapped onto two fixed-size lines", async () => {
+  const raw = createFixture("comparison", "question");
+  const plan = parseCarouselContentPlanForAssignment(raw, { analysis, contentFormatId: "comparison", hookFamilyId: "question", recentHistory: [], slideCount: 6 }).plan;
+  const slide = plan.slides[1]!;
+  Object.assign(slide, { textMode: "headline_body", headline: "Keep campaign reviews connected to each clear next decision", body: "Store review notes beside the campaign draft.", subtext: null });
+  const issues = validateCarouselContentPlan(plan, analysis);
+  assert.equal(issues.some(issue => issue.slideNumber === 2 && ["body_length", "headline_length", "render_fit"].includes(issue.code)), false);
+  for (const format of ["1:1", "4:5"] as const) {
+    const layout = await inspectCarouselSlideLayout({ format, slide });
+    assert.equal(layout.headingBackgroundLineCount, 2);
+  }
+  slide.headline = "Keep campaign\nreviews connected\nto each next decision";
+  assert.ok(validateCarouselContentPlan(plan, analysis).some(issue => issue.slideNumber === 2 && issue.code === "render_fit"));
+});
 
 test("Structure 1 expands every educational format to the agreed six-slide flow", () => {
   assert.equal(CAROUSEL_CONTENT_GRAMMAR.formats.length, 15);
@@ -180,7 +360,9 @@ test("Structure 1 repair diagnostics report the actual body count separately fro
   parsed.slides[1]!.headline = "Detailed campaign planning advice";
   parsed.slides[1]!.body = "Keep campaign decisions visible";
   const issues = validateCarouselContentPlan(parsed, analysis);
-  assert.match(issues.find((issue) => issue.code === "body_length")?.message ?? "", /Actual body: 4 words.*excluding the headline, list and CTA/);
+  assert.equal(issues.some((issue) => issue.code === "body_length"), false);
+  parsed.slides[1]!.body = "Keep campaign decisions visible. ".repeat(20);
+  assert.match(validateCarouselContentPlan(parsed, analysis).find((issue) => issue.code === "body_length")?.message ?? "", /Actual body:.*excluding the headline, list and CTA/);
 });
 
 test("counted body repair preserves all valid fields with the existing one-call repair budget", async () => {
@@ -193,7 +375,7 @@ test("counted body repair preserves all valid fields with the existing one-call 
   ];
   const fixtures = assignments.map((a, i) => createDistinctBatchFixture(a.contentFormatId, a.hookFamilyId, i));
   const finalBody = fixtures[0]!.slides[5]!.body!;
-  fixtures[0]!.slides[5]!.body = "Keep the next decision visible";
+  fixtures[0]!.slides[5]!.body = "Keep the next decision visible for";
   const previousFetch = globalThis.fetch, previousKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-counted-repair";
   const requests: Array<{ response_format: { json_schema: { name: string; schema: { properties: Record<string, unknown> } } } }> = [];
@@ -204,7 +386,7 @@ test("counted body repair preserves all valid fields with the existing one-call 
     const content = request.response_format.json_schema.name === "carousel_content_batch"
       ? { items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })) }
       : { bodiesBySlide: { slide6: { firstWords: words.slice(0, midpoint), secondWords: words.slice(midpoint) } } };
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(providerContent(content)) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   try {
     const result = await buildCarouselContentPlanBatch({ analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
@@ -231,23 +413,97 @@ test("counted body repair preserves all valid fields with the existing one-call 
   }
 });
 
-test("Structure 1 keeps an optional CTA on its final value slide only", () => {
+test("mixed safety/body failures use counted repairs and preserve other batch items", async () => {
+  const assignments = [
+    { contentFormatId: "how_to", hookFamilyId: "curiosity" },
+    { contentFormatId: "mistakes", hookFamilyId: "problem_recognition" },
+    { contentFormatId: "before_after", hookFamilyId: "specific_outcome" },
+    { contentFormatId: "comparison", hookFamilyId: "question" },
+    { contentFormatId: "list", hookFamilyId: "surprise" },
+  ];
+  const fixtures = assignments.map((a, i) => createDistinctBatchFixture(a.contentFormatId, a.hookFamilyId, i));
+  const fixed = structuredClone(fixtures[0]!);
+  fixtures[0]!.concept = "Work smarter";
+  fixtures[0]!.slides[3]!.imageDirection = "A person at a desk.";
+  fixtures[0]!.slides[5]!.body = "Keep the next decision visible for";
+  const counted = { ...fixed, slides: fixed.slides.map((slide) => {
+    if (!slide.body) return slide;
+    const words = slide.body.split(/\s+/);
+    const midpoint = Math.ceil(words.length / 2);
+    return { ...slide, body: { firstWords: words.slice(0, midpoint), secondWords: words.slice(midpoint) } };
+  }) };
+  const previousFetch = globalThis.fetch;
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key-full-counted-repair";
+  let rejectRepair = false;
+  let needsBodyFollowup = false;
+  const requests: Array<{ response_format: { json_schema: { name: string; schema: unknown } } }> = [];
+  globalThis.fetch = async (_input, init) => {
+    const request = JSON.parse(String(init?.body)); requests.push(request);
+    const content = request.response_format.json_schema.name === "carousel_content_batch"
+      ? { items: fixtures.map((plan, slotIndex) => ({ plan, slotIndex, status: "ready", notApplicableReason: null })) }
+      : request.response_format.json_schema.name === "scoped_carousel_batch_repair"
+        ? { imageDirectionsBySlide: { slide4: rejectRepair ? "A person at a desk." : fixed.slides[3]!.imageDirection },
+          bodiesBySlide: { slide6: needsBodyFollowup
+            ? { firstWords: "Keep the next decision visible for".split(" "), secondWords: [] }
+            : counted.slides[5]!.body } }
+        : request.response_format.json_schema.name === "counted_carousel_body_repair"
+        ? { bodiesBySlide: { slide6: counted.slides[5]!.body } }
+        : rejectRepair ? { ...counted, grounding: { anchorId: "product_detail:invented" } }
+          : needsBodyFollowup ? { ...counted, slides: counted.slides.map((slide, index) => index === 5 ? { ...slide, body: "Keep the next decision visible for" } : slide) } : counted;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(providerContent(content)) } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const input = { analysis, businessDescription: analysis.productSummary ?? "", recentHistory: [],
+      bodyRepairPolicy: { version: CAROUSEL_COUNTED_BODY_REPAIR_VERSION } as const,
+      items: assignments.map((assignment, slotIndex) => ({ ...assignment, slotIndex, candidateIndex: slotIndex, creativeSeed: `Campaign ${slotIndex}`, emotion: "relief", hookTemplateId: null, hookTemplateVersion: null, planningBrief: null })),
+    };
+    const result = await buildCarouselContentPlanBatch(input);
+    assert.equal(result.length, 5);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1]!.response_format.json_schema.name, "scoped_carousel_batch_repair");
+    for (const request of requests) assert.match(JSON.stringify(request.response_format.json_schema.schema), /firstWords/);
+    assert.equal(result[0]!.plan.concept, fixtures[0]!.concept, "A visual/body repair freezes the advisory-only concept");
+    assert.equal(typeof result[0]!.plan.slides[5]!.body, "string");
+    assert.equal(result[0]!.plan.validationResult.ok, true);
+    assert.equal(result[1]!.plan.slides[2]!.body, fixtures[1]!.slides[2]!.body);
+    fixtures[0]!.slides[3]!.imageDirection = fixed.slides[3]!.imageDirection;
+    requests.length = 0;
+    const scoped = await buildCarouselContentPlanBatch(input);
+    assert.equal(scoped.length, 5);
+    assert.equal(requests[1]!.response_format.json_schema.name, "counted_carousel_body_repair");
+    assert.equal(scoped[0]!.plan.slides[2]!.body, fixed.slides[2]!.body);
+    fixtures[0]!.slides[3]!.imageDirection = "A person at a desk.";
+    needsBodyFollowup = true;
+    requests.length = 0;
+    const followedUp = await buildCarouselContentPlanBatch(input);
+    assert.equal(followedUp.length, 5);
+    assert.equal(requests.length, 3);
+    assert.equal(requests[2]!.response_format.json_schema.name, "counted_carousel_body_repair");
+    assert.equal(followedUp[0]!.plan.slides[2]!.body, fixed.slides[2]!.body);
+    assert.equal(followedUp[0]!.plan.slides[5]!.body, fixed.slides[5]!.body);
+    needsBodyFollowup = false;
+    rejectRepair = true;
+    await assert.rejects(buildCarouselContentPlanBatch(input), (error: unknown) => {
+      assert.ok(error instanceof CarouselPartialBatchPlanningError);
+      assert.deepEqual(error.completedItems.map((item) => item.slotIndex), [1, 2, 3, 4]);
+      assert.ok(error.completedItems.every((item) => item.plan.validationResult.ok));
+      return true;
+    });
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
+test("Structure 1 rejects calls to action on every helpful-tip slide", () => {
   const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
   const fixture = createFixture(format.id, format.compatibleHookFamilies[0]!);
   Reflect.set(fixture.slides[5]!, "ctaText", "Save this for later.");
 
-  const result = parseCarouselContentPlanForAssignment(fixture, {
-      analysis,
-      contentFormatId: format.id,
-      hookFamilyId: format.compatibleHookFamilies[0]!,
-      recentHistory: [],
-      slideCount: CAROUSEL_STRUCTURE_1_SLIDE_COUNT,
-    });
-  assert.equal(result.plan.slides[5]!.ctaText, "Save this for later.");
-  Reflect.set(fixture.slides[2]!, "ctaText", "Save this for later.");
   assert.throws(() => parseCarouselContentPlanForAssignment(fixture, {
     analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6,
-  }), /final slide only/i);
+  }), /Helpful tips cannot include a call to action/i);
 });
 
 test("Structure 1 requires one 5-14 word hook and rejects Slide 1 support copy", () => {
@@ -290,7 +546,7 @@ test("Structure 1 blocks two-sentence covers even within the hook word budget", 
   assert.throws(() => parseCarouselContentPlanForAssignment(fixture, { analysis, contentFormatId: format.id, hookFamilyId: format.compatibleHookFamilies[0]!, recentHistory: [], slideCount: 6 }), /Headline must be 5-14 words/i);
 });
 
-test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
+test("Structure 1 accepts useful short body copy but still blocks excessive body copy", () => {
   const format = CAROUSEL_CONTENT_GRAMMAR.formats[0]!;
   const input = {
     analysis,
@@ -307,10 +563,7 @@ test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
   shortProseSlide.body =
     "Keep every approval visible beside the campaign work it affects during handoffs.";
 
-  assert.throws(
-    () => parseCarouselContentPlanForAssignment(tooShort, input),
-    /Body must use at least 18 words/i,
-  );
+  assert.deepEqual(parseCarouselContentPlanForAssignment(tooShort, input).blockingIssues, []);
 
   const tooLong = createFixture(format.id, format.compatibleHookFamilies[0]!);
   const longProseSlide = tooLong.slides.find(
@@ -332,7 +585,7 @@ test("Structure 1 requires 18-30 words for Slides 2-6 prose", () => {
   );
 });
 
-test("Structure 1 requires a verified grounding anchor in the concept and middle slides", () => {
+test("Structure 1 requires a verified anchor but records missing exact keywords as advisory", () => {
   const input = {
     analysis,
     contentFormatId: "how_to",
@@ -359,10 +612,9 @@ test("Structure 1 requires a verified grounding anchor in the concept and middle
 
   const disconnectedAnchor = createFixture("how_to", "curiosity");
   disconnectedAnchor.concept = "A practical way to keep a launch review clear";
-  assert.throws(
-    () => parseCarouselContentPlanForAssignment(disconnectedAnchor, input),
-    /grounding/i,
-  );
+  const accepted = parseCarouselContentPlanForAssignment(disconnectedAnchor, input);
+  assert.deepEqual(accepted.blockingIssues, []);
+  assert.ok(accepted.advisoryIssues.some((issue) => issue.code === "grounding_disconnected"));
 });
 
 test("Structure 1 accepts a persisted Slide 1 hook template without changing its six-slide grammar", () => {
@@ -490,7 +742,7 @@ test("the worker sends a persisted template only as Slide 1 planner guidance", a
     assert.match(requestText, /Inter Medium at 500 weight/i);
     assert.match(requestText, /normally 6-14 words/i);
     assert.match(requestText, /four centred display lines at 72px/i);
-    assert.match(requestText, /aim for 20-24 words/i);
+    assert.match(requestText, /no minimum word count/i);
     assert.match(requestText, /conversational lowercase/i);
     assert.match(requestText, /Hook slide = one statement only/i);
     assert.match(requestText, /First-person hooks are welcome/i);
@@ -557,7 +809,7 @@ test("Structure 1 drops an optional hook overlay after two Slide 1 overflow atte
             finish_reason: "stop",
             index: 0,
             message: {
-              content: JSON.stringify(responseContent),
+              content: JSON.stringify(providerContent(responseContent)),
               refusal: null,
               role: "assistant",
             },
@@ -682,7 +934,7 @@ test("the production-shaped five-item batch uses combined formats and a native f
             finish_reason: "stop",
             index: 0,
             message: {
-              content: JSON.stringify(responseContent),
+              content: JSON.stringify(providerContent(responseContent)),
               refusal: null,
               role: "assistant",
             },
@@ -733,16 +985,21 @@ test("the production-shaped five-item batch uses combined formats and a native f
     assert.match(requestText, /Inter Medium at 500 weight/i);
     assert.match(requestText, /normally 6-14 words/i);
     assert.match(requestText, /four centred display lines at 72px/i);
-    assert.match(requestText, /aim for 20-24 words/i);
+    assert.match(requestText, /no minimum word count/i);
     assert.match(requestText, /heading is optional/i);
     assert.match(requestText, /grounding\.anchorId/i);
     const schemaText = (request as { response_format: { json_schema: { schema: unknown } } } | null)!.response_format.json_schema.schema;
     function assertListBodies(value: unknown) {
       if (!value || typeof value !== "object") return;
       const record = value as Record<string, unknown>;
-      const properties = record.properties as { listItems?: { minItems: number }; body?: { type?: string; anyOf?: Array<{ type?: string; description?: string }> } } | undefined;
+      const properties = record.properties as {
+        body?: { type?: string; anyOf?: Array<{ type?: string; description?: string }> };
+        ctaText?: { type?: string };
+        listItems?: { minItems: number };
+      } | undefined;
       if (properties?.listItems && properties.listItems.minItems > 0) assert.deepEqual(properties.body, { type: "null" });
-      else if (properties?.body?.anyOf) assert.match(properties.body.anyOf.find((field) => field.type === "string")?.description ?? "", /18-30 words total excluding headline and ctaText/);
+      else if (properties?.body?.anyOf) assert.match(properties.body.anyOf.find((field) => field.type === "string")?.description ?? "", /at most 30 words total excluding the headline/);
+      if (properties?.ctaText) assert.deepEqual(properties.ctaText, { type: "null" });
       for (const child of Object.values(record)) assertListBodies(child);
     }
     assertListBodies(schemaText);
@@ -838,7 +1095,7 @@ test("the batch planner keeps Slides 2-6 while abandoning an overflowing optiona
             finish_reason: "stop",
             index: 0,
             message: {
-              content: JSON.stringify(responseContent),
+              content: JSON.stringify(providerContent(responseContent)),
               refusal: null,
               role: "assistant",
             },
@@ -1103,7 +1360,7 @@ test("Structure 1's heading SVG gives every measured line a rounded shoulder", (
   }
 });
 
-test("Structure 1 treats generic copy as a repairable blocking issue", () => {
+test("Structure 1 records generic wording without relaxing body limits", () => {
   const parsed = parseCarouselContentPlanForAssignment(
     createFixture("comparison", "question"),
     {
@@ -1127,8 +1384,9 @@ test("Structure 1 treats generic copy as a repairable blocking issue", () => {
   );
 
   assert.ok(
-    partitioned.blockingIssues.some((issue) => issue.code === "generic_copy"),
+    partitioned.advisoryIssues.some((issue) => issue.code === "generic_copy"),
   );
+  assert.equal(partitioned.blockingIssues.some((issue) => issue.code === "body_length"), false);
 });
 
 function createDistinctBatchFixture(

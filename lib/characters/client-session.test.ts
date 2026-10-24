@@ -9,12 +9,27 @@ test("uncertain uploaded-reference requests restore the exact attachment ID with
   assert.deepEqual(restored.pendingRequest, pendingRequest);
 });
 
+test("multiple references and uncertain generation retain their exact order across refresh", () => {
+  const ids = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
+  const session = { ...EMPTY_CHARACTER_SESSION, selectedCharacterId: ids[0], selectedCharacterIds: ids,
+    pendingRequest: { mode: "custom", model: "seedream_5_pro", prompt: "Use both images", referenceCharacterIds: ids, idempotencyKey: "same-ordered-images" } };
+  assert.deepEqual(parseCharacterClientSession(JSON.stringify(session)), session);
+});
+
 test("session restore rejects corrupted, obsolete and untrusted data", () => {
   for (const value of [null, "{", "null", JSON.stringify({ ...EMPTY_CHARACTER_SESSION, version: 2 }),
     JSON.stringify({ ...EMPTY_CHARACTER_SESSION, privateBrief: "not part of the client session" }),
     JSON.stringify({ ...EMPTY_CHARACTER_SESSION, jobs: [{ jobId: "bad", generationId: "value" }] }),
     JSON.stringify({ ...EMPTY_CHARACTER_SESSION, pendingRequest: { mode: "assisted", gender: "female", model: "gpt_image", idempotencyKey: "request", referenceImageUrl: "https://untrusted.test/image.png" } }),
   ]) assert.deepEqual(parseCharacterClientSession(value), EMPTY_CHARACTER_SESSION);
+});
+
+test("uncertain pasted-image lists restore the exact ordered IDs", () => {
+  const pendingRequest = { mode: "custom", model: "gemini_3_pro", imageCount: 1, prompt: "Use both images", idempotencyKey: "same-pasted-images", referenceImageAssetIds: ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"] };
+  const restored = parseCharacterClientSession(JSON.stringify({ ...EMPTY_CHARACTER_SESSION, pendingRequest }));
+  assert.deepEqual(restored.pendingRequest, pendingRequest);
+  const mixed = { ...pendingRequest, referenceCharacterIds: ["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"] };
+  assert.deepEqual(parseCharacterClientSession(JSON.stringify({ ...EMPTY_CHARACTER_SESSION, pendingRequest: mixed })).pendingRequest, mixed);
 });
 
 test("receipts and uncertain requests survive restore without requiring private server data", () => {

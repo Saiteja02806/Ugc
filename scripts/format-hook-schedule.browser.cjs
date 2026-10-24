@@ -32,9 +32,11 @@ file("entry.tsx", "import {createRoot} from 'react-dom/client'; import {useState
 
 const makeAsset = (id, title) => ({ id, title, collection: "video", status: "ready", sourceType: "upload", createdAt: "2026-10-09T00:00:00Z", updatedAt: "2026-10-09T00:00:00Z", mimeType: "video/mp4", fileName: "video.mp4", fileSizeBytes: 2000, durationSeconds: 8, width: 1280, height: 720, ratio: "16:9", metadata: {}, parentAssetId: null, projectId: null, sourceRecordId: null, thumbnailUrl: null, url: "/video.mp4" });
 const assets = new Map([1, 2].map(n => { const id = `00000000-0000-4000-8000-00000000000${n}`; return [id, makeAsset(id, n === 1 ? "Original hook" : "Original demo")]; }));
+assets.get('00000000-0000-4000-8000-000000000002').sourceType = 'demo_upload';
 const connectionId = "00000000-0000-4000-8000-000000000099";
 const connections = [{ id: connectionId, platform: "instagram", platformAccountName: "Fixture", platformAccountUsername: "fixture", status: "connected", scopes: ["instagram_business_content_publish"], supportsBackgroundRefresh: true }];
 const receipts = new Map(), renders = [], schedules = [];
+const clipDrafts = new Map(), clipSaves = [], clipSaveReceipts = new Map();
 const uploads = [];
 const talkingHeadFixture = talkingHead ? require('./talking-head-editor-fixture.cjs') : null;
 if (talkingHeadFixture) talkingHeadFixture.setup({file, assets, makeAsset});
@@ -43,6 +45,9 @@ function json(response, body) { response.setHeader("Content-Type", "application/
 async function main() {
   const ui = path.join(out, "ui.tsx"), media = path.join(out, "media.ts");
   const aliases = { "@/contexts/auth-context": path.join(out, "auth.ts"), "@/lib/firebase/auth": path.join(out, "auth.ts"), "@/lib/ai-studio/media-client": media, "@/lib/ai-studio/reference-media-upload": media, "@/components/scheduling/schedule-editor": path.join(out, "schedule.tsx"), "next/dynamic": path.join(out, "dynamic.tsx"), "next/link": path.join(out, "link.tsx"), "@": root };
+  // The account-data client uses a relative token import. Keep that boundary
+  // isolated too, rather than initializing real Firebase in this fixture.
+  aliases['../firebase/auth'] = path.join(out, 'auth.ts');
   if (talkingHead) aliases['@/lib/explore/workflow-default-music-client'] = path.join(out, 'music.ts');
   for (const modulePath of ['components/ui/button', 'components/ui/input', 'components/explore/hook-workflow-media-controls', 'components/explore/workflow-saved-audio-picker', 'components/explore/workflow-video-start-actions', 'components/explore/workflow-video-asset-picker', 'components/providers/account-timezone-provider']) aliases['@/' + modulePath] = ui;
   delete aliases['@']; aliases['@'] = root;
@@ -50,7 +55,7 @@ async function main() {
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://fixture');
     if (serving && url.pathname === '/fixture-status') return json(response, {renders, schedules, uploads, overlappingRenders});
-    if (url.pathname === '/fixture') { response.setHeader('Content-Type', 'text/html'); return response.end('<div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>'); }
+    if (url.pathname === '/fixture') { response.setHeader('Content-Type', 'text/html; charset=utf-8'); return response.end('<meta charset="utf-8"><div id="root"></div><script>window.process={env:{}}</script><script src="/bundle.js"></script>'); }
     if (url.pathname === '/bundle.js') { response.setHeader('Content-Type', 'text/javascript'); return response.end(fs.readFileSync(path.join(out, 'bundle.js'))); }
     if (/^\/[a-zA-Z0-9_-]+\.bundle\.js$/.test(url.pathname) && fs.existsSync(path.join(out, path.basename(url.pathname)))) { response.setHeader('Content-Type', 'text/javascript'); return response.end(fs.readFileSync(path.join(out, path.basename(url.pathname)))); }
     if (url.pathname === '/video.mp4') {
@@ -68,6 +73,15 @@ async function main() {
     }
     if (url.pathname.startsWith('/api/')) assert.equal(request.headers.authorization, 'Bearer fixture-owner');
     if (url.pathname === '/api/social/connections') return json(response, {ok:true, connections});
+    if (url.pathname === '/api/explore/clip-drafts') {
+      if (request.method === 'GET') return json(response, {ok:true, draft:clipDrafts.get(`${url.searchParams.get('scope')}:${url.searchParams.get('sourceAssetId')}`) ?? null});
+      let body=''; for await(const chunk of request) body+=chunk; const input=JSON.parse(body);
+      if (clipSaveReceipts.has(input.requestId)) return json(response,{...clipSaveReceipts.get(input.requestId),replayed:true});
+      const key=`${input.scope}:${input.content.sourceAssetId}`, previous=clipDrafts.get(key);
+      assert.equal(input.expectedRevision,previous?.revision ?? 0);
+      const draft={id:'00000000-0000-4000-8000-000000000097',scope:input.scope,revision:input.expectedRevision+1,content:input.content,updatedAt:'2026-10-14T12:00:00Z'};
+      clipDrafts.set(key,draft);clipSaves.push(input);const result={ok:true,requestId:input.requestId,replayed:false,draft};clipSaveReceipts.set(input.requestId,result);return json(response,result);
+    }
     if (url.pathname === '/api/explore/finishes') {
       let receipt;
       if (request.method === 'POST') {
@@ -85,7 +99,8 @@ async function main() {
       } else receipt = receipts.get(url.searchParams.get('requestKey'));
       return json(response, receipt);
     }
-    if (url.pathname === '/api/schedules' && request.method === 'GET') return json(response, {ok:true, minimumScheduleLeadMinutes:5});
+    if (url.pathname === '/api/schedules' && request.method === 'GET') return json(response, {ok:true, minimumScheduleLeadMinutes:5, schedules:schedules.map(input=>({id:'00000000-0000-4000-8000-000000000098',mediaAssetId:input.source.id,idempotencyKey:input.idempotencyKey,status:'scheduled',targets:input.targets.map(target=>({socialConnectionId:target.connectionId,platform:target.platform}))}))});
+    if (talkingHead && url.pathname === '/api/schedules/00000000-0000-4000-8000-000000000098') { const input=schedules[0]; return json(response,{ok:true,schedule:{id:'00000000-0000-4000-8000-000000000098',mediaAssetId:input.source.id,idempotencyKey:input.idempotencyKey,status:'scheduled',targets:input.targets.map(target=>({socialConnectionId:target.connectionId,platform:target.platform}))}}); }
     if (url.pathname === '/api/schedules' && request.method === 'POST') {
       let body = ''; for await (const chunk of request) body += chunk; const input = JSON.parse(body); schedules.push(input);
       return json(response, {ok:true, schedule:{id:'00000000-0000-4000-8000-000000000098', mediaAssetId:input.source.id, idempotencyKey:input.idempotencyKey, status:'scheduled', targets:input.targets.map(target => ({socialConnectionId:target.connectionId, platform:target.platform}))}});
@@ -102,48 +117,47 @@ async function main() {
   async function waitRenders(count) { const deadline = Date.now() + 20000; while (renders.length < count && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50)); assert.equal(renders.length, count); }
   function complete(index) { const entry = renders[index], receipt = receipts.get(entry.requestKey); receipt.outcome = 'completed'; receipt.mediaAssetId = receipt.outputId; receipt.message = 'Saved fixture'; }
   try {
-    if (talkingHeadFixture) { await talkingHeadFixture.run({page, base, renders, schedules, uploads, receipts, waitRenders, complete, errors, overlapping: () => overlappingRenders}); return; }
+    if (talkingHeadFixture) { await talkingHeadFixture.run({page, base, renders, schedules, uploads, receipts, clipSaves, waitRenders, complete, errors, overlapping: () => overlappingRenders}); return; }
     await page.goto(base + '/fixture');
-    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
-    await page.getByRole('button', {name:'Schedule', exact:true}).evaluate(button => {button.click(); button.click();});
-    await page.getByLabel('Scheduled hook', {exact:true}).waitFor(); await page.getByLabel('Scheduled demo', {exact:true}).waitFor();
-    await page.getByRole('button', {name:'Instagram', exact:true}).click();
+    await page.getByRole('button', {name:'Saved demos', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click();
+    await page.getByRole('button', {name:'Schedule video', exact:true}).evaluate(button => {button.click(); button.click();});
+    await page.getByRole('button', {name:'Schedule post', exact:true}).waitFor();
+    await page.getByRole('button', {name:'Instagram', exact:true}).evaluate(button => button.click());
     await page.waitForFunction(() => document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed') === 'true');
     await page.getByLabel('Post caption', {exact:true}).fill('Untouched hook and demo'); await page.getByLabel('Date', {exact:true}).fill('2026-12-01'); await page.getByLabel('Time', {exact:true}).fill('10:30');
-    assert.equal(await page.getByRole('button', {name:'Review schedule', exact:true}).isDisabled(), true); assert.equal(schedules.length, 0);
+    assert.equal(await page.getByRole('button', {name:'Schedule post', exact:true}).isDisabled(), true); assert.equal(schedules.length, 0);
     await waitRenders(1); assert.equal(renders[0].draft.sourceAssetId, '00000000-0000-4000-8000-000000000001'); assert.equal(renders[0].draft.demoAssetId, '00000000-0000-4000-8000-000000000002'); assert.equal(renders[0].draft.editing, undefined); complete(0);
-    await page.getByLabel('Merged final video', {exact:true}).waitFor(); await page.getByRole('button', {name:'Review schedule', exact:true}).click(); await page.getByRole('dialog', {name:'Confirm schedule'}).waitFor(); assert.equal(schedules.length,0);
-    await page.getByRole('button', {name:'Confirm fixture schedule'}).evaluate(button=>{button.click();button.click();}); await page.getByRole('button', {name:'Check saved schedule'}).waitFor(); assert.equal(schedules.length,1); assert.equal(schedules[0].source.id,receipts.get(renders[0].requestKey).outputId); assert.equal(schedules[0].caption,'Untouched hook and demo'); assert.equal(renders.length,1);
-    console.log('PASS actual FormatDemoSection: unchanged hook and demo skip edit passes; immediate two-clip preview; one join; sole Instagram account auto-selected; one explicit schedule confirmation');
+    await page.getByText('Preparing fixture video…', {exact:true}).waitFor({state:'hidden'}); await page.getByRole('button', {name:'Schedule post', exact:true}).evaluate(button=>{button.click();button.click();}); await page.getByRole('link', {name:'View in Scheduling'}).waitFor(); assert.equal(schedules.length,1); assert.equal(schedules[0].source.id,receipts.get(renders[0].requestKey).outputId); assert.equal(schedules[0].caption,'Untouched hook and demo'); assert.equal(renders.length,1);
+    console.log('PASS actual FormatDemoSection: unchanged hook and demo skip edit passes; one join; sole Instagram account auto-selected; one direct schedule');
     await page.evaluate(()=>localStorage.clear()); await page.reload();
-    await page.getByRole('button', {name:'Creative Assets', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click(); await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
+    await page.getByRole('button', {name:'Saved demos', exact:true}).click(); await page.getByRole('button', {name:'Choose demo fixture'}).click(); await page.getByRole('button',{name:'Edit demo video',exact:true}).click();
     assert.equal(await page.getByLabel('Overlay text',{exact:true}).inputValue(),''); await page.getByLabel('Overlay text',{exact:true}).fill('First message'); await page.getByLabel('Text end time').fill('2');
     await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByLabel('Overlay text',{exact:true}).fill('Second message');await page.getByLabel('Text start time').fill('3');await page.getByLabel('Text end time').fill('5');
-    await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByRole('button',{name:'Apply demo edits',exact:true}).click();await page.getByRole('button',{name:'Schedule',exact:true}).click();
+    await page.getByRole('button',{name:'Add text',exact:true}).click();await page.getByRole('button',{name:'Save edits',exact:true}).click();
+    await page.getByRole('button',{name:'Edits saved',exact:true}).waitFor();await page.getByRole('button',{name:'Back to videos',exact:true}).click();await page.getByRole('button',{name:'Schedule video',exact:true}).click();
     await waitRenders(2);assert.equal(renders[1].draft.sourceAssetId,'00000000-0000-4000-8000-000000000002');assert.deepEqual(renders[1].draft.editing.textOverlays.map(t=>[t.value,t.startMs,t.endMs]),[['First message',0,2000],['Second message',3000,5000]]);complete(1);
-    await waitRenders(3);assert.equal(renders[2].draft.demoAssetId,receipts.get(renders[1].requestKey).outputId);complete(2);await page.getByLabel('Merged final video',{exact:true}).waitFor();assert.equal(overlappingRenders,0);assert.equal(schedules.length,1);assert.deepEqual(errors,[]);
+    await waitRenders(3);assert.equal(renders[2].draft.demoAssetId,receipts.get(renders[1].requestKey).outputId);complete(2);await page.getByText('Preparing fixture video…',{exact:true}).waitFor({state:'hidden'});assert.equal(overlappingRenders,0);assert.equal(schedules.length,1);assert.deepEqual(errors,[]);
     console.log('PASS actual FormatDemoSection: default blank text box, multiple timed messages, blank blocks omitted, serialized edit and join, no automatic scheduling');
     await page.evaluate(()=>localStorage.clear()); await page.reload(); await page.getByRole('button', {name:'Schedule tab',exact:true}).click();
-    await page.getByRole('button', {name:'Instagram',exact:true}).click();
+    await page.getByRole('button', {name:'Instagram',exact:true}).evaluate(button => button.click());
     await page.waitForFunction(() => document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed') === 'true');
     await page.getByLabel('Post caption',{exact:true}).fill('Hook only'); await page.getByLabel('Date',{exact:true}).fill('2026-12-01'); await page.getByLabel('Time',{exact:true}).fill('10:30');
-    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Review schedule' && !button.disabled));
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Schedule post' && !button.disabled));
     assert.equal(renders.length,3); assert.equal(schedules.length,1); assert.deepEqual(errors,[]);
     console.log('PASS actual Hook-only schedule: ready unedited MP4 is immediately reviewable without a rendering request or automatic post');
-    await page.evaluate(()=>localStorage.clear()); await page.goto(base + '/fixture?demoOnly=1');
-    await page.getByRole('button',{name:'Creative Assets',exact:true}).click(); await page.getByRole('button',{name:'Choose demo fixture'}).click();
-    await page.getByRole('button',{name:'Schedule',exact:true}).click();
-    await page.getByLabel('Merged final video',{exact:true}).waitFor();
-    assert.equal(await page.getByLabel('Scheduled hook',{exact:true}).count(),0);
+    await page.evaluate(()=>localStorage.clear()); clipDrafts.clear(); await page.goto(base + '/fixture?demoOnly=1');
+    await page.getByRole('button', {name:'Saved demos', exact:true}).click(); await page.getByRole('button',{name:'Choose demo fixture'}).click();
+    await page.getByRole('button',{name:'Schedule video',exact:true}).click();
+    await page.getByRole('button',{name:'Schedule post',exact:true}).waitFor();
     assert.equal(renders.length,3,'An unchanged standalone demo must not dispatch a render or join a fake hook');
-    await page.getByRole('button',{name:'Instagram',exact:true}).click();
+    await page.getByRole('button',{name:'Instagram',exact:true}).evaluate(button => button.click());
     await page.waitForFunction(() => document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed') === 'true');
     await page.getByLabel('Post caption',{exact:true}).fill('Demo only'); await page.getByLabel('Date',{exact:true}).fill('2026-12-01'); await page.getByLabel('Time',{exact:true}).fill('10:30');
-    await page.getByRole('button',{name:'Review schedule',exact:true}).click(); await page.getByRole('button',{name:'Confirm fixture schedule'}).click();
-    await page.getByRole('button',{name:'Check saved schedule'}).waitFor();
+    await page.getByRole('button',{name:'Schedule post',exact:true}).click();
+    await page.getByRole('link',{name:'View in Scheduling'}).waitFor();
     assert.equal(schedules.length,2); assert.equal(schedules[1].source.id,'00000000-0000-4000-8000-000000000002');
     assert.deepEqual(errors,[]);
-    console.log('PASS actual Demo-only schedule: the owned standalone demo is reviewed and confirmed without requiring or duplicating a hook');
+    console.log('PASS actual Demo-only schedule: the owned standalone demo is scheduled without requiring or duplicating a hook');
   } catch (e) { console.error({errors, body: await page.locator('body').innerText(), renders}); throw e; }
   finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }

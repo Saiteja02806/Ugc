@@ -1,0 +1,6 @@
+.root { display: grid; gap: 18px; }
+.faces { min-width: 0; --person-photo-width: 56px; --person-photo-height: 68px; }
+.faces [data-workflow-reference-grid] { grid-template-columns: minmax(0, 1fr); }
+.faces [data-reference-state] { display: block; border: 0; padding: 0; background: transparent; }
+.faces [data-reference-state] > div:last-child { display: block; }
+.hint { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }

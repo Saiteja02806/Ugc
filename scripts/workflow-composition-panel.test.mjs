@@ -18,19 +18,24 @@ function harness(code, exportName) {
   let cursor = 0;
   const slots = [];
   const imports = {
-    react: { useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; } },
+    "@/components/video/video-results.module.css": { default: {} },
+    react: { useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; }, useRef(initial) { return slots[cursor++] ??= {current:initial}; } },
     "lucide-react": Object.fromEntries(["AudioLines", "Check", "ChevronDown", "Info", "Play", "Plus", "Video", "Volume2"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { RemoveMediaButton: "remove", WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player", formatMediaSeconds: (seconds) => `${seconds}s` },
+    "@/components/video/video-generation-placeholder": { VideoGenerationPlaceholder: "generation-placeholder" },
+    "@/components/video/video-result-prompt": { VideoPromptBubble: "video-prompt" },
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
     "@/components/explore/workflow-studio.module.css": { default: {} },
     "@/components/explore/workflow-creation.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/explore/workflow-section-layout.module.css": { default: new Proxy({}, { get: (_, key) => key }) },
     "@/components/ui/button": { Button: "button" },
     "@/components/explore/workflow-saved-audio-picker": { WorkflowSavedAudioPicker: "saved-audio-picker" },
+    "./workflow-background-audio-picker": { WorkflowBackgroundAudioPicker: "background-audio-picker" },
     "@/components/explore/workflow-demo-controls": { WorkflowDemoControls: "demo-controls", WorkflowDemoPreview: "framed-demo" },
     "@/components/explore/workflow-saved-audio-choices": { WorkflowSavedAudioChoices: "saved-audio-choices" },
     "@/components/explore/workflow-reference-preview": { WorkflowReferencePreview: "reference-preview" },
     "@/components/explore/workflow-reference-preview.module.css": { default: {} },
+    "@/lib/ai-studio/video-reference-policy": { getVideoReferencePolicy: (model) => ({ maxAudioDuration: model === "wan_3_0" ? 15 : 30 }) },
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/worker/src/subtitles/explore-policy": { EXPLORE_SUBTITLE_SCOPE_LABEL: "English · up to 60 seconds total" },
@@ -58,6 +63,24 @@ function text(node) {
   if (typeof node !== "object") return String(node);
   return text(node.props?.children);
 }
+
+test("finishing controls announce worker preparation between reads and clear it after completion", () => {
+  const actual = harness(read("components/explore/workflow-creation-panel.tsx"), "WorkflowCreationPanel");
+  const edit = { busy: false, processing: true, disabled: true, message: "Rendering video subtitles…", error: null, onAction() {}, refresh() {} };
+  for (const action of [edit, { ...edit, busy: true }]) {
+    const tree = actual.render({ kind: "hook", section: "edit", edit: action, children: null });
+    const button = nodes(tree).find(node => node.type === "button");
+    assert.equal(text(button), "Preparing video…");
+    assert.equal(button.props["aria-busy"], true);
+    assert.equal(button.props.disabled, true);
+    assert.equal(nodes(tree).find(node => node.props.role === "status").props.children, edit.message);
+  }
+  const tree = actual.render({ kind: "hook", section: "edit", edit: { ...edit, processing: false, disabled: false, message: "Your finished video is saved." }, children: null });
+  const button = nodes(tree).find(node => node.type === "button");
+  assert.equal(text(button), "Prepare final video");
+  assert.equal(button.props["aria-busy"], false);
+  assert.equal(button.props.disabled, false);
+});
 const makeAttachment = (name, attached = false, duration = 3) => ({ asset: attached ? { name, url: `blob:${name}`, duration } : null, error: null, loading: false, choose() {}, remove() {} });
 function render(overrides = {}) {
   const props = { videoLabel: "Hook", demo: makeAttachment("demo.mp4"), demoAudio: makeAttachment("demo.wav"), demoAudioPlayback: "once", onDemoAudioPlaybackChange() {}, ...overrides };
@@ -71,7 +94,8 @@ function audioRender(overrides = {}) {
 test("the actual Edit video section offers optional demo without dummy result tiles or media", () => {
   const { tree } = render();
   assert.equal(tree.props["aria-label"], "Video finishing settings");
-  assert.match(text(tree), /Edit & add demo.*Demo Optional/);
+  assert.match(text(tree), /Edit & add demo.*Demo upload/);
+  assert.doesNotMatch(text(tree), /Demo upload Optional/);
   assert.equal(nodes(tree).filter((node) => node.type === "ol").length, 0);
   assert.equal(nodes(tree).filter((node) => node.type === "player").length, 0);
   assert.ok(nodes(tree).some((node) => node.type === "button" && node.props.disabled && node.props["aria-label"] === "Select demo audio"));
@@ -102,6 +126,20 @@ test("unfinished finishing tools remain off, disabled and explained", () => {
   assert.match(text(tree), /English · up to 60 seconds total/);
 });
 
+test("whole-video music has its own compact picker, selection, playback and removal beside demo-only audio", () => {
+  const calls = [], demoAudio = makeAttachment("demo-only.mp3", true), attachment = makeAttachment("whole-video.mp3", true);
+  attachment.remove = () => calls.push("remove-music");
+  const music = { source: { title: "Whole video music", url: "https://audio.test/music.mp3" }, attachment, playback: "repeat", choose() {}, setPlayback: value => calls.push(value) };
+  const { tree } = render({ videoLabel: "Talking head", demo: makeAttachment("demo.mp4", true), demoAudio, connected: true, ownerId: "owner", options: { backgroundMusic: true }, onOptionsChange() {}, backgroundMusic: music });
+  const picker = nodes(tree).find(n => n.type === "background-audio-picker"); assert.equal(picker.props.attachment, attachment); assert.equal(picker.props.onChoose, music.choose);
+  assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.label === "Upload whole-video background music" && n.props.attachment === attachment));
+  assert.ok(nodes(tree).some(n => n.type === "picker" && n.props.attachment === demoAudio));
+  nodes(tree).find(n => n.props?.["aria-label"] === "Whole-video music playback").props.onChange({ target: { value: "once" } });
+  nodes(tree).find(n => n.type === "button" && text(n) === "Remove music").props.onClick();
+  assert.deepEqual(calls, ["once", "remove-music"]); assert.match(text(tree), /Entire video/);
+  assert.ok(nodes(render({ connected: true, options: { backgroundMusic: true, backgroundAssetId: "missing" }, onOptionsChange() {}, backgroundMusic: { ...music, source: null } }).tree).some(n => text(n) === "Remove unavailable music"));
+});
+
 test("connected subtitle controls save real finishing options and Audio selection stays on the Demo attachment", () => {
   const changes = [];
   const { props, tree } = render({ connected: true, ownerId: "owner", demo: makeAttachment("demo.mp4", true), options: { subtitles: false, style: "clean", backgroundMusic: false }, onOptionsChange: value => changes.push(value) });
@@ -123,7 +161,7 @@ test("visual subtitle choices default to Clean and rerender locally without enab
   const first = actual.render(props);
   const appearance = nodes(first).find(node => node.type === "details");
   assert.equal(appearance.props.open, undefined);
-  assert.equal(text(nodes(appearance).find(node => node.type === "summary")), "Subtitle appearance Clean · Bottom");
+  assert.equal(text(nodes(appearance).find(node => node.type === "summary")), "Subtitle appearance Clean");
   const group = nodes(first).find((node) => node.props["aria-label"] === "Subtitle style samples (local preview only)");
   assert.equal(group.props.role, "group");
   const choices = nodes(group).filter((node) => node.type === "button");
@@ -168,18 +206,19 @@ test("both workflows expose the English/60-second combined limit without adding 
 
 test("approved workspace gives clear guidance without an empty player or dummy video", () => {
   const canvas = read("components/explore/workflow-preview-canvas.tsx");
-  assert.match(canvas, /Create your first hook/);
+  assert.match(canvas, /Create your talking-head video/);
   assert.match(canvas, /Create your first phone video/);
   const actual = harness(canvas, "WorkflowPreviewCanvas");
   for (const kind of ["hook", "phone"]) {
     for (const generation of [undefined, { results: [], busy: false, error: null }]) {
       const tree = actual.render({ kind, generation });
-      assert.match(text(tree), new RegExp(`Create your first ${kind === "hook" ? "hook" : "phone video"}`));
+      assert.match(text(tree), new RegExp(kind === "hook" ? "Create your talking-head video" : "Create your first phone video"));
       assert.equal(nodes(tree).filter((node) => ["player", "button", "video", "img", "Image"].includes(node.type)).length, 0);
     }
   }
   assert.doesNotMatch(canvas, /\.mp4|previewFrame/);
-  assert.doesNotMatch(styles, /aspect-ratio: 9 \/ 16/);
+  // Empty upload slots may be portrait; an actual preview must retain its source ratio.
+  assert.doesNotMatch(styles.match(/\.demoPlayer\s*\{[^}]*\}/)?.[0] ?? "", /aspect-ratio: 9 \/ 16/);
   for (const kind of ["hook", "phone"]) assert.match(read(`components/explore/${kind}-workflow-preview.tsx`), new RegExp(`<WorkflowPreviewCanvas kind="${kind}"`));
 });
 
@@ -196,6 +235,34 @@ test("connected workspaces preview only supplied saved outputs and preserve resu
     buttons[1].props.onClick();
     assert.deepEqual(selections, ["asset-2"]);
     assert.ok(players.every((node) => !node.props.autoPlay));
+  }
+});
+
+test("generated result and next-stage actions stay compact and visible", () => {
+  assert.match(styles, /\.segment > :global\(button\[aria-pressed\]\)\s*\{[^}]*width: fit-content[^}]*max-width: 100%[^}]*align-self: center/);
+  const sectionStyles = read("components/explore/workflow-section-layout.module.css");
+  assert.match(sectionStyles, /\.nextStage\s*\{[^}]*justify-content: center/);
+  assert.match(sectionStyles, /\.nextStage button\s*\{[^}]*width: auto[^}]*max-width: 100%/);
+});
+
+test("busy video previews show the shared animated placeholders and retain completed results", () => {
+  const actual = harness(read("components/explore/workflow-preview-canvas.tsx"), "WorkflowPreviewCanvas");
+  for (const kind of ["hook", "phone"]) {
+    const generation = { busy: true, pendingCount: 2, message: "Your video is generating.", pendingPreview: { aspectRatio: "16:9", referenceImageUrl: "blob:chosen-reference", label: "Creating your video" }, results: [], error: null };
+    let tree = actual.render({ kind, generation });
+    const placeholders = nodes(tree).filter(node => node.type === "generation-placeholder");
+    assert.equal(placeholders.length, 2);
+    assert.ok(placeholders.every(node => node.props.aspectRatio === "16:9" && node.props.referenceImageUrl === "blob:chosen-reference"));
+    assert.equal(nodes(tree).filter(node => node.type === "player").length, 0, "Pending generation has no fake video player");
+    generation.results = [{ id: "ready", title: "Ready video", url: "https://storage.example.test/ready.mp4", durationSeconds: 5 }];
+    tree = actual.render({ kind, generation });
+    assert.equal(nodes(tree).filter(node => node.type === "generation-placeholder").length, 2);
+    assert.equal(nodes(tree).filter(node => node.type === "player").length, 1);
+    generation.busy = false;
+    generation.error = "One video could not be generated.";
+    tree = actual.render({ kind, generation });
+    assert.equal(nodes(tree).filter(node => node.type === "generation-placeholder").length, 0);
+    assert.match(text(nodes(tree).find(node => node.props.role === "alert")), /could not be generated/);
   }
 });
 
@@ -237,7 +304,7 @@ test("Create audio keeps the recording as AI guidance without an unimplemented e
   const buttons = nodes(tree).filter((node) => node.type === "button");
   assert.ok(buttons.every(node => !["Exact recording", "Voice reference"].includes(text(node))));
   assert.deepEqual(changes, []);
-  assert.match(text(tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
+  assert.match(text(tree), /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
   assert.doesNotMatch(text(tree), /exact copy|Files upload only|through OpenRouter/);
   assert.equal(audio.asset.name, "voice.wav");
   assert.doesNotMatch(audioSource, /setInstructions|onInstructionsChange|\bfetch\(|localStorage|sessionStorage/);
@@ -281,7 +348,7 @@ test("Demo audio is directly visible in editing, and section changes pause witho
   const folded = nodes(tree).filter(node => node.type === "details").flatMap(nodes);
   assert.equal(folded.includes(sound), false);
   assert.match(text(sound), /Demo audio/);
-  assert.doesNotMatch(text(tree), /Demo sound/);
+  assert.match(text(tree), /Demo sound/);
   assert.equal(demoAudio.asset.name, "background.wav");
   assert.ok(nodes(sound).some((node) => node.type === "player" && node.props.asset === demoAudio.asset));
   for (const kind of ["hook", "phone"]) {
@@ -294,7 +361,7 @@ test("Demo audio is directly visible in editing, and section changes pause witho
 test("stacked demo and audio controls keep their attachment ownership across states", () => {
   const empty = render().tree;
   const grid = nodes(empty).find((node) => node.props.className === "editMediaGrid");
-  assert.deepEqual(nodes(grid).filter((node) => node.type === "section").map((node) => node.props["aria-label"]), ["Optional demo", "Demo audio attachment"]);
+  assert.deepEqual(nodes(grid).filter((node) => node.type === "section").map((node) => node.props["aria-label"]), ["Demo upload", "Demo audio attachment"]);
   assert.equal(nodes(grid).find((node) => node.type === "picker").props.className, "editUploadButton");
   const unavailable = nodes(grid).find((node) => node.type === "button");
   assert.equal(unavailable.props.disabled, true);
@@ -303,11 +370,12 @@ test("stacked demo and audio controls keep their attachment ownership across sta
   const { props, tree } = render({ demo: makeAttachment("demo.mp4", true), demoAudio: { ...makeAttachment("demo.wav"), loading: true } });
   assert.equal(nodes(tree).find((node) => node.props["aria-label"] === "Demo audio attachment").props["aria-busy"], true);
   const preview = nodes(tree).find((node) => node.type === "PopoverTrigger" && node.props.render.props["aria-label"] === "Preview demo");
-  assert.equal(preview.props.render.props.className, "editUploadButton");
+  assert.equal(preview.props.render.props.className, "demoPreviewAction");
   assert.equal(nodes(tree).find((node) => node.type === "picker" && node.props.label === "Select demo audio").props.attachment, props.demoAudio);
   assert.match(styles, /\.editMediaGrid[^}]*display: flex[^}]*flex-direction: column/);
   assert.match(styles, /\.editUploadButton\s*\{[^}]*height: 160px[^}]*min-height: 144px/);
-  assert.match(styles, /\.editUploadButton\.editAudioButton[^}]*height: 44px[^}]*flex-direction: row/);
+  assert.match(styles, /\.editUploadButton\.editAudioButton[^}]*min-height: 34px[^}]*flex-direction: row/);
+  assert.match(styles, /@media \(pointer: coarse\)[^\n]*\.editUploadButton\.editAudioButton[^\n]*min-height: 44px/);
   assert.match(styles, /\.controls\[data-section="edit"\] \.uploadCard:first-child \.editUploadButton[^}]*flex: 1; height: auto/);
 });
 
@@ -344,11 +412,17 @@ test("both workflows expose explicit play-once/repeat choices and honest local t
     assert.equal(demoAudio.asset.name, "short.wav");
     assert.equal(nodes(next).find((node) => node.props.role === "switch" && node.props["aria-label"] === "Auto subtitles").props.disabled, true);
     const workspace = read(`components/explore/${videoLabel === "Hook" ? "hook" : "phone"}-workflow-preview.tsx`);
-    assert.match(workspace, /useState<ExploreBackgroundPlayback>\("once"\)/);
+    assert.match(workspace, videoLabel === "Hook" ? /useState<ExploreBackgroundPlayback>\(recovery\.session\.demoAudioPlayback\)/ : /useState<ExploreBackgroundPlayback>\("once"\)/);
     assert.match(workspace, /demoAudioPlayback=\{demoAudioPlayback\} onDemoAudioPlaybackChange=\{setDemoAudioPlayback\}/);
-    assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
-    assert.match(workspace, /function removeDemoAudio\(\) \{\s*demoAudio\.remove\(\);\s*setDemoAudioPlayback\("once"\)/);
-    assert.match(workspace, /if \(accepted\) setDemoAudioPlayback\("once"\)/);
+    if (videoLabel === "Hook") {
+      assert.match(workspace, /if \(!await localDemo\.choose\(file, \{ minDuration: 1, maxDuration: 60, maxBytes: 100 \* 1024 \*\* 2 \}\)\) return false;[\s\S]*?localDemoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); accepted = true; return true;/);
+      assert.match(workspace, /function removeDemoAudio\(\) \{\s*audioRevision\.current\+\+; localDemoAudio\.remove\(\); recovery\.clearMedia\("demoAudio"\);[\s\S]*?setDemoAudioPlayback\("once"\);/);
+      assert.match(workspace, /if \(!await localDemoAudio\.choose\(file, \{ maxDuration: 600 \}\)\) return false;[\s\S]*?setDemoAudioPlayback\("once"\); return true;/);
+    } else {
+      assert.match(workspace, /if \(accepted\) \{ demoAudio\.remove\(\); setDemoAudioPlayback\("once"\); setDemoFraming\(null\); \}/);
+      assert.match(workspace, /function removeDemoAudio\(\) \{\s*demoAudio\.remove\(\);\s*setDemoAudioPlayback\("once"\)/);
+      assert.match(workspace, /if \(accepted\) setDemoAudioPlayback\("once"\)/);
+    }
     assert.doesNotMatch(workspace, /invalidDemoAudio|isDemoAudioTooLong/);
   }
 });
@@ -380,7 +454,7 @@ test("concise reference pickers preserve uploads, playback, removal, errors and 
     const { tree } = audioRender({ audioLabel, audio });
     const popup = nodes(tree).find(node => node.type === "PopoverContent");
     const paragraphs = nodes(popup).filter(node => node.type === "p");
-    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery with an audio clip. Requires Seedance 2.5 · Up to 30 seconds.", "voice.mp3"]);
+    assert.deepEqual(paragraphs.map(text), ["Guide vocal delivery. WAN 3.0: up to 15 seconds · Seedance 2.5: up to 30 seconds.", "voice.mp3"]);
     const picker = nodes(tree).find(node => node.type === "picker");
     assert.equal(await picker.props.attachment.choose(file), true);
     assert.equal(chosen[0][0], file);
@@ -407,7 +481,7 @@ test("both workflows keep concise voice-reference guidance separate from demo-on
   for (const [audioLabel, videoLabel] of [["Hook audio", "Hook"], ["Creator audio", "Phone video"]]) {
     const reference = audioRender({ audioLabel, audio: makeAttachment("voice.wav", true) });
     assert.match(text(reference.tree), /Audio reference/);
-    assert.match(text(reference.tree), /Requires Seedance 2\.5 · Up to 30 seconds/);
+    assert.match(text(reference.tree), /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
     assert.doesNotMatch(text(reference.tree), /background music|demo audio|OpenRouter|Files upload|exact copy/);
     const demo = render({ videoLabel, demo: makeAttachment("demo.mp4", true), demoAudio: makeAttachment("demo.wav", true) });
     const details = nodes(demo.tree).find((node) => node.props["aria-label"] === "Demo audio details");

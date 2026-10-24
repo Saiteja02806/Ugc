@@ -7,6 +7,7 @@ import {
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
 import importedCatalog from "./imported-catalog.json" with { type: "json" };
 import { getPairedExploreVideos } from "./paired-reference-library";
+import { getHookReferenceGalleryItems, getHookReferenceReleaseItems, isHookReferenceReleaseActive } from "@/worker/src/lib/explore-hook-reference-release";
 
 export type { ExploreHookVideo } from "@/lib/explore/hook-video-types";
 
@@ -123,8 +124,13 @@ const EXPLORE_HOOK_VIDEO_ASSETS: ReadonlyArray<ExploreHookVideoAsset> = [
   },
 ];
 
-export function getExploreHookVideos(): Array<ExploreHookVideo> {
-  return [...EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo), ...getPublishedImportedHookVideos(), ...getPairedExploreVideos("hook")];
+export function getExploreHookVideos(includeArchived = false): Array<ExploreHookVideo> {
+  if (!includeArchived && isHookReferenceReleaseActive()) {
+    const ids = new Set(getHookReferenceGalleryItems().map(item => item.id));
+    return getPairedExploreVideos("hook").filter(item => ids.has(item.id));
+  }
+  const pendingReleaseIds = new Set(getHookReferenceReleaseItems().map(item => item.id));
+  return [...EXPLORE_HOOK_VIDEO_ASSETS.map(toExploreHookVideo), ...getPublishedImportedHookVideos(), ...getPairedExploreVideos("hook").filter(item => includeArchived || !pendingReleaseIds.has(item.id))];
 }
 
 export function getExplorePreviewVideo(): ExploreHookVideo {

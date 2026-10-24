@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { renderCarouselManualSlide } from "../lib/carousel-manual-render.js";
+import { CAROUSEL_MANUAL_TEXT_VERSION, parseCarouselManualTextStyle, type CarouselManualTextStyle } from "../lib/carousel-manual-text.js";
 import { getErrorMessage, logger } from "../logger.js";
 import {
   CAROUSEL_RENDERER_VERSION,
@@ -25,7 +27,7 @@ import type {
 import type { WorkerJobOutput } from "./index.js";
 
 const TRENDING_CAROUSEL_EDIT_RENDERER_VERSION =
-  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v3`;
+  `${CAROUSEL_RENDERER_VERSION}-normalized-edit-v4-body-copy`;
 const TRENDING_CAROUSEL_STRUCTURE_2_EDIT_RENDERER_VERSION =
   `${CAROUSEL_STRUCTURE_2_RENDERER_VERSION}-normalized-edit-v4`;
 
@@ -46,16 +48,19 @@ type EditableCarouselSlide = {
   slideNumber: number;
   subtext: string;
   textPosition: CarouselNormalizedTextPosition;
+  textStyle?: CarouselManualTextStyle | null;
   visualRole: "hook" | "human" | "product_asset" | "static" | null;
 };
 
 type RenderTrendingCarouselEditDependencies = {
+  renderCarouselManualSlide: typeof renderCarouselManualSlide;
   renderCarouselSlide: typeof defaultRenderCarouselSlide;
   renderCarouselStructure2Slide: typeof defaultRenderCarouselStructure2Slide;
   uploadRenderedCarouselSlide: typeof defaultUploadRenderedCarouselSlide;
 };
 
 const defaultDependencies: RenderTrendingCarouselEditDependencies = {
+  renderCarouselManualSlide,
   renderCarouselSlide: defaultRenderCarouselSlide,
   renderCarouselStructure2Slide: defaultRenderCarouselStructure2Slide,
   uploadRenderedCarouselSlide: defaultUploadRenderedCarouselSlide,
@@ -171,6 +176,7 @@ export async function runRenderTrendingCarouselEditJob(
         sourceRendererVersion: generation.renderer_version,
         originalSlide,
         editedSlide,
+        ...(editedSlide.textStyle ? { manualTextRendererVersion: CAROUSEL_MANUAL_TEXT_VERSION } : {}),
         textStyle: originalTextStyle,
         plannedSlide: plannedSlideByNumber.get(editedSlide.slideNumber) ?? null,
       })).digest("hex");
@@ -187,25 +193,29 @@ export async function runRenderTrendingCarouselEditJob(
     ).length;
     let completedSlideRenderCount = 0;
 
-    for (const {
+    // Bound raster memory and source/storage traffic, but overlap independent
+    // slides. Drain each pair before failure/persistence so no upload escapes
+    // the job lifetime. Promise result order preserves the slideshow order.
+    for (let offset = 0; offset < editSlidesWithSource.length; offset += 2) {
+      const batch = await Promise.allSettled(editSlidesWithSource.slice(offset, offset + 2).map(async ({
       editedSlide,
       originalSlide,
       renderFingerprint,
       reusableRender,
-    } of editSlidesWithSource) {
+      }) => {
       if (reusableRender) {
-        renderedSlides.push({
+        const result = {
           ...reusableRender,
           renderFingerprint,
           slideNumber: editedSlide.slideNumber,
-        });
+        };
         logger.info("Trending Carousel edit slide reused", {
           editId: input.editId,
           jobId: job.id,
           revision: input.revision,
           slideNumber: editedSlide.slideNumber,
         });
-        continue;
+        return result;
       }
 
       if (!originalSlide.category_image_asset_id) {
@@ -215,7 +225,9 @@ export async function runRenderTrendingCarouselEditJob(
       }
 
       const rendered =
-        generation.structure_id === "structure_2"
+        editedSlide.textStyle
+          ? await dependencies.renderCarouselManualSlide({ assetUrl: editedSlide.backgroundUrl, slide: { ...editedSlide, renderFormat: generation.format } })
+          : generation.structure_id === "structure_2"
           ? await dependencies.renderCarouselStructure2Slide({
               assetUrl: editedSlide.backgroundUrl,
               format: generation.format,
@@ -246,17 +258,6 @@ export async function runRenderTrendingCarouselEditJob(
               ),
               textStyle: originalTextStyle,
             });
-      completedSlideRenderCount += 1;
-      const progressAfterRender =
-        10 +
-        Math.round((completedSlideRenderCount / Math.max(slideRenderCount, 1)) * 70);
-
-      await context.checkpoint({
-        progress: progressAfterRender,
-        stage: `rendered_slide_${editedSlide.slideNumber}`,
-        status: "rendering",
-      });
-
       const uploaded = await dependencies.uploadRenderedCarouselSlide({
         buffer: rendered.buffer,
         carouselId: `${input.editId}-revision-${input.revision}`,
@@ -270,18 +271,30 @@ export async function runRenderTrendingCarouselEditJob(
         userId: input.userId,
       });
 
-      renderedSlides.push({
+      completedSlideRenderCount += 1;
+      const result = {
         renderFingerprint,
         renderedS3Key: uploaded.key,
         renderedUrl: uploaded.url,
         slideNumber: editedSlide.slideNumber,
-      });
+      };
       logger.info("Trending Carousel edit slide rendered", {
         diagnostics: rendered.diagnostics,
         editId: input.editId,
         jobId: job.id,
         revision: input.revision,
         slideNumber: editedSlide.slideNumber,
+      });
+      return result;
+      }));
+      for (const result of batch) {
+        if (result.status === "rejected") throw result.reason;
+        renderedSlides.push(result.value);
+      }
+      await context.checkpoint({
+        progress: 10 + Math.round((completedSlideRenderCount / Math.max(slideRenderCount, 1)) * 70),
+        stage: `rendered_slides_${renderedSlides.length}_of_${editedSlides.length}`,
+        status: "rendering",
       });
     }
 
@@ -421,6 +434,7 @@ function parseEditedSlides(edit: TrendingCreativeEditRow): EditableCarouselSlide
           x: getUnitNumber(textPosition.x, "textPosition.x"),
           y: getUnitNumber(textPosition.y, "textPosition.y"),
         },
+        textStyle: parseCarouselManualTextStyle(slide.textStyle),
         visualRole: getNullableChoice(
           slide.visualRole,
           ["hook", "human", "product_asset", "static"] as const,
@@ -535,6 +549,7 @@ function getReusableOriginalRender(
   );
 
   if (
+    edited.textStyle ||
     edited.backgroundAssetId !== original.category_image_asset_id ||
     edited.ctaText !== (original.cta_text ?? "") ||
     edited.headline !== original.headline ||
@@ -641,8 +656,12 @@ function applyEditToPlannedSlide(
   const isBodyOnly =
     original.textMode === "body_only" || original.textMode === "single_statement" ||
     (!original.headline && original.textMode !== "checklist" && original.textMode !== "question_list");
-  const bodyOnlyCopy = edited.subtext !== (original.body ?? original.subtext ?? "")
-    ? edited.subtext || null : edited.headline || edited.subtext || null;
+  // Generated body-only slides also use the legacy headline column to carry
+  // their complete copy. Resolve the submitted fields just as the editor does:
+  // an empty subtext is not a deletion while headline still contains the body.
+  // Comparing subtext with the normalized plan mistook background-only edits
+  // for text deletion and rendered every body slide without its copy.
+  const bodyOnlyCopy = edited.subtext.trim() || edited.headline.trim() || null;
 
   return {
     ...original,

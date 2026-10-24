@@ -25,6 +25,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useRefreshQueue } from "@/components/hooks/use-refresh-queue";
+import { useVisibleRefresh } from "@/components/hooks/use-visible-refresh";
+import { withReadDeadline } from "@/lib/http/read-deadline";
+import { createDemoUploadQueue } from "@/lib/demo/upload-queue";
 
 import { VideoPreview } from "@/components/media/video-preview";
 import { getVideoPreviewAspectRatio } from "@/lib/media/video-preview";
@@ -33,7 +38,7 @@ import {
   isActiveDemoStatus,
   type DemoDisplayStatus,
 } from "@/lib/demo/demo-display";
-import { getContentDemoEditorHref } from "@/lib/edit/routes";
+import { getContentDemoEditorHref, getContentExploreDemoEditorHref } from "@/lib/edit/routes";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -75,6 +80,7 @@ type DemoRatio = "9:16" | "1:1" | "4:5" | "16:9" | "other";
 type DemoStatus = DemoDisplayStatus;
 
 type DemoVideo = {
+  explore_edit?: { scope: "hook:demo"; revision: number; updatedAt: string } | null;
   created_at: string;
   deleted_at: string | null;
   draft_json: Record<string, unknown>;
@@ -100,8 +106,9 @@ type DemoVideo = {
 };
 
 type UploadQueueItem = {
+  completion?: { demoId: string; key: string; metadata: VideoMetadata };
   error?: string | null;
-  file: File;
+  file: File | null;
   fileName: string;
   fileSizeBytes: number;
   id: string;
@@ -155,9 +162,9 @@ export function UploadedPostsTab({
   showPageHeader?: boolean;
 } = {}) {
   const { user } = useAuth();
+  const ownerId = user?.uid;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const latestDemoLoadRequestIdRef = useRef(0);
-  const latestBlockingDemoLoadRequestIdRef = useRef(0);
+  const refreshQueue = useRefreshQueue(`demos:${user?.uid ?? "signed-out"}:${DEFAULT_PROJECT_ID}`);
 
   const existingCache =
     inMemoryDemoVideos && user && inMemoryDemoVideos.userId === user.uid
@@ -181,7 +188,7 @@ export function UploadedPostsTab({
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
 
   const hasActiveUpload = uploadQueue.some((item) =>
-    ["validating", "creating", "uploading", "finalizing"].includes(item.status),
+    ["idle", "validating", "creating", "uploading", "finalizing"].includes(item.status),
   );
 
   const loadErrorFallback = embeddedInLibrary
@@ -198,114 +205,86 @@ export function UploadedPostsTab({
     [demos],
   );
 
-  const loadDemos = useCallback(async (options?: { silent?: boolean }) => {
-    const requestId = latestDemoLoadRequestIdRef.current + 1;
-    latestDemoLoadRequestIdRef.current = requestId;
-
+  const loadDemos = useCallback((options?: { silent?: boolean; background?: boolean; preserveError?: boolean }) => refreshQueue.run(async signal => {
     if (!options?.silent) {
-      latestBlockingDemoLoadRequestIdRef.current = requestId;
       setIsLoading(true);
       setErrorMessage(null);
     }
 
     try {
-      const token = await getCurrentUserIdToken();
+      const data = await withReadDeadline(async bounded => {
+        const token = await getCurrentUserIdToken(ownerId);
+        bounded.throwIfAborted();
 
-      if (!token) {
-        throw new Error("Sign in again to refresh your demo videos.");
-      }
+        if (!token) {
+          throw new Error("Sign in again to refresh your demo videos.");
+        }
 
-      const response = await fetch(
-        `/api/demo/list?projectId=${encodeURIComponent(DEFAULT_PROJECT_ID)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+        const response = await fetch(
+          `/api/demo/list?projectId=${encodeURIComponent(DEFAULT_PROJECT_ID)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal: bounded,
           },
-        },
-      );
-      const data = await readJsonResponse<
-        { demos: DemoVideo[]; ok: true } | ApiErrorResponse
-      >(response, loadErrorFallback);
+        );
+        const data = await readJsonResponse<
+          { demos: DemoVideo[]; ok: true; demoEditsUnavailable?: boolean } | ApiErrorResponse
+        >(response, loadErrorFallback);
 
-      if (!response.ok || data.ok !== true) {
-        throw new Error(getApiErrorMessage(data, loadErrorFallback));
-      }
+        if (!response.ok || data.ok !== true) {
+          throw new Error(getApiErrorMessage(data, loadErrorFallback));
+        }
 
-      if (latestDemoLoadRequestIdRef.current === requestId) {
-        setDemos(data.demos);
-        setErrorMessage(null);
-        if (user) {
+        return data;
+      }, signal);
+      if (!signal.aborted) {
+        setDemos(current => replaceEqualDeep(current, data.demos));
+        if (data.demoEditsUnavailable) setErrorMessage("Demos loaded, but saved demo edits could not be checked. Refresh before editing.");
+        else if (!options?.preserveError) setErrorMessage(null);
+        if (ownerId) {
           inMemoryDemoVideos = {
             cachedAt: Date.now(),
             demos: data.demos,
             projectId: DEFAULT_PROJECT_ID,
-            userId: user.uid,
+            userId: ownerId,
           };
         }
       }
     } catch (error) {
-      if (latestDemoLoadRequestIdRef.current === requestId) {
+      if (!signal.aborted) {
         setErrorMessage(getErrorMessage(error, loadErrorFallback));
       }
+      throw error;
     } finally {
-      if (
-        !options?.silent &&
-        latestBlockingDemoLoadRequestIdRef.current === requestId
-      ) {
+      if (!signal.aborted) {
         setIsLoading(false);
       }
     }
-  }, [loadErrorFallback, user]);
+  }, { background: options?.background }).catch(() => {}), [loadErrorFallback, ownerId, refreshQueue]);
 
   useEffect(() => {
-    if (!user) {
+    if (!ownerId) {
       return;
     }
 
     const hasCache =
-      inMemoryDemoVideos && inMemoryDemoVideos.userId === user.uid;
+      inMemoryDemoVideos && inMemoryDemoVideos.userId === ownerId;
     const timer = window.setTimeout(() => {
       void loadDemos({ silent: Boolean(hasCache) });
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [loadDemos, user]);
+  }, [loadDemos, ownerId]);
 
-  useEffect(() => {
-    if (!activeDemoStatusSignature) {
-      return;
-    }
-
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-
-      if (attempts > MAX_ACTIVE_STATUS_POLL_ATTEMPTS) {
-        window.clearInterval(timer);
-        return;
-      }
-
-      void loadDemos({ silent: true });
-    }, 5_000);
-
-    return () => window.clearInterval(timer);
-  }, [activeDemoStatusSignature, loadDemos]);
-
-  useEffect(() => {
-    function refreshDemosWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void loadDemos({ silent: true });
-      }
-    }
-
-    window.addEventListener("focus", refreshDemosWhenVisible);
-    document.addEventListener("visibilitychange", refreshDemosWhenVisible);
-
-    return () => {
-      window.removeEventListener("focus", refreshDemosWhenVisible);
-      document.removeEventListener("visibilitychange", refreshDemosWhenVisible);
-    };
-  }, [loadDemos]);
+  useVisibleRefresh({
+    enabled: Boolean(user),
+    refresh: () => loadDemos({ silent: true, background: true }),
+    intervalMs: activeDemoStatusSignature ? 5_000 : false,
+    maxPolls: MAX_ACTIVE_STATUS_POLL_ATTEMPTS,
+    resetKey: activeDemoStatusSignature,
+  });
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -329,14 +308,15 @@ export function UploadedPostsTab({
 
     setUploadQueue((prev) => [...prev, ...newQueueItems]);
 
-    for (const item of newQueueItems) {
-      await processUploadItem(item);
-    }
+    for (const item of newQueueItems) uploadRunner.current?.enqueue(item);
   }
 
-  async function processUploadItem(item: UploadQueueItem) {
+  const processUploadItem = useCallback(async (item: UploadQueueItem, signal: AbortSignal) => {
+    const file = item.file;
+    if (!file && !item.completion) return;
     let token: string | null = null;
     let uploadTarget: CreateUploadResponse | null = null;
+    let completionAttempted = false;
 
     setUploadQueue((prev) =>
       prev.map((q) =>
@@ -347,85 +327,107 @@ export function UploadedPostsTab({
     );
 
     try {
-      const contentType = getSupportedContentType(item.file);
-      const metadata = await readVideoMetadata(item.file);
+      if (item.completion) {
+        token = await getAuthToken(ownerId);
+        signal.throwIfAborted();
+        completionAttempted = true;
+        setUploadQueue(current => current.map(q => q.id === item.id ? { ...q, status: "finalizing", message: "Checking saved upload...", progress: 96 } : q));
+        await completeUpload({ ...item.completion, token });
+      } else {
+        if (!file) return;
+        const contentType = getSupportedContentType(file);
+        const metadata = await readVideoMetadata(file, signal);
+        signal.throwIfAborted();
 
-      setUploadQueue((prev) =>
-        prev.map((q) =>
-          q.id === item.id
-            ? { ...q, message: "Preparing upload...", progress: 14, status: "creating" }
-            : q,
-        ),
-      );
+        setUploadQueue((prev) =>
+          prev.map((q) =>
+            q.id === item.id
+              ? { ...q, message: "Preparing upload...", progress: 14, status: "creating" }
+              : q,
+          ),
+        );
 
-      token = await getAuthToken();
-      uploadTarget = await createUploadTarget({
-        contentType,
-        file: item.file,
-        token,
-      });
+        token = await getAuthToken(ownerId);
+        signal.throwIfAborted();
+        uploadTarget = await createUploadTarget({
+          contentType,
+          file,
+          token,
+        });
+        signal.throwIfAborted();
+
+        setUploadQueue((prev) =>
+          prev.map((q) =>
+            q.id === item.id
+              ? {
+                  ...q,
+                  message: "Uploading video...",
+                  progress: 18,
+                  status: "uploading",
+                }
+              : q,
+          ),
+        );
+
+        await uploadFileToStorage({
+          contentType,
+          file,
+          onProgress: (progress) => {
+            setUploadQueue((prev) =>
+              prev.map((q) =>
+                q.id === item.id
+                  ? { ...q, message: "Uploading video...", progress }
+                  : q,
+              ),
+            );
+          },
+          onRequestCreated: (request) => {
+            setUploadQueue((prev) =>
+              prev.map((q) =>
+                q.id === item.id ? { ...q, request } : q,
+              ),
+            );
+          },
+          uploadUrl: uploadTarget.uploadUrl,
+          signal,
+        });
+        signal.throwIfAborted();
+
+        setUploadQueue((prev) =>
+          prev.map((q) =>
+            q.id === item.id
+              ? {
+                  ...q,
+                  message: "Finishing upload...",
+                  file: null,
+                  progress: 96,
+                  request: null,
+                  status: "finalizing",
+                  completion: { demoId: uploadTarget!.demoId, key: uploadTarget!.key, metadata },
+                }
+              : q,
+          ),
+        );
+
+        completionAttempted = true;
+        await completeUpload({
+          demoId: uploadTarget.demoId,
+          key: uploadTarget.key,
+          metadata,
+          token,
+        });
+      }
+      if (signal.aborted) return;
 
       setUploadQueue((prev) =>
         prev.map((q) =>
           q.id === item.id
             ? {
                 ...q,
-                message: "Uploading video...",
-                progress: 18,
-                status: "uploading",
-              }
-            : q,
-        ),
-      );
-
-      await uploadFileToStorage({
-        contentType,
-        file: item.file,
-        onProgress: (progress) => {
-          setUploadQueue((prev) =>
-            prev.map((q) =>
-              q.id === item.id
-                ? { ...q, message: "Uploading video...", progress }
-                : q,
-            ),
-          );
-        },
-        onRequestCreated: (request) => {
-          setUploadQueue((prev) =>
-            prev.map((q) =>
-              q.id === item.id ? { ...q, request } : q,
-            ),
-          );
-        },
-        uploadUrl: uploadTarget.uploadUrl,
-      });
-
-      setUploadQueue((prev) =>
-        prev.map((q) =>
-          q.id === item.id
-            ? {
-                ...q,
-                message: "Finishing upload...",
-                progress: 96,
+                file: null,
+                completion: undefined,
                 request: null,
-                status: "finalizing",
-              }
-            : q,
-        ),
-      );
-
-      await completeUpload({
-        demoId: uploadTarget.demoId,
-        key: uploadTarget.key,
-        metadata,
-        token,
-      });
-
-      setUploadQueue((prev) =>
-        prev.map((q) =>
-          q.id === item.id
-            ? {
-                ...q,
+                error: null,
                 message: "Upload complete",
                 progress: 100,
                 status: "done",
@@ -433,11 +435,21 @@ export function UploadedPostsTab({
             : q,
         ),
       );
-
-      await loadDemos({ silent: true });
     } catch (error) {
       const errMsg = getErrorMessage(error, "Upload failed.");
-      setUploadQueue((prev) =>
+      // Keep Retry unavailable until cleanup has released this queue slot.
+      // Starting another upload before the old object is removed can race it.
+      if (token && uploadTarget && !completionAttempted) {
+        if (!signal.aborted) setUploadQueue(current => current.map(q => q.id === item.id
+          ? { ...q, request: null, message: "Cleaning up unsuccessful upload..." }
+          : q));
+        await cleanupIncompleteUpload({
+          demoId: uploadTarget.demoId,
+          key: uploadTarget.key,
+          token,
+        });
+      }
+      if (!signal.aborted) setUploadQueue((prev) =>
         prev.map((q) =>
           q.id === item.id
             ? {
@@ -452,18 +464,26 @@ export function UploadedPostsTab({
         ),
       );
 
-      if (token && uploadTarget) {
-        await cleanupIncompleteUpload({
-          demoId: uploadTarget.demoId,
-          key: uploadTarget.key,
-          token,
-        });
-        await loadDemos({ silent: true });
-      }
+      // A lost completion response retains its receipt for an explicit retry.
+      // Never delete an upload after completion may already have saved it.
     }
-  }
+  }, [ownerId]);
+
+  const uploadRunner = useRef<ReturnType<typeof createDemoUploadQueue<UploadQueueItem>> | null>(null);
+  useEffect(() => {
+    const runner = createDemoUploadQueue<UploadQueueItem>(processUploadItem, () => {
+      void loadDemos({ silent: true });
+    });
+    uploadRunner.current = runner;
+    runner.activate();
+    return () => {
+      runner.dispose();
+      if (uploadRunner.current === runner) uploadRunner.current = null;
+    };
+  }, [processUploadItem, loadDemos]);
 
   function handleCancelQueueItem(itemId: string) {
+    uploadRunner.current?.cancel(itemId);
     const target = uploadQueue.find((q) => q.id === itemId);
     if (target?.request) {
       target.request.abort();
@@ -474,7 +494,7 @@ export function UploadedPostsTab({
   function handleRetryQueueItem(itemId: string) {
     const target = uploadQueue.find((q) => q.id === itemId);
     if (!target) return;
-    void processUploadItem(target);
+    uploadRunner.current?.enqueue(target);
   }
 
   function handleClearCompletedQueue() {
@@ -523,6 +543,7 @@ export function UploadedPostsTab({
       if (previewModalDemo?.id === demo.id) {
         setPreviewModalDemo(null);
       }
+      void loadDemos({ silent: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not delete the demo."));
     } finally {
@@ -542,25 +563,37 @@ export function UploadedPostsTab({
       const token = await getAuthToken();
       const demosToDelete = demos.filter((d) => selectedDemoIds.has(d.id));
 
-      await Promise.all(
-        demosToDelete.map(async (demo) => {
-          await fetch("/api/demo/delete", {
-            body: JSON.stringify({
-              demoId: demo.id,
-              key: demo.source_s3_key,
-              projectId: demo.project_id,
-            }),
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            method: "DELETE",
-          });
-        }),
-      );
+      const removedIds = new Set<string>();
+      const failedIds = new Set<string>();
+      // Bound deletion work just like uploads and retain rows rejected by the server.
+      for (let index = 0; index < demosToDelete.length; index += 2) {
+        await Promise.all(demosToDelete.slice(index, index + 2).map(async (demo) => {
+          try {
+            const response = await fetch("/api/demo/delete", {
+              body: JSON.stringify({
+                demoId: demo.id,
+                key: demo.source_s3_key,
+                projectId: demo.project_id,
+              }),
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              method: "DELETE",
+            });
+            const result = await response.json().catch(() => null);
+            if (!response.ok || result?.ok !== true) throw new Error("Could not delete this demo.");
+            removedIds.add(demo.id);
+          } catch { failedIds.add(demo.id); }
+        }));
+      }
 
-      setDemos((prev) => prev.filter((d) => !selectedDemoIds.has(d.id)));
-      setSelectedDemoIds(new Set());
+      setDemos((prev) => prev.filter((d) => !removedIds.has(d.id)));
+      setSelectedDemoIds(failedIds);
+      setPlayingDemoId(current => current && removedIds.has(current) ? null : current);
+      setPreviewModalDemo(current => current && removedIds.has(current.id) ? null : current);
+      void loadDemos({ silent: true, preserveError: failedIds.size > 0 });
+      if (failedIds.size) throw new Error(`${failedIds.size} demo${failedIds.size === 1 ? " could" : "s could"} not be deleted. Your selection is kept so you can retry.`);
       setShowBulkDeleteConfirm(false);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Could not delete some selected demos."));
@@ -774,7 +807,7 @@ export function UploadedPostsTab({
             onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
             onDragActiveChange={setIsDragActive}
             onFiles={handleFiles}
-            onOpenPreview={(demo) => setPreviewModalDemo(demo)}
+            onOpenPreview={(demo) => { setPlayingDemoId(null); setPreviewModalDemo(demo); }}
             onPlayDemo={handleToggleDemoPlayback}
             onPlaybackStateChange={handleDemoPlaybackStateChange}
             onRefresh={() => void loadDemos()}
@@ -816,7 +849,7 @@ export function UploadedPostsTab({
               demos={demos}
               isLoading={isLoading}
               onDeleteDemo={(demo) => void handleDeleteDemo(demo)}
-              onOpenPreview={(demo) => setPreviewModalDemo(demo)}
+              onOpenPreview={(demo) => { setPlayingDemoId(null); setPreviewModalDemo(demo); }}
               onPlayDemo={handleToggleDemoPlayback}
               onPlaybackStateChange={handleDemoPlaybackStateChange}
               onRenameDemo={handleRenameDemo}
@@ -855,7 +888,7 @@ export function UploadedPostsTab({
           <DialogHeader>
             <DialogTitle>Delete {selectedDemoIds.size} demos?</DialogTitle>
             <DialogDescription>
-              This will permanently delete the {selectedDemoIds.size} selected demo videos from your Content Library. This action cannot be undone.
+              This will permanently delete the {selectedDemoIds.size} selected demo videos from your Demo screen. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-between">
@@ -1405,7 +1438,7 @@ function BatchUploadQueuePanel({
         {items.map((item) => {
           const isFailed = item.status === "failed";
           const isDone = item.status === "done";
-          const isCancellable = ["creating", "uploading", "validating"].includes(
+          const isCancellable = ["idle", "creating", "uploading", "validating"].includes(
             item.status,
           );
 
@@ -1744,6 +1777,7 @@ export function DemoCard({
         </div>
 
         <div className="space-y-2 border-t border-border pt-2.5">
+          {demo.explore_edit ? <p className="text-xs text-muted">Saved demo edits · open Edit to preview or continue.</p> : null}
           <div className="flex min-w-0 items-center justify-between gap-2">
             <p className="truncate text-xs font-semibold text-foreground">
               {getFileTypeLabel(demo.file_type)}
@@ -1761,8 +1795,9 @@ export function DemoCard({
             >
               Preview
             </button>
+            {demo.explore_edit ? <Link href={getContentDemoEditorHref(demo.id)} className="inline-flex min-h-9 items-center justify-center rounded-control border border-border px-3 text-xs font-semibold text-muted hover:bg-card-muted">Edit original</Link> : null}
             <Link
-              href={getContentDemoEditorHref(demo.id)}
+              href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
               className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
             >
               <Pencil className="size-3" aria-hidden="true" />
@@ -2352,7 +2387,7 @@ function DemoVideoPreviewModal({
           </div>
 
           <Link
-            href={getContentDemoEditorHref(demo.id)}
+            href={demo.explore_edit ? getContentExploreDemoEditorHref(demo.id) : getContentDemoEditorHref(demo.id)}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-control bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover"
           >
             <Pencil className="size-3.5" />
@@ -2480,8 +2515,12 @@ function StatusBadge({ status }: { status: DemoStatus }) {
   );
 }
 
-async function getAuthToken() {
-  const token = await getCurrentUserIdToken();
+async function getAuthToken(ownerId?: string) {
+  const token = await withReadDeadline(async signal => {
+    const token = await getCurrentUserIdToken(ownerId);
+    signal.throwIfAborted();
+    return token;
+  });
 
   if (!token) {
     throw new Error("Sign in before uploading demo videos.");
@@ -2499,26 +2538,31 @@ async function createUploadTarget({
   file: File;
   token: string;
 }) {
-  const response = await fetch("/api/demo/create-upload-url", {
-    body: JSON.stringify({
-      contentType,
-      fileName: file.name,
-      fileSize: file.size,
-      projectId: DEFAULT_PROJECT_ID,
-    }),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-  const data = (await response.json()) as CreateUploadResponse | ApiErrorResponse;
+  // Deadlines never retry a mutation. Completion retains its saved identity for
+  // an explicit retry; a lost reservation acknowledgement may require cleanup.
+  return withReadDeadline(async signal => {
+    const response = await fetch("/api/demo/create-upload-url", {
+      body: JSON.stringify({
+        contentType,
+        fileName: file.name,
+        fileSize: file.size,
+        projectId: DEFAULT_PROJECT_ID,
+      }),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      signal,
+    });
+    const data = (await response.json()) as CreateUploadResponse | ApiErrorResponse;
 
-  if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not prepare the upload."));
-  }
+    if (!response.ok || data.ok !== true) {
+      throw new Error(getApiErrorMessage(data, "Could not prepare the upload."));
+    }
 
-  return data;
+    return data;
+  }, undefined, 30_000);
 }
 
 async function completeUpload({
@@ -2532,27 +2576,30 @@ async function completeUpload({
   metadata: VideoMetadata;
   token: string;
 }) {
-  const response = await fetch("/api/demo/complete-upload", {
-    body: JSON.stringify({
-      demoId,
-      durationSeconds: metadata.durationSeconds,
-      height: metadata.height,
-      key,
-      projectId: DEFAULT_PROJECT_ID,
-      ratio: metadata.ratio,
-      width: metadata.width,
-    }),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-  const data = (await response.json()) as ApiErrorResponse | { ok: true };
+  return withReadDeadline(async signal => {
+    const response = await fetch("/api/demo/complete-upload", {
+      body: JSON.stringify({
+        demoId,
+        durationSeconds: metadata.durationSeconds,
+        height: metadata.height,
+        key,
+        projectId: DEFAULT_PROJECT_ID,
+        ratio: metadata.ratio,
+        width: metadata.width,
+      }),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      signal,
+    });
+    const data = (await response.json()) as ApiErrorResponse | { ok: true };
 
-  if (!response.ok || data.ok !== true) {
-    throw new Error(getApiErrorMessage(data, "Could not finish the upload."));
-  }
+    if (!response.ok || data.ok !== true) {
+      throw new Error(getApiErrorMessage(data, "Could not finish the upload."));
+    }
+  }, undefined, 30_000);
 }
 
 async function cleanupIncompleteUpload({
@@ -2565,25 +2612,28 @@ async function cleanupIncompleteUpload({
   token: string;
 }) {
   try {
-    const response = await fetch("/api/demo/delete", {
-      body: JSON.stringify({
-        demoId,
-        key,
-        projectId: DEFAULT_PROJECT_ID,
-      }),
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      console.error("Could not clean up incomplete demo upload", {
-        demoId,
-        status: response.status,
+    await withReadDeadline(async signal => {
+      const response = await fetch("/api/demo/delete", {
+        body: JSON.stringify({
+          demoId,
+          key,
+          projectId: DEFAULT_PROJECT_ID,
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "DELETE",
+        signal,
       });
-    }
+
+      if (!response.ok) {
+        console.error("Could not clean up incomplete demo upload", {
+          demoId,
+          status: response.status,
+        });
+      }
+    });
   } catch (error) {
     console.error("Could not clean up incomplete demo upload", {
       demoId,
@@ -2598,20 +2648,31 @@ function uploadFileToStorage({
   onProgress,
   onRequestCreated,
   uploadUrl,
+  signal,
 }: {
   contentType: DemoContentType;
   file: File;
   onProgress: (progress: number) => void;
   onRequestCreated: (request: XMLHttpRequest) => void;
   uploadUrl: string;
+  signal?: AbortSignal;
 }) {
   return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) { reject(signal.reason); return; }
     const xhr = new XMLHttpRequest();
+    const abort = () => xhr.abort();
+    const finish = (error?: Error) => {
+      signal?.removeEventListener("abort", abort);
+      xhr.upload.onprogress = null;
+      xhr.onload = null; xhr.onerror = null; xhr.onabort = null; xhr.ontimeout = null;
+      if (error) reject(error); else resolve();
+    };
 
     xhr.open("PUT", uploadUrl);
     xhr.timeout = DEMO_UPLOAD_TIMEOUT_MS;
     xhr.setRequestHeader("Content-Type", contentType);
     onRequestCreated(xhr);
+    signal?.addEventListener("abort", abort, { once: true });
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) {
@@ -2624,7 +2685,7 @@ function uploadFileToStorage({
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
+        finish();
       } else {
         console.error(
           "Demo Cloud Storage upload failed",
@@ -2635,7 +2696,7 @@ function uploadFileToStorage({
             xhr,
           }),
         );
-        reject(
+        finish(
           new Error(
             `Storage upload failed with status ${xhr.status}. Please try again.`,
           ),
@@ -2652,7 +2713,7 @@ function uploadFileToStorage({
           xhr,
         }),
       );
-      reject(
+      finish(
         new Error(
           "Storage blocked the upload before it reached UGC Pilot. Check the storage connection and try again.",
         ),
@@ -2660,11 +2721,11 @@ function uploadFileToStorage({
     };
 
     xhr.onabort = () => {
-      reject(new Error("Upload cancelled."));
+      finish(new Error("Upload cancelled."));
     };
 
     xhr.ontimeout = () => {
-      reject(
+      finish(
         new Error(
           "The upload stopped responding. Check your connection and retry.",
         ),
@@ -2762,12 +2823,26 @@ function getSupportedContentType(file: File): DemoContentType {
   return inferredContentType;
 }
 
-function readVideoMetadata(file: File) {
+function readVideoMetadata(file: File, signal?: AbortSignal) {
   return new Promise<VideoMetadata>((resolve, reject) => {
+    if (signal?.aborted) { reject(signal.reason); return; }
     const objectUrl = URL.createObjectURL(file);
     const video = document.createElement("video");
+    let finished = false;
+    const onAbort = () => {
+      if (finished) return;
+      cleanup(); reject(signal?.reason ?? new Error("Upload cancelled."));
+    };
+    const timer = setTimeout(() => {
+      if (finished) return;
+      cleanup(); reject(new Error("Reading this demo took too long. Choose the video again."));
+    }, 15_000);
 
     function cleanup() {
+      finished = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      video.onloadedmetadata = null; video.onerror = null;
       URL.revokeObjectURL(objectUrl);
       video.removeAttribute("src");
       video.load();
@@ -2776,6 +2851,7 @@ function readVideoMetadata(file: File) {
     video.preload = "metadata";
     video.muted = true;
     video.playsInline = true;
+    signal?.addEventListener("abort", onAbort, { once: true });
     video.onloadedmetadata = () => {
       const durationSeconds = video.duration;
       const width = video.videoWidth;

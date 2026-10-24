@@ -1,6 +1,11 @@
 import "server-only";
 
 import importedCatalog from "./imported-catalog.json" with { type: "json" };
+import slideshowSources from "./slideshow-reference-sources.json" with { type: "json" };
+import slideshowAdditions from "./slideshow-reference-additions.json" with { type: "json" };
+import octoberSlideshows from "./slideshow-reference-oct23.json" with { type: "json" };
+import uploadBatches from "./reference-upload-batches.json" with { type: "json" };
+import { applyReferenceUploadBatches, type ReferenceUploadBatch } from "./reference-upload-batches.ts";
 import {
   getExploreHookVideos,
 } from "./hook-video-library";
@@ -8,7 +13,9 @@ import {
   getExploreWallTextVideos,
 } from "./wall-text-video-library";
 import type { RecreateReference, ReferenceSlide } from "./recreate-types";
+import { getReferenceVideoPrompt } from "./reference-video-prompts";
 import { buildPublicStorageUrl } from "@/lib/storage/storage";
+import { getHookReferenceReleaseItems, isHookReferenceReleaseActive } from "@/worker/src/lib/explore-hook-reference-release";
 
 const IMPORTED_CATALOG_STORAGE_PREFIX = "explore/recreate/v1";
 
@@ -30,19 +37,23 @@ type ImportedCatalogItem = {
 };
 
 const importedItems = importedCatalog.mediaStatus === "published"
-  ? importedCatalog.items as ImportedCatalogItem[]
+  ? [...importedCatalog.items, ...(slideshowAdditions.mediaStatus === "published" ? slideshowAdditions.items : []), ...(octoberSlideshows.mediaStatus === "published" ? octoberSlideshows.items : [])] as ImportedCatalogItem[]
   : [];
 
-export function getRecreateReferences(): RecreateReference[] {
-  const hooks = getExploreHookVideos().map((item, index): RecreateReference => ({
+export function getRecreateReferences(includeArchivedHooks = false): RecreateReference[] {
+  const hooks = getExploreHookVideos(includeArchivedHooks).map((item): RecreateReference => ({
     category: null,
     categoryLabel: null,
     format: "hook",
     id: item.id,
     posterUrl: item.posterUrl,
     slides: [],
-    title: `Hook ${String(index + 1).padStart(2, "0")}`,
+    title: "Hook",
     videoUrl: item.videoUrl,
+    ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
+    ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+    ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),
+    ...(item.previewVideoUrl ? { previewVideoUrl: item.previewVideoUrl } : {}),
     ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
     ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
@@ -55,16 +66,36 @@ export function getRecreateReferences(): RecreateReference[] {
     slides: [],
     title: `${item.pairedAudio ? "Wall of text" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
+    ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
+    ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+    ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),
     ...(item.durationSeconds === undefined ? {} : { durationSeconds: item.durationSeconds }),
     ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
 
   // Published imported Hooks already enter through the dedicated Hook library.
-  return [...hooks, ...existingWallText, ...importedItems.filter((item) => item.format !== "hook").map((item) => toImportedReference(item))];
+  const references = [...hooks, ...existingWallText, ...importedItems.filter((item) => item.format !== "hook").map((item) => toImportedReference(item))].map(item => {
+    const generationPrompt = getReferenceVideoPrompt(item.id, item.videoUrl);
+    return generationPrompt ? { ...item, generationPrompt } : item;
+  });
+  return applyReferenceUploadBatches(references, uploadBatches.batches as ReferenceUploadBatch[]);
 }
 
 export function isKnownRecreateReferenceId(value: unknown) {
-  return typeof value === "string" && getRecreateReferences().some((item) => item.id === value);
+  return typeof value === "string" && Boolean(getRecreateReference(value));
+}
+
+/** Retired gallery cards remain addressable by saved jobs, text and edit drafts. */
+export function getRecreateReference(id: unknown) {
+  if (typeof id !== "string") return undefined;
+  return getRecreateReferences().find(item => item.id === id) ?? getArchivedHookReferences().find(item => item.id === id);
+}
+
+export function getArchivedHookReferences(): RecreateReference[] {
+  // A gallery rollback must retain references used by already-saved creations.
+  if (!getHookReferenceReleaseItems().length) return [];
+  const active = new Set(getRecreateReferences().map(item => item.id));
+  return getRecreateReferences(true).filter(item => item.format === "hook" && !active.has(item.id)).map(item => ({ ...item, archived: true }));
 }
 
 /** Real source media for local visual review; never used by the authenticated API. */
@@ -72,18 +103,17 @@ export function getLocalRecreateReferences(): RecreateReference[] {
   if (process.env.NODE_ENV !== "development") return [];
   const existing = getRecreateReferences();
   const existingIds = new Set(existing.map((item) => item.id));
-  let hookNumber = existing.filter((item) => item.format === "hook").length;
-  const staged = (importedCatalog.items as ImportedCatalogItem[])
-    .filter((item) => !existingIds.has(item.id))
+  const staged = ([...importedCatalog.items, ...slideshowAdditions.items, ...octoberSlideshows.items] as ImportedCatalogItem[])
+    .filter((item) => !existingIds.has(item.id) && !(item.format === "hook" && isHookReferenceReleaseActive()))
     .map((item) => {
       const reference = toImportedReference(item, (file) => `/api/explore/local-media/${file}`);
-      // Keep accessible Hook labels unique and consistent with later publication.
-      return item.format === "hook" ? { ...reference, title: `Hook ${String(++hookNumber).padStart(2, "0")}` } : reference;
+      return item.format === "hook" ? { ...reference, title: "Hook" } : reference;
     });
-  return [...existing, ...staged];
+  return applyReferenceUploadBatches([...existing, ...staged], uploadBatches.batches as ReferenceUploadBatch[], true);
 }
 
 function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAssetUrl): RecreateReference {
+  const source = item.format === "slideshow" ? slideshowSources.items.find(source => source.referenceId === item.id) : undefined;
   const slides: ReferenceSlide[] = item.slides.map((slide) => ({
     height: slide.height,
     id: slide.id,
@@ -99,7 +129,9 @@ function toImportedReference(item: ImportedCatalogItem, assetUrl = getImportedAs
     id: item.id,
     posterUrl: assetUrl(item.posterFile),
     slides,
-    title: item.title,
+    ...(source ? { sourceUrl: source.sourceUrl, sourcePlatform: "tiktok" as const, sourceKind: source.sourceKind === "profile" ? "profile" as const : "post" as const } : {}),
+    // Catalogue sequence numbers identify imports, not the user's topic.
+    title: item.format === "slideshow" ? item.categoryLabel?.trim() || item.title : item.title,
     videoUrl: item.videoFile ? assetUrl(item.videoFile) : undefined,
   };
 }

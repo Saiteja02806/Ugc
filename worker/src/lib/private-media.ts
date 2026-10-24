@@ -1,6 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import { createClient } from "@supabase/supabase-js";
-import { ProviderRequestNotSubmittedError } from "./generation-provider.js";
+import { ProviderRequestNotSubmittedError } from "./generation-provider.ts";
+import { resolveCreatorSlideDelivery } from "./creator-slide-delivery.ts";
 
 export type PrivateMediaRow = {
   user_id: string; status: string; deleted_at: string | null;
@@ -54,7 +55,7 @@ export async function workerMediaReadUrl(row: PrivateMediaRow, owner: string,
 
 /** Old queue payloads retain canonical URLs; reload the owned row before signing. */
 export async function resolveOwnedPrivateMediaUrl(url: string, owner: string) {
-  try { return await resolvePrivateUrl(url, owner); }
+  try { return resolveCreatorSlideDelivery(await resolvePrivateUrl(url, owner)); }
   catch {
     throw new ProviderRequestNotSubmittedError("The selected private reference could not be read. No generation request was sent.");
   }

@@ -1,0 +1,1882 @@
+{
+  "catalogVersion": 1,
+  "auditDate": "2026-10-21",
+  "source": "getHookReferenceGalleryItems + referenceVideoPrompts; exact canonical SHA-256 binding",
+  "qualification": "Source observations reviewed; starting-frame motion not yet approved or visually generated.",
+  "entries": [
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+      "displayTitle": "Hook 01",
+      "sourceDurationSeconds": 3.066667,
+      "sourceReviewedFrameCount": 91,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 91 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the pink keyboard, looking toward screen-right with raised eyebrows, widened eyes and an open mouth. Shift the gaze toward the camera while holding the surprised expression. Lift the hand on screen-right to cover the mouth while the other hand leaves the keyboard and reaches toward the lens. Keep the mouth covered as the camera moves closer and the face shifts toward the edge of the frame. End on the performer in the same reaction scene through the final retained frame. Preserve the pink keyboard, hand contact, curtains, magenta shelf lighting, camera movement and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "sourceSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+      "displayTitle": "Hook 02",
+      "sourceDurationSeconds": 3.066667,
+      "sourceReviewedFrameCount": 91,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 91 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original action sequence and timing: begin seated wearing eyeglasses, lift the silver laptop lid at the front of the frame and look toward its screen. Pause, raise the eyebrows, widen the eyes and open the mouth in surprise. Bring both hands to the glasses at the temples, pull them forward off the face and lower them in front of the chest. Keep staring toward the laptop with raised brows and slightly parted lips while holding the glasses; do not put them onto the head. End on the performer in the same reaction scene through the final retained frame. Preserve the glasses, laptop, hand contact, seated position, room lighting, framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "sourceSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+      "displayTitle": "Hook 03",
+      "sourceDurationSeconds": 3.733333,
+      "sourceReviewedFrameCount": 109,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 109 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin reclining against the patterned pillow, looking upward with slightly parted lips and a questioning expression. Briefly blink, bring the eyes toward the camera and widen them while raising the eyebrows. Glance toward screen-right, shift the gaze toward screen-left, then return to a wide-eyed look toward the lens. Hold the incredulous expression before the final sideways glance, with only small head movements and no added hand gesture. End on the performer in the same reaction scene through the final retained frame. Preserve the reclining position, pillow, dark headboard, handheld perspective, natural lighting and trimmed reference duration. Match the source gestures rather than the still pose in the image. Preserve the natural slightly parted lips and original reaction movements.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
+      "sourceSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
+      "displayTitle": "Hook 04",
+      "sourceDurationSeconds": 3.066667,
+      "sourceReviewedFrameCount": 92,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 92 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the dark desk facing the open silver laptop on screen-left, with raised eyebrows, widened eyes and an open mouth. Keep the hand on screen-right near the keyboard while the other hand rises to cover the mouth. Hold the surprised gaze toward the laptop, then reach the screen-right hand toward the lens while keeping the mouth covered. Follow the camera lifting and tilting upward so the face moves toward the lower edge of the frame. End on the performer in the same reaction scene through the final retained frame. Keep the eyeglasses on throughout the reaction. Preserve the laptop, hand contact, window blinds, dark curtains, source lighting, handheld movement and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+      "sourceSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
+      "displayTitle": "Hook 05",
+      "sourceDurationSeconds": 3.233984,
+      "sourceReviewedFrameCount": 96,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 96 decoded frames inspected sequentially. Can stays near the face without a visible sip. Index finger rises beside the lips; the final frame remains in the cafe with no screen cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: hold the tall light-colored beverage can near the mouth in the hand on screen-right, looking off screen-right with lifted, questioning brows and an open mouth. Shift toward a wide-eyed look at the lens as the handheld camera moves closer and the can lowers slightly. Glance sideways again and raise the index finger of the can-holding hand beside the lips while keeping the other fingers around the can. Briefly squint and close the eyes, then lower the finger and can and return toward the lens with furrowed brows and pursed lips. Keep the can below the mouth without adding a sip. End in the same cafe shot with its small handheld bob. Preserve the can, finger and lip separation, rings, painted nails, earbuds, wooden ceiling beams, arched window, source lighting, framing and duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "sourceSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
+      "displayTitle": "Hook 06",
+      "sourceDurationSeconds": 3.733333,
+      "sourceReviewedFrameCount": 111,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 111 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the dim room holding a slender silver-blue beverage can upright in the hand on screen-right. Look just to the right of the camera with widened eyes, raised eyebrows and a rounded open mouth. Raise the can to the lips and take a sustained sip, tilting the can upward and tipping the head back slightly while keeping the eyes wide. Preserve the can rim naturally obscuring the mouth during contact. Lower the can upright toward the chest, purse the lips, glance down toward the can and briefly close the eyes. Open the eyes again and return to the rounded open-mouth expression. End on the performer in the same reaction scene through the final retained frame. Preserve the continuous grip, drinking motion, black shirt, bright frontal face lighting against the dim room, close framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion",
+        "face_prop_contact"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "sourceSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
+      "displayTitle": "Hook 07",
+      "sourceDurationSeconds": 2.666667,
+      "sourceReviewedFrameCount": 77,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 77 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the office chair with an open mouth, raised brows and an incredulous gaze just off-camera. The hand on screen-left holds the eyeglass frame at its outer corner while the other arm extends into the foreground. Lift the glasses from the eyes over the forehead onto the top of the head, keeping the mouth open. Release the frame, turn the gaze toward the lens and bring that same hand down across the mouth. Hold the wide-eyed look with the mouth covered and the glasses resting on the head. End on the performer in the same reaction scene through the final retained frame. Preserve the wristwatch, hand-to-glasses contact, printed white shirt, office chair, shelving, blinds, ceiling fan, room lighting, handheld framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
+      "sourceSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
+      "displayTitle": "Hook 08",
+      "sourceDurationSeconds": 2.7,
+      "sourceReviewedFrameCount": 79,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 79 decoded frames inspected sequentially. This is an arm and neck stretch at a laptop, not a surprise reaction. It ends with hands returning to the keyboard, with no screen cut. Floating logo cards are an added overlay; laptop stickers are physical. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original action sequence and timing: begin seated behind the open laptop wearing large white over-ear headphones, with a calm, focused expression. Interlace the fingers, turn the palms outward and extend both arms forward to stretch. Release the hands and lift the hand on screen-left over the crown, tipping the head toward screen-left for a brief neck stretch. Return through upright, switch to the hand on screen-right over the crown and tip the head toward screen-right. Keep the eyes softly closed or lowered during the stretches, then lift the head upright, lower both hands toward the keyboard and resume working while looking toward the laptop. Keep the headphones on throughout. Remove the floating logo cards and equation graphics with the creator-added text overlay, while preserving the stickers physically attached to the laptop. Preserve the continuous seated shot, black sleeveless top, laptop placement, indoor lighting, fixed camera framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "overlay_cleanup_in_motion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
+      "displayTitle": "Hook 09",
+      "sourceDurationSeconds": 2.833984,
+      "sourceReviewedFrameCount": 85,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 85 decoded frames inspected sequentially. Close-up starts with the mouth open; glasses lift onto the head and the same hand moves to cover the lips. The last frame stays on the face, with no screen cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the tight front-facing close-up wearing large translucent eyeglasses, looking toward the lens with raised brows and an open mouth. Bring the hand on screen-right to the outer corner of the glasses, briefly close the eyes as the frame lifts past them and slide the glasses up across the forehead onto the top of the head. Reopen the eyes and keep looking toward the lens as the mouth gradually closes. Release the glasses and bring the same hand down so the painted fingertips rest vertically across the lips, with the rings visible. Hold the covered-mouth expression and lifted brows through the ending. Preserve the brief blink, natural hand occlusion, glasses remaining on the head, layered necklaces, light patterned top, dark window panes behind the face, warm room lighting, handheld close framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
+      "displayTitle": "Hook 10",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Fingertips touch beside the lower lip before moving to the upper chest. Final frame remains in the same scene. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated looking toward screen-left with wide eyes and slightly parted lips. Open the mouth further and raise the hand on screen-left until the fingertips rest beside the lower lip. Hold that astonished look, briefly blink, then slide the hand down to lie across the upper chest as the gaze turns toward the lens. Keep the mouth open and the hand on the chest through the remaining small blinks and head movements. Preserve the cream one-shoulder top, necklaces, light nail polish, sofa, green plant, black lamp with warm interior light, pale wall, steady portrait framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
+      "displayTitle": "Hook 11",
+      "sourceDurationSeconds": 3.766992,
+      "sourceReviewedFrameCount": 112,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 112 decoded frames inspected sequentially. Both hands remain beside the ears/hair; gaze shifts from laptop to lens. Final frame remains in the same scene. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated behind the laptop in the foreground on screen-right, with both hands already raised beside the ears and hair, elbows bent and sleeves partly covering the hands. Look down toward the laptop with an open mouth and drawn-together raised brows. Keep both hands beside the head, briefly blink, then shift the eyes and face toward the camera while holding the incredulous open-mouth expression. End in that same position without adding a hand-to-mouth gesture or screen cut. Preserve the black long-sleeved top, hair contact, laptop, chair, tan room, patterned curtains, warm lighting, fixed portrait framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
+      "displayTitle": "Hook 12",
+      "sourceDurationSeconds": 2.433984,
+      "sourceReviewedFrameCount": 73,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 73 decoded frames inspected sequentially. Mug lowers after drinking and a thin liquid trickle is visible from the mouth toward the mug. Final frame remains in the same scene. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original action sequence and timing: begin seated behind the open silver laptop, drinking from the cream ceramic mug held by the hand on screen-left while the other hand rests over the laptop lid's upper edge on screen-right. Widen the eyes toward the laptop and lower the mug from the lips to just above the lid. Hold the wide-eyed stare as a thin trickle of liquid spills from the lower lip toward the mug; keep this small spill rather than adding an exaggerated spray. Part the lips into a rounded surprised expression and hold with the mug low and the other hand still touching the lid. Preserve the mug grip and rim contact, laptop occlusion, wooden tabletop, bright windows, leafy plants, hanging lights, steady low camera angle and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion",
+        "face_prop_contact"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
+      "displayTitle": "Hook 14",
+      "sourceDurationSeconds": 3.366992,
+      "sourceReviewedFrameCount": 101,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 101 decoded frames inspected sequentially. Hand covers mouth, then lowers beside the cheek; reaction ends in a toothy smile. No final scene cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the dark tabletop looking toward the laptop on screen-right, with raised eyebrows and an open mouth, one hand loosely curled beside the cheek and the other arm extending forward. Bring the hand on screen-right across the mouth, showing the wristwatch and stacked bracelets. Hold it over the lips as the eyes widen, then look toward the lens. Near the end lower the hand back beside the cheek and change into a warm closed-mouth smile that opens into a toothy smile. Preserve the mustard-yellow top, wrist jewelry, green laptop edge, overhead beams and strip lighting, room colors, slight handheld movement and source duration. Keep the same shot to the end. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+      "displayTitle": "Hook 15",
+      "sourceDurationSeconds": 8.633984,
+      "sourceReviewedFrameCount": 258,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 258 decoded frames inspected sequentially. Gesture sequence repeats chest-touch and open palms, then cuts at frame 170 to a calm second take in the same room. Caption disappears at that cut, 5667 ms. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing across both source takes: begin in the striped shirt against the pale wall and wooden door, eyes squeezed shut with a pleading, uneasy expression and both hands raised with open palms. Draw the hands onto the upper chest, open the eyes to look upward and sideways, then raise both palms beside the shoulders again in a small shrug. Repeat the source's chest-touch and open-palm gestures with small head turns, blinks and expressive changes in the mouth, keeping the worried brows and restrained, uneasy smile. Preserve the cut later in the source to the calmer front-facing take in the same room: hands lowered, head slightly tilted, steady direct gaze, then a faint closed-mouth smile at the end. Do not extend the first take across that cut. Preserve the bracelet, rings, striped shirt, framing, soft room lighting and the full source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "multiple_takes"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-be7df3868a7b06024c0a90d1",
+      "sourceSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
+      "displayTitle": "Hook 16",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Side glance precedes hand covering lips; gaze returns toward lens with an amused expression. No final scene cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the black lace-trimmed top with a knowing, closed-mouth expression and lifted eyebrows, looking toward the camera. Follow the small handheld move closer, keeping the slight head tilt. Glance toward screen-right and lift the hand from screen-left until the fingertips lie diagonally across the lips. Hold the hand over the mouth while looking sideways, then bring the gaze back toward the lens and soften into an amused smile behind the fingers. Preserve the nose jewelry, hand occlusion, green seat, wall shelf with cards and small figures, daylight, close portrait framing, camera bob and source duration. End in the same shot. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-b0aead788c4930565401371b",
+      "sourceSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
+      "displayTitle": "Hook 17",
+      "sourceDurationSeconds": 2.433984,
+      "sourceReviewedFrameCount": 72,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 72 decoded frames inspected sequentially. Mouth-cover gesture changes to a smile in the golf cart. Final frame stays in the same scene. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated under the golf-cart roof in a black cap and polo, facing the lens with raised brows, wide eyes and an open mouth. Bring the hand from screen-left across the mouth, glance toward screen-left while keeping the lips covered, then return the gaze toward the camera. Lower the hand past the chin and chest and change into a broad toothy smile, holding it through the end. Preserve the cap, ponytail over the shoulder, hand contact and occlusion, cart roof, golf clubs behind the shoulder, sunlit grass and trees, blue sky, natural outdoor light, handheld close framing and source duration. Keep the same scene throughout. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
+      "sourceSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
+      "displayTitle": "Hook 18",
+      "sourceDurationSeconds": 2.166992,
+      "sourceReviewedFrameCount": 63,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 63 decoded frames inspected sequentially. Hand stays across the forehead during a skeptical squint and blink; slight camera shake near the end. No final scene cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin leaning forward in the close-up with the hand on screen-left spread across the forehead and the eyes widened toward a point below and to screen-left of the lens. Hold the hand in place with knitted brows and pressed lips, narrow the eye on screen-right in a skeptical squint, briefly blink, then reopen into the concerned sideways stare. Retain the small handheld shake near the end while keeping the hand on the forehead; do not add a hand-to-mouth gesture. Preserve the striped turtleneck, dark painted nails, rings, earrings, nose jewelry, long necklace, framed wall art, warm indoor lighting and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+      "displayTitle": "Hook 19",
+      "sourceDurationSeconds": 2.966992,
+      "sourceReviewedFrameCount": 88,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 88 decoded frames inspected sequentially. Camera pans from airplane window to seated smiling performer; no kiss occurs. Final frame stays on the performer. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original camera movement and performance: begin with a close handheld view of the airplane window and adjacent seatback, showing the bright airport apron outside. Pan right along the cabin wall and rotate inward to reveal the seated performer with one arm extended toward the camera and white headphones resting around the neck. Hold the arm-length selfie framing as the performer smiles toward the lens, glances sideways, briefly closes the eyes and tilts the head, then opens the eyes and ends with a broad toothy smile. Keep the headphones around the neck, not over the ears. Preserve the black sleeveless outfit, lap bag, cabin seats and nearby passengers, overhead vents and warm cabin strip light, strong window daylight, handheld tilt and full source duration. Match what is visibly performed rather than acting out the caption.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "no_person_in_opening_frame",
+        "secondary_person_reveal",
+        "camera_reveals_unseen_scene"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+      "displayTitle": "Hook 20",
+      "sourceDurationSeconds": 3.233984,
+      "sourceReviewedFrameCount": 97,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 97 decoded frames inspected sequentially. Both hands move from mouth across cheeks to behind the head, elbows spread. Final frame stays in the same room. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the gray hoodie bringing both hands together over the mouth while looking toward screen-left with wide eyes. Hold both palms over the lips, then briefly close the eyes and slide the hands outward across the cheeks and upward to the sides of the head. Open the mouth much wider as the hands move back through the hair to rest behind the head, elbows spread. Hold the wide-eyed, open-mouth pose toward screen-left to the end. Preserve the natural finger occlusion and hair contact, rings, dark nail polish, gray hoodie, chair, pale room, open doorway, small green bottle, soft frontal lighting, fixed framing and source duration. Keep the same shot throughout. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "sourceSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
+      "displayTitle": "Hook 21",
+      "sourceDurationSeconds": 2.933333,
+      "sourceReviewedFrameCount": 87,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 87 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated with the hand on screen-right held flat across the forehead, looking off screen-right with widened eyes, raised brows and an open mouth. Lean slightly forward while holding that pose. Lift the hand clear of the forehead and lower it out of the upper frame, keeping the startled gaze to screen-right. Briefly close the eyes, turn toward the lens and hold the open-mouth expression. End on the performer in the same reaction scene through the final retained frame. Preserve the light nails and green ring, yellow overshirt, white top, necklaces, blue-lit background, chair, strong face lighting, framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
+      "sourceSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
+      "displayTitle": "Hook 22",
+      "sourceDurationSeconds": 3.233984,
+      "sourceReviewedFrameCount": 94,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 94 decoded frames inspected sequentially. Glasses are removed forward, not put on the head; other hand reaches toward camera, then free hand covers lips during close-up. No final screen cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin at the white desk with one hand on the laptop keyboard and the hand on screen-left holding the outer corner of the eyeglasses. Open the mouth in surprise, briefly close the eyes and pull the glasses forward off the face, holding them aside. Keep the other hand at the keyboard while the eyes widen toward the laptop. Turn the gaze toward the lens, lift the keyboard hand and reach it forward toward the camera. Follow the handheld camera lifting and moving closer while the free hand comes up beside the open mouth, ending with fingertips covering the lips in a tight close-up. Preserve the glasses as a held prop rather than putting them on the head, white long-sleeved top, desk, laptop, room lighting, perspective change and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-59dee735a7c5d1643bc57127",
+      "sourceSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
+      "displayTitle": "Hook 23",
+      "sourceDurationSeconds": 2.3,
+      "sourceReviewedFrameCount": 68,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 68 decoded frames inspected sequentially. Interlaced-finger forward stretch, then hand on laptop lid tilts it more upright. No final scene cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original action sequence and timing: begin seated behind the open silver laptop, looking toward its screen with a composed expression. Interlace the fingers near the chest, turn the palms outward and extend both arms forward over the laptop while leaning back and closing the eyes for a stretch. Hold the extended stretch, then release the fingers, bring the arms back and straighten in the chair. Place the hand on screen-right on the laptop lid's upper edge and tilt the lid more upright, bringing it higher into the foreground as the face stays behind it. Preserve the interlaced fingers and release, lid contact and hinge movement, light short-sleeved top, mesh chair, white desk, gray room, fixed framing, natural lighting and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-43f2c2d266d23e3af05875d8",
+      "sourceSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
+      "displayTitle": "Hook 24",
+      "sourceDurationSeconds": 2.566992,
+      "sourceReviewedFrameCount": 77,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 77 decoded frames inspected sequentially. Glasses held at corner through expression changes, then removed forward near ending. No final scene cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close-up holding the outer corner of the translucent eyeglasses with the hand on screen-left, staring down toward screen-left with wide eyes and an open mouth. Draw the eyebrows together and briefly purse the lips into a smaller rounded shape before opening the mouth again. Keep the hand on the frame, then near the end pull the glasses forward away from the face and out toward screen-left while blinking and partly closing the eyes. End with the glasses removed, not resting on the head. Preserve the frame passing in front of the face, delicate necklaces, cream knitted top, pale room, wooden doorframe, warm soft lighting, close portrait framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-62f80506cbbedab0d340f863",
+      "sourceSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
+      "displayTitle": "Hook 25",
+      "sourceDurationSeconds": 1.633984,
+      "sourceReviewedFrameCount": 48,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 48 decoded frames inspected sequentially. Both hands stay at the head while gaze moves from laptop to lens. Floating logo equation is an overlay; existing Remix contains only readable caption symbols, not inferred brand names. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the laptop with both hands against the sides of the head, fingers spread through the curls and elbows out, looking toward the screen on screen-right with an open mouth and furrowed raised brows. Lean forward slightly, turn the eyes and face toward the lens and change the mouth from rounded surprise to a tense, disbelieving half-smile while keeping both hands at the head. Hold that pose through the end. Remove the floating logo cards, plus sign and equation graphics along with the creator-added text; do not replace them with new graphics. Preserve the hair contact, black sleeveless top, earrings, laptop keyboard and screen edge, pale desk, dark curtain, cool room light, fixed portrait framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+      "displayTitle": "Hook 26",
+      "sourceDurationSeconds": 3.366992,
+      "sourceReviewedFrameCount": 98,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 98 decoded frames inspected sequentially. Narrow sunglasses are removed forward; final expression stays in the same close-up. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin leaning toward the lens in narrow brown sunglasses, holding the outer corner with the hand on screen-left and looking slightly down and to screen-left with parted lips. Draw the brows together and round the lips in disbelief. Pull the sunglasses forward off the eyes and out toward screen-left, keeping them off the head. Hold the widened stare without glasses, open the mouth further, then narrow the mouth toward the end while keeping the questioning brows. Preserve the sunglasses passing across the face, striped black-and-white top, hair framing the cheeks, warm indoor lighting, pale background, close framing and source duration. Keep the same shot through the final frame. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
+      "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
+      "displayTitle": "Hook 27",
+      "sourceDurationSeconds": 2.566992,
+      "sourceReviewedFrameCount": 77,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 77 decoded frames inspected sequentially. Object at lower lip is the temple of held eyeglasses, not a straw. Glasses lower as mouth opens near ending. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close-up holding the eyeglasses low in front of the chest, with the tip of one temple resting against the lower lip. Look upward toward screen-left with widened eyes and a still, thoughtful expression. Keep the glasses in that position while the brows gradually draw together and the lips purse into a small rounded shape. Lower the glasses temple away from the lip near the end as the mouth opens into a surprised expression. Preserve the held frame and its contact with the lower lip, striped top, earrings, pale room, soft warm lighting, steady close framing and source duration. Do not put the glasses on the face or add a drinking action. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-917cba028b9bc9cfda3e9f9b",
+      "sourceSha256": "51674d09ea17acc3c7f458c0dace9008789e9389974d6f874269171a10dc6389",
+      "displayTitle": "Hook 28",
+      "sourceDurationSeconds": 2.966992,
+      "sourceReviewedFrameCount": 88,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 88 decoded frames inspected sequentially. Foreground performer covers mouth; second person enters behind and adjusts glasses. Identity replacement targets the foreground performer, preserving the colleague. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing for the foreground performer only: begin seated at the laptop, looking down toward the screen on screen-right with both hands near the keyboard and a concentrated expression. Pause, open the mouth and lift the hand on screen-left to cover the lips, keeping the other hand down by the laptop. Hold the startled stare as the colleague in gray enters behind on screen-right, leans closer and adjusts their eyeglasses with both hands to look at the same screen. Keep the colleague's appearance unchanged when replacing the foreground performer's identity. Preserve the navy zip-neck top, hair movement, natural hand occlusion, laptop, exposed brick wall, ceiling beam, warm indoor lighting, fixed framing and source duration. Retain both people in their source positions through the ending. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "identity_replacement_in_motion",
+        "hand_or_prop_occlusion",
+        "secondary_person_reveal"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
+      "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
+      "displayTitle": "Hook 29",
+      "sourceDurationSeconds": 3.766992,
+      "sourceReviewedFrameCount": 111,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 111 decoded frames inspected sequentially. Typing pauses for skeptical look and raised-index-finger wag, then finger curls near chin. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the wooden table using the black laptop on screen-left, with a neutral, slightly tired expression and both hands near the keyboard. Shift the gaze from the laptop toward the camera, knit the brows and narrow the eyes into a skeptical look. Lift the hand on screen-right from the keyboard, raise the index finger and wag it briefly toward the lens in a small cautioning gesture as the mouth changes expression. Curl the finger back, hold the hand near the chin and finish with pursed lips and a brief blink. Preserve the finger articulation, cream sleeveless top, wavy hair, wooden tabletop, dim kitchen background, brighter frontal lighting, fixed portrait framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-9309a041061ae5abc6970d52",
+      "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
+      "displayTitle": "Hook 30",
+      "sourceDurationSeconds": 2.166992,
+      "sourceReviewedFrameCount": 63,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 63 decoded frames inspected sequentially. Hand already at lower lip/chin; eyes widen and camera moves closer. No phone is visible. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin reclining against the light cushion with the hand from screen-left resting diagonally across the lower lip and chin, eyes looking down toward screen-left. Briefly close the eyes, then reopen with brows drawn together and widen the eyes progressively in disbelief. Let the mouth open farther while the fingertips stay near the lower lip and chin. Follow the source's gradual move into a tighter view of the face, maintaining the startled gaze and hand contact to the end. Preserve the dark sleeveless top, long hair over the shoulder, light textured wall and cushion, soft room light, handheld perspective and source duration. Do not add a phone prop or act out the game described by the caption. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "sourceSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
+      "displayTitle": "Hook 31",
+      "sourceDurationSeconds": 2.4,
+      "sourceReviewedFrameCount": 69,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 69 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close-up with eyeglasses already resting on top of the head and one hand cupped diagonally across the mouth and chin. Look off screen-left with lifted brows and a delighted, emotional smile partly hidden behind the fingers. Bring the gaze toward the lens, glance sideways again and sustain the smile through small blinks and gentle handheld movement, keeping the hand against the face and the glasses on the head. End on the performer in the same reaction scene through the final retained frame. Preserve the pendant necklace, white top, wood-paneled ceiling, warm lighting, close framing and trimmed reference duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-df58806df2ea040df347f267",
+      "sourceSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
+      "displayTitle": "Hook 32",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Glasses lift onto head; pout changes to two-hand mouth-cover, then one hand lowers. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the blue zip-up top wearing clear eyeglasses, with the mouth open and brows lifted. Bring the hand on screen-right to the frame's outer corner, lift the glasses over the forehead onto the top of the head and keep holding them there as the mouth closes into an emotional pout. Release the frame and raise both hands together to cover the mouth and nose, briefly closing the eyes. Reopen the eyes, then near the end lower the hand on screen-right while keeping the other over the lips and soften into a small smile. Preserve the glasses remaining on the head, pink nails, earrings, long straight hair, pale room, mirrored closet, overhead fixture, soft lighting, close framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
+      "sourceSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
+      "displayTitle": "Hook 33",
+      "sourceDurationSeconds": 2.166992,
+      "sourceReviewedFrameCount": 64,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 64 decoded frames inspected sequentially. Glasses lift onto head and hand releases; expression grows into smile. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close-up with large dark eyeglasses on, hand on screen-right gripping the frame near its outer corner, looking upward toward screen-left with wide eyes and a partly open mouth. Lift the frame above the eyes and onto the top of the head. Release it, lower the hand out of view and let the astonished expression grow into a broad toothy smile while continuing to look slightly upward and sideways. Hold the smile through the final small head movements with the glasses on the head. Preserve the dark collared top, necklace, hair, warm face lighting, wooden slat backdrop, handheld close framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
+      "sourceSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
+      "displayTitle": "Hook 34",
+      "sourceDurationSeconds": 3.766992,
+      "sourceReviewedFrameCount": 111,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 111 decoded frames inspected sequentially. Headphones are removed forward and held at chest; final free-hand dismissive gesture. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original action sequence and timing: begin seated at the laptop by the window, wearing white over-ear headphones with one hand near the trackpad. Shift the gaze from the laptop toward the lens and furrow the brows. Lift both hands to the earcups, briefly blink, then remove the headphones forward over the hair and lower them in front of the chest. Keep holding them while looking toward the screen, close the eyes in a skeptical grimace, then turn back toward the lens. Near the end release one hand to make a small outward dismissive open-palm gesture while the other keeps the headphones low. Preserve the earcup grips, headband passing in front of the face, curls, black shirt, desk, laptop screen edge, window daylight, fixed framing and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "sourceSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+      "displayTitle": "Hook 35",
+      "sourceDurationSeconds": 3.5,
+      "sourceReviewedFrameCount": 105,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 105 decoded frames inspected sequentially. Watery-eyed mouth-cover changes to cheek/under-eye dabbing; no final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the tight close-up with reddened watery eyes, brows lifted inward and one hand held diagonally over the mouth. Look upward and sideways, blink slowly and let the trembling smile soften into a sad pout. Move the fingertips from the mouth across the cheek, briefly close the eyes, then look upward again and gently dab beneath the eye with the fingertips near the end. Keep the gesture small and the natural tear sheen rather than adding exaggerated crying. Preserve the pink nails, curls framing the face, white shoulder strap, light wall, soft daylight, slight handheld movement and source duration. End in the same close-up. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-f1b5421be14d24803539be89",
+      "sourceSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+      "displayTitle": "Hook 36",
+      "sourceDurationSeconds": 1.633984,
+      "sourceReviewedFrameCount": 48,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 48 decoded frames inspected sequentially. Skeptical side glance changes to direct gaze and palm-up questioning gesture. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin looking off screen-left with a deeply furrowed brow and a skeptical closed-mouth half-smile. Turn the eyes toward the lens while raising the hand from screen-left beside the cheek. Rotate the wrist so the palm faces upward, extend the hand slightly toward the camera in a questioning gesture and hold it there through the end. Preserve the subtle head tilt, raised brow, rings, pale blue nails, cherry-print white top, tan patterned outer layer, framed wall art, daylight, steady portrait framing and short source duration. Do not add a mouth-cover or glasses gesture. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "sourceSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+      "displayTitle": "Hook 37",
+      "sourceDurationSeconds": 3.233984,
+      "sourceReviewedFrameCount": 94,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 94 decoded frames inspected sequentially. Subtle parted-mouth reaction and blinks; no hand gesture or final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin upright in the black sleeveless top with a neutral expression, looking just to screen-left of the lens. Slightly part the lips, raise the eyebrows and open the mouth into a restrained surprised look, with only small head movements. Briefly close and reopen the eyes, hold the parted lips and sideways gaze, then blink again before the end. Keep the hands out of the frame without adding a gesture. Preserve the long straight hair, blue pendant necklace, framed picture wall with amber accent lighting, display shelves, bright face lighting, fixed portrait framing and source duration. End in the same scene. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "sourceSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+      "displayTitle": "Hook 38",
+      "sourceDurationSeconds": 2.166992,
+      "sourceReviewedFrameCount": 63,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 63 decoded frames inspected sequentially. Tablet-lit open-mouth reaction softens to a smile and side glance; no final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the dim gray room, looking down toward the tablet angled across the foreground on screen-right with drawn-together brows and an open mouth. Hold that surprised look, then let the mouth close into a small knowing smile and glance sideways toward the camera before looking down at the tablet again. Preserve the small head tilt, long hair over the shoulder, black top, tablet case and grip, bright screen light on the face, darker room, doorway and wall decorations, handheld close framing and source duration. Keep the same scene and avoid adding a mouth-cover gesture. Match the source gestures rather than acting out the caption.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "sourceSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+      "displayTitle": "Hook 39",
+      "sourceDurationSeconds": 3.9,
+      "sourceReviewedFrameCount": 116,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 116 decoded frames inspected sequentially. Sunglasses lower, come off forward and lower out of view; hand reaches forehead near ending. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close-up wearing large gradient sunglasses, holding the upper outer corner with the hand on screen-left and keeping the mouth open. Lower the sunglasses down the bridge of the nose to reveal very wide eyes, then pull them forward off the face and hold them below the chin. Keep staring toward the lens with raised brows and an open mouth while lowering the glasses out of view. Turn the gaze slightly sideways, move closer toward the lens and bring the hand up to the forehead near the end as the lips briefly purse. Preserve the white nails, purple shirt, layered pendant necklaces, earrings, warm indoor light, close handheld perspective and source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "sourceSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+      "displayTitle": "Hook 40",
+      "sourceDurationSeconds": 4.533333,
+      "sourceReviewedFrameCount": 135,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 135 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated behind the tablet in its black keyboard case, looking down toward the screen on screen-right with a neutral expression. Briefly blink, then turn toward the lens, draw the brows together and lean forward into a skeptical, questioning look. Lift the hand on screen-right, extend the index finger in a small cautioning gesture beside the face and hold it while the mouth changes through the source expressions. Keep the other hand low near the keyboard. Preserve the black short-sleeved top, white beaded bracelet, rings, pale wall, soft frontal lighting, framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the skeptical performer holding the raised index finger beside the face; keep the physical tablet in the same scene and do not cut to a browser or screen recording.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "sourceSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+      "displayTitle": "Hook 41",
+      "sourceDurationSeconds": 3.2,
+      "sourceReviewedFrameCount": 94,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 94 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close-up wearing black over-ear headphones with a food-topped utensil held at the open mouth, eyes wide and looking upward toward screen-right. Lower the utensil out of view without adding another bite. Hold the mouth open, knit the brows and shift the eyes toward the lens, then upward and sideways again. Raise the hand from screen-right to bring the fingertips across the lips, briefly hold it there and lower it as the camera moves closer. Preserve the headphones staying on, dark sleeveless top, utensil and hand continuity, pale room, strong frontal screen light mixed with warm ceiling light, handheld framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the close performer reaction with the headphones on and the hand lowering near the face; do not cut to a browser or screen recording.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "sourceSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+      "displayTitle": "Hook 42",
+      "sourceDurationSeconds": 4.833984,
+      "sourceReviewedFrameCount": 142,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 142 decoded frames inspected sequentially. Glasses lift onto head, then same hand covers mouth; gaze turns toward lens. Caption has black backing panels. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in three-quarter close-up wearing large black eyeglasses, looking off screen-left with wide eyes and parted lips. Raise the hand from screen-left to the frame's outer corner, lift the glasses up over the forehead onto the head and briefly hold them there. Keep the gaze fixed sideways with an open mouth, then release the frame and bring the same hand down across the lips. Turn the eyes toward the lens while holding the mouth covered and the glasses on the head. Remove the caption's black backing panels with the text overlay. Preserve the rings, hand contact, pink top, wavy hair, zebra-pattern curtain, turquoise and pink room colors, source lighting, close framing and full source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "sourceSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+      "displayTitle": "Hook 43",
+      "sourceDurationSeconds": 3.733333,
+      "sourceReviewedFrameCount": 110,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 110 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original action sequence and timing: begin seated using the tablet in its black keyboard case with both hands low near the keys, looking toward screen-right. Raise the brows, widen the eyes and open the mouth into delighted surprise while keeping the hands near the keyboard. Look down, lift the hand on screen-left and point the index finger down toward the keys in the source's brief repeated taps, then look up toward the screen again. Hold the open-mouth pleased expression with the finger still pointing low. Preserve the black shirt, bracelet, rings, tablet and keyboard geometry, pale wall, soft room lighting, steady framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the delighted performer looking at the physical tablet with the index finger pointing low toward the keys; do not cut to a separate laptop gameplay shot.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+      "sourceSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+      "displayTitle": "Hook 44",
+      "sourceDurationSeconds": 3.166667,
+      "sourceReviewedFrameCount": 95,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 95 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the table behind the open laptop, with one arm reaching off screen-left. Bring the hands together, interlace the fingers, turn the palms outward and extend both arms forward over the table into a stretch. Close the eyes and tilt the head toward the shoulder on screen-right, then straighten and tilt the other way while looking down, keeping the arms extended. Draw the joined hands back toward the chest, release the fingers and lower both hands toward the laptop keyboard to resume working. Preserve the pink sports top, light bottoms, pink watch, ponytail and bangs, laptop placement, bright daylight, pale room with mirror, globe pendant light and plants, original framing and retained clip duration. Match the source gestures rather than the still pose in the image. End on the performer returning both hands to the physical laptop keyboard to type; do not cut to the channel browser or thumbnails.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "sourceSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+      "displayTitle": "Hook 45",
+      "sourceDurationSeconds": 5.7,
+      "sourceReviewedFrameCount": 168,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 168 decoded frames inspected sequentially. Drink from amber-yellow glass while staring at tablet, then lower glass and lean forward. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated behind the upright tablet on screen-right, staring at it with wide eyes, knitted brows and slightly parted lips. Raise the transparent amber-yellow tumbler to the lips with the hand on screen-right, tilt it to drink and maintain the intense gaze toward the tablet. Lower the glass gradually to chest level, keeping it upright with the liquid inside, then hold it there while leaning slightly forward and parting the lips into a puzzled, stunned expression. Keep the other arm low. Preserve the yellow blouse, loose long hair, white nails, pale wall, tablet and glass geometry, soft indoor light, steady vertical framing and full source duration. Match the source gestures rather than the still pose in the image.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "image_pose_override",
+        "hand_or_prop_occlusion",
+        "face_prop_contact"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "sourceSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+      "displayTitle": "Hook 46",
+      "sourceDurationSeconds": 2.433984,
+      "sourceReviewedFrameCount": 72,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 72 decoded frames inspected sequentially. Reclining amused reaction; hand stays over mouth throughout, subtle head tilts and eye closure. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin reclining against the bed pillows, looking toward the lens with the hand from screen-left already covering the mouth. Keep that hand across the lips throughout as the eyes narrow into an amused, disbelieving smile, the brows lift and pinch slightly, and the head makes small tilts with natural blinks. Briefly close the eyes near the end, reopen them and keep the covered smile. Preserve the dark sleeveless high-neck top, long wavy hair, hand contact, padded headboard, pillows, warm bedside lamp, gentle handheld selfie movement and full source duration. Keep this a restrained amused reaction matching the source.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion",
+        "duplicate_display_title"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "sourceSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+      "displayTitle": "Hook 46",
+      "sourceDurationSeconds": 2.4,
+      "sourceReviewedFrameCount": 72,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 72 decoded frames inspected sequentially. Hand lowers from mouth while eyes close, then loose raised hand exits; tight smile and small handheld shake. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a close handheld selfie wearing clear eyeglasses, with one hand across the mouth and fingers curled under the chin. Look toward the lens with a restrained, uneasy smile in the eyes. Close the eyes, lower the hand away from the mouth and lift it loosely beside the temple, revealing a tight closed-lip smile. Reopen the eyes and maintain that slightly pained, amused expression as the hand leaves the frame and the camera shifts briefly. Preserve the short tousled hair, clear frames and blue reflections, black shirt, purple wall, curtain and window daylight, close perspective and full source duration. Match the small source movements without adding a new gesture.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion",
+        "duplicate_display_title"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "sourceSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "displayTitle": "Hook 47",
+      "sourceDurationSeconds": 2.766667,
+      "sourceReviewedFrameCount": 83,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 83 decoded frames inspected sequentially. Glasses are put on, not removed; hand remains at outer corner, mouth open. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin with the clear eyeglasses held forward just above the face by the hand on screen-right, eyes partly closed and mouth rounded open. Bring the glasses down and back onto the nose, keeping the fingertips at the upper outer corner. Open the eyes toward the lens, knit the brows and hold the open-mouth incredulous expression, with a brief blink and small head movement. Keep the glasses on the face for the remainder, with the same hand still touching the corner. Preserve the dark spaghetti-strap top, long loose hair, warm directional sunlight, diagonal wall shadows, tilted close framing and full source duration. Match the source gesture rather than reversing it into glasses removal.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "sourceSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+      "displayTitle": "Hook 48",
+      "sourceDurationSeconds": 3.766667,
+      "sourceReviewedFrameCount": 113,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 113 decoded frames inspected sequentially. Forward interlaced stretch, alternating hand-assisted neck tilts and return to typing. Second caption starts at frame 70 / 2333 ms; first caption emoji is raised eyebrow. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the desk wearing over-ear headphones, looking slightly upward with fingers interlaced at chest level. Turn the joined palms outward and extend both arms toward the camera over the pink keyboard, then pull the hands back and release them. Raise the hand on screen-left over the head, tilt the head toward that side and rest the palm lightly on the hair with eyes closed. Release, raise the opposite hand over the head and tilt the other way while the first hand lowers toward the keyboard. Lift the second hand away, straighten the head, reopen the eyes and return both hands to the keyboard to type. Preserve the headphones staying on, pale pink shirt, jewelry, pink chair and keyboard, cool ceiling strip light, room geometry, low desk-level framing and full source duration. Keep the performance calm and focused, matching the source stretch.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "sourceSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+      "displayTitle": "Hook 49",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Both hands remove glasses forward and lower them; skeptical squint becomes open-mouth grimace. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated facing slightly toward screen-right in large black eyeglasses, with brows drawn together and lips pursed in confusion. Raise both hands to the outer corners, pull the glasses forward off the face and lower them out of view. Keep looking toward screen-right, narrowing the eyes and tightening the brows further as the head inclines slightly. Let the mouth shift from pursed lips to an open, incredulous grimace at the end. Remove the translucent backing strip with its caption. Preserve the black shirt, short spiky hair, shelving, closed white door, natural frontal daylight, steady close framing and full source duration. Match the source performance without adding further hand gestures.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "sourceSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+      "displayTitle": "Hook 50",
+      "sourceDurationSeconds": 2.8,
+      "sourceReviewedFrameCount": 84,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 84 decoded frames inspected sequentially. Index fingertip stays at lower lip while gaze turns from side to lens. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a close selfie turned toward screen-left, with the mouth rounded open and the index fingertip from screen-left resting lightly at the lower lip. Slowly turn the gaze and face toward the lens, widening the eyes while keeping the brows raised and drawn inward. Hold the fingertip at the lower lip and maintain the open-mouth incredulous expression through the end with the source's small head movements. Preserve the dark top, pendant necklace, earrings, straight long hair, dim room with bright frontal face illumination, close framing and source duration. Keep the same continuous take and hand contact.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+      "displayTitle": "Hook 51",
+      "sourceDurationSeconds": 3.2,
+      "sourceReviewedFrameCount": 96,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 96 decoded frames inspected sequentially. Interlaced forward stretch; source jumps to overhead neck stretch at frame 35, then laptop lid rises near end. Floating logo equation excluded from generation, physical laptop logo retained. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the table with fingers interlaced in front of the chest behind the partially open silver laptop. Rotate the joined palms outward and extend both arms forward over the laptop, holding the stretch as the hands move slightly toward screen-left. Preserve the source's jump to the next stretch: the arm on screen-right is raised over the head, its hand resting on the hair as the head tilts toward screen-left, with the other hand low. Hold the gentle neck stretch, then release, lower the arm and look down toward the laptop. Bring both hands to the laptop and raise the lid slightly toward the end as in the source. Remove the floating game-and-video-platform logo equation along with its caption; preserve the physical logo on the laptop lid. Retain the white dotted shirt, bangs, wood-toned room, cabinet doors, warm light, tabletop framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "jump_cut"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
+      "sourceSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+      "displayTitle": "Hook 52",
+      "sourceDurationSeconds": 3.466667,
+      "sourceReviewedFrameCount": 104,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 104 decoded frames inspected sequentially. Hands move from temples to cover nose and mouth; restrained amused/overwhelmed expression. No final cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the table with both open hands pressed lightly beside the temples, looking down toward screen-right with the mouth open in delighted disbelief. Close the mouth into a tight smile, briefly close the eyes and turn the gaze toward the lens. Lift both hands away from the sides of the head, bring them inward and cover the nose and mouth with the palms and fingertips meeting at the bridge of the nose. Hold this overwhelmed, amused pose through the end with small eye closures and sideways glances. Preserve the bright pink T-shirt, long dark hair, rings and pink nails, table and laptop corner, ceiling fan, dark cabinet, bright frontal lighting, steady framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "sourceSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+      "displayTitle": "Hook 53",
+      "sourceDurationSeconds": 2.8,
+      "sourceReviewedFrameCount": 77,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 77 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin in the close selfie with the hand from screen-left resting at the chin and lower lip, brows tightly furrowed and lips slightly parted. Maintain the skeptical gaze toward the lens, purse the lips briefly, then narrow the eyes into a disbelieving smile as the camera moves closer. Keep the hand near the lower lip throughout, with only small finger and head movements. Remove the dark translucent caption strip with the text. Preserve the dark shirt, fine necklace, rings, pale nails, long straight hair, bright window blinds behind, natural side lighting, handheld movement and retained clip duration. End on the same close performer with the hand at the lower lip and the restrained disbelieving smile; do not cut away to the dim room or bed.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+      "displayTitle": "Hook 54",
+      "sourceDurationSeconds": 1.766667,
+      "sourceReviewedFrameCount": 50,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 50 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin reclining against the cushions with a white towel wrapped around the hair, looking directly toward the lens with brows raised and pinched, lips pursed and eyes wide. Move the handheld camera closer while the mouth opens into a small disbelieving smile, then hold the close expression with subtle head movement. Keep the towel secure and the hands outside the frame. Remove the dark translucent caption strip with the text. Preserve the pale ribbed V-neck top, towel folds, couch cushions, warm room light, changing selfie distance and retained clip duration. End on the close towel-wrapped performer with the small disbelieving smile; do not shift away to the room, table or chair.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "sourceSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+      "displayTitle": "Hook 55",
+      "sourceDurationSeconds": 4.7,
+      "sourceReviewedFrameCount": 140,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 140 decoded frames inspected sequentially. Pen beside cheek; blink, changing mouth shapes and late pen-holding hand to forehead. Glasses stay on. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close-up wearing large thin metal eyeglasses, staring toward the lens with wide eyes, knitted brows and an open mouth, with a transparent pen held beside the cheek on screen-left. Briefly blink and glance sideways while the mouth narrows and opens again, keeping the glasses on. Move slightly closer and raise the pen-holding hand from screen-left until the fingers touch the forehead beside the frame. Hold the forehead with the mouth open in disbelief through the end. Preserve the black shirt, delicate necklace, pen continuity, loose side-parted hair, pale ceiling and warm ceiling light, handheld close framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "sourceSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+      "displayTitle": "Hook 56",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Hand rises from below to cover mouth; restrained amused reaction and small head tilt. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin looking toward the lens with a neutral closed mouth. Raise the hand from screen-left and spread the fingers across the mouth and lower nose. Keep the palm covering the mouth, tilt the head slightly and blink naturally as the eyes soften into a restrained amused, surprised look. Hold the covered-mouth pose with small head and handheld camera shifts through the end. Preserve the curly hair, red-and-black patterned collared shirt, cream walls, curtains, warm interior light, original close selfie framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-743919c25a4f61942184a81b",
+      "sourceSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+      "displayTitle": "Hook 57",
+      "sourceDurationSeconds": 2.566667,
+      "sourceReviewedFrameCount": 77,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 77 decoded frames inspected sequentially. Red can lifts but no drinking; can lowers, smiling gaze shifts, empty hand covers eyes. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin holding the red drink can near the lower screen-left edge, looking upward off screen-left with rounded lips. Lift the can slightly without drinking, open the mouth into a broad delighted smile and turn the wide-eyed gaze toward the lens. Lower the can below view, glance upward sideways again while smiling, then raise the now-empty hand from screen-left over the nose and eyes in an amused face-covering gesture. Close the eyes as the hand reaches the forehead and hold that laughing smile through the end. Preserve the blue sports shirt and its physical markings, curly hair, can and hand continuity, curtains, warm light, gentle handheld framing and source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion",
+        "prop_leaves_and_hand_returns"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "sourceSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+      "displayTitle": "Hook 58",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Open-mouth surprise becomes smile; hand sweeps forehead then covers mouth, eyes closed. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a handheld close selfie looking slightly off screen-left with brows raised and drawn inward, mouth opening in astonishment. Move closer, hold the wide open mouth, then let the expression become an amused, disbelieving smile. Raise the hand from screen-left across the forehead, close the eyes briefly and slide the hand down to cover the mouth and lower nose. Hold the covered-mouth smile with eyes mostly closed through the end. Preserve the long blonde hair, small heart pendant, visible top, photo-collage wall, daylight and narrow sunlight bands, original camera movement and source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "sourceSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+      "displayTitle": "Hook 59",
+      "sourceDurationSeconds": 1.9,
+      "sourceReviewedFrameCount": 57,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 57 decoded frames inspected sequentially. Camera moves closer; hand covers mouth, then lowers to reveal wide smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated on the couch in the wider selfie view, smiling toward the lens. Open the mouth and widen the eyes as the camera moves closer, then raise the hand from screen-left to cover the lower nose and mouth. Briefly close the eyes, glance sideways and lower the hand out of view, revealing a closed-lip grin. Turn back toward the lens and open into a broad delighted smile for the ending. Remove the dark translucent caption strip with the text. Preserve the white quarter-zip sweater over its white shirt, gold earrings and ring, pulled-back hair, couch, kitchen cabinets and room details, soft daylight, handheld camera movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "sourceSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+      "displayTitle": "Hook 60",
+      "sourceDurationSeconds": 2.733333,
+      "sourceReviewedFrameCount": 82,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 82 decoded frames inspected sequentially. Covered-mouth smile then hand lowers, points and reaches toward lens. Physical shirt lettering retained; caption removed. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin facing the lens in a medium close view with lips parted. Raise the hand from screen-left across the mouth and smile behind it, narrowing the eyes and wrinkling the nose with delight. Hold this covered smile with small head movement, then lower the hand forward toward the camera, briefly point toward the lens and reach closer so the fingers fill the lower foreground. Finish smiling toward the lens with the hand low near the camera. Preserve the reddish hair and bangs, colorful striped-sleeve dark shirt and its physical lettering, pale room, pink chair, soft daylight, close framing and source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "sourceSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+      "displayTitle": "Hook 61",
+      "sourceDurationSeconds": 2.666667,
+      "sourceReviewedFrameCount": 64,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 64 decoded frames inspected sequentially. Pink phone held upright; other hand shifts down forehead while head tips back. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated low with knees bent in the bright room, holding the pink-cased phone upright in front of the face with the hand on screen-left. Keep the other arm arched over the head with fingertips at the forehead, staring at the phone with mouth rounded wide open. Maintain this stunned pose with small gaze and phone adjustments, then tip the head back slightly and move the upper hand lower across the forehead toward the bridge of the nose. Keep the phone upright and the mouth open through the end. Preserve the loose pale gray clothing, straight shoulder-length hair, phone camera details, pale couch, sheer curtains, diffuse daylight, low side perspective and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "sourceSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+      "displayTitle": "Hook 62",
+      "sourceDurationSeconds": 3,
+      "sourceReviewedFrameCount": 90,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 90 decoded frames inspected sequentially. Watch-wearing hand covers mouth as selfie moves closer then back; hand lowers to smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin looking upward toward screen-right with a small amused smile. Raise the watch-wearing hand from screen-left across the mouth and nose, shift the eyes sideways and keep smiling behind the fingers as the camera moves progressively closer. Briefly close the eyes, then pull the camera back toward the original view while keeping the mouth covered. Lower the hand near the end, revealing a soft closed-lip smile and relaxed gaze. Preserve the navy outer layer over the pale green top, white-banded watch, rings, pale nails, long wavy hair, pale wall, soft daylight, handheld movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "sourceSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+      "displayTitle": "Hook 63",
+      "sourceDurationSeconds": 2.433333,
+      "sourceReviewedFrameCount": 73,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 73 decoded frames inspected sequentially. Lying-down crying expression, hand at outer eye lowers; head/camera move forward. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin lying back on the pale blue pillow, with knitted raised brows, narrowed watery-looking eyes and a downturned open mouth in an exaggerated crying expression. Keep the hand from screen-right lightly rubbing or pressing beside the eye at the outer corner. Close the eyes, release and lower the hand, then move the head and camera forward and sideways as if lifting from the pillow, maintaining the strained crying face through the end. Preserve the orange graphic T-shirt, pulled-back hair, bedding, floral wall pattern, natural room light, shaky close selfie perspective and source duration. Match the visible expression without adding new tears or unrelated actions.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "sourceSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+      "displayTitle": "Hook 64",
+      "sourceDurationSeconds": 3.033333,
+      "sourceReviewedFrameCount": 91,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 91 decoded frames inspected sequentially. Camera is placed back/down on café table; arm withdraws to laptop, shocked look held. Background patrons remain unchanged. Second caption begins frame 52 / 1733 ms. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin wearing black over-ear headphones in the busy café, staring at the laptop with wide eyes, knitted brows and an open mouth. Keep one arm stretched toward the camera as its viewpoint moves back and settles into the lower, wider tabletop view, revealing the open laptop and pen. Withdraw that arm, lower the hand to the laptop trackpad and keep the startled expression with only small eye and head changes, including a late blink. Replace only the foreground performer's facial identity if an image is supplied; preserve background people as incidental café patrons. Preserve the patterned sleeveless top, jewelry, blue nails, long reddish hair, headphones staying on, laptop geometry, hanging plants, exposed ceiling, café light and source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "identity_replacement_in_motion",
+        "camera_reveals_unseen_scene"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "sourceSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+      "displayTitle": "Hook 65",
+      "sourceDurationSeconds": 4.1,
+      "sourceReviewedFrameCount": 123,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 123 decoded frames inspected sequentially. Hand rises to cover mouth, sideways glance and return to lens; late camera tilt/light flare. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin facing the lens with eyes wide, brows raised and drawn inward, and mouth open in astonishment. Hold the stare, then raise the hand from screen-left toward the mouth, blink and turn the gaze sharply toward screen-left. Bring the fingers fully across the lips and lower nose, then return the wide-eyed gaze toward the lens. Hold the covered-mouth pose, briefly close the eyes and reopen them with the brows still lifted. Preserve the pale gray hoodie, white nails, ring, long blonde waves, teal ceiling beams and fan, bright daylight, low-angle selfie framing and the late handheld tilt with brief light flare. Retain the full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "sourceSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+      "displayTitle": "Hook 66",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Chin stays on sleeve-covered fist; small upward gaze shift, eye closure and relaxed smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the table, resting the chin on the sleeve-covered fist on screen-left with the head gently tilted toward that hand. Hold a soft closed-lip smile toward the lens, blink slowly and shift the eyes upward toward screen-right as if thinking. Briefly close the eyes, then return the gaze toward the lens and finish with the same relaxed smile, keeping the chin supported throughout. Preserve the lavender cable-knit sweater, necklace, long blonde hair, wooden tabletop, paneled ceiling and spinning ceiling fan, soft frontal daylight, steady framing and full source duration. Keep the source's subtle calm performance.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-caceb6cb43d6e62137cf9892",
+      "sourceSha256": "923b786dd67b219c34d29e4011429fb56a3c1bdfdb9039480423beb595df4631",
+      "displayTitle": "Hook 67",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 93,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 93 decoded frames inspected sequentially. Hand stays at temple; sideways gaze, prolonged blink and upward eye roll. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a medium close view with the hand on screen-left pressed flat against the temple, looking sharply off screen-right with a restrained, stunned expression. Keep the hand in place, close the eyes slowly, reopen them to face the lens and then roll the gaze upward while the eyelids narrow again. Maintain the subdued, exasperated reaction without opening the mouth widely or moving the hand away. Preserve the black puffer jacket zipped high beneath the mouth, pink nails, ring, tied-back hair, wood cabinet and pale wall, diffuse daylight, steady selfie framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
+      "sourceSha256": "d864c622b2a8534724d126def5d50c02369e1dc4641b86bdcc3adcaa30ac26ad",
+      "displayTitle": "Hook 68",
+      "sourceDurationSeconds": 3.833333,
+      "sourceReviewedFrameCount": 115,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 115 decoded frames inspected sequentially. Car selfie; both hands rise across mouth, glance up, then hands lower slightly to open smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the car with one arm bent and its relaxed hand beside the cheek on screen-left, the other hand near the shoulder on screen-right. Hold a small closed-lip smile toward the lens, then bring both hands inward and upward until the fingers overlap across the mouth. Keep smiling behind the hands, blink, glance upward toward screen-left and part the mouth slightly before returning toward the lens. Lower the hands just a little beneath the mouth near the end, revealing an open delighted smile. Preserve the charcoal zip fleece, rings, long pale nails, loose hair, stationary car interior, window daylight, stable framing and source duration. Retain the physical visor safety label while removing the added caption.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
+      "sourceSha256": "759fb407fb2cb8fb19a62fa7aeccd19b2065fe82f73c842fb087937450148f63",
+      "displayTitle": "Hook 69",
+      "sourceDurationSeconds": 2.135969,
+      "sourceReviewedFrameCount": 63,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 63 decoded frames inspected sequentially. Side glance and closed-eye smile, then opposite-side gaze and toothy smile; no hand gesture. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close-up with a knowing closed-lip smile, looking upward toward screen-left. Slowly close the eyes and reopen them toward the lens, maintaining the small smile. Narrow the eyes again, shift the gaze upward toward screen-right and turn the head slightly that way, ending in a broader smile that shows the teeth. Keep the hands outside the frame. Preserve the orange hoodie, layered necklaces and cross pendant, small nose ring, long highlighted hair, red patterned fabric and window light behind, gentle handheld movement and full source duration. Keep this an understated pleased reaction.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-c709e563045b8e9e473929a9",
+      "sourceSha256": "5f05f8e35fac3de5dd1b15687e8b296ddfaa5896cbfc78bb229eae570083d5a6",
+      "displayTitle": "Hook 70",
+      "sourceDurationSeconds": 4.066667,
+      "sourceReviewedFrameCount": 122,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 122 decoded frames inspected sequentially. Restrained closed-lip smirk, blinks and upward side glance; camera drifts upward/closer. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a medium close selfie facing the lens with a neutral, slightly tight-lipped expression. Keep the mouth closed as one corner lifts into a faint knowing smirk; blink naturally, shift the gaze upward toward screen-right and return it toward the lens. Let the handheld viewpoint drift gradually upward and closer while maintaining the restrained expression and small head adjustments. Keep the hands out of view. Preserve the turquoise T-shirt and its physical print, tousled short hair, bright window seat with pillows, pale walls, desk, soft daylight and full source duration. Avoid enlarging this subtle reaction into an open-mouth surprise.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "sourceSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
+      "displayTitle": "Hook 71",
+      "sourceDurationSeconds": 3.1,
+      "sourceReviewedFrameCount": 90,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 90 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin lying on the pillow with the hand from screen-right covering the mouth and lower nose, brows strongly pinched and eyes narrowed in a crying expression. Keep the face strained as the camera trembles, then lower the hand away from the mouth and move the head and camera upward from the pillow into a more upright close view. Maintain the downturned mouth and watery-looking eyes with small head motions. End on the upright crying performer before the phone alarm display; retain only the continuous performer segment. Remove the dark translucent caption strip with the text. Preserve the brown patterned sleeveless top, tied-back hair, bedding, floral wall, dim natural room light, original shaky framing and retained performer-segment duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
+      "displayTitle": "Hook 72",
+      "sourceDurationSeconds": 6.366667,
+      "sourceReviewedFrameCount": 191,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 191 decoded frames inspected sequentially. Purple bottle stays upright; finger/knuckles near mouth, tongue briefly visible, turns and pursed lips. No drinking or final cut. First caption emoji corrected after full-resolution inspection. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated holding the large purple handled water bottle against the chest on screen-left, with the bottle-holding hand's knuckles and finger beside the open mouth. Keep the tongue briefly visible as in the source, blink, turn the head toward screen-left and purse the lips in disbelief. Turn back toward the lens, soften into a small smile, then open the mouth again while keeping the same hand near the lower lip and bottle upright. Repeat the source's small sideways head turn near the ending as the handheld view tilts and drifts upward. Preserve the black sleeveless top, long straight hair, visible chest tattoo, purple bottle and hand continuity, gold curtain, pale walls, strong frontal light and full source duration. Do not introduce a drinking action.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-e7147ac8b75176755e120150",
+      "sourceSha256": "2435b7e644d5677dac8392a674090c26368b1870b4a796fad11cc8719f7e016a",
+      "displayTitle": "Hook 73",
+      "sourceDurationSeconds": 3.633984,
+      "sourceReviewedFrameCount": 107,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 107 decoded frames inspected sequentially. Forehead hand lifts slightly, settles at brow, then slides to cover mouth; late side glance. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin reclining on the couch with the watch-wearing hand on screen-left laid across the forehead, mouth slightly open and eyes toward the lens. Close the eyes, glance sideways, lift the palm slightly and let the fingertips settle across the brow while looking down. Raise the eyes toward the lens, briefly close them again, then slide the same hand down across the mouth. Hold the covered-mouth, stunned expression with a late sideways glance. Preserve the blue athletic top, cross necklace, white watch, pale nails, pulled-back blonde hair, textured blanket and cushions, window blinds, soft daylight, selfie framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
+      "sourceSha256": "a2348d4501bba0c87969569e7f5aae8b3e3b63933ed80834a60f5c90b0d3bacf",
+      "displayTitle": "Hook 74",
+      "sourceDurationSeconds": 3.8,
+      "sourceReviewedFrameCount": 111,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 111 decoded frames inspected sequentially. Hand rises over mouth and remains; blink and brief side glance. Caption disappears at frame 106 / 3567 ms, confirmed using actual frame presentation timestamps. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the desk facing the lens with wide eyes. Raise the watch-wearing hand from screen-right to cover the mouth, placing the fingers across the lips and keeping the elbow bent. Hold the hand there, blink, glance briefly toward screen-right and return the wide-eyed gaze to the lens with subtle head adjustments. Keep the mouth covered through the end. Preserve the black T-shirt, dark bottoms, watch and gold earrings, tied-back hair, laptop corner, white desk, wood cabinet and pale wall, natural daylight, steady medium close framing and source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
+      "sourceSha256": "17c7306fd6dc9d0def83620bb1757cdd906e9e9e0845559bce9a6930089b2628",
+      "displayTitle": "Hook 75",
+      "sourceDurationSeconds": 2.966992,
+      "sourceReviewedFrameCount": 89,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 89 decoded frames inspected sequentially. Airplane selfie turns to window and back, subtle pursed-lip smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated beside the airplane window facing the lens with raised brows, wide eyes and pursed lips. Briefly close the eyes, turn the head toward the window on screen-left and hold the profile view looking outside. Turn back toward the lens near the end, with a small closed-lip knowing smile and slightly raised brows. Keep the hands out of view. Preserve the black high-collar outer layer and top, hair bun, teal headrest, airplane wall and window, warm cabin lighting, tilted handheld perspective and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "profile_turn"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-def19968a4a8c55c52679591",
+      "sourceSha256": "6c627bb27ec546ec86da3021a9769d75b6b6a720003f48a8f907a8990dd4f908",
+      "displayTitle": "Hook 76",
+      "sourceDurationSeconds": 3.233008,
+      "sourceReviewedFrameCount": 97,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 97 decoded frames inspected sequentially. Finger moves from lower lip to mouth cover; side gaze and closer camera. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in the airplane in a close selfie with a finger resting just below the lower lip, brows drawn upward and inward and eyes wide. Raise the same hand across the mouth, hold it there and shift the eyes toward screen-right with an amused, disbelieving smile behind the fingers. Blink, return the gaze toward the lens and bring the camera gradually closer while keeping the mouth covered. Preserve the long straight hair, dark red-and-black nails, fine necklaces, visible light top, dark seat and airplane ceiling, soft cabin light, handheld movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-0c14ee9d885466ad13cf9e52",
+      "sourceSha256": "365f323663661caafdff955f6ad72ce30e44fc6cb17acb9a4932dc9d463f65d5",
+      "displayTitle": "Hook 77",
+      "sourceDurationSeconds": 2.133984,
+      "sourceReviewedFrameCount": 48,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 48 decoded frames inspected sequentially. Phone stays upright; forehead hand shifts toward nose as head tips back under purple light. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated at the desk holding the pink-cased phone upright with the hand on screen-right, staring at its screen with very wide eyes and a rounded open mouth. Keep the other hand laid across the forehead with elbow lifted. Gradually tilt the head back, roll the gaze upward and shift the upper hand's fingers from the forehead toward the bridge of the nose while maintaining the open mouth. Keep the phone upright near chest level throughout. Preserve the pink T-shirt, bright blue nails, bracelet and ring, straight shoulder-length hair, notebook and reflective tabletop, warm ceiling strip light mixed with strong purple desk lighting, steady low-angle framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+      "sourceSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
+      "displayTitle": "Hook 78",
+      "sourceDurationSeconds": 1.966667,
+      "sourceReviewedFrameCount": 47,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 47 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin in close selfie with the hand from screen-right already covering the mouth, eyes extremely wide and looking off screen-left. Keep the hand firmly across the lips and lower nose, move the camera gradually closer and shift the eyes toward the lens near the end while maintaining raised brows. End on the wide-eyed performer with the hand covering the mouth before the separate phone demonstration; retain only the continuous performer segment. Preserve the black sleeveless top, coral-red nails, gold ring, shoulder-length brown hair, purple room light, wall decoration, close handheld perspective and retained performer-segment duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-7351dd660bc41910b9f25453",
+      "sourceSha256": "b3d94f4ce96c9170c6f1e46a86fbe45fb8f0a9e81ba329b96333b5e3d9658680",
+      "displayTitle": "Hook 79",
+      "sourceDurationSeconds": 2.933008,
+      "sourceReviewedFrameCount": 86,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 86 decoded frames inspected sequentially. Fingers lift from lower lip to cheek/nose; sideways knowing smile and late return toward lens. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close selfie with a small closed-lip smile and curled fingers near the lower lip. Lift the ring-wearing hand from screen-right to the side of the nose and cheek, narrowing the eyes as the palm settles against the cheek. Turn the gaze off screen-right with a knowing, amused smile and keep the hand lightly against the cheek and lips. Briefly close the eyes and turn them back toward the lens near the ending. Preserve the dark top, pulled-back blonde hair, nose ring, earrings and large ring, pale room and ceiling fixtures, soft natural light, close handheld perspective and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-2e28e18f894e3ba7de367ced",
+      "sourceSha256": "3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8",
+      "displayTitle": "Hook 80",
+      "sourceDurationSeconds": 5.633008,
+      "sourceReviewedFrameCount": 167,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 167 decoded frames inspected sequentially. Hand moves from cheek support to mouth cover then temple; open-mouth surprise softens to smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close-up with a curled hand supporting the lower cheek on screen-left, mouth slightly open and eyes looking upward off screen-left. Keep the focused, surprised stare with small blinks. Raise the same hand to cover the mouth, hold it briefly, then move it upward to the temple and forehead while opening the mouth wider. Hold the fingertips beside the temple, gradually turn the gaze toward the lens and finish with a small delighted open-mouth smile as the hand starts to release. Preserve the black outer layer, fine necklaces, long dark hair, warm globe wall lamp, exposed pale brick and ceiling, steady close framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-5be30f0749eec90b5a70bd18",
+      "sourceSha256": "7d3eee8c771389c88bf94ef30f97930558fad323b3328d32cd61838becf4af33",
+      "displayTitle": "Hook 81",
+      "sourceDurationSeconds": 4.266016,
+      "sourceReviewedFrameCount": 126,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 126 decoded frames inspected sequentially. Mouth covering, release to smile, cover again, closer camera, final release to smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin wearing black over-ear headphones, looking upward off screen-left with the fingers from screen-left across the mouth and chin. Hold the delighted expression, glance sideways and return the eyes toward the lens. Lower the hand to reveal a broad open-mouth smile, then lift it across the mouth again as the handheld camera moves closer. Hold that covered smile briefly, lower the hand once more and finish facing the lens with a broad pleased smile. Preserve the black top, ring, necklaces, tied-back curly hair, headphones staying on, warm globe wall lamp, pale brick and exposed ceiling, original camera movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-d3a67b533f083d26dd5d46f0",
+      "sourceSha256": "0097678ec0a78858157af61162d0283aabd851dd439f772267a939853ccf4471",
+      "displayTitle": "Hook 82",
+      "sourceDurationSeconds": 4,
+      "sourceReviewedFrameCount": 118,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 118 decoded frames inspected sequentially. Forehead hand releases to temple then covers mouth; brief closed eyes before final lens gaze. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close selfie with fingertips laid across the forehead from screen-left, mouth slightly open and eyes looking widely off screen-left. Hold the surprised stare with a small blink, lift the fingers away from the brow and keep the hand raised beside the temple. Turn the eyes toward the lens with the mouth still open, then bring the same hand down across the mouth. Briefly close and reopen the eyes while keeping the mouth covered at the ending. Preserve the black T-shirt, gold hoop earrings, long dark wavy ponytail, bright pale room, dark ceiling beam, shelves and mirror, natural indoor lighting, original closer and lower handheld camera movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-607bfccda5e91e0d8731fa94",
+      "sourceSha256": "3205ad7a9a13b1f49e411498ec8a8a028ec6d649d3fcb374381981ec019315ba",
+      "displayTitle": "Hook 83",
+      "sourceDurationSeconds": 4.466016,
+      "sourceReviewedFrameCount": 132,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 132 decoded frames inspected sequentially. Restrained upward stare and small gaze shifts, with natural blinks; low crop does not show a full torso or hand gesture. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: retain the extremely low selfie angle with the upper face and nose filling the bottom of the frame and most of the ceiling visible above. Look upward past the lens with a quiet, puzzled stare, subtly tighten the brows and make small sideways eye movements with natural blinks. Keep the partially visible mouth relaxed and slightly parted; maintain this restrained reaction through the ending without adding a hand gesture or a broad smile. Preserve the short dark curly hair, visible moustache and stubble, warm pale ceiling and fixture, soft indoor light, slight handheld movement, tight original crop and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "partial_face_crop"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-e5870158a2ad1494edc92741",
+      "sourceSha256": "22fa7d27707a2db3a76e1c61ecb4f12e234ac8e7cc1df414612784e6f42437ef",
+      "displayTitle": "Hook 84",
+      "sourceDurationSeconds": 5.733008,
+      "sourceReviewedFrameCount": 342,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 342 decoded frames inspected sequentially. All 342 frames at approximately 60 fps checked, including final held upward gaze. Brow tightening and release, subtle eye shifts; no hand gesture or cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: retain the very low selfie angle with the eyes, brows and upper nose at the bottom of the frame. Start looking upward with wide eyes and raised brows, blink slowly, then gradually draw the brows together into a puzzled, intent stare. Make small upward and sideways eye movements, ease the brow tension near the end and hold the upward gaze through the final frame. Keep the reaction subtle with no added hand gesture. Preserve the short dark curly hair, pale ceiling, glass ceiling light at upper left and vent behind the head, warm indoor lighting, slight handheld drift, original tight facial crop and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "partial_face_crop"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-bee95bd7a34b5d2a72775282",
+      "sourceSha256": "cf993840bc2066e17957e9251f423c75b8645f6b9ddb4520cbae03028f200d6e",
+      "displayTitle": "Hook 85",
+      "sourceDurationSeconds": 6.1,
+      "sourceReviewedFrameCount": 181,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 181 decoded frames inspected sequentially. Mouth/nose cover, upward eye roll, return to lens and late hand slide to cheek. Caption disappears at frame 179 (6033 ms). No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin facing the selfie camera with the hand from screen-left covering the mouth and side of the nose, fingers extended upward and eyes open in surprise. Keep the hand in place as the eyes close briefly, roll upward off screen-left, then return toward the lens. Widen the eyes again and hold the covered-mouth stare. Near the end close the eyes, slide the hand sideways onto the cheek to reveal the slightly open mouth, reopen the eyes and finish with a wide-eyed stare at the lens. Preserve the black top, long straight dark hair, pale manicure, ring and small earrings, pale paneled room and ceiling fixture, soft indoor light, original close handheld framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-717396089efc644caf411c79",
+      "sourceSha256": "04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5",
+      "displayTitle": "Hook 86",
+      "sourceDurationSeconds": 5.133984,
+      "sourceReviewedFrameCount": 120,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 120 decoded frames inspected sequentially. Temple hand remains in place throughout; soft smile and upward sideways glances rather than broad surprise. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin with fingertips resting against the temple on screen-left and a small closed-lip smile toward the camera. Briefly lower the eyelids, turn the eyes upward off screen-right and hold a quietly amused, knowing look. Return the gaze toward the lens, blink gently and maintain the small smile with the hand staying at the temple; finish with another subtle sideways upward glance. Keep the reaction restrained. Preserve the black top, long straight dark hair, nose ring and fine ring, pale wall, soft warm indoor light, steady close selfie framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-164ad3e6923d5d0d576114a5",
+      "sourceSha256": "22ca3cffd2aac8e07271d24b7ea24ccb6989c85b4b4fc28cbf1fdd3803e21b34",
+      "displayTitle": "Hook 87",
+      "sourceDurationSeconds": 2.866016,
+      "sourceReviewedFrameCount": 84,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 84 decoded frames inspected sequentially. Open smile becomes covered-mouth amused reaction; retain handheld bob and final held smile. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a slightly low handheld selfie with an open, delighted smile toward the lens. Let the smile broaden, then raise the hand from screen-left to cover the mouth while the cheeks lift and the eyes narrow with amusement. Keep the hand across the lips and chin, tilt the head slightly and maintain the pleased, incredulous expression through the ending. Preserve the original camera bob downward and back upward without adding a cut. Retain the white collared shirt, red flower-shaped neck accessory and long cords, long curly hair, earrings and ring, pale room with curtains and framed wall art, warm ceiling lighting, original framing and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+      "sourceSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
+      "displayTitle": "Hook 88",
+      "sourceDurationSeconds": 2.733333,
+      "sourceReviewedFrameCount": 74,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 74 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin seated in a low-angle selfie with a small, slightly incredulous closed-mouth smile toward the lens. Lean a little closer, raise the bracelet-wearing hand from screen-left and cover the mouth. Keep the palm across the lips, lift the cheeks and alternate a brief closed-eye smile with a wider-eyed look while the handheld camera moves closer and dips slightly. End on the smiling performer with the hand across the mouth before the phone display; retain only the continuous performer segment. Preserve the white T-shirt, pulled-back hair with loose strands, hoop earrings, ring and stacked bracelets, dark restaurant ceiling, spotlights, warm brick and wall art, mixed warm ambient light, original camera movement and retained performer-segment duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-6365d336034633aa5070eb48",
+      "sourceSha256": "8d6da45511c764b5c094712c4cd1d7ac0c8f367dff6bf72435da68dad934f245",
+      "displayTitle": "Hook 89",
+      "sourceDurationSeconds": 2.9,
+      "sourceReviewedFrameCount": 77,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 77 retained decoded frames verified exactly against the original; unrelated end frames removed as approved. Source and gallery preview contain the same retained pictures and timing.",
+      "sourceObservations": "Follow the original performance and timing: begin in the low handheld selfie with a broad open-mouth smile and delighted eyes looking toward the lens. Raise the hand inside the long yellow sleeve from screen-right to cover the mouth and nose. Keep the sleeve gathered over the lower face, eyes smiling above it, as the camera wobbles and moves closer and lower. Make small blinks and lift the brows again toward the ending. End on the smiling performer with the yellow sleeve across the mouth before the phone display; retain only the continuous performer segment. Preserve the oversized yellow hoodie with its physical stitched design, loosely tied hair and flyaway strands, bright linear ceiling lights and dark window or panel behind, original indoor lighting, camera movement and retained performer-segment duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-349e499826f7491d91f6b712",
+      "sourceSha256": "2a7b50e5af6a4ae022ce388de44598b7c5de4a67e7b9bf06e33b076df8fbe02a",
+      "displayTitle": "Hook 90",
+      "sourceDurationSeconds": 4.6,
+      "sourceReviewedFrameCount": 136,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 136 decoded frames inspected sequentially. Temple hand lowers; wide eyes become furrowed questioning gaze, rounded lips and tighter off-center crop. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin leaning toward the selfie camera with fingertips beside the temple on screen-right, brows drawn together and mouth open in disbelief. Blink, open the eyes much wider and hold the surprised stare toward the lens. Blink again, lower the hand out of view and furrow the brows more deeply. Move the face closer, glance off screen-right, briefly round and purse the lips, then return a questioning gaze toward the camera as the framing drifts into a tighter, partly off-center close-up. Preserve the white thin-strap top, long straight highlighted hair, necklace and hoop earrings, pale room with shelving, soft daylight, original handheld movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-88b4f433fe4fcb0504aca67f",
+      "sourceSha256": "3fd1ed03b048203fddd4df7fdae61b2980a0e4eabc8b4d376ac66e9615baa5aa",
+      "displayTitle": "Hook 91",
+      "sourceDurationSeconds": 3.3,
+      "sourceReviewedFrameCount": 97,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 97 decoded frames inspected sequentially. Open-mouth surprise becomes mouth cover; camera pulls back briefly then jolts into extreme close-up. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin facing the lens with eyes already extremely wide and mouth open in surprise. Raise the sleeve-covered hand from screen-left across the mouth and keep it there as the eyes stay wide. Make a brief sideways glance, return toward the lens and blink while the camera jolts backward, then rapidly moves into a much tighter close-up. Hold the hand across the lower face through the ending with the eyes still open in disbelief. Preserve the dark gray long-sleeve top, long straight highlighted hair, pale manicure, pale room, shelves and hanging bags, soft natural light, original handheld shake and push closer, tight ending crop and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-c5e3806f418bbe37e864485a",
+      "sourceSha256": "66bb907a5d4ada74dc2a5312fb098efb056c8dee007212e8bda29c8424fc8b0d",
+      "displayTitle": "Hook 92",
+      "sourceDurationSeconds": 3.566016,
+      "sourceReviewedFrameCount": 105,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 105 decoded frames inspected sequentially. Upward gaze turns to lens, stays wide-eyed, then becomes pressed-lip wry smile and final upward glance. No hand or cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close selfie looking upward off screen-left with the lips slightly parted. Snap the eyes toward the camera and open them very wide with raised brows, holding the slightly tilted head and surprised stare. Briefly glance off screen-left again, return the eyes to the lens, then press the lips together into a small wry smile while keeping the eyes wide. Near the end lift the gaze upward once more and hold the restrained smile. Preserve the black thin-strap top, long straight highlighted hair, gold pendant necklace and small shoulder tattoo, pale wall and ceiling trim, soft daylight, steady close framing and full source duration; do not add hand gestures.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-61eb29067f56267684b7cfe6",
+      "sourceSha256": "58d47b1374e44a4c83ad4d34a72ac424b4f476ab028d4992f33b805ca212e361",
+      "displayTitle": "Hook 93",
+      "sourceDurationSeconds": 2.8,
+      "sourceReviewedFrameCount": 82,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 82 decoded frames inspected sequentially. Mouth hand lowers as smile broadens, then rises to forehead; side gaze turns toward lens. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated with fingertips from screen-right resting lightly over the lips, smiling in surprise and looking off screen-right. Lower that hand toward the chest to reveal a broad open smile, keep looking to the side and briefly close the eyes with amusement. Turn toward the lens while raising the same hand to the forehead, then rest the palm across the brow and keep smiling through the ending with a small head tilt. Preserve the fitted black long-sleeve top, shoulder-length wavy highlighted hair, small earrings and pale manicure, pale column with posted notice, red-orange wall, railings and round ceiling light, bright natural indoor light, original slightly tilted selfie perspective and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-f12c90a72871c0cdaf3503db",
+      "sourceSha256": "42e1d5861cd1238f8f8bf4fada49c92ebdd7552de9dc061e9455abcd48de2c6c",
+      "displayTitle": "Hook 94",
+      "sourceDurationSeconds": 4,
+      "sourceReviewedFrameCount": 118,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 118 decoded frames inspected sequentially. Glasses lifted off face and moved out screen-right; upward impressed look becomes restrained closed-mouth gaze. Graphic formula only, no caption copy. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated behind the keyboard wearing glasses, with the hand from screen-right touching the upper outer rim and a small closed-lip smile while looking upward off screen-left. Lift the glasses above the eyes and remove them outward toward screen-right, keeping them in the same hand as they leave the frame. Continue looking upward with a slight open-mouthed, impressed expression, then briefly close the eyes and lower the gaze into a restrained, thoughtful closed-mouth look. Finish with a subtle upward glance. Preserve the black camisole, open dark burgundy shirt, tied-back dark hair and loose face-framing strands, bracelet, keyboard, chair, wall shelves and bed, warm ceiling light and blue screen reflections, fixed low desk-camera view and full source duration. Remove the floating logo-and-symbol equation as a creator-added overlay.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-095c5d08848977c4a1dda973",
+      "sourceSha256": "6033dbd8c2a2c8fb849b37224d798bde39f492b2702bd5b58f5a9f1cf74cbad0",
+      "displayTitle": "Hook 95",
+      "sourceDurationSeconds": 3.5,
+      "sourceReviewedFrameCount": 103,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 103 decoded frames inspected sequentially. Raised hand stays beside cheek; rounded mouth and upward off-camera stare held with late blink. Graphic formula only, no caption copy. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated close to the keyboard with the hand from screen-left held beside the cheek and mouth, fingers together and palm facing inward. Hold the rounded open mouth and raised, slightly knitted brows while staring upward off screen-left. Make only small sideways eye movements and a natural late blink, keeping the raised hand near the cheek through the ending. Preserve the red ribbed long-sleeve sweater, dark manicure, long straight dark hair, keyboard in the foreground, desk chair and warm gray room, warm overhead light with cooler screen light on the face, steady slightly low desk-camera angle and full source duration. Remove the floating logo-and-symbol equation as a creator-added overlay.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-50dd086ef9d1c758d5ae3bb5",
+      "sourceSha256": "fd68174881fb1e29456a56b5360ff1d4f6052ed31da4e91796dfbe8bbccac4e1",
+      "displayTitle": "Hook 96",
+      "sourceDurationSeconds": 2.933008,
+      "sourceReviewedFrameCount": 86,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 86 decoded frames inspected sequentially. Both hands cover mouth then lower together to chest; open-mouth upward stare held. Caption wording checked separately from graphic logos. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin seated behind the desk with both hands held together over the mouth and nose, eyes fixed upward off screen-left in surprise. Blink briefly, then slide the joined palms down from the face to reveal a rounded open mouth. Hold the palms together in front of the upper chest, fingers pointing upward, and maintain the wide-eyed off-camera stare with small natural eye and head movements through the ending. Preserve the red ribbed sweater, dark manicure, long straight dark hair, desk chair, keyboard and illustrated desk mat, wall shelves with plants and other room furnishings, warm ceiling light mixed with cool screen light, fixed wider desk framing and full source duration. Remove the floating logo formula together with the creator-added caption.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "overlay_cleanup_in_motion",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-2822e820228a01fb4c4273a1",
+      "sourceSha256": "a94d5b7f3fab41fbf5e10d4e3c03fc1f6469b40839fdf5d6b7a7e72060491466",
+      "displayTitle": "Hook 97",
+      "sourceDurationSeconds": 4,
+      "sourceReviewedFrameCount": 118,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 118 decoded frames inspected sequentially. Wide-eyed furrowed stare, slow blinks and slight side glance become pursed-lip skepticism; camera moves lower and closer. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in close selfie with the head slightly tilted, eyes extremely wide, brows pulled together and lips partly open in a questioning look toward the lens. Blink slowly, reopen the eyes wide and briefly shift the gaze off screen-left before returning to the camera. Close the eyes again as the handheld camera jolts, then press the lips into a skeptical pout while moving into a lower, much tighter off-center close-up. Hold the wide-eyed, furrowed-brow stare and pursed lips through the ending. Preserve the dark V-neck top, long straight highlighted hair and gold chain necklace, pale room and dark overhead panels, soft daylight, original handheld movement, ending crop and full source duration; do not add a hand gesture.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-a9289ca5bd17288593e63eee",
+      "sourceSha256": "df879f22de59f37d4556ee97e831745382c60f2273bc51b8fa0a16fe9c2ae87e",
+      "displayTitle": "Hook 98",
+      "sourceDurationSeconds": 3.633008,
+      "sourceReviewedFrameCount": 107,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 107 decoded frames inspected sequentially. Upright magenta phone remains early, then lowers out of view; upward eye roll becomes pursed-lip questioning gaze in tighter crop. No cut. Prompt content reviewed; generation quality not tested.",
+      "sourceObservations": "Follow the original performance and timing: begin in a low-angle close shot holding the magenta-cased phone upright on screen-right, looking between its screen and the camera with knitted brows and slightly parted lips. Open the eyes much wider, blink and hold the incredulous stare. Briefly roll the eyes upward off screen-left, then return them forward and press the lips into a skeptical closed-mouth expression. Lower the phone out of view, move the camera closer and slightly sideways, and finish with a small pursed-lip, questioning look in the tighter off-center crop. Preserve the dark V-neck top, long straight highlighted hair, layered necklaces with dark pendant, pale room and long rectangular ceiling light, natural indoor light, original camera movement and full source duration.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_only_instructions",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "displayTitle": "Hook 99",
+      "sourceDurationSeconds": 4.1,
+      "sourceReviewedFrameCount": 123,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 123 decoded frames inspected in chronological contact sheet. Continuous reaction-only shot: raised hand covers mouth, camera moves closer, hand lowers and mouth opens. No screen tail. Native audio preserved. Static source review; no generated video tested.",
+      "sourceObservations": "Turn the surprised gaze toward the lens while keeping the raised hand beside the face. Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face. Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_duration_dependency",
+        "hand_or_prop_occlusion"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "sourceSha256": "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+      "displayTitle": "Hook 100",
+      "sourceDurationSeconds": 3.8,
+      "sourceReviewedFrameCount": 112,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 112 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer is in a low-angle close selfie wearing round eyeglasses and white earbuds, mouth slightly open, with the hand on screen-right already touching the glasses at the temple. Pull the glasses forward and away from the eyes with the same hand, then lower them below the face while looking off screen-right. Turn the gaze toward the lens with raised brows and slightly parted lips; hold the uncovered face in the low selfie view. Look back off screen-right with a questioning, open-mouth expression, keeping the glasses lowered. Keep the slightly tilted low handheld selfie, with gentle natural movement and the pale structural beams and windows behind. The glasses remain off the face and lowered, the earbuds stay in, and the performer looks off screen-right with parted lips. Remove the glasses forward from the face; do not place them on top of the head. Keep the black ribbed sweater, earbuds and room consistent. Do not add another person or a scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "face_prop_contact",
+        "hand_or_prop_occlusion",
+        "profile_turn",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-ddcfb2950d40f37771058b73",
+      "sourceSha256": "cd230e98db5d44712ca1541712b3ccc34c241af65c1142a3bb4c5136c581df22",
+      "displayTitle": "Hook 101",
+      "sourceDurationSeconds": 3.833008,
+      "sourceReviewedFrameCount": 113,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 113 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer is outdoors at night in a very low upward selfie view, head tipped back and face partly seen from below, wearing a black sweater and backpack straps. Bring the head forward and raise the handheld camera into a more level face view, revealing the smile and the brightly lit city screens behind. Keep a restrained closed-mouth smile while the body and handheld camera turn gently together, so the lights move across the background. Raise one hand toward the lips and chin, briefly look sideways, and return the smiling face toward the lens with the hand near the lower face. One continuous moving handheld selfie in the illuminated city square at night; transition from low upward framing to a more level close view while turning. The performer smiles toward the lens with one hand near the lips and chin, framed by bright nighttime city screens. Keep backpack straps and black sweater visible. Do not add a kissing partner or a scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "partial_face_crop",
+        "camera_reveals_unseen_scene",
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+      "sourceSha256": "ddb24f03edb483ef194be7cbe0c74d26a9ec4ae39507642efd2d334759fddf35",
+      "displayTitle": "Hook 102",
+      "sourceDurationSeconds": 2.766016,
+      "sourceReviewedFrameCount": 81,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 81 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer leans toward the selfie camera in a pale yellow thin-strap top, with knitted brows and slightly open lips, long blonde hair over the shoulders and a small pendant necklace. Open the mouth wider in disbelief and lean closer toward the lens, keeping the questioning brow. Raise the hand from screen-right and place it across the mouth as the camera moves into a tighter close-up. Briefly close the eyes, then lower the hand toward the chin, open the mouth into a surprised smile and glance upward off screen-left. Keep a single handheld room selfie, moving closer during the mouth-covering gesture and holding the tight ending crop. The hand rests below the mouth near the chin, the mouth is open in a surprised smile, and the eyes glance upward off screen-left. Use the same hand for the mouth-covering and lowering gesture. Keep the top, necklace and room consistent; no cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+      "sourceSha256": "109ec5d49c4f33800c23a26329107d1ffd26d98b5048c8a210d8534164a1e7c6",
+      "displayTitle": "Hook 103",
+      "sourceDurationSeconds": 2.966016,
+      "sourceReviewedFrameCount": 87,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 87 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer sits in an orange-lit room wearing large clear eyeglasses and a colorful top, looking upward off screen-left with lips parted. One hand holds a tall light-colored can upright while an extended finger rests near the lower lip. Widen the eyes and open the mouth in surprise while still looking off screen-left, keeping the can upright without drinking. Lower the can and its hand out of the main face area as the gaze shifts toward the lens. Move the handheld camera closer and hold a wide-eyed, open-mouth expression toward the viewer in the tight face crop. One handheld selfie moves from a seated upper-body view into a close face view against the warm orange wall lighting. The face is much closer to the lens with glasses still on, eyes wide and mouth open; the can is below the face area. Do not add a sip or lift the can to the lips. Keep glasses on and retain the colorful top and cross necklace. No scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "face_prop_contact",
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+      "sourceSha256": "7e43f6ca3c30d32d362c8370e7e1d82dd722604f4146db11ad1f4fbb0bdceb22",
+      "displayTitle": "Hook 104",
+      "sourceDurationSeconds": 3.4,
+      "sourceReviewedFrameCount": 100,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 100 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer sits in a purple-lit room wearing large eyeglasses and a blue-and-white fleece, looking down at the pale phone held upright on screen-left with a skeptical expression. Shift the gaze up from the phone, widen the eyes and open the mouth while keeping the phone in its hand. Bring the free hand up beside the face with fingers spread, then move that same hand across the mouth as the camera comes closer. Keep the mouth covered by the free hand and hold the wide-eyed look toward the lens in a tighter close-up. Maintain one handheld selfie in the purple-lit room, moving closer through the reaction without revealing a different setting. The free hand covers the mouth, the glasses remain on and the eyes are wide toward the lens in a tight crop. Keep the phone and mouth-covering gestures in different hands. Retain yellow nails, ring, fleece and glasses; no scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "sourceSha256": "05738540ee02c011cf73cfe2db7cae40b88c0886af99c23a99704e630bbfc955",
+      "displayTitle": "Hook 105",
+      "sourceDurationSeconds": 1.833008,
+      "sourceReviewedFrameCount": 53,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 53 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer sits beside an open dark laptop, wearing black eyeglasses, gold earrings and a white lace long-sleeve top, looking toward the laptop with the mouth open in surprise. Raise the red-manicured hand from screen-right and place it over the mouth as the eyes lift briefly toward the lens. Tilt the head slightly, hold the hand over the lower face and let the eyes soften into an amused expression. Turn the gaze back toward the laptop and smile behind the hand, briefly lowering the eyelids. Keep the steady seated medium-close view with the open laptop in the foreground and the pale room and stairs behind. The performer smiles toward the laptop with a hand still partly covering the mouth, glasses on and head gently tilted. Keep the laptop in the foreground and the glasses on. Do not add another person or a cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-44d165d51084f977f5146f69",
+      "sourceSha256": "b9b0c519f1e061ae9cdc91965cb6797777cee0f763d1e1f94cf0614f1d438f06",
+      "displayTitle": "Hook 106",
+      "sourceDurationSeconds": 2.8,
+      "sourceReviewedFrameCount": 82,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 82 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer wears a light denim jacket in a pale room, looking off screen-left with eyes wide and mouth open, with the ringed hand on screen-right resting against the upper chest and throat. Turn the widened eyes from screen-left toward the lens while keeping the mouth open and the ringed hand at the upper chest. Hold the surprised stare toward the lens, lower the hand slightly along the chest, and make a slow natural blink. Reopen the eyes wide and hold the open-mouth expression facing the viewer, with the hand resting at the upper chest. Keep the nearly fixed, front-facing upper-body view with warm wall lights and the pale bed and room behind. The performer faces the lens with wide eyes and open mouth, the ringed hand remaining on the upper chest. Do not raise the hand over the mouth or introduce a new gesture. Keep the denim jacket and gold ring; no scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "source_duration_dependency"
+      ]
+    },
+    {
+      "catalogVersion": 1,
+      "referenceId": "explore-paired-hook-c15a0f9f2a7c4a28d5330825",
+      "sourceSha256": "3b75bff5ce95145b5779f91b8bb9a235009e69f4829d756679ee1b6cc0ee79a2",
+      "displayTitle": "Hook 107",
+      "sourceDurationSeconds": 1,
+      "sourceReviewedFrameCount": 28,
+      "sourceReviewMethod": "all_decoded_frames",
+      "sourceReviewNotes": "All 28 decoded frames inspected chronologically, including opening and ending. Reaction-only source preserved byte-for-byte; preview copies identical decoded video pixels and adds registered audio. No generated output tested.",
+      "sourceObservations": "The performer is in a close selfie wearing a black thin-strap top and delicate necklace, with one hand curled under the chin and the index finger resting just below the lips, looking slightly off screen-right with a small closed-mouth smile. Keep the hand under the chin and shift the eyes subtly toward the lens while holding the small restrained smile. Make a natural blink and a slight head adjustment, keeping the thoughtful finger position near the lips. Return the gaze slightly off screen-right and hold the same calm, faintly amused expression with the chin still supported. Maintain the close, mostly steady handheld selfie with a pale wall and white door behind. The chin remains supported by the same hand, the mouth stays closed in a subtle smile and the gaze rests just off screen-right. Keep this a subtle held reaction; do not invent a large surprise gesture or remove the hand from the chin. No scene cut.",
+      "motionReviewStatus": "needs_motion_review",
+      "riskFlags": [
+        "hand_or_prop_occlusion",
+        "source_duration_dependency"
+      ]
+    }
+  ]
+}

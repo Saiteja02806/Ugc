@@ -93,6 +93,14 @@ export default function PrivacyPolicyPage() {
           </LegalList>
         </LegalSection>
 
+        <LegalSection title="Website analytics">
+          <p>
+            Google Analytics is currently disabled on public pages. We do not
+            send public page visits or new account creation events to Google
+            Analytics. See our Cookie Policy for details.
+          </p>
+        </LegalSection>
+
         <LegalSection title="How we use information">
           <LegalList>
             <li>Create and secure user accounts.</li>

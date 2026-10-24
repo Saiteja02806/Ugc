@@ -1,0 +1,523 @@
+{
+  "checkedOn": "2026-10-14",
+  "siteUrl": "https://getugcpilot.com/",
+  "indexInspection": {
+    "siteUrl": "https://getugcpilot.com/",
+    "count": 13,
+    "succeeded": 13,
+    "failed": 0,
+    "skipped": 0,
+    "quotaExhausted": false,
+    "quota": {
+      "count": 14,
+      "limit": 2000,
+      "remaining": 1986
+    },
+    "results": [
+      {
+        "url": "https://getugcpilot.com/",
+        "verdict": "PASS",
+        "coverageState": "Submitted and indexed",
+        "indexingState": "INDEXING_ALLOWED",
+        "lastCrawlTime": "2026-09-12T11:33:22Z",
+        "googleCanonical": "https://getugcpilot.com/",
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=bEP5tWqohyVWGnjqCBlmVA&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/pricing",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=zoRS7rRoTvjECTn-e3eMqw&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/instagram-carousel-maker",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=fec7AkZt3R5gOqsIAVH06Q&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/ai-ugc-video-generator",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=ufUay8HYbfZAY7dknfGZPw&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/social-media-marketing-for-startups",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=pFH-MWnlq4SIyIEUbIkeCA&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/ai-social-media-manager",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=caDO2ynYtg2uLl7AzL_8ug&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=Vma6WDnVCLmUm9wT6pBnYw&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides/saas-marketing",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=FocfFOuMzImThZXBVcyKZw&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides/saas-content-marketing",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=5AE75odKkZjeZ59fLKpa-Q&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides/mobile-app-marketing",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=jNLlfiZZZOo55M6Sdna99w&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides/marketing-for-startups",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=ac7yVFVm-AhYMNjMqyOGlw&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides/how-to-market-a-website",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=2VOa8rjuCxiasajLaIjBNA&utm_medium=link&utm_source=api"
+      },
+      {
+        "url": "https://getugcpilot.com/guides/social-media-marketing-for-saas",
+        "verdict": "NEUTRAL",
+        "coverageState": "URL is unknown to Google",
+        "indexingState": "INDEXING_STATE_UNSPECIFIED",
+        "lastCrawlTime": null,
+        "googleCanonical": null,
+        "userCanonical": null,
+        "inspectionResultLink": "https://search.google.com/search-console/inspect?resource_id=https://getugcpilot.com/&id=jaRr_g5m9y4Ms_F73zZDPw&utm_medium=link&utm_source=api"
+      }
+    ]
+  },
+  "priorityLiveAudit": {
+    "siteUrl": "https://getugcpilot.com/",
+    "contextRange": {
+      "startDate": "2026-09-13",
+      "endDate": "2026-10-10"
+    },
+    "auditedCount": 5,
+    "skipped": [],
+    "truncated": false,
+    "summary": {
+      "total_pages": 5,
+      "total_issues": 8,
+      "by_severity": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 8,
+        "info": 0
+      },
+      "indexable_pages": 5,
+      "non_indexable_pages": 0
+    },
+    "pages": [
+      {
+        "url": "https://getugcpilot.com/guides",
+        "finalUrl": "https://getugcpilot.com/guides",
+        "statusCode": 200,
+        "redirected": false,
+        "redirectChain": [],
+        "responseTimeMs": 477,
+        "impressions": 0,
+        "clicks": 0,
+        "indexable": true,
+        "indexabilityStatus": "Indexable",
+        "title": "Marketing Guides for SaaS, Website & App Founders | UGC Pilot",
+        "titleLength": 61,
+        "metaDescriptionLength": 145,
+        "metaKeywords": null,
+        "h1Count": 1,
+        "h3Count": 0,
+        "h4Count": 0,
+        "h5Count": 0,
+        "h6Count": 0,
+        "wordCount": 400,
+        "canonicalUrl": "https://getugcpilot.com/guides",
+        "canonicalIsSelf": true,
+        "noindex": false,
+        "internalLinks": 12,
+        "externalLinks": 0,
+        "imagesMissingAlt": 1,
+        "imagesCount": 1,
+        "hasStructuredData": false,
+        "structuredDataTypes": [],
+        "schemaIssues": [],
+        "hasViewport": true,
+        "faviconPresent": true,
+        "lang": "en",
+        "hreflangCount": 0,
+        "bodyBytes": 60323,
+        "contentEncoding": "br",
+        "issues": [
+          {
+            "id": "title-long",
+            "category": "meta",
+            "severity": "low",
+            "message": "Title is 61 chars (over ~60 may truncate)"
+          },
+          {
+            "id": "images-missing-alt",
+            "category": "images",
+            "severity": "low",
+            "message": "1 of 1 images missing alt text"
+          },
+          {
+            "id": "no-structured-data",
+            "category": "structured-data",
+            "severity": "low",
+            "message": "No structured data (JSON-LD or microdata) detected"
+          }
+        ]
+      },
+      {
+        "url": "https://getugcpilot.com/",
+        "finalUrl": "https://getugcpilot.com/",
+        "statusCode": 200,
+        "redirected": false,
+        "redirectChain": [],
+        "responseTimeMs": 353,
+        "impressions": 7,
+        "clicks": 0,
+        "indexable": true,
+        "indexabilityStatus": "Indexable",
+        "title": "UGCPilot — Instagram, TikTok, and YouTube Content Workspace",
+        "titleLength": 59,
+        "metaDescriptionLength": 113,
+        "metaKeywords": null,
+        "h1Count": 1,
+        "h3Count": 6,
+        "h4Count": 0,
+        "h5Count": 0,
+        "h6Count": 0,
+        "wordCount": 648,
+        "canonicalUrl": "https://getugcpilot.com/",
+        "canonicalIsSelf": true,
+        "noindex": false,
+        "internalLinks": 25,
+        "externalLinks": 1,
+        "imagesMissingAlt": 3,
+        "imagesCount": 15,
+        "hasStructuredData": false,
+        "structuredDataTypes": [],
+        "schemaIssues": [],
+        "hasViewport": true,
+        "faviconPresent": true,
+        "lang": "en",
+        "hreflangCount": 0,
+        "bodyBytes": 154152,
+        "contentEncoding": "br",
+        "issues": [
+          {
+            "id": "images-missing-alt",
+            "category": "images",
+            "severity": "low",
+            "message": "3 of 15 images missing alt text"
+          },
+          {
+            "id": "no-structured-data",
+            "category": "structured-data",
+            "severity": "low",
+            "message": "No structured data (JSON-LD or microdata) detected"
+          }
+        ]
+      },
+      {
+        "url": "https://getugcpilot.com/ai-ugc-video-generator",
+        "finalUrl": "https://getugcpilot.com/ai-ugc-video-generator",
+        "statusCode": 200,
+        "redirected": false,
+        "redirectChain": [],
+        "responseTimeMs": 598,
+        "impressions": 0,
+        "clicks": 0,
+        "indexable": true,
+        "indexabilityStatus": "Indexable",
+        "title": "AI UGC Video Generator | UGC Pilot",
+        "titleLength": 34,
+        "metaDescriptionLength": 129,
+        "metaKeywords": null,
+        "h1Count": 1,
+        "h3Count": 9,
+        "h4Count": 0,
+        "h5Count": 0,
+        "h6Count": 0,
+        "wordCount": 451,
+        "canonicalUrl": "https://getugcpilot.com/ai-ugc-video-generator",
+        "canonicalIsSelf": true,
+        "noindex": false,
+        "internalLinks": 11,
+        "externalLinks": 0,
+        "imagesMissingAlt": 1,
+        "imagesCount": 1,
+        "hasStructuredData": true,
+        "structuredDataTypes": [
+          "Answer",
+          "FAQPage",
+          "Question",
+          "SoftwareApplication"
+        ],
+        "schemaIssues": [],
+        "hasViewport": true,
+        "faviconPresent": true,
+        "lang": "en",
+        "hreflangCount": 0,
+        "bodyBytes": 72589,
+        "contentEncoding": "br",
+        "issues": [
+          {
+            "id": "images-missing-alt",
+            "category": "images",
+            "severity": "low",
+            "message": "1 of 1 images missing alt text"
+          }
+        ]
+      },
+      {
+        "url": "https://getugcpilot.com/instagram-carousel-maker",
+        "finalUrl": "https://getugcpilot.com/instagram-carousel-maker",
+        "statusCode": 200,
+        "redirected": false,
+        "redirectChain": [],
+        "responseTimeMs": 637,
+        "impressions": 0,
+        "clicks": 0,
+        "indexable": true,
+        "indexabilityStatus": "Indexable",
+        "title": "Instagram Carousel Maker | UGC Pilot",
+        "titleLength": 36,
+        "metaDescriptionLength": 138,
+        "metaKeywords": null,
+        "h1Count": 1,
+        "h3Count": 8,
+        "h4Count": 0,
+        "h5Count": 0,
+        "h6Count": 0,
+        "wordCount": 425,
+        "canonicalUrl": "https://getugcpilot.com/instagram-carousel-maker",
+        "canonicalIsSelf": true,
+        "noindex": false,
+        "internalLinks": 10,
+        "externalLinks": 0,
+        "imagesMissingAlt": 1,
+        "imagesCount": 1,
+        "hasStructuredData": true,
+        "structuredDataTypes": [
+          "Answer",
+          "FAQPage",
+          "Question",
+          "SoftwareApplication"
+        ],
+        "schemaIssues": [],
+        "hasViewport": true,
+        "faviconPresent": true,
+        "lang": "en",
+        "hreflangCount": 0,
+        "bodyBytes": 70648,
+        "contentEncoding": "br",
+        "issues": [
+          {
+            "id": "images-missing-alt",
+            "category": "images",
+            "severity": "low",
+            "message": "1 of 1 images missing alt text"
+          }
+        ]
+      },
+      {
+        "url": "https://getugcpilot.com/ai-social-media-manager",
+        "finalUrl": "https://getugcpilot.com/ai-social-media-manager",
+        "statusCode": 200,
+        "redirected": false,
+        "redirectChain": [],
+        "responseTimeMs": 665,
+        "impressions": 0,
+        "clicks": 0,
+        "indexable": true,
+        "indexabilityStatus": "Indexable",
+        "title": "AI Social Media Manager | UGC Pilot",
+        "titleLength": 35,
+        "metaDescriptionLength": 122,
+        "metaKeywords": null,
+        "h1Count": 1,
+        "h3Count": 9,
+        "h4Count": 0,
+        "h5Count": 0,
+        "h6Count": 0,
+        "wordCount": 458,
+        "canonicalUrl": "https://getugcpilot.com/ai-social-media-manager",
+        "canonicalIsSelf": true,
+        "noindex": false,
+        "internalLinks": 11,
+        "externalLinks": 0,
+        "imagesMissingAlt": 1,
+        "imagesCount": 1,
+        "hasStructuredData": true,
+        "structuredDataTypes": [
+          "Answer",
+          "FAQPage",
+          "Question",
+          "SoftwareApplication"
+        ],
+        "schemaIssues": [],
+        "hasViewport": true,
+        "faviconPresent": true,
+        "lang": "en",
+        "hreflangCount": 0,
+        "bodyBytes": 73393,
+        "contentEncoding": "br",
+        "issues": [
+          {
+            "id": "images-missing-alt",
+            "category": "images",
+            "severity": "low",
+            "message": "1 of 1 images missing alt text"
+          }
+        ]
+      }
+    ],
+    "dataSource": "api"
+  },
+  "pagePerformance": {
+    "siteUrl": "https://getugcpilot.com/",
+    "range": {
+      "startDate": "2026-09-13",
+      "endDate": "2026-10-10"
+    },
+    "pages": [
+      {
+        "page": "https://getugcpilot.com/",
+        "clicks": 0,
+        "impressions": 7,
+        "ctr": 0,
+        "position": 3.857142857142857
+      },
+      {
+        "page": "https://getugcpilot.com/cookies",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 2
+      },
+      {
+        "page": "https://getugcpilot.com/privacy",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 8
+      },
+      {
+        "page": "https://getugcpilot.com/sign-in",
+        "clicks": 0,
+        "impressions": 3,
+        "ctr": 0,
+        "position": 27.333333333333332
+      },
+      {
+        "page": "https://getugcpilot.com/terms",
+        "clicks": 0,
+        "impressions": 3,
+        "ctr": 0,
+        "position": 5
+      }
+    ],
+    "pagination": {
+      "limit": 20,
+      "offset": 0,
+      "returned": 5,
+      "hasMore": false,
+      "note": "Showing all 5 rows."
+    },
+    "dataSource": "api",
+    "settledThrough": "2026-10-11",
+    "dataMaturity": {
+      "firstIncompleteDate": "2026-10-12",
+      "settledThrough": "2026-10-11",
+      "dateBasis": "America/Los_Angeles",
+      "source": "gsc-api-metadata",
+      "probe": {
+        "searchType": "web",
+        "startDate": "2026-10-04",
+        "endDate": "2026-10-13",
+        "dataState": "all"
+      }
+    }
+  },
+  "sitemap": {
+    "siteUrl": "https://getugcpilot.com/",
+    "sitemaps": [
+      {
+        "path": "https://getugcpilot.com/sitemap.xml",
+        "lastSubmitted": "2026-10-13T20:59:14.438Z",
+        "isPending": true,
+        "isSitemapsIndex": false,
+        "warnings": "0",
+        "errors": "0"
+      }
+    ]
+  },
+  "limits": [
+    "URL inspection reflects Google's stored state; live crawling is a separate check.",
+    "The homepage slash was normalized for inspection, matching Google's returned canonical.",
+    "All 13 public sitemap URLs were inspected; the five priority pages plus the weekly guide were separately audited live in this conversation.",
+    "Automated scores/schema/alt flags are not confirmed indexing blockers. Empty alt can be appropriate for decorative/redundant images.",
+    "No website deployment, indexing request, sitemap resubmission or scheduled monitoring performed."
+  ]
+}

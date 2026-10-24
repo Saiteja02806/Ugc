@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const source = read("components/explore/workflow-creation-form.tsx");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : ({ type, props });
+const text = node => Array.isArray(node) ? node.map(text).join(" ") : node && typeof node === "object" ? text(node.props?.children) : typeof node === "string" ? node : "";
 function nodes(node) {
   if (Array.isArray(node)) return node.flatMap(nodes);
   if (!node || typeof node !== "object") return [];
@@ -24,15 +26,17 @@ function generationModules(seedanceEnabled = false) {
   };
   const backend = load("lib/ai-studio/generation-settings.ts");
   const workflow = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend });
-  return { backend, workflow };
+  const referencePolicy = load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend });
+  return { backend, workflow, referencePolicy };
 }
 
 function harness({ seedanceEnabled = false } = {}) {
   let cursor = 0;
   const slots = [];
-  const { backend, workflow } = generationModules(seedanceEnabled);
+  const { backend, workflow, referencePolicy } = generationModules(seedanceEnabled);
   let generationSettings = workflow.createWorkflowGenerationSettings();
   const imports = {
+    "@/worker/src/lib/hook-starting-frame-video": startingFrameVideo,
     react: {
       useId() { return `field-${cursor++}`; },
       useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; },
@@ -40,6 +44,8 @@ function harness({ seedanceEnabled = false } = {}) {
       useCallback(callback) { cursor++; return callback; },
     },
     "next/image": { default: "image" },
+    "@/components/explore/workflow-image-library": { WorkflowImageLibrary: "image-library" },
+    "@/lib/explore/format-reference-images": { fetchFormatReferenceImage: async assetId => ({id: assetId}) },
     "lucide-react": Object.fromEntries(["Check", "Plus", "UserRound", "Video"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player" },
     "@/components/explore/workflow-audio-reference": { WorkflowAudioReference: "audio-reference" },
@@ -51,6 +57,7 @@ function harness({ seedanceEnabled = false } = {}) {
     "@/components/ui/popover": Object.fromEntries(["Popover", "PopoverContent", "PopoverTitle", "PopoverTrigger"].map((name) => [name, name])),
     "@/lib/ai-studio/creator-references": { CREATOR_REFERENCES: [{ id: "c1", src: "/creator.png", fileName: "creator.png" }] },
     "@/lib/ai-studio/generation-settings": backend,
+    "@/lib/ai-studio/video-reference-policy": referencePolicy,
     "@/lib/explore/workflow-generation-settings": workflow,
     "@/lib/utils": { cn: (...values) => values.join(" ") },
     "@/components/explore/workflow-studio.module.css": { default: {} },
@@ -82,6 +89,31 @@ test("the actual shared form has labelled fields and forwards user text verbatim
   ]);
 });
 
+test("approved-frame mode hides extra references, limits animation choices and keeps the frame ratio", () => {
+  const tree = harness().render({ startingFrameMode: true, startingFrameControl: "Approved frame and Sound", generationSettings: { model: "google_omni", duration: 4, quantity: 1, resolution: "720p", aspectRatio: "9:16" } });
+  const all = nodes(tree);
+  assert.equal(all.find(node => node.props["aria-label"] === "Optional references").props.hidden, true);
+  assert.equal(all.some(node => node.type === "select" && node.props.ariaLabel === "Hook aspect ratio"), false);
+  assert.match(text(tree), /9:16.*From your frame/);
+  const model = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook model");
+  assert.ok(model.props.options.every(option => startingFrameVideo.isHookStartingFrameVideoModel(option.value)));
+  const duration = all.find(node => node.type === "select" && node.props.ariaLabel === "Hook duration");
+  assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), [4, 5, 6, 7, 8, 9, 10]);
+});
+
+test("Talking Head exposes its saved image library with owner, limits and explicit selection", async () => {
+  const chosen = [], saved = {id:"saved",url:"https://owned.test/product.png"};
+  const h = harness();
+  const tree = h.render({ ownerId:"owner-a", imageReferences:{assets:[],maxImages:6,chooseSavedImage:async (...args)=>{chosen.push(args);return true;}} });
+  const library = nodes(tree).find(n=>n.type === "image-library");
+  assert.equal(library.props.ownerId,"owner-a"); assert.equal(library.props.disabled,false);
+  assert.deepEqual(chosen,[]); assert.equal(await library.props.onSelect(saved),true);
+  assert.deepEqual(chosen,[[saved,"owner-a"]]);
+  const full = nodes(h.render({imageReferences:{assets:Array.from({length:6},(_,n)=>({url:`/image-${n}`})),maxImages:6}})).find(n=>n.type === "image-library");
+  assert.equal(full.props.disabled,false);
+  assert.equal(full.props.limitReached,true, "At capacity, selected images must remain removable");
+});
+
 test("all optional generation references remain visible above instructions and errors stay visible", () => {
   const tree = harness().render({ creator: { asset: null, loading: false, error: "Choose a smaller image." } });
   const all = nodes(tree);
@@ -95,6 +127,33 @@ test("all optional generation references remain visible above instructions and e
   assert.ok(alert);
   assert.equal(alert.props.children, "Choose a smaller image.");
   assert.equal(alert.props.hidden, undefined);
+});
+
+test("shared creation tiles remove the chosen image or video directly and retain the collection contract", () => {
+  const first = { name: "first.png", url: "blob:first" }, second = { name: "second.png", url: "blob:second" };
+  const removed = [];
+  let clearedAll = 0, clearedVideo = 0;
+  const creator = { asset: first, loading: false, remove: () => clearedAll++ };
+  const all = nodes(harness().render({ creator,
+    imageReferences: { assets: [first, second], maxImages: 6, removeImage: url => removed.push(url) },
+    videoReference: { asset: { name: "clip.mp4", url: "blob:clip" }, loading: false, remove: () => clearedVideo++ },
+  }));
+  all.find(node => node.type === "image-preview" && node.props.url === second.url).props.onRemove();
+  assert.deepEqual(removed, [second.url]);
+  assert.equal(clearedAll, 0);
+  all.find(node => node.type === "image-preview" && node.props.kind === "video").props.onRemove();
+  assert.equal(clearedVideo, 1);
+  const single = nodes(harness().render({ creator })).find(node => node.type === "image-preview");
+  single.props.onRemove(); assert.equal(clearedAll, 1);
+});
+
+test("shared creation tiles disable direct removal while their attachments are loading", () => {
+  const all = nodes(harness().render({
+    creator: { asset: { name: "image.png", url: "blob:image" }, loading: true, remove() {} },
+    videoReference: { asset: { name: "video.mp4", url: "blob:video" }, loading: true, remove() {} },
+  })).filter(node => node.type === "image-preview");
+  assert.equal(all.length, 2);
+  assert.ok(all.every(node => node.props.disabled));
 });
 
 test("settings retain their selections when the form rerenders with attachments or instructions", () => {
@@ -139,6 +198,21 @@ test("disabled Seedance is neither offered nor used as the default", () => {
   assert.ok(enabled.props.options.some((option) => option.value === "seedance_2_5"));
 });
 
+test("Talking Head keeps Seedance available after model changes and restores its saved settings", () => {
+  const actual = harness({ seedanceEnabled: true });
+  const field = label => nodes(actual.render()).find(node => node.type === "select" && node.props.ariaLabel === label);
+  assert.match(read("components/explore/hook-workflow-preview.tsx"), /<HookWorkflowComposer[\s\S]*?audioLabel="Talking head audio"/);
+  field("Hook model").props.onChange("google_omni");
+  field("Hook quality").props.onChange("1080p");
+  assert.ok(field("Hook model").props.options.some(option => option.value === "seedance_2_5"));
+  field("Hook model").props.onChange("seedance_2_5");
+  assert.equal(field("Hook model").props.value, "seedance_2_5");
+  assert.equal(field("Hook quality").props.value, "720p");
+  const { workflow } = generationModules(true);
+  const saved = { model: "seedance_2_5", duration: 17, resolution: "480p", quantity: 2, aspectRatio: "16:9" };
+  assert.deepEqual(JSON.parse(JSON.stringify(workflow.normalizeWorkflowGenerationSettings(JSON.parse(JSON.stringify(saved))))), saved);
+});
+
 test("model changes atomically reset incompatible settings but retain valid output and ratio choices", () => {
   const { workflow } = generationModules(true);
   const seedance = workflow.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 30, resolution: "480p", quantity: 4, aspectRatio: "16:9" });
@@ -180,24 +254,33 @@ test("the shared settings hook owns the draft, applies rapid changes to current 
   assert.equal(exported.useWorkflowGenerationSettings(10).dirty, false);
   for (const file of ["hook-workflow-preview", "phone-workflow-preview"]) {
     const parent = read(`components/explore/${file}.tsx`);
-    assert.match(parent, /useWorkflowGenerationSettings\(/);
+    if (file === "hook-workflow-preview") {
+      assert.match(parent, /useWorkflowSession\(/);
+      assert.match(parent, /setGenerationSettings\(previous => normalizeWorkflowGenerationSettings\(\{ \.\.\.previous, \.\.\.patch \}\)\)/);
+      assert.match(parent, /updateSession\(previous => \(\{ \.\.\.previous, generationSettings: normalizeWorkflowGenerationSettings\(\{ \.\.\.previous.generationSettings, \.\.\.patch \}\)/);
+    } else assert.match(parent, /useWorkflowGenerationSettings\(/);
     assert.match(parent, /generationSettings=\{generation.settings\}/);
-    assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
-    assert.match(parent, /const dirty = Boolean\((?:clipsDirty \|\| )?selection.dirty \|\| generation.dirty/);
+    if (file === "hook-workflow-preview") assert.match(parent, /onGenerationSettingsChange=\{patch =>/);
+    else assert.match(parent, /onGenerationSettingsChange=\{generation.changeSettings\}/);
+    if (file === "phone-workflow-preview") assert.match(parent, /const dirty = Boolean\(selection.dirty \|\| generation.dirty/);
+    else {
+      assert.match(parent, /const dirty = Boolean\(hasLocalReferences/);
+      assert.match(parent, /videoReference.asset && !references.selectedId/, "Recoverable catalogue clips do not need a local-file loss warning");
+    }
   }
 });
 
 test("text-only prompts remain valid and local reference previews do not promise unsupported generation behavior", () => {
   const text = nodes(harness().render()).filter((node) => node.type === "p").flatMap(node => nodes(node).map(child => typeof child.props.children === "string" ? child.props.children : "")).join(" ");
   assert.match(text, /Text-only prompts are supported; reference images are optional/);
-  assert.match(text, /Use Seedance 2.5 for a video reference up to 30 seconds/);
+  assert.match(text, /WAN 3.0: up to 15 seconds and 32 MB · Seedance 2.5: up to 30 seconds and 250 MB/);
   assert.doesNotMatch(source, /disabled=\{!creator.asset|instructions.*creator.asset/);
   const audio = read("components/explore/workflow-audio-reference.tsx");
   assert.match(audio, /<PopoverTitle>Audio reference<\/PopoverTitle>/);
-  assert.match(audio, /Requires Seedance 2\.5 · Up to 30 seconds/);
+  assert.match(audio, /WAN 3\.0: up to 15 seconds · Seedance 2\.5: up to 30 seconds/);
   assert.doesNotMatch(audio, /voice—not background music or demo audio/);
   assert.doesNotMatch(audio, /Exact recording<\/Button>/);
-  assert.match(audio, /maxDuration: 30/);
+  assert.match(audio, /maxDuration \}/);
   assert.doesNotMatch(audio, /Use exact recording for the spoken words/);
 });
 

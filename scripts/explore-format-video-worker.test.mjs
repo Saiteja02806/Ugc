@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as keyframeContract from "../worker/src/lib/hook-keyframe-generation-contract.ts";
+import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 
 function load(file, imports = {}) {
   const exports = {};
@@ -15,16 +18,20 @@ const buffer = Buffer.from([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]);
 const provider = name => async params => { requests.push({ provider: name, ...params }); await params.onOperationCreated("operation-fixture"); await params.onOperationSucceeded("operation-fixture", "https://output.test/video.mp4"); return buffer; };
 const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts", {
   "../lib/explore-reference-soundtrack.js": { getGenerationReferenceSoundtrack: () => null },
-  "../lib/explore-generated-reference-audio.js": { applyGeneratedReferenceAudio: () => assert.fail("No soundtrack is selected in this provider fixture") },
+  "../lib/explore-generated-reference-audio.js": { applyGeneratedReferenceAudio: () => assert.fail("No soundtrack is selected in this provider fixture"), silenceGeneratedVideo: () => assert.fail("This legacy fixture has no explicit sound setting") },
   "../lib/video-reference-input.js": load("worker/src/lib/video-reference-input.ts"),
   "../lib/private-media.js": { resolveOwnedPrivateMediaUrl: async url => url },
+  "../lib/hook-keyframe-generation-contract.js": keyframeContract,
+  "../lib/hook-starting-frame-video.js": startingFrameVideo,
   "../logger.js": { logger: { info() {} } },
   "../lib/generation-provider.js": { assertProviderOperationCanContinue: () => "submit", createGenerationRequestFingerprint: value => JSON.stringify(value),
     persistProviderSubmissionFailure: () => assert.fail("Unexpected provider failure"), toProviderPollingRetry: error => error,
     ProviderOperationTerminalError: class extends Error {}, ProviderRequestNotSubmittedError: class extends Error {}, ProviderSubmissionUncertainError: class extends Error {}, },
   "../lib/hook-video-provider.js": { resolveHookVideoProvider: () => "gemini" },
   "../lib/runway-seedance-video.js": { generateRunwaySeedanceVideoBuffer: provider("runway-seedance") },
+  "../lib/runway-wan-video.js": { generateRunwayWanVideoBuffer: provider("runway-wan") },
   "../lib/openrouter-wan-video.js": { generateOpenRouterWanVideoBuffer: provider("openrouter") },
+  "../lib/reapi-video.js": { generateReapiVideoBuffer: provider("reapi") },
   "../lib/video-prompt-policy.js": load("worker/src/lib/video-prompt-policy.ts"),
   "../lib/openrouter-seedance-video.js": { generateOpenRouterSeedanceVideoBuffer: provider("openrouter") },
   "../lib/kling-video.js": { generateKlingVideoBuffer: provider("kling") },

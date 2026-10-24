@@ -1,0 +1,31 @@
+{
+  "candidateVersion": 5,
+  "status": "Illustrative drafts by the assistant for user review; not outputs from an application/provider test. No new paid generation. These examples are not embedded in the candidate system prompt.",
+  "business": "UGCPilot: tailored content creation and scheduling for SaaS founders; posting retains human approval.",
+  "examples": [
+    {
+      "sourceRequestKey": "c752e103-bd03-4d0c-b47c-aa95fe4a881c",
+      "source": "pov: you’re dating an IT guy",
+      "remix": "pov: your content calendar is dating an IT guy",
+      "preserved": "Lowercase POV, relationship setup and playful personification. The calendar is a metaphor, not a real relationship or a feature claim."
+    },
+    {
+      "sourceRequestKey": "4aba6844-313f-4ab3-ad1b-8f07dec951d7",
+      "source": "3 years of video editing\nand NOW i find this??? 😳",
+      "remix": "still making every post yourself\nand NOW you find this??? 😳",
+      "preserved": "Effort followed by late-discovery regret, NOW emphasis and incredulous punchline; no claimed three-year personal history."
+    },
+    {
+      "sourceRequestKey": "292d844b-24cc-4efe-aa75-4023d4c09dea",
+      "source": "HOW is this even LEGAL?!?\n😭",
+      "remix": "HOW is this posting cheat code even LEGAL?!?\n😭",
+      "preserved": "Exaggerated disbelief, curiosity, punctuation and colloquial crying emoji. Cheat code is a playful metaphor; no unlawful conduct is claimed."
+    },
+    {
+      "sourceRequestKey": "20850ea9-3840-4b55-8979-33c07e15c2cb",
+      "source": "no way this can HELP\nyou get through your\nRESEARCH! 😭",
+      "remix": "no way this can HELP\nyou get your app\nout of the group chat 😭",
+      "preserved": "Three-line disbelief/relief rhythm and informal voice, moved to a founder's playful marketing situation. This is an illustrative scenario, not a claim about an actual user's history."
+    }
+  ]
+}

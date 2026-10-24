@@ -1,4 +1,11 @@
 import "server-only";
+import { canAccessCreatorAccounts } from "@/lib/explore/creator-account-access";
+import { creatorSlideFromUrl } from "@/lib/explore/creator-slideshows";
+import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
+import { resolveSlideshowNamedContext } from "@/lib/explore/slideshow-named-context";
+import { planSlideshowRequest, SlideshowPlanError } from "@/lib/explore/slideshow-plan-service";
+import { compileSlideshowOutputPlan } from "@/lib/explore/slideshow-request-plan";
+import { readRemixSource, remixSourceFromJob, type RemixTextSource } from "@/lib/explore/remix-source";
 
 import { NextResponse } from "next/server";
 
@@ -25,6 +32,8 @@ import { canonicalMediaReference, isTrustedMediaReferenceUrl as isTrustedStorage
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { MAX_IMAGE_REFERENCE_CONTEXT, parseImageReferenceContext } from "@/worker/src/lib/image-reference-context";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "@/worker/src/lib/slideshow-generation-contract";
+import { readSlideshowGenerationSlot, slideshowGenerationSlot, slideshowSlotPrompt, type SlideshowGenerationSlot } from "@/worker/src/lib/slideshow-generation-batch";
+import { loadSlideshowBusinessContext, slideshowBusinessContextPrompt, SlideshowBusinessContextUnavailableError, type SlideshowBusinessContext } from "@/lib/explore/slideshow-business-context";
 import {
   BillingAccessError,
   deliverBillingUsageForJob,
@@ -40,14 +49,17 @@ type GenerateRequest = {
   model?: unknown;
   prompt?: unknown;
   quantity?: unknown;
+  slideshowSlideCount?: unknown;
   referenceImageUrl?: unknown;
   referenceImageUrls?: unknown;
   referenceImageAssetId?: unknown;
   referenceImageAssetIds?: unknown;
   regenerationImageAssetId?: unknown;
+  slideshowContext?: unknown;
 };
 
 type ImageJobOutput = {
+  slideshowGeneration?: unknown;
   generationId?: unknown;
   height?: unknown;
   key?: unknown;
@@ -95,6 +107,7 @@ function getSafeOutput(output: unknown) {
   const imageOutput = output as ImageJobOutput;
 
   return {
+    ...(readSlideshowGenerationSlot(imageOutput.slideshowGeneration) ? { slideshowGeneration: readSlideshowGenerationSlot(imageOutput.slideshowGeneration) } : {}),
     generationId:
       typeof imageOutput.generationId === "string"
         ? imageOutput.generationId
@@ -114,7 +127,7 @@ function getSafeOutput(output: unknown) {
 }
 
 export async function handleAIStudioImageGeneration(request: Request) {
-  let user;
+  let user: Awaited<ReturnType<typeof requireAIStudioProUser>>;
 
   try {
     user = await requireAIStudioProUser(request);
@@ -143,6 +156,11 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
   const aspectRatio = parseAIStudioImageAspectRatio(body?.aspectRatio ?? (body?.exploreFormat === "slideshow" ? "4:5" : undefined));
   const quantity = parseAIStudioGenerationQuantity(body?.quantity);
+  const slideCount = body?.slideshowSlideCount === undefined ? 1 : body.slideshowSlideCount;
+  if (body?.slideshowSlideCount !== undefined && (body.exploreFormat !== "slideshow" || typeof slideCount !== "number" || !Number.isInteger(slideCount) || slideCount < 1 || slideCount > 10 || body.regenerationImageAssetId !== undefined)) {
+    return NextResponse.json({ ok: false, message: "Choose 1–10 slides for each slideshow version." }, { status: 400 });
+  }
+  const totalOutputs = quantity * Number(slideCount);
   if (body?.exploreFormat !== undefined && body.exploreFormat !== "slideshow") {
     return NextResponse.json({ message: "Choose an image workflow.", ok: false }, { status: 400 });
   }
@@ -157,7 +175,16 @@ export async function handleAIStudioImageGeneration(request: Request) {
   let regenerationReferenceIndex: number | undefined;
   let attachmentReferences: string[] = [];
   let regenerationReferenceUrl: string | null = null;
-  try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
+  let regenerationRemixSource: RemixTextSource | null = null;
+  async function requestImageUrl(value: unknown) {
+    const privateSlide = creatorSlideFromUrl(value);
+    if (privateSlide) {
+      if (body?.exploreFormat !== "slideshow" || !canAccessCreatorAccounts(user)) throw new Error("Private reference unavailable.");
+      return privateSlide.canonicalUrl;
+    }
+    return cleanTrustedHttpsUrl(await canonicalMediaReference(value,user.uid));
+  }
+  try { referenceImageUrl = await requestImageUrl(body?.referenceImageUrl); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
   if (body?.referenceImageUrl && !referenceImageUrl) {
     return NextResponse.json(
@@ -174,7 +201,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
       const requested = parseImageReferenceContext(body.referenceImageUrls);
       const canonical: string[] = [];
       for (const url of requested) {
-        const owned = cleanTrustedHttpsUrl(await canonicalMediaReference(url, user.uid));
+        const owned = await requestImageUrl(url);
         if (!owned) throw new Error("Untrusted reference.");
         canonical.push(owned);
       }
@@ -188,13 +215,16 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
 
   const styleReferences = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
+  if (body?.slideshowSlideCount !== undefined && styleReferences.length !== slideCount) {
+    return NextResponse.json({ ok: false, message: "The selected slides changed. Select the reference slides again." }, { status: 400 });
+  }
   if (body?.referenceImageAssetId !== undefined) {
     if (body.exploreFormat !== "slideshow" || typeof body.referenceImageAssetId !== "string" || !UUID_PATTERN.test(body.referenceImageAssetId)) {
       return NextResponse.json({ ok: false, message: "Choose a valid uploaded reference image." }, { status: 400 });
     }
     try {
       const asset = await getMediaAssetForOwner({ assetId: body.referenceImageAssetId, userId: user.uid });
-      const ownedUrl = asset && cleanTrustedHttpsUrl(await canonicalMediaReference(asset.url, user.uid));
+      const ownedUrl = asset && await requestImageUrl(asset.url);
       if (!asset || asset.status !== "ready" || asset.collection !== "image" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) || !ownedUrl || !asset.file_size_bytes || asset.file_size_bytes > 25 * 1024 * 1024) {
         return NextResponse.json({ ok: false, message: "This reference image is no longer available. Upload it again or choose another image." }, { status: 400 });
       }
@@ -227,13 +257,22 @@ export async function handleAIStudioImageGeneration(request: Request) {
       if ([...new Map(assets.map(asset => [asset!.id, asset!])).values()].reduce((bytes, asset) => bytes + asset.file_size_bytes!, 0) > 50 * 1024 * 1024) {
         return NextResponse.json({ ok: false, message: "Use reference images up to 50 MB combined." }, { status: 400 });
       }
-      const ownedUrls = await Promise.all(assets.map(async asset => cleanTrustedHttpsUrl(await canonicalMediaReference(asset!.url, user.uid))));
+      const ownedUrls = await Promise.all(assets.map(async asset => requestImageUrl(asset!.url)));
       if (ownedUrls.some(url => !url)) return NextResponse.json({ ok: false, message: "A reference image is unavailable to your account." }, { status: 400 });
       attachmentReferences = ownedUrls.slice(0, ids.length) as string[];
       const additional = [...new Set(ownedUrls.slice(0, ids.length) as string[])].filter(url => !layoutReferences.includes(url));
       const references = [...layoutReferences, ...additional];
       const regenerationUrl = regenerationId ? ownedUrls.at(-1)! : null;
       regenerationReferenceUrl = regenerationUrl;
+      if (body.slideshowContext !== undefined && regenerationId) {
+        const target = assets.at(-1)!;
+        if (target.source_type === "generated_image" && target.source_record_id) {
+          const origin = await getBackgroundJobById(target.source_record_id);
+          if (origin?.userId === user.uid && origin.jobType === IMAGE_JOB_TYPE) regenerationRemixSource = remixSourceFromJob(origin.input);
+        } else if (target.source_type === "upload" && target.project_id === "explore-catalog-reference" && target.metadata && typeof target.metadata === "object" && !Array.isArray(target.metadata)) {
+          regenerationRemixSource = readRemixSource(target.metadata.remixTextSource);
+        }
+      }
       if (regenerationUrl && !references.includes(regenerationUrl)) { references.push(regenerationUrl); regenerationReferenceIndex = references.length; }
       if (references.length > MAX_IMAGE_REFERENCE_CONTEXT) return NextResponse.json({ ok: false, message: `Use up to ${MAX_IMAGE_REFERENCE_CONTEXT} reference images in total. Select fewer slideshow references or remove an attached image.` }, { status: 400 });
       referenceImageUrls = parseImageReferenceContext(references);
@@ -262,21 +301,65 @@ export async function handleAIStudioImageGeneration(request: Request) {
   }
 
   let slideshowReferenceContract: SlideshowReferenceContract | undefined;
+  let businessProfile: { businessProfileId: string; businessProfileVersion: number } | undefined;
+  let slideshowBusinessContext: SlideshowBusinessContext | undefined;
+  const baseIdempotencyKey = cleanIdempotencyKey(request.headers.get("Idempotency-Key") ?? body?.idempotencyKey);
+  let plannedOutputs: ReturnType<typeof compileSlideshowOutputPlan>[] | undefined;
+  if (body?.slideshowContext !== undefined && body.exploreFormat !== "slideshow") return NextResponse.json({ ok: false, message: "Image assignments are available in Slideshows." }, { status: 400 });
   if (body?.exploreFormat === "slideshow") {
+    if (requiresScreenshotAttachment(prompt) && !attachmentReferences.length) return NextResponse.json({ ok: false, message: "Your instructions refer to an uploaded screenshot, but none is attached. Attach it with + before generating." }, { status: 400 });
     const references = referenceImageUrls ?? (referenceImageUrl ? [referenceImageUrl] : []);
     if (!references.length) return NextResponse.json({ ok: false, message: "Choose a slideshow style reference, attach an image or select a slide to recreate." }, { status: 400 });
     const indexOf = (url: string) => references.indexOf(url) + 1;
     slideshowReferenceContract = parseSlideshowReferenceContract({
-      version: 2,
+      version: 3,
       styleReferenceIndices: styleReferences.map(indexOf),
       attachmentReferenceIndices: attachmentReferences.map(indexOf),
       ...(regenerationReferenceUrl ? { regenerationReferenceIndex: indexOf(regenerationReferenceUrl) } : {}),
     }, references.length);
-    // Validate the complete provider prompt before reserving credits; never truncate instructions.
-    if (slideshowGenerationPrompt(prompt, aspectRatio, slideshowReferenceContract).length > 32_000) {
+    try {
+      const context = await loadSlideshowBusinessContext(user.uid);
+      slideshowBusinessContext = context;
+      businessProfile = { businessProfileId: context.businessProfileId, businessProfileVersion: context.businessProfileVersion };
+    } catch (error) {
+      return NextResponse.json({ ok: false, message: error instanceof SlideshowBusinessContextUnavailableError ? error.message : "Could not load your business context." }, { status: error instanceof SlideshowBusinessContextUnavailableError ? error.status : 503 });
+    }
+    if (body.slideshowContext !== undefined) {
+      try {
+        const ids = (body.referenceImageAssetIds ?? []) as string[];
+        const named = await resolveSlideshowNamedContext(body.slideshowContext, user.uid, prompt, styleReferences,
+          attachmentReferences.map((url, index) => ({ id: ids[index], url })),
+          regenerationReferenceUrl ? { id: String(body.regenerationImageAssetId), url: regenerationReferenceUrl } : undefined,user);
+        if (named.targetIds.length !== Number(slideCount)) return NextResponse.json({ ok: false, message: "The selected slide count changed. Select the slides again." }, { status: 400 });
+        if (prompt.length > 24000) return NextResponse.json({ ok: false, message: "Use up to 24,000 characters so every slide's instructions can be preserved." }, { status: 400 });
+        const missing = getMissingRuntimeEnv();
+        if (missing.length) return NextResponse.json({ ok: false, message: "Image generation is not configured yet. Your draft is preserved." }, { status: 501 });
+        const planned = await planSlideshowRequest(user.uid, baseIdempotencyKey, named);
+        if (planned.clarifications.length) return NextResponse.json({ ok: false, message: planned.clarifications.join(" "), clarifications: planned.clarifications }, { status: 422 });
+        plannedOutputs = named.targetIds.map((_, index) => compileSlideshowOutputPlan(named, planned, index));
+        for (const output of plannedOutputs) {
+          const contract = parseSlideshowReferenceContract({ version: 4, styleReferenceIndices: output.styleReferenceIndices, attachmentReferenceIndices: output.attachmentReferenceIndices,
+            ...(output.regenerationReferenceIndex ? { regenerationReferenceIndex: output.regenerationReferenceIndex } : {}), plan: output.plan }, output.urls.length);
+          if (slideshowBusinessContextPrompt(slideshowGenerationPrompt("", aspectRatio, contract), slideshowBusinessContext!, true).length > 32000) throw new SlideshowPlanError("The instructions for a slide are too long. Shorten them before generating.");
+        }
+      } catch (error) {
+        return NextResponse.json({ ok: false, message: error instanceof SlideshowPlanError ? error.message : "Could not verify the image names and slide assignments. Review the selected sources and uploads." }, { status: error instanceof SlideshowPlanError ? error.status : 400 });
+      }
+    }
+    if (!plannedOutputs) {
+    // Legacy jobs validate their unchanged complete provider prompt.
+    const contextualPrompt = slideshowBusinessContextPrompt(prompt, slideshowBusinessContext!, true);
+    const longestSlot = body?.slideshowSlideCount === undefined ? undefined
+      : slideshowGenerationSlot("prompt-length-check", Number(slideCount), quantity, totalOutputs - 1);
+    const longestSlotPrompt = longestSlot ? slideshowSlotPrompt(contextualPrompt, longestSlot, true) : contextualPrompt;
+    // Slide 10 also has a two-digit base-image index in its reference guidance.
+    const longestSlotContract = longestSlot ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[longestSlot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== longestSlot.slideIndex - 1)] } : slideshowReferenceContract;
+    if (slideshowGenerationPrompt(longestSlotPrompt, aspectRatio, longestSlotContract).length > 32_000) {
       return NextResponse.json({ ok: false, message: "Shorten your instructions so the slideshow prompt, including reference guidance, fits within 32,000 characters." }, { status: 400 });
     }
+    }
   }
+
 
   const missingRuntimeEnv = getMissingRuntimeEnv();
 
@@ -292,18 +375,20 @@ export async function handleAIStudioImageGeneration(request: Request) {
     );
   }
 
-  const baseIdempotencyKey = cleanIdempotencyKey(
-    request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
-  );
-  const queuedJobs: { generationId: string; jobId: string }[] = [];
+  const queuedJobs: { generationId: string; jobId: string; slideshowGeneration?: SlideshowGenerationSlot }[] = [];
   let queueError: unknown = null;
 
-  for (let index = 0; index < quantity; index += 1) {
+  for (let index = 0; index < totalOutputs; index += 1) {
+    const slot = body?.slideshowSlideCount === undefined ? undefined : slideshowGenerationSlot(baseIdempotencyKey, Number(slideCount), quantity, index);
+    const plannedOutput = plannedOutputs?.[slot ? slot.slideIndex - 1 : 0];
+    const slotContract = plannedOutput ? parseSlideshowReferenceContract({ version: 4, styleReferenceIndices: plannedOutput.styleReferenceIndices, attachmentReferenceIndices: plannedOutput.attachmentReferenceIndices,
+      ...(plannedOutput.regenerationReferenceIndex ? { regenerationReferenceIndex: plannedOutput.regenerationReferenceIndex } : {}), plan: plannedOutput.plan }, plannedOutput.urls.length)
+      : slot && slideshowReferenceContract ? { ...slideshowReferenceContract, styleReferenceIndices: [slideshowReferenceContract.styleReferenceIndices[slot.slideIndex - 1], ...slideshowReferenceContract.styleReferenceIndices.filter((_, position) => position !== slot.slideIndex - 1)] } : slideshowReferenceContract;
     const generationId = crypto.randomUUID();
     const idempotencyKey = getChildIdempotencyKey(
       baseIdempotencyKey,
       index,
-      quantity,
+      totalOutputs,
     );
     let creditsReserved = false;
 
@@ -321,16 +406,21 @@ export async function handleAIStudioImageGeneration(request: Request) {
           aspectRatio,
           ...(body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           batchIndex: index + 1,
-          batchSize: quantity,
+          batchSize: totalOutputs,
           generationId,
           model,
+          ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}),
           prompt,
-          referenceImageUrl,
-          ...(referenceImageUrls ? { referenceImageUrls } : {}),
-          ...(subjectReferenceIndex ? { subjectReferenceIndex } : {}),
-          ...(additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
-          ...(regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
-          ...(slideshowReferenceContract ? { slideshowReferenceContract } : {}),
+          referenceImageUrl: plannedOutput?.urls[0] ?? referenceImageUrl,
+          ...(plannedOutput ? { referenceImageUrls: plannedOutput.urls } : referenceImageUrls ? { referenceImageUrls } : {}),
+          ...(!plannedOutput && subjectReferenceIndex ? { subjectReferenceIndex } : {}),
+          ...(!plannedOutput && additionalReferenceStartIndex ? { additionalReferenceStartIndex } : {}),
+          ...(!plannedOutput && regenerationReferenceIndex ? { regenerationReferenceIndex } : {}),
+          ...(slotContract ? { slideshowReferenceContract: slotContract } : {}),
+          ...(plannedOutput ? { slideshowRemixSource: regenerationReferenceUrl ? regenerationRemixSource : plannedOutput.plan.images[0].role === "source" ? { format: "slideshow", referenceId: null, sourceUrl: plannedOutput.urls[0] } : null } : {}),
+          ...(slot ? { slideshowGeneration: slot } : {}),
+          ...(businessProfile ?? {}),
+          ...(slideshowBusinessContext ? { slideshowBusinessContext } : {}),
         },
         jobType: IMAGE_JOB_TYPE,
         projectId: "ai-studio",
@@ -342,6 +432,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
           getJobInputString(backgroundJob.input, "generationId") ||
           generationId,
         jobId: backgroundJob.id,
+        ...(slot ? { slideshowGeneration: slot } : {}),
       });
     } catch (error) {
       queueError = error;
@@ -362,7 +453,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
 
   if (queuedJobs.length > 0) {
     const firstJob = queuedJobs[0];
-    const partial = queuedJobs.length < quantity;
+    const partial = queuedJobs.length < totalOutputs;
 
     return NextResponse.json(
       {
@@ -370,8 +461,8 @@ export async function handleAIStudioImageGeneration(request: Request) {
         jobId: firstJob.jobId,
         jobs: queuedJobs,
         message: partial
-          ? `${queuedJobs.length} of ${quantity} image generations started.`
-          : `${quantity} image generation${quantity === 1 ? "" : "s"} started.`,
+          ? `${queuedJobs.length} of ${totalOutputs} slide images started.`
+          : `${totalOutputs} image generation${totalOutputs === 1 ? "" : "s"} started.`,
         ok: true,
         partial,
       },

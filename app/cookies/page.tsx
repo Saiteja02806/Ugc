@@ -49,6 +49,17 @@ export default function CookiePolicyPage() {
           </LegalList>
         </LegalSection>
 
+        <LegalSection title="Website analytics">
+          <p>
+            Google Analytics is currently disabled on public pages. We do not
+            set Google Analytics cookies or send public page visits and new
+            account creation events to Google Analytics.
+          </p>
+          <p>
+            Your sign-in continues to work regardless of this setting.
+          </p>
+        </LegalSection>
+
         <LegalSection title="Instagram authorization">
           <p>
             When users connect Instagram, Meta or Instagram may use their own

@@ -1,0 +1,15 @@
+.music { min-width: 0; padding-block: 2px; }
+.label { margin: 0 0 4px; font-size: 12px; line-height: 18px; color: var(--muted); }
+.row { display: flex; min-width: 0; align-items: center; gap: 4px; }
+.row .play { flex: none; width: 36px; height: 36px; border-radius: 8px; color: var(--foreground); }
+.track { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 20px; color: var(--foreground); }
+.row .change { flex: none; min-height: 36px; height: auto; padding-inline: 8px; color: var(--muted); font-size: 12px; }
+.panel { width: min(300px, calc(100vw - 32px)); padding: 12px; border-radius: 12px; }
+.option { display: flex; min-height: 56px; width: 100%; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 8px; border-radius: 8px; text-align: left; font-size: 13px; }
+.option:hover, .option:focus-visible { background: var(--card-muted); }
+.option:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.option small { display: block; margin-top: 2px; font-size: 11px; line-height: 17px; color: var(--muted); }
+.option > svg { flex: none; }
+.hint { font-size: 11px; line-height: 18px; color: var(--muted); }
+.back { width: fit-content; }
+@media (max-width: 639px) { .row .play, .row .change { min-height: 44px; } .row .play { width: 44px; height: 44px; } }

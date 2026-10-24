@@ -1,5 +1,21 @@
 # TikTok UI visibility
 
+## Promotional default correction — 16 October 2026 (local)
+
+The user has superseded the October 9 own-brand-on decision below. New TikTok
+posts default promotional disclosure off. Settings → Preferences → Publishing
+defaults → TikTok defaults exposes **Label posts as promotional content** and
+explains the resulting TikTok label. The saved account preference applies to new
+Trending, Explore and scheduler targets. Saved schedules keep their explicit
+values; no existing post or target is silently rewritten. AI disclosure and paid
+partnership settings remain separate.
+
+Release requires the website and
+`20261015190906_tiktok_promotional_content_preference.sql`. The migration defaults
+the new preference to false for existing and future account rows and extends
+account-settings reads/writes while preserving historical receipts. This section
+describes local implementation, not production acceptance.
+
 TikTok visibility is enabled locally on 2026-10-09 after the owner confirmed
 approval and the required permissions/scopes. This supersedes the temporary
 UI hiding implemented on 2026-10-03 while approval was pending.

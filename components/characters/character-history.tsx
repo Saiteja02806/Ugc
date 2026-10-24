@@ -42,7 +42,7 @@ export function CharacterHistory({ open, onOpenChange, images, selectedJobId, on
             <span className="flex h-20 w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card-muted">
               {/* Owned history images are validated against their completed source jobs. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image.url} alt="" loading="lazy" decoding="async" className="size-full object-contain" />
+              <img src={image.url} alt="" loading="lazy" decoding="async" className="pointer-events-none size-full object-contain" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="line-clamp-2 block text-sm font-semibold leading-5">{image.prompt || "AI character"}</span>

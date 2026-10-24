@@ -20,6 +20,7 @@ export function readFormatScheduleDraft(raw: string | null, key: string): Workfl
     const draft = entry?.draft;
     if (entry?.version !== 1 || entry.key !== key || !draft || typeof draft !== "object" ||
       typeof draft.caption !== "string" || draft.caption.length > 10_000 ||
+      draft.captionInitialized !== undefined && typeof draft.captionInitialized !== "boolean" ||
       typeof draft.date !== "string" || !/^(?:\d{4}-\d{2}-\d{2})?$/.test(draft.date) ||
       typeof draft.time !== "string" || !/^(?:[0-2]\d:[0-5]\d)?$/.test(draft.time) ||
       draft.time && Number(draft.time.slice(0, 2)) > 23 ||
@@ -32,7 +33,7 @@ export function readFormatScheduleDraft(raw: string | null, key: string): Workfl
     if (Object.entries(accounts).some(([platform, id]) => !platforms.includes(platform) || typeof id !== "string" || id.length > 128)) return null;
     const connectionIds = Object.fromEntries(platforms.filter(platform => accounts[platform]).map(platform => [platform, accounts[platform]]));
     if (draft.timezone !== undefined) new Intl.DateTimeFormat("en", { timeZone: draft.timezone });
-    return { caption: draft.caption, date: draft.date, time: draft.time, platforms, connectionIds,
+    return { caption: draft.caption, ...(draft.captionInitialized !== undefined ? { captionInitialized: draft.captionInitialized } : {}), date: draft.date, time: draft.time, platforms, connectionIds,
       platform: platforms[0] ?? "", connectionId: connectionIds[platforms[0]] ?? "", ...(draft.timezone !== undefined ? { timezone: draft.timezone } : {}) };
   } catch { return null; }
 }

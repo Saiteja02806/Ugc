@@ -103,7 +103,7 @@ test("demo-only and continuous music mixes share exact speech between review and
     const result = await finishExploreVideo({ sourcePath, demoPath, demoAudioPath: music, demoAudioPlayback: "once", backgroundMusicPath: music, backgroundMusicPlayback: "repeat",
       tools, workDir: join(parent, "render"), captionPreview, subtitles: { language: "en", style: "clean", version: 2, loadTranscript } });
     assert.equal(result.hasDemoBackgroundAudio, true); assert.equal(result.hasBackgroundMusic, true);
-    if (!captionPreview) assert.deepEqual(await readFile(speechPaths[0]), await readFile(join(parent, "render/speech.wav")));
+    if (!captionPreview) assert.deepEqual(await readFile(speechPaths[0]), await readFile(result.subtitleAudioPath));
   }
   assert.equal(submits, 1); assert.deepEqual(identities[0], identities[1]);
 });

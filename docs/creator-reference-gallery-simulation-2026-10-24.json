@@ -1,0 +1,89 @@
+{
+  "receipts": [
+    {
+      "width": 1280,
+      "height": 720,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    },
+    {
+      "width": 1536,
+      "height": 864,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    },
+    {
+      "width": 1280,
+      "height": 600,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "accountsSwitch": true,
+      "sixVideosEach": true,
+      "sourcePreparation": true,
+      "noPhotosNoGeneration": true
+    }
+  ],
+  "slideshowReceipts": [
+    {
+      "width": 1280,
+      "height": 720,
+      "tenSets": true,
+      "allSetRecreateSelections": true,
+      "slideSelectionPreserved": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "tenSets": true,
+      "allSetRecreateSelections": true,
+      "slideSelectionPreserved": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "tenSets": true,
+      "allSetRecreateSelections": true,
+      "slideSelectionPreserved": true
+    }
+  ],
+  "otherEmailHidden": true,
+  "retryAfterReadFailure": true,
+  "returnToAllAndReopen": true,
+  "hoverPlaybackAfterReopen": true,
+  "keyboardEscape": true,
+  "limitations": "Local fixture: actual account menu, gallery cards, hook, authenticated APIs and preparation component; fixture auth/entitlements/photo picker and surrounding layout. No paid generation, hosted acceptance, zoom or coarse-pointer verification."
+}

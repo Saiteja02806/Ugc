@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "id": "explore-20261023-hook",
+      "format": "hook",
+      "sequence": 1,
+      "status": "published",
+      "referenceIds": [
+        "explore-paired-hook-17133540b2315e0a3a05bfbd"
+      ]
+    },
+    {
+      "id": "explore-20261023-slideshow",
+      "format": "slideshow",
+      "sequence": 1,
+      "status": "published",
+      "referenceIds": [
+        "explore-slideshow-general-649259ba9668dd18",
+        "explore-slideshow-general-82d6b7c19da0b3ef",
+        "explore-slideshow-general-2f9cd9c161e9df4e",
+        "explore-slideshow-general-aa89f92f73637d43"
+      ]
+    },
+    {
+      "id": "explore-20261023-hook-refresh",
+      "format": "hook",
+      "sequence": 2,
+      "status": "published",
+      "referenceIds": [
+        "explore-paired-hook-fc44f6214b6e17413600ec13",
+        "explore-paired-hook-ddcfb2950d40f37771058b73",
+        "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+        "explore-paired-hook-20d3e0c0a3051477008bd86b",
+        "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+        "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+        "explore-paired-hook-44d165d51084f977f5146f69",
+        "explore-paired-hook-c15a0f9f2a7c4a28d5330825"
+      ]
+    }
+  ]
+}

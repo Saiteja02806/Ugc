@@ -5,8 +5,10 @@ import {
   getMissingBackgroundJobStorageEnvVars,
   listRecoverableBackgroundJobs,
   recoverBackgroundJob,
+  recoverMissingQueuedBackgroundJob,
 } from "@/lib/jobs/background-jobs";
-import { enqueueBackgroundJobCloudTask } from "@/lib/jobs/gcp-cloud-tasks";
+import { backgroundJobCloudTaskExists, enqueueBackgroundJobCloudTask } from "@/lib/jobs/gcp-cloud-tasks";
+import { recoverStaleBackgroundJob } from "@/lib/jobs/queued-job-recovery";
 import { reconcileDueExplorePendingSchedules } from "@/lib/explore/pending-schedule-service";
 import {
   getMissingBusinessProfileEnvVars,
@@ -81,7 +83,17 @@ export async function POST(request: Request) {
 
     for (const staleJob of staleJobs) {
       try {
-        const recovered = await recoverBackgroundJob(staleJob.id);
+        // Queue age is not a worker failure. Keep the existing delivery and
+        // retry budget while Cloud Tasks is waiting for the serial worker.
+        const { waiting, recovered } = await recoverStaleBackgroundJob(staleJob, {
+          taskExists: backgroundJobCloudTaskExists,
+          recoverQueued: recoverMissingQueuedBackgroundJob,
+          recoverRunning: recoverBackgroundJob,
+        });
+        if (waiting) {
+          results.push({ jobId: staleJob.id, result: "waiting_in_queue" });
+          continue;
+        }
 
         if (!recovered) {
           results.push({ jobId: staleJob.id, result: "skipped" });

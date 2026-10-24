@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as inlineSymbols from "../worker/src/lib/explore-inline-symbols.ts";
 import { z } from "zod";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "../lib/mcp/read-tools.ts";
 
@@ -14,7 +15,13 @@ function load(file, imports = {}, globals = {}) {
   }).outputText, { exports, Error, Buffer, require: name => { assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals });
   return exports;
 }
-const edit = load("worker/src/lib/explore-format-edit.ts", { "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts") });
+const fontMetrics = JSON.parse(readFileSync(new URL("../worker/src/lib/explore-text-font-metrics.json", import.meta.url), "utf8"));
+const fonts = load("worker/src/lib/explore-text-fonts.ts", { "./explore-text-font-metrics.json": fontMetrics });
+const edit = load("worker/src/lib/explore-format-edit.ts", { "./explore-inline-symbols.ts": inlineSymbols,
+
+  "./edit-overlay-render-spec.ts": load("worker/src/lib/edit-overlay-render-spec.ts"),
+  "./explore-text-fonts.ts": fonts,
+});
 const subtitleContracts = load("worker/src/subtitles/contracts.ts", { "./styles.ts": load("worker/src/subtitles/styles.ts") });
 const corrections = load("worker/src/subtitles/corrections.ts", { "./contracts.ts": subtitleContracts });
 const contract = load("worker/src/lib/explore-finishing-contract.ts", { "../subtitles/styles.ts": load("worker/src/subtitles/styles.ts"), "./explore-format-edit.ts": edit, "../subtitles/contracts.ts": subtitleContracts, "../subtitles/corrections.ts": corrections });
@@ -77,7 +84,7 @@ function harness(options = {}) {
     if (!result.isError) tool.config.outputSchema.parse(result.structuredContent);
     return plain(result);
   }
-  return { calls, tools, call, env, receipts, records, accessOff: () => { access = false; } };
+  return { calls, tools, call, env, receipts, records, service, accessOff: () => { access = false; } };
 }
 const input = { request_key: key, draft: { sourceAssetId: source, demoAssetId: demo } };
 const errorCode = result => JSON.parse(result.content[0].text).code;
@@ -99,6 +106,25 @@ test("owned generic hook and demo compose through the real shared service and pr
   assert.equal(h.calls.filter(call => call === "create").length, 1);
   assert.equal(errorCode(await h.call("finish_video", { ...input, draft: { sourceAssetId: source } })), "FINISH_CONFLICT");
   assert.equal(h.calls.filter(call => call === "create").length, 1);
+});
+
+test("new connector subtitles use modern audio preparation while omitted-version replays preserve their receipt", async () => {
+  const options = { env: { EXPLORE_FINISHING_SUBTITLES_ENABLED: "true" } };
+  const h = harness(options), request = { ...input, draft: { sourceAssetId: source, subtitles: { language: "en", style: "serif-box" } } };
+  assert.equal((await h.call("finish_video", request)).isError, undefined);
+  assert.equal(h.receipts.get(`owner-a:${key}`).draft.subtitles.version, 2);
+  const accepted = plain(h.receipts.get(`owner-a:${key}`));
+  await h.call("finish_video", request);
+  assert.deepEqual(plain(h.receipts.get(`owner-a:${key}`)), accepted);
+  assert.equal(h.calls.filter(call => call === "create").length, 1);
+  assert.equal(errorCode(await h.call("finish_video", { ...request, draft: { ...request.draft, subtitles: { ...request.draft.subtitles, placement: "top" } } })), "FINISH_CONFLICT");
+  const legacy = harness(options);
+  await legacy.service.startWorkflowFinishingForOwner("owner-a", key, legacy.tools.get("finish_video").config.inputSchema.parse(request).draft);
+  const before = plain(legacy.receipts.get(`owner-a:${key}`));
+  assert.equal(before.draft.subtitles.version, undefined);
+  assert.equal((await legacy.call("finish_video", request)).isError, undefined);
+  assert.deepEqual(plain(legacy.receipts.get(`owner-a:${key}`)), before);
+  assert.equal(errorCode(await legacy.call("finish_video", { ...request, draft: { ...request.draft, subtitles: { ...request.draft.subtitles, version: 2 } } })), "FINISH_CONFLICT");
 });
 
 test("old generation permission cannot authorize finishing, and rollout/access failures never write", async () => {

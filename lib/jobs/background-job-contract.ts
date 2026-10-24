@@ -5,6 +5,8 @@ import type {
   Json,
 } from "./background-jobs.ts";
 import { remixSourceFromJob, type RemixTextSource } from "../explore/remix-source.ts";
+import { readSlideshowGenerationSlot, type SlideshowGenerationSlot } from "../../worker/src/lib/slideshow-generation-batch.ts";
+import { isProviderBalanceFailure as isKnownProviderBalanceFailure } from "../../worker/src/lib/provider-balance.ts";
 
 export const CANONICAL_BACKGROUND_JOB_TYPES = [
   "audio_generation",
@@ -87,6 +89,7 @@ export function getImplementationBackgroundJobTypes(type?: CanonicalBackgroundJo
 }
 
 export type PublicBackgroundJob = {
+  slideshowGeneration?: SlideshowGenerationSlot;
   remixTextSource?: RemixTextSource | null;
   exploreFormat?: "hook" | "wall_text" | "slideshow";
   cancelRequestedAt: string | null;
@@ -128,7 +131,12 @@ export function isTerminalBackgroundJobStatus(status: BackgroundJobStatus) {
 }
 
 export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
+  if (isProviderOutputRecoveryCandidate(job)) return true;
   const errorCode = getPublicJobErrorCode(job);
+  // Completed ReAPI outputs use the complimentary collection RPC exclusively.
+  // Never fall back to the ordinary funded retry when its rollout is deferred.
+  if (errorCode === "PROVIDER_OUTPUT_COLLECTION_FAILED" && job.input &&
+      typeof job.input === "object" && !Array.isArray(job.input) && job.input.provider === "reapi") return false;
   // A provider's terminal failure needs a new, explicitly requested generation.
   // Replaying this job cannot revive its saved provider operation.
   if (
@@ -148,12 +156,28 @@ export function isRetryableBackgroundJob(job: BackgroundJobRecord) {
   );
 }
 
+/** The database verifies the saved completed operation before granting this once. */
+export function isProviderOutputRecoveryCandidate(job: BackgroundJobRecord) {
+  // Enable only after the reviewed recovery migration is installed. In
+  // particular, do not advertise exhausted-job recovery on a schema without it.
+  if (process.env.ENABLE_COMPLETED_PROVIDER_OUTPUT_RECOVERY !== "true") return false;
+  const input = job.input;
+  return job.jobType === "generate_hook_video" && job.status === "failed" &&
+    Number.isInteger(job.attemptCount) && job.attemptCount >= 0 && job.attemptCount < 20 &&
+    job.errorCode === "PROVIDER_OUTPUT_COLLECTION_FAILED" &&
+    Boolean(input && typeof input === "object" && !Array.isArray(input) &&
+      input.provider === "reapi" && ["seedance_2_5", "wan_3_0"].includes(String(input.model)) &&
+      input.providerOutputRecovery === undefined);
+}
+
 export function getPublicBackgroundJob(job: BackgroundJobRecord) {
+  const slot = job.jobType === "generate_image" && job.input && typeof job.input === "object" && !Array.isArray(job.input) ? readSlideshowGenerationSlot(job.input.slideshowGeneration) : null;
   const format = job.input && typeof job.input === "object" && !Array.isArray(job.input) ? job.input.exploreFormat : undefined;
   const hideWallTextFailureDetails = isWallTextJob(job.jobType);
   const errorCode = getPublicJobErrorCode(job);
   const retryable = isRetryableBackgroundJob(job);
   return {
+    ...(slot ? { slideshowGeneration: slot } : {}),
     ...((job.jobType === "generate_hook_video" || job.jobType === "generate_image") ? { remixTextSource: remixSourceFromJob(job.input) } : {}),
     ...((job.jobType === "generate_hook_video" && (format === "hook" || format === "wall_text") || job.jobType === "generate_image" && format === "slideshow") ? { exploreFormat: format as "hook" | "wall_text" | "slideshow" } : {}),
     cancelRequestedAt: job.cancelRequestedAt,
@@ -167,7 +191,7 @@ export function getPublicBackgroundJob(job: BackgroundJobRecord) {
               : errorCode,
             message: hideWallTextFailureDetails
               ? "We’re handling content preparation automatically. No action is needed from you."
-              : getSafeJobErrorMessage(errorCode, job.errorMessage, retryable),
+              : getSafeJobErrorMessage(errorCode, job.errorMessage, retryable, job.jobType),
             retryable,
           }
         : null,
@@ -199,11 +223,15 @@ function getSafeJobErrorMessage(
   errorCode: string | null,
   errorMessage: string | null,
   retryable: boolean,
+  jobType: BackgroundJobType,
 ) {
   if (
     errorCode === "PROVIDER_INSUFFICIENT_CREDITS" ||
     isProviderBalanceFailure(errorMessage)
   ) {
+    if (jobType === "generate_image" || jobType === "image_generation") {
+      return "The image provider's credit balance is too low to create these images. Contact support before starting a new generation.";
+    }
     return "The video provider's credit balance is too low to create this video. Contact support before starting a new generation.";
   }
 
@@ -216,6 +244,14 @@ function getSafeJobErrorMessage(
       return "The provider could not confirm this request. Contact support to check its status before starting another generation to avoid a duplicate charge.";
     case "provider_operation_failed":
       return "The model provider could not complete this generation. This request cannot be resumed. Start a new generation, or contact support if it fails again.";
+    case "PROVIDER_OUTPUT_COLLECTION_FAILED":
+      return retryable
+        ? "The provider finished your video, but we could not collect the result. Retry to recover the existing video."
+        : "The provider finished your video, but we could not collect the result. Contact support to recover the existing video.";
+    case "provider_operation_pending":
+      return retryable
+        ? "We could not recover the saved generation's result. Retry to check the existing request."
+        : "We could not recover the saved generation's result. Contact support to check the existing request.";
     case "CANCELLED":
       return "This job was cancelled.";
     case "INPUT_INVALID":
@@ -244,6 +280,7 @@ function getPublicJobErrorCode(job: BackgroundJobRecord) {
   // OpenAI image submissions use this durable SDK error code. Keep historical
   // rejections understandable without exposing raw provider diagnostics.
   if (code === "moderation_blocked") return "PROVIDER_CONTENT_MODERATION";
+  if (isKnownProviderBalanceFailure(code, null)) return "PROVIDER_INSUFFICIENT_CREDITS";
   // Older video workers persisted terminal provider errors as JOB_FAILED.
   // Recognize only known signatures; never publish arbitrary stored diagnostics.
   if (
@@ -283,5 +320,5 @@ function isProviderImagePrivacyFailure(errorMessage: string | null) {
 }
 
 function isProviderBalanceFailure(errorMessage: string | null) {
-  return /credit balance is too low/i.test(errorMessage ?? "");
+  return isKnownProviderBalanceFailure(null, errorMessage);
 }

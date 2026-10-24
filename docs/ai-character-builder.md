@@ -1,5 +1,88 @@
 # AI character builder
 
+Prompt display correction, October 19, 2026 (local): the user explicitly wants
+the full submitted prompt visible with its Copy icon beside it, without an
+internal scrollbar. Let the text expand naturally above its images; do not cap
+its height, clip it or add a disclosure. Keep this correction limited to the
+submitted prompt display. Do not infer changes to the composer, image layout,
+generation or reference behavior from this request. The earlier six-line
+scrolling policy below is superseded. This correction is not deployed yet.
+Local browser verification passed at desktop and mobile widths: the full long
+prompt has no height limit or internal overflow, Copy stays beside its first
+line and copies the complete multiline text. Scoped lint and diff checks pass.
+
+Latest local UI fix, October 18, 2026: each generation batch shows its submitted
+prompt as plain text once directly above its images, with a compact Copy icon.
+The text and Copy icon share the image's width, so the prompt wraps directly
+above the image instead of running across the workspace. There is no Prompt
+heading, disclosure or bordered panel. Long text expands to show the complete
+prompt without an internal scrollbar; Copy copies the original multiline prompt and
+reports success or failure. Prompt text comes from the authenticated owned
+job, not the editable next draft; queued batches cache the admitted prompt and
+History previews use their saved prompt. Status responses expose only prompts
+marked `promptSource: user`, preserving the existing rule against exposing old
+planner instructions. Equal prompts from separate submissions stay separate.
+
+Candidate cards now isolate their image controls, and the sticky composer has an
+explicit higher stacking order. Image × controls scroll behind the composer
+instead of appearing or receiving clicks on top of it. Reference thumbnail ×
+controls remain available inside the composer. Local browser checks exercise the
+actual overlapping coordinates at desktop and mobile widths, draft independence,
+copying and History prompt display. These fixes are not yet deployed.
+Validation passed: 74 focused tests, full TypeScript, scoped ESLint and the
+real-component browser fixture. Screenshots are saved under
+`.tmp/character-reference-browser/submitted-prompt-desktop.png` and
+`composer-scroll-{desktop,mobile}.png`. Fixture checks make no paid requests;
+authenticated production acceptance remains pending deployment.
+
+Latest local fix, October 18, 2026: uploaded/pasted character references append
+instead of replacing the previous upload. The compact composer retains ordered
+thumbnails, individual removal and the existing ten-reference limit. Rapid
+pastes queue behind an active upload; generation remains locked until the queue
+settles. Failed uploads retain already accepted references and show an error.
+The + chooser allows multiple files, and chooser/drop inputs follow the same
+append behavior. Adding uploads or pasted images retains selections from My
+influencers; selecting saved images also retains uploads. The ten-image limit
+applies to their combined total.
+
+Single uploads retain `referenceImageAssetId`. Multiple uploads submit the ordered
+`referenceImageAssetIds` list. Saved-character IDs and uploaded-asset IDs can be
+combined; singular and plural fields for the same source remain exclusive.
+Each image is owner/ready/MIME/size/storage-checked
+before the batch reserves credits. The original first URL and complete ordered
+`referenceImageUrls` use the already supported worker multi-reference path.
+Plural IDs participate in fingerprints and pending-request recovery; legacy
+requests retain their original fingerprints. No migration or worker change is
+required. This fix has not yet been deployed.
+
+Local validation: 71 composer, uploader, session, hook and API tests passed,
+along with TypeScript and scoped ESLint. The real-component browser fixture
+checks rapid/serial pastes, multi-file selection, drop, three saved references
+plus two uploads reaching the same request, individual removal, the combined
+ten-image limit, retry recovery, and desktop/mobile fit. Fixtures use mocked
+uploads/generation and spend no credits. Review images:
+`.tmp/character-reference-browser/mixed-references-desktop.png` and
+`mixed-references-mobile.png`. Hosted acceptance remains pending deployment.
+
+Latest local provider change, October 18, 2026: new Seedream 5.0 Pro batches use
+OpenRouter's exact `bytedance-seed/seedream-5-0-pro` model. Existing Runway jobs
+retain their admitted route and paid-operation recovery. References, app credits,
+4,000-character Seedream limit and output dimensions stay unchanged. See
+[the routing contract and deployment order](seedream-openrouter-routing-2026-10-18.md).
+
+Latest local change, October 18, 2026: image downloads accept both `image` and
+`influencer` collections. Automatic saving promotes the existing asset to
+`influencer`; it must preserve download access. Ownership, ready/deleted state,
+image MIME checks and saved-object signing still apply. See
+[the saved-image download diagnosis](influencer-image-download-fix-2026-10-18.md)
+for production evidence, validation and release status.
+
+Latest local change, October 16, 2026: transient workspace notices now have an
+accessible × and dismiss after three seconds, restarting on repeated actions.
+The generation prompt path remains unchanged. See
+[the notice fix and prompt audit](influencer-notice-and-prompt-audit-2026-10-16.md)
+for current provider settings, cropping behavior, verification and release status.
+
 Latest local change, October 12, 2026: users can attach, paste or drop a JPG,
 PNG or WebP image into the character composer and describe the style, look or
 setting they want. The attachment is a direct image reference for generation;
@@ -151,11 +234,27 @@ selected model keep identity; visual similarity still depends on model output.
 ## Current session and history
 
 Results generated during a mounted workspace visit remain visible for that
-visit. On reload or leave-and-return, completed results are hidden and the
-workspace starts clean. The durable client receipt still recovers uncertain
+visit until ten minutes without activity starts a fresh session. On reload or
+leave-and-return, completed results are hidden and the workspace starts clean.
+The durable client receipt still recovers uncertain
 admissions and unfinished jobs; a recovered unfinished batch stays visible when
 it finishes during the current visit. Historical completed batches never become
 foreground results merely because a status request completes.
+
+October 14, 2026 repair: foreground job membership is now scoped to the mounted
+workspace rather than restored from the account's durable receipt. Only newly
+admitted jobs and jobs observed unfinished during the current visit retain their
+completed results on screen. A first status check that finds an already completed
+job leaves it in History. Completed siblings in a partially unfinished batch
+remain in History while the unfinished candidates recover. Failed status checks
+retain recovery and retry controls without classifying old output as new.
+See `docs/character-session-history-fix-2026-10-14.md` for validation and release status.
+
+Generated portraits, saved influencer cards and History thumbnails pass pointer
+events to their app controls instead of the image element. This suppresses the
+browser's image-search hover overlay while preserving pointer and keyboard
+selection inside the workspace. No global browser settings or context menus
+are changed.
 
 The History button loads completed, owned character jobs in cursor pages of 25,
 including candidates that were never selected and images saved to My influencers.

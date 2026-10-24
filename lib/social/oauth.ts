@@ -266,6 +266,7 @@ const STATE_TTL_MINUTES = 10;
 const TIKTOK_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const GOOGLE_TOKEN_REFRESH_SKEW_MS = 15 * 60 * 1000;
 const INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const TIKTOK_PROFILE_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const TIKTOK_TOKEN_REFRESH_STALE_SECONDS = 120;
 const GOOGLE_TOKEN_REFRESH_STALE_SECONDS = 120;
 let supabaseClient: SupabaseClient<SocialOAuthDatabase> | null = null;
@@ -539,13 +540,29 @@ export async function listSocialConnections(
     throw new Error("Could not load social connections.");
   }
 
-  const connections = await Promise.all(
-    (data ?? []).map((connection) =>
-      hydrateInstagramConnectionProfile(connection, trace),
-    ),
-  );
+  return (data ?? []).map(mapSocialConnection);
+}
 
-  return connections.map(mapSocialConnection);
+/** Owned background work; display reads deliberately never hydrate profiles. */
+export async function refreshSocialConnectionProfilesForOwner(userId: string) {
+  const { data, error } = await getClient().from("social_connections").select("*")
+    .eq("user_id", userId).is("revoked_at", null);
+  if (error) throw new Error("Could not load account profiles for refresh.");
+  for (const connection of data ?? []) await hydrateSocialConnectionProfile(connection);
+}
+
+/** Resolve photos separately so account lists never wait on provider requests. */
+export async function getSocialConnectionProfileForOwner(params: {
+  connectionId: string;
+  userId: string;
+  force?: boolean;
+}) {
+  const { data, error } = await getClient().from("social_connections").select("*")
+    .eq("id", params.connectionId).eq("user_id", params.userId)
+    .is("revoked_at", null).maybeSingle();
+  if (error) throw new Error("Could not load the account profile.");
+  if (!data) return null;
+  return mapSocialConnection(await hydrateSocialConnectionProfile(data, params.force));
 }
 
 async function getSocialOAuthReconnectTarget(params: {
@@ -1624,6 +1641,7 @@ async function fetchTikTokAccount(
   });
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(8_000),
   });
   const payload = (await response.json().catch(() => null)) as {
     data?: {
@@ -1658,6 +1676,7 @@ async function fetchTikTokAccount(
     id: user.open_id,
     metadata: {
       avatarUrl: user.avatar_url ?? null,
+      profilePictureSyncedAt: new Date().toISOString(),
       unionId: user.union_id ?? null,
     },
     name: user.display_name ?? "TikTok account",
@@ -1681,7 +1700,7 @@ async function fetchInstagramAccount(
     fallbackAccountIdPresent: Boolean(fallbackAccountId),
     profileRequestStarted: true,
   });
-  const response = await fetch(profileUrl);
+  const response = await fetch(profileUrl, { signal: AbortSignal.timeout(8_000) });
   const payload = (await response.json().catch(() => null)) as {
     account_type?: string;
     error?: unknown;
@@ -1854,7 +1873,7 @@ async function upsertSocialConnection(params: {
     access_token_ciphertext: encryptSecret(params.tokenSet.accessToken),
     expires_at: expiresAt,
     last_error_code: null,
-    metadata: params.account.metadata ?? {},
+    metadata: { ...(params.account.metadata ?? {}), authorizationRevision: randomUUID() },
     platform: params.platform,
     platform_account_name: params.account.name ?? null,
     platform_account_username: params.account.username ?? null,
@@ -2098,6 +2117,11 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
       : effectiveStatus;
 
   return {
+    authorizationRevision: getMetadataString(row.metadata, "authorizationRevision") ?? undefined,
+    profileNeedsRefresh: (row.platform === "instagram" || row.platform === "tiktok") &&
+      row.revoked_at === null && status !== "revoked" && status !== "expired" &&
+      !isSocialProfileFresh(row.platform, row.metadata) && !isProfileBackoffActive(row.metadata) &&
+      !(row.platform === "instagram" && requiresInstagramProfessionalAccount({ lastErrorCode: row.last_error_code, metadata: row.metadata })),
     connectedAt: row.connected_at,
     expiresAt: row.expires_at,
     id: row.id,
@@ -2125,8 +2149,9 @@ function mapSocialConnection(row: SocialConnectionRow): SocialConnection {
   };
 }
 
-async function hydrateInstagramConnectionProfile(
+async function hydrateSocialConnectionProfile(
   row: SocialConnectionRow,
+  force = false,
   trace?: SocialOAuthTraceContext,
 ): Promise<SocialConnectionRow> {
   const professionalAccountRequirementRecorded =
@@ -2139,16 +2164,17 @@ async function hydrateInstagramConnectionProfile(
     !isInstagramProfessionalAccountType(storedAccountType);
 
   if (
-    row.platform !== "instagram" ||
-    professionalAccountRequirementRecorded ||
+    (row.platform !== "instagram" && row.platform !== "tiktok") ||
+    row.revoked_at !== null || row.status === "revoked" ||
+    (row.platform === "instagram" && professionalAccountRequirementRecorded) ||
     (!storedAccountTypeRequiresProfessional &&
-      isInstagramProfileFresh(row.metadata))
+      ((!force && isSocialProfileFresh(row.platform, row.metadata)) || isProfileBackoffActive(row.metadata)))
   ) {
     return row;
   }
 
   try {
-    if (storedAccountTypeRequiresProfessional) {
+    if (row.platform === "instagram" && storedAccountTypeRequiresProfessional) {
       throw new SocialOAuthError(
         "Instagram requires a Creator or Business account for publishing.",
         422,
@@ -2157,21 +2183,23 @@ async function hydrateInstagramConnectionProfile(
       );
     }
 
-    const account = await fetchInstagramAccount(
-      decryptSecret(row.access_token_ciphertext),
-      row.platform_account_id,
-      trace,
-    );
+    if (row.platform === "tiktok" && isTokenExpiring(row.expires_at, TIKTOK_TOKEN_REFRESH_SKEW_MS)) {
+      row = await refreshTikTokConnection({ connection: row, connectionId: row.id, userId: row.user_id });
+    }
+    const account = await fetchPlatformAccount(row.platform,
+      decryptSecret(row.access_token_ciphertext), row.platform_account_id, trace);
+    if (account.id !== row.platform_account_id) throw new Error("Profile account did not match.");
     const metadata = {
       ...row.metadata,
       ...account.metadata,
       professionalAccountRequired: false,
       profileLookupFailed: false,
+      profileLookupRetryAt: null,
     };
     const patch = {
       metadata,
       platform_account_name:
-        account.username && account.name
+        account.name && (row.platform === "tiktok" || account.username)
           ? account.name
           : row.platform_account_name,
       platform_account_username:
@@ -2181,7 +2209,9 @@ async function hydrateInstagramConnectionProfile(
       .from("social_connections")
       .update(patch)
       .eq("id", row.id)
-      .eq("user_id", row.user_id);
+      .eq("user_id", row.user_id).is("revoked_at", null)
+      .filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at)
+      .filter("metadata", "eq", JSON.stringify(row.metadata));
 
     if (error) {
       logSocialOAuthTrace(trace, "connected_accounts_api_response", {
@@ -2196,12 +2226,12 @@ async function hydrateInstagramConnectionProfile(
     };
   } catch (error) {
     const professionalAccountRequired =
-      (error instanceof SocialOAuthError &&
+      row.platform === "instagram" && ((error instanceof SocialOAuthError &&
         error.code === INSTAGRAM_PROFESSIONAL_ACCOUNT_REQUIRED_ERROR) ||
       requiresInstagramProfessionalAccount({
         lastErrorCode: row.last_error_code,
         metadata: row.metadata,
-      });
+      }));
 
     logSocialOAuthTrace(trace, "connected_accounts_api_response", {
       instagramProfileHydrated: false,
@@ -2209,7 +2239,13 @@ async function hydrateInstagramConnectionProfile(
     });
 
     if (!professionalAccountRequired) {
-      return row;
+      // Failed provider lookups must not retry every navigation/job.
+      const metadata = { ...row.metadata, profileLookupRetryAt: new Date(Date.now() + 15 * 60_000).toISOString() };
+      await getClient().from("social_connections").update({ metadata })
+        .eq("id", row.id).eq("user_id", row.user_id).is("revoked_at", null)
+        .filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at)
+        .filter("metadata", "eq", JSON.stringify(row.metadata));
+      return { ...row, metadata };
     }
 
     const patch = {
@@ -2225,7 +2261,9 @@ async function hydrateInstagramConnectionProfile(
       .from("social_connections")
       .update(patch)
       .eq("id", row.id)
-      .eq("user_id", row.user_id);
+      .eq("user_id", row.user_id).is("revoked_at", null)
+      .filter("token_refreshed_at", row.token_refreshed_at === null ? "is" : "eq", row.token_refreshed_at)
+      .filter("metadata", "eq", JSON.stringify(row.metadata));
 
     if (saveError) {
       logSocialOAuthTrace(trace, "connected_accounts_api_response", {
@@ -2241,7 +2279,12 @@ async function hydrateInstagramConnectionProfile(
   }
 }
 
-function isInstagramProfileFresh(metadata: Json) {
+function isProfileBackoffActive(metadata: Json) {
+  const retryAt = getMetadataString(metadata, "profileLookupRetryAt");
+  return retryAt !== null && Date.parse(retryAt) > Date.now();
+}
+
+function isSocialProfileFresh(platform: SocialPlatform, metadata: Json) {
   if (metadata.profileLookupFailed === true) {
     return false;
   }
@@ -2256,7 +2299,7 @@ function isInstagramProfileFresh(metadata: Json) {
 
   return (
     Number.isFinite(syncedAtMs) &&
-    Date.now() - syncedAtMs < INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS
+    Date.now() - syncedAtMs < (platform === "tiktok" ? TIKTOK_PROFILE_REFRESH_INTERVAL_MS : INSTAGRAM_PROFILE_REFRESH_INTERVAL_MS)
   );
 }
 

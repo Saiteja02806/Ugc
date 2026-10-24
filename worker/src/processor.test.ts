@@ -10,7 +10,7 @@ import {
 import type { WorkerQueueTransport } from "./lib/queue-types.js";
 import type { SupabaseJobStore } from "./lib/supabase.js";
 import { toContentPlanProviderRetry } from "./lib/content-plan-provider-retry.js";
-import { ProviderOperationTerminalError } from "./lib/generation-provider.js";
+import { ProviderInsufficientCreditsError, ProviderOperationTerminalError } from "./lib/generation-provider.js";
 import { EmptyWallTextContentPlanResponseError } from "./lib/wall-text-content-plan.js";
 import { toWallTextContentPlanRetry } from "./jobs/generate-wall-text-content-plan.js";
 import { DeferredJobError, RetryableJobError } from "./retryable-job-error.js";
@@ -71,6 +71,31 @@ test("checkpoint processing accepts the guarded ID-only response", async () => {
     } },
   });
   assert.equal(continued, true); assert.equal(job.status, "completed");
+});
+
+test("provider credit exhaustion fails once with its billing code and removes delivery instead of requeuing", async () => {
+  const job = createJob(), commands: string[] = [];
+  const store = createJobStore(job);
+  let savedCode: string | undefined;
+  let handlerCalls = 0;
+  store.markFailed = (async params => {
+    savedCode = params.errorCode;
+    job.claim_token = null;
+    job.status = "failed";
+    return { ...job };
+  }) as SupabaseJobStore["markFailed"];
+  await processWorkerMessage({
+    config: createConfig(), message: createMessage(), queue: createQueue(commands), store,
+    dependencies: { async runJob() {
+      handlerCalls += 1;
+      throw new ProviderInsufficientCreditsError(new Error("429 You have no credits remaining. request-private"));
+    } },
+  });
+  assert.equal(savedCode, "PROVIDER_INSUFFICIENT_CREDITS");
+  assert.equal(job.status, "failed");
+  assert.equal(handlerCalls, 1);
+  assert.equal(commands.filter(command => command === "DeleteMessageCommand").length, 1);
+  assert.equal(commands.filter(command => command === "ChangeMessageVisibilityCommand").length, 0);
 });
 
 test("cancellation during a guarded checkpoint stops the handler before output completion", async () => {

@@ -17,6 +17,7 @@ test("Settings exposes the approved customer sections in order", () => {
     "Account",
     "Business Context",
     "Plan & billing",
+    "Media library",
     "App screenshots",
     "Connected accounts",
     "Preferences",
@@ -33,6 +34,7 @@ test("Settings keeps existing deep links while rendering one active panel", () =
     "account",
     "business-context",
     "subscription-billing",
+    "media-library",
     "app-screenshots",
     "instagram-publishing",
     "preferences",
@@ -52,7 +54,7 @@ test("Settings keeps existing deep links while rendering one active panel", () =
 test("Business Context is a first-class Settings panel, not a detached workflow", () => {
   assert.match(
     workspace,
-    /import \{ BusinessContextSettings \} from "@\/components\/settings\/business-context-settings"/,
+    /const BusinessContextSettings = dynamic\(\(\) => import\("@\/components\/settings\/business-context-settings"\)\.then\(module => module\.BusinessContextSettings\)/,
   );
   assert.match(
     workspace,

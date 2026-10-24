@@ -4,17 +4,36 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import * as inlineSymbols from "../worker/src/lib/explore-inline-symbols.ts";
 import sharp from "sharp";
 import * as remixSource from "../lib/explore/remix-source.ts";
+import { prepareSlideshowSequence } from "../lib/explore/slideshow-preparation.ts";
+import { readSlideshowEditableDraft } from "../lib/explore/slideshow-editable-draft.ts";
+import { insertReferenceSlides } from "../lib/explore/slideshow-assembly.ts";
+import { withReadDeadline } from "../lib/http/read-deadline.ts";
+import { sameBackgroundTargets } from "../lib/media/image-library.ts";
+import { imagePickerThumbnailUrl } from "../lib/media/image-picker.ts";
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, require: name => {
     if (name === "server-only") return {};
+    if (name === "./creator-slideshows.ts" || name === "@/lib/explore/creator-slideshows") return { getCreatorSlideshowReference: () => undefined, creatorSlideFromUrl: () => null };
+    if (name === "./creator-account-access.ts" || name === "@/lib/explore/creator-account-access") return { canAccessCreatorAccounts: () => false };
+    if (name === "../../worker/src/lib/explore-inline-symbols.ts") return inlineSymbols;
+
+    if (name === "@/components/media/image-library-picker") return { ImageLibraryPicker: "ImageLibraryPicker" };
+    if (name === "@/lib/media/image-library") return { sameBackgroundTargets };
+    if (name === "@/lib/media/image-picker") return { imagePickerThumbnailUrl };
+      if (name === "./slideshow-editable-draft.ts" || name === "./slideshow-editable-draft" || name === "@/lib/explore/slideshow-editable-draft") return { readSlideshowEditableDraft };
     if (name === "@/lib/explore/slideshow-api") return load("lib/explore/slideshow-api.ts", imports, globals);
     if (name === "./slideshow-draft" || name === "@/lib/explore/slideshow-draft") return load("lib/explore/slideshow-draft.ts", { "../../worker/src/lib/explore-finishing-contract.ts": { isExploreUuid: uuid } });
     if (name === "./format-slideshow-text-tools") return { FormatSlideshowTextTools: "FormatSlideshowTextTools" };
+    if (name === "./slideshow-add-slides") return { SlideshowAddSlides: "SlideshowAddSlides" };
+    if (name === "./use-slideshow-slide-drag") return load("components/explore/use-slideshow-slide-drag.ts", imports, globals);
+    if (name === "@/lib/explore/slideshow-assembly") return { insertReferenceSlides };
+    if (name === "@/lib/http/read-deadline") return { withReadDeadline };
     if (name === "./remix-text-section") return { RemixTextSection: "RemixTextSection" };
     if (name === "@/lib/explore/remix-source") return remixSource;
     if (!(name in imports)) throw new Error(`Unexpected dependency ${name}`); return imports[name]; }, ...globals });
@@ -90,6 +109,14 @@ test("uploaded slideshow saves resolve every output to an owned ready image and 
   assert.deepEqual(Array.from(h.calls[0].values.p_slides, slide => slide.mediaAssetId), [id(2), id(1)]);
   assert.equal(h.calls[0].values.p_user_id, "owner");
 });
+test("one retained library image can back several distinct slides, including after archive", async () => {
+  const h = route({ assets: new Map([[id(1), { ...asset(1), metadata: { imageLibraryArchived: true } }]]) });
+  const slides = [11, 12, 13].map(number => ({ referenceSlideId: id(number), mediaAssetId: id(1) }));
+  const response = await h.post(`uploaded:${id(40)}`, slides);
+  assert.equal(response.status, 200);
+  assert.deepEqual(Array.from(h.calls[0].values.p_slides, slide => slide.mediaAssetId), [id(1), id(1), id(1)]);
+  assert.deepEqual(Array.from(h.calls[0].values.p_slides, slide => slide.slideNumber), [1, 2, 3]);
+});
 test("foreign, deleted, pending, non-image and untrusted outputs cannot reach Library saving", async () => {
   for (const patch of [{ user_id: "other" }, { deleted_at: "2026-10-08" }, { status: "pending" }, { collection: "video" }, { mime_type: "image/svg+xml" }, { url: "https://evil.test/image.png" }]) {
     const h = route({ assets: new Map([[id(1), { ...asset(1), ...patch }], [id(2), asset(2)]]) });
@@ -119,9 +146,10 @@ test("access and release gates stop a save before database mutations", async () 
 
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join("") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult } = {}) {
+async function editor({ failFirst = false, generated = true, storedDraft = null, localPreview = false, previewImages, onBackToPreview, onContinue = () => {}, storageState, actionsTarget = null, uploadResult, fitUpload = async file => file, libraryItem, libraryItemId, locationHref, waitForRestore = true } = {}) {
   let cursor = 0, nextRequest = 100;
-  const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
+  const slots = [], effects = [], storage = new Map(storageState ?? []), requests = [], libraryReads = [], renders = [], uploads = [], saved = [], dirty = [], controller = { current: null };
+  const navigations = [], browserLocation = locationHref ? { href: locationHref } : undefined;
   if (storedDraft) storage.set(`ugc-explore:slideshow-draft:v2:owner:uploaded:${id(40)}`, JSON.stringify(storedDraft));
   const element = (type, props) => ({ type, props });
   const react = {
@@ -137,34 +165,179 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
     "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async value => ({ id: value, collection: "image", status: "ready", url: "https://storage.test/" + value + ".png", title: "Saved image", createdAt: "", ratio: "9:16" }) },
     "@/lib/ai-studio/reference-media-upload": { uploadAIStudioReferenceMedia: async (file, kind, _, owner) => { uploads.push({ file, kind, owner }); return uploadResult ? uploadResult(file) : { asset: { id: id(300 + uploads.length) } }; } },
     "@/lib/explore/slideshow-text": { EMPTY_SLIDE_TEXT, parseSlideText },
+    "@/lib/explore/slideshow-preparation": { prepareSlideshowSequence },
+    "@/lib/explore/slideshow-image-client": { fitSlideshowUpload: fitUpload },
     "@/lib/explore/slideshow-text-client": { renderSlideText: async (source, design) => { renders.push({ source, design }); return { source, design }; }, createSlideTextSvg: (design, width, height) => slideTextSvg(design, width, height, measure) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "offline-token"; } },
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: uuid }, "./slideshow-editor.module.css": { default: { preview: "preview", overlay: "overlay" } }, "./workflow-creation.module.css": { default: {} },
   }, {
-    document: {}, window: { addEventListener() {}, removeEventListener() {} }, setTimeout, clearTimeout, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    document: {}, URL, window: { location: browserLocation, history: { state: {}, replaceState(_state, _title, url) { navigations.push(url); browserLocation.href = new URL(url, browserLocation.href).href; } }, addEventListener() {}, removeEventListener() {} }, setTimeout, clearTimeout, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     crypto: { randomUUID: () => id(nextRequest++) }, navigator: { locks: { request: async (_, options, callback) => { assert.equal(options.ifAvailable, true); return callback({}); } } },
     fetch: async (url, options) => {
-      if (url === "/api/library?type=carousel&projectId=explore") return { ok: true, json: async () => ({ ok: true, items: requests.map(body => ({ id: id(99), title: "Saved", sourceId: `explore-slideshow:${body.requestKey}`, projectId: "explore", slideCount: body.slides.length, slides: body.slides.map((_, i) => ({ slideNumber: i + 1, renderedUrl: `https://storage.test/${i}.png` })) })) }) };
+      if (url === `/api/library/carousels/${id(99)}`) {
+        libraryReads.push(url);
+        const body = requests.at(-1);
+        const item = libraryItem ?? (body ? { id: id(99), title: "Saved", sourceId: `explore-slideshow:${body.requestKey}`, projectId: "explore", slideCount: body.slides.length, slides: body.slides.map((_, i) => ({ slideNumber: i + 1, renderedUrl: `https://storage.test/${i}.png` })) } : null);
+        return { ok: true, json: async () => ({ok:true, item}) };
+      }
       assert.equal(url, "/api/explore/slideshows", "Only the mocked slideshow saving endpoint may be called");
       const body = JSON.parse(options.body); requests.push(body);
       if (failFirst && requests.length === 1) return { ok: false, json: async () => ({ error: "Interrupted save" }) };
       return { ok: true, json: async () => ({ ok: true, id: id(99), kind: "library_item", title: "Saved", url: "https://storage.test/0.png", slides: body.slides.map((_, i) => `https://storage.test/${i}.png`) }) };
     },
   });
-  const props = { reference: { id: `uploaded:${id(40)}`, slides: [asset(1), asset(2)].map(value => ({ id: value.id, url: value.url, width: 540, height: 960 })) }, previewImages, controllerRef: controller, slideIndex: 0, active: true, generationBusy: false, controlsTarget: {}, resultsTarget: {}, actionsTarget, localPreview, savingEnabled: true, onDirty: () => dirty.push(true), onSaved: output => saved.push(output), onContinue, onRegenerate: () => {}, onBackToPreview };
+  const props = { reference: { id: `uploaded:${id(40)}`, slides: [asset(1), asset(2)].map(value => ({ id: value.id, url: value.url, width: 540, height: 960 })) }, libraryItemId, previewImages, controllerRef: controller, slideIndex: 0, active: true, generationBusy: false, controlsTarget: {}, resultsTarget: {}, actionsTarget, localPreview, savingEnabled: true, onDirty: () => dirty.push(true), onSaved: output => saved.push(output), onContinue, onRegenerate: () => {}, onBackToPreview };
   const render = () => { cursor = 0; const tree = mod.FormatSlideshowEditor(props); for (const effect of effects.splice(0)) effect(); return tree; };
   const control = (type, value) => nodes(render()).find(node => node.type === type && (text(node) === value || node.props["aria-label"] === value));
   const heading = value => nodes(render()).find(node => node.type === "FormatSlideshowTextTools").props.onChange({ heading: value });
   const clickSave = async label => { control("Button", label).props.onClick(); await new Promise(setImmediate); };
   const addImage = (image, index) => { render(); controller.current.useImage(image, index); };
-  render(); await new Promise(resolve => setTimeout(resolve, 10));
+  render(); if (waitForRestore) await new Promise(resolve => setTimeout(resolve, 10));
   if (generated) {
     addImage({ id: id(201), url: "https://storage.test/generated-1.png" }, 0);
     addImage({ id: id(202), url: "https://storage.test/generated-2.png" }, 1);
     control("button", "Preview slide 1").props.onClick();
   }
-  return { render, control, heading, clickSave, requests, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props };
+  return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props, navigations };
 }
+
+test("Create preview shares the edited sequence, text and upload actions without mounting the inspector", async () => {
+  const h = await editor();
+  h.heading("Keep my manual text");
+  const target = h.props.resultsTarget;
+  h.props.active = false; h.props.previewActive = true;
+  let opened = 0; h.props.onEdit = () => opened++;
+  h.props.previewActions = { type: "Button", props: { children: "Generated slides" } };
+  const preview = nodes(h.render()).find(n => n.props?.["aria-label"] === "Slideshow edit preview");
+  assert.match(text(preview), /Your slideshow.*Preview your current sequence.*Generated slides.*Edit slides/s);
+  assert.equal(nodes(h.render()).some(n => n.type === "FormatSlideshowTextTools"), false);
+  assert.equal(nodes(h.render()).some(n => n.type === "portal" && n.props.target === h.props.actionsTarget), false);
+  assert.ok(nodes(preview).some(n => n.props?.["data-slide-text-overlay"] !== undefined));
+  assert.equal(h.control("input", "Upload slideshow images").props.multiple, true);
+  assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], false);
+  h.control("button", "Preview slide 2").props.onClick();
+  h.control("Button", "Edit slides").props.onClick(); assert.equal(opened, 1);
+  h.props.active = true;
+  assert.equal(h.props.resultsTarget, target);
+  assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], true);
+  h.control("button", "Preview slide 1").props.onClick();
+  assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowTextTools").props.design.heading, "Keep my manual text");
+  assert.equal(h.requests.length, 0, "Navigation never saves or replaces a draft");
+  h.props.active = false; h.props.previewActive = false;
+  assert.equal(h.render(), null);
+});
+
+test("a fresh generated slideshow replaces the visible sequence and keeps the prior draft in history", async () => {
+  const h = await editor({ generated: false });
+  const images = (n, count) => Array.from({ length: count }, (_, index) => ({ id: id(n + index), url: `https://storage.test/${n + index}.png` }));
+  h.render(); assert.equal(h.controller.current.useSlideshow(images(600, 4)), true);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 4);
+  h.heading("Keep this edited copy");
+  const direct = await editor({ generated: false, storageState: h.storage });
+  assert.equal(nodes(direct.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 4, "direct entry retains the existing sequence");
+  h.render(); assert.equal(h.controller.current.useSlideshow(images(700, 2), true), false, "background completion cannot replace a current draft");
+  assert.equal(h.controller.current.useSlideshow(images(700, 2)), true); h.render();
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
+  assert.deepEqual(JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner")).slides.map(slide => slide.mediaAssetId), images(700, 2).map(image => image.id));
+  const history = JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner:history"));
+  assert.deepEqual(history[0].slides.map(slide => slide.mediaAssetId), images(600, 4).map(image => image.id));
+  assert.ok(Object.values(history[0].text).some(design => design.heading === "Keep this edited copy"));
+  h.control("select", "Reopen earlier slideshow draft").props.onChange({ target: { value: history[0].id } });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Keep this edited copy");
+  const restored = await editor({ generated: false, storageState: h.storage });
+  assert.equal(nodes(restored.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Keep this edited copy");
+});
+
+test("a completed slideshow preempts a delayed draft restore without losing the old sequence", async () => {
+  const oldSlides = [810, 811, 812, 813].map(number => ({ referenceSlideId: id(number), mediaAssetId: id(number) }));
+  const earlier = { id: id(800), savedAt: "2026-10-21T00:00:00Z", slides: oldSlides.slice(0, 2), text: {} };
+  const h = await editor({ generated: false, waitForRestore: false, storageState: [
+    ["ugc-explore:slideshow-draft:v2:owner", JSON.stringify({ version: 2, owner: "owner", slides: oldSlides })],
+    ["ugc-explore:slideshow-draft:v2:owner:history", JSON.stringify([earlier])],
+  ] });
+  const fresh = [910, 911].map(number => ({ id: id(number), url: `https://storage.test/${number}.png` }));
+  assert.equal(h.controller.current.useSlideshow(fresh), true);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.deepEqual(JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner")).slides.map(slide => slide.mediaAssetId), fresh.map(image => image.id));
+  assert.deepEqual(JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner:history"))[0].slides, oldSlides);
+  assert.deepEqual(JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner:history"))[1], earlier);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
+});
+
+test("fresh results cannot bypass an interrupted slideshow save before restoration", async () => {
+  const first = await editor({ failFirst: true });
+  await first.clickSave("Save slideshow");
+  const before = first.storage.get("ugc-explore:slideshow-draft:v2:owner");
+  const h = await editor({ generated: false, waitForRestore: false, storageState: first.storage });
+  assert.equal(h.controller.current.useSlideshow([910, 911].map(number => ({ id: id(number), url: `https://storage.test/${number}.png` }))), false);
+  assert.equal(h.storage.get("ugc-explore:slideshow-draft:v2:owner"), before);
+  await new Promise(resolve => setTimeout(resolve, 10));
+});
+
+test("a saved Library slideshow reopens source images and editable text without rendering or overwriting the Library item", async () => {
+  const first = await editor(); first.heading("Editable after reopening"); await first.clickSave("Save slideshow");
+  assert.equal(first.requests[0].editorDraft.slides[0].design.heading, "Editable after reopening");
+  const item = { id: id(99), projectId: "explore", sourceId: `explore-slideshow:${first.requests[0].requestKey}`, slideCount: 2, slides: [1, 2].map(slideNumber => ({ slideNumber, mediaAssetId: id(900 + slideNumber), renderedUrl: `https://storage.test/rendered-${slideNumber}.png` })), editorDraft: first.requests[0].editorDraft };
+  const h = await editor({ generated: false, libraryItemId: id(99), libraryItem: item, locationHref: `https://getugcpilot.com/explore/slideshows?step=edit&slideshowId=${id(99)}` });
+  assert.equal(h.libraryReads.length, 1); assert.equal(h.requests.length, 0); assert.equal(h.uploads.length, 0);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Editable after reopening");
+  assert.ok(nodes(h.render()).find(node => node.type === "img").props.src.endsWith(`${id(201)}.png`), "preview uses the original source, not the text-rendered output");
+  assert.deepEqual(h.navigations, ["/explore/slideshows?step=edit"]);
+  h.heading("Newer unsaved work");
+  const afterReload = await editor({ generated: false, storageState: h.storage });
+  assert.equal(nodes(afterReload.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Newer unsaved work");
+  h.heading("A new edit"); await h.clickSave("Save slideshow");
+  assert.equal(h.requests[0].editorDraft.slides[0].design.heading, "A new edit");
+  const invalid = await editor({ generated: false, libraryItemId: id(99), libraryItem: { ...item, projectId: "other" } });
+  assert.match(text(invalid.render()), /saved slideshow is unavailable/);
+});
+
+test("saved slideshows restore by exact ID without depending on the first sixty browsing results", async () => {
+  const first = await editor(); first.heading("Saved heading"); await first.clickSave("Save slideshow");
+  const request = first.requests[0];
+  const item = {id:id(99), title:"Saved", sourceId:`explore-slideshow:${request.requestKey}`, projectId:"explore", slideCount:2, slides:[1,2].map((slideNumber,index) => ({slideNumber, renderedUrl:`https://storage.test/${index}.png`}))};
+  const reopened = await editor({generated:false, storageState:first.storage, libraryItem:item});
+  assert.deepEqual(reopened.libraryReads, [`/api/library/carousels/${id(99)}`]);
+  assert.equal(reopened.requests.length, 0); assert.equal(reopened.saved.length, 1);
+  assert.ok(reopened.control("Button", "Schedule slideshow"));
+  for (const patch of [{projectId:"other"}, {sourceId:"explore-slideshow:another-request"}, {slides:[item.slides[1],item.slides[0]]}]) {
+    const invalid = await editor({generated:false, storageState:first.storage, libraryItem:{...item,...patch}});
+    assert.equal(invalid.saved.length, 0); assert.equal(invalid.control("Button", "Schedule slideshow"), undefined);
+  }
+});
+
+test("two edited slides prepare together and still save in their exact displayed order", async () => {
+  const finish = new Map();
+  const h = await editor({uploadResult: file => new Promise(resolve => finish.set(file.design.heading, resolve))});
+  h.heading("First slide"); h.control("button", "Preview slide 2").props.onClick(); h.heading("Second slide");
+  await h.clickSave("Save slideshow");
+  assert.equal(h.uploads.length, 2); assert.equal(h.requests.length, 0);
+  assert.match(text(h.render()), /Preparing slides · 0 of 2/);
+  finish.get("Second slide")({asset:{id:id(302)}}); await new Promise(setImmediate);
+  assert.match(text(h.render()), /Preparing slides · 1 of 2/); assert.equal(h.requests.length, 0);
+  finish.get("First slide")({asset:{id:id(301)}}); await new Promise(setImmediate);
+  assert.deepEqual(h.requests[0].slides.map(slide => slide.mediaAssetId), [id(301),id(302)]);
+  assert.ok(h.control("Button", "Schedule slideshow"));
+});
+
+test("recovering another tab's earlier save preserves newer text as unsaved until its own save", async () => {
+  const first = await editor({failFirst:true}); first.heading("First tab text"); await first.clickSave("Save slideshow");
+  const key = "ugc-explore:slideshow-draft:v2:owner:save";
+  const raw = first.storage.get(key);
+  const otherStorage = new Map(first.storage); otherStorage.delete(key);
+  const other = await editor({generated:false, storageState:otherStorage}); other.heading("Second tab text");
+  // The first tab writes its immutable unfinished receipt after this tab's edit.
+  other.storage.set(key, raw);
+  await other.clickSave("Save slideshow");
+  assert.deepEqual(other.requests[0], first.requests[0]); assert.equal(other.saved.length, 0);
+  assert.equal(nodes(other.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Second tab text");
+  assert.equal(other.control("Button", "Schedule slideshow"), undefined);
+  assert.match(text(other.render()), /newer edits are still unsaved/);
+  await other.clickSave("Save slideshow");
+  assert.notEqual(other.requests[1].requestKey, first.requests[0].requestKey);
+  assert.equal(other.renders[0].design.heading, "Second tab text"); assert.equal(other.saved.length, 1);
+});
 test("slide selection and preview navigation retain the saved slideshow without marking it dirty", async () => {
   const h = await editor(); h.heading("First message");
   h.control("button", "Preview slide 2").props.onClick(); h.heading("Second message");
@@ -192,6 +365,7 @@ test("a pending image replacement blocks scheduling the previously saved sequenc
   assert.equal(continued, 0, "The upload starts locking the old schedule before the next render");
   assert.equal(h.control("Button", "Schedule slideshow"), undefined);
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  await new Promise(setImmediate);
   finishUpload({ asset: { id: id(301), collection: "image", status: "ready", url: "https://storage.test/replacement.png", title: "Replacement", createdAt: "", ratio: "4:5" } });
   await new Promise(setImmediate);
   assert.equal(h.control("Button", "Schedule slideshow"), undefined);
@@ -203,6 +377,21 @@ test("a pending image replacement blocks scheduling the previously saved sequenc
   assert.deepEqual(h.requests[1].slides.map(slide => slide.mediaAssetId), [id(301), id(202)]);
 });
 
+test("slide uploads send fitted files before adding owned images and retain successful files when another conversion fails", async () => {
+  const prepared = [];
+  const h = await editor({ fitUpload: async file => { prepared.push(file.name); if (file.name === "bad.png") throw new Error("Could not read this image"); return { ...file, name: "portrait-4x5.png" }; },
+    uploadResult: file => ({ asset: { id: id(350), collection: "image", status: "ready", url: "https://storage.test/portrait-4x5.png", title: file.name, createdAt: "", ratio: "4:5" } }) });
+  h.control("input", "Upload slideshow images").props.onChange({ currentTarget: { files: ["portrait.png", "bad.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  await new Promise(setImmediate);
+  assert.deepEqual(prepared, ["portrait.png", "bad.png"]);
+  assert.equal(h.uploads.length, 1); assert.equal(h.uploads[0].file.name, "portrait-4x5.png");
+  assert.ok(h.control("button", "Preview slide 3"));
+  assert.match(text(h.render()), /1 image added.*Some images could not be uploaded/s);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).slides.map(slide => slide.mediaAssetId), [id(201), id(202), id(350)]);
+});
+
 test("a failed valid image replacement keeps the old sequence unscheduled until explicit re-save", async () => {
   let rejectUpload, continued = 0;
   const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise((_, reject) => { rejectUpload = reject; }) });
@@ -211,6 +400,7 @@ test("a failed valid image replacement keeps the old sequence unscheduled until 
   h.control("input", "Replace slideshow image").props.onChange({ currentTarget: { files: [{ name: "replacement.png", type: "image/png", size: 100 }], value: "selected" } });
   assert.equal(h.dirty.length, dirtyBefore + 1);
   priorSchedule.props.onClick();
+  await new Promise(setImmediate);
   rejectUpload(new Error("Upload failed"));
   await new Promise(setImmediate);
   assert.equal(continued, 0);
@@ -271,6 +461,41 @@ test("the dedicated footer exposes exactly one save, resume or schedule action t
   h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
   assert.deepEqual(h.requests[0], h.requests[1]);
 });
+
+test("Create preview saves and resumes the same draft before scheduling, then invalidates after arrangement changes", async () => {
+  let continued = 0;
+  const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
+  h.heading("Keep this heading from Edit");
+  h.props.active = false; h.props.previewActive = true;
+  const actionNodes = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Schedule slideshow", "Saving…"].includes(text(node)));
+  const assertSurface = label => {
+    const tree = h.render(), preview = nodes(tree).find(node => node.props?.["aria-label"] === "Slideshow edit preview");
+    assert.equal(actionNodes().length, 1); assert.equal(text(actionNodes()[0]), label);
+    assert.ok(nodes(preview).some(node => node.props?.["aria-label"] === "Slideshow actions"));
+    assert.equal(nodes(tree).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget), false);
+    assert.equal(nodes(tree).some(node => node.type === "FormatSlideshowTextTools"), false);
+  };
+  assertSurface("Save slideshow");
+  await h.clickSave("Save slideshow"); assertSurface("Resume save");
+  assert.equal(continued, 0); assert.equal(h.saved.length, 0);
+  assert.equal(nodes(h.render()).filter(node => node.props?.role === "alert" && text(node).includes("Interrupted save")).length, 1);
+  await h.clickSave("Resume save"); assertSurface("Schedule slideshow");
+  assert.deepEqual(h.requests[0], h.requests[1]);
+  assert.equal(h.requests[1].editorDraft.slides[0].design.heading, "Keep this heading from Edit");
+  h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
+  const oldSchedule = h.control("Button", "Schedule slideshow");
+  h.control("Button", "Move slide 1 later").props.onClick(); assertSurface("Save slideshow");
+  oldSchedule.props.onClick(); assert.equal(continued, 1, "A stale saved action cannot schedule the changed sequence");
+  h.props.generationBusy = true; assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  h.props.generationBusy = false;
+  await h.clickSave("Save slideshow"); assertSurface("Schedule slideshow");
+  assert.equal(h.requests.at(-1).editorDraft.slides[1].design.heading, "Keep this heading from Edit");
+  h.control("button", "Remove slide 1").props.onClick(); assertSurface("Save slideshow");
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true, "One remaining slide cannot be saved");
+  h.props.active = true;
+  assert.equal(actionNodes().length, 1);
+  assert.ok(nodes(h.render()).some(node => node.type === "portal" && node.props.target === h.props.actionsTarget));
+});
 test("saving edited text uploads its generated image with the owner and keeps untouched generated slides", async () => {
   const h = await editor(); h.heading("My heading"); await h.clickSave("Save slideshow");
   assert.equal(h.renders.length, 1); assert.equal(h.renders[0].design.heading, "My heading");
@@ -328,7 +553,7 @@ test("loaded landscape images keep the preview and export overlay proportions, w
   const overlay = nodes(h.render()).find(node => node.type === "img" && "data-slide-text-overlay" in node.props);
   assert.equal(overlay.props.width, 2048); assert.equal(overlay.props.height, 1152);
   assert.ok(decodeURIComponent(overlay.props.src).includes('viewBox="0 0 2048 1152"'));
-  const backActions = nodes(h.render()).filter(node => node.type === "Button" && text(node) === "Back to preview");
+  const backActions = nodes(h.render()).filter(node => node.type === "Button" && text(node) === "Back to Create");
   assert.equal(backActions.length, 1); backActions[0].props.onClick(); assert.equal(back, 1);
 });
 test("repeated add-text-remove cycles retain only active text and reload both remaining slide edits", async () => {
@@ -387,6 +612,61 @@ test("recreating a slide replaces only its image and retains Remix Text, styling
   assert.equal(h.renders[0].source, "https://storage.test/recreated.png");
 });
 
+
+test("restored generated images replace their exact original image instead of appending a duplicate", async () => {
+  const h = await editor(); h.heading("Retain this heading"); h.render();
+  assert.equal(h.controller.current.useImage({ id: id(803), url: "https://storage.test/area-edit.png" }, undefined, id(201)), true);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Retain this heading");
+  assert.equal(h.controller.current.useImage({ id: id(804), url: "https://storage.test/other.png" }, undefined, id(999)), false);
+});
+
+test("thumbnail removal preserves the selected image and its text, then saves the remaining sequence", async () => {
+  const h = await editor();
+  h.heading("Stay with the first image");
+  h.useImage({ id: id(203), url: "https://storage.test/third.png" });
+  h.control("button", "Preview slide 1").props.onClick();
+  const before = h.dirty.length;
+  h.control("button", "Remove slide 2").props.onClick();
+  assert.equal(nodes(h.render()).find(node => node.type === "img" && node.props.alt?.startsWith("Slide ")).props.src, "https://storage.test/generated-1.png");
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Stay with the first image");
+  assert.ok(h.dirty.length > before);
+  await h.clickSave("Save slideshow");
+  assert.deepEqual(h.requests.at(-1).editorDraft.slides.map(slide => slide.mediaAssetId), [id(201), id(203)]);
+  const storedText = JSON.parse(h.storage.get("ugc-explore:slideshow-draft:v2:owner:text"));
+  assert.equal(Object.values(storedText).some(design => design.heading === "Stay with the first image"), true);
+});
+
+test("reorder handles keep image/text identity and thumbnail controls lock during a pending save", async () => {
+  const h = await editor({ failFirst: true }); h.heading("Original first slide");
+  const key = h.control("button", "Reorder slide 1");
+  key.props.onKeyDown({ key: "ArrowRight", preventDefault() {} });
+  assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], true);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Original first slide");
+  await h.clickSave("Save slideshow");
+  for (const label of ["Reorder slide 1", "Remove slide 1", "Reorder slide 2", "Remove slide 2"]) assert.equal(h.control("button", label).props.disabled, true);
+  const before = h.dirty.length;
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(h.dirty.length, before);
+  assert.equal(nodes(h.render()).filter(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")).length, 2);
+});
+
+test("removing a preceding or selected thumbnail keeps the correct neighbor, and the last removal returns to an empty draft", async () => {
+  const h = await editor();
+  h.useImage({ id: id(203), url: "https://storage.test/third.png" }); h.heading("Third slide text");
+  h.control("button", "Preview slide 2").props.onClick(); h.heading("Second slide text");
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(h.control("button", "Preview slide 1").props["aria-pressed"], true);
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Second slide text");
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Third slide text");
+  assert.equal(h.control("button", "Reorder slide 1").props.disabled, true);
+  h.control("button", "Remove slide 1").props.onClick();
+  assert.equal(nodes(h.render()).some(node => node.type === "button" && /^Preview slide /.test(node.props["aria-label"] ?? "")), false);
+  assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
+  assert.equal(h.requests.length, 0);
+});
+
 test("reference pixels cannot enter the editor or a save before generation", async () => {
   const h = await editor({ generated: false });
   assert.equal(nodes(h.render()).some(node => node.type === "img"), false);
@@ -437,6 +717,8 @@ function imageRoute({ production = true, allowed = true, owned = asset(1), conte
     "@/lib/explore/recreate-catalog": { getRecreateReferences: () => [{ id: "catalog", format: "slideshow", slides: [{ id: "first", url: "https://storage.test/reference.png" }] }] },
     "@/lib/media/media-storage": { getMediaAssetForOwner: async input => { reads.push(input); return owned; } },
     "@/lib/storage/storage": { isTrustedStorageUrl: url => url.startsWith("https://storage.test/") },
+    "@/lib/media/media-delivery": { isPrivateUserMedia: row => row.metadata?.storageLocation === "private_user_media" },
+    "@/lib/media/private-media-storage": { assertPrivateMediaIdentity: () => {}, privateMediaObject: async () => ({ body: new ReadableStream({ start(controller) { controller.enqueue(Uint8Array.from([137, 80, 78, 71])); controller.close(); } }), size: 4, contentType: "image/png" }) },
     "@/worker/src/lib/explore-finishing-contract": { isExploreUuid: uuid },
   }, { URL, Response, ReadableStream, AbortSignal, process: { env: { NODE_ENV: production ? "production" : "development" } }, fetch: async (url, options) => {
     fetched.push({ url, options });
@@ -460,6 +742,13 @@ test("canvas delivery rechecks image ownership, deletion and readiness", async (
     const h = imageRoute({ owned: { ...asset(1), ...patch } }); assert.equal((await h.get(`mediaAssetId=${id(1)}`)).status, 404); assert.equal(h.fetched.length, 0);
     assert.equal(h.reads[0].userId, "owner");
   }
+});
+
+test("owned private screenshot bytes can be read without exposing or fetching a public URL", async () => {
+  const h = imageRoute({ owned: { ...asset(1), url: "https://private-bucket.test/source.png", metadata: { storageLocation: "private_user_media" } } });
+  const response = await h.get(`mediaAssetId=${id(1)}`);
+  assert.equal(response.status, 200); assert.equal((await response.arrayBuffer()).byteLength, 4);
+  assert.equal(h.fetched.length, 0); assert.equal(h.reads[0].userId, "owner");
 });
 test("production canvas exports require access even if preview=1 is supplied", async () => {
   const prod = imageRoute({ allowed: false }); assert.equal((await prod.get("referenceId=catalog&slideId=first&preview=1")).status, 401); assert.equal(prod.fetched.length, 0);

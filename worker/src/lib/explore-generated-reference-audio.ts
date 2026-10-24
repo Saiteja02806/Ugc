@@ -4,6 +4,22 @@ import { join, resolve } from "node:path";
 import { ExploreFinishingStorage } from "./explore-finishing-storage.js";
 import { renderExploreReferenceAudio, verifyReferenceAudioFile } from "./explore-reference-audio-render.js";
 import type { getExplorePairedReference } from "./explore-reference-soundtrack.js";
+import { isSilentExploreReference } from "./explore-reference-soundtrack.js";
+import { runMediaCommand } from "../subtitles/media.js";
+
+/** Enforce the explicit OFF setting without re-encoding any video frames. */
+export async function silenceGeneratedVideo(buffer: Buffer) {
+  const directory = await mkdtemp(join(tmpdir(), "ugc-explore-silent-"));
+  try {
+    const sourcePath = join(directory, "generated.mp4"), outputPath = join(directory, "silent.mp4");
+    await writeFile(sourcePath, buffer, { flag: "wx" });
+    await runMediaCommand(process.env.FFMPEG_PATH || "ffmpeg", ["-nostdin", "-hide_banner", "-loglevel", "error", "-n",
+      "-protocol_whitelist", "file,pipe", "-i", sourcePath, "-map", "0:v:0", "-c:v", "copy", "-an", "-movflags", "+faststart", outputPath]);
+    return await readFile(outputPath);
+  } finally {
+    if (resolve(directory).startsWith(resolve(tmpdir()) + "/") || resolve(directory).startsWith(resolve(tmpdir()) + "\\")) await rm(directory, { recursive: true, force: true });
+  }
+}
 
 /** A local post-process of the completed provider output; never asks an AI to reproduce the song. */
 export async function applyGeneratedReferenceAudio(buffer: Buffer, reference: NonNullable<ReturnType<typeof getExplorePairedReference>>) {
@@ -11,6 +27,12 @@ export async function applyGeneratedReferenceAudio(buffer: Buffer, reference: No
   try {
     const sourcePath = join(directory, "generated.mp4"), audioPath = join(directory, "reference.mp3");
     await writeFile(sourcePath, buffer, { flag: "wx" });
+    if (isSilentExploreReference(reference)) {
+      const outputPath = join(directory, "silent.mp4");
+      await runMediaCommand(process.env.FFMPEG_PATH || "ffmpeg", ["-nostdin", "-hide_banner", "-loglevel", "error", "-n",
+        "-protocol_whitelist", "file,pipe", "-i", sourcePath, "-map", "0:v:0", "-c:v", "copy", "-an", "-movflags", "+faststart", outputPath]);
+      return await readFile(outputPath);
+    }
     await new ExploreFinishingStorage().download(reference.audioStorageKey, audioPath, 50 * 1024 ** 2);
     await verifyReferenceAudioFile(audioPath, reference.audioSha256);
     const result = await renderExploreReferenceAudio({ sourcePath, audioPath, workDir: directory, volume: .2, replaceOriginal: true,

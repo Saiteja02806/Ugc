@@ -23,9 +23,23 @@ test("changing posts never substitutes a different source, uploaded poster or wo
   assert.equal(resolveRemixSource({ format: "slideshow", referenceId: null, sourceUrl: slides.slides[0].url }, [{ ...slides, id: "uploaded:example" }], "slideshow").reference, null);
   assert.equal(resolveRemixSource({ ...source!, sourceUrl: "https://catalog.test/replaced.mp4" }, [hook], "hook").reference, null);
 });
+
+test("private creator provenance resolves the same stable ID after browser-local playback URLs change", () => {
+  const privateHook = { ...hook, id: "creator-account-1-01", creatorAccountId: "creator-account-1", videoUrl: "blob:new-local-playback" };
+  assert.equal(resolveRemixSource({ format: "hook", referenceId: privateHook.id, sourceUrl: "blob:earlier-local-playback" }, [privateHook], "hook").reference, privateHook);
+  assert.equal(resolveRemixSource({ format: "hook", referenceId: "creator-account-2-01", sourceUrl: "blob:earlier-local-playback" }, [privateHook], "hook").reference, null);
+});
 test("no linked source or malformed metadata requires manual text", () => {
   assert.equal(readRemixSource(null), null);
   assert.equal(readRemixSource({ format: "other" }), null);
   assert.equal(resolveRemixSource(null, [hook], "hook").reference, null);
   assert.equal(resolveRemixSource(undefined, [hook], "hook").reference, null);
+});
+
+test("v4 edits retain the accepted result's original source rather than its generated pixels or newly selected source", () => {
+  const original = { format: "slideshow", referenceId: null, sourceUrl: slides.slides[1].url };
+  const edited = { exploreFormat: "slideshow", referenceImageUrl: "https://owned.test/generated.png", slideshowReferenceContract: { version: 4 }, slideshowRemixSource: original };
+  assert.deepEqual(remixSourceFromJob(edited), original);
+  assert.equal(resolveRemixSource(remixSourceFromJob(edited), [slides], "slideshow").slideId, "slide-b");
+  assert.equal(remixSourceFromJob({ ...edited, slideshowRemixSource: null }), null);
 });

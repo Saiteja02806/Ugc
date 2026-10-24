@@ -72,12 +72,13 @@ test("the Wall-of-Text catalog exposes retained references from its own immutabl
   );
   assert.equal(
     [...wallTextLibrary.matchAll(/id: "explore-wall-text-\d{2}"/gu)].length,
-    62,
+    60,
   );
   assert.match(wallTextLibrary, /getExploreWallTextVideos/u);
   assert.match(wallTextLibrary, /isExploreWallTextVideoId/u);
   assert.match(wallTextLibrary, /posterUrl/u);
   assert.doesNotMatch(wallTextLibrary, /id: "explore-wall-text-01"/u);
+  assert.doesNotMatch(wallTextLibrary, /id: "explore-wall-text-0[89]"/u);
   assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*trending/i);
   assert.doesNotMatch(wallTextLibrary, /from ["'][^"']*viral/i);
 });

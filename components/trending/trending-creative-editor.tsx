@@ -1,5 +1,8 @@
 "use client";
 import localFont from "next/font/local";
+import { CarouselManualText, CarouselTextControls } from "./carousel-text-controls";
+import { createCarouselManualLayout, resolveCarouselManualTextStyle } from "@/lib/carousel/manual-text";
+import { applyCarouselBodyTextEdit, getCarouselTextOverflowSlides, type CarouselTextEditScope } from "@/lib/trending/carousel-body-text-edit";
 import { CAROUSEL_BODY_FONT_SIZE, CAROUSEL_HEADING_FONT_SIZE, CAROUSEL_HOOK_FONT_SIZE, CAROUSEL_TEXT_BLOCK_GAP, getCarouselBodyBlocks } from "@/lib/carousel/text-presentation";
 import { getCarouselEditHookFontSize } from "@/lib/carousel/edit-cover-typography";
 import { CAROUSEL_BODY_FONT_WEIGHT, CAROUSEL_COVER_FONT_WEIGHT, CAROUSEL_HEADING_FONT_WEIGHT, CAROUSEL_STATEMENT_FONT_WEIGHT, CAROUSEL_HOOK_LINE_HEIGHT, CAROUSEL_TEXT_OUTLINE_WIDTH } from "@/lib/carousel/cover-typography";
@@ -21,6 +24,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -62,6 +66,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { useAuth } from "@/contexts/auth-context";
+import { pollInForeground } from "@/lib/http/foreground-polling";
+import { readCreativeEdit, readCarouselEditStatus, submitCreativeEdit } from "@/lib/trending/creative-edit-client";
+import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refresh";
 import type { MediaAsset } from "@/lib/media/types";
 import {
   clampNormalizedTextPosition,
@@ -115,6 +123,10 @@ import { getWallTextManualBlocks, validateWallTextManualCopy, WALL_TEXT_MANUAL_M
 import { getWallTextRenderBlocks } from "@/lib/trending/wall-text-types";
 import { cn } from "@/lib/utils";
 
+// Keep the existing catalogue for saved edits and generation context, while
+// keeping the Hook library picker out of the customer editor.
+const CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE = false;
+
 const carouselInter = localFont({
   src: "../../worker/src/assets/fonts/Inter-VariableFont_wght.ttf",
   display: "swap",
@@ -143,10 +155,6 @@ type GroupAssetsResponse =
       ok: true;
     }
   | { error?: string; ok?: false };
-type EditResponse =
-  | { edit: TrendingCreativeEditRecord; ok: true }
-  | { error?: string; ok?: false };
-
 type CarouselProductAsset = {
   businessProfileId: string;
   categorySlug: string;
@@ -208,6 +216,16 @@ export function TrendingCreativeEditor({
   onClose: () => void;
   onSaved: (edit: TrendingCreativeEditRecord) => void;
 }) {
+  const { user } = useAuth();
+  const ownerId = user?.uid ?? "";
+  const scopeKey = JSON.stringify([ownerId, item?.format, item?.assignmentId, item?.creativeId]);
+  const session = useRef<object | null>(null);
+  const callbacks = useRef({ onSaved, onClose });
+  useLayoutEffect(() => { callbacks.current = { onSaved, onClose }; }, [onSaved, onClose]);
+  useLayoutEffect(() => {
+    session.current = {};
+    return () => { session.current = null; };
+  }, [scopeKey]);
   const [edit, setEdit] = useState<TrendingCreativeEditRecord | null>(null);
   const [content, setContent] = useState<TrendingCreativeEditContent | null>(
     null,
@@ -215,6 +233,7 @@ export function TrendingCreativeEditor({
   const [initialContent, setInitialContent] =
     useState<TrendingCreativeEditContent | null>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [textEditScope, setTextEditScope] = useState<CarouselTextEditScope>("body");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -256,16 +275,27 @@ export function TrendingCreativeEditor({
   >(null);
   const groupRequestRef = useRef(0);
   const productAssetInputRef = useRef<HTMLInputElement>(null);
+  const editorLoadSequence = useRef(0);
+  const renderPending = edit?.format === "carousel" && (edit.renderState === "queued" || edit.renderState === "rendering");
+  const carouselUnchanged = edit?.format === "carousel" && content?.format === "carousel" &&
+    JSON.stringify(toPatchPayload(edit, content, undefined)) === JSON.stringify(toPatchPayload(edit, edit.content, undefined));
+  const latestEditor = useRef(edit);
+  useLayoutEffect(() => { latestEditor.current = edit; }, [edit]);
 
   const loadEditor = useCallback(async () => {
     if (!item) {
       return;
     }
+    const currentSession = session.current;
+    const sequence = ++editorLoadSequence.current;
+    const active = () => session.current === currentSession && editorLoadSequence.current === sequence;
 
     setLoading(true);
+    setSaving(false);
     setError(null);
     groupRequestRef.current += 1;
     setActiveSlideIndex(0);
+    setTextEditScope("body");
     setProtectedHookPreviewUrl(null);
     setProductAssets([]);
     slideImageBusyRef.current = false;
@@ -277,18 +307,9 @@ export function TrendingCreativeEditor({
     setHyperHookFolderOpen(false);
 
     try {
-      const token = await requireToken();
-      const response = await fetch(getEditorEndpoint(item, true), {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json().catch(() => null)) as
-        | EditResponse
-        | null;
-
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(getApiError(data, "Could not open this editor."));
-      }
+      if (item.format === "reaction") throw new Error("Use the reaction editor for this post.");
+      const data = { edit: await readCreativeEdit(ownerId, { assignmentId: item.assignmentId, creativeId: item.creativeId, format: item.format }, "editor") };
+      if (!active()) return;
 
       setEdit(data.edit);
       setContent(data.edit.content);
@@ -298,14 +319,38 @@ export function TrendingCreativeEditor({
       setSourceChoice(toSourceChoice(data.edit));
       setSelectedAsset(null);
     } catch (loadError) {
+      if (!active()) return;
       setEdit(null);
       setContent(null);
       setInitialContent(null);
       setError(getErrorMessage(loadError, "Could not open this editor."));
     } finally {
-      setLoading(false);
+      if (active()) setLoading(false);
     }
-  }, [item]);
+  }, [item, ownerId]);
+
+  useEffect(() => {
+    if (!latestEditor.current || !renderPending || loading || saving) return;
+    let latest = latestEditor.current;
+    const currentSession = session.current;
+    const controller = new AbortController();
+    const stop = pollInForeground({ intervalMs: 1500, immediate: true, poll: async () => {
+      const next = await refreshTrendingCarouselEdit(latest,
+        () => readCarouselEditStatus(ownerId, latest, controller.signal),
+        () => readCreativeEdit(ownerId, latest, "history", controller.signal));
+      if (controller.signal.aborted || session.current !== currentSession) return;
+      const previous = latest;
+      latest = next;
+      setEdit(next);
+      // Refresh render metadata/output without replacing edits typed while waiting.
+      setContent(current => current && JSON.stringify(toPatchPayload(previous, current, undefined)) ===
+        JSON.stringify(toPatchPayload(previous, previous.content, undefined)) ? next.content : current);
+      setInitialContent(next.content);
+      if (next.renderState === "ready") callbacks.current.onSaved(next);
+    }});
+    return () => { controller.abort(); stop(); };
+  // Metadata changes do not restart the in-flight status request.
+  }, [edit?.id, edit?.revision, renderPending, loading, saving, ownerId]);
 
   const loadGroup = useCallback(async (groupId: string, token?: string) => {
     setLoadingGroupId(groupId);
@@ -438,7 +483,7 @@ export function TrendingCreativeEditor({
   }, [item]);
 
   const loadCarouselHyperHooks = useCallback(async () => {
-    if (!item || item.format !== "carousel") {
+    if (!CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE || !item || item.format !== "carousel") {
       return;
     }
 
@@ -886,7 +931,8 @@ export function TrendingCreativeEditor({
   }
 
   async function saveEdit() {
-    if (!item || !content || !edit || saving || slideImageBusyRef.current || productAssetsUploading) {
+    if (!item || !content || !edit || saving || renderPending ||
+      (carouselUnchanged && edit.id && edit.renderState === "ready") || slideImageBusyRef.current || productAssetsUploading) {
       return;
     }
 
@@ -909,34 +955,24 @@ export function TrendingCreativeEditor({
 
     setSaving(true);
     setError(null);
+    const currentSession = session.current;
 
     try {
-      const token = await requireToken();
-      const response = await fetch(getEditorEndpoint(item, false), {
-        body: JSON.stringify(toPatchPayload(edit, content, sourceChoice)),
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "PATCH",
-      });
-      const data = (await response.json().catch(() => null)) as
-        | EditResponse
-        | null;
-
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(getApiError(data, "Could not save this edit."));
-      }
+      const data = { edit: await submitCreativeEdit(ownerId, edit, toPatchPayload(edit, content, sourceChoice),
+        recovered => recovered.format === "carousel" && recovered.assignmentId === edit.assignmentId &&
+          recovered.creativeId === edit.creativeId && recovered.revision === edit.revision + 1 &&
+          ["queued", "rendering", "ready"].includes(recovered.renderState) &&
+          JSON.stringify(toPatchPayload(edit, recovered.content, undefined)) === JSON.stringify(toPatchPayload(edit, content, undefined))) };
+      if (session.current !== currentSession) return;
 
       setEdit(data.edit);
       setContent(data.edit.content);
       onSaved(data.edit);
       onClose();
     } catch (saveError) {
-      setError(getErrorMessage(saveError, "Could not save this edit."));
+      if (session.current === currentSession) setError(getErrorMessage(saveError, "Could not save this edit."));
     } finally {
-      setSaving(false);
+      if (session.current === currentSession) setSaving(false);
     }
   }
 
@@ -971,7 +1007,7 @@ export function TrendingCreativeEditor({
           <DialogTitle>Edit creative</DialogTitle>
           <DialogDescription>
             {item?.format === "carousel"
-              ? "Edit each slide’s text and upload your own slide images. You can also choose from the Hook library or app screenshots."
+              ? "Edit text, choose backgrounds from your library, upload slide images, or choose app screenshots."
               : "Edit your text and choose a Creative Assets video."}
           </DialogDescription>
         </DialogHeader>
@@ -984,6 +1020,7 @@ export function TrendingCreativeEditor({
           ) : content && item ? (
             <div className="grid min-h-[590px] gap-0 lg:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)]">
               <div className="border-b border-border bg-muted/25 p-5 lg:border-b-0 lg:border-r sm:p-6">
+                <div className={content.format === "carousel" ? "lg:sticky lg:top-6" : undefined}>
                 <EditorPreview
                   content={content}
                   edit={edit}
@@ -993,41 +1030,53 @@ export function TrendingCreativeEditor({
                   sourcePreview={sourcePreview}
                   activeSlideIndex={activeSlideIndex}
                   slideImagePreview={slideImagePreview}
-                  onContentChange={setContent}
+                  textEditScope={textEditScope}
+                  onContentChange={next => { if (!saving && !slideImageBusyRef.current) setContent(next); }}
                 />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
                   <Move className="size-3.5" aria-hidden="true" />
-                  {content.format === "carousel" &&
-                  content.slides[activeSlideIndex]?.structureId ===
-                    "structure_2"
-                    ? "Press the text and drag it vertically in the frame."
-                    : "Press the text and drag it anywhere in the frame."}
+                  Press the text and drag it anywhere in the frame.
+                </div>
                 </div>
               </div>
 
               <div className="min-w-0 p-5 sm:p-6">
-                <EditorFields
+                <fieldset disabled={saving || slideImageUploading} className="contents"><EditorFields
                   activeSlideIndex={activeSlideIndex}
                   content={content}
+                  textEditScope={textEditScope}
+                  onTextEditScopeChange={setTextEditScope}
                   onActiveSlideIndexChange={setActiveSlideIndex}
                   onContentChange={setContent}
-                />
+                /></fieldset>
 
                 {content.format === "carousel" ? (
                   <>
                     {content.slides[activeSlideIndex] ? <CarouselSlideImageSection
                       key={item.assignmentId}
                       slide={content.slides[activeSlideIndex]}
+                      slides={content.slides}
+                      renderLibrarySlidePreview={(slideId, asset) => {
+                        const previewContent = applyCarouselSlideImage(content, slideId, asset);
+                        return previewContent ? <EditorPreview content={previewContent} edit={null} initialContent={null} item={item} sourcePreview={null} fallbackHookPreviewUrl={null} activeSlideIndex={content.slides.findIndex(slide => slide.slideId === slideId)} onContentChange={() => {}} /> : null;
+                      }}
                       disabled={saving || productAssetsUploading}
                       onBusyChange={(busy) => { slideImageBusyRef.current = busy; setSlideImageUploading(busy); }}
                       onPreviewChange={setSlideImagePreview}
                       onUploaded={(slideId, asset) => setContent(current => applyCarouselSlideImage(current, slideId, asset))}
+                      onLibraryApply={choice => setContent(current => {
+                        const assets = new Map(choice.assets.map(asset => [asset.id, asset]));
+                        return choice.assignments.reduce((next, assignment) => {
+                          const asset = assets.get(assignment.assetId);
+                          return asset ? applyCarouselSlideImage(next, assignment.slideId, asset) : next;
+                        }, current);
+                      })}
                       onRestore={(slideId) => setContent(current => current?.format === "carousel" ? {
                         ...current, slides: current.slides.map(slide => slide.slideId === slideId ? restoreOriginalCarouselBackground(slide) : slide),
                       } : current)}
                     /> : null}
                     <fieldset disabled={saving || slideImageUploading} className="contents">
-                    <HyperHookLibrarySection
+                    {CAROUSEL_EDITOR_HOOK_LIBRARY_VISIBLE ? <HyperHookLibrarySection
                       assets={hyperHookAssets}
                       content={content}
                       error={hyperHookAssetsError}
@@ -1038,7 +1087,7 @@ export function TrendingCreativeEditor({
                       onOpen={() => setHyperHookFolderOpen(true)}
                       onRestore={restoreCarouselHookBackground}
                       onRetry={() => void loadCarouselHyperHooks()}
-                    />
+                    /> : null}
                     <AppScreenshotsSection
                       activeSlideIndex={activeSlideIndex}
                       assets={productAssets}
@@ -1101,13 +1150,16 @@ export function TrendingCreativeEditor({
         </ScrollArea>
 
         <DialogFooter className="m-0 shrink-0 rounded-none bg-card px-5 py-4 sm:px-6">
+          {renderPending ? <p role="status" className="mr-auto text-sm text-muted-foreground">
+            {edit?.refreshError ? "Could not check progress. Retrying automatically." : "Edits saved. Your slides are rendering in the background. You can leave this screen."}
+          </p> : null}
           <Button
             type="button"
             variant="outline"
             disabled={saving || slideImageUploading}
             onClick={onClose}
           >
-            Cancel
+            {renderPending ? "Close" : "Cancel"}
           </Button>
           <Button
             type="button"
@@ -1116,13 +1168,15 @@ export function TrendingCreativeEditor({
               !content ||
               loading ||
               saving ||
+              renderPending ||
+              Boolean(carouselUnchanged && edit?.id && edit.renderState === "ready") ||
               productAssetsUploading ||
               slideImageUploading ||
               Boolean(loadingGroupId)
             }
             onClick={() => void saveEdit()}
           >
-            {saving ? (
+            {saving || renderPending ? (
               <Loader2
                 data-icon="inline-start"
                 className="animate-spin motion-reduce:animate-none"
@@ -1130,7 +1184,7 @@ export function TrendingCreativeEditor({
             ) : (
               <Check data-icon="inline-start" />
             )}
-            {saving ? "Saving…" : "Save edit"}
+            {saving ? "Saving…" : renderPending ? "Rendering…" : carouselUnchanged && edit?.id && edit.renderState === "ready" ? "Edits saved" : "Save edit"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1148,6 +1202,7 @@ export function EditorPreview({
   onContentChange,
   sourcePreview,
   slideImagePreview = null,
+  textEditScope = "slide",
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
@@ -1157,6 +1212,7 @@ export function EditorPreview({
   item: TrendingFeedItem;
   onContentChange: (content: TrendingCreativeEditContent) => void;
   slideImagePreview?: CarouselSlideImagePreview | null;
+  textEditScope?: CarouselTextEditScope;
   sourcePreview: {
     thumbnailUrl: string | null;
     title: string;
@@ -1197,8 +1253,9 @@ export function EditorPreview({
     const structure2Layout = isStructure2
       ? createStructure2EditorLayout(slide)
       : null;
-    const previewPosition =
-      structure2Layout?.storyPosition ?? slide.textPosition;
+    const manualLayout = slide.textStyle ? createCarouselManualLayout(slide) : null;
+    const movementLayout = createCarouselManualLayout({ ...slide, textStyle: { ...resolveCarouselManualTextStyle(slide), canvasEdgePlacement: true } });
+    const previewPosition = manualLayout?.position ?? structure2Layout?.storyPosition ?? slide.textPosition;
     const supportingText = slide.subtext;
     const hasHeading = isStructure2
       ? Boolean(slide.headline.trim() && supportingText)
@@ -1234,26 +1291,16 @@ export function EditorPreview({
           enabled={!showExactRender}
           format={slide.renderFormat}
           structureId={slide.structureId}
-          bounds={
-            isStructure2
-              ? { maxX: 0.5, maxY: 0.88, minX: 0.5, minY: 0.12 }
-              : undefined
-          }
+          bounds={movementLayout.bounds}
+          layoutFits={movementLayout.fits}
           position={previewPosition}
           onPositionChange={(textPosition) =>
-            onContentChange({
-              ...content,
-              slides: content.slides.map((entry) =>
-                entry.slideId === slide.slideId
-                  ? {
-                      ...entry,
-                      textPosition: isStructure2
-                        ? { x: 0.5, y: textPosition.y }
-                        : textPosition,
-                    }
-                  : entry,
-              ),
-            })
+            onContentChange(applyCarouselBodyTextEdit(content, { ...confirmedSlide, textPosition: {
+              x: Math.abs(textPosition.x - movementLayout.bounds.minX) < .00001 ? 0 : Math.abs(textPosition.x - movementLayout.bounds.maxX) < .00001 ? 1 : textPosition.x,
+              y: Math.abs(textPosition.y - movementLayout.bounds.minY) < .00001 ? 0 : Math.abs(textPosition.y - movementLayout.bounds.maxY) < .00001 ? 1 : textPosition.y,
+            },
+              textStyle: { ...resolveCarouselManualTextStyle(confirmedSlide), canvasEdgePlacement: true },
+            }, textEditScope))
           }
         >
           {showExactRender ? (
@@ -1263,7 +1310,7 @@ export function EditorPreview({
             >
               {slide.headline}
             </span>
-          ) : isCover ? (
+          ) : manualLayout ? <CarouselManualText slide={slide} /> : isCover ? (
             <CarouselCoverText primaryText={slide.headline.trim() || supportingText} fontSize={getCarouselEditHookFontSize(slide)} />
           ) : (
             <div className="w-[82cqw] text-center">
@@ -1398,6 +1445,7 @@ function hasCarouselSlidePreviewChanged(
     initial.ctaText !== current.ctaText ||
     initial.headline !== current.headline ||
     initial.subtext !== current.subtext ||
+    JSON.stringify(initial.textStyle ?? null) !== JSON.stringify(current.textStyle ?? null) ||
     initial.textPosition.x !== current.textPosition.x ||
     initial.textPosition.y !== current.textPosition.y ||
     initial.visualRole !== current.visualRole
@@ -1985,15 +2033,21 @@ export function EditorFields({
   content,
   onActiveSlideIndexChange,
   onContentChange,
+  textEditScope = "slide",
+  onTextEditScopeChange,
 }: {
   activeSlideIndex: number;
   content: TrendingCreativeEditContent;
   onActiveSlideIndexChange: (index: number) => void;
   onContentChange: (content: TrendingCreativeEditContent) => void;
+  textEditScope?: CarouselTextEditScope;
+  onTextEditScopeChange?: (scope: CarouselTextEditScope) => void;
 }) {
   if (content.format === "carousel") {
     const slide = content.slides[activeSlideIndex];
     if (!slide) return null;
+    const overflowSlides = getCarouselTextOverflowSlides(content);
+    const individualBodyStyle = Boolean(slide.textStyle && resolveCarouselManualTextStyle(slide).bodyStyleMode === "individual");
 
     const updateSlide = (
       field: "ctaText" | "headline" | "subtext",
@@ -2002,7 +2056,7 @@ export function EditorFields({
       onContentChange({
         ...content,
         slides: content.slides.map((entry, index) =>
-          index === activeSlideIndex ? { ...entry, [field]: value } : entry,
+          index === activeSlideIndex ? { ...entry, [field]: value, textStyle: entry.textStyle || value.includes("\n") ? resolveCarouselManualTextStyle(entry) : entry.textStyle } : entry,
         ),
       });
 
@@ -2045,12 +2099,15 @@ export function EditorFields({
             <FieldLabel htmlFor="trending-carousel-headline">
               {slide.slideNumber === 1 ? "Hook" : slide.hasHeading === false && !slide.subtext ? "Text" : "Headline (optional)"}
             </FieldLabel>
-            <Input
+            <textarea
               id="trending-carousel-headline"
+              rows={3}
+              className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
               value={slide.headline}
               maxLength={180}
               onChange={(event) => updateSlide("headline", event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">Press Enter for a new line. Use Text width below to adjust wrapping.</p>
           </Field>
           {slide.slideNumber !== 1 ? (
             <Field>
@@ -2064,7 +2121,7 @@ export function EditorFields({
                 maxLength={360}
                 onChange={(event) => updateSlide("subtext", event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Separate thoughts with a blank line. Each block should stay within three lines.</p>
+              <p className="text-xs text-muted-foreground">Press Enter for a new line, or leave a blank line between thoughts.</p>
             </Field>
           ) : null}
           {slide.slideNumber === content.slides.length || slide.ctaText ? (
@@ -2074,6 +2131,16 @@ export function EditorFields({
             </Field>
           ) : null}
         </FieldGroup>
+        {slide.slideNumber !== 1 && content.slides.length > 2 && onTextEditScopeChange ? <div className="mt-4 rounded-lg border border-border px-3 py-2">
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="accent-primary" checked={textEditScope === "body" && !individualBodyStyle} onChange={event => {
+            onTextEditScopeChange(event.target.checked ? "body" : "slide");
+            if (event.target.checked && individualBodyStyle) onContentChange({ ...content, slides: content.slides.map(entry => entry.slideId === slide.slideId ? { ...entry, textStyle: { ...resolveCarouselManualTextStyle(entry), bodyStyleMode: "shared" } } : entry) });
+          }} />Apply styling to all body slides</label>
+          <p className="mt-1 text-xs text-muted-foreground">{individualBodyStyle ? "Custom layout kept. Other slides’ shared changes will not replace it. Turn on to include this slide again." : textEditScope === "body" ? "Shares style and position across body slides, keeping individual custom layouts. Copy, images and hook stay separate." : "Only this slide changes. Its custom styling will be kept."}</p>
+          <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => onContentChange(applyCarouselBodyTextEdit(content, { ...slide, textStyle: { ...resolveCarouselManualTextStyle(slide), canvasEdgePlacement: true } }, "body", true))}>Use this layout on shared body slides</Button>
+        </div> : null}
+        <CarouselTextControls slide={slide} onChange={next => onContentChange(applyCarouselBodyTextEdit(content, next, textEditScope))} />
+        {overflowSlides.length ? <div role="alert" className="mt-3 rounded-lg border border-destructive p-3 text-xs"><p>Review text fit on {overflowSlides.length === 1 ? "slide" : "slides"} {overflowSlides.map(entry => entry.slideNumber).join(", ")}. Copy has not been shortened or resized automatically.</p><div className="mt-1 flex flex-wrap gap-2">{overflowSlides.map(entry => <Button key={entry.slideId} type="button" variant="outline" size="sm" onClick={() => { onTextEditScopeChange?.("slide"); onActiveSlideIndexChange(content.slides.findIndex(item => item.slideId === entry.slideId)); }}>Review slide {entry.slideNumber}</Button>)}</div></div> : null}
       </div>
     );
   }
@@ -3080,13 +3147,6 @@ function EditorLoadError({
   );
 }
 
-function getEditorEndpoint(item: TrendingFeedItem, includeAssignment: boolean) {
-  const base = `/api/trending/creatives/${encodeURIComponent(item.format)}/${encodeURIComponent(item.creativeId)}/edit`;
-  return includeAssignment
-    ? `${base}?assignmentId=${encodeURIComponent(item.assignmentId)}`
-    : base;
-}
-
 function toSourceChoice(
   edit: TrendingCreativeEditRecord,
 ): CreativeEditSourceChoice | undefined {
@@ -3122,6 +3182,7 @@ function toPatchPayload(
         slideNumber: slide.slideNumber,
         subtext: slide.subtext,
         textPosition: slide.textPosition,
+        textStyle: slide.textStyle ?? null,
       })),
     };
   }
@@ -3148,6 +3209,9 @@ function toPatchPayload(
 }
 
 function validateContent(content: TrendingCreativeEditContent) {
+  if (content.format === "carousel") {
+    for (const slide of content.slides) if (slide.textStyle && !createCarouselManualLayout(slide).fits) return `Slide ${slide.slideNumber}: reduce the font size or shorten the text to fit.`;
+  }
   if (content.format === "hook_video") {
     try {
       createHookTextLayout(content.hookText, {

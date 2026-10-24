@@ -29,6 +29,29 @@ test("converts an India wall-clock time to UTC", () => {
   );
 });
 
+test("04:18 is valid at 04:08 in both India timezone aliases", () => {
+  for (const timeZone of ["Asia/Calcutta", "Asia/Kolkata"]) {
+    const now = Date.parse(resolveZonedDateTime({ date: "2026-10-14", time: "04:08", timeZone })) + 45_000;
+    const scheduledFor = resolveZonedDateTime({ date: "2026-10-14", time: "04:18", timeZone });
+    assert.equal(scheduledFor, "2026-10-13T22:48:00.000Z");
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor }).valid, true);
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor: resolveZonedDateTime({ date: "2026-10-14", time: "04:10", timeZone }) }).valid, false);
+  }
+});
+
+test("the second screenshot's 15:04 slot is valid at 14:57 IST and expires only at its elapsed lead boundary", () => {
+  for (const timeZone of ["Asia/Calcutta", "Asia/Kolkata"]) {
+    const scheduledFor = resolveZonedDateTime({ date: "2026-10-14", time: "15:04", timeZone });
+    const now = Date.parse(resolveZonedDateTime({ date: "2026-10-14", time: "14:57", timeZone })) + 59_000;
+    assert.equal(scheduledFor, "2026-10-14T09:34:00.000Z");
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now, scheduledFor }).valid, true);
+    assert.deepEqual(getZonedDateTimeParts(getEarliestScheduleTimestamp({ minimumLeadMinutes: 5, now }), timeZone), { date: "2026-10-14", time: "15:03" });
+    const boundary = Date.parse(scheduledFor) - 5 * 60_000;
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now: boundary, scheduledFor }).valid, true);
+    assert.equal(validateScheduleLeadTime({ minimumLeadMinutes: 5, now: boundary + 1, scheduledFor }).valid, false);
+  }
+});
+
 test("uses the selected timezone instead of the device timezone", () => {
   assert.equal(
     resolveZonedDateTime({

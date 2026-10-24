@@ -28,7 +28,7 @@ export function buildOpenRouterWanRequest(input: WanInput) {
     throw new ProviderRequestNotSubmittedError("Add a WAN 3.0 prompt of 1–10000 characters.");
   }
   if (input.referenceVideoUrl || input.referenceAudioUrls?.length) {
-    throw new ProviderRequestNotSubmittedError("WAN 3.0 supports image references in UGC Pilot. Choose Seedance 2.5 for audio or video references.");
+    throw new ProviderRequestNotSubmittedError("This saved WAN 3.0 request cannot use audio or video references. Start a new generation with your references.");
   }
   const images = input.referenceImageUrls?.length ? input.referenceImageUrls : input.referenceImageUrl ? [input.referenceImageUrl] : [];
   if (images.length > 6 || new Set(images).size !== images.length || images.some(url => !isHttpsUrl(url))) {

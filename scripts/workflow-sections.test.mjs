@@ -20,6 +20,7 @@ function load(source) {
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/input": { Input: "input" },
+    "@/components/scheduling/post-caption-field": { PostCaptionField: "post-caption-field" },
     "@/lib/social/platform-visibility": { isSocialPlatformVisible: (platform) => platform !== "tiktok" },
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
@@ -55,7 +56,7 @@ test("both workflows have three accessible, permanently mounted section panels",
   for (const kind of ["hook", "phone"]) {
     const source = read(`${kind}-workflow-preview.tsx`);
     if (kind === "hook") {
-      assert.match(source, /requestedSection === "edit" \|\| requestedSection === "schedule" \? requestedSection : "create"/);
+      assert.match(source, /requestedSection === "create" \|\| requestedSection === "edit" \|\| requestedSection === "schedule" \? requestedSection : recovery\.session\.section/);
       assert.match(source, /useState<WorkflowSection>\(initialSection\)/);
     } else assert.match(source, /useState<WorkflowSection>\("create"\)/);
     assert.match(source, /<Tabs.Root[^>]*value=\{section\}/);
@@ -70,8 +71,12 @@ test("both workflows have three accessible, permanently mounted section panels",
     assert.match(scheduling, /<WorkflowSchedulingPanel/);
     assert.match(source, /Object.values\(scheduleDraft\)\.some\(Boolean\)/);
     assert.match(source, /Your local changes are not saved/);
-    assert.match(source, /section === "edit" \? [\s\S]*?<WorkflowEditWorkspace/);
-    assert.match(source, /<WorkflowScheduleWorkspace draft=\{scheduleDraft\}/);
+    if (kind === "hook") {
+      assert.match(source, /const overviewActive = section === "edit" \|\| section === "create"/);
+      assert.match(source, /hidden=\{!overviewActive\}/);
+      assert.equal((source.match(/<WorkflowEditWorkspace /g) ?? []).length, 1, "Create and Demo keep one shared overview");
+    } else assert.match(source, /section === "edit" \? [\s\S]*?<Workflow(?:Edit|Schedule)Workspace/);
+    assert.match(source, /<WorkflowScheduleWorkspace[^>]*draft=\{scheduleDraft\}/);
   }
 });
 
@@ -90,7 +95,7 @@ test("each section shows only its own primary action and supports keyboard tab a
     assert.equal(actions.length, 1);
     assert.equal(actions[0].props.disabled, true);
     assert.equal(tree.props["data-section"], section);
-    assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Prepare final video" : "Review schedule"));
+    assert.match(text(actions[0]), new RegExp(section === "create" ? "Generate video" : section === "edit" ? "Prepare final video" : "Schedule post"));
   }
 });
 
@@ -112,14 +117,29 @@ test("panel navigation remains outside scrolling settings and leaves retained co
   assert.equal(continued, 1);
 });
 
-test("connected Prepare final video and Review schedule forward real actions and render guarded progress/errors", () => {
+test("focused clip actions stay above scrollable tools without a separate bottom footer", () => {
+  const { WorkflowCreationPanel } = load(panel);
+  let saved = 0;
+  const actions = element("button", { children: "Save edits", onClick: () => saved++ });
+  const content = element("textarea", { value: "Keep text" });
+  const tree = WorkflowCreationPanel({ kind: "hook", section: "edit", children: content, actionContent: actions });
+  const toolbar = nodes(tree).find(n => n.props?.["data-workflow-edit-actions"] !== undefined);
+  const settings = nodes(tree).find(n => n.props?.["data-workflow-section-content"] !== undefined);
+  assert.equal(toolbar.props.children, actions); assert.equal(settings.props.children, content);
+  assert.equal(nodes(tree).some(n => n.type === "footer"), false);
+  assert.equal(nodes(settings).includes(actions), false);
+  toolbar.props.children.props.onClick(); assert.equal(saved, 1);
+  assert.ok(nodes(tree).indexOf(toolbar) < nodes(tree).indexOf(settings));
+});
+
+test("connected Prepare final video and Schedule post forward real actions and render guarded progress/errors", () => {
   const { WorkflowCreationPanel } = load(panel);
   for (const kind of ["hook", "phone"]) for (const section of ["edit", "schedule"]) {
     let calls = 0, refreshes = 0;
     const action = { disabled: false, busy: false, message: "Ready to confirm.", error: "A response was lost.", onAction() { calls++; }, refresh() { refreshes++; } };
     const tree = WorkflowCreationPanel({ kind, section, [section]: action, children: "settings" });
     const buttons = nodes(tree).filter(n => n.type === "button");
-    const primary = buttons.find(n => text(n) === (section === "edit" ? "Prepare final video" : "Review schedule"));
+    const primary = buttons.find(n => text(n) === (section === "edit" ? "Prepare final video" : "Schedule post"));
     assert.equal(primary.props.disabled, false); primary.props.onClick(); assert.equal(calls, 1);
     assert.match(visibleText(tree), /Ready to confirm/); assert.match(text(nodes(tree).find(n => n.props.role === "alert")), /response was lost/);
     buttons.find(n => text(n) === "Refresh status").props.onClick(); assert.equal(refreshes, 1);
@@ -138,13 +158,14 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platforms");
   assert.deepEqual(nodes(tree).filter((node) => node.type === "platform-icon").map((node) => node.props.platform), ["instagram", "youtube"]);
   platforms[0].props.onClick();
-  nodes(tree).find((node) => node.type === "textarea").props.onChange({ target: { value: "  My caption\nunchanged  " } });
+  nodes(tree).find((node) => node.type === "post-caption-field").props.onChange("  My caption\nunchanged  ");
   nodes(tree).find((node) => node.props.type === "date").props.onChange({ target: { value: "2026-10-20" } });
   nodes(tree).find((node) => node.props.type === "time").props.onChange({ target: { value: "14:30" } });
   assert.deepEqual(changes.map((draft) => [draft.platform, draft.caption, draft.date, draft.time]), [["instagram", "", "", ""], ["", "  My caption\nunchanged  ", "", ""], ["", "", "2026-10-20", ""], ["", "", "", "14:30"]]);
   assert.equal(nodes(tree).filter((node) => node.type === "input").length, 2);
   assert.doesNotMatch(visibleText(tree), /Account|Select platform|Local draft only|no post will be scheduled/);
-  assert.match(text(tree), /The caption shown below your social post/);
+  assert.equal(nodes(tree).find(node => node.type === "post-caption-field").props.value, "");
+  assert.equal(changes[1].captionInitialized, true);
   assert.equal(nodes(tree).find((node) => node.props.type === "date").props["aria-describedby"], "schedule-test-timezone");
   assert.match(text(nodes(tree).find((node) => node.props.id === "schedule-test-timezone")), /Time zone:/);
   assert.equal(original.caption, "");
@@ -161,7 +182,7 @@ test("Schedule footer stays clean without implying publishing is connected", () 
   for (const kind of ["hook", "phone"]) {
     const tree = WorkflowCreationPanel({ kind, section: "schedule", children: "settings" });
     const footer = nodes(tree).find((node) => node.type === "footer");
-    assert.equal(visibleText(footer), "Review schedule");
+    assert.equal(visibleText(footer), "Schedule post");
     const action = nodes(footer).find((node) => node.type === "button");
     assert.equal(action.props.disabled, true);
     assert.equal(action.props["aria-describedby"], `${kind}-preview-limits`);
@@ -197,7 +218,8 @@ test("editing excludes scheduling and explains shared subtitle scope", () => {
   assert.match(creationCanvas, /Selected source video preview/);
   assert.match(creationCanvas, /Continue to edit/);
   assert.match(creationCanvas, /Add your app screen and instructions in Create/);
-  assert.doesNotMatch(edit, /Demo sound|aria-label="Scheduling"|Schedule<\/Button>/);
+  assert.doesNotMatch(edit, /aria-label="Scheduling"|Schedule<\/Button>/);
+  assert.match(edit, /Demo sound/);
   assert.match(edit, /Demo audio/);
   assert.match(edit, /EXPLORE_SUBTITLE_SCOPE_LABEL/);
   assert.match(edit, /including both segments; nothing is trimmed automatically/);

@@ -1,0 +1,17 @@
+.action {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  height: auto;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 20px;
+  white-space: normal;
+}
+
+@media (pointer: coarse) {
+  .action { min-height: 44px; }
+}

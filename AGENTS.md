@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
@@ -13,6 +13,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Before changing any Carousel API, worker, matcher, image sourcing, review,
 readiness, rendering, schema, or frontend behavior, read `CAROUSEL_CONTEXT.md`.
 Update that file when a Carousel product or architecture decision changes.
+
+## Explore source of truth
+
+Before changing Explore workflows, navigation, editors, previews, Remix,
+reference provenance, audio, draft recovery or scheduling entry points, read
+`EXPLORE_CONTEXT.md`. It records workflow differences, current UI/audio rules,
+recurring mistakes and known gaps. Update it when an Explore product decision
+changes or a recorded issue recurs. Keep local checks and production acceptance
+distinct; historical review documents may describe superseded behavior.
 
 ## Push and deployment scope
 

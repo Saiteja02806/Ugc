@@ -3,7 +3,7 @@ import { validateTranscript, type SubtitleTranscript } from "../../worker/src/su
 import { withReadDeadline } from "../http/read-deadline.ts";
 
 export type FinishStatus = { requestKey: string; jobId: string | null; outcome: "pending" | "completed" | "captions_ready" | "failed" | "cancelled" | "uncertain" | "unconfirmed"; mediaAssetId: string | null; message: string; captionTranscript?: SubtitleTranscript; terminal?: boolean };
-export type SavedFinish = { version: 1; ownerId: string; kind: "hook" | "phone"; requestKey: string; draft: ExploreFinishDraft };
+export type SavedFinish = { version: 1; ownerId: string; kind: "hook" | "phone"; requestKey: string; draft: ExploreFinishDraft; musicSelection?: string };
 export const FINISH_REQUEST_TIMEOUT_MS = 30_000;
 export const finishStorageKey = (owner: string, kind: "hook" | "phone") => `ugc-explore:finish:v1:${encodeURIComponent(owner)}:${kind}`;
 export const finishRecoveryStorageKey = (key: string) => `${key}:unconfirmed`;
@@ -26,7 +26,8 @@ export function readSavedFinish(raw: string | null, owner: string, kind: "hook" 
   if (value?.version !== 1 || value.ownerId !== owner || value.kind !== kind || !isExploreUuid(value.requestKey)) throw new Error("The saved edit belongs to another workflow.");
   const draft = parseExploreFinishDraft(value.draft);
   if (draft.kind !== kind) throw new Error("The saved edit belongs to another workflow.");
-  return { version: 1, ownerId: owner, kind, requestKey: value.requestKey, draft };
+  if (value.musicSelection !== undefined && value.musicSelection !== "default" && value.musicSelection !== "off" && !isExploreUuid(value.musicSelection)) throw new Error("The saved music choice could not be verified.");
+  return { version: 1, ownerId: owner, kind, requestKey: value.requestKey, draft, ...(value.musicSelection !== undefined ? { musicSelection: value.musicSelection } : {}) };
 }
 export function parseFinishStatus(value: unknown, key: string): FinishStatus {
   const v = value as Record<string, unknown> | null;

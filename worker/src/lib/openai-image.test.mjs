@@ -1,68 +1,70 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
-const requests = [], options = [], downloads = [];
-mock.method(globalThis, "fetch", async () => assert.fail("No network calls are allowed"));
-mock.module("openai", {
-  defaultExport: class {
-    constructor(value) { options.push(value); }
-    images = {
-      edit: async value => { requests.push({ kind: "edit", ...value }); return { data: [{ b64_json: Buffer.from("fixture").toString("base64") }], _request_id: "offline" }; },
-      generate: async value => { requests.push({ kind: "generate", ...value }); return { data: [{ b64_json: Buffer.from("fixture").toString("base64") }] }; },
-    };
-  },
-  namedExports: { toFile: async (bytes, name, metadata) => ({ bytes, name, metadata }) },
-});
-mock.module(new URL("../../dist/lib/reference-image-download.js", import.meta.url), {
-  namedExports: {
-    downloadReferenceImageBytes: async url => { downloads.push(url); return { buffer: Buffer.from("reference"), contentType: "image/png" }; },
-    downloadReferenceImageContext: async urls => urls.map(url => { downloads.push(url); return { buffer: Buffer.from(url), contentType: url.endsWith(".jpg") ? "image/jpeg" : "image/png" }; }),
-  },
-});
-process.env.OPENAI_API_KEY = "offline-fixture";
-process.env.OPENAI_IMAGE_MODEL = "gpt-image-2";
-const { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL } = await import("../../dist/lib/openai-image.js");
+const requests = [], options = [];
+const image = Buffer.from("image-fixture").toString("base64");
+mock.method(globalThis, "fetch", async () => assert.fail("Provider tests must not access the network"));
+mock.module("openai", { defaultExport: class {
+  constructor(value) { options.push(value); }
+  images = {
+    generate: async request => { requests.push({ operation: "generate", request }); return { data: [{ b64_json: image }], _request_id: "fixture-request" }; },
+    edit: async request => { requests.push({ operation: "edit", request }); return { data: [{ b64_json: image }], _request_id: "fixture-request" }; },
+  };
+}, namedExports: { toFile: async (buffer, name, metadata) => ({ buffer, name, metadata }) } });
+mock.module(new URL("../../dist/lib/reference-image-download.js", import.meta.url), { namedExports: {
+  downloadReferenceImageContext: async urls => urls.map(url => ({ buffer: Buffer.from(url), contentType: "image/png" })),
+  downloadReferenceImageBytes: async url => ({ buffer: Buffer.from(url), contentType: "image/png" }),
+} });
 
-test("Sunburst edits explicitly override the legacy environment model without unsupported fidelity parameters or SDK retries", async () => {
-  const output = await generateOpenAiImageBuffer("My instructions", "9:16", "https://storage.test/reference.png", SLIDESHOW_IMAGE_MODEL);
-  assert.equal(requests.at(-1).kind, "edit");
-  assert.equal(requests.at(-1).model, "gpt-image-2.5-sunburst");
-  assert.equal(requests.at(-1).prompt, "My instructions");
-  assert.equal(requests.at(-1).size, "1024x1536");
-  assert.equal("input_fidelity" in requests.at(-1), false);
-  assert.deepEqual(downloads, ["https://storage.test/reference.png"]);
-  assert.equal(options[0].maxRetries, 0);
-  assert.equal(output.model, SLIDESHOW_IMAGE_MODEL);
-  assert.equal(output.requestId, "offline");
-  assert.equal(output.buffer.toString(), "fixture");
-});
+const { generateOpenAiImageBuffer, SLIDESHOW_IMAGE_MODEL, SLIDESHOW_FLARE_IMAGE_MODEL } = await import("../../dist/lib/openai-image.js");
 
-test("Sunburst sends every selected image as an ordered file array alongside the instructions", async () => {
-  const urls = ["https://storage.test/slide-4.jpg", "https://storage.test/slide-1.png", "https://storage.test/slide-6.png"];
-  await generateOpenAiImageBuffer("My brand and instructions", "9:16", urls, SLIDESHOW_IMAGE_MODEL);
-  const request = requests.at(-1);
-  assert.equal(request.kind, "edit");
-  assert.equal(request.model, SLIDESHOW_IMAGE_MODEL);
-  assert.equal(request.prompt, "My brand and instructions");
-  assert.deepEqual(request.image.map(image => image.bytes.toString()), urls);
-  assert.deepEqual(request.image.map(image => image.name), ["reference-1.jpg", "reference-2.png", "reference-3.png"]);
-});
-
-test("Sunburst text generation uses the same explicit model, while older callers retain their configured model", async () => {
-  await generateOpenAiImageBuffer("Landscape", "16:9", undefined, SLIDESHOW_IMAGE_MODEL);
-  assert.equal(requests.at(-1).kind, "generate");
-  assert.equal(requests.at(-1).model, SLIDESHOW_IMAGE_MODEL);
-  assert.equal(requests.at(-1).size, "1536x1024");
-  await generateOpenAiImageBuffer("Legacy", "1:1");
-  assert.equal(requests.at(-1).model, "gpt-image-2");
-});
-
-test("new slideshow requests compose directly at every selected ratio without changing legacy sizing", async () => {
-  for (const [ratio, size] of [["4:5", "1024x1280"], ["9:16", "720x1280"], ["16:9", "1280x720"], ["1:1", "1024x1024"]]) {
-    await generateOpenAiImageBuffer("Keep the full composition", ratio, ["https://storage.test/style.png", "https://storage.test/product.png"], SLIDESHOW_IMAGE_MODEL, true);
-    assert.equal(requests.at(-1).size, size);
-    assert.equal(requests.at(-1).image.length, 2);
+test("Flare and Sunburst generation uses the exact selected model with no hidden retry or environment override", async () => {
+  const previousKey = process.env.OPENAI_API_KEY, previousModel = process.env.OPENAI_IMAGE_MODEL;
+  process.env.OPENAI_API_KEY = "test-fixture-only";
+  process.env.OPENAI_IMAGE_MODEL = "legacy-env-model";
+  try {
+    for (const model of [SLIDESHOW_FLARE_IMAGE_MODEL, SLIDESHOW_IMAGE_MODEL]) {
+      const output = await generateOpenAiImageBuffer("Approved business context", "4:5", undefined, model, true);
+      assert.deepEqual(requests.at(-1), { operation: "generate", request: { model, prompt: "Approved business context", size: "1024x1280" } });
+      assert.equal(output.model, model);
+      assert.equal(output.buffer.toString(), "image-fixture");
+    }
+    assert.equal(SLIDESHOW_FLARE_IMAGE_MODEL, "gpt-image-2.5-flare");
+    assert.equal(SLIDESHOW_IMAGE_MODEL, "gpt-image-2.5-sunburst");
+    assert.equal(options[0].maxRetries, 0);
+  } finally {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
+    if (previousModel === undefined) delete process.env.OPENAI_IMAGE_MODEL; else process.env.OPENAI_IMAGE_MODEL = previousModel;
   }
-  await generateOpenAiImageBuffer("Legacy portrait", "4:5", undefined, SLIDESHOW_IMAGE_MODEL);
-  assert.equal(requests.at(-1).size, "1024x1536");
+});
+
+test("both slideshow models edit with all selected references and the complete business prompt", async () => {
+  const references = ["https://media.example.test/slide-1.png", "https://media.example.test/slide-2.png"];
+  for (const model of [SLIDESHOW_FLARE_IMAGE_MODEL, SLIDESHOW_IMAGE_MODEL]) {
+    const previous = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "test-fixture-only";
+    try {
+      await generateOpenAiImageBuffer("Business facts plus slide 2 instructions", "9:16", references, model, true);
+      const { operation, request } = requests.at(-1);
+      assert.equal(operation, "edit");
+      assert.equal(request.model, model);
+      assert.equal(request.size, "720x1280");
+      assert.equal(request.prompt, "Business facts plus slide 2 instructions");
+      assert.deepEqual(request.image.map(file => file.buffer.toString()), references);
+      assert.equal("input_fidelity" in request, false);
+    } finally { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous; }
+  }
+});
+
+test("named slide inputs keep source 4 first and the screenshot bytes paired with its upload name", async () => {
+  process.env.OPENAI_API_KEY = "test-fixture-only";
+  const references = ["https://owned.test/source-4.png", "https://owned.test/screenshot.png"];
+  await generateOpenAiImageBuffer("Only change this laptop screen", "4:5", references, SLIDESHOW_IMAGE_MODEL, true, ["Source slide 4 (source)", "Upload C (screenshot)"]);
+  const files = requests.at(-1).request.image;
+  assert.deepEqual(files.map(file => file.buffer.toString()), references);
+  assert.match(files[0].name, /^image-1-Source-slide-4-source/);
+  assert.match(files[1].name, /^image-2-Upload-C-screenshot/);
+  const before = requests.length;
+  await assert.rejects(generateOpenAiImageBuffer("Invalid names", "4:5", references, SLIDESHOW_IMAGE_MODEL, true, ["only one name"]), /names/);
+  assert.equal(requests.length, before);
 });

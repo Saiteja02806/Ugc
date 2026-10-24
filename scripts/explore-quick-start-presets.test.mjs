@@ -40,6 +40,7 @@ test("Talking Head + Demo is visible while preview stays non-spending and Creato
   const entry = load("components/explore/hook-workflow-entry.tsx", {
     "next/navigation": { useSearchParams: () => query },
     "@/components/explore/hook-workflow-preview": { HookWorkflowPreview: "HookWorkflowPreview" },
+    "@/components/explore/workflow-draft-entry": { WorkflowDraftEntryBoundary: "draft-entry" },
   });
   const imports = { react: { Suspense: "Suspense" }, "@/components/explore/hook-workflow-entry": entry,
     "@/components/layout/workspace-content-loading": { WorkspaceContentLoading: "Loading" } };
@@ -47,7 +48,8 @@ test("Talking Head + Demo is visible while preview stays non-spending and Creato
     const route = load("app/explore/create-hook/page.tsx", imports, { NODE_ENV: "production", EXPLORE_GENERATION_ENABLED: enabled });
     query = new URLSearchParams();
     const shell = route.default();
-    const live = shell.props.children.type(shell.props.children.props);
+    const result = shell.props.children.type(shell.props.children.props);
+    const live = result.type === "draft-entry" ? result.props.children({ id: "test-draft", createNew: true }) : result;
     assert.equal(live.type, "HookWorkflowPreview");
     assert.equal(live.props.generationEnabled, enabled === "true");
     query = new URLSearchParams({ preview: "1" });

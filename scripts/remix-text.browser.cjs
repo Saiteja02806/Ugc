@@ -67,11 +67,10 @@ async function main() {
     assert.equal(await page.locator('.phone rect').getAttribute('fill-opacity'),'0.58');assert.equal(await page.locator('.phone g').getAttribute('font-weight'),'400');
     await page.getByLabel('Text preset',{exact:true}).selectOption('bold');assert.equal((await caption()).preset,undefined);assert.equal((await caption()).backgroundOpacity,undefined);
     await open();assert.equal(await page.getByText('Acme',{exact:true}).count(),1);
-    assert.equal(await page.getByLabel('Remix instructions',{exact:true}).isVisible(),false,'optional instructions stay tucked away');
-    await page.locator('summary').filter({hasText:'Additional instructions'}).click();
-    const prior=await original();await page.getByLabel('Remix instructions',{exact:true}).fill('Keep the opening');
+    assert.equal(await page.getByLabel('Remix instructions',{exact:true}).count(),0,'one text box replaces separate guidance');
+    const prior=await original();await page.getByLabel('Reference text',{exact:true}).fill('The original hook. Keep the opening');
     mode='uncertain';await page.getByRole('button',{name:'Generate remix',exact:true}).click();await page.getByRole('button',{name:'Check remix result',exact:true}).waitFor();assert.deepEqual(await original(),prior);
-    const key=requests.at(-1).requestKey;await page.reload();await page.getByRole('button',{name:'Check remix result',exact:true}).waitFor();assert.equal(await page.getByLabel('Remix instructions',{exact:true}).inputValue(),'Keep the opening');
+    const key=requests.at(-1).requestKey;await page.reload();await page.getByRole('button',{name:'Check remix result',exact:true}).waitFor();assert.equal(await page.getByLabel('Reference text',{exact:true}).inputValue(),'The original hook. Keep the opening');
     await page.getByRole('button',{name:'Check remix result',exact:true}).click();await page.getByRole('button',{name:/^Apply to this (clip|slide)$/,exact:true}).waitFor();assert.equal(requests.at(-1).requestKey,key);assert.equal(paidCalls,1);assert.deepEqual(await original(),prior);
     const revised='My own revised caption for Acme';await page.getByLabel('Remixed text',{exact:true}).fill(revised);await page.getByRole('button',{name:/^Apply to this (clip|slide)$/,exact:true}).click();const applied=await original();assert.equal(applied.textOverlays[0].value,revised);assert.equal(applied.textOverlays[0].y,prior.textOverlays[0].y);assert.equal(applied.textOverlays[0].fontSize,prior.textOverlays[0].fontSize);assert.equal(applied.musicVolume,.7);
     assert.equal(await control().getAttribute('open'),null);assert.equal(await page.getByLabel('Overlay text',{exact:true}).isVisible(),true);

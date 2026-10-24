@@ -1,4 +1,6 @@
 import { getGeneratedVideoHistoryMetadata } from "@/lib/ai-studio/generated-video-history-metadata";
+import { canAccessCreatorAccounts } from "@/lib/explore/creator-account-access";
+import { getGeneratedImageHistoryMetadata } from "@/lib/ai-studio/generated-image-history-metadata";
 import { FirebaseAuthRequestError, requireFirebaseUser } from "@/lib/firebase/server-auth";
 import { getBackgroundJobsByIds } from "@/lib/jobs/background-jobs";
 import {
@@ -42,10 +44,12 @@ export async function GET(request: Request) {
     const rows = await listMediaAssets({
       collection,
       sourceTypes,
+      projectId: searchParams.get("projectId") || undefined,
       userId: user.uid,
     });
 
     const visibleAssets = rows
+      .filter(row => !row.storage_key?.startsWith("explore/creator-slideshows/") || canAccessCreatorAccounts(user))
       .filter((row) =>
         isMediaAssetVisibleInMediaList({
           metadata: row.metadata,
@@ -55,18 +59,18 @@ export async function GET(request: Request) {
       )
       .map(serializeMediaAsset);
     const generatedJobIds = visibleAssets
-      .filter((asset) => asset.sourceType === "generated_video")
+      .filter((asset) => asset.sourceType === "generated_video" || asset.sourceType === "generated_image")
       .map((asset) => asset.sourceRecordId ?? "");
     const generatedJobs = await getBackgroundJobsByIds(generatedJobIds);
     const generatedJobMetadata = new Map(
       generatedJobs
         .filter(
           (job) =>
-            job.jobType === "generate_hook_video" && job.userId === user.uid,
+            (job.jobType === "generate_hook_video" || job.jobType === "generate_image") && job.userId === user.uid,
         )
         .map((job) => [
           job.id,
-          getGeneratedVideoHistoryMetadata(job.input),
+          job.jobType === "generate_hook_video" ? getGeneratedVideoHistoryMetadata(job.input) : getGeneratedImageHistoryMetadata(job.input),
         ]),
     );
 

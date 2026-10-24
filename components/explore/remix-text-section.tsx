@@ -7,7 +7,13 @@ import { getCurrentUserIdToken } from "@/lib/firebase/auth";
 import type { RecreateReference, RecreateFormat } from "@/lib/explore/recreate-types";
 import { ReferenceTextSchema, RemixRequestSchema, remixSourceMatches, validateRemixDraft, validateRemixOutput, type ReferenceText, type RemixOutput, type RemixRequest } from "@/lib/explore/reference-text";
 import { readRemixTextDraft } from "@/lib/explore/remix-text-draft";
+import { hookRemixResult, hookRemixSource } from "@/lib/explore/hook-remix-source";
 import styles from "./remix-text-section.module.css";
+
+function mergeSavedText(seed: string | null, guidance: string) {
+  if (!guidance.trim() || seed === guidance) return seed;
+  return [seed, guidance].filter(Boolean).join("\n\n");
+}
 
 type Props = {
   owner: string | null; targetKey: string; format: RecreateFormat;
@@ -16,6 +22,10 @@ type Props = {
   onUse: (output: RemixOutput, source: ReferenceText) => void | boolean;
   children?: ReactNode;
   overview?: boolean;
+  expanded?: boolean;
+  editorNavigation?: boolean;
+  referenceFirst?: boolean;
+  scopeLabel?: string;
 };
 
 /** Clip, account and reference changes discard late replies and scope draft recovery. */
@@ -23,8 +33,9 @@ export function RemixTextSection(props: Props) {
   return <RemixTextControl key={`${props.owner}:${props.targetKey}:${props.format}:${props.reference?.id}:${props.defaultSlideId}`} {...props} />;
 }
 
-function RemixTextControl({ owner, targetKey, format, reference, previewSource, defaultSlideId, disabled, localPreview, onUse, children, overview = false }: Props) {
+function RemixTextControl({ owner, targetKey, format, reference, previewSource, defaultSlideId, disabled, localPreview, onUse, children, overview = false, expanded = false, editorNavigation = false, referenceFirst = false, scopeLabel: customScopeLabel }: Props) {
   const selected = reference?.format === format && !reference.id.startsWith("uploaded:") ? reference : null;
+  const prioritizeReference = referenceFirst && expanded && editorNavigation && !overview && Boolean(selected);
   const selection = { referenceId: selected?.id ?? null, slideId: format === "slideshow" ? selected ? selected.slides.find(s => s.id === defaultSlideId)?.id ?? null : defaultSlideId ?? null : null };
   const requestStorageKey = `ugc-explore:remix-request:v2:${owner}:${format}:${targetKey}:${selection.referenceId ?? ""}:${selection.slideId}`;
   const inputStorageKey = `${requestStorageKey}:input`;
@@ -32,23 +43,27 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     try {
       if (!owner || localPreview) return null;
       const saved = readRemixTextDraft(localStorage.getItem(requestStorageKey)) ?? readRemixTextDraft(localStorage.getItem(`ugc-explore:remix-request:v1:${owner}:${format}:${targetKey}`));
-      return saved?.referenceId === selection.referenceId && saved.slideId === selection.slideId && (!saved.format || saved.format === format) ? saved : null;
+      if (saved?.referenceId !== selection.referenceId || saved.slideId !== selection.slideId || saved.format && saved.format !== format) return null;
+      if (saved.source && saved.reviewedDraft) {
+        const result = hookRemixResult(saved.reviewedDraft, saved.source);
+        return { ...saved, source: result.source, reviewedDraft: result.output };
+      }
+      return saved;
     } catch { return null; }
   });
   const [input, setInput] = useState<{ seed: string | null; instructions: string }>(() => {
-    if (recovery) return { seed: recovery.referenceBlocks?.join("\n\n") ?? null, instructions: recovery.instructions };
+    if (recovery) return { seed: mergeSavedText(recovery.referenceBlocks?.join("\n\n") ?? recovery.source?.blocks.map(block => block.text).join("\n\n") ?? null, recovery.instructions), instructions: "" };
     try {
       const raw = owner && !localPreview ? localStorage.getItem(inputStorageKey) : null;
       const saved = raw && raw.length < 14000 ? JSON.parse(raw) : null;
-      if (typeof saved?.seed === "string" && saved.seed.length <= 6000 && typeof saved.instructions === "string" && saved.instructions.length <= 2000) return { seed: saved.seed, instructions: saved.instructions };
+      if (typeof saved?.seed === "string" && saved.seed.length <= 6000 && typeof saved.instructions === "string" && saved.instructions.length <= 2000) return { seed: mergeSavedText(saved.seed, saved.instructions), instructions: "" };
     } catch { /* An unavailable local draft does not prevent editing. */ }
     return { seed: null, instructions: "" };
   });
-  const [optionsOpen, setOptionsOpen] = useState(() => Boolean(input.instructions.trim()));
-  const [mode, setMode] = useState<"manual" | "reference">(overview || recovery ? "reference" : "manual");
-  const [source, setSource] = useState<ReferenceText | null>(() => recovery?.source ?? (localPreview && previewSource && remixSourceMatches(previewSource, selection, format) ? previewSource : null));
+  const [mode, setMode] = useState<"manual" | "reference">(overview || recovery || expanded ? "reference" : "manual");
+  const [source, setSource] = useState<ReferenceText | null>(() => recovery?.source ?? (localPreview && previewSource && remixSourceMatches(previewSource, selection, format) ? hookRemixSource(previewSource) : null));
   const [enabled, setEnabled] = useState(false);
-  const [loading, setLoading] = useState(Boolean((overview || recovery) && owner && !localPreview));
+  const [loading, setLoading] = useState(Boolean((overview || recovery || expanded) && owner && !localPreview));
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<RemixOutput | null>(recovery?.reviewedDraft ?? null);
   const [outputSource, setOutputSource] = useState<ReferenceText | null>(recovery?.source ?? null);
@@ -61,10 +76,13 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     ...(recovery.format ? { format: recovery.format } : {}), ...(recovery.referenceBlocks ? { referenceBlocks: recovery.referenceBlocks } : {}) } : null);
   const generation = useRef(0), alive = useRef(true);
   const inputHintId = useId();
-  const optionsId = useId();
+  const scopeId = useId();
   const selectedId = selected?.id;
   const startingText = input.seed ?? (source?.status === "ready" ? source.blocks.map(block => block.text).join("\n\n") : "");
-  const scopeLabel = format === "slideshow" ? "Applies to this slide only." : "Only this clip. The demo stays unchanged.";
+  const sourceNeedsAttention = loading || prioritizeReference && source?.status !== "ready";
+  const referenceLabel = format === "slideshow" ? "Slide reference" : "Video reference";
+  const businessLabel = business?.name ?? (business?.ready ? "Saved in Settings" : loading ? "Loading…" : localPreview ? "Preview" : !owner ? "Sign in" : business?.ready === false ? "Not set" : "Unavailable");
+  const scopeLabel = customScopeLabel ?? (format === "slideshow" ? "Applies to this slide only." : "Only this clip. The demo stays unchanged.");
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useEffect(() => {
     const controller = new AbortController();
@@ -80,7 +98,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.message || "Could not load remix details.");
         if (!controller.signal.aborted) {
-          const next = data.source === null ? null : ReferenceTextSchema.parse(data.source);
+          const next = data.source === null ? null : hookRemixSource(ReferenceTextSchema.parse(data.source));
           if (next && !remixSourceMatches(next, { referenceId: selectedId ?? null, slideId: selection.slideId }, format)) throw new Error("This text does not match your selected reference.");
           setSource(next); setEnabled(data.enabled === true);
           setBusiness(data.businessContext && typeof data.businessContext.ready === "boolean" ? { name: typeof data.businessContext.name === "string" ? data.businessContext.name : null, ready: data.businessContext.ready } : null);
@@ -114,7 +132,7 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     const current = ++generation.current;
     if (!request.current) {
       const unchanged = source?.status === "ready" && startingText.trim() === source.blocks.map(block => block.text).join("\n\n").trim();
-      const candidate = RemixRequestSchema.safeParse({ requestKey: crypto.randomUUID(), ...selection, format, instructions: input.instructions,
+      const candidate = RemixRequestSchema.safeParse({ requestKey: crypto.randomUUID(), ...selection, format, instructions: unchanged ? "" : startingText.trim(),
         referenceBlocks: unchanged && source ? source.blocks.map(block => block.text) : [startingText.trim()] });
       if (!candidate.success) { setError("Keep reference text within 6,000 characters and remove unsupported control characters."); return; }
       request.current = candidate.data;
@@ -139,7 +157,8 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
       const original = ReferenceTextSchema.parse(data.source);
       if (!remixSourceMatches(original, payload, format)) throw new Error("This result does not match this clip's starting text.");
       const next = validateRemixOutput(data.output, original);
-      setOutputSource(original); saveReview(next, original);
+      const result = hookRemixResult(next, original);
+      setOutputSource(result.source); saveReview(result.output, result.source);
     } catch (e) {
       if (alive.current && generation.current === current) { setError(e instanceof Error ? e.message : "Could not confirm the remix. Check its result again."); setOutcome(value => value ?? "uncertain"); }
     } finally { if (alive.current && generation.current === current) setBusy(false); }
@@ -153,57 +172,49 @@ function RemixTextControl({ owner, targetKey, format, reference, previewSource, 
     setMode(next);
     if (next === "reference") setLoading(Boolean(owner && !localPreview && !(format === "slideshow" && selectedId && !selection.slideId)));
   }
-  const instructionField = <label className={styles.label}>Remix instructions
-    <textarea aria-label="Remix instructions" placeholder="For example: use a friendly tone, keep it in English, avoid emojis…" value={input.instructions} disabled={locked} rows={2} maxLength={2000} onChange={event => changeInput({ ...input, instructions: event.target.value })} className={styles.field} />
-  </label>;
-  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : overview ? "Generate" : "Generate remix"}</Button>;
+  const availability = busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : localPreview ? "Preview" : !owner ? "Sign in" : loading ? "Loading…" : !enabled ? "Unavailable" : outcome === "failed" ? "Start a new remix" : !business?.ready ? "Add business context" : !startingText.trim() ? "Add text" : "Ready";
+  const generateButton = <Button type="button" className={overview ? styles.overviewGenerate : styles.generate} disabled={generationDisabled} title={localPreview ? "AI generation is unavailable in this preview." : undefined} onClick={() => void generate()}>{busy ? "Generating remix…" : outcome === "uncertain" ? "Check remix result" : "Generate remix"}</Button>;
   const flow = <div className={`${styles.flow} ${overview ? styles.overviewFlow : ""}`} aria-busy={busy || loading}>
         {!draft ? <>
-          <label className={styles.label}><span className={overview ? styles.srOnly : undefined}>Reference text</span>
-            <textarea aria-label="Reference text" aria-describedby={inputHintId} className={`${styles.field} ${styles.sourceField}`} rows={3} maxLength={6000} placeholder="Paste a hook, describe your idea, or edit the reference text…" value={startingText} disabled={locked} onChange={event => changeInput({ ...input, seed: event.target.value })} />
+          <label className={styles.label}><span className={overview ? styles.srOnly : undefined}>{editorNavigation ? "Text to remix" : "Reference text"}</span>
+            <textarea aria-label={editorNavigation ? "Text to remix" : "Reference text"} aria-describedby={sourceNeedsAttention ? inputHintId : undefined} className={`${styles.field} ${styles.sourceField}`} rows={3} maxLength={6000} placeholder="Add your text and any tone, language or wording preferences…" value={startingText} disabled={locked} onChange={event => changeInput({ ...input, seed: event.target.value })} />
           </label>
-          <p id={inputHintId} className={overview && !loading ? styles.srOnly : styles.notice}>{loading ? "Loading reference text…" : "Use the reference or enter your own details."}</p>
-          {!overview ? <div className={styles.context}>{business?.ready ? <Check size={14} aria-hidden="true" /> : null}<span>Business context</span><strong>{business?.name ?? "Saved in Settings"}</strong><a href="/settings#business-context">{business?.ready === false ? "Add context" : "Review"}</a></div> : null}
-          {business?.ready === false ? <p className={styles.notice}>Add your business name and product description in Settings first.{overview ? <> <a className={styles.contextLink} href="/settings#business-context">Add business context</a></> : null}</p> : null}
-          {overview ? <>
-            <div id={optionsId} className={styles.overviewOptions} hidden={!optionsOpen}>
-              {instructionField}
-              <p className={styles.notice}>Optional guidance for tone, language or what to avoid.</p>
-            </div>
-            <div className={styles.overviewActions}>
-              <Button type="button" variant="ghost" className={styles.optionsToggle} aria-label="Remix options" aria-controls={optionsId} aria-expanded={optionsOpen} onClick={() => setOptionsOpen(open => !open)}>Options{input.instructions.trim() ? <span className={styles.optionSet}>Set</span> : null}<ChevronDown size={14} aria-hidden="true" /></Button>
-              {generateButton}
-            </div>
-          </> : <>
-            <details className={styles.option} open={Boolean(recovery?.instructions)}><summary>Additional instructions <span>Optional</span></summary>{instructionField}</details>
+          {sourceNeedsAttention ? <p id={inputHintId} className={styles.notice}>{loading ? selected ? "Loading reference text…" : "Loading business context…" : "This reference has no prepared text yet. Paste its text above to remix it."}</p> : null}
+          {!overview ? <div className={styles.remixFooter}>
+            <div className={styles.context}>{business?.ready ? <Check size={14} aria-hidden="true" /> : null}<span>Business context</span><strong>{businessLabel}</strong><a href="/settings#business-context">{business?.ready === false ? "Add context" : "Review"}</a></div>
             {generateButton}
-          </>}
-          {localPreview ? !overview ? <p className={styles.notice}>Local preview · AI generation is disabled.</p> : null : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is not enabled yet.</p> : null}
+          </div> : null}
+          {business?.ready === false ? <p className={styles.notice}>Add your business name and product description in Settings first.{overview ? <> <a className={styles.contextLink} href="/settings#business-context">Add business context</a></> : null}</p> : null}
+          {overview ? generateButton : null}
+          {localPreview ? null : !owner ? <p className={styles.notice}>Sign in to generate a remix.</p> : !loading && !enabled && !error ? <p className={styles.notice}>Remix generation is currently unavailable. Please try again later.</p> : null}
         </> : <div className={styles.draft}>
           <p className={styles.draftTitle} role="status">Review your remix</p>
           {format === "slideshow" ? <><label className={styles.label}>Heading<textarea aria-label="Remixed heading" value={draft.heading} disabled={disabled} maxLength={180} rows={2} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, heading: event.target.value }, outputSource); }} /></label><label className={styles.label}>Body<textarea aria-label="Remixed body" value={draft.body} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, body: event.target.value }, outputSource); }} /></label></> : draft.blocks.map((block, i) => <label key={i} className={styles.label}>{draft.blocks.length === 1 ? "Remixed text" : `Text block ${i + 1}`}<textarea aria-label={draft.blocks.length === 1 ? "Remixed text" : `Remixed text block ${i + 1}`} value={block} disabled={disabled} maxLength={600} rows={3} className={styles.field} onChange={event => { if (outputSource) saveReview({ ...draft, blocks: draft.blocks.map((text, n) => n === i ? event.target.value : text) }, outputSource); }} /></label>)}
           {draftError ? <p role="alert" className={`${styles.notice} ${styles.error}`}>{draftError}</p> : null}
-          <Button type="button" disabled={disabled || busy || Boolean(draftError)} onClick={() => { if (outputSource && onUse(validateRemixDraft(draft, outputSource), outputSource) !== false) { reset(); setMode(overview ? "reference" : "manual"); } }}>{format === "slideshow" ? "Apply to this slide" : overview ? "Apply to hook" : "Apply to this clip"}</Button>
+          <Button type="button" disabled={disabled || busy || Boolean(draftError)} onClick={() => { if (outputSource && onUse(validateRemixDraft(draft, outputSource), outputSource) !== false) { reset(); setMode(overview || expanded ? "reference" : "manual"); } }}>{format === "slideshow" ? "Apply to this slide" : overview ? "Apply to hook" : "Apply to this clip"}</Button>
         </div>}
-        {!overview ? <p className={styles.scope}>{scopeLabel}</p> : null}
         {error ? <p role="alert" className={`${styles.notice} ${styles.error}`}>{error}</p> : null}
         {storageError ? <p role="status" className={styles.notice}>This draft couldn&apos;t be saved in your browser. Keep this screen open until you apply it.</p> : null}
         {error && !enabled && owner && !localPreview ? <Button type="button" variant="outline" disabled={locked || loading} onClick={() => { setError(null); setLoading(true); setLoadAttempt(n => n + 1); }}>Retry loading remix details</Button> : null}
         {outcome === "failed" || draft ? <Button type="button" variant="ghost" disabled={busy || disabled} onClick={reset}>Start a new remix</Button> : null}
       </div>;
-  return <section className={styles.section} aria-label="Remix Text" data-remix-text>
+  const manualFields = <div className={styles.manual}>{children}</div>;
+  return <section className={`${styles.section} ${editorNavigation ? styles.editorSection : ""} ${prioritizeReference ? styles.referenceFirst : ""}`} aria-label="Remix Text" aria-describedby={scopeId} data-remix-text data-remix-expanded={expanded} data-remix-priority={prioritizeReference || undefined}>
+    <span id={scopeId} className={styles.srOnly}>{scopeLabel}</span>
+    {expanded && !overview && !prioritizeReference ? manualFields : null}
     {overview && children ? <div className={styles.manualEntry} data-remix-manual-entry>{children}</div> : null}
     {overview ? <div className={`${styles.control} ${styles.overviewControl}`} data-remix-control>
       <div className={styles.overviewHeader}>
-        <div className={styles.overviewLabel}><span>Remix text</span><span className={styles.availability} role="status">{busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : "Available"}</span></div>
+        <span className={styles.availability} role="status">{availability}</span>
       </div>
       {flow}
-    </div> : <details className={styles.control} data-remix-control open={mode === "reference"} onToggle={event => showMode(event.currentTarget.open ? "reference" : "manual")}>
+    </div> : expanded ? <div className={styles.control} data-remix-control>{editorNavigation ? <div className={styles.editorRemixHeading}><h3 className={styles.trigger}>Remix text<span className={styles.hint}>{prioritizeReference ? referenceLabel : "Add your own text"}</span></h3></div> : <h3 className={styles.trigger}>Remix text<span className={styles.hint}>Optional</span></h3>}{flow}</div> : <details className={styles.control} data-remix-control open={mode === "reference"} onToggle={event => showMode(event.currentTarget.open ? "reference" : "manual")}>
       <summary className={styles.trigger} data-remix-trigger onClick={event => { if (disabled) event.preventDefault(); }} aria-disabled={disabled || undefined}>
-        <span>Remix text</span><span className={styles.hint}>{busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : "Optional"}</span><ChevronDown size={14} className={styles.chevron} aria-hidden="true" />
+        <span>Remix text</span><span className={styles.hint}>{busy ? "Generating…" : draft ? "Draft ready" : outcome === "uncertain" ? "Check result" : selected ? referenceLabel : "Add your own text"}</span><ChevronDown size={14} className={styles.chevron} aria-hidden="true" />
       </summary>
       {flow}
     </details>}
-    {!overview ? <div className={styles.manual} hidden={mode !== "manual"}>{children ?? <p className={styles.notice}>Write your text and choose its position in the editor.</p>}</div> : null}
+    {prioritizeReference && children ? manualFields : null}
+    {!overview && !expanded ? <div className={styles.manual} hidden={!editorNavigation && mode !== "manual"}>{children ?? <p className={styles.notice}>Write your text and choose its position in the editor.</p>}</div> : null}
   </section>;
 }

@@ -8,3 +8,7 @@ export function getCreativeAssetEditorHref(assetId: string) {
 export function getContentDemoEditorHref(demoId: string) {
   return `/library/demos/${encodeURIComponent(demoId)}/edit`;
 }
+
+export function getContentExploreDemoEditorHref(demoId: string) {
+  return `/explore/hook-video?demoId=${encodeURIComponent(demoId)}&step=demo`;
+}

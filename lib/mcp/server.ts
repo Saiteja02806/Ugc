@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
+import { MCP_MAX_REQUEST_BYTES, MCP_MAX_TOOL_INPUT_ELEMENTS } from "./transport-limits";
 import { registerGenerationMcpTools, registeredGenerationMcpTools } from "./generation-tools";
 import { registerMutationMcpTools, registeredMutationMcpTools } from "./mutation-tools";
 import { registerReadMcpTools, registeredReadMcpTools } from "./read-tools";
@@ -41,7 +42,7 @@ export const registeredMcpTools: readonly string[] = [
 
 export const mcpHandler = createMcpHandler(
   () => {
-    const server = new McpServer({ name: "UGC Pilot", version: "0.1.0" });
+    const server = new McpServer({ name: "UGC Pilot", version: "0.1.0" }, { maxToolInputElements: MCP_MAX_TOOL_INPUT_ELEMENTS });
     registerReadMcpTools(server);
     registerMutationMcpTools(server);
     registerGenerationMcpTools(server);
@@ -64,6 +65,7 @@ export const mcpHandler = createMcpHandler(
   },
   {
     legacy: "stateless",
+    maxRequestBodySize: MCP_MAX_REQUEST_BYTES,
     onerror(error) {
       console.error(JSON.stringify({ event: "mcp.transport.error", name: error.name }));
     },

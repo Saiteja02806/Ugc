@@ -1,6 +1,7 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useAnalyticsDisplayTiming } from "@/lib/analytics/use-analytics-display-timing";
 import {
   AlertCircle,
   ArrowRight,
@@ -27,10 +28,8 @@ import {
 import Link from "next/link";
 import {
   useCallback,
-  useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -82,7 +81,12 @@ import {
   getConnectionsForAnalyticsPlatform,
   getEffectiveAnalyticsConnectionId,
 } from "@/lib/analytics/social-account-selection";
-import { loadInstagramAnalyticsQuery } from "@/lib/analytics/instagram-query";
+import { useInstagramAnalytics } from "@/lib/analytics/use-instagram-analytics";
+import { analyticsRequest } from "@/lib/analytics/use-analytics-resource";
+import { useAnalyticsWake } from "@/lib/analytics/use-analytics-wake";
+import { ANALYTICS_SNAPSHOT_READ_STALE_MS } from "@/lib/analytics/freshness-policy";
+import { getConnectionsRevision } from "@/lib/social/connection-revision";
+import { getAccountSocialConnectionsQueryKey } from "@/lib/scheduling/account-data-query-cache";
 import { useAuth } from "@/contexts/auth-context";
 import {
   getInstagramPerformanceTrendMode,
@@ -90,13 +94,7 @@ import {
   type InstagramInsightPoint,
   type InstagramInsightsAccount,
 } from "@/lib/analytics/instagram-insights";
-import { getCurrentUserIdToken } from "@/lib/firebase/auth";
-import {
-  loadAccountSchedules,
-  loadAccountSocialConnections,
-} from "@/lib/scheduling/account-data-query";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
-import type { ScheduledPost } from "@/lib/scheduling/types";
 import type { SocialConnection, SocialPlatform } from "@/lib/social/types";
 import { hasTikTokUiAccess, isSocialPlatformVisible } from "@/lib/social/platform-visibility";
 import { hasYouTubeBetaAccess } from "@/lib/social/youtube-beta-access";
@@ -105,34 +103,6 @@ import { cn } from "@/lib/utils";
 type AnalyticsLoadState = "error" | "loading" | "ready";
 type DateRangeDays = 7 | 30 | 90;
 type PerformanceMetric = "interactions" | "reach" | "views";
-
-type InstagramInsightsResponse = {
-  accounts?: InstagramInsightsAccount[];
-  days?: DateRangeDays;
-  message?: string;
-  ok?: boolean;
-};
-
-type InstagramInsightsResult = {
-  accounts: InstagramInsightsAccount[];
-  days: DateRangeDays | null;
-  message: string | null;
-  state: "loading" | "ready";
-};
-
-type InstagramContentResponse = {
-  accounts?: InstagramContentAccount[];
-  days?: DateRangeDays;
-  message?: string;
-  ok?: boolean;
-};
-
-type InstagramContentResult = {
-  accounts: InstagramContentAccount[];
-  days: DateRangeDays | null;
-  message: string | null;
-  state: "loading" | "ready";
-};
 
 type InstagramAnalyticsWorkspaceSummary = InstagramAnalyticsSummary & {
   rangeLabel: string;
@@ -215,270 +185,28 @@ const contentTypeLabels: Record<InstagramContentType, string> = {
 };
 
 export function InstagramAnalyticsWorkspace() {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   const betaSocialAnalyticsEnabled = hasYouTubeBetaAccess(user);
   const tiktokBetaEnabled =
     betaSocialAnalyticsEnabled && hasTikTokUiAccess(user);
   const accountId = user?.uid ?? "";
 
-  const [connections, setConnections] = useState<SocialConnection[]>([]);
-  const [allSocialConnections, setAllSocialConnections] = useState<
-    SocialConnection[]
-  >([]);
-  const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
   const [dateRangeDays, setDateRangeDays] = useState<DateRangeDays>(30);
-  const activeDateRangeRef = useRef<DateRangeDays>(dateRangeDays);
-  const [performanceMetric, setPerformanceMetric] =
-    useState<PerformanceMetric>("views");
-  const [loadState, setLoadState] = useState<AnalyticsLoadState>("loading");
-  const [refreshInProgress, setRefreshInProgress] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [insightsResult, setInsightsResult] = useState<InstagramInsightsResult>(
-    {
-      accounts: [],
-      days: null,
-      message: null,
-      state: "loading",
-    },
-  );
-  const [contentResult, setContentResult] = useState<InstagramContentResult>({
-    accounts: [],
-    days: null,
-    message: null,
-    state: "loading",
+  const [performanceMetric, setPerformanceMetric] = useState<PerformanceMetric>("views");
+  const [instagramRefreshRequest, setInstagramRefreshRequest] = useState(0);
+  const connectionsQuery = useQuery({
+    queryKey: getAccountSocialConnectionsQueryKey(accountId),
+    enabled: Boolean(accountId), staleTime: 30 * 60_000, gcTime: 30 * 60_000,
+    retry: false, refetchOnWindowFocus: true,
+    queryFn: async ({ signal }) => (await analyticsRequest<{ connections: SocialConnection[] }>("/api/social/connections", accountId, signal)).connections,
   });
-
-  useEffect(() => {
-    activeDateRangeRef.current = dateRangeDays;
-  }, [dateRangeDays]);
-
-  const loadAnalytics = useCallback(
-    async (signal?: AbortSignal, idempotencyKey?: string) => {
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (signal?.aborted) {
-          return;
-        }
-
-        if (!token) {
-          setConnections([]);
-          setAllSocialConnections([]);
-          setSchedules([]);
-          setInsightsResult({
-            accounts: [],
-            days: dateRangeDays,
-            message: null,
-            state: "ready",
-          });
-          setErrorMessage(null);
-          setLoadState("ready");
-          return;
-        }
-
-        setInsightsResult((current) =>
-          current.days === dateRangeDays && current.accounts.length > 0
-            ? current
-            : { ...current, state: "loading" },
-        );
-        const [loadedConnections, loadedSchedules, insightsOutput] =
-          await Promise.all([
-            loadAccountSocialConnections(queryClient, accountId, {
-              force: Boolean(idempotencyKey),
-              token,
-            }),
-            loadAccountSchedules(queryClient, accountId, {
-              force: Boolean(idempotencyKey),
-              token,
-            }),
-            loadInstagramAnalyticsQuery({
-              accountId,
-              days: dateRangeDays,
-              force: Boolean(idempotencyKey),
-              idempotencyKey,
-              kind: "insights",
-              onBackgroundError: (error) => {
-                setInsightsResult((current) => ({
-                  ...current,
-                  message: error.message,
-                }));
-              },
-              onBackgroundOutput: (output) => {
-                const refreshed = output as InstagramInsightsResponse | null;
-
-                if (
-                  refreshed?.accounts &&
-                  refreshed.days === activeDateRangeRef.current
-                ) {
-                  setInsightsResult({
-                    accounts: refreshed.accounts,
-                    days: dateRangeDays,
-                    message: refreshed.message ?? null,
-                    state: "ready",
-                  });
-                }
-              },
-              queryClient,
-              token,
-            }),
-          ]);
-        const insightsData = insightsOutput as InstagramInsightsResponse | null;
-
-        if (signal?.aborted) {
-          return;
-        }
-
-        const sortedConnections = [...(loadedConnections ?? [])].sort(
-          (left, right) =>
-            Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
-        );
-
-        setAllSocialConnections(sortedConnections);
-        setConnections(getUniqueInstagramConnections(sortedConnections));
-        setSchedules(
-          Array.isArray(loadedSchedules.schedules)
-            ? loadedSchedules.schedules
-            : [],
-        );
-        setInsightsResult({
-          accounts: insightsData?.accounts ?? [],
-          days: dateRangeDays,
-          message: insightsData?.message ?? null,
-          state: "ready",
-        });
-        setErrorMessage(null);
-        setLoadState("ready");
-      } catch (error) {
-        if (signal?.aborted) {
-          return;
-        }
-
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Could not load analytics. Refresh and try again.",
-        );
-        setInsightsResult((current) => ({
-          ...current,
-          days: dateRangeDays,
-          message: "Performance insights could not load right now.",
-          state: "ready",
-        }));
-        setLoadState("error");
-      }
-    },
-    [accountId, dateRangeDays, queryClient],
-  );
-
-  const loadContentPerformance = useCallback(
-    async (signal?: AbortSignal, idempotencyKey?: string) => {
-      try {
-        const token = await getCurrentUserIdToken();
-
-        if (signal?.aborted) {
-          return;
-        }
-
-        if (!token) {
-          setContentResult({
-            accounts: [],
-            days: dateRangeDays,
-            message: null,
-            state: "ready",
-          });
-          return;
-        }
-
-        setContentResult((current) =>
-          current.days === dateRangeDays && current.accounts.length > 0
-            ? current
-            : { ...current, state: "loading" },
-        );
-        const output = await loadInstagramAnalyticsQuery({
-          accountId,
-          days: dateRangeDays,
-          force: Boolean(idempotencyKey),
-          idempotencyKey,
-          kind: "content",
-          onBackgroundError: (error) => {
-            setContentResult((current) => ({
-              ...current,
-              message: error.message,
-            }));
-          },
-          onBackgroundOutput: (backgroundOutput) => {
-            const refreshed =
-              backgroundOutput as InstagramContentResponse | null;
-
-            if (
-              refreshed?.accounts &&
-              refreshed.days === activeDateRangeRef.current
-            ) {
-              setContentResult({
-                accounts: refreshed.accounts,
-                days: dateRangeDays,
-                message: refreshed.message ?? null,
-                state: "ready",
-              });
-            }
-          },
-          queryClient,
-          token,
-        });
-        const data = output as InstagramContentResponse | null;
-
-        if (signal?.aborted) {
-          return;
-        }
-
-        setContentResult({
-          accounts: data?.accounts ?? [],
-          days: dateRangeDays,
-          message: null,
-          state: "ready",
-        });
-      } catch (error) {
-        if (signal?.aborted) {
-          return;
-        }
-
-        setContentResult({
-          accounts: [],
-          days: dateRangeDays,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Content performance could not load right now.",
-          state: "ready",
-        });
-      }
-    },
-    [accountId, dateRangeDays, queryClient],
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    queueMicrotask(() => {
-      if (!controller.signal.aborted) {
-        void loadAnalytics(controller.signal);
-        void loadContentPerformance(controller.signal);
-      }
-    });
-
-    return () => controller.abort();
-  }, [loadAnalytics, loadContentPerformance]);
-
-  const retryAnalytics = useCallback(() => {
-    setErrorMessage(null);
-    setRefreshInProgress(true);
-    const refreshKey = crypto.randomUUID();
-    void Promise.all([
-      loadAnalytics(undefined, refreshKey),
-      loadContentPerformance(undefined, refreshKey),
-    ]).finally(() => setRefreshInProgress(false));
-  }, [loadAnalytics, loadContentPerformance]);
+  const allSocialConnections = useMemo(() => [...(connectionsQuery.data ?? [])].sort(
+    (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
+  ), [connectionsQuery.data]);
+  const connections = useMemo(() => getUniqueInstagramConnections(allSocialConnections), [allSocialConnections]);
+  const loadState: AnalyticsLoadState = connectionsQuery.data ? "ready" : connectionsQuery.isError ? "error" : "loading";
+  const errorMessage = connectionsQuery.error?.message ?? null;
+  useAnalyticsDisplayTiming("accounts", accountId, Boolean(accountId), Boolean(connectionsQuery.data));
 
   const [selectedConnectionId, setSelectedConnectionId] =
     useState<string>("all");
@@ -513,6 +241,13 @@ export function InstagramAnalyticsWorkspace() {
   const showYouTubeAnalytics =
     betaSocialAnalyticsEnabled && betaSelectedPlatform === "youtube";
 
+  const { insights, content } = useInstagramAnalytics({
+    owner: accountId, connections, days: dateRangeDays,
+    enabled: showInstagramAnalytics && Boolean(connectionsQuery.data && connections.length),
+    refreshRequest: instagramRefreshRequest,
+  });
+  const insightsResult = { accounts: insights.output?.accounts ?? [], message: insights.error };
+  const contentResult = { accounts: content.output?.accounts ?? [], message: content.error };
   const activeConnectionIds = useMemo(
     () => new Set(connections.map((connection) => connection.id)),
     [connections],
@@ -533,6 +268,27 @@ export function InstagramAnalyticsWorkspace() {
       (connection) => connection.id === effectiveInstagramSelectedConnectionId,
     );
   }, [connections, effectiveInstagramSelectedConnectionId]);
+
+  const rangeKeys = getDateRangeKeys(dateRangeDays);
+  const endDate = rangeKeys.at(-1)!;
+  const offsetMinutes = new Date().getTimezoneOffset();
+  const activityQuery = useQuery({
+    queryKey: ["account", accountId, "analytics-activity", dateRangeDays, endDate, offsetMinutes, effectiveInstagramSelectedConnectionId, getConnectionsRevision(connections)],
+    enabled: Boolean(accountId && showInstagramAnalytics && connections.length),
+    staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS, retry: false,
+    refetchOnWindowFocus: true, refetchOnReconnect: true,
+    queryFn: ({ signal }) => analyticsRequest<{ activity: InstagramAnalyticsSummary }>(
+      `/api/analytics/activity?days=${dateRangeDays}&end=${endDate}&offset=${offsetMinutes}&connection=${effectiveInstagramSelectedConnectionId}`, accountId, signal,
+    ),
+  });
+  useAnalyticsWake(activityQuery, Boolean(accountId && showInstagramAnalytics && connections.length));
+  const refetchConnections = connectionsQuery.refetch;
+  const refetchActivity = activityQuery.refetch;
+  const retryAnalytics = useCallback(() => {
+    void refetchConnections();
+    if (connections.length) void refetchActivity();
+    setInstagramRefreshRequest((request) => request + 1);
+  }, [refetchConnections, refetchActivity, connections.length]);
 
   const activeInsightAccounts = useMemo(
     () =>
@@ -571,34 +327,15 @@ export function InstagramAnalyticsWorkspace() {
     );
   }, [activeInsightAccounts, effectiveInstagramSelectedConnectionId]);
 
-  const displayedVisibleConnectionIds = useMemo(
-    () => new Set(displayedConnections.map((connection) => connection.id)),
-    [displayedConnections],
-  );
-
   const analytics = useMemo<InstagramAnalyticsWorkspaceSummary>(() => {
     const dateKeys = getDateRangeKeys(dateRangeDays);
-
     return {
-      ...buildInstagramActivitySummary({
-        accountNames: new Map(
-          displayedConnections.map((connection) => [
-            connection.id,
-            getInstagramAccountName(connection),
-          ]),
-        ),
-        dateKeys,
-        schedules,
-        visibleConnectionIds: displayedVisibleConnectionIds,
-      }),
+      ...(activityQuery.data?.activity ?? buildInstagramActivitySummary({
+        accountNames: new Map(), dateKeys, schedules: [], visibleConnectionIds: new Set(),
+      })),
       rangeLabel: getRangeLabel(dateKeys),
     };
-  }, [
-    dateRangeDays,
-    displayedConnections,
-    displayedVisibleConnectionIds,
-    schedules,
-  ]);
+  }, [dateRangeDays, activityQuery.data]);
 
   const primaryConnection = useMemo(
     () => getPrimaryInstagramConnection(displayedConnections),
@@ -613,15 +350,9 @@ export function InstagramAnalyticsWorkspace() {
         : null,
     [displayedInsightAccounts, primaryConnection],
   );
-  const insightsLoading =
-    insightsResult.state === "loading" || insightsResult.days !== dateRangeDays;
-  const contentLoading =
-    contentResult.state === "loading" || contentResult.days !== dateRangeDays;
-  const refreshing =
-    refreshInProgress ||
-    loadState === "loading" ||
-    insightsLoading ||
-    contentLoading;
+  const insightsLoading = insights.loading || (insights.refreshing && !insights.output?.accounts.length);
+  const contentLoading = content.loading || (content.refreshing && !content.output?.accounts.length);
+  const refreshing = loadState === "loading" || insights.refreshing || content.refreshing;
   const isInstagramRefreshActive = showInstagramAnalytics;
   const activeRefreshInProgress = isInstagramRefreshActive
     ? refreshing
@@ -681,6 +412,8 @@ export function InstagramAnalyticsWorkspace() {
         {betaSocialAnalyticsEnabled ? (
           <SocialAnalyticsBetaControls
             connections={allSocialConnections}
+            loading={loadState === "loading"}
+            error={errorMessage}
             platform={betaSelectedPlatform}
             selectedConnectionId={effectiveBetaSelectedConnectionId}
             onPlatformChange={(platform) => {
@@ -693,7 +426,7 @@ export function InstagramAnalyticsWorkspace() {
           />
         ) : null}
 
-        {showTikTokAnalytics ? (
+        {showTikTokAnalytics && loadState === "ready" ? (
           <TikTokBetaAnalyticsPanel
             connections={betaPlatformConnections}
             onRefreshStateChange={setSocialRefreshInProgress}
@@ -701,7 +434,7 @@ export function InstagramAnalyticsWorkspace() {
             selectedConnectionId={effectiveBetaSelectedConnectionId}
           />
         ) : null}
-        {showYouTubeAnalytics ? (
+        {showYouTubeAnalytics && loadState === "ready" ? (
           <YouTubeBetaAnalyticsPanel
             connections={betaPlatformConnections}
             onRefreshStateChange={setSocialRefreshInProgress}
@@ -710,6 +443,8 @@ export function InstagramAnalyticsWorkspace() {
           />
         ) : null}
 
+        {connectionsQuery.data && errorMessage ? <p role="status" className="mt-4 text-sm text-muted">Showing saved accounts. {errorMessage}</p> : null}
+        {showInstagramAnalytics && activityQuery.error ? <p role="status" className="mt-4 text-sm text-muted">Publishing activity could not refresh. Performance data remains available.</p> : null}
         {showInstagramAnalytics ? (
           <div className="mt-6" aria-busy={loadState === "loading"}>
             {loadState === "loading" ? <AnalyticsLoadingState /> : null}
@@ -723,6 +458,7 @@ export function InstagramAnalyticsWorkspace() {
               <AnalyticsReadyState
                 allConnections={connections}
                 analytics={analytics}
+                activityAvailable={Boolean(activityQuery.data) || connections.length === 0}
                 connection={primaryConnection}
                 connectionCount={displayedConnections.length}
                 contentAccounts={displayedContentAccounts}
@@ -754,6 +490,7 @@ export function InstagramAnalyticsWorkspace() {
 function AnalyticsReadyState({
   allConnections,
   analytics,
+  activityAvailable,
   connection,
   connectionCount,
   contentAccounts,
@@ -772,6 +509,7 @@ function AnalyticsReadyState({
 }: {
   allConnections: SocialConnection[];
   analytics: InstagramAnalyticsWorkspaceSummary;
+  activityAvailable: boolean;
   connection: SocialConnection | null;
   connectionCount: number;
   contentAccounts: InstagramContentAccount[];
@@ -889,7 +627,7 @@ function AnalyticsReadyState({
             icon={<CalendarClock aria-hidden="true" />}
             label="Upcoming posts"
             source="Schedule records"
-            value={formatNumber(analytics.scheduled)}
+            value={formatOptionalNumber(activityAvailable ? analytics.scheduled : null)}
           />
         </div>
       </section>
@@ -924,7 +662,7 @@ function AnalyticsReadyState({
           insightAccount={insightAccount}
           insightsLoading={insightsLoading}
           insightsMessage={insightsMessage}
-          needsAttention={analytics.needsAttention}
+          needsAttention={activityAvailable ? analytics.needsAttention : null}
         />
       </div>
 
@@ -1904,7 +1642,7 @@ function InstagramReadinessPanel({
   insightAccount: InstagramInsightsAccount | null;
   insightsLoading: boolean;
   insightsMessage: string | null;
-  needsAttention: number;
+  needsAttention: number | null;
 }) {
   const publishingBlockMessage = connection
     ? getConnectionPublishingBlockMessage(connection)
@@ -1992,8 +1730,8 @@ function InstagramReadinessPanel({
         />
         <ReadinessRow
           label="Posts needing attention"
-          value={formatNumber(needsAttention)}
-          tone={needsAttention > 0 ? "warning" : "success"}
+          value={formatOptionalNumber(needsAttention)}
+          tone={needsAttention === null ? "muted" : needsAttention > 0 ? "warning" : "success"}
         />
       </dl>
 
@@ -2207,9 +1945,14 @@ function InstagramContentPerformance({
           ) : null}
         </header>
 
+        {message && readyAccountCount > 0 ? (
+          <p role="status" className="border-b border-border px-5 py-3 text-sm text-warning sm:px-6">
+            Showing saved content. {message}
+          </p>
+        ) : null}
         {loading ? (
           <ContentPerformanceLoadingState />
-        ) : message ? (
+        ) : message && readyAccountCount === 0 ? (
           <ContentPerformanceState
             description={message}
             title="Content performance is unavailable"
@@ -3160,7 +2903,7 @@ function getInstagramInsightsReadiness({
     return {
       message: insightsMessage,
       tone: "warning",
-      value: "Unavailable",
+      value: insightAccount?.status === "ready" ? "Saved insights" : "Unavailable",
     };
   }
 

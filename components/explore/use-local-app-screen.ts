@@ -15,7 +15,7 @@ export function useLocalAppScreen() {
   useEffect(() => () => { revision.current += 1; }, []);
   useEffect(() => () => { if (asset) URL.revokeObjectURL(asset.url); }, [asset]);
 
-  async function choose(file: File) {
+  async function choose(file: File, options: { maxDuration?: number; maxBytes?: number } = {}) {
     const request = ++revision.current;
     setError(null);
     const validation = validateAppScreenFile(file);
@@ -24,12 +24,20 @@ export function useLocalAppScreen() {
       setLoading(false);
       return false;
     }
+    if (options.maxBytes !== undefined && file.size > options.maxBytes) {
+      setError(`Choose ${validation.kind === "video" ? "a screen recording" : "a screenshot"} up to ${options.maxBytes / 1024 ** 2} MB.`);
+      setLoading(false); return false;
+    }
     setLoading(true);
     const url = URL.createObjectURL(file);
     try {
       const duration = await readAppScreen(url, validation.kind);
       if (request !== revision.current) { URL.revokeObjectURL(url); return false; }
-      setAsset({ name: file.name, url, duration, kind: validation.kind });
+      if (options.maxDuration !== undefined && duration !== null && duration > options.maxDuration) {
+        URL.revokeObjectURL(url);
+        setError(`Choose a screen recording up to ${options.maxDuration} seconds.`); return false;
+      }
+      setAsset({ name: file.name, url, duration, file, kind: validation.kind });
       return true;
     } catch {
       URL.revokeObjectURL(url);

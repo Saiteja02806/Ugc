@@ -191,6 +191,9 @@ test("an uncertain request survives refresh with its original key and retries th
   assert.deepEqual(requests.map((call) => call.body.idempotencyKey), ["same-request-key", "same-request-key"]);
   assert.deepEqual(getSession("account-a").jobs, [receipt]);
   assert.equal(getSession("account-a").pendingRequest, null);
+  const queued = cache.get(serializeKey(["character-job", "account-a", receipt.jobId]));
+  assert.equal(queued.prompt, request.prompt);
+  assert.equal(queued.batchId, receipt.jobId);
   assert.ok(invalidated.some((key) => serializeKey(key) === serializeKey(["character-access", "account-a"])));
 });
 

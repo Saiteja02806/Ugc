@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import { ReferenceTextSchema, type ReferenceText, type RemixRequest } from "./reference-text.ts";
+import { hookRemixSource } from "./hook-remix-source.ts";
 
 /** Keep catalogue timing for unchanged blocks; edited prose becomes one clip-local block. */
 export function remixInputSource(request: RemixRequest, original: ReferenceText | null): ReferenceText {
+  const originalBlocks = original?.blocks;
+  if (original) original = hookRemixSource(original);
   const format = original?.format ?? request.format;
   if (!format || request.format && request.format !== format) throw new Error("Choose text from this workflow.");
   if (!request.referenceId && (!request.referenceBlocks || format !== "slideshow" && request.slideId)) throw new Error("Enter reference text or your own details first.");
@@ -10,7 +13,9 @@ export function remixInputSource(request: RemixRequest, original: ReferenceText 
     if (!original || original.status !== "ready") throw new Error("This reference text has not been prepared for remixing yet.");
     return original;
   }
-  const copy = request.referenceBlocks;
+  const inheritedCopy = originalBlocks && request.referenceBlocks?.length === originalBlocks.length &&
+    request.referenceBlocks.every((text, index) => text === originalBlocks[index].text);
+  const copy = inheritedCopy && original ? original.blocks.map(block => block.text) : request.referenceBlocks;
   if (!copy?.length) throw new Error("Enter reference text or your own details first.");
   const duration = Math.max(copy.length, ...(original?.blocks.map(block => block.endMs ?? 1) ?? [1000]));
   const blocks = copy.map((text, i) => {

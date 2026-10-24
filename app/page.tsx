@@ -80,6 +80,8 @@ const productFooterLinks = [
   { label: "Founder marketing guides", href: "/guides" },
   { label: "Instagram carousel maker", href: "/instagram-carousel-maker" },
   { label: "AI UGC video generator", href: "/ai-ugc-video-generator" },
+  { label: "Founder video case study", href: "/case-studies/ai-ugc-video-generator-saas-founders" },
+  { label: "UGC video examples", href: "/blog/ugc-video-generator-examples" },
   { label: "Pricing", href: "/pricing" },
   { label: "Sign in", href: authHref },
 ];
@@ -187,6 +189,26 @@ export default function Home() {
               description="Connect Claude, Codex, or ChatGPT and create images, short videos, and edits from the conversation."
             />
           </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <MarketingPathCard
+              href="/case-studies/ai-ugc-video-generator-saas-founders"
+              title="Founder video case study"
+              description="Two public videos UGC Pilot made for its own brand on the Teja Chundu YouTube channel."
+              cta="Watch the videos"
+            />
+            <MarketingPathCard
+              href="/blog/ugc-video-generator-examples"
+              title="UGC video examples"
+              description="YouTube files from that series, Instagram reels, and TikTok videos on accounts named Clara."
+              cta="Open the gallery"
+            />
+            <MarketingPathCard
+              href="/guides/how-to-create-ugc-videos-with-ai"
+              title="Create a UGC video"
+              description="A short guide from the brief to the downloaded file, with one example video."
+              cta="Read the guide"
+            />
+          </div>
         </div>
       </section>
 
@@ -292,10 +314,12 @@ function MarketingPathCard({
   href,
   title,
   description,
+  cta = "Explore workflow",
 }: {
   href: string;
   title: string;
   description: string;
+  cta?: string;
 }) {
   return (
     <Link
@@ -305,7 +329,7 @@ function MarketingPathCard({
       <p className="text-lg font-semibold text-foreground-strong">{title}</p>
       <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
       <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-        Explore workflow <span className="ml-2" aria-hidden="true">→</span>
+        {cta} <span className="ml-2" aria-hidden="true">→</span>
       </span>
     </Link>
   );

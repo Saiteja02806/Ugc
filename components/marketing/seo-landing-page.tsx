@@ -229,6 +229,21 @@ export const seoPageContent = {
     ],
     relatedPages: [
       {
+        title: "Founder videos made with UGC Pilot",
+        description: "Two public YouTube videos from the brand series, with the titles YouTube returns.",
+        href: "/case-studies/ai-ugc-video-generator-saas-founders",
+      },
+      {
+        title: "UGC video generator examples",
+        description: "A gallery of the YouTube files, Instagram reels, and Clara TikTok videos.",
+        href: "/blog/ugc-video-generator-examples",
+      },
+      {
+        title: "How to create UGC videos with AI",
+        description: "Brief, generate, review, and download, with one example from the same series.",
+        href: "/guides/how-to-create-ugc-videos-with-ai",
+      },
+      {
         title: "Turn a product demo into a short video",
         description: "Choose one genuine product action, write its opening and review a complete edit.",
         href: "/guides/product-demo-to-short-video",

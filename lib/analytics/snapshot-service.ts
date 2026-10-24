@@ -9,6 +9,7 @@ import { selectSocialSnapshot } from "./social-snapshot-policy";
 import { readAccountSnapshots, snapshotRowAccount, type SnapshotOperation } from "./snapshot-store";
 import { getUniqueInstagramConnections } from "./instagram-insights";
 import { getInstagramAnalyticsRangeStart } from "./instagram-freshness";
+import { INSTAGRAM_ANALYTICS_REFRESH_MS, SOCIAL_ANALYTICS_REFRESH_MS } from "./freshness-policy";
 
 export async function readAnalyticsSnapshot(params: { userId: string; operation: SnapshotOperation; days?: 7 | 30 | 90 }) {
   const platform = params.operation.startsWith("instagram") ? "instagram" : params.operation === "tiktok_videos" ? "tiktok" : "youtube";
@@ -34,7 +35,7 @@ export async function readAnalyticsSnapshot(params: { userId: string; operation:
       if (legacyConnections.some(c => c.id === account.connectionId)) byConnection.set(account.connectionId, value as ReturnType<typeof snapshotRowAccount>);
     }
   }
-  const ttl = params.operation.startsWith("instagram") ? 60 * 60_000 : 5 * 60_000;
+  const ttl = params.operation.startsWith("instagram") ? INSTAGRAM_ANALYTICS_REFRESH_MS : SOCIAL_ANALYTICS_REFRESH_MS;
   const needsRefresh = connections.length > 0 && (legacyNeedsRefresh || connections.some(c => {
     const row = rows.find(r => r.social_connection_id === c.id);
     if (!row) return !byConnection.has(c.id);

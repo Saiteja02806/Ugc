@@ -1,4 +1,6 @@
 import "server-only";
+import { canAccessCreatorAccounts } from "@/lib/explore/creator-account-access";
+import { creatorSlideFromUrl } from "@/lib/explore/creator-slideshows";
 import { requiresScreenshotAttachment } from "@/lib/explore/slideshow-composer-draft";
 import { resolveSlideshowNamedContext } from "@/lib/explore/slideshow-named-context";
 import { planSlideshowRequest, SlideshowPlanError } from "@/lib/explore/slideshow-plan-service";
@@ -125,7 +127,7 @@ function getSafeOutput(output: unknown) {
 }
 
 export async function handleAIStudioImageGeneration(request: Request) {
-  let user;
+  let user: Awaited<ReturnType<typeof requireAIStudioProUser>>;
 
   try {
     user = await requireAIStudioProUser(request);
@@ -174,7 +176,15 @@ export async function handleAIStudioImageGeneration(request: Request) {
   let attachmentReferences: string[] = [];
   let regenerationReferenceUrl: string | null = null;
   let regenerationRemixSource: RemixTextSource | null = null;
-  try { referenceImageUrl = cleanTrustedHttpsUrl(await canonicalMediaReference(body?.referenceImageUrl, user.uid)); }
+  async function requestImageUrl(value: unknown) {
+    const privateSlide = creatorSlideFromUrl(value);
+    if (privateSlide) {
+      if (body?.exploreFormat !== "slideshow" || !canAccessCreatorAccounts(user)) throw new Error("Private reference unavailable.");
+      return privateSlide.canonicalUrl;
+    }
+    return cleanTrustedHttpsUrl(await canonicalMediaReference(value,user.uid));
+  }
+  try { referenceImageUrl = await requestImageUrl(body?.referenceImageUrl); }
   catch { return NextResponse.json({ ok: false, message: "This reference is unavailable to your account." }, { status: 400 }); }
   if (body?.referenceImageUrl && !referenceImageUrl) {
     return NextResponse.json(
@@ -191,7 +201,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
       const requested = parseImageReferenceContext(body.referenceImageUrls);
       const canonical: string[] = [];
       for (const url of requested) {
-        const owned = cleanTrustedHttpsUrl(await canonicalMediaReference(url, user.uid));
+        const owned = await requestImageUrl(url);
         if (!owned) throw new Error("Untrusted reference.");
         canonical.push(owned);
       }
@@ -214,7 +224,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
     }
     try {
       const asset = await getMediaAssetForOwner({ assetId: body.referenceImageAssetId, userId: user.uid });
-      const ownedUrl = asset && cleanTrustedHttpsUrl(await canonicalMediaReference(asset.url, user.uid));
+      const ownedUrl = asset && await requestImageUrl(asset.url);
       if (!asset || asset.status !== "ready" || asset.collection !== "image" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mime_type) || !ownedUrl || !asset.file_size_bytes || asset.file_size_bytes > 25 * 1024 * 1024) {
         return NextResponse.json({ ok: false, message: "This reference image is no longer available. Upload it again or choose another image." }, { status: 400 });
       }
@@ -247,7 +257,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
       if ([...new Map(assets.map(asset => [asset!.id, asset!])).values()].reduce((bytes, asset) => bytes + asset.file_size_bytes!, 0) > 50 * 1024 * 1024) {
         return NextResponse.json({ ok: false, message: "Use reference images up to 50 MB combined." }, { status: 400 });
       }
-      const ownedUrls = await Promise.all(assets.map(async asset => cleanTrustedHttpsUrl(await canonicalMediaReference(asset!.url, user.uid))));
+      const ownedUrls = await Promise.all(assets.map(async asset => requestImageUrl(asset!.url)));
       if (ownedUrls.some(url => !url)) return NextResponse.json({ ok: false, message: "A reference image is unavailable to your account." }, { status: 400 });
       attachmentReferences = ownedUrls.slice(0, ids.length) as string[];
       const additional = [...new Set(ownedUrls.slice(0, ids.length) as string[])].filter(url => !layoutReferences.includes(url));
@@ -319,7 +329,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
         const ids = (body.referenceImageAssetIds ?? []) as string[];
         const named = await resolveSlideshowNamedContext(body.slideshowContext, user.uid, prompt, styleReferences,
           attachmentReferences.map((url, index) => ({ id: ids[index], url })),
-          regenerationReferenceUrl ? { id: String(body.regenerationImageAssetId), url: regenerationReferenceUrl } : undefined);
+          regenerationReferenceUrl ? { id: String(body.regenerationImageAssetId), url: regenerationReferenceUrl } : undefined,user);
         if (named.targetIds.length !== Number(slideCount)) return NextResponse.json({ ok: false, message: "The selected slide count changed. Select the slides again." }, { status: 400 });
         if (prompt.length > 24000) return NextResponse.json({ ok: false, message: "Use up to 24,000 characters so every slide's instructions can be preserved." }, { status: 400 });
         const missing = getMissingRuntimeEnv();

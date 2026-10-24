@@ -1,5 +1,287 @@
 # Explore context and UI decision record
 
+## 2026-10-24 Combined release: private creator packaging
+
+- The Git remote is public. The user explicitly approves encrypted creator
+  deployment with a dedicated server-only CREATOR_PRIVATE_PACKAGE_KEY on the
+  website and MCP. Keep plaintext creator manifests, captions, media and detailed
+  private frame/browser evidence out of Git and deployment uploads. AES-256-GCM
+  packages use a random nonce and per-path HKDF/AAD binding. Production always
+  decrypts ciphertext; it cannot fall back to local plaintext. Existing exact
+  verified-email authorization still controls every browser access and admission.
+- Public clones without the private package key have no private collection.
+  Fixture-dependent tests explicitly skip there; auth and synthetic tamper,
+  capability and expiry checks remain active. Full local fixtures pass all
+  private checks. No existing production secrets were downloaded.
+- Combined local release validation: 1,135 root tests, 118 worker tests, all 79
+  encrypted-file digest comparisons, 36 encrypted creator/model simulations,
+  Analytics/editor/result browser fixtures, TypeScript/lint and webpack build
+  pass. Hosted deployment/acceptance is recorded separately in
+  docs/combined-release-2026-10-24.md.
+
+## 2026-10-24 Private TikTok slideshow collection and creator parity (local)
+
+- Add the supplied `D:\slideshow\slideshow explore\marketing\creator` as
+  **TikTok Creator Account** under Explore → Slideshows → Recreate the account.
+  It contains 10 sets / 39 images. Keep verified `vtu19403@veltech.edu.in` gating
+  on metadata, original bytes, imports and generation/Remix, matching Hook pilots.
+  All references restores the normal gallery. Keep canonical slide identity
+  separate from authenticated object-URL previews and temporary provider URLs.
+- User explicitly approves private slide images, source captions and instructions
+  for existing AI providers in Recreate/Generate and Remix. Hash-bound originals
+  remain outside public; fresh ten-minute image capabilities are created at
+  provider use. Website/worker share their key. Preserve source slide order,
+  actual JPEG/WebP type, dimensions, editor imports, owned output and recovery.
+  Source claims are adaptation material, not business facts. Only two supplied
+  original-post URLs are shown; do not infer the other eight.
+- Supersedes the earlier frame-zero/four-sample Hook qualification below. A
+  twelve-sample-per-clip review plus transition frames selects 10 later starting
+  frames and retains two at zero. Shared tuples and source-pose directions now
+  agree across UI, API and worker, including v3 receipts at index zero. Accepted
+  legacy preparations retain exact original frame/approval without resubmission;
+  **Use clearer source frame** explicitly begins a new preparation. Creator 2
+  clip 3 still has partial lower-face occlusion; do not call it unobstructed.
+- 326 focused regression checks and 47 worker checks pass. All 12 × 3 API/contract
+  scenarios, 12 new + 12 legacy browser preparations, seven Hook viewport sizes
+  and all 10 slideshow selections at three viewport sizes pass with fixtures.
+  TypeScript/scoped lint, webpack build and private asset packaging pass. These
+  checks do not qualify paid generation fidelity or hosted acceptance; no paid
+  call or deployment. Details: docs/creator-slideshow-and-parity-2026-10-24.md.
+
+## 2026-10-24 Five medium-reasoning paid Remix requests completed
+
+- User requests five paid tests after selecting medium draft reasoning. Exactly
+  five completed with gpt-5.6-luna, Hook v8, the saved UGCPilot business context
+  and original Claude/dating/marriage/research/LEGAL sources. No reviewer calls
+  or automatic retries. All five pass output validation and match the intended
+  edits in this sample: UGCPilot, marketing guy, marketing guy, MARKETING, and
+  unchanged LEGAL hook. No new low-reasoning control or general reliability claim.
+- Exact pairs: docs/hook-remix-medium-five-review-2026-10-24.md; frozen inputs,
+  responses and usage: docs/hook-remix-medium-five-results-2026-10-24.json.
+  Reported 5,400 tokens, no inferred invoice cost. No app receipt/media/edit or
+  deployment. Five-request authorization fully used; no extra calls queued.
+
+## 2026-10-24 Private creator-account selector for Hook references (local)
+
+- User supplies two local folders, mapped in order: Creator Account 1 from
+  `D:\reference1\New folder\New folder`, Creator Account 2 from
+  `D:\reference\New folder\New folder`; each contains six videos. Show
+  **Recreate the account** only to verified `vtu19403@veltech.edu.in`. Dropdown
+  selection replaces the Hook reference gallery, with All references restoring
+  the normal gallery/filter. Existing preparation, draft and generated-video
+  source identity must survive gallery switching.
+- Enforce the same email on server metadata, media, frame, paid-image/video and
+  caption/Remix boundaries. These are private imports, excluded from the public
+  reference/MCP catalogue. Package hash-bound originals/stills outside public/;
+  authenticated browser fetches become revocable local playback URLs.
+- User explicitly approves reference media delivery to existing AI providers
+  when Generate is clicked, plus caption/direction use in Recreate and Remix.
+  Reuse starting-image preparation and owned-image animation. Do not upload
+  private snapshots into public catalogue storage. The worker creates a fresh
+  ten-minute capability for one exact PNG immediately before provider submission;
+  original videos retain authenticated delivery. Persist canonical receipt URLs
+  so delayed jobs/recovery do not inherit expired links. Website and worker must
+  share their delivery signing key and deploy together.
+- Caption and movement records are source-hash-bound and adapted from four
+  sampled frames per clip. They are not paid fidelity qualification. Preserve
+  selected identity photos, generated-image approval, motion editing, history,
+  Remix and idempotent billing. Do not freeze browser playback URLs into jobs.
+- 245 focused tests, worker checks and local seven-size browser verification
+  pass; TypeScript/scoped lint and webpack production build pass. Browser uses
+  actual menu/cards/API/media hook/preparation with fixture auth/photo selection
+  and surrounding layout. No paid generation or production acceptance. Full
+  scope and deployment limits: `docs/creator-account-pilot-2026-10-24.md`.
+
+## 2026-10-24 Remix draft reasoning changed to medium (local)
+
+- User requests medium reasoning effort. New shared Remix draft calls now send
+  reasoning_effort=medium for the existing GPT-5 model route, including the
+  default gpt-5.6-luna. Experimental review was already medium and stays gated
+  off by default. Model, prompts, non-reasoning-model temperature, receipt recovery
+  and output schema are unchanged. Historical paid pilot inputs/results retain
+  their actual low-draft/medium-review settings; no new quality comparison claimed.
+- No paid requests or deployment for this change. Focused tests verify medium
+  reaches the Hook/Wall provider payload. Deployment remains paused.
+
+## 2026-10-24 Hook quality system: bounded pilot, calibrated review gated off
+
+- User wants reliability beyond repeated prompt patches and authorizes a bounded
+  paid test; later explicitly approves 23 reviewer-only follow-up calls. Added
+  draft → calibrated proofread → deterministic checks for new Hook requests,
+  opt-in via EXPLORE_HOOK_REMIX_REVIEW_ENABLED=false by default. No real env or
+  deployment changed. Wall/slideshow remain single-pass. Old receipts recover
+  unchanged; no unreviewed fallback, third call or automatic retry. Claims record
+  review version 2 when enabled; provider phases have a shared bounded deadline.
+- Pilot covers 24 cases/six contexts (real saved UGCPilot facts + five synthetic
+  profiles). First round: 46 responses, one unresolved draft and one unsubmitted
+  dependent review. Unresolved call was never repeated. Follow-up: 23 additional
+  review-only responses on identical original drafts. Total completed 69, plus
+  one unresolved attempted request. Reported completed-call tokens: 84,240;
+  unresolved billing/usage unknown. No extra calls queued.
+- On 23 comparable cases, fixed checks pass 20 baseline / 19 first-review /
+  22 calibrated. Final guards block one unsupported 3-day claim despite the model
+  calling it grounded. No baseline-passing case regresses under these checks;
+  zero delivered fixed-check failures is not proof of semantic perfection.
+  Final flow keeps approved brand wording, human roles, LEGAL, THIS and language
+  choices. Initial reviewer degraded valid copy, so keep-default calibration was
+  necessary. One scorer substring bug (a week matching a weekly plan) is corrected
+  transparently; raw old scores/results remain intact.
+- Code guards cover schema, review consistency, named-tool evidence/exact brand,
+  common no-brand preferences, English human slots and unsupported quantities.
+  They are partial, not a multilingual semantic oracle. Six contexts and an
+  in-sample reviewer calibration do not qualify hundreds-of-users reliability.
+  Add held-out cases and human calibration before enabling. Reviewer adds one
+  call: observed combined median 6.42s/p95 10.22s on this small serial experiment,
+  not a concurrency/production latency guarantee. No new model selection claimed.
+- Local validation: 51 focused tests, TypeScript/scoped lint and offline replay
+  pass. npm run test:hook-remix-quality and audit:hook-remix-quality are unpaid.
+  Report/evidence: docs/hook-remix-quality-system-2026-10-24.md and
+  docs/hook-remix-quality-summary-2026-10-24.json. No schema/production write,
+  account remix creation or media job. Production acceptance remains pending.
+
+## 2026-10-24 Recent Remix audit: Claude failure confirmed on deployed v7
+
+- User reports Claude → marketing app for marketing and asks for an audit of
+  uploaded changes. Owned receipt 32c168f2 confirms that exact bad output. Saved
+  context includes UGCPilot, correct product summary, profile v2, prompt v7 and
+  empty extra instructions. A later WhatsApp receipt 919ad968 correctly uses
+  UGCPilot with the same model/context/version: brand handling is inconsistent,
+  not explained by absent business context. Apply/serialization preserve both
+  stored outputs unchanged in local checks.
+- Real website/MCP alias metadata reports READY commit 4d786d5c on 24 October;
+  immutable source at that commit uses v7, corroborated by the live receipts.
+  Local named-tool v8 is not in that deployed commit. Its provider tests mock
+  output, so passing them is not live quality acceptance. No v8 provider call
+  or deployment was performed in this audit. Existing receipts remain immutable.
+- Earlier twelve-case evaluation had no Claude/WhatsApp named-tool source. The
+  person-role fix did not qualify named-brand replacement; validators accept both
+  the bad generic wording and intended UGCPilot wording. Intended minimal edit:
+  how to use UGCPilot for marketing, retaining source lines and POV setup.
+- 34 focused local tests pass; two real receipts round-trip unchanged. No app,
+  profile, saved-result or production configuration write; no paid requests.
+  Findings/limits: `docs/hook-remix-production-audit-2026-10-24.md`.
+  Exact receipt metadata: `docs/hook-remix-recent-audit-evidence-2026-10-24.json`.
+
+## 2026-10-24 Starting frame + optional face photos, three-second output and Hook 100 (local)
+
+- User explicitly requests parallel implementation and a review of three changes. Approved starting-frame animation now shows two independent controls: Starting frame and Face references · Optional. Photos do not replace the scene; changing a scene/model preserves photos. The compact picker supports uploaded images and saved influencers, with per-photo removal even if the current model does not support the combination. Starting frames history remains a scene-only chooser, separate from face photos.
+- Omni accepts up to five distinct owned ready PNG/JPEG/WebP photos alongside its approved scene. The client freezes scene IDs and photos separately; API ownership/readiness/size checks run before credits, the worker binds exact person roles and authoritative job owner, and Omni serializes Image1 as FIRST_FRAME with Image2+ as facial references. Scene clothing/background/pose remain authoritative. Existing no-photo prompts, request fingerprints and accepted-operation recovery remain compatible. Seedance/WAN mixed-frame/reference routes are not enabled; generation blocks with a clear message while keeping selections, rather than silently dropping photos or changing models.
+- Omni and WAN starting-frame animation offer three seconds (Omni 3–10, WAN 3–15 whole seconds); Seedance retains 4–15. Shared UI policy, API admission, prompt construction, worker and provider serialization agree. Reviewed source-motion duration sets are not automatically expanded or called visually qualified. A shorter output is a user-selected animation duration, not a promise of an identical source performance.
+- Independent review found and resolved two concrete issues: saved influencer assets live in collection influencer (now admitted with the same owner/media checks as uploaded images), and unsupported-model photo removal must remain possible outside a disabled picker. Regression tests cover both, stale async selections, source/photo preservation, exact roles, owner denial, billing paths and recovery.
+- The first visible reference is Hook 100 (fc44f6214b6e17413600ec13). Reviewed all 112 source frames and selected frame 70 at elapsed 2.333333s / absolute PTS 2.399349s, with both eyes and complete face visible and glasses/hand no longer obscuring it. Added a hash-bound PNG and matching motion directions. There are now 21 curated replacements, with the original twenty unchanged. Existing frame-zero drafts/receipts remain recoverable. Motion starts after glasses removal; it must not request that completed gesture again. Details: docs/first-hook-clearer-frame-2026-10-24.md and docs/starting-frame-animation-face-reference-contract-2026-10-24.md.
+- Local browser fixture reached simulated v3 image generation/approval, then selected an optional face photo while retaining the starting frame. No paid request was made. Later duration-dropdown browser interaction was not executed because automatic approval review hit the account usage limit; subsequent interactive acceptance remains unverified. Automated checks and build evidence are separate from that browser limitation. This follow-up has not been deployed or accepted on production.
+- Combined follow-up verification: 297 UI/client/API/draft/history/motion/curated tests, 36 worker/Omni checks and 19 ReAPI checks pass. Production build, TypeScript and scoped lint pass; both API bundles contain all 21 approved PNGs with exact hashes. Original twenty bindings remain unchanged. Evidence: outputs/starting-frame-followup-*. No paid facial-fidelity or production acceptance is implied.
+
+## 2026-10-24 Poppins Bold is the new-caption default (local)
+
+- User accepts the Poppins treatment and requests it by default. Fresh captions
+  in the shared workflow text editor and newly applied Hook/Wall Remix copy with
+  no previous text style now use Poppins 700, white (#ffffff), black outline 8
+  on the existing 1080px coordinate scale, normal spacing and no shadow.
+- One shared initial-style constant supplies the editor and Remix paths. Adding
+  another text block uses this default; existing saved/custom styles, legacy
+  drafts and Remix applied over an existing style keep their chosen appearance.
+  This changes initial styling only; other font choices and presets remain.
+- Local worker build, type/lint checks and editor/export/browser checks are run
+  for this follow-up. Production deployment/hosted acceptance remain pending.
+  Evidence is appended to `docs/poppins-font-correction-2026-10-24.md`.
+
+## 2026-10-24 Font correction: Poppins Bold and adjustable outline (local)
+
+- User rejects the earlier TikTok Sans preview and supplies Poppins Bold (700)
+  as the preferred match: white, black outline around 2–3 screen pixels, normal
+  letter spacing and no shadow. Poppins Bold is visually closer in the direct
+  comparison; the small crop still cannot prove the original font. Do not repeat
+  the earlier TikTok-only preview as the accepted match.
+- Add actual licensed Poppins Regular/Medium/Bold to the shared font list and
+  bundle its static TTF/WOFF2 faces. Keep the other selectable families and saved
+  choices. The font builder supports pinned static sources as well as variable
+  faces; each Poppins source file has its own SHA-256 in the manifest.
+- The old outline was fixed at 2px on a 1080px canvas, only about 0.6px in a
+  320px preview. Hook/Wall text controls now expose Outline thickness (0–16 at
+  the existing 1080px coordinate scale). A value of 8 produces approximately
+  2.4px at 324px display width. Optional outlineWidth survives save/reopen, blank
+  drafts, presets and export; omitted values retain the old rendering/receipt
+  shape. Explicit Original/Arial outline edits use the outlined glyph renderer
+  too. No shadow is introduced.
+- React preview, SVG and worker glyph export share the same scaled thickness.
+  Browser fixtures compare the original crop and both fonts using the same size
+  and outline; desktop/mobile checks verify actual Poppins loading and saved
+  choices. Real-video tests check glyphs, black outline pixels and timing.
+  Worker/website rollout and authenticated production verification are pending.
+  Evidence: `docs/poppins-font-correction-2026-10-24.md`.
+
+## 2026-10-24 Named-tool Hook Remix correction and TikTok Sans (local)
+
+- The exact reported Claude-to-UGCPilot production receipt included the correct
+  business name and product summary. Hook v7 returned a generic marketing-app
+  substitution: context was present, but the minimal-edit/no-extra-brand rule did
+  not distinguish replacing an existing named product. New Hook requests use v8:
+  replace an existing named tool with the exact supplied business name when its
+  capabilities fit, preserving the sentence and human roles. Generic hooks do not
+  acquire extra branding; explicit no-brand requests and factual limits remain.
+  Existing receipts (including v7) recover unchanged, without a second AI call.
+  Wall/slideshow prompts and provider/model settings are unchanged.
+- User clarifies that the font request means identifying the supplied image's
+  lettering and adding that font, not helper text or an identification button.
+  Initially estimated TikTok Sans Bold; the user rejects that preview and the
+  Poppins correction above supersedes this estimate. Add the actual licensed
+  TikTok Sans family in Regular/Medium/Bold to the shared text controls, with
+  bundled WOFF2 preview faces and TTF export faces derived from the same pinned
+  source. Existing saved typography and new-text defaults are unchanged.
+- Local checks cover all fifteen faces, save/reopen, exact multiline copy,
+  desktop/mobile previews and actual video export pixels/timing. Shared manual
+  slideshow font controls also gain the family; automated slideshow generation
+  typography is independent. Font/Carousel render tests and Hook API regression
+  tests pass. The Remix tests mock the provider; no new AI-output quality claim
+  or production UI acceptance is made. Website and worker deployment are pending.
+  Evidence: `docs/hook-remix-brand-and-tiktok-font-2026-10-24.md`.
+
+## 2026-10-24 Starting frame plus optional animation face references remains missing
+
+- User reiterates that an approved starting frame and uploaded face photos must coexist for video generation, especially when the approved pose hides part of the face. This differs from the already implemented main/supporting photos used to generate the still. The compact preparation-picker follow-up does not implement animation face references.
+- Verified current blockers: video workspace clears uploaded/additional photos when choosing a starting frame, derives referenceImages as empty in starting-frame mode, and omits photos from the paid submission. Video API and worker explicitly reject mixed starting-frame/person inputs; both Omni and ReAPI adapters enforce one starting image. This is a missing end-to-end feature, not only a picker-tab issue. No runtime fix or paid test is claimed by this audit.
+- Required UI direction: retain a distinct approved Starting frame tile and a compact Face references (optional) control. Changing photos must not replace/remove the scene; changing the scene must not silently erase optional face selections. Keep roles explicit through owned-asset validation, frozen submission/recovery and provider payloads. Test that references are actually forwarded, not only visibly selected.
+- Official Google Omni guide (checked 2026-10-24, https://ai.google.dev/gemini-api/docs/omni#using-tags-in-prompts-to-set-image-and-video-roles) explicitly documents FIRST_FRAME@Image1 together with IMAGE_REF_0@Image2. This supports an Omni implementation candidate, not a claim of tested facial fidelity. Preserve the approved first-frame role and label extra images as facial appearance only, without borrowing their clothes/background/pose.
+- Connected ReAPI Seedance docs (https://test.reapi.ai/docs/seedance-2-5, checked 2026-10-24) disallow frame roles and reference_image in one image_with_roles array and also disallow combining image_urls with image_with_roles. Do not assume this route accepts the same combination or switch to reference-only generation silently. WAN's mixed-role support remains unqualified. Enable the optional control only for a confirmed route; explain model incompatibility and require an explicit model choice instead of discarding references. No automatic extra-frame generation is requested or necessary for the UI proposal.
+
+## 2026-10-24 Generated video stays left; prompt occupies upper-right column (local)
+
+- Recurring user correction with marked screenshot: preserve the video position
+  at the results' left edge, and move its prompt into the distinct upper-right
+  area. The prior compact-height change did not fulfill this placement request:
+  its 48rem card cap kept the prompt close to the player, and tests checked size
+  and overflow without asserting the requested relative positions.
+- Compact workflow result rows now span the available width. At result widths
+  >=580px, the first column occupies 36% plus a 28px gap before the prompt. Video
+  height/aspect budget and left edge remain; prompt stays top-aligned and capped
+  at 26rem. On narrower result panels the prompt follows the video vertically.
+  Pending/completed results use the same grid, including landscape ratios.
+- Hook/Wall share result markup; Talking Head/Phone now reuse the same grid and
+  extracted prompt disclosure/copy component. Pending prompt text is frozen at
+  submission; recovered completed prompts come from the owner's original job
+  through an explicit generationDetails media read. Ordinary media reads retain
+  their fast path. Do not substitute current composer text for an older result
+  whose prompt is unavailable. Playback, result selection and Studio layout stay
+  independent of this workflow-only placement rule.
+- 181 focused tests and 96 local browser layout cases cover ratios, desktop,
+  mobile, both pending/completed states, selection and prompt disclosure. Exact
+  screenshot dimensions and a comparable scaled capture are inspected; browser
+  position assertions now verify video-left and upper-right prompt coordinates.
+  This is local fixture acceptance, not a new hosted release. Details/evidence:
+  `docs/generated-video-prompt-placement-2026-10-24.md`.
+
+## 2026-10-24 Compact starting-frame photo library
+
+- User reports that expanding Choose/Change photos makes Recreate excessively tall. Remove the repeated Choose person photos heading/instructions, empty main-photo placeholder, duplicate selected-photo cards and Use as main area specifically from the starting-frame picker. Keep the main/supporting photo strip once above its trigger; the regular standalone image chooser retains its selection controls.
+- The starting-frame library now uses an anchored, non-modal popover within the current preparation flow. It adds no document height, respects available viewport space and scrolls only the library; Upload photos, library tabs, selection status, Clear selection and Done remain available. Opening does not move focus/scroll to the library; Done restores trigger focus.
+- Local browser checks at 1366x768 confirm unchanged dialog height (649.375px), unchanged settings top (465.212px) and unchanged outer scroll extent after opening. At 390x844 the picker remains within the viewport with internal scrolling and no page-width overflow. Selecting a saved sample influencer and Done succeeds. No paid generation or production deployment for this UI follow-up.
+- The development-only keyframe preview was stale after cleaner-frame rollout: it used a curated source identity with an opening-frame fixture, causing receipt validation to reject it. It now loads the exact approved PNG and frame metadata for Hook 14; production admission remains unchanged.
+
+## 2026-10-24 Combined release completed
+
+- Commit `4d786d5c87508b3dab32a42f6d17535b32b3e733` is on main and was promoted to website/MCP production aliases, with original automatic-build settings restored. All six Cloud Run worker services and two production jobs use the matching pinned image/source. Production checks confirmed 104 references, twenty exact approved PNG hashes, the cleaner Recreate source, inline photo picking and five image model choices; loaded gallery videos were paused with autoplay disabled. Saved-frame reuse was not fully exercised live. Later local analytics edits and this compact-picker follow-up are not part of that deployed commit.
+
 ## 2026-10-24 Combined release resumed by user; rollout in progress
 
 - Initial complete source commit `4ff070d20393ac2d9bbed802d3a08fdae28cc1ba` reached main. Its pinned image was deployed and verified on all six services/two production jobs, with edit queue/instance concurrency two. Website/MCP automatic builds remain held until final producer promotion.

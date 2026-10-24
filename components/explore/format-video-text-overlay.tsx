@@ -28,7 +28,7 @@ export function FormatVideoTextOverlay({ text, width, height, label, onChange, o
   const hitPadding = width * .025;
   return <svg aria-label={label} viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 size-full">
     {background ? <rect x={0} y={background.y} width={width} height={background.height} fill="#000000" fillOpacity={background.opacity} /> : null}
-    <g fill={text.color} stroke={background ? undefined : "black"} strokeWidth={background ? undefined : width / 540} paintOrder="stroke" fontFamily={layout.fontFamily} fontWeight={layout.fontWeight} fontSize={layout.fontSize} style={text.font ? { fontKerning: "none", fontVariantLigatures: "none" } : undefined} textAnchor="middle">
+    <g fill={text.color} stroke={background ? undefined : "black"} strokeWidth={background ? undefined : layout.outlineWidth} paintOrder="stroke" fontFamily={layout.fontFamily} fontWeight={layout.fontWeight} fontSize={layout.fontSize} style={text.font ? { fontKerning: "none", fontVariantLigatures: "none" } : undefined} textAnchor="middle">
       {layout.lines.map((line, index) => {
         const y = layout.y + index * layout.lineHeight + layout.fontSize;
         const runs = formatTextLineRuns(line, text, layout);

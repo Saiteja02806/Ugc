@@ -22,6 +22,7 @@ export function hookSourceSha256(videoUrl: string | undefined): string | null {
 
 export async function fetchHookStartingFrame(input: {
   ownerId: string; referenceId: string; sourceSha256: string; signal?: AbortSignal;
+  retainedFrame?: HookStartingFrame["frame"];
 }): Promise<HookStartingFrame> {
   if (!SHA256.test(input.sourceSha256)) throw new Error("Choose an available Hook reference again.");
   return withReadDeadline(async signal => {
@@ -32,7 +33,7 @@ export async function fetchHookStartingFrame(input: {
     const response = await fetch("/api/explore/hook-starting-frame", {
       method: "POST", cache: "no-store", signal,
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ referenceId: input.referenceId }),
+      body: JSON.stringify({ referenceId: input.referenceId, ...(input.retainedFrame ? { sourceFrameSha256: input.retainedFrame.sha256 } : {}) }),
     });
     return readVerifiedHookStartingFrame(response, input);
   }, input.signal, 90_000);
@@ -41,6 +42,7 @@ export async function fetchHookStartingFrame(input: {
 /** Both live and development extraction must verify the exact same receipt. */
 export async function readVerifiedHookStartingFrame(response: Response, input: {
   referenceId: string; sourceSha256: string;
+  retainedFrame?: HookStartingFrame["frame"];
 }): Promise<HookStartingFrame> {
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: string; message?: string } | null;
@@ -49,7 +51,7 @@ export async function readVerifiedHookStartingFrame(response: Response, input: {
     const width = Number(response.headers.get("X-Hook-Frame-Width"));
     const height = Number(response.headers.get("X-Hook-Frame-Height"));
     const frameSha256 = response.headers.get("X-Hook-Frame-Sha256") ?? "";
-    const selected = getCuratedHookFrame(input.referenceId, input.sourceSha256);
+    const selected = input.retainedFrame ?? getCuratedHookFrame(input.referenceId, input.sourceSha256);
     const index = selected?.index ?? 0, timeSeconds = selected?.timeSeconds ?? 0;
     if (response.headers.get("Content-Type")?.split(";")[0] !== "image/png" ||
       response.headers.get("X-Hook-Reference-Id") !== input.referenceId ||

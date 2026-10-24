@@ -17,7 +17,7 @@ export function buildStartingFrameAnimationPrompt(input: {
   if (input.workflow === "hook") return buildHookAnimationPrompt(input);
   if (typeof input.directions !== "string" || !input.directions.trim() || input.directions.length > 6_000 ||
     /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(input.directions)) throw new Error("Describe the video within 6,000 characters.");
-  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 4 || input.durationSeconds > 15 || typeof input.generateAudio !== "boolean") throw new Error("Choose a supported animation duration and sound setting.");
+  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 15 || typeof input.generateAudio !== "boolean") throw new Error("Choose a supported animation duration and sound setting.");
   return [
     `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",

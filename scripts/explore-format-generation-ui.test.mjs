@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as startingFrameAnimation from "../lib/explore/starting-frame-animation-input.ts";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
@@ -19,6 +20,7 @@ function load(file, imports = {}, globals = {}) {
   vm.runInNewContext(code, { exports, process: { env: {} }, require: name => {
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name === "@/worker/src/lib/hook-starting-frame-video") return startingFrameVideo;
+    if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
     if (name in imports) return imports[name];
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts" || name === "@/worker/src/lib/slideshow-generation-batch") return slideshowBatch;
     if (name === "@/lib/explore/slideshow-generation-groups") return slideshowGroups;
@@ -191,7 +193,7 @@ test("Hook and Wall default to Sound off and submit the explicitly toggled choic
   assert.equal(harness("studio").composer.props.promptAction, undefined);
 });
 
-test("approved Hook starting-frame handoff clears old references and submits only owned image IDs plus motion and explicit sound", async () => {
+test("approved Hook starting-frame handoff preserves face photos and submits separate first-frame and identity roles", async () => {
   for (const sound of [false, true]) {
     const h = harness("hook", { seedanceEnabled: true, reference: false, captureRequests: true });
     const controls = h.render().composer.props.referenceControls.props;
@@ -202,14 +204,14 @@ test("approved Hook starting-frame handoff clears old references and submits onl
       durationSeconds: 8, motionInstructions: "Open both palms, glance sideways, then end with a faint smile.", generateAudio: sound };
     let composer = h.selectStartingFrame(selection).composer;
     assert.equal(h.requests.length, 0, "Using a frame never generates a video automatically");
-    assert.equal(composer.props.referenceControls.props.heading, "Starting frame");
-    assert.equal(composer.props.referenceControls.props.startingFrame.assetId, "approved-scene");
+    assert.equal(composer.props.referenceControls.type, "StartingFrameAnimationReferences");
+    assert.equal(composer.props.referenceControls.props.frame.assetId, "approved-scene");
     assert.equal(composer.props.prompt, selection.motionInstructions);
     assert.equal(composer.props.promptAction.props["aria-checked"], sound);
     assert.match(composer.props.settingsSummary, /Google Omni.*8s/);
     const settings = composer.props.settings.props.children;
     const duration = settings.find(node => node?.props?.ariaLabel === "Video duration");
-    assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), Array.from({ length: 7 }, (_, i) => i + 4));
+    assert.deepEqual(Array.from(duration.props.options, option => Number(option.value)), Array.from({ length: 8 }, (_, i) => i + 3));
     duration.props.onChange("30");
     assert.equal(h.render().composer.props.settings.props.children.find(node => node?.props?.ariaLabel === "Video duration").props.value, "8");
     assert.deepEqual(Array.from(settings.find(node => node?.type === "AiStudioRatioPicker").props.allowedRatios), ["9:16"]);
@@ -220,10 +222,39 @@ test("approved Hook starting-frame handoff clears old references and submits onl
     assert.equal(body.startingFrameAssetId, selection.assetId); assert.equal(body.startingFrameJobId, selection.jobId);
     assert.equal(body.referenceId, "hook-15"); assert.equal(body.model, "google_omni");
     assert.equal(body.durationSeconds, 8); assert.equal(body.generateAudio, sound); assert.equal(body.prompt, selection.motionInstructions);
-    for (const key of ["avatarImageUrl", "referenceImageUrls", "referenceVideoUrl", "referenceAudioUrls", "referenceVideoMode", "useGalleryVideoReference"]) {
+    assert.deepEqual(body.referenceImageUrls, ["https://owned.test/old.png"]);
+    assert.equal(body.imageReferencePurpose, "person");
+    for (const key of ["avatarImageUrl", "referenceVideoUrl", "referenceAudioUrls", "referenceVideoMode", "useGalleryVideoReference"]) {
       assert.equal(key in body, false, `${key} must not accompany first-frame animation`);
     }
   }
+});
+
+test("starting frame and face selections remain independent through scene and model changes", async () => {
+  const h = harness("hook", { reference: false, captureRequests: true, seedanceEnabled: true, wanEnabled: true });
+  const frame = { ownerId: "test-owner", draftId: "draft", referenceId: "hook-fixture", assetId: "approved-scene", jobId: "image-job",
+    url: "https://owned.test/approved.png", width: 720, height: 1280, durationSeconds: 8, motionInstructions: "Look up and smile.", generateAudio: false };
+  const photos = [{ kind: "image", asset: { id: "face", url: "https://owned.test/face.png" } }];
+  h.selectStartingFrame(frame).composer.props.referenceControls.props.onPhotosChange(photos);
+  const replacement = { ...frame, assetId: "new-scene", jobId: "another-job", url: "https://owned.test/new.png" };
+  let composer = h.selectStartingFrame(replacement).composer;
+  assert.equal(composer.props.referenceControls.props.frame.assetId, replacement.assetId);
+  assert.deepEqual(Array.from(composer.props.referenceControls.props.photos, photo => photo.asset.id), ["face"]);
+  const settings = () => h.render().composer.props.settings.props.children;
+  settings().find(node => node?.props?.ariaLabel === "Video model").props.onChange("wan_3_0");
+  composer = h.render().composer;
+  assert.equal(composer.props.generateDisabled, true);
+  assert.match(composer.props.accessMessage, /Choose Omni.*kept/);
+  assert.deepEqual(Array.from(composer.props.referenceControls.props.photos, photo => photo.asset.id), ["face"]);
+  await composer.props.onSubmit({ preventDefault() {} }); assert.equal(h.requests.length, 0);
+  composer.props.referenceControls.props.onPhotosChange([]);
+  composer = h.render().composer;
+  assert.equal(composer.props.referenceControls.props.frame.assetId, replacement.assetId);
+  assert.equal(composer.props.generateDisabled, false);
+  settings().find(node => node?.props?.ariaLabel === "Video duration").props.onChange("3");
+  await h.render().composer.props.onSubmit({ preventDefault() {} });
+  assert.equal(h.requests.length, 1); assert.equal(h.requests[0].body.durationSeconds, 3);
+  assert.equal(h.requests[0].body.startingFrameAssetId, replacement.assetId);
 });
 
 test("approved starting frames retain model choices and submit each model with the same owned image", async () => {
@@ -240,10 +271,10 @@ test("approved starting frames retain model choices and submit each model with t
     const seconds = model === "google_omni" ? 10 : 15;
     const switched = h.selectStartingFrame({ ...frame, jobId: "another-job" }).composer;
     assert.equal(setting("Video model").props.value, model, "Changing frames retains the selected model");
-    assert.equal(switched.props.referenceControls.props.startingFrame.assetId, frame.assetId);
+    assert.equal(switched.props.referenceControls.props.frame.assetId, frame.assetId);
     duration.props.onChange(String(seconds));
     const composer = h.render().composer;
-    assert.equal(composer.props.referenceControls.props.startingFrame.assetId, frame.assetId);
+    assert.equal(composer.props.referenceControls.props.frame.assetId, frame.assetId);
     assert.equal(composer.props.generateDisabled, false);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests.at(-1).body.model, model);

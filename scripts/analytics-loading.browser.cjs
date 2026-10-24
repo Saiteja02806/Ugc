@@ -110,6 +110,27 @@ async function main(){
     await page.evaluate(()=>{window.visibleFixture=false;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
     await page.evaluate(()=>{window.visibleFixture=true;document.dispatchEvent(new Event('visibilitychange',{bubbles:true}))});await advance(100);
     assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsAfterIdle,"fresh snapshots do not refetch on every focus");
+    // Laptop wake can be a window focus without a visibility transition. A
+    // snapshot read updates metrics and activity but fresh server data needs no
+    // provider sync. Repeated focus/online/pageshow events must coalesce.
+    const postsBeforeWake=await page.evaluate(()=>window.postCount);
+    const activityBeforeWake=await page.evaluate(()=>window.calls['/api/analytics/activity']);
+    views=13;
+    await page.evaluate(()=>{
+      for(const q of window.client.getQueryCache().getAll())if(
+        q.queryKey[0]==='account'&&q.queryKey[1]==='owner-a'&&
+        ((q.queryKey[2]==='analytics'&&q.queryKey[3]==='instagram'&&q.queryKey.length===7)||q.queryKey[2]==='analytics-activity'))
+          window.client.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-2*60_000});
+    });
+    await advance(100);
+    await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('online'))});
+    await page.waitForFunction(()=>window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}).some(q=>q.queryKey.length===7&&q.state.data?.data?.accounts?.[0]?.totals?.views===13));
+    await page.waitForFunction(before=>window.calls['/api/analytics/activity']>before,activityBeforeWake);
+    assert.equal(await page.evaluate(()=>window.postCount),postsBeforeWake,"Reading fresh saved data never starts provider synchronization");
+    assert.equal(await page.evaluate(()=>window.calls['/api/analytics/instagram/content']),readsAfterIdle+1,"Wake event burst issues one read per resource");
+    const quietCalls=await page.evaluate(()=>({...window.calls}));
+    await advance(2*60_000);
+    assert.deepEqual(await page.evaluate(()=>({...window.calls})),quietCalls,"A visible idle page does not periodically fetch analytics");
     // A different range must never borrow the previous range's snapshot.
     holdInstagram=true;
     await page.getByRole("group",{name:"Analytics date range"}).getByRole("button",{name:"7 days",exact:true}).click();
@@ -161,6 +182,26 @@ async function main(){
     await page.getByText("A saved analytics post",{exact:true}).first().waitFor();
     await page.evaluate(()=>window.scrollTo(0,0));
     await page.screenshot({path:path.join(out,"analytics-ready.png")});
+    // A completed manual refresh must not block the next automatic cycle.
+    complete=true;needsRefresh=false;
+    await page.getByRole('button',{name:'Refresh',exact:true}).click();
+    await page.waitForFunction(()=>window.client.getQueryCache().getAll().filter(q=>q.queryKey[2]==='analytics'&&q.queryKey[3]==='instagram'&&q.getObserversCount()>0).every(q=>q.state.fetchStatus==='idle'));
+    await advance(2000);
+    const afterManual=await page.evaluate(()=>window.postCount);
+    await advance(61_000);
+    needsRefresh=true;complete=false;
+    await page.evaluate(()=>{
+      for(const q of window.client.getQueryCache().findAll({queryKey:['account','owner-a','analytics','instagram']}))if(q.queryKey.length===7)
+        window.client.setQueryData(q.queryKey,q.state.data,{updatedAt:Date.now()-16*60_000});
+    });
+    await advance(100);
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    await page.waitForFunction(before=>window.postCount>before,afterManual);
+    // Local job-1 is reused by the fixture. Existing completed cache values
+    // remain terminal and cannot become an endless status polling loop.
+    const beforeQuiet=await page.evaluate(()=>window.calls['/api/jobs/job-1']);
+    await advance(60_000);
+    assert.equal(await page.evaluate(()=>window.calls['/api/jobs/job-1']),beforeQuiet);
     // A different authenticated owner gets a different QueryClient/screen.
     ownerB=true;await page.evaluate(()=>window.switchOwner('owner-b'));
     await page.waitForFunction(()=>window.currentOwner==='owner-b');
@@ -169,7 +210,7 @@ async function main(){
     assert.deepEqual(errors,[]);
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.accounts')));
     assert.ok(await page.evaluate(()=>window.timingCalls.includes('ugc.analytics.snapshot')));
-    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
+    const receipt={accountDisplayIndependent:true,platformRequestsDeferred:true,staleContentRetained:true,idleSnapshotsRevalidated:true,freshFocusAvoidsDuplicateReads:true,laptopFocusRefreshesMetricsAndActivity:true,wakeBurstCoalesced:true,noProviderSyncForFreshSnapshot:true,noPeriodicSnapshotRequests:true,automaticRefreshAfterManual:true,switchAborts:true,dateRangeIsolation:true,authorizationRevisionIsolation:true,hiddenPollingPaused:true,completionUpdatesObservedCache:true,completedJobsStayStopped:true,refreshFailureRetainsContent:true,noManualRefreshReplay:true,retryRecoversInitialSnapshotFailure:true,ownerIsolation:true,displayTimingsRecorded:true};
     write("results.json",JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));
   }finally{if(browser)await browser.close();release();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as startingFrameAnimation from "../lib/explore/starting-frame-animation-input.ts";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
@@ -13,6 +14,7 @@ function load(file, imports = {}, globals = {}) {
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, AbortSignal, process: { env: {} }, require: name => {
     if (name.endsWith(".module.css")) return { default: {} };
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
+    if (name === "@/lib/explore/starting-frame-animation-input") return startingFrameAnimation;
     if (name in imports) return imports[name];
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
     if (name === "@/lib/http/read-deadline") return load("lib/http/read-deadline.ts", imports, globals);

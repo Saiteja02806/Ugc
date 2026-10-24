@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeSnapshotKey } from "../../dist/lib/hook-keyframe-generation-contract.js";
+import { creatorSceneCanonicalUrl, verifyCreatorSceneDelivery } from "../../dist/lib/creator-scene-delivery.js";
 const local = file => new URL(file, import.meta.url);
 const calls = [], storedImage = Buffer.from("generated fixture pixels"); let existingOutput;
 mock.method(globalThis, "fetch", async () => assert.fail("No paid providers, database or storage network calls"));
@@ -49,6 +50,25 @@ test("Hook image stage sends scene/main/support in exact order with only its com
   assert.deepEqual(calls.find(call => call.prepare).prepare.options, { preserveComposition: true });
   assert.deepEqual(output.hookKeyframe, input.input_json.hookKeyframe); assert.equal(output.model, "nano_banana_2"); assert.equal(output.effectivePrompt, received.prompt);
   assert.equal(count("paid"), 1); assert.equal(count("reserve"), 1);
+});
+
+test("private creator scene links are freshly signed for both Gemini paths while durable jobs retain canonical provenance", async () => {
+  process.env.CREATOR_REFERENCE_SIGNING_SECRET = "a-private-test-secret-with-at-least-32-characters";
+  for (const model of ["nano_banana_2", "gemini_3_pro"]) {
+    calls.length = 0;
+    const input = job(), body = input.input_json;
+    body.model = model; body.hookKeyframe.version = 2; body.hookKeyframe.imageModel = model;
+    body.hookKeyframe.promptVersion = 4; body.hookKeyframe.referenceId = "creator-account-1-01";
+    body.hookKeyframe.inputKey = hookKeyframeGenerationInputKey(body.hookKeyframe);
+    body.referenceImageUrl = body.referenceImageUrls[0] = creatorSceneCanonicalUrl(body.hookKeyframe);
+    const canonical = body.referenceImageUrl;
+    await runGenerateImageJob(input, context);
+    const received = model === "nano_banana_2" ? calls.find(call => call.paid).paid.references : calls.find(call => call.proPaid).proPaid.referenceImageUrls;
+    assert.ok(verifyCreatorSceneDelivery(new URL(received[0])));
+    assert.deepEqual(received.slice(1), body.referenceImageUrls.slice(1));
+    assert.equal(body.referenceImageUrl, canonical); assert.equal(new URL(body.referenceImageUrl).search, "");
+  }
+  delete process.env.CREATOR_REFERENCE_SIGNING_SECRET;
 });
 test("Wall starting-image jobs accept the same verified scene/person contract from their own workflow", async () => {
   const input = job(); input.input_json.exploreFormat = "wall_text";

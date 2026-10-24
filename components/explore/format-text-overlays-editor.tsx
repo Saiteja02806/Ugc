@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import tools from "./format-video-editor.module.css";
 import { Button } from "@/components/ui/button";
 import styles from "@/components/explore/format-workspace.module.css";
-import { applyFormatTextPreset, EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily, MAX_FORMAT_TEXT_OVERLAYS, type ExploreFormatText, type FormatTextPreset, type ExploreTextFont, type ExploreTextWeight } from "@/worker/src/lib/explore-format-edit";
+import { applyFormatTextPreset, DEFAULT_FORMAT_TEXT_STYLE, EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily, MAX_FORMAT_TEXT_OVERLAYS, type ExploreFormatText, type FormatTextPreset, type ExploreTextFont, type ExploreTextWeight } from "@/worker/src/lib/explore-format-edit";
 import "./explore-text-fonts.css";
 
 const field = "w-full rounded-lg border border-border bg-card-muted px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus";
@@ -15,7 +15,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
   wallText?: boolean; fullDuration?: boolean; timeMs?: number; onSeek: (timeMs: number) => void; styleTarget?: HTMLElement | null; showStyleControls?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
-  const newText = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", font: "inter" as const, fontWeight: 700 as const };
+  const newText = { value: "", width: .8, y: .18, fontSize: 48, ...DEFAULT_FORMAT_TEXT_STYLE };
   const editable = overlays.length ? overlays : [{ ...newText, startMs: 0, endMs: durationMs }];
   const index = Math.min(selected, editable.length - 1);
   const text = editable[index];
@@ -43,6 +43,7 @@ export function FormatTextOverlaysEditor({ overlays, durationMs, onChange, wallT
         <label className="block space-y-2 text-xs text-muted">Vertical position · {Math.round(text.y * 1000) / 10}%<input type="range" aria-label="Text vertical position" min={3} max={90} step={.5} value={text.y * 100} onChange={event => update({ y: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
         <label className="block space-y-2 text-xs text-muted">Width · {Math.round(text.width * 100)}%<input type="range" aria-label="Text width" min={40} max={94} value={text.width * 100} onChange={event => update({ width: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>
         <label className="block space-y-2 text-xs text-muted">Text size · {text.fontSize}<input type="range" aria-label="Text size" min={24} max={84} value={text.fontSize} onChange={event => update({ fontSize: Number(event.target.value) })} className="w-full accent-primary" /></label>
+        {text.preset !== "snapchat-classic" ? <label className="block space-y-2 text-xs text-muted">Outline thickness · {text.outlineWidth ?? 2}<input type="range" aria-label="Text outline thickness" min={0} max={16} step={1} value={text.outlineWidth ?? 2} onChange={event => update({ outlineWidth: Number(event.target.value) })} className="w-full accent-primary" /></label> : null}
         <div className={tools.fontControls}>
           <label className="text-xs text-muted">Font<select aria-label="Text font" value={text.font ?? ""} style={{ fontFamily: exploreTextFontFamily(text.font, weight) }} onChange={event => update(event.target.value ? { font: event.target.value as ExploreTextFont } : { font: undefined, fontWeight: undefined })} className={field}><option value="">Original (Arial)</option>{EXPLORE_TEXT_FONTS.map(font => <option key={font.id} value={font.id} style={{ fontFamily: exploreTextFontFamily(font.id, 500) }}>{font.label}</option>)}</select></label>
           <label className="text-xs text-muted">Weight<select aria-label="Text weight" value={weight} onChange={event => update({ fontWeight: Number(event.target.value) as ExploreTextWeight })} className={field}>{EXPLORE_TEXT_WEIGHTS.filter(item => text.font || item.value !== 500).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>

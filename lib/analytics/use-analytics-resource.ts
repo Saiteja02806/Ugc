@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import type { PublicBackgroundJob } from "@/lib/jobs/background-job-contract";
 import { useAnalyticsDisplayTiming } from "./use-analytics-display-timing";
 import { analyticsRequest } from "./request-client";
+import { useAnalyticsWake } from "./use-analytics-wake";
+import { ANALYTICS_SNAPSHOT_READ_STALE_MS } from "./freshness-policy";
 
 export { analyticsRequest } from "./request-client";
 
@@ -48,19 +50,25 @@ export function useAnalyticsResource<T>(params: {
   }, [refreshRequest, active, scope, client, key]);
   const force = manual.request === refreshRequest && manual.scope === scope;
   const snapshot = useQuery({
-    queryKey: key, enabled: active, staleTime: params.staleTime, gcTime: 30 * 60_000,
+    queryKey: key, enabled: active && visible, staleTime: params.staleTime, gcTime: 30 * 60_000,
     // TanStack revalidates only stale snapshots when the tab becomes visible.
     // The existing saved output stays rendered during this background read.
-    retry: false, refetchOnWindowFocus: true,
+    retry: false, refetchOnWindowFocus: true, refetchOnReconnect: true,
     queryFn: ({ signal }) => analyticsRequest<Snapshot<T>>(`${url}${days ? `?days=${days}` : ""}`, owner, signal),
   });
+  useAnalyticsWake(snapshot, active, params.staleTime);
   const refreshKey = useMemo(() => [...key, "refresh", force ? `manual:${consumerId}:${refreshRequest}` : snapshot.data?.refreshKey ?? "initial"], [key, force, refreshRequest, consumerId, snapshot.data?.refreshKey]);
   const refresh = useQuery({
     queryKey: refreshKey,
     enabled: active && visible && Boolean(snapshot.data && (snapshot.data.needsRefresh || force)),
-    staleTime: Infinity, gcTime: 30 * 60_000, retry: false, refetchOnWindowFocus: false,
+    // Automatic attempts may retry on a later visit after a queue failure.
+    // Manual Refresh clicks remain events and must never replay on focus.
+    staleTime: force ? Infinity : ANALYTICS_SNAPSHOT_READ_STALE_MS,
+    gcTime: 30 * 60_000, retry: false,
+    refetchOnWindowFocus: !force, refetchOnReconnect: !force, refetchOnMount: !force,
     queryFn: ({ signal }) => analyticsRequest<Start<T>>(url, owner, signal, { ...(days ? { days } : {}), force }),
   });
+  useAnalyticsWake(refresh, active && !force && Boolean(snapshot.data?.needsRefresh));
   const jobId = refresh.data?.jobId;
   const initialJob = refresh.data?.job;
   const jobKey = useMemo(() => ["account", owner, "analytics-job", jobId], [owner, jobId]);
@@ -81,11 +89,25 @@ export function useAnalyticsResource<T>(params: {
   });
   const currentJob = job.data ?? initialJob;
   const jobStatus = currentJob?.status;
+  const refreshSettledAt = Math.max(refresh.dataUpdatedAt, refresh.errorUpdatedAt);
+  useEffect(() => {
+    if (!force || !refreshSettledAt ||
+        (currentJob && !terminal.has(currentJob.status) && !expired(currentJob))) return;
+    // Consume the manual event only after the next authoritative GET succeeds.
+    // Cache events preserve ordering even when two responses finish in one ms.
+    return client.getQueryCache().subscribe(event => {
+      if (event.type === "updated" && event.action.type === "success" &&
+          JSON.stringify(event.query.queryKey) === scope &&
+          (!refresh.isError || Date.now() - refresh.errorUpdatedAt >= ANALYTICS_SNAPSHOT_READ_STALE_MS)) {
+        setManual(current => current.scope === scope ? { ...current, scope: null } : current);
+      }
+    });
+  }, [client, force, refreshSettledAt, refresh.isError, refresh.errorUpdatedAt, currentJob, scope]);
   // A completed job has already persisted its account snapshots. Reading the
   // authoritative snapshot avoids replaying an old completed job over newer data.
   useEffect(() => {
     if (jobStatus === "completed") void client.invalidateQueries({ queryKey: key, exact: true });
-  }, [client, key, jobId, jobStatus]);
+  }, [client, key, jobId, jobStatus, refresh.dataUpdatedAt]);
   useEffect(() => {
     if (active) return;
     void client.cancelQueries({ queryKey: key, exact: true });

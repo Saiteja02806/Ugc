@@ -19,6 +19,8 @@ function load(file, imports = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, require: name => {
     if (name === "server-only") return {};
+    if (name === "./creator-slideshows.ts" || name === "@/lib/explore/creator-slideshows") return { getCreatorSlideshowReference: () => undefined, creatorSlideFromUrl: () => null };
+    if (name === "./creator-account-access.ts" || name === "@/lib/explore/creator-account-access") return { canAccessCreatorAccounts: () => false };
     if (name === "../../worker/src/lib/explore-inline-symbols.ts") return inlineSymbols;
 
     if (name === "@/components/media/image-library-picker") return { ImageLibraryPicker: "ImageLibraryPicker" };

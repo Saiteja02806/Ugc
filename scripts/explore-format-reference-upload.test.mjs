@@ -76,6 +76,31 @@ function harness(upload, { images = [], queryError = false, queryPending = false
 }
 const flush = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
 
+test("face-photo removal stays available when its add/change picker is disabled for the selected model", () => {
+  const h = harness(async () => assert.fail("No uploads"));
+  const photos = [{ kind: "image", asset: savedImage("first") }, { kind: "image", asset: savedImage("second") }];
+  const updates = [];
+  const tree = h.render({ selection: photos[0], imageSelections: photos, imagePurpose: "person", imagePresentation: "person-strip",
+    inlineImagePicker: true, imagePickerDisabled: true, videoInputEnabled: false, onImagesChange: next => updates.push(next) });
+  const trigger = h.all(tree, node => node.type === "InlinePhotoPickerTrigger")[0];
+  assert.equal(trigger.props.render.props.disabled, true);
+  const visiblePhotos = h.all(tree, node => node.type === "ImagePreview");
+  assert.equal(visiblePhotos.length, 2);
+  assert.equal(visiblePhotos[0].props.disabled, false);
+  assert.equal(typeof visiblePhotos[0].props.onRemove, "function");
+  visiblePhotos[0].props.onRemove();
+  assert.deepEqual(Array.from(updates[0], image => image.asset.id), ["second"]);
+});
+
+test("a scene-only chooser exposes only starting-frame history without image uploads", () => {
+  const h = harness(async () => assert.fail("No uploads"));
+  const options = { selection: null, startingFramesOnly: true, startingFrame: { assetId: "frame", url: "https://owned.test/frame.png", width: 720, height: 1280 }, onSelectStartingFrame() {}, videoInputEnabled: false };
+  let tree = h.render(options);
+  h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
+  assert.deepEqual(h.all(tree, node => node.type === "TabsTab").map(node => node.props.value), ["starting"]);
+  assert.equal(h.all(tree, node => node.type === "input" && node.props.type === "file")[0].props.disabled, true);
+});
+
 test("one image tile opens saved influencers and uploads in the same chooser", async () => {
   const h = harness(async () => {});
   const selected = [];

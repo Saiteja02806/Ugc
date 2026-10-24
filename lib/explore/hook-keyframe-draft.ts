@@ -155,7 +155,7 @@ export function hookKeyframeAnimationReadiness(draft: HookKeyframeDraft, motion:
   if (!motion || motion.status !== "ready" || motion.motionVersion !== HOOK_KEYFRAME_MOTION_VERSION ||
     motion.referenceId !== current.scope.referenceId || motion.sourceSha256 !== current.scope.sourceSha256 ||
     motion.startingFrameIndex !== current.sourceFrame.index ||
-    !Number.isSafeInteger(durationSeconds) || durationSeconds < 4 || durationSeconds > 15 || motion.durationSeconds !== durationSeconds ||
+    !Number.isSafeInteger(durationSeconds) || durationSeconds < 3 || durationSeconds > 15 || motion.durationSeconds !== durationSeconds ||
     motion.generateAudio !== current.generateAudio || typeof motion.prompt !== "string" || !motion.prompt.trim()) {
     return { ready: false, message: "This Hook's animation instructions need review for the selected source, frame, duration and sound choice." };
   }

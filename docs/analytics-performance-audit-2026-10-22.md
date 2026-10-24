@@ -1,5 +1,9 @@
 # Analytics performance audit — 22 October 2026
 
+The freshness windows and return-event behavior below are superseded by the
+locally verified follow-up in `analytics-return-refresh-2026-10-24.md`. The
+historical test results here still describe the 22 October implementation.
+
 ## Scope and verified changes
 
 Reviewed the active Instagram Analytics workspace, deferred YouTube/TikTok panels, snapshot requests, job observers, account/range cache identity, and the snapshot/activity API source. The older multi-platform dashboard in `analytics-dashboard.tsx` is dormant and is not on the user-facing route.

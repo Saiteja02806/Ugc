@@ -1,5 +1,8 @@
 import "server-only";
 import { startingFrameErrorMessage } from "./starting-frame-error";
+import { canAccessCreatorAccounts, isCreatorAccountReference } from "./creator-account-access.ts";
+import { creatorSceneCanonicalUrl, resolveCreatorSceneDelivery } from "../../worker/src/lib/creator-scene-delivery.ts";
+import { matchesCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { hookKeyframeProviderImageLabels } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
 import { createHash } from "node:crypto";
 import { requireAIStudioProUser } from "../ai-studio/server-access";
@@ -69,6 +72,7 @@ export async function handleHookKeyframeGeneration(request: Request) {
   if (process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION !== "true") return errorResponse("Starting-image generation is not enabled.", 404);
   try {
     const user = await requireAIStudioProUser(request), input = await readRequest(request);
+    if (isCreatorAccountReference(input.referenceId) && !canAccessCreatorAccounts(user)) return errorResponse("This reference is unavailable.", 404);
     const key = requestStorageKey(user.uid, input.idempotencyKey);
     const preparation = JSON.stringify([input.referenceId, input.sourceSha256, input.draftId, input.personImageAssetIds, input.instructions, input.imageModel ?? "legacy_flash", input.preparationInputKey ?? null]);
     const pending = inFlight.get(key);
@@ -114,19 +118,25 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     const prompt = buildHookKeyframeImagePrompt({ personImageCount: photos.length, instructions: input.instructions,
       referenceId: input.referenceId, sourceSha256: frame.sourceSha256, sourceFrameIndex: frame.frameIndex }).prompt;
     const model = input.imageModel ?? "nano_banana_2";
-    const partial = { version: frame.frameIndex > 0 ? 3 as const : input.imageModel === undefined ? 1 as const : 2 as const,
-      ...(frame.frameIndex > 0 || input.imageModel !== undefined ? { imageModel: model } : {}), ownerId, draftId: input.draftId, referenceId: input.referenceId, sourceSha256: frame.sourceSha256,
+    const selectedFrame = matchesCuratedHookFrame(input.referenceId, frame.sourceSha256, { index: frame.frameIndex, timeSeconds: frame.frameTimeSeconds, sha256: frame.frameSha256, width: frame.width, height: frame.height });
+    const partial = { version: selectedFrame ? 3 as const : input.imageModel === undefined ? 1 as const : 2 as const,
+      ...(selectedFrame || input.imageModel !== undefined ? { imageModel: model } : {}), ownerId, draftId: input.draftId, referenceId: input.referenceId, sourceSha256: frame.sourceSha256,
       sourceFrame: { index: frame.frameIndex, timeSeconds: frame.frameTimeSeconds, width: frame.width, height: frame.height, sha256: frame.frameSha256 },
       personImageAssetIds: input.personImageAssetIds, instructions: input.instructions };
     const receipt: HookKeyframeGenerationReceipt = { ...partial, version: partial.version ?? 1, purpose: "hook_starting_frame", promptVersion: HOOK_KEYFRAME_IMAGE_PROMPT_VERSION,
       inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(prompt) };
-    if (frame.frameIndex > 0 && input.imageModel === undefined || (frame.frameIndex > 0 || input.preparationInputKey !== undefined) && input.preparationInputKey !== receipt.inputKey) throw new HookKeyframeGenerationError("The source frame changed. Refresh this preparation before generating.", 409);
+    if (selectedFrame && input.imageModel === undefined || (selectedFrame || input.preparationInputKey !== undefined) && input.preparationInputKey !== receipt.inputKey) throw new HookKeyframeGenerationError("The source frame changed. Refresh this preparation before generating.", 409);
     // Only already-public canonical source pixels are stored here. No portraits,
     // account ID or draft ID enter this content-addressed snapshot path.
-    const snapshot = await uploadBufferToStorage({ key: hookKeyframeSnapshotKey(receipt),
-      buffer: frame.png, contentType: "image/png", cacheControl: "public, max-age=31536000, immutable" });
+    const privateCreator = isCreatorAccountReference(input.referenceId);
+    const snapshot = privateCreator ? { url: creatorSceneCanonicalUrl(receipt) }
+      : await uploadBufferToStorage({ key: hookKeyframeSnapshotKey(receipt),
+        buffer: frame.png, contentType: "image/png", cacheControl: "public, max-age=31536000, immutable" });
+    // Verify delivery is configured before credits, without persisting an
+    // expiring link or publishing private scene pixels into public storage.
+    if (privateCreator) resolveCreatorSceneDelivery(snapshot.url, receipt);
     const referenceImageUrls = [snapshot.url, ...photos.map(photo => photo.url)];
-    if (!isTrustedMediaReferenceUrl(snapshot.url) || !isHookKeyframeImageInput({ receipt, ownerId, model, aspectRatio, prompt,
+    if ((!privateCreator && !isTrustedMediaReferenceUrl(snapshot.url)) || !isHookKeyframeImageInput({ receipt, ownerId, model, aspectRatio, prompt,
       referenceImageUrl: snapshot.url, referenceImageUrls })) throw new HookKeyframeGenerationError("The Hook scene snapshot could not be verified. No generation was submitted.", 503);
     if (model === "seedream_5_pro" && `${prompt}\n\nIMAGE INPUT ORDER:\n${hookKeyframeProviderImageLabels(input.personImageAssetIds.length, HOOK_KEYFRAME_IMAGE_PROMPT_VERSION).join("\n")}`.length > 4_000) throw new HookKeyframeGenerationError("Shorten the image instructions for Seedream to fit its 4,000-character prompt limit including image roles.", 400);
     const creditCost = hookImageCreditCost(model);

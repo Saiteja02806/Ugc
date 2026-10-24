@@ -6,8 +6,6 @@ import { withReadDeadline } from "@/lib/http/read-deadline";
 import { combineReferenceVideoPrompt } from "../../lib/explore/reference-video-prompts.ts";
 
 import {
-  ChevronDown,
-  ChevronUp,
   Clock3,
   History,
   Monitor,
@@ -39,17 +37,19 @@ import {
   type AiStudioResultsStatus,
 } from "@/components/generation/ai-studio-results";
 import { AiStudioResultActions } from "@/components/generation/ai-studio-result-actions";
-import { AiStudioCopyButton } from "@/components/generation/ai-studio-copy-button";
+import { VideoPromptBubble } from "@/components/video/video-result-prompt";
 import { Input } from "@/components/ui/input";
 import { ReferenceFilesUpload } from "@/components/video/reference-files-upload";
 import { FormatGenerationReferences } from "@/components/explore/format-generation-references";
+import { StartingFrameAnimationReferences } from "@/components/explore/starting-frame-animation-references";
+import { startingFrameAnimationInput, startingFrameFaceReferenceError } from "@/lib/explore/starting-frame-animation-input";
 import { WorkflowDurationControl } from "@/components/explore/workflow-duration-control";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { CreatorReferencePicker } from "@/components/video/creator-reference-picker";
 import { VideoGenerationFailure } from "@/components/video/video-generation-failure";
 import { VideoGenerationPlaceholder } from "@/components/video/video-generation-placeholder";
 import resultLayout from "@/components/video/video-results.module.css";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "@/worker/src/lib/hook-starting-frame-video";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -426,7 +426,9 @@ export function VideoGenerationStudioPanel({
       setDurationSeconds(startingFrame.durationSeconds); setQuantity(1);
       setAspectRatio(startingFrame.width > startingFrame.height ? "16:9" : "9:16");
       setSoundPreference({ owner: startingFrame.ownerId, format: workflowFormat ?? "hook", enabled: startingFrame.generateAudio });
-      setUploadedReference(null); setAdditionalImageReferences([]); setUploadedVideoReference(null); setAudioReferences([]);
+      // An approved scene is independent of optional identity photos. Replacing
+      // it must not discard the person's clearer facial references.
+      setUploadedVideoReference(null); setAudioReferences([]); setImagePurpose("person");
       setReferencePromptDraft(null); setReferenceSelectionError(null); setSelectedCreatorReferenceId(null);
       setWorkflowSourceMode("reference");
     }
@@ -516,14 +518,14 @@ export function VideoGenerationStudioPanel({
       : hasWorkflowVideoReference && !sourceDuration ? "Credits are based on the source clip's duration, checked before generation."
       : `This generation uses ${requiredCredits} AI credits (${creditsPerSecond} per second).`;
 
-  const referenceImages = startingFrame || awaitingStartingFrame ? [] : [
+  const referenceImages = awaitingStartingFrame ? [] : [
     ...(uploadedReference ? [uploadedReference] : []),
     ...additionalImageReferences,
   ];
   const hasVideoReference = Boolean(uploadedReferenceVideo || galleryVideoReference);
   const referencePolicyOptions = { allowOmniVideo: Boolean(workflow), hasTimedReferences: hasVideoReference || audioReferences.length > 0 };
   const referencePolicy = getVideoReferencePolicy(model, referencePolicyOptions);
-  const workflowImageLimit = referencePolicy.maxImages;
+  const workflowImageLimit = startingFrame ? hookStartingFrameFaceReferenceLimit(model) || hookStartingFrameFaceReferenceLimit("google_omni") : referencePolicy.maxImages;
   const referenceLimitError = referenceImages.length > workflowImageLimit ? `Use up to ${workflowImageLimit} image references with these inputs. Remove an image before generating.` : null;
   const referenceTypeError = getVideoReferenceTypeError(model, hasVideoReference, audioReferences.length > 0, referencePolicyOptions);
   const timedReferenceError = referenceTypeError ?? (audioReferences.length > 1 ? "Use one audio reference. Remove an audio before generating." : null)
@@ -544,9 +546,10 @@ export function VideoGenerationStudioPanel({
     ? "Choose Seedance 2.5 or WAN 3.0 to create from this reference, or choose Edit source video with Google Omni." : null;
   const startingFrameError = startingFrame && !isHookStartingFrameVideoModel(model) ? "Choose Omni Flash 1.1, Seedance 2.5 or WAN 3.0 to animate this starting frame."
     : startingFrame && (startingFrame.width / startingFrame.height < .54 || startingFrame.width / startingFrame.height > 1.82 || startingFrame.width === startingFrame.height) ? "Use a 9:16 or 16:9 starting image for this animation."
-    : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? `Choose a starting-frame duration from 4 to ${model === "google_omni" ? 10 : 15} seconds.`
+    : startingFrame && !hookStartingFrameVideoDurations(model).includes(durationSeconds) ? `Choose a starting-frame duration from ${hookStartingFrameVideoDurations(model)[0]} to ${model === "google_omni" ? 10 : 15} seconds.`
     : startingFrame && aspectRatio !== (startingFrame.width > startingFrame.height ? "16:9" : "9:16") ? "Keep the starting image’s ratio to preserve its composition." : null;
-  const generationReferenceError = (awaitingStartingFrame ? "Create and approve a starting frame before generating this video." : null) ?? startingFrameError ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
+  const startingFramePhotosError = startingFrame ? startingFrameFaceReferenceError(model, startingFrame, referenceImages) : null;
+  const generationReferenceError = (awaitingStartingFrame ? "Create and approve a starting frame before generating this video." : null) ?? startingFrameError ?? startingFramePhotosError ?? referenceError ?? editReferenceError ?? referenceLimitError ?? timedReferenceError ?? imageReferenceError ?? referenceCreationError;
   const activeReferenceImageUrl = startingFrame?.url ?? (awaitingStartingFrame ? null : uploadedReference?.asset.url ?? (workflow && !uploadedVideoReference ? recreateView?.referenceImageUrl : null)) ?? null;
   const promptMaxLength = getExploreVideoPromptMaxLength({ model, hasReferenceVideo: Boolean(uploadedReferenceVideo || galleryVideoReference), referenceVideoMode: hasWorkflowVideoReference ? "edit" : undefined, format: workflowFormat === "slideshow" ? undefined : workflowFormat, personPhotos: Boolean(workflow && imagePurpose === "person" && referenceImages.length), imageCount: referenceImages.length, generateAudio: supportsWorkflowSound ? generateAudio : undefined });
   const referenceFiles = [...referenceImages, ...(uploadedVideoReference ? [uploadedVideoReference] : []), ...audioReferences];
@@ -997,8 +1000,7 @@ export function VideoGenerationStudioPanel({
           aspectRatio,
           exploreFormat: workflow?.format,
           ...(supportsWorkflowSound ? { generateAudio } : {}),
-          ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId,
-            referenceId: startingFrame.referenceId } : {
+          ...(startingFrame ? startingFrameAnimationInput(startingFrame, referenceImages) : {
             avatarImageUrl: activeReferenceImageUrl,
             referenceImageUrls: referenceImages.length ? referenceImages.map((image) => image.asset.url) : activeReferenceImageUrl ? [activeReferenceImageUrl] : [],
             ...(workflow && referenceImages.length ? { imageReferencePurpose: imagePurpose } : {}),
@@ -1442,7 +1444,13 @@ export function VideoGenerationStudioPanel({
         estimatedCredits={workflow && !awaitingStartingFrame && !generationLocked && !recreateView?.preview && (!hasWorkflowVideoReference || sourceDuration) ? requiredCredits : undefined}
         outputSummary={workflow ? `${resolution} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
         settingsSummary={workflow ? `${model === "wan_3_0" ? "WAN 3.0" : model === "seedance_2_5" ? "Seedance 2.5" : "Google Omni"} · ${hasWorkflowVideoReference ? `${sourceDuration ? `${sourceDuration.toFixed(1)}s clip` : "Source clip"} · Edit` : `${durationSeconds}s`} · ${hasWorkflowVideoReference && model === "seedance_2_5" ? "Source shape" : aspectRatio} · ${quantity} video${quantity === 1 ? "" : "s"}` : undefined}
-        referenceControls={awaitingStartingFrame ? <section aria-label="Starting frame required" className="space-y-3 rounded-xl border border-border p-3"><p className="text-sm font-medium">Start with your image</p><p className="text-xs leading-5 text-muted">Create a starting frame from this reference, then choose the image you want to animate.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={startingFramePreparation?.onOpen}>Create starting frame</Button><Button type="button" variant="ghost" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={recreateView?.onClearReference}>Clear reference</Button></div></section> : workflow ? <FormatGenerationReferences startingFrame={startingFrame} onSelectStartingFrame={recreateView?.onSelectStartingFrame} onClearStartingFrame={recreateView?.onClearStartingFrame} previewStartingFrames={recreateView?.previewStartingFrames} heading={startingFrame ? "Starting frame" : "Optional references"} imagePurpose={imagePurpose} onImagePurposeChange={setImagePurpose} key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} maxImageBytes={referencePolicy.maxImageBytes} videoSelection={uploadedReferenceVideo} audioSelection={audioReferences[0] ?? null} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || Boolean(pendingSubmission) || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={galleryVideoReference} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("video")} audioInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("audio")} maxVideoDuration={referencePolicy.maxVideoDuration} maxAudioDuration={referencePolicy.maxAudioDuration} maxVideoBytes={referencePolicy.maxVideoBytes} maxAudioBytes={referencePolicy.maxAudioBytes} preserveVideoTiming={hasWorkflowVideoReference} /> : undefined}
+        referenceControls={awaitingStartingFrame ? <section aria-label="Starting frame required" className="space-y-3 rounded-xl border border-border p-3"><p className="text-sm font-medium">Start with your image</p><p className="text-xs leading-5 text-muted">Create a starting frame from this reference, then choose the image you want to animate.</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={startingFramePreparation?.onOpen}>Create starting frame</Button><Button type="button" variant="ghost" size="sm" disabled={isGenerating || Boolean(pendingSubmission)} onClick={recreateView?.onClearReference}>Clear reference</Button></div></section> : workflow && startingFrame ? <StartingFrameAnimationReferences key={user?.uid ?? "preview"}
+          frame={startingFrame} model={model} photos={referenceImages} onPhotosChange={handleImageReferencesChange}
+          onSelectFrame={recreateView?.onSelectStartingFrame} onClearFrame={recreateView?.onClearStartingFrame}
+          previewFrames={recreateView?.previewStartingFrames} previewInfluencers={recreateView?.previewFaceReferenceImages}
+          ownerId={user?.uid} preview={Boolean(recreateView?.preview)} active={workflow.controlsActive}
+          disabled={isGenerating || Boolean(pendingSubmission) || (!recreateView?.preview && generationLocked)}
+          onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} /> : workflow ? <FormatGenerationReferences startingFrame={startingFrame} onSelectStartingFrame={recreateView?.onSelectStartingFrame} onClearStartingFrame={recreateView?.onClearStartingFrame} previewStartingFrames={recreateView?.previewStartingFrames} heading={startingFrame ? "Starting frame" : "Optional references"} imagePurpose={imagePurpose} onImagePurposeChange={setImagePurpose} key={user?.uid ?? "preview"} active={workflow.controlsActive} selection={uploadedReference} imageSelection={uploadedReference} imageSelections={referenceImages} onImagesChange={handleImageReferencesChange} maxImages={workflowImageLimit} maxImageBytes={referencePolicy.maxImageBytes} videoSelection={uploadedReferenceVideo} audioSelection={audioReferences[0] ?? null} onChange={handleReferenceChange} onPendingChange={setCreatorReferenceUploadPending} onErrorChange={reportReferenceError} disabled={isGenerating || Boolean(pendingSubmission) || (!recreateView?.preview && generationLocked)} preview={Boolean(recreateView?.preview)} ownerId={user?.uid} styleVideo={galleryVideoReference} onStyleVideoDurationChange={reportGalleryVideoDuration} onClearStyle={recreateView?.onClearReference} videoInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("video")} audioInputEnabled={!startingFrame && referencePolicy.allowedKinds.includes("audio")} maxVideoDuration={referencePolicy.maxVideoDuration} maxAudioDuration={referencePolicy.maxAudioDuration} maxVideoBytes={referencePolicy.maxVideoBytes} maxAudioBytes={referencePolicy.maxAudioBytes} preserveVideoTiming={hasWorkflowVideoReference} /> : undefined}
         compact={Boolean(recreateView)}
         accessMessage={!generationLocked && generationReferenceError ? generationReferenceError : workflow && !generationLocked && !hasInsufficientCredits ? null : composerMessage}
         active={workflow?.controlsActive ?? active}
@@ -1958,53 +1966,6 @@ function VideoResultMetadata({
   );
 }
 
-function VideoPromptBubble({
-  createdAt,
-  prompt,
-}: {
-  createdAt: string;
-  prompt: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="w-full min-w-0">
-      <div className={cn(resultLayout.promptHeading, "mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted")}>
-        <span className="text-foreground-strong">Prompt</span>
-        <span>{formatGeneratedAt(createdAt)}</span>
-      </div>
-      <button
-        type="button"
-        aria-expanded={expanded}
-        aria-label={expanded ? "Collapse video prompt" : "Show full video prompt"}
-        onClick={() => setExpanded((current) => !current)}
-        className={cn(
-          resultLayout.promptToggle,
-          "group flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
-          expanded && "bg-card",
-        )}
-      >
-        <span
-          data-expanded={expanded}
-          className={cn(
-            resultLayout.promptText,
-            "min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]",
-            expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
-          )}
-        >
-          {prompt}
-        </span>
-        {expanded ? (
-          <ChevronUp className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
-        ) : (
-          <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
-        )}
-      </button>
-      <div className="mt-1 flex justify-end"><AiStudioCopyButton kind="prompt" value={prompt} /></div>
-    </div>
-  );
-}
-
 function VideoHistoryDrawer({
   groups,
   onClose,
@@ -2197,15 +2158,4 @@ function formatVideoDuration(durationSeconds: number) {
   const seconds = roundedSeconds % 60;
 
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
-
-function formatGeneratedAt(value: string) {
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? "Generated"
-    : new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
 }

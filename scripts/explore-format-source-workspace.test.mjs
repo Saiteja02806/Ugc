@@ -24,7 +24,7 @@ const video = { id: "00000000-0000-4000-8000-000000000001", collection: "influen
   fileSizeBytes: 2000, title: "My saved clip", url: "/owned.mp4", ratio: "16:9", width: 1280, height: 720, metadata: {}, createdAt: "2026-10-08T00:00:00Z" };
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" ? tree : ""; }
-function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false } = {}) {
+function harness(format, query = "", { local = true, selected = video, catalogue = [], subscription = { isActive: true }, backgroundCapability = { data: false, isFetching: false }, finalSlideshow, keyframeEnabled = false, creatorCatalogue = [] } = {}) {
   let cursor = 0, params = new URLSearchParams(query), columns = 5, resizeCallback, sourceInput;
   const slots = [], effects = [], queries = [], tokens = [], reads = [];
   const window = { location: { pathname: `/explore/${format}`, get search() { return `?${params}`; } }, history: { replaceState(_, __, url) { params = new URLSearchParams(url.split("?")[1]); } }, matchMedia: () => ({ matches: false }), getComputedStyle: () => ({ gridTemplateColumns: Array(columns).fill("200px").join(" ") }) };
@@ -59,6 +59,12 @@ function harness(format, query = "", { local = true, selected = video, catalogue
     const [frame, setFrame] = imports.react.useState(null);
     return { frame, setFrame, ready: true, error: null };
   } },
+  "@/components/explore/use-creator-accounts": { useCreatorAccounts(_user, enabled) {
+    const [selectedId, select] = imports.react.useState(null);
+    const accounts = enabled ? creatorCatalogue : [];
+    return { accounts, selectedId, select, account: accounts.find(account => account.id === selectedId),
+      references: accounts.flatMap(account => account.items), loading: false, error: null, retry() {} };
+  } },
   "@/components/explore/pending-schedule-panel": { useBackgroundScheduleAvailability: () => backgroundCapability },
   "@/components/explore/format-workspace.module.css": new Proxy({}, { get: (_, key) => key }),
   "@/lib/ai-studio/access-policy": { getAIStudioAccessMessage: () => "" }, "@/lib/explore/format-video-source": mapper,
@@ -83,6 +89,25 @@ function harness(format, query = "", { local = true, selected = video, catalogue
 }
 
 const catalogue = Array.from({ length: 90 }, (_, index) => ({ id: `wall-${index}`, format: "wall_text", title: `Productivity ${index + 1}`, category: index < 45 ? "productivity" : "other", slides: [], posterUrl: "/poster.jpg", videoUrl: "/reference.mp4" }));
+
+test("creator account switching replaces only the gallery and preserves Recreate's exact reference", () => {
+  const shared = { id: "normal-hook", format: "hook", title: "Hook", slides: [], posterUrl: "/normal.png", videoUrl: "/normal.mp4" };
+  const accounts = [1, 2].map(number => ({ id: `creator-account-${number}`, label: `Creator Account ${number}`,
+    items: Array.from({ length: 6 }, (_, index) => ({ ...shared, id: `creator-account-${number}-0${index + 1}`, creatorAccountId: `creator-account-${number}`, videoUrl: `blob:creator-${number}-${index}` })) }));
+  const h = harness("hook", "", { local: false, selected: null, catalogue: [shared], keyframeEnabled: true, creatorCatalogue: accounts });
+  const cards = () => nodes(h.render()).filter(node => node.type === "ReferenceCard");
+  const menu = () => nodes(h.render()).find(node => node.type === "CreatorAccountMenu");
+  assert.deepEqual(cards().map(node => node.props.reference.id), [shared.id]);
+  menu().props.onSelect(accounts[0].id);
+  assert.deepEqual(cards().map(node => node.props.reference.id), accounts[0].items.map(item => item.id));
+  cards()[2].props.onRecreate();
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, accounts[0].items[2].id);
+  menu().props.onSelect(accounts[1].id);
+  assert.deepEqual(cards().map(node => node.props.reference.id), accounts[1].items.map(item => item.id));
+  assert.equal(nodes(h.render()).find(node => node.type === "HookStartingFrameWorkspace").props.reference.id, accounts[0].items[2].id);
+  menu().props.onSelect(null);
+  assert.deepEqual(cards().map(node => node.props.reference.id), [shared.id]);
+});
 
 test("Wall frontend rejects retired cards from stale responses and direct reference URLs", () => {
   const stale = ["explore-wall-text-08", "explore-wall-text-09"].map(id => ({ ...catalogue[0], id }));

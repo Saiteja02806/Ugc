@@ -83,6 +83,8 @@ import {
 } from "@/lib/analytics/social-account-selection";
 import { useInstagramAnalytics } from "@/lib/analytics/use-instagram-analytics";
 import { analyticsRequest } from "@/lib/analytics/use-analytics-resource";
+import { useAnalyticsWake } from "@/lib/analytics/use-analytics-wake";
+import { ANALYTICS_SNAPSHOT_READ_STALE_MS } from "@/lib/analytics/freshness-policy";
 import { getConnectionsRevision } from "@/lib/social/connection-revision";
 import { getAccountSocialConnectionsQueryKey } from "@/lib/scheduling/account-data-query-cache";
 import { useAuth } from "@/contexts/auth-context";
@@ -273,11 +275,13 @@ export function InstagramAnalyticsWorkspace() {
   const activityQuery = useQuery({
     queryKey: ["account", accountId, "analytics-activity", dateRangeDays, endDate, offsetMinutes, effectiveInstagramSelectedConnectionId, getConnectionsRevision(connections)],
     enabled: Boolean(accountId && showInstagramAnalytics && connections.length),
-    staleTime: 30 * 60_000, retry: false,
+    staleTime: ANALYTICS_SNAPSHOT_READ_STALE_MS, retry: false,
+    refetchOnWindowFocus: true, refetchOnReconnect: true,
     queryFn: ({ signal }) => analyticsRequest<{ activity: InstagramAnalyticsSummary }>(
       `/api/analytics/activity?days=${dateRangeDays}&end=${endDate}&offset=${offsetMinutes}&connection=${effectiveInstagramSelectedConnectionId}`, accountId, signal,
     ),
   });
+  useAnalyticsWake(activityQuery, Boolean(accountId && showInstagramAnalytics && connections.length));
   const refetchConnections = connectionsQuery.refetch;
   const refetchActivity = activityQuery.refetch;
   const retryAnalytics = useCallback(() => {

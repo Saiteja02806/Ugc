@@ -18,14 +18,14 @@ export async function prepareExploreFormatEditFilter(input: { width: number; hei
   const overlays = formatTextOverlays(edit);
   const captionImages: string[] = [];
   const textLayers: { filter: string; inputIndex?: number }[] = [];
-  if (overlays.some(text => text.preset !== "snapchat-classic" && text.font === undefined && text.fontWeight === undefined)) await copyFile(join(input.tools.fontsDir, "arial-bold.ttf"), join(input.workDir, "format-font.ttf"));
+  if (overlays.some(text => text.preset !== "snapchat-classic" && text.font === undefined && text.fontWeight === undefined && text.outlineWidth === undefined)) await copyFile(join(input.tools.fontsDir, "arial-bold.ttf"), join(input.workDir, "format-font.ttf"));
   for (const [overlayIndex, text] of overlays.entries()) {
     const layout = formatTextLayout(text, input.width, input.height);
     if (!layout.fits) throw new Error("Your text does not fit. Reduce its size or move it higher.");
     const colorSymbols = formatInlineRuns(text.value).some(run => run.symbol) || formatTextGraphemes(text.value).some(needsFormatEmojiFallback);
-    if (text.preset === "snapchat-classic" || text.font || text.fontWeight !== undefined || colorSymbols) {
+    if (text.preset === "snapchat-classic" || text.font || text.fontWeight !== undefined || text.outlineWidth !== undefined || colorSymbols) {
       const file = `format-caption-${overlayIndex}.png`;
-      const svg = text.font || text.fontWeight !== undefined || colorSymbols ? await createOutlinedFormatTextSvg(text, input.width, input.height, input.tools.fontsDir) : createFormatTextSvg(text, input.width, input.height);
+      const svg = text.font || text.fontWeight !== undefined || text.outlineWidth !== undefined || colorSymbols ? await createOutlinedFormatTextSvg(text, input.width, input.height, input.tools.fontsDir) : createFormatTextSvg(text, input.width, input.height);
 
       await sharp(Buffer.from(svg)).png().toFile(join(input.workDir, file));
       captionImages.push(file);

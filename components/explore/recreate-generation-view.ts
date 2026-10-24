@@ -19,6 +19,7 @@ export type RecreateGenerationView = {
   onClearStartingFrame?: () => void;
   onSelectStartingFrame?: (frame: HookStartingFrameSelection) => void;
   previewStartingFrames?: HookStartingFrameSelection[];
+  previewFaceReferenceImages?: import("@/lib/media/types").MediaAsset[];
   onClearReference?: () => void;
   workflow?: {
     format: "hook" | "wall_text" | "slideshow";

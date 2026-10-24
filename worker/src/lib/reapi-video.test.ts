@@ -25,9 +25,10 @@ test("approved first-frame animation uses the explicit frame role, adaptive shap
 });
 
 test("WAN starting frames use the literal frame family, not general reference mode", () => {
-  const request = buildReapiVideoRequest({ ...input, model: "wan_3_0", durationSeconds: 8, startingFrameImageUrl: "https://storage.example.com/frame.png" });
+  const request = buildReapiVideoRequest({ ...input, model: "wan_3_0", durationSeconds: 3, startingFrameImageUrl: "https://storage.example.com/frame.png" });
   assert.equal(request.model, "wan3.0-video"); assert.equal(request.size, "adaptive");
   assert.deepEqual(request.image_with_roles, [{ url: "https://storage.example.com/frame.png", role: "first_frame" }]);
+  assert.equal(request.duration, 3);
   assert.equal("audio" in request && request.audio, false); assert.equal(request.content_filter, true);
   assert.equal("generation_type" in request, false); assert.equal("image_urls" in request, false);
 });

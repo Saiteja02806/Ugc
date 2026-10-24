@@ -10,6 +10,8 @@ export const RECREATE_FORMAT_LABELS: Record<RecreateFormat, string> = {
 export type ReferenceSlide = {
   id: string;
   url: string;
+  /** Private catalogue identity used for generation; playback may be browser-local. */
+  generationUrl?: string;
   width: number;
   height: number;
 };
@@ -24,8 +26,12 @@ export type RecreateReference = {
   videoUrl?: string;
   /** Canonical server-provided digest for packaged references without hashed URLs. */
   sourceSha256?: string;
+  /** Private pilot membership, issued only by the authenticated creator catalogue. */
+  creatorAccountId?: string;
+  startingFrame?: { index: number; timeSeconds: number; sha256: string; reviewNote: string };
   /** Visible, editable suggestion; never appended secretly by the server. */
   generationPrompt?: string;
+  legacyGenerationPrompt?: string;
   durationSeconds?: number;
   instagramUrl?: string;
   sourceUrl?: string;

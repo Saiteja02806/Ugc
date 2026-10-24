@@ -1,5 +1,28 @@
 # Carousel System Context
 
+## 2026-10-24 Poppins correction in the shared manual font list (local)
+
+- User rejects TikTok Sans as the matching reference font and requests the closer
+  Poppins Bold appearance. The shared manual font list now includes actual
+  Poppins Regular/Medium/Bold, using pinned static TTF sources and matching WOFF2
+  preview faces. Manual slideshow tests cover Poppins in both aspect ratios and
+  at canvas edges. Automated generation typography stays independent.
+- The optional outlineWidth control added to Hook/Wall video edits belongs to
+  that video-edit format. Slideshow manual typography retains its existing
+  outline controls and saved schema. Local addition; not deployed. Evidence:
+  `docs/poppins-font-correction-2026-10-24.md`.
+
+## 2026-10-24 Shared manual font addition (local)
+
+- The user requests the font shown in a Hook reference. TikTok Sans is added to
+  the shared manual typography list, so Trending slideshow editing also offers
+  its Regular/Medium/Bold faces. Preview metrics, WOFF2 and outlined TTF exports
+  come from one pinned source. Automated generation typography, existing saved
+  styles, legacy layout and defaults are unchanged. All manual typography tests
+  pass, including the new family in square/portrait exports and at canvas edges.
+  This addition is not deployed. Evidence and font-identification limitation:
+  `docs/hook-remix-brand-and-tiktok-font-2026-10-24.md`.
+
 ## 2026-10-24 User resumes combined deployment
 
 - Saved-caption production migration is applied as `20261024061601`; RLS and service-only privileges verified. Current release includes all intentional worktree changes, including slideshow Save recovery, paired slide rendering and dedicated edit-worker/queue concurrency of two. Deployment and hosted acceptance are in progress; do not describe the earlier local fixture checks as final production acceptance.

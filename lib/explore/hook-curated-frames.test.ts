@@ -6,15 +6,38 @@ import catalog from "../../worker/src/lib/hook-curated-frames.json" with { type:
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { getHookReferenceGalleryItems, getHookReferenceReleaseItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
 import { createHookSourceFrameService, HookSourceFrameError } from "./hook-source-frame.ts";
-import { createHookKeyframeDraft, updateHookKeyframeDraft, hookKeyframeInputKey, serializeHookKeyframeDraft, readHookKeyframeDraft } from "./hook-keyframe-draft.ts";
+import { approveHookKeyframeImage, createHookKeyframeDraft, updateHookKeyframeDraft, hookKeyframeInputKey, serializeHookKeyframeDraft, readHookKeyframeDraft, recordHookKeyframeImage, type HookKeyframeDraft } from "./hook-keyframe-draft.ts";
 import { hookKeyframeGenerationInputKey, parseHookKeyframeGenerationReceipt } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
 import { getHookKeyframePromptPreview } from "./hook-keyframe-prompt-preview.ts";
 const ownerId="curated-test",draftId="00000000-0000-4000-8000-000000000001",photo="00000000-0000-4000-8000-000000000002";
-test("twenty exact approvals exclude Hook 88; hidden references stay archival but not selectable",()=>{
-  assert.equal(catalog.frames.length,20);assert.equal(new Set(catalog.frames.map(r=>r.referenceId)).size,20);assert.ok(!catalog.frames.some(r=>r.number===88));
+test("twenty-one exact selections include the first gallery Hook; Hook 88 stays original and hidden references stay archival",()=>{
+  assert.equal(catalog.frames.length,21);assert.equal(new Set(catalog.frames.map(r=>r.referenceId)).size,21);assert.ok(!catalog.frames.some(r=>r.number===88));
   const active=getHookReferenceGalleryItems(),all=getHookReferenceReleaseItems();assert.equal(active.length,104);
   for(const id of ["explore-paired-hook-917cba028b9bc9cfda3e9f9b","explore-paired-hook-e5870158a2ad1494edc92741","explore-paired-hook-6365d336034633aa5070eb48"]){assert.ok(all.some(r=>r.id===id));assert.ok(!active.some(r=>r.id===id));}
   assert.ok(active.some(r=>r.title==="Hook 88"));
+});
+test("the first gallery Hook adds one clearer binding without changing the original twenty approved selections", async () => {
+  const original = JSON.parse(await readFile("docs/approved-hook-frame-selections-2026-10-24.json", "utf8"));
+  const approvals = original.items;
+  assert.ok(Array.isArray(approvals));
+  assert.equal(approvals.length, 20);
+  for (const approved of approvals) {
+    const current = catalog.frames.find(row => row.referenceId === approved.referenceId)!;
+    assert.ok(current);
+    assert.equal(current.number, approved.number);
+    assert.equal(current.sourceSha256, approved.sourceSha256);
+    assert.equal(current.index, approved.frameIndex);
+    assert.equal(current.timeSeconds, approved.elapsedTimeSeconds);
+    assert.equal(current.presentationTimeSeconds, approved.presentationTimeSeconds);
+    assert.equal(current.sha256, approved.frameSha256);
+    assert.equal(current.publicPath, `/explore/curated-hook-frames/v1/${approved.frameSha256}.png`);
+  }
+  const first = getHookReferenceGalleryItems().find(row => row.id === "explore-paired-hook-fc44f6214b6e17413600ec13")!;
+  assert.ok(first);
+  const replacement = getCuratedHookFrame(first.id, first.videoSha256);
+  assert.equal(replacement?.number, 100); assert.equal(replacement?.index, 70);
+  assert.equal(replacement?.timeSeconds, 2.333333); assert.equal(replacement?.presentationTimeSeconds, 2.399349);
+  assert.equal(replacement?.sha256, "df452e82eadb2e7ed8338f34e2424e623b59ef4015d646a2a3c89d63a34d5a9c");
 });
 test("all curated PNGs, browser drafts, worker receipts and motion previews bind the same selected frame",async()=>{
   const sources=getHookReferenceGalleryItems();
@@ -33,6 +56,33 @@ test("all curated PNGs, browser drafts, worker receipts and motion previews bind
     assert.equal(getCuratedHookFrame(selected.referenceId,"a".repeat(64)),undefined);
     const legacyFrame={...sourceFrame,index:0,timeSeconds:0};const legacyPartial={...partial,version:2 as const,sourceFrame:legacyFrame};const legacy={...receipt,...legacyPartial,inputKey:hookKeyframeGenerationInputKey(legacyPartial)};assert.ok(parseHookKeyframeGenerationReceipt(legacy));assert.equal(parseHookKeyframeGenerationReceipt({...receipt,version:2}),null);
   }
+});
+test("adding Hook 100 keeps old approved opening receipts recoverable and upgrades only the new preparation", () => {
+  const selected = catalog.frames.find(row => row.number === 100)!;
+  const scope = { ownerId, draftId, referenceId: selected.referenceId, sourceSha256: selected.sourceSha256 };
+  const opening = { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "9eb3c117dbf181a870d89fb3c4b3f4495e10cfe435aa035140e079d4e1218f26" };
+  const legacy: HookKeyframeDraft = { ...createHookKeyframeDraft(scope), version: 2, sourceFrame: opening, imageAssetIds: [photo] };
+  const approved = approveHookKeyframeImage(recordHookKeyframeImage(legacy, {
+    assetId: "00000000-0000-4000-8000-000000000003", inputKey: hookKeyframeInputKey(legacy), promptVersion: 4,
+  }));
+  const saved = serializeHookKeyframeDraft(approved);
+  const restored = readHookKeyframeDraft(saved, scope)!;
+  assert.equal(restored.version, 2); assert.equal(restored.sourceFrame?.index, 0);
+  assert.deepEqual(updateHookKeyframeDraft(restored, { generateAudio: true }).approval, approved.approval);
+  const originalReceipt = { version: 2 as const, imageModel: legacy.imageModel, ...scope, purpose: "hook_starting_frame" as const,
+    sourceFrame: opening, personImageAssetIds: [photo], instructions: "", promptVersion: 4 as const, inputKey: hookKeyframeInputKey(legacy), promptSha256: "b".repeat(64) };
+  assert.ok(parseHookKeyframeGenerationReceipt(originalReceipt));
+  const sourceFrame = { index: selected.index, timeSeconds: selected.timeSeconds, width: selected.width, height: selected.height, sha256: selected.sha256 };
+  const next = updateHookKeyframeDraft(restored, { sourceFrame });
+  assert.equal(next.version, 3); assert.equal(next.sourceFrame?.index, 70);
+  assert.equal(next.generatedImage, null); assert.equal(next.approval, null);
+  assert.notEqual(hookKeyframeInputKey(next), originalReceipt.inputKey);
+  assert.equal(serializeHookKeyframeDraft(restored), saved, "Updating preparation never rewrites its frozen legacy approval");
+  assert.ok(parseHookKeyframeGenerationReceipt(originalReceipt), "Previously accepted request still uses its original input and frame");
+  const nextPrompt = getHookKeyframePromptPreview(next);
+  assert.match(nextPrompt.directions, /glasses are already off/);
+  assert.doesNotMatch(nextPrompt.directions, /remove (?:the )?glasses|adjust (?:the )?glasses/i);
+  assert.ok(getHookKeyframePromptPreview(restored).animationPrompt, "Legacy frame-zero motion remains available through history");
 });
 test("hidden sources and changed approved source versions fail without decoding an opening fallback", async () => {
   const sources = getHookReferenceGalleryItems();

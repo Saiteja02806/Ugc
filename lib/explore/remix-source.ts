@@ -38,9 +38,9 @@ export function resolveRemixSource(source: RemixTextSource | null | undefined, r
   for (const reference of references) {
     if (reference.format !== format || reference.id.startsWith("uploaded:")) continue;
     if (format === "slideshow") {
-      const slide = reference.slides.find(slide => slide.url === source.sourceUrl);
+      const slide = reference.slides.find(slide => slide.url === source.sourceUrl || slide.generationUrl === source.sourceUrl);
       if (slide) return { reference, slideId: slide.id };
-    } else if (reference.id === source.referenceId && (!source.sourceUrl || reference.videoUrl === source.sourceUrl)) return { reference, slideId: null };
+    } else if (reference.id === source.referenceId && (reference.creatorAccountId || !source.sourceUrl || reference.videoUrl === source.sourceUrl)) return { reference, slideId: null };
   }
   return empty;
 }

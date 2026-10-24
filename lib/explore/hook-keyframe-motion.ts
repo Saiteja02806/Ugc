@@ -172,7 +172,7 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
   if (absentInputOrEditCommand.test(input.directions)) {
     throw new Error("Describe visible actions directly. Keep face replacement, source-video references, duration and sound settings out of the action instructions.");
   }
-  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 4 || input.durationSeconds > 15 || typeof input.generateAudio !== "boolean") {
+  if (!Number.isSafeInteger(input.durationSeconds) || input.durationSeconds < 3 || input.durationSeconds > 15 || typeof input.generateAudio !== "boolean") {
     throw new Error("Choose a supported animation duration and sound setting.");
   }
   const sound = input.generateAudio

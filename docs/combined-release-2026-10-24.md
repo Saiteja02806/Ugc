@@ -1,75 +1,88 @@
 # Combined release — 24 October 2026
 
-The user authorized deployment of all intentional current changes and production
-verification afterward. This supersedes the earlier pause. Rollout is in progress;
-this initial inventory does not claim live acceptance.
+The user requests review and deployment of all current intentional changes.
+This includes private video/slideshow creator collections and parity fixes;
+Analytics return/freshness behavior; Hook Remix brand/role corrections and medium
+draft reasoning; the optional quality-review system kept disabled by default;
+Poppins/TikTok Sans fonts and caption outlines/defaults; reviewed Hook source
+frames; optional animation face references and supported three-second output;
+and generated-video prompt placement/history details. Existing intentional
+source, scripts, tests, configuration, bundled fonts and documentation are part
+of the release. No new migration is introduced by this diff.
 
-## Included
+## Private package boundary
 
-- Explore: twenty approved cleaner Hook frames; hide Hooks 27/84/89 from new
-  discovery; immutable v3 frame receipts, legacy recovery, matching motion
-  suggestions and history. Hook 88 remains unapproved and keeps frame zero.
-- Starting images: five supported still models, shared v4 prompt, provider error
-  explanation, inline person photos, complete images and variation inspection.
-- Hover-only reference previews, responsive generated-video results, scheduling
-  footer/visibility corrections, and shared reusable saved post captions.
-- Hook Remix v7 and its preserved experiment/evaluation documentation.
-- Trending slideshow edit-save navigation recovery, paired slide rendering,
-  dedicated edit-worker instance cap two and queue dispatch concurrency two.
-- Landing hero/brand spacing/copy and all intentional accompanying source,
-  configuration, tests, migration, scripts, documentation and approved PNG assets.
-- Regression review: refreshed stale harness imports and assertions for current
-  catalog membership, exact source-duration display, explicit WAN reference mode,
-  native audio resolution and the shared preview styles. Ordinary video reads
-  no longer fetch a generation job unless Remix provenance was requested.
+The repository is public. The user explicitly confirms the creator package must
+be deployed while remaining restricted to verified `vtu19403@veltech.edu.in`,
+and approves encryption plus a new server-only production package key.
 
-## Prerequisites and order
+All 79 private source files (four metadata/text files and 75 media files) ship
+as authenticated AES-256-GCM ciphertext. Each file has a random 96-bit nonce,
+HKDF-SHA256 key derivation and authenticated path binding. The dedicated key is
+configured as an encrypted production variable on website and MCP; it is absent
+from Git, client code and the worker image. It is separate from provider-delivery
+signing. Existing provider capabilities remain short-lived and hash-bound.
 
-Saved-caption migration applied in production as `20261024061601`; local source
-filename matches. The table is RLS-enabled and inaccessible directly to anon and
-authenticated roles. Only the service role receives SELECT/INSERT/UPDATE.
-No customer caption rows were created or modified for this migration.
+Production reads require decryption, even when a plaintext development copy is
+present. Public clones without the key have an empty private collection. Server
+Firebase/email checks still apply after decryption. Encryption does not replace
+authorization. No existing production secret was downloaded.
 
-Hold automatic Vercel builds before pushing. Release one complete source revision,
-build a pinned worker image, update relevant six worker services and two
-production jobs, and verify baked/runtime SHA and ready traffic. Apply the exact
-dedicated edit queue/instance scaling change while preserving identities,
-secrets, ingress and unrelated settings. Then stage/promote website and MCP
-builds from that source and restore their prior ignored-build-step settings.
-Live acceptance uses `https://www.getugcpilot.com`.
+## Validation before deployment
 
-## Exclusions
+- Combined root suite: 1,135 passed, zero failed/skipped (101 files).
+- Worker suite: 118 passed, zero failed/skipped; worker TypeScript build passed.
+- Scoped ESLint and application TypeScript passed; webpack production build and
+  isolated native decoder bundle checks passed.
+- All 79 production-mode decryptions match their original SHA-256 digests;
+  all 36 creator/model contract simulations pass using encrypted sources.
+- Server traces contain the required encrypted slideshow and frame files and
+  no plaintext creator manifests/media. Private source assets remain outside
+  public; private manifest markers are absent from 430 client JavaScript bundles.
+- Analytics browser fixture passes return-event/owner/error behavior and no
+  idle refresh loop. Caption editor fixture passes all 18 bundled font faces,
+  desktop/mobile placement and save/reopen/defaults. Video result fixture passes
+  96 responsive pending/completed layouts. Earlier creator gallery/preparation
+  browser simulations remain documented in the creator parity report.
+- Public-clone simulation: 60 passed and eight actual-private-fixture checks
+  explicitly skipped. Authorization/synthetic capability checks still run.
 
-No intentional Git-visible project path is excluded. Full included-path and
-content-hash inventory is recorded alongside this report before commit.
+The broad audit found stale VM dependency stubs and prior-font/prior-duration
+expectations; those fixtures are updated to the implemented contracts. One Git
+fixture required execution outside the Windows sandbox to write its temporary
+repository. No runtime failure is hidden as a skip in the full local suite.
 
-Excluded local paths/categories are `.env*` containing local credentials,
-`.tools/**` credentials/dependency caches, `.vercel/**` local account/project
-metadata, `.next/**`, `node_modules/**`, `worker/node_modules/**`, `worker/dist/**`,
-`.tmp/**`, `outputs/**`, `output/**`, `artifacts/**`, `.release-worktrees/**`,
-`.codex-artifacts/**`, `.codex-audits/**`, ignored `*.log`, Terraform
-`.terraform/**`, `*.tfstate*`, `*.tfplan` and secret-bearing local `*.tfvars`.
-These are credentials, generated build/cache state, local QA receipts/media or
-environment-specific deployment state. Terraform source changes are included.
-Canary-only jobs and the unrelated Tinder deck service are outside this worker
-release; active production workers/jobs sharing this source remain in scope.
+No new paid generation is performed for release verification. The earlier paid
+Remix experiments retain their recorded scope and limits. Generated likeness,
+motion fidelity and viral performance are not qualified by mocked browser jobs.
+Creator 2 clip 3 retains partial lower-face occlusion in its clearest sampled
+source. Authenticated hosted acceptance is distinct from local validation.
 
-## Validation and acceptance
+## Excluded source material
 
-Combined application regression suite: 1,316 tests pass. Worker compilation and
-729 worker checks are validated; five cache tests initially hit sandbox-denied
-atomic file renames and their six-test file passed with normal temporary-file
-access. Seventy provider-adapter checks pass with providers mocked. Website
-production build, type checking, native-route bundle verification, scoped lint,
-migration guard and seven migration/database tests pass. Terraform formatting
-checks pass; the two scaling fields will be applied through the supported Cloud
-Run/Cloud Tasks APIs because the local Terraform provider executable is blocked
-by Windows Application Control. No protection is disabled or bypassed.
+Only private plaintext and local-only material are excluded. Their encrypted
+equivalents are included; no creator feature or smaller intentional fix is
+deferred. Exact private source paths are recorded in the local release inventory.
 
-The complete included-file hash inventory is
-`combined-release-inventory-2026-10-24.json`; ignored local entries and their
-reasons are in `combined-release-excluded-paths-2026-10-24.md`. Rollout receipts,
-source SHA, target verification and live acceptance are saved in ignored
-`outputs/release-2026-10-24/`. This document freezes preflight scope; it does not
-claim that a passing local fixture is hosted acceptance. No new paid media
-generation or social publication is implied by opening Recreate or by a build.
+- `lib/explore/creator-accounts.json`
+- `lib/explore/creator-account-reviews.json`
+- `lib/explore/creator-slideshows.json`
+- `lib/explore/creator-slide-text.json`
+- Plain `.png`/`.mp4` files under `lib/explore/creator-account-media/` (36 files).
+- Plain `.jpg`/`.webp`/`.png` files under
+  `lib/explore/creator-slideshow-media/` (39 files).
+- `docs/creator-profile-frame-review-2026-10-24.json`
+- `docs/creator-profile-browser-simulation-2026-10-24.json`
+- `docs/creator-profile-legacy-simulation-2026-10-24.json`
+
+Existing ignored environment/credential files, `.tools/`, `.tmp/`, `.vercel/`,
+`.next/`, dependency directories, `worker/dist/`, local logs, generated browser
+screenshots and other build caches remain local. The new package key and
+transient encrypted-variable request are inside ignored `.tmp/release-20261024/`.
+
+## Rollout
+
+Pending: commit/source identity, immutable worker image, all eight worker target
+identities, website/MCP staged deployment IDs, alias verification and production
+smoke results are recorded after rollout. Website promotion must follow verified
+worker deployment. Existing build-ignore settings are restored after promotion.

@@ -140,6 +140,14 @@ test("Omni and WAN starting-frame jobs dispatch only to their frozen provider an
   }
 });
 
+test("three-second starting-frame jobs reach Omni and WAN without changing the frozen request length", async () => {
+  for (const [model, provider] of [["google_omni", "gemini"], ["wan_3_0", "reapi"]]) {
+    const f = fixture(startingFrameInput({ model, provider, durationSeconds: 3 }));
+    const output = await runGenerateHookVideoJob(f.job, f.context);
+    assert.equal(received.at(-1).durationSeconds, 3); assert.equal(output.durationSeconds, 3);
+  }
+});
+
 test("first-frame operations fingerprint canonical input and recover accepted tasks without refreshing private references", async () => {
   const input = startingFrameInput({ generateAudio: true });
   const initial = fixture(input), repeated = fixture(input);
@@ -162,6 +170,51 @@ test("first-frame operations fingerprint canonical input and recover accepted ta
   assert.equal(received.at(-1).startingFrameImageUrl, input.startingFrameImageUrl);
   assert.equal(received.at(-1).generateAudio, true);
   assert.equal(privateReads.length, beforeReads); assert.equal(silenceCalls.length, beforeSilence);
+});
+
+test("Omni starting-frame face references preserve order, private ownership and frozen recovery fingerprints", async () => {
+  const photos = ["https://owned-media.example.test/main.png", "https://owned-media.example.test/support.png"];
+  const input = startingFrameInput({ model: "google_omni", provider: "gemini", durationSeconds: 3, referenceImageUrls: photos,
+    personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: photos.slice(1) } });
+  const beforeReads = privateReads.length, initial = fixture(input);
+  initial.job.user_id = "fixture-user";
+  await runGenerateHookVideoJob(initial.job, initial.context);
+  assert.deepEqual(received.at(-1).referenceImageUrls, photos); assert.equal(received.at(-1).durationSeconds, 3);
+  assert.deepEqual(privateReads.slice(beforeReads).map(read => read.owner), ["fixture-user", "fixture-user", "fixture-user"]);
+  const fingerprint = initial.events.find(event => event.name === "reserve").requestFingerprint;
+  const reversed = fixture({ ...input, referenceImageUrls: photos.toReversed(), personReference: { version: 1, mainImageUrl: photos[1], supportingImageUrls: [photos[0]] } });
+  reversed.job.user_id = "fixture-user";
+  await runGenerateHookVideoJob(reversed.job, reversed.context);
+  assert.notEqual(reversed.events.find(event => event.name === "reserve").requestFingerprint, fingerprint);
+  const recovering = fixture(input, false), reads = privateReads.length;
+  recovering.job.user_id = "fixture-user";
+  recovering.context.store.reserveGenerationProviderOperation = async value => {
+    recovering.events.push({ name: "reserve", ...value });
+    return { shouldSubmit: false, operation: { status: "submitted", provider_operation_id: "existing-omni-faces" } };
+  };
+  await runGenerateHookVideoJob(recovering.job, recovering.context);
+  assert.equal(received.at(-1).providerOperationId, "existing-omni-faces"); assert.deepEqual(received.at(-1).referenceImageUrls, photos);
+  assert.equal(privateReads.length, reads); assert.equal(recovering.events.find(event => event.name === "reserve").requestFingerprint, fingerprint);
+});
+
+test("starting-frame face roles and model compatibility are checked before reserving provider operations", async () => {
+  const photos = ["https://owned-media.example.test/main.png"];
+  for (const patch of [
+    { model: "wan_3_0", provider: "reapi" }, { model: "seedance_2_5", provider: "reapi" },
+    { personReference: undefined }, { personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: [photos[0]] } },
+    { referenceImageUrls: ["https://owned-media.example.test/approved-start.png"], personReference: { version: 1, mainImageUrl: "https://owned-media.example.test/approved-start.png", supportingImageUrls: [] } },
+    { referenceImageUrls: Array.from({ length: 6 }, (_, i) => `https://owned.test/face-${i}.png`) },
+  ]) {
+    const f = fixture(startingFrameInput({ model: "google_omni", provider: "gemini", referenceImageUrls: photos,
+      personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: [] }, ...patch }));
+    f.job.user_id = "fixture-user";
+    await assert.rejects(runGenerateHookVideoJob(f.job, f.context), ProviderRequestNotSubmittedError);
+    assert.deepEqual(f.events, []);
+  }
+  const missingOwner = fixture(startingFrameInput({ model: "google_omni", provider: "gemini", referenceImageUrls: photos,
+    personReference: { version: 1, mainImageUrl: photos[0], supportingImageUrls: [] } }));
+  await assert.rejects(runGenerateHookVideoJob(missingOwner.job, missingOwner.context), ProviderRequestNotSubmittedError);
+  assert.deepEqual(missingOwner.events, []);
 });
 
 test("malformed or mixed first-frame worker input rejects before reserving a paid operation", async () => {

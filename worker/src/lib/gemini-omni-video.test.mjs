@@ -101,6 +101,29 @@ test("approved starting images use explicit first-frame binding and image-to-vid
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("three-second Omni animation keeps the literal first frame and every optional face in separate roles", async () => {
+  const originalFetch = globalThis.fetch;
+  let downloads = 0;
+  globalThis.fetch = async url => { downloads++; return new Response(Buffer.from(url), { headers: { "Content-Type": "image/png" } }); };
+  const frame = "https://owned.test/start.png", faces = ["https://owned.test/main.png", "https://owned.test/support.png"];
+  try {
+    await generateGeminiOmniVideoBuffer({ ...params("Turn the head naturally."), durationSeconds: 3, resolution: "720p", startingFrameImageUrl: frame, referenceImageUrls: faces });
+    const submitted = requests.at(-1), prompt = submitted.input.at(-1).text;
+    assert.equal(submitted.response_format.duration, "3s"); assert.equal(submitted.generation_config.video_config.task, "image_to_video");
+    assert.deepEqual(submitted.input.filter(part => part.type === "image").map(part => Buffer.from(part.data, "base64").toString()), [frame, ...faces]);
+    assert.match(prompt, /^\[# Sources <FIRST_FRAME>@Image1\] \[# References <IMAGE_REF_0>@Image2 <IMAGE_REF_1>@Image3\]/);
+    assert.match(prompt, /only as facial appearance guidance/); assert.match(prompt, /not starting or ending frames/);
+    assert.equal(requests.findLast(request => request.type === "count").contents.filter(part => part.inlineData).length, 3);
+    const before = creates(), beforeDownloads = downloads;
+    for (const referenceImageUrls of [[frame], [faces[0], faces[0]], Array.from({ length: 6 }, (_, i) => `https://owned.test/${i}.png`)]) {
+      await assert.rejects(generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: frame, referenceImageUrls }), ProviderRequestNotSubmittedError);
+    }
+    assert.equal(creates(), before); assert.equal(downloads, beforeDownloads);
+    await generateGeminiOmniVideoBuffer({ ...params("Smile."), startingFrameImageUrl: "expired-frame", referenceImageUrls: ["expired-face"], providerOperationId: "already-accepted-faces" });
+    assert.equal(requests.at(-1).type, "resume"); assert.equal(creates(), before); assert.equal(downloads, beforeDownloads);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test("video edits submit actual video bytes and the identity image, with explicit source and reference roles", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async url => new Response(Buffer.from(url.endsWith(".mp4") ? "source-video" : "identity-image"), {

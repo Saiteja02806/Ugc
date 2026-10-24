@@ -1,0 +1,82 @@
+{
+  "auditDate": "2026-10-24",
+  "scope": "Two recent connected-owner saved Hook Remix receipts. Exact source/output recovered through read-only application tools. Saved request metadata confirmed by owner-filtered database SELECT; no current profile write, provider call or deployment.",
+  "records": [
+    {
+      "request_key": "32c168f2-30df-491a-a712-8a88cff56eef",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+        "slideId": null,
+        "sourceSha256": "bcc25f638a337d7f9a252d7bf16c5ec7f6f144f36a0d0a44ca1bb72392242725",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "POV: you finally understand\nhow to use Claude\nfor marketing",
+            "startMs": 0,
+            "endMs": 3800
+          }
+        ],
+        "extractedAt": "2026-10-24T07:49:35.878Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "POV: you finally understand\nhow to use a marketing app\nfor marketing"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "verifiedInputMetadata": {
+        "model": "gpt-5.6-luna",
+        "promptVersion": 7,
+        "businessProfileVersion": 2,
+        "instructions": "",
+        "businessName": "UGCPilot",
+        "productSummary": "This is a marketing SAAS where we help with viral ready to post marketing content for the SAAS founders like mobile apps or web applications",
+        "savedContextDigest": "cee77ccbe13814806f048e5a76137f9a"
+      }
+    },
+    {
+      "request_key": "919ad968-f787-4f53-99f7-09697b8d8af0",
+      "outcome": "completed",
+      "source": {
+        "referenceId": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+        "slideId": null,
+        "sourceSha256": "e98c721de9e1fedff1a4b9291ef3338aa5235e394bf45e87a910d6070f4360ef",
+        "format": "hook",
+        "status": "ready",
+        "blocks": [
+          {
+            "text": "Since when can WhatsApp\ndo THIS??!😭😭",
+            "startMs": 0,
+            "endMs": 2767
+          }
+        ],
+        "extractedAt": "2026-10-24T07:59:54.742Z",
+        "model": "user-text",
+        "notes": "Starting text reviewed or entered by the user."
+      },
+      "output": {
+        "blocks": [
+          "Since when can UGCPilot\ndo THIS??!😭😭"
+        ],
+        "heading": "",
+        "body": ""
+      },
+      "message": "Saved text remix is ready. This has not edited or rendered a video.",
+      "verifiedInputMetadata": {
+        "model": "gpt-5.6-luna",
+        "promptVersion": 7,
+        "businessProfileVersion": 2,
+        "instructions": "",
+        "businessName": "UGCPilot",
+        "productSummary": "This is a marketing SAAS where we help with viral ready to post marketing content for the SAAS founders like mobile apps or web applications",
+        "savedContextDigest": "cee77ccbe13814806f048e5a76137f9a"
+      }
+    }
+  ]
+}

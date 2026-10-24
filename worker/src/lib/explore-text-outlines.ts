@@ -57,5 +57,5 @@ export async function createOutlinedFormatTextSvg(text: ExploreFormatText, width
       return markup;
     }))).join("");
   }))).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${background ? `<rect x="0" y="${background.y}" width="${width}" height="${background.height}" fill="#000000" fill-opacity="${background.opacity}"/>` : ""}<g fill="${text.color}"${background ? "" : ` stroke="black" stroke-width="${width / 540}" paint-order="stroke"`}>${lines}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${background ? `<rect x="0" y="${background.y}" width="${width}" height="${background.height}" fill="#000000" fill-opacity="${background.opacity}"/>` : ""}<g fill="${text.color}"${background ? "" : ` stroke="black" stroke-width="${layout.outlineWidth}" paint-order="stroke"`}>${lines}</g></svg>`;
 }

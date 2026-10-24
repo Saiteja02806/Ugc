@@ -10,7 +10,8 @@ write("entry.tsx", `import {createRoot} from 'react-dom/client';import {useState
 import {FormatTextOverlaysEditor} from '@/components/explore/format-text-overlays-editor';import {FormatVideoTextOverlay} from '@/components/explore/format-video-text-overlay';
 import {readFormatEditDraft} from '@/lib/explore/format-edit-draft';
 const original={version:1,format:'hook',trimStartMs:0,trimEndMs:5000,originalVolume:1,musicVolume:.2,text:null,textOverlays:[{value:'One thing I wish I knew sooner',font:'inter',fontWeight:500,width:.8,y:.18,fontSize:64,color:'#ffffff',startMs:0,endMs:5000}]};
-function App(){const [edit,setEdit]=useState(()=>readFormatEditDraft(JSON.parse(localStorage.getItem('font-draft')||JSON.stringify(original)))),[saved,setSaved]=useState(false),[advanced,setAdvanced]=useState(false);const wall=new URLSearchParams(location.search).has('wall');return <main><h1>{wall?'Wall of text':'Edit hook video'}</h1><div className='fixture'><section className='portrait'><img src='/background.png'/><FormatVideoTextOverlay text={edit.textOverlays[0]} label='Text preview' width={1080} height={1920} onChange={text=>{setSaved(false);setEdit({...edit,textOverlays:[text,...edit.textOverlays.slice(1)]})}}/></section><section className='settings'><div className='scroller'><FormatTextOverlaysEditor overlays={edit.textOverlays} wallText={wall} durationMs={5000} timeMs={1000} onSeek={()=>{}} showStyleControls={!wall||advanced} onChange={textOverlays=>{setSaved(false);setEdit({...edit,textOverlays})}}/>{wall?<button onClick={()=>setAdvanced(v=>!v)}>{advanced?'Back to text':'Edit'}</button>:null}</div><footer><button onClick={()=>{localStorage.setItem('font-draft',JSON.stringify(readFormatEditDraft(edit)));setSaved(true)}}>Save edits</button>{saved?<span role='status'>Saved</span>:null}</footer></section></div></main>};createRoot(document.getElementById('root')).render(<App/>);`);
+function Comparison(){const text={value:'U finally understand\\nhow to use Claude\\nfor marketing',width:.94,y:.03,fontSize:64,color:'#ffffff',fontWeight:700,startMs:0,endMs:5000,outlineWidth:8};return <main className='comparison'><h1>Reference font comparison</h1><p>Original crop · enlarged 2×</p><img src='/reference-crop.png' width={388} height={158}/>{[{font:'poppins',label:'Poppins Bold · white + thick black outline'},{font:'tiktoksans',label:'TikTok Sans Bold · same size and outline'}].map(({font,label})=><section key={font}><h2>{label}</h2><div className='comparison-caption'><FormatVideoTextOverlay text={{...text,font}} width={1080} height={300} label={label}/></div></section>)}</main>};
+function App(){const [edit,setEdit]=useState(()=>readFormatEditDraft(JSON.parse(localStorage.getItem('font-draft')||JSON.stringify(original)))),[saved,setSaved]=useState(false),[advanced,setAdvanced]=useState(false);const wall=new URLSearchParams(location.search).has('wall');return <main><h1>{wall?'Wall of text':'Edit hook video'}</h1><div className='fixture'><section className='portrait'><img src='/background.png'/><FormatVideoTextOverlay text={edit.textOverlays[0]} label='Text preview' width={1080} height={1920} onChange={text=>{setSaved(false);setEdit({...edit,textOverlays:[text,...edit.textOverlays.slice(1)]})}}/></section><section className='settings'><div className='scroller'><FormatTextOverlaysEditor overlays={edit.textOverlays} wallText={wall} durationMs={5000} timeMs={1000} onSeek={()=>{}} showStyleControls={!wall||advanced} onChange={textOverlays=>{setSaved(false);setEdit({...edit,textOverlays})}}/>{wall?<button onClick={()=>setAdvanced(v=>!v)}>{advanced?'Back to text':'Edit'}</button>:null}</div><footer><button onClick={()=>{localStorage.setItem('font-draft',JSON.stringify(readFormatEditDraft(edit)));setSaved(true)}}>Save edits</button>{saved?<span role='status'>Saved</span>:null}</footer></section></div></main>};createRoot(document.getElementById('root')).render(location.pathname==='/compare'?<Comparison/>:<App/>);`);
 
 async function main() {
   await new Promise((resolve,reject)=>{const compiler=webpack({mode:"development",devtool:false,context:root,entry:path.join(out,"entry.tsx"),output:{path:out,filename:"bundle.js"},plugins:[new webpack.DefinePlugin({"process.env":JSON.stringify({NODE_ENV:"development"})})],resolve:{extensions:[".tsx",".ts",".js"],alias:{"@":root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,"loader.cjs")},{test:/\.css$/,use:path.join(out,"css.cjs")}]}});compiler.run((e,s)=>compiler.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
@@ -19,6 +20,7 @@ async function main() {
   for(const file of ["format-workspace.module.css","format-video-editor.module.css","explore-text-fonts.css"]) css+="\n"+fs.readFileSync(path.join(root,"components/explore",file),"utf8").replace(/:global\(([^)]+)\)/g,"$1");
   css+="\nmain{max-width:1100px;margin:auto;padding:20px}h1{font-size:18px;margin-bottom:16px}.fixture{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px}.portrait{position:relative;aspect-ratio:9/16;overflow:hidden;border-radius:20px;background:#111}.portrait img{width:100%;height:100%;object-fit:cover;filter:brightness(.65)}.settings{display:flex;flex-direction:column;min-height:0;height:calc(100dvh - 110px)}.scroller{overflow:auto;min-height:0;padding:4px 8px 16px}footer{display:flex;gap:12px;padding:12px 0}footer button{padding:8px 16px;border-radius:10px;background:var(--primary);color:var(--primary-foreground)}@media(max-width:600px){main{padding:12px}.fixture{grid-template-columns:minmax(0,1fr);gap:16px}.portrait{width:170px;justify-self:center}.settings{height:560px}}";
   const emojiManifest=JSON.parse(fs.readFileSync(path.join(root,"worker/src/lib/explore-emoji-manifest.json"),"utf8"));
+  css+=' .comparison{width:688px;max-width:none}.comparison h2{margin-top:20px;margin-bottom:6px;font-size:14px}.comparison p{margin-bottom:8px;color:#bbb}.comparison-caption{position:relative;width:648px;height:180px;background:#555}';
   const emojiArt=JSON.parse(require("node:zlib").gunzipSync(fs.readFileSync(path.join(root,"worker/src/assets/emoji",emojiManifest.version+".json.gz"))));
   const server=http.createServer((req,res)=>{
     if(req.url.startsWith("/api/explore/emoji/")) {
@@ -27,6 +29,7 @@ async function main() {
       res.setHeader("Content-Type","image/svg+xml");return res.end(emojiArt[match[2]]);
     }
     if(req.url==="/bundle.js"){res.setHeader("Content-Type","text/javascript");return res.end(fs.readFileSync(path.join(out,"bundle.js")));}
+    if(req.url==='/reference-crop.png'&&process.env.FONT_REFERENCE_CROP){res.setHeader('Content-Type','image/png');return res.end(fs.readFileSync(process.env.FONT_REFERENCE_CROP));}
     if(req.url.startsWith("/explore-text-fonts/")&&/^\/explore-text-fonts\/[a-z]+-(400|500|700)\.woff2$/.test(req.url)){res.setHeader("Content-Type","font/woff2");return res.end(fs.readFileSync(path.join(root,"public",req.url)));}
     if(req.url==="/background.png"){res.setHeader("Content-Type","image/png");return res.end(fs.readFileSync(path.join(root,"public/ai-studio/creator-references/creator-01.png")));}
     res.setHeader("Content-Type","text/html; charset=utf-8");res.end('<html class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>');
@@ -36,16 +39,22 @@ async function main() {
     let pw;try{pw=require("playwright");}catch{pw=require(path.join(process.env.USERPROFILE,".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));}
     browser=await pw.chromium.launch({headless:true,...(process.platform==="win32"?{channel:"msedge"}:{})});const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on("pageerror",e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${server.address().port}`);
     const select=page.getByRole("combobox",{name:"Text font",exact:true}),weight=page.getByRole("combobox",{name:"Text weight",exact:true});
-    // Existing Medium choices remain; newly added text starts in Inter Bold.
+    // Existing Medium choices remain; newly added text starts in Poppins Bold.
     assert.equal(await weight.inputValue(),"500");
-    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"poppins");assert.equal(await weight.inputValue(),"700");
+    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
+    await page.getByRole('textbox',{name:'Overlay text',exact:true}).fill('A fresh caption');
+    await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
+    await page.getByRole('button',{name:'Edit text block 2',exact:true}).click();
+    assert.equal(await select.inputValue(),'poppins');assert.equal(await weight.inputValue(),'700');
+    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
     await page.getByRole("button",{name:"Remove text block 2",exact:true}).click();assert.equal(await weight.inputValue(),"500");
-    for(const font of ["inter","dmsans","robotocondensed","montserrat"]) for(const value of ["400","500","700"]) {
+    for(const font of ["inter","dmsans","robotocondensed","montserrat","tiktoksans","poppins"]) for(const value of ["400","500","700"]) {
       await select.selectOption(font);await weight.selectOption(value);
       const selected=await page.locator('svg[aria-label="Text preview"] g').evaluate(async node=>{const family=node.getAttribute("font-family"),weight=node.getAttribute("font-weight");await document.fonts.load(weight+' 32px "'+family+'"');return {family,weight,loaded:document.fonts.check(weight+' 32px "'+family+'"'),width:node.getBBox().width};});
       assert.equal(selected.loaded,true);assert.equal(selected.weight,value);assert.ok(selected.family.startsWith("UGCExplore"));assert.ok(selected.width>0&&selected.width<1080);
     }
-    await weight.selectOption("500");await page.getByRole("button",{name:"Save edits",exact:true}).click();await page.reload();assert.equal(await select.inputValue(),"montserrat");assert.equal(await weight.inputValue(),"500");
+    await weight.selectOption("500");await page.getByRole("button",{name:"Save edits",exact:true}).click();await page.reload();assert.equal(await select.inputValue(),"poppins");assert.equal(await weight.inputValue(),"500");
     assert.equal(await page.getByRole("textbox",{name:"Overlay text",exact:true}).inputValue(),"One thing I wish I knew sooner");
     async function checkPresetSwitch(wall=false) {
       const preset=page.getByRole("combobox",{name:"Text preset",exact:true}),text=page.getByRole("textbox",{name:wall?"Wall of text":"Overlay text",exact:true}),copy=await text.inputValue(),font=await select.inputValue();
@@ -113,10 +122,50 @@ async function main() {
     }
     console.log('PASS: faces, heart, skin tone, joined person, flag, keycap and symbols use bundled artwork and survive save/reopen at laptop/mobile widths.');
 
+    const matchingCopy='POV: you finally understand\nhow to use UGCPilot\nfor marketing';
+    await page.getByRole('textbox',{name:'Overlay text',exact:true}).fill(matchingCopy);
+    await select.selectOption('tiktoksans');await weight.selectOption('700');
+    await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
+    assert.equal(await select.inputValue(),'tiktoksans');assert.equal(await weight.inputValue(),'700');
+    assert.equal(await page.getByRole('textbox',{name:'Overlay text',exact:true}).inputValue(),matchingCopy);
+    for(const viewport of [{width:1366,height:768},{width:390,height:844}]) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(()=>document.fonts.ready);
+      const loaded=await page.evaluate(()=>Array.from(document.fonts).some(face=>face.family==='UGCExploreTikTokSansW700'&&face.status==='loaded'));
+      assert.equal(loaded,true,'TikTok Sans Bold is loaded from the bundled face');
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      await page.screenshot({path:path.join(out,`tiktok-sans-${viewport.width}.png`),fullPage:true});
+      await page.locator('.portrait').screenshot({path:path.join(out,`tiktok-sans-preview-${viewport.width}.png`)});
+    }
+    console.log('PASS: TikTok Sans Bold exact multiline copy survives save/reopen; bundled face loaded and preview fits desktop/mobile.');
+
+    await select.selectOption('poppins');await weight.selectOption('700');
+    const outline=page.getByRole('slider',{name:'Text outline thickness',exact:true});
+    await outline.focus();await outline.press('Home');for(let i=0;i<8;i++)await outline.press('ArrowRight');
+    const size=page.getByRole('slider',{name:'Text size',exact:true});
+    await size.focus();await size.press('End');for(let i=0;i<20;i++)await size.press('ArrowLeft');
+    await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
+    assert.equal(await select.inputValue(),'poppins');assert.equal(await weight.inputValue(),'700');assert.equal(await outline.inputValue(),'8');
+    for(const viewport of [{width:1366,height:768},{width:390,height:844}]) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(()=>document.fonts.ready);
+      assert.equal(await page.evaluate(()=>Array.from(document.fonts).some(face=>face.family==='UGCExplorePoppinsW700'&&face.status==='loaded')),true);
+      const group=page.locator('svg[aria-label="Text preview"] > g').first();
+      assert.equal(await group.getAttribute('stroke-width'),'8');assert.equal(await group.getAttribute('fill'),'#ffffff');assert.equal(await group.getAttribute('stroke'),'black');
+      assert.equal(await page.getByRole('textbox',{name:'Overlay text',exact:true}).inputValue(),matchingCopy);
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      await select.scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(out,`poppins-${viewport.width}.png`),fullPage:true});
+      await page.locator('.portrait').screenshot({path:path.join(out,`poppins-preview-${viewport.width}.png`)});
+    }
+    console.log('PASS: Poppins Bold with thick black outline survives save/reopen and renders on desktop/mobile.');
+
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
     await checkPresetSwitch(true);
-    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"inter");assert.equal(await weight.inputValue(),"700");
-    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to Inter Bold; all 12 bundled faces loaded, preview changed, save/reopen preserved choices, Wall advanced-only controls, laptop/mobile fit. "+out);
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"poppins");assert.equal(await weight.inputValue(),"700");
+    assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
+    if(process.env.FONT_REFERENCE_CROP){await page.setViewportSize({width:720,height:850});await page.goto(`http://127.0.0.1:${server.address().port}/compare`);await page.evaluate(()=>document.fonts.ready);await page.locator('.comparison').screenshot({path:path.join(out,'poppins-reference-comparison.png')});}
+    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to white Poppins Bold with outline 8; all 18 bundled faces loaded, preview changed, save/reopen preserved choices, Wall advanced-only controls, laptop/mobile fit. "+out);
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

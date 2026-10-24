@@ -11,9 +11,11 @@ import { hookKeyframeVariationsKey, readHookKeyframeVariations } from "@/lib/exp
 import type { MediaAsset } from "@/lib/media/types";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 import type { StartingFrameWorkflow } from "@/lib/explore/starting-frame-workflow";
+import { getCuratedHookFrame } from "@/worker/src/lib/hook-curated-frames";
 
 const scope = { ownerId: "local-ui-preview", draftId: "00000000-0000-4000-8000-000000000015",
   referenceId: "explore-paired-hook-43cc1dae0a6cfcb03e0a9333", sourceSha256: "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0" };
+const curatedFrame = getCuratedHookFrame(scope.referenceId, scope.sourceSha256)!;
 const photoId = "00000000-0000-4000-8000-000000000016";
 const samplePhoto = "/ai-studio/creator-references/creator-01.png";
 const samplePhotos = [{ url: samplePhoto, width: 275, height: 555 },
@@ -25,7 +27,7 @@ async function fixtureId(requestKey: string, kind: "job" | "asset") {
   const hex = [...bytes.slice(0, 16)].map(value => value.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
-const reference: RecreateReference = { id: scope.referenceId, format: "hook", title: "Hook 15", category: null, categoryLabel: null,
+const reference: RecreateReference = { id: scope.referenceId, format: "hook", title: "Hook 14", category: null, categoryLabel: null,
   durationSeconds: 8.634, slides: [], posterUrl: "/e2e/hook-keyframe-preview/scene", videoUrl: `https://example.invalid/${scope.sourceSha256}.mp4` };
 const photo: MediaAsset = { id: photoId, collection: "image", sourceType: "generated_image", status: "ready", title: "Sample person",
   url: samplePhoto, thumbnailUrl: samplePhoto, width: 720, height: 1280, ratio: "9:16", mimeType: "image/png", fileName: "sample-person.png",
@@ -68,7 +70,7 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
       outputPreviewUrls[resultId] = sample.url;
       const frozenInput = JSON.parse(checkpoint.inputKey);
       return { jobId, resultId, width: sample.width, height: sample.height, receipt: { ...scope, version: frozenInput.version, imageModel: frozenInput.imageModel,
-        promptVersion: frozenInput.version === 2 ? 2 : 1, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey } };
+        promptVersion: frozenInput.version === 1 ? 1 : 4, purpose: "hook_starting_frame", inputKey: checkpoint.inputKey } };
     }
     return {
     outputPreviewUrl: samplePhoto,
@@ -78,10 +80,10 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
       prompt: "Long image-generation instructions are hidden in this photo chooser.", model: "nano_banana_2",
       createdAt: asset.createdAt, saved: true })), nextCursor: null }),
     loadSource: async ({ signal }) => {
-      const response = await fetch("/e2e/hook-keyframe-preview/scene", { signal });
+      const response = await fetch(curatedFrame.publicPath, { signal });
       const blob = await response.blob();
       const sha256 = [...new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()))].map(x => x.toString(16).padStart(2, "0")).join("");
-      return { referenceId: scope.referenceId, sourceSha256: scope.sourceSha256, blob, frame: { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256 } };
+      return { referenceId: scope.referenceId, sourceSha256: scope.sourceSha256, blob, frame: { index: curatedFrame.index, timeSeconds: curatedFrame.timeSeconds, width: curatedFrame.width, height: curatedFrame.height, sha256 } };
     },
     resolvePhoto: async id => {
       const selectedPhoto = [...fixturePersonPhotos, ...fixtureInfluencers].find(item => item.id === id);
@@ -121,14 +123,14 @@ export function HookKeyframePreview({ preparationFormat = "hook" }: { preparatio
     <header className="flex shrink-0 items-center gap-3 py-2"><span className="text-muted">Explore /</span><h1 className="text-xl font-semibold">Hook video</h1></header>
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
       <section className="min-w-0 rounded-2xl border border-border bg-card p-5"><h2 className="mb-5 font-semibold">Create</h2>
-        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: setSelection, previewStartingFrames: recentFrames, onClearStartingFrame: () => setSelection(null),
+        {selection ? <VideoGenerationStudioPanel recreateView={{ preview: true, emptyContent: null, startingFrame: selection, onSelectStartingFrame: setSelection, previewStartingFrames: recentFrames, previewFaceReferenceImages: fixtureInfluencers, onClearStartingFrame: () => setSelection(null),
           workflow: { format: "hook", controlsActive: true, controlsTarget: null, resultsTarget: null, onGenerationStart: () => {} } }} /> : <p className="text-sm text-muted">Choose a Hook and select Recreate to prepare its starting frame.</p>}
       </section>
       <section className="rounded-2xl border border-border bg-card p-5"><h2 className="mb-4 font-semibold">References</h2>
         <div className="w-64"><ReferenceCard reference={reference} compact showActionLabel overlayActions isSelected={canResume}
           onPreview={recreate} onRecreate={recreate} /></div>
         {canResume ? <Button className="mt-4" type="button" variant="outline" onClick={() => setOpen(true)}>Resume preparation</Button> : null}
-        {selection ? <p className="mt-6 text-sm text-muted">Starting frame selected. The existing video form receives only this image, the motion directions, eight seconds and your sound choice. Paid generation is locked in this demonstration.</p> : null}
+        {selection ? <p className="mt-6 text-sm text-muted">Starting frame selected. Add optional face photos, then choose a model and duration. Paid generation is locked in this demonstration.</p> : null}
       </section>
     </div>
     {open ? <HookStartingFrameWorkspace preparationFormat={preparationFormat} presentation="recreation" reference={reference} ownerId={scope.ownerId} draftId={scope.draftId} previewRuntime={runtime}

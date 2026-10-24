@@ -9,6 +9,16 @@ export function hookStartingFrameVideoProvider(model: unknown) {
 }
 
 export function hookStartingFrameVideoDurations(model: unknown): number[] {
+  const minimum = model === "seedance_2_5" ? 4 : 3;
   return isHookStartingFrameVideoModel(model)
-    ? Array.from({ length: (model === "google_omni" ? 10 : 15) - 3 }, (_, index) => index + 4) : [];
+    ? Array.from({ length: (model === "google_omni" ? 10 : 15) - minimum + 1 }, (_, index) => index + minimum) : [];
+}
+
+/** Only Omni's connected route documents literal first-frame + appearance roles.
+ * Five optional photos keeps the total under its ten-image family limit. */
+export function hookStartingFrameFaceReferenceLimit(model: unknown): number {
+  return model === "google_omni" ? 5 : 0;
+}
+export function supportsHookStartingFrameFaceReferences(model: unknown): boolean {
+  return hookStartingFrameFaceReferenceLimit(model) > 0;
 }

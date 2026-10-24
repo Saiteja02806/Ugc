@@ -132,15 +132,17 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const key = hookKeyframeDraftStorageKey(scope.ownerId, scope.draftId, scope.referenceId);
   const checkpointKey = hookKeyframeCheckpointKey(scope);
   const variationsKey = hookKeyframeVariationsKey(scope);
+  const retainedFrame = reference.creatorAccountId && restored && draft.version !== 3 && draft.sourceFrame
+    && (draft.generatedImage || draft.approval || variations?.entries.some(entry=>entry.state !== "planned" && entry.state !== "rejected" && entry.checkpoint.inputKey === hookKeyframeInputKey(draft))) ? draft.sourceFrame : undefined;
   const motionDraft = getHookKeyframeMotionReviewDraft(scope.referenceId, scope.sourceSha256, getCuratedHookFrame(scope.referenceId, scope.sourceSha256)?.index ?? 0);
   const frameQuery = useQuery({
-    queryKey: ["hook-source-frame-v3", scope.ownerId, scope.referenceId, scope.sourceSha256],
-    queryFn: ({ signal }) => previewRuntime ? previewRuntime.loadSource({ reference, scope, signal }) : fetchHookStartingFrame({ ...scope, signal }), retry: false,
+    queryKey: ["hook-source-frame-v3", scope.ownerId, scope.referenceId, scope.sourceSha256,retainedFrame?.sha256 ?? "current"], enabled: restored,
+    queryFn: ({ signal }) => previewRuntime ? previewRuntime.loadSource({ reference, scope, signal }) : fetchHookStartingFrame({ ...scope, signal,retainedFrame }), retry: false,
     staleTime: 5 * 60_000, gcTime: 5 * 60_000,
   });
   const incompatibleAnimationShape = preparationFormat !== "hook" && frameQuery.data &&
     frameQuery.data.frame.width * 16 !== frameQuery.data.frame.height * 9 && frameQuery.data.frame.width * 9 !== frameQuery.data.frame.height * 16;
-  const generationDisabledReason = previewRuntime?.generationDisabledReason ?? (incompatibleAnimationShape ? "This reference has a shape that cannot be animated without cropping. Choose a 9:16 or 16:9 reference before generating an image." : undefined);
+  const generationDisabledReason = retainedFrame ? "This saved result uses the earlier source frame. Use its saved image, or choose the clearer source frame for a new generation." : previewRuntime?.generationDisabledReason ?? (incompatibleAnimationShape ? "This reference has a shape that cannot be animated without cropping. Choose a 9:16 or 16:9 reference before generating an image." : undefined);
   const costQuery = useQuery({ queryKey: ["hook-starting-image-cost", scope.ownerId, draft.imageModel], enabled: restored && !generationDisabledReason, retry: false, staleTime: 60_000,
     queryFn: ({ signal }) => keyframeRead(`?cost=1&model=${draft.imageModel}`, signal).then(body => {
       if (typeof body.creditCost !== "number" || !Number.isFinite(body.creditCost) || body.creditCost <= 0 || body.model !== draft.imageModel) throw new Error("The starting-image price could not be verified.");
@@ -187,8 +189,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   }, [terminalJobsKey, checkpointRestored, submittingImage, checkpointKey, variationsKey, scope]);
   useEffect(() => {
     const body = scrollBody.current, section = generatedSection.current;
-    if (completedImageAssetId && body && section) {
-      const scroller = presentation === "recreation" ? body.closest<HTMLElement>("[data-recreation-scroll]") ?? body : presentation === "workspace" ? body.closest<HTMLElement>("[data-starting-frame-stage]") ?? body : body;
+    if (presentation !== "recreation" && completedImageAssetId && body && section) {
+      const scroller = presentation === "workspace" ? body.closest<HTMLElement>("[data-starting-frame-stage]") ?? body : body;
       const viewport = scroller.getBoundingClientRect(), result = section.getBoundingClientRect();
       const actions = presentation === "workspace" ? body.querySelector<HTMLElement>('[aria-label="Starting image actions"]')?.getBoundingClientRect() : null;
       const visibleBottom = actions && actions.top > viewport.top && actions.top < viewport.bottom ? actions.top : viewport.bottom;
@@ -282,8 +284,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   }, [frameQuery.data]);
 
   // The provenance comes from the extraction receipt, never from the poster.
-  const preparedDraft = useMemo(() => frameQuery.data
-    ? updateHookKeyframeDraft(draft, { sourceFrame: frameQuery.data.frame }) : draft, [draft, frameQuery.data]);
+  const preparedDraft = useMemo(() => retainedFrame ? draft : frameQuery.data
+    ? updateHookKeyframeDraft(draft, { sourceFrame: frameQuery.data.frame }) : draft, [draft, frameQuery.data,retainedFrame]);
   const currentInputKey = hookKeyframeInputKey(preparedDraft);
   const currentInput = useRef(currentInputKey);
   useEffect(() => { currentInput.current = currentInputKey; }, [currentInputKey]);
@@ -424,7 +426,9 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const maxPersonImages = hookKeyframeMaxPersonImages(draft.imageModel);
   const tooManyImages = images.length > maxPersonImages;
   const ready = restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
-  const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat);
+  const creatorDirections = reference.creatorAccountId ? preparedDraft.sourceFrame && preparedDraft.sourceFrame.sha256 !== reference.startingFrame?.sha256
+    ? reference.legacyGenerationPrompt : reference.generationPrompt : undefined;
+  const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat, creatorDirections);
   const imageJob = checkpoint && imageJobQuery?.data ? imageJobQuery.data : null;
   const matchingImage = Boolean(checkpoint && checkpoint.inputKey === currentInputKey);
   const creatingImage = readableEntries.some((entry, index) => (entry.state === "submitting" || entry.state === "accepted") && !imageJobQueries[index]?.data?.isTerminal);
@@ -435,17 +439,57 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const cannotUseFrame = !imageJob?.output || !previewReady(imageJob) || !matchingImage || !onUseStartingFrame || busy || promptPreview.requiresDecision || Boolean(promptPreview.animationError) || !promptPreview.directions.trim();
   const cannotGenerate = Boolean(generationDisabledReason) || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined;
   const generateLabel = submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image";
-  return <PreparationDialog presentation={presentation} footer={presentation === "recreation" ? <footer className={styles.approvalFooter} aria-label="Starting frame approval">
-    <div className={styles.approvalSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Choose your starting frame"}</strong>
-      <span>{imageJob?.output && !matchingImage ? "Inputs changed. Generate a new frame to use them." : promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? "Motion needs review before this image can be used." : imageJob?.output ? previewReady(imageJob) ? "Check the face, pose and scene before continuing." : "Load and review the selected preview before continuing." : creatingImage ? "Your images are generating. You can review them here." : "Generate an image, then select it to continue."}</span>
+  const resultActions = presentation === "recreation" ? <div className={styles.resultActions} role="group" aria-label="Starting frame approval" data-has-results={Boolean(readableEntries.length)}>
+    {readableEntries.length ? <div className={styles.resultSummary} aria-live="polite"><strong>{imageJob?.output ? `Selected: ${selectedIndex + 1} of ${readableEntries.length}` : "Review your starting frame"}</strong>
+      {!imageJob?.output || !matchingImage || !previewReady(imageJob) || promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? <span>{imageJob?.output && !matchingImage ? "Inputs changed. Generate a new frame to use them." : promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? "Motion needs review before this image can be used." : imageJob?.output ? "Load and review the selected preview before continuing." : creatingImage ? "Your images are generating. You can review them here." : "Generate an image, then select it to continue."}</span> : null}
+    </div> : null}
+    {!generationDisabledReason ? <p className={styles.resultCost}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking price…"}</p> : null}
+    <div className={styles.resultButtons}>
+      <Button type="button" aria-label={readableEntries.length && !submittingImage ? `Generate ${variationCount > 1 ? `${variationCount} more images` : "another image"}` : generateLabel} variant={readableEntries.length ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : readableEntries.length ? variationCount > 1 ? `Generate ${variationCount} more frames` : "Generate another" : variationCount > 1 ? `Generate ${variationCount} starting frames` : "Generate starting frame"}</Button>
+      {readableEntries.length ? <Button type="button" aria-label="Use selected frame" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use this frame</Button> : null}
     </div>
-    <div className={styles.footerActions}>
-      <div className={styles.footerGenerate}>{!generationDisabledReason ? <span>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking price…"}</span> : null}
-        <Button type="button" variant={readableEntries.length ? "outline" : "default"} disabled={cannotGenerate} onClick={() => void generateStartingImage()}>{readableEntries.length && !submittingImage ? `Generate ${variationCount > 1 ? `${variationCount} more images` : "another image"}` : generateLabel}</Button>
-      </div>
-      <Button type="button" disabled={cannotUseFrame} onClick={() => { if (imageJob) selectStartingFrame(imageJob); }}>Use selected frame</Button>
-    </div>
-  </footer> : undefined} onClose={() => {
+  </div> : null;
+  const optionalInstructions = <details className={styles.promptDetails}><summary>Adjust image instructions <span>Optional</span></summary>
+        <label className={styles.instructions}>Changes to the starting image
+          <textarea name="starting-image-instructions" autoComplete="off" value={draft.instructions} disabled={busy} maxLength={2000} placeholder="For example, keep the same surprised expression."
+            onChange={event => { setDraft(current => updateHookKeyframeDraft(current, { instructions: event.target.value })); setSaved(false); }} />
+        </label>
+        {promptPreview.imagePrompt ? <details className={styles.promptDetails}><summary>View image instructions</summary><p className={styles.compiledPrompt}>{promptPreview.imagePrompt}</p></details> : null}
+        </details>;
+  const generatedPreview = checkpoint || presentation === "recreation" ? <section ref={generatedSection} className={styles.generated} style={resultStyle} data-recreation-step={presentation === "recreation" ? "result" : undefined} aria-label={presentation === "recreation" ? "Generated starting frames" : "Generated starting image"}>
+        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">3</span> : null}{presentation === "recreation" ? "Your starting frame" : "Your starting image"}</h2><p>{previewRuntime ? "Sample result · layout only" : "Compare with the source"}</p></div></div>
+        {imageJob?.output ? <><div className={styles.frame} style={resultStyle}><button type="button" className={styles.enlargeButton} aria-label={presentation === "recreation" ? `Enlarge variation ${selectedIndex + 1}` : "Enlarge generated starting image"} title="Enlarge generated starting image"
+          onClick={event => { if (!imageJob.output) return; previewTrigger.current = event.currentTarget;
+            setEnlargedImage({ url: previewRuntime?.outputPreviewUrls?.[imageJob.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? imageJob.output.url,
+              title: "Your starting image", alt: "Generated starting frame to inspect in detail", width: imageJob.output.width, height: imageJob.output.height }); }}>
+          <StartingFrameImage key={`${outputPreviewUrl(imageJob.output)}:${previewAttempts[imageJob.output.mediaAssetId] ?? 0}`} assetId={imageJob.output.mediaAssetId} url={outputPreviewUrl(imageJob.output)} width={imageJob.output.width} height={imageJob.output.height} alt="Generated starting frame to review before animation" onStateChange={reportPreviewState} /><span className={styles.enlargeHint}><Scan aria-hidden="true" /></span>
+          </button></div>
+          {!matchingImage ? <p className={styles.notice} role="status">Your photos, model or image instructions have changed. Generate a new image before using it.</p> : null}
+        </> : <div className={styles.imageStatus} role="status"><ImageIcon aria-hidden="true" /><p>{!checkpoint ? "Your generated starting frame will appear here." : imageJob?.isTerminal ? imageJob.error || "The image did not complete. Check its status before trying again." : "Creating your starting image…"}</p></div>}
+        {imageJob?.output && previewStates[imageJob.output.mediaAssetId]?.state === "error" ? <Button type="button" variant="outline" disabled={imageJobQuery?.isFetching} onClick={() => { if (!imageJob.output) return; const assetId = imageJob.output.mediaAssetId; reportPreviewState(assetId, outputPreviewUrl(imageJob.output), "loading"); setPreviewAttempts(current => ({ ...current, [assetId]: (current[assetId] ?? 0) + 1 })); void imageJobQuery?.refetch(); }}>Retry preview</Button> : null}
+        {imageJobQuery?.error ? <p role="alert" className="text-destructive">{imageJobQuery.error.message} Your request is preserved.</p> : null}
+        {readableEntries.length > 1 ? <div className={styles.variations} role="group" aria-label="Starting image variations">
+          {readableEntries.map((entry, index) => {
+            const job = imageJobQueries[index]?.data;
+            return <button key={entry.checkpoint.requestKey} type="button" className={styles.variation}
+              aria-label={presentation === "recreation" ? `Select variation ${index + 1}` : `View starting image ${index + 1}${job?.output ? "" : job?.isTerminal ? ", failed" : ", pending"}`}
+              aria-describedby={!job?.output ? `${scope.draftId}-variation-status-${index}` : undefined}
+              aria-pressed={entry.checkpoint.requestKey === checkpoint?.requestKey} disabled={submittingImage || entry.state === "submitting"}
+              onClick={() => void chooseVariation(entry.checkpoint.requestKey)}>
+              {job?.output ? <img src={previewRuntime?.outputPreviewUrls?.[job.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? job.output.url} alt="" width={38} height={52} /> : presentation === "recreation" ? <span id={`${scope.draftId}-variation-status-${index}`} className="sr-only">{imageJobQueries[index]?.error ? "Status could not be checked. Your request is preserved." : job?.isTerminal ? "Failed" : "Pending"}</span> : job?.isTerminal ? "Failed" : "…"}<span>{index + 1}</span>
+            </button>;
+          })}
+        </div> : null}
+        {readableEntries.length > 1 ? <p className={styles.variationProgress} role="status">{imageJobQueries.filter(query => query.data?.output).length} of {readableEntries.length} ready · Choose an image to review.</p> : null}
+        {imageJob?.output ? <>
+          {presentation !== "recreation" ? <p className={styles.caption}>Check face, pose and scene.</p> : null}
+          {presentation !== "recreation" ? <Button className={styles.useFrame} type="button" disabled={cannotUseFrame} onClick={() => selectStartingFrame(imageJob)}>Use as starting frame</Button> : null}
+        </> : null}
+        {creatingImage || imageJobQuery?.error ? <Button type="button" variant="ghost" size="sm" disabled={submittingImage || imageJobQueries.some(query => query.isFetching)} onClick={() => void Promise.all(imageJobQueries.map(query => query.refetch()))}>Check image status</Button> : null}
+        {promptPreview.requiresDecision || promptPreview.animationError ? <p className={styles.notice} role="status">This Hook’s video instructions need review before its starting image can be used for animation.</p> : null}
+        {resultActions}
+      </section> : null;
+  return <PreparationDialog presentation={presentation} onClose={() => {
     mounted.current = false;
     revision.current += 1;
     influencerRequest.current?.abort();
@@ -453,8 +497,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   }}>
     <div ref={scrollBody} className={styles.body} data-has-result={Boolean(readableEntries.length)}>
       <div className={styles.visuals}>
-      <section className={styles.scene} style={frameStyle} aria-label="Selected source frame">
-        <div className={styles.sectionHeading}><div><h2>Source frame</h2><p>{reference.title} · Original scene</p></div><ImageIcon aria-hidden="true" /></div>
+      <section className={styles.scene} style={frameStyle} data-recreation-step={presentation === "recreation" ? "source" : undefined} aria-label="Selected source frame">
+        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">1</span> : null}Source frame</h2><p>{reference.title} · Original scene</p></div><ImageIcon aria-hidden="true" /></div>
         <div className={styles.frame} style={frameStyle}>
           {frameQuery.data ? <button type="button" className={styles.enlargeButton} aria-label="Enlarge source frame" title="Enlarge source frame" disabled={!frameUrl}
             onClick={event => { if (!frameUrl || !frameQuery.data) return; previewTrigger.current = event.currentTarget;
@@ -464,45 +508,15 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
             : frameQuery.isPending ? <p role="status"><Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Preparing the source frame…</p>
             : <div role="alert"><p>{frameQuery.error?.message || "The source frame could not be prepared."}</p><Button type="button" variant="outline" onClick={() => void frameQuery.refetch()}><RefreshCw aria-hidden="true" />Try again</Button></div>}
         </div>
-        <p className={styles.caption}>Keep this scene, pose and clothing. Remove the captions.</p>
+        <p className={styles.caption}>{presentation === "recreation" ? "Keep scene, pose and clothing. Generate without on-screen captions; review the result." : "Keep this scene, pose and clothing. Remove the captions."}</p>
         {motionDraft?.requiresDecision && motionDraft.riskFlags.includes("no_person_in_opening_frame") ? <p className={styles.notice} role="status">This reference opens before the performer appears. Its starting image and reveal need review before it can be animated.</p> : null}
         {motionDraft?.requiresDecision && motionDraft.riskFlags.some(flag => flag === "jump_cut" || flag === "multiple_takes") ? <p className={styles.notice} role="status">This reference contains a cut. Its action sequence needs review for animation from one image.</p> : null}
       </section>
-      {checkpoint && presentation !== "recreation" ? <section ref={generatedSection} className={styles.generated} style={resultStyle} aria-label="Generated starting image">
-        <div className={styles.sectionHeading}><div><h2>Your starting image</h2><p>{previewRuntime ? "Sample result · layout only" : "Compare with the source"}</p></div></div>
-        {imageJob?.output ? <><div className={styles.frame} style={resultStyle}><button type="button" className={styles.enlargeButton} aria-label="Enlarge generated starting image" title="Enlarge generated starting image"
-          onClick={event => { if (!imageJob.output) return; previewTrigger.current = event.currentTarget;
-            setEnlargedImage({ url: previewRuntime?.outputPreviewUrls?.[imageJob.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? imageJob.output.url,
-              title: "Your starting image", alt: "Generated starting frame to inspect in detail", width: imageJob.output.width, height: imageJob.output.height }); }}>
-          <StartingFrameImage key={`${outputPreviewUrl(imageJob.output)}:${previewAttempts[imageJob.output.mediaAssetId] ?? 0}`} assetId={imageJob.output.mediaAssetId} url={outputPreviewUrl(imageJob.output)} width={imageJob.output.width} height={imageJob.output.height} alt="Generated starting frame to review before animation" onStateChange={reportPreviewState} /><span className={styles.enlargeHint}><Scan aria-hidden="true" /></span>
-          </button></div>
-          {!matchingImage ? <p className={styles.notice} role="status">Your photos, model or image instructions have changed. Generate a new image before using it.</p> : null}
-        </> : <div className={styles.imageStatus} role="status"><ImageIcon aria-hidden="true" /><p>{imageJob?.isTerminal ? imageJob.error || "The image did not complete. Check its status before trying again." : "Creating your starting image…"}</p></div>}
-        {imageJob?.output && previewStates[imageJob.output.mediaAssetId]?.state === "error" ? <Button type="button" variant="outline" disabled={imageJobQuery?.isFetching} onClick={() => { if (!imageJob.output) return; const assetId = imageJob.output.mediaAssetId; reportPreviewState(assetId, outputPreviewUrl(imageJob.output), "loading"); setPreviewAttempts(current => ({ ...current, [assetId]: (current[assetId] ?? 0) + 1 })); void imageJobQuery?.refetch(); }}>Retry preview</Button> : null}
-        {imageJobQuery?.error ? <p role="alert" className="text-destructive">{imageJobQuery.error.message} Your request is preserved.</p> : null}
-        {readableEntries.length > 1 ? <div className={styles.variations} role="group" aria-label="Starting image variations">
-          {readableEntries.map((entry, index) => {
-            const job = imageJobQueries[index]?.data;
-            return <button key={entry.checkpoint.requestKey} type="button" className={styles.variation}
-              aria-label={`View starting image ${index + 1}${job?.output ? "" : job?.isTerminal ? ", failed" : ", pending"}`}
-              aria-pressed={entry.checkpoint.requestKey === checkpoint?.requestKey} disabled={submittingImage || entry.state === "submitting"}
-              onClick={() => void chooseVariation(entry.checkpoint.requestKey)}>
-              {job?.output ? <img src={previewRuntime?.outputPreviewUrls?.[job.output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? job.output.url} alt="" width={38} height={52} /> : job?.isTerminal ? "Failed" : "…"}<span>{index + 1}</span>
-            </button>;
-          })}
-        </div> : null}
-        {readableEntries.length > 1 ? <p className={styles.variationProgress} role="status">{imageJobQueries.filter(query => query.data?.output).length} of {readableEntries.length} ready · Choose an image to review.</p> : null}
-        {imageJob?.output ? <>
-          <p className={styles.caption}>Check face, pose and scene.</p>
-          <Button className={styles.useFrame} type="button" disabled={cannotUseFrame} onClick={() => selectStartingFrame(imageJob)}>Use as starting frame</Button>
-        </> : null}
-        {creatingImage || imageJobQuery?.error ? <Button type="button" variant="ghost" size="sm" disabled={submittingImage || imageJobQueries.some(query => query.isFetching)} onClick={() => void Promise.all(imageJobQueries.map(query => query.refetch()))}>Check image status</Button> : null}
-        {promptPreview.requiresDecision || promptPreview.animationError ? <p className={styles.notice} role="status">This Hook’s video instructions need review before its starting image can be used for animation.</p> : null}
-      </section> : null}
+      {presentation !== "recreation" ? generatedPreview : null}
       </div>
-      <div className={styles.controls}>
+      <div className={styles.controls} data-recreation-step={presentation === "recreation" ? "person" : undefined}>
       <section className={styles.person} aria-label="Face reference">
-        <div className={styles.sectionHeading}><div><h2>Face reference</h2><p>Choose whose face to use.</p></div><UserRound aria-hidden="true" /></div>
+        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">2</span> : null}Face reference</h2><p>Choose whose face to use.</p></div><UserRound aria-hidden="true" /></div>
         {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); setRestoreError(null); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
         <div className={styles.photos} data-unified-face-picker data-selected-face-photos={images.length}>
           <FormatGenerationReferences inlineImagePicker imagePresentation="person-strip" selection={null} imageSelections={images} imagePurpose="person" heading="Person photos"
@@ -517,13 +531,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
         </div>
         {tooManyImages ? <p className={styles.notice} role="alert">To generate a new image, Gemini 3.1 Flash supports up to {maxPersonImages} person photos. Remove an extra photo or choose Gemini 3 Pro.</p> : null}
         <a href="/explore/build-character" target="_blank" rel="noopener noreferrer" className={styles.builder}>Create a new influencer <ExternalLink aria-hidden="true" /><span className="sr-only"> in a new tab; your preparation stays here</span></a>
-        <details className={styles.promptDetails}><summary>Adjust image instructions <span>Optional</span></summary>
-        <label className={styles.instructions}>Changes to the starting image
-          <textarea name="starting-image-instructions" autoComplete="off" value={draft.instructions} disabled={busy} maxLength={2000} placeholder="For example, keep the same surprised expression."
-            onChange={event => { setDraft(current => updateHookKeyframeDraft(current, { instructions: event.target.value })); setSaved(false); }} />
-        </label>
-        {promptPreview.imagePrompt ? <details className={styles.promptDetails}><summary>View image instructions</summary><p className={styles.compiledPrompt}>{promptPreview.imagePrompt}</p></details> : null}
-        </details>
+        {presentation !== "recreation" ? optionalInstructions : null}
         {error ? <p role="alert" className="text-destructive">{error}</p> : null}
       </section>
       </div>
@@ -539,10 +547,11 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
           <label className={styles.variationCount}>Variations<select name="starting-image-count" aria-label="Number of starting frame variations" value={variationCount} disabled={busy || creatingImage} onChange={event => setVariationCount(Number(event.target.value))}>
             {[1, 2, 3, 4].map(count => <option key={count} value={count}>{count}</option>)}
           </select></label></div>
-          {!generationDisabledReason ? <p className={styles.price}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking image price…"}<span>{costQuery.data !== undefined ? `${costQuery.data} per image` : ""}</span></p> : null}
+          {!generationDisabledReason && presentation !== "recreation" ? <p className={styles.price}>{costQuery.data !== undefined ? `${costQuery.data * variationCount} ${costQuery.data * variationCount === 1 ? "credit" : "credits"} total` : "Checking image price…"}<span>{costQuery.data !== undefined ? `${costQuery.data} per image` : ""}</span></p> : null}
         </div>
         {promptPreview.requiresDecision || promptPreview.animationError || !promptPreview.directions.trim() ? <p className={styles.notice} role="status">Image generation uses credits. This reference’s motion still needs review, so its image cannot currently be used to generate a video. Choose another reference to continue to animation.</p> : null}
         {generationDisabledReason ? <p className={styles.notice} role="status">{generationDisabledReason}</p> : null}
+        {retainedFrame ? <Button type="button" variant="outline" disabled={busy || creatingImage} onClick={()=>setDraft(updateHookKeyframeDraft(createHookKeyframeDraft(scope),{ imageModel:draft.imageModel,imageAssetIds:draft.imageAssetIds,instructions:draft.instructions }))}>Use clearer source frame</Button> : null}
         {costQuery.error ? <p role="alert">{costQuery.error.message}</p> : null}
         {generationError ? <p role="alert" className="text-destructive">{generationError}</p> : null}
         {variations?.entries.some(entry => entry.state === "planned" || entry.state === "rejected") && !submittingImage ? <p className={styles.variationProgress} role="status">Some images were not submitted or were rejected. Accepted requests are preserved; remaining images will not retry automatically.</p> : null}
@@ -550,41 +559,10 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       {presentation !== "recreation" ? <div className={styles.actionButtons}>{presentation === "dialog" && !imageJob?.output ? <Button type="button" variant="ghost" disabled={!ready} onClick={savePreparation}>Save preparation</Button> : null}
         <Button type="button" variant={imageJob?.output ? "outline" : "default"} disabled={Boolean(generationDisabledReason) || !ready || !checkpointRestored || creatingImage || costQuery.data === undefined} onClick={() => void generateStartingImage()}>{submittingImage ? "Submitting images…" : variationCount > 1 ? `Generate ${variationCount} starting images` : imageJob?.isTerminal ? "Generate another starting image" : "Generate starting image"}</Button>
         </div> : null}
+        {presentation === "recreation" ? optionalInstructions : null}
       </section>
+      {presentation === "recreation" ? generatedPreview : null}
     </div>
-    {presentation === "recreation" && readableEntries.length ? <section ref={generatedSection} className={styles.generatedGallery} aria-label="Generated starting frames">
-      <div className={styles.galleryHeading}><h3>Your starting frames</h3><p>Select an image below. Use the enlarge button to inspect details.</p></div>
-      <div className={styles.generatedGrid} data-variation-count={readableEntries.length}>
-        {readableEntries.map((entry, index) => {
-          const job = imageJobQueries[index]?.data;
-          const output = job?.output;
-          const matches = entry.checkpoint.inputKey === currentInputKey;
-          const selected = entry.checkpoint.requestKey === checkpoint?.requestKey;
-          return <article key={entry.checkpoint.requestKey} className={styles.generatedCard} data-selected={selected}>
-            {output ? <><button type="button" className={styles.resultPreview} aria-label={`Select variation ${index + 1}`} aria-pressed={selected}
-              disabled={submittingImage} onClick={() => void chooseVariation(entry.checkpoint.requestKey)}
-              style={{ "--frame-ratio": output.width / output.height } as CSSProperties}>
-              <StartingFrameImage key={`${outputPreviewUrl(output)}:${previewAttempts[output.mediaAssetId] ?? 0}`} assetId={output.mediaAssetId} url={outputPreviewUrl(output)}
-                alt={`Starting frame variation ${index + 1}`} width={output.width} height={output.height} onStateChange={reportPreviewState} />
-              <span className={styles.selectionBadge}>{selected ? "Selected" : `Variation ${index + 1}`}</span>
-            </button><button type="button" className={styles.enlargeResult} aria-label={`Enlarge variation ${index + 1}`}
-              style={{ "--frame-ratio": output.width / output.height } as CSSProperties}
-              onClick={event => { previewTrigger.current = event.currentTarget; setEnlargedImage({
-                url: previewRuntime?.outputPreviewUrls?.[output.mediaAssetId] ?? previewRuntime?.outputPreviewUrl ?? output.url,
-                title: `Variation ${index + 1}`, alt: `Starting frame variation ${index + 1}`, width: output.width, height: output.height }); }}>
-              <Scan aria-hidden="true" /><span>Enlarge</span>
-            </button></> : <div className={styles.resultPlaceholder} role="status">{imageJobQueries[index]?.error ? "Could not check this image. Your request is saved."
-              : job?.isTerminal ? job.error || "Image unavailable" : "Generating…"}</div>}
-            {output && previewStates[output.mediaAssetId]?.state === "error" ? <Button type="button" variant="outline" size="sm" disabled={imageJobQueries[index]?.isFetching}
-              onClick={() => { reportPreviewState(output.mediaAssetId, outputPreviewUrl(output), "loading"); setPreviewAttempts(current => ({ ...current, [output.mediaAssetId]: (current[output.mediaAssetId] ?? 0) + 1 })); void imageJobQueries[index]?.refetch(); }}>Retry preview</Button> : null}
-            {!matches && output ? <p className={styles.variationProgress}>Inputs changed. Generate a new frame to use these changes.</p> : null}
-          </article>;
-        })}
-      </div>
-      {creatingImage || imageJobQueries.some(query => query.error) ? <Button type="button" variant="ghost" size="sm"
-        disabled={submittingImage || imageJobQueries.some(query => query.isFetching)} onClick={() => void Promise.all(imageJobQueries.map(query => query.refetch()))}>Check image status</Button> : null}
-      {promptPreview.requiresDecision || promptPreview.animationError ? <p className={styles.notice} role="status">This Hook’s motion instructions need review before animation.</p> : null}
-    </section> : null}
     <Dialog open={Boolean(enlargedImage)} onOpenChange={open => { if (!open) setEnlargedImage(null); }}>
       <DialogContent className={styles.zoomDialog} finalFocus={previewTrigger}>
         <div className={styles.zoomHeader}><DialogTitle>{enlargedImage?.title ?? "Image preview"}</DialogTitle>

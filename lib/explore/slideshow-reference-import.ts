@@ -14,6 +14,9 @@ import {
 import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/media/media-upload";
 import { buildPublicStorageUrl, headStorageObject, isTrustedStorageUrl } from "@/lib/storage/storage";
 import { MAX_SLIDESHOW_SLIDES } from "./slideshow-draft";
+import { creatorSlideFromUrl, getCreatorSlideshowReference, readCreatorSlide } from "./creator-slideshows.ts";
+import { canAccessCreatorAccounts } from "./creator-account-access.ts";
+import type { ReferenceSlide } from "./recreate-types.ts";
 
 const PROJECT = "explore-catalog-reference";
 const requestSchema = z.strictObject({
@@ -39,7 +42,7 @@ export async function handleSlideshowReferenceImport(request: Request) {
     if (raw.length > 8192) throw new ImportError("The slide selection is too large.", 413);
     let body: unknown;
     try { body = JSON.parse(raw); } catch { throw new ImportError("Choose original reference slides to add."); }
-    const assets = await importSlideshowReferenceForOwner(user.uid, body);
+    const assets = await importSlideshowReferenceForOwner(user.uid, body,user);
     return json({ ok: true, assets });
   } catch (error) {
     const known = error instanceof FirebaseAuthRequestError || error instanceof ImportError;
@@ -48,19 +51,22 @@ export async function handleSlideshowReferenceImport(request: Request) {
 }
 
 /** Register immutable approved catalogue bytes as owned ready media; no AI or billing. */
-export async function importSlideshowReferenceForOwner(userId: string, value: unknown) {
+export async function importSlideshowReferenceForOwner(userId: string, value: unknown, actor?: Parameters<typeof canAccessCreatorAccounts>[0] & { uid?: string }) {
   const parsed = requestSchema.safeParse(value);
   if (!parsed.success) throw new ImportError("Choose 1–10 different original reference slides.");
   const { referenceId, slideIds } = parsed.data;
-  const reference = getRecreateReferences().find(item => item.id === referenceId && item.format === "slideshow" && !item.archived);
+  const reference = getRecreateReferences().find(item => item.id === referenceId && item.format === "slideshow" && !item.archived)
+    ?? (actor?.uid === userId ? getCreatorSlideshowReference(referenceId,actor) : undefined);
   if (!reference || slideIds.some(id => !reference.slides.some(slide => slide.id === id))) {
     throw new ImportError("Choose slides belonging to an available slideshow reference.");
   }
   const selected = new Set(slideIds);
   // Validate the entire selection before any storage/database writes. Catalogue
   // order is authoritative even when checkbox clicks arrive in another order.
-  const sources = reference.slides.flatMap((slide, index) => {
+  const sources = reference.slides.flatMap<{ slide: ReferenceSlide; number: number; key: string; sha256: string; mimeType: string; privateSlide: ReturnType<typeof creatorSlideFromUrl> }>((slide, index) => {
     if (!selected.has(slide.id)) return [];
+    const privateSlide = creatorSlideFromUrl(slide.url);
+    if (privateSlide) return [{ slide, number: index + 1, key: `explore/creator-slideshows/${referenceId}/${privateSlide.slide.sha256}.${privateSlide.slide.extension}`, sha256: privateSlide.slide.sha256, mimeType: privateSlide.slide.contentType, privateSlide }];
     const parsedUrl = new URL(slide.url);
     const match = parsedUrl.pathname.match(/\/(explore\/recreate\/v1\/([a-f0-9]{64})\.(jpe?g|png|webp))$/i);
     if (!match || parsedUrl.protocol !== "https:" || parsedUrl.search || parsedUrl.hash ||
@@ -68,7 +74,7 @@ export async function importSlideshowReferenceForOwner(userId: string, value: un
       !Number.isSafeInteger(slide.width) || slide.width <= 0 || !Number.isSafeInteger(slide.height) || slide.height <= 0) {
       throw new ImportError("This original slide is unavailable. Choose another reference.", 409);
     }
-    return [{ slide, number: index + 1, key: match[1], sha256: match[2].toLowerCase(), mimeType: extensions[match[3].toLowerCase()] }];
+    return [{ slide, number: index + 1, key: match[1], sha256: match[2].toLowerCase(), mimeType: extensions[match[3].toLowerCase()], privateSlide: null }];
   });
   const prepared = await Promise.all(sources.map(async source => {
     const lookup = { userId, storageKey: source.key };
@@ -81,7 +87,8 @@ export async function importSlideshowReferenceForOwner(userId: string, value: un
       if (!reusable(existing)) throw new ImportError("This original slide is unavailable. Refresh your images and try again.", 409);
       return { source, existing, lookup, sourceRecordId, reusable, size: existing.file_size_bytes };
     }
-    const stored = await headStorageObject({ key: source.key });
+    const local = source.privateSlide ? await readCreatorSlide(referenceId,source.slide.id) : null;
+    const stored = local ? { ContentType:local.contentType, ContentLength:local.bytes.length } : await headStorageObject({ key: source.key });
     if (stored.ContentType?.split(";")[0].trim().toLowerCase() !== source.mimeType ||
       !Number.isSafeInteger(stored.ContentLength) || !stored.ContentLength || stored.ContentLength > MAX_IMAGE_UPLOAD_BYTES) {
       throw new ImportError("This original slide could not be loaded. Choose another reference.", 409);

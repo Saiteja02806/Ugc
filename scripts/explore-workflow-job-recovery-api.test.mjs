@@ -13,7 +13,7 @@ function load(file, imports = {}, globals = {}) {
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), {
     fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(code, { exports, URL, console, require(name) {
+  vm.runInNewContext(code, { exports, URL, console, process: {env: {}}, require(name) {
     if (name in imports) return imports[name];
     if (name === "../../worker/src/lib/provider-balance.ts") return providerBalance;
     if (name === "../../worker/src/lib/slideshow-generation-batch.ts") return slideshowBatch;

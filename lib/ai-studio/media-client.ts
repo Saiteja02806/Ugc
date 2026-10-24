@@ -35,9 +35,12 @@ export async function fetchAIStudioMediaAssets(params: {
   }, params.signal);
 }
 
-export async function fetchAIStudioMediaAsset(assetId: string, token: string, options?: { signal?: AbortSignal; remixSource?: boolean }) {
+export async function fetchAIStudioMediaAsset(assetId: string, token: string, options?: { signal?: AbortSignal; remixSource?: boolean; generationDetails?: boolean }) {
   return withReadDeadline(async signal => {
-    const response = await fetch(`/api/media/${encodeURIComponent(assetId)}${options?.remixSource ? "?remixSource=1" : ""}`, {
+    const query = new URLSearchParams();
+    if (options?.remixSource) query.set("remixSource", "1");
+    if (options?.generationDetails) query.set("generationDetails", "1");
+    const response = await fetch(`/api/media/${encodeURIComponent(assetId)}${query.size ? `?${query}` : ""}`, {
       cache: "no-store",
       signal,
       headers: { Authorization: `Bearer ${token}` },

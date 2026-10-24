@@ -4,9 +4,9 @@ import type { HookKeyframeDraft } from "./hook-keyframe-draft.ts";
 import { buildStartingFrameAnimationPrompt, startingFrameWorkflowDirections, type StartingFrameWorkflow } from "./starting-frame-workflow.ts";
 
 /** Preparation only. This is deliberately not a HookMotionCompilation ready receipt. */
-export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: StartingFrameWorkflow = "hook") {
+export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: StartingFrameWorkflow = "hook", creatorDirections?: string) {
   const suggestion = getHookKeyframeMotionReviewDraft(draft.scope.referenceId, draft.scope.sourceSha256, draft.sourceFrame?.index ?? 0);
-  const suggestedDirections = format !== "hook" ? startingFrameWorkflowDirections(format) : suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : "";
+  const suggestedDirections = format !== "hook" ? startingFrameWorkflowDirections(format) : suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : creatorDirections ?? "";
   const directions = draft.motionInstructions ?? suggestedDirections;
   const durationSeconds = format === "hook" ? suggestion?.previewDurationSeconds ?? 4 : 4;
   let animationPrompt: string | null = null;
@@ -18,7 +18,7 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: S
   return {
     status: "preparation_preview" as const,
     canSubmitPaidAnimation: false as const,
-    sourceMatched: Boolean(suggestion),
+    sourceMatched: Boolean(suggestion || creatorDirections),
     staticReview: suggestion?.staticReview ?? null,
     requiresDecision: format === "hook" && (suggestion?.requiresDecision ?? false),
     decisionIssues: suggestion?.staticReview?.issues ?? [],

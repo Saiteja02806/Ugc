@@ -218,6 +218,18 @@
       "publicPath": "/explore/curated-hook-frames/v1/f4dd3794412fba430a2850d6d603223ec2c18a1adf1bdd7bdfd2f1fe12e1a0e8.png"
     },
     {
+      "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "number": 100,
+      "sourceSha256": "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+      "index": 70,
+      "timeSeconds": 2.333333,
+      "presentationTimeSeconds": 2.399349,
+      "sha256": "df452e82eadb2e7ed8338f34e2424e623b59ef4015d646a2a3c89d63a34d5a9c",
+      "width": 720,
+      "height": 1280,
+      "publicPath": "/explore/curated-hook-frames/v1/df452e82eadb2e7ed8338f34e2424e623b59ef4015d646a2a3c89d63a34d5a9c.png"
+    },
+    {
       "referenceId": "explore-paired-hook-ddcfb2950d40f37771058b73",
       "number": 101,
       "sourceSha256": "cd230e98db5d44712ca1541712b3ccc34c241af65c1142a3bb4c5136c581df22",

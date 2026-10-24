@@ -111,14 +111,13 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
   };
 }
 function find(tree, type) { return nodes(tree).find(node => node.type === type); }
-function button(tree, label) { return nodes(tree).find(node => node.type === "Button" && text(node).trim() === label); }
+function button(tree, label) { return nodes(tree).find(node => node.type === "Button" && (node.props?.["aria-label"] === label || text(node).trim() === label)); }
 
 test("Talking Head and Wall reuse approval controls with workflow-specific guidance and shape admission", async () => {
   for (const preparationFormat of ["talking_head", "wall_text"]) {
     const h = harness({ presentation: "recreation", preparationFormat }); h.render(); await h.settle();
     let tree = h.render();
-    assert.ok(button(tree, "Use selected frame"));
-    assert.equal(button(tree, "Use selected frame").props.disabled, true);
+    assert.equal(button(tree, "Use selected frame"), undefined, "Approval appears after a submitted result exists");
     assert.match(text(tree), preparationFormat === "talking_head" ? /own spoken script and Sound setting/ : /editable overlay text in Edit/);
     find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId)]); tree = h.render();
     assert.equal(button(tree, "Generate starting image").props.disabled, false);
@@ -502,13 +501,33 @@ test("variation choices precede approval in the rendered review flow", async () 
 });
 
 
-test("Recreate selects cards without approving, then the footer hands off the selected result", async () => {
+test("Recreate reserves source, person and result columns before generation with only one initial action", async () => {
+  const h = harness({ presentation: "recreation" }); h.render(); await h.settle();
+  const tree = h.render();
+  const source = nodes(tree).find(node => node.props?.["data-recreation-step"] === "source");
+  const person = nodes(tree).find(node => node.props?.["data-recreation-step"] === "person");
+  const result = nodes(tree).find(node => node.props?.["data-recreation-step"] === "result");
+  assert.ok(source && person && result);
+  assert.match(text(source), /1 Source frame/); assert.match(text(person), /2 Face reference/); assert.match(text(result), /3 Your starting frame/);
+  assert.match(text(result), /will appear here/);
+  assert.equal(button(tree, "Use selected frame"), undefined);
+  assert.ok(button(tree, "Generate starting image"));
+  assert.ok(nodes(result).includes(button(tree, "Generate starting image")), "Generate belongs directly to the result column");
+  assert.equal(nodes(tree).filter(node => node.type === "footer").length, 0, "No separate bottom action bar");
+  assert.equal(h.submissions.length, 0);
+  const settings = nodes(tree).find(node => node.props?.["aria-label"] === "Starting image actions");
+  assert.ok(text(settings).includes("Adjust image instructions"));
+  assert.equal(nodes(person).some(node => node.type === "textarea"), false, "Optional instructions follow the model settings");
+});
+
+test("Recreate selects thumbnail variations without approving, then result-column actions hand off the selected result", async () => {
   const h = harness({ presentation: "recreation" }); await prepareVariations(h, 4);
   const jobs = completeVariations(h); h.render(); await h.settle(); const tree = h.render();
   assert.equal(button(tree, "Save preparation"), undefined);
   assert.equal(button(tree, "Use as starting frame"), undefined);
   const gallery = nodes(tree).find(n => n.props?.["aria-label"] === "Generated starting frames");
-  assert.equal(nodes(gallery).filter(n => n.type === "article").length, 4);
+  assert.equal(nodes(gallery).filter(n => n.props?.["aria-label"]?.startsWith("Select variation ")).length, 4);
+  assert.equal(nodes(gallery).filter(n => n.type === "StartingFrameImage").length, 1, "Only the chosen preview controls load/readiness state");
   for (const index of [2, 0, 3, 1]) {
     const count = h.selections.length;
     const action = nodes(h.render()).find(n => n.props?.["aria-label"] === `Select variation ${index + 1}`);
@@ -527,14 +546,15 @@ test("unresolved motion is disclosed beside image generation before any credits 
   const h = harness({ presentation: "recreation", motionBlocked: true }); h.render(); await h.settle();
   const tree = h.render(); const warning = nodes(tree).find(node => node.props?.role === "status" && text(node).includes("Image generation uses credits"));
   assert.ok(warning); assert.match(text(warning), /cannot currently be used to generate a video/);
-  const settings = nodes(tree).find(node => node.type === "footer" && nodes(node).includes(button(tree, "Generate starting image")));
-  assert.ok(settings && text(settings).includes("Motion needs review"));
+  const result = nodes(tree).find(node => node.props?.["data-recreation-step"] === "result");
+  assert.ok(result && nodes(result).includes(button(tree, "Generate starting image")));
+  assert.match(text(result), /motion.*review|instructions.*review/i);
   assert.equal(h.submissions.length, 0); assert.equal(h.selections.length, 0);
 });
 
-test("Recreate footer remains present and blocks stale approval after changing generation inputs", async () => {
+test("Recreate result actions block stale approval after changing generation inputs", async () => {
   const h = harness({ presentation: "recreation" }); h.render(); await h.settle();
-  assert.equal(button(h.render(), "Use selected frame").props.disabled, true);
+  assert.equal(button(h.render(), "Use selected frame"), undefined);
   await prepareImageRequest(h); completeImage(h); h.render(); await h.settle();
   let tree = h.render(); assert.equal(button(tree, "Use selected frame").props.disabled, false);
   nodes(tree).find(node => node.type === "AiStudioSettingSelect").props.onChange("nano_banana_2");

@@ -82,7 +82,7 @@ test("Talking Head starting-frame requests preserve script and owned identities 
 test("Starting-frame animation blocks unsupported settings and retained audio before uploads or submission", async () => {
   for (const overrides of [
     { settings: settings.normalizeWorkflowGenerationSettings({ model: "kling_3_0", duration: 5 }) },
-    { settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 3 }) },
+    { settings: { ...settings.normalizeWorkflowGenerationSettings({ model: "seedance_2_5", duration: 4 }), duration: 3 } },
     { audioReference: { url: "blob:audio", file: { type: "audio/wav", size: 20 }, duration: 4 } },
     { creator: { url: "blob:portrait" } },
     { settings: settings.normalizeWorkflowGenerationSettings({ model: "google_omni", duration: 4, aspectRatio: "16:9" }) },

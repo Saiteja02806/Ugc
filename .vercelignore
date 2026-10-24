@@ -35,6 +35,17 @@ supabase/.temp/
 supabase/supabase/
 design/
 
+# Do not upload plaintext private pilot source material.
+lib/explore/creator-accounts.json
+lib/explore/creator-account-reviews.json
+lib/explore/creator-slideshows.json
+lib/explore/creator-slide-text.json
+lib/explore/creator-account-media/*.png
+lib/explore/creator-account-media/*.mp4
+lib/explore/creator-slideshow-media/*.jpg
+lib/explore/creator-slideshow-media/*.webp
+lib/explore/creator-slideshow-media/*.png
+
 **/.terraform/
 *.tfplan
 *.tfstate

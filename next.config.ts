@@ -17,9 +17,19 @@ const nextConfig: NextConfig = {
     extensionAlias: { ".js": [".js", ".ts"] },
   },
   outputFileTracingIncludes: {
+    "/api/explore/**": ["./lib/explore/creator-*.json.enc"],
+    "/api/ai-studio/**": ["./lib/explore/creator-*.json.enc"],
+    "/api/media/**": ["./lib/explore/creator-*.json.enc"],
+    "/mcp": ["./lib/explore/creator-*.json.enc"],
+    "/api/explore/slideshows/image": ["./lib/explore/creator-slideshow-media/*.enc"],
+    "/api/explore/slideshows/reference-images": ["./lib/explore/creator-slideshow-media/*.enc"],
+    "/api/explore/creator-slide-media/**": ["./lib/explore/creator-slideshow-media/*.enc"],
+    "/api/explore/creator-slide-provider/**": ["./lib/explore/creator-slideshow-media/*.enc"],
+    "/api/explore/creator-media/**": ["./lib/explore/creator-account-media/*.enc"],
+    "/api/explore/creator-scene/**": ["./lib/explore/creator-account-media/*.png.enc"],
     "/api/explore/emoji/**": ["./worker/src/assets/emoji/*.json.gz"],
-    "/api/explore/hook-keyframe": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png"],
-    "/api/explore/hook-starting-frame": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png"],
+    "/api/explore/hook-keyframe": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png", "./lib/explore/creator-account-media/*.png.enc"],
+    "/api/explore/hook-starting-frame": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png", "./lib/explore/creator-account-media/*.png.enc"],
     "/api/audio/transfer": nativeMedia.mediaFiles,
     // External native packages used by /mcp are traced from their imports.
     // A /mcp include glob also matches health/discovery routes in Next.

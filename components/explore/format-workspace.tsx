@@ -51,6 +51,8 @@ import { cn } from "@/lib/utils";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 import { createLocalHookStartingFramePreviewRuntime, LOCAL_HOOK_PREVIEW_OWNER_ID } from "@/lib/explore/local-hook-starting-frame-preview";
 import { useHookComposerSelection } from "@/components/explore/use-hook-composer-selection";
+import { useCreatorAccounts } from "@/components/explore/use-creator-accounts";
+import { CreatorAccountMenu } from "@/components/explore/creator-account-menu";
 
 const ImagePanel = dynamic(() => import("@/components/workspace/ugc-chat-workspace").then(module => module.ImageGenerationStudioPanel));
 const VideoPanel = dynamic(() => import("@/components/video/video-generation-workspace").then(module => module.VideoGenerationStudioPanel));
@@ -248,18 +250,22 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     queryFn: ({ signal }) => fetchRecreateReferences(signal), staleTime: 30 * 60_000, retry: 1,
   });
   const referenceData = previewReferences ?? referencesQuery.data ?? EMPTY;
-  const references = useMemo(() => referenceData.filter(item => !isRemovedWallTextReference(item.id)), [referenceData]);
+  const creatorAccounts = useCreatorAccounts(user, (format === "hook" || format === "slideshow") && !localPreview,
+    hookPreparation?.referenceId ?? startingFrame?.referenceId ?? selectedReference?.id ?? selectedVideo?.remixTextSource?.referenceId ?? searchParams.get("refId"), format);
+  const references = useMemo(() => [...referenceData, ...creatorAccounts.references].filter(item => !isRemovedWallTextReference(item.id)), [referenceData, creatorAccounts.references]);
   const reference = hookPreparation ? references.find(item => item.id === hookPreparation.referenceId && item.format === format) ?? null
     : startingFrame ? references.find(item => item.id === startingFrame.referenceId && item.format === format) ?? null
-    : selectedReference === undefined ? references.find(item => item.id === (searchParams.get("refId") ?? (localPreview ? previewText?.referenceId : null)) && item.format === format) ?? null : selectedReference;
+    : selectedReference === undefined ? references.find(item => item.id === (searchParams.get("refId") ?? (localPreview ? previewText?.referenceId : null)) && item.format === format) ?? null
+    : selectedReference?.creatorAccountId ? references.find(item => item.id === selectedReference.id) ?? null : selectedReference;
   const clipReference = selectedVideo ? selectedVideo.remixTextSource !== undefined ? resolveRemixSource(selectedVideo.remixTextSource, references, format).reference : localPreview ? reference : null : reference;
-  const options = useMemo(() => referenceCategories(references, format), [references, format]);
+  const options = useMemo(() => referenceCategories(referenceData, format), [referenceData, format]);
   const filtered = useMemo(() => {
-    const result = filterReferences(references, format, categories);
+    const gallery = creatorAccounts.selectedId ? creatorAccounts.account?.items ?? EMPTY : referenceData;
+    const result = filterReferences(gallery, format, creatorAccounts.selectedId ? [] : categories);
     return orderReferenceGallery(result, format);
-  }, [references, format, categories]);
-  const canBrowseAllReferences = format === "hook" || localPreview || subscription.data?.isActive === true;
-  const filterKey = `${format}:${categories.join(":")}`;
+  }, [referenceData, creatorAccounts.selectedId, creatorAccounts.account, format, categories]);
+  const canBrowseAllReferences = format === "hook" || Boolean(creatorAccounts.selectedId) || localPreview || subscription.data?.isActive === true;
+  const filterKey = `${format}:${creatorAccounts.selectedId ?? "all"}:${categories.join(":")}`;
   const observeReferenceGrid = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
     function measure() {
@@ -289,7 +295,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
     observer.observe(node);
     return () => observer.disconnect();
   }, [canBrowseAllReferences, visible.length, filtered.length, filterKey, referenceColumns]);
-  const loading = !localPreview && (authLoading || referencesQuery.isFetching && !referencesQuery.data);
+  const loading = !localPreview && (authLoading || (creatorAccounts.selectedId ? creatorAccounts.loading : referencesQuery.isFetching && !referencesQuery.data));
   const activeSlideIndex = reference ? Math.min(slideIndex, Math.max(0, reference.slides.length - 1)) : 0;
   const selectedSlideIds = reference
     ? slideSelection?.referenceId === reference.id
@@ -300,7 +306,7 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
   const contextSlides = reference?.slides.filter(slide => selectedSlideIds.includes(slide.id)) ?? [];
   const primarySlide = contextSlides.find(slide => slide.id === reference?.slides[activeSlideIndex]?.id) ?? contextSlides[0];
   const sourceSlides = slideshowRegenerationImage && primarySlide ? [primarySlide, ...contextSlides.filter(slide => slide.id !== primarySlide.id)] : contextSlides;
-  const sourceImages = sourceSlides.map(slide => slide.url);
+  const sourceImages = sourceSlides.map(slide => slide.generationUrl ?? slide.url);
   const sourceImage = format === "slideshow" ? sourceImages[0] : reference?.posterUrl;
   const resultLabel = format === "slideshow" ? "Your Slides" : "Your videos";
   // Returning from a finished video must keep each source clip editable.
@@ -613,8 +619,9 @@ function OwnedFormatWorkspace({ format, previewReferences, finishingEnabled = fa
         {format === "hook" ? <div ref={setScheduleResultsTarget} hidden={step !== "schedule"} className={styles.results} /> : null}
         <div hidden={step !== "create" || clipStageVisible || slideshowOverviewVisible} className="flex min-h-0 flex-1 flex-col">
           <section hidden={view !== "references"} aria-label="References" className={styles.referenceArea}>
-            <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-muted">Watch an example, then choose Recreate.</p><FilterMenu activeCategories={categories} categories={options} count={filtered.length} disabled={loading} onClear={() => setCategories([])} onToggle={(category, checked) => setCategories(current => checked ? [...current, category] : current.filter(value => value !== category))} /></div>
-            {loading ? <ReferenceGridSkeleton /> : referencesQuery.isError && !localPreview ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={cn(styles.referenceGrid, presentation.exampleGrid)}>{visible.map(item => <ReferenceCard key={item.id} reference={item} canOpenSource={accessState === "pro"} compact showActionLabel overlayActions={format === "hook"} hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => { setPreviewSlide(0); setPreviewReference(item); }} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
+            {creatorAccounts.catalogueError ? <p role="alert" className="mb-3 text-sm text-muted">{creatorAccounts.catalogueError} <Button type="button" size="sm" variant="outline" onClick={creatorAccounts.retryCatalogue}>Retry creator accounts</Button></p> : null}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted">{creatorAccounts.selectedId ? `${creatorAccounts.accounts.find(account => account.id === creatorAccounts.selectedId)?.label ?? "Creator account"} · Choose a reference to recreate.` : "Watch an example, then choose Recreate."}</p><div className="ml-auto flex flex-wrap items-center justify-end gap-2"><CreatorAccountMenu accounts={creatorAccounts.accounts} selectedId={creatorAccounts.selectedId} onSelect={id => { setPreviewReference(null); setCategories([]); creatorAccounts.select(id); }} />{!creatorAccounts.selectedId ? <FilterMenu activeCategories={categories} categories={options} count={filtered.length} disabled={loading} onClear={() => setCategories([])} onToggle={(category, checked) => setCategories(current => checked ? [...current, category] : current.filter(value => value !== category))} /> : null}</div></div>
+            {loading ? <ReferenceGridSkeleton /> : creatorAccounts.error ? <div role="alert" className="p-4"><p>{creatorAccounts.error}</p><Button type="button" variant="outline" onClick={creatorAccounts.retry}>Retry creator videos</Button></div> : referencesQuery.isError && !localPreview && !creatorAccounts.selectedId ? <LoadError onRetry={() => void referencesQuery.refetch()} /> : visible.length ? <div ref={observeReferenceGrid} className={cn(styles.referenceGrid, presentation.exampleGrid)}>{visible.map(item => <ReferenceCard key={item.id} reference={item} canOpenSource={accessState === "pro"} compact showActionLabel overlayActions={format === "hook"} hideCaption={format === "wall_text"} isSelected={reference?.id === item.id} onPreview={() => { setPreviewSlide(0); setPreviewReference(item); }} onRecreate={() => selectReference(item)} />)}</div> : <EmptyReferences format={format} hasFilters={categories.length > 0} onClear={() => setCategories([])} />}
             {!canBrowseAllReferences && filtered.length > 1 ? <ProReferenceGate /> : null}
             {canBrowseAllReferences && filtered.length > 0 ? <div ref={observeReferenceEnd} data-reference-scroll-end className="mt-6 border-t border-border pt-4"><p className="text-xs text-muted" role="status">{visible.length} of {filtered.length} references</p></div> : null}
           </section>

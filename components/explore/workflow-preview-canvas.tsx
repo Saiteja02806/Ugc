@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import creation from "@/components/explore/workflow-creation.module.css";
 import { VideoGenerationPlaceholder } from "@/components/video/video-generation-placeholder";
 import resultLayout from "@/components/video/video-results.module.css";
+import { VideoPromptBubble } from "@/components/video/video-result-prompt";
 
 /** Honest empty workspace: no fake player, media or generation output. */
 export function WorkflowPreviewCanvas({ kind, generation, source, mode = "generate", onContinue }: { kind: "hook" | "phone"; generation?: WorkflowGenerationView; source?: LocalWorkflowMedia | null; mode?: WorkflowVideoMode; onContinue?: () => void }) {
@@ -14,14 +15,22 @@ export function WorkflowPreviewCanvas({ kind, generation, source, mode = "genera
   if (generation && (generation.results.length || generation.busy || generation.error)) return <section aria-label={phone ? "Generated phone video preview" : "Generated talking-head preview"} className={`${creation.editWorkspace} ${resultLayout.canvasResults}`} aria-busy={generation.busy}>
     <h2 className={creation.sectionTitle}>Your generated videos</h2>
     {generation.busy ? <p role="status" className={creation.sectionHelp}>{generation.message}</p> : null}
-    {generation.busy ? <div className="flex min-w-0 flex-wrap items-start gap-5" aria-label="Videos being prepared">
-      {Array.from({ length: generation.pendingCount ?? 1 }, (_, index) => <article key={index} aria-label={`Pending video ${index + 1}`} data-ratio={generation.pendingPreview?.aspectRatio ?? "9:16"} className={resultLayout.canvasPending}>
-        <VideoGenerationPlaceholder aspectRatio={generation.pendingPreview?.aspectRatio} referenceImageUrl={generation.pendingPreview?.referenceImageUrl} label={generation.pendingPreview?.label} />
+    {generation.busy ? <div className="flex min-w-0 flex-col gap-5" aria-label="Videos being prepared">
+      {Array.from({ length: generation.pendingCount ?? 1 }, (_, index) => <article key={index} aria-label={`Pending video ${index + 1}`} className={resultLayout.card} data-compact>
+        <div className={resultLayout.row} data-ratio={generation.pendingPreview?.aspectRatio ?? "9:16"}>
+          <div className={resultLayout.media}><VideoGenerationPlaceholder aspectRatio={generation.pendingPreview?.aspectRatio} referenceImageUrl={generation.pendingPreview?.referenceImageUrl} label={generation.pendingPreview?.label} /></div>
+          {generation.pendingPreview?.prompt ? <div className={resultLayout.prompt}><VideoPromptBubble prompt={generation.pendingPreview.prompt} createdAt={generation.pendingPreview.createdAt ?? ""} /></div> : null}
+        </div>
       </article>)}
     </div> : null}
-    {generation.results.map((asset, index) => <section key={asset.id} className={creation.segment} aria-label={`Generated video ${index + 1}`}>
-      <WorkflowMediaPlayer asset={{ name: asset.title, url: asset.url, duration: asset.durationSeconds }} kind="video" label={`Generated video ${index + 1} preview`} className={`mx-auto h-auto w-auto max-w-full rounded-lg ${resultLayout.canvasPlayer}`} />
-      <Button type="button" variant={generation.selected?.id === asset.id ? "default" : "outline"} aria-pressed={generation.selected?.id === asset.id} onClick={() => generation.selectResult(asset.id)}>Use video {index + 1}</Button>
+    {generation.results.map((asset, index) => <section key={asset.id} className={resultLayout.card} data-compact aria-label={`Generated video ${index + 1}`}>
+      <div className={resultLayout.row} data-ratio={asset.ratio}>
+        <div className={resultLayout.media}>
+          <WorkflowMediaPlayer asset={{ name: asset.title, url: asset.url, duration: asset.durationSeconds }} kind="video" label={`Generated video ${index + 1} preview`} className={`h-auto w-auto max-w-full rounded-lg ${resultLayout.canvasPlayer}`} />
+          <Button type="button" className="mt-3" variant={generation.selected?.id === asset.id ? "default" : "outline"} aria-pressed={generation.selected?.id === asset.id} onClick={() => generation.selectResult(asset.id)}>Use video {index + 1}</Button>
+        </div>
+        {typeof asset.metadata?.prompt === "string" && asset.metadata.prompt ? <div className={resultLayout.prompt}><VideoPromptBubble createdAt={asset.createdAt} prompt={asset.metadata.prompt} /></div> : null}
+      </div>
     </section>)}
     {generation.error ? <p role="alert" className="text-sm leading-6 text-destructive">{generation.error}</p> : null}
   </section>;

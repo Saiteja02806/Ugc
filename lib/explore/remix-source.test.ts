@@ -23,6 +23,12 @@ test("changing posts never substitutes a different source, uploaded poster or wo
   assert.equal(resolveRemixSource({ format: "slideshow", referenceId: null, sourceUrl: slides.slides[0].url }, [{ ...slides, id: "uploaded:example" }], "slideshow").reference, null);
   assert.equal(resolveRemixSource({ ...source!, sourceUrl: "https://catalog.test/replaced.mp4" }, [hook], "hook").reference, null);
 });
+
+test("private creator provenance resolves the same stable ID after browser-local playback URLs change", () => {
+  const privateHook = { ...hook, id: "creator-account-1-01", creatorAccountId: "creator-account-1", videoUrl: "blob:new-local-playback" };
+  assert.equal(resolveRemixSource({ format: "hook", referenceId: privateHook.id, sourceUrl: "blob:earlier-local-playback" }, [privateHook], "hook").reference, privateHook);
+  assert.equal(resolveRemixSource({ format: "hook", referenceId: "creator-account-2-01", sourceUrl: "blob:earlier-local-playback" }, [privateHook], "hook").reference, null);
+});
 test("no linked source or malformed metadata requires manual text", () => {
   assert.equal(readRemixSource(null), null);
   assert.equal(readRemixSource({ format: "other" }), null);

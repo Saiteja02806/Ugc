@@ -181,7 +181,16 @@ export function createHookSourceFrameService(options: {
     const entry = cache.get(key);
     if (entry) { cachedBytes -= entry.frame.png.length; cache.delete(key); }
   };
-  return async function getHookSourceFrame(referenceId: string): Promise<HookSourceFrame> {
+  return async function getHookSourceFrame(referenceId: string, retainedSha256?: string): Promise<HookSourceFrame> {
+    if (!options.items && referenceId.startsWith("creator-account-")) {
+      // The HTTP boundary verifies the allowlisted identity on every request.
+      // This local read never publishes a source frame or calls a provider.
+      const { readCreatorStartingFrame } = await import("./creator-accounts.ts");
+      const object = await readCreatorStartingFrame(referenceId,retainedSha256);
+      if (!object) throw new HookSourceFrameError("This reference is unavailable.", 404);
+      const source = { id: referenceId, videoSha256: object.source.sourceSha256, videoStorageKey: "", width: object.source.width, height: object.source.height };
+      return { ...checkedFrame(object.bytes, source), referenceId, workflow: "hook", frameIndex: object.frame.index, frameTimeSeconds: object.frame.timeSeconds };
+    }
     const source = options.items ? checkedSource(referenceId, options.items()) : await resolveStartingFrameSource(referenceId);
     const selected = getCuratedHookFrame(referenceId, source.videoSha256);
     if (!selected && hasCuratedHookFrame(referenceId)) throw new HookSourceFrameError("This video changed. Its selected frame needs review.", 409);

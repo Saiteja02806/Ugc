@@ -2,10 +2,13 @@ import "server-only";
 import { getExploreWallTextVideoAssetsForImport } from "./wall-text-video-library.ts";
 import { getExplorePairedReferences } from "../../worker/src/lib/explore-reference-soundtrack.ts";
 import talkingSources from "./talking-head-source-manifest.json" with { type: "json" };
+import creatorSources from "./creator-accounts.json" with { type: "json" };
 
 /** Server-owned identities only. Never turn a browser URL into an input path. */
 export function getAdditionalStartingFrameSources() {
   return [
+    ...creatorSources.accounts.flatMap(account => account.items.map(item => ({ id: item.id, videoSha256: item.sourceSha256,
+      videoStorageKey: "", width: item.width, height: item.height, workflow: "hook" as const }))),
     ...getExploreWallTextVideoAssetsForImport().map(item => ({
       id: item.id, videoSha256: item.sourceFileSha256, videoStorageKey: item.storageKey,
       workflow: "wall_text" as const, width: 0, height: 0,

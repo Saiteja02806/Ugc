@@ -33,6 +33,7 @@ import { slideshowReferencePrompt, slideshowReferenceImagesPrompt } from "../lib
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "../lib/slideshow-generation-contract.js";
 import { isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, hookKeyframeSceneBytesMatch, hookKeyframeProviderImageLabels, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { downloadReferenceImageContext } from "../lib/reference-image-download.js";
+import { resolveCreatorSceneDelivery } from "../lib/creator-scene-delivery.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -210,7 +211,8 @@ export async function runGenerateImageJob(
 
     try {
       const referenceImageUrl = input.referenceImageUrl
-        ? await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
+        ? input.hookKeyframe ? resolveCreatorSceneDelivery(await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? ""), input.hookKeyframe)
+          : await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
       const referenceImages = input.referenceImageUrls
         ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
         : referenceImageUrl;
@@ -360,7 +362,10 @@ async function generateDurableImageForJob(
     }
     let acceptedOperationId = operationId;
     const referenceImageUrls = input.referenceImageUrls && action === "submit"
-      ? await Promise.all(input.referenceImageUrls.map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? ""))) : input.referenceImageUrls;
+      ? await Promise.all(input.referenceImageUrls.map(async (url, index) => {
+        const resolved = await resolveOwnedPrivateMediaUrl(url, job.user_id ?? "");
+        return index === 0 && input.hookKeyframe ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
+      })) : input.referenceImageUrls;
     const buffer = await generate({
       aspectRatio: input.aspectRatio,
       prompt: input.prompt,

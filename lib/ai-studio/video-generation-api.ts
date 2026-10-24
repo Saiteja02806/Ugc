@@ -29,10 +29,11 @@ import { personReferenceRoles } from "@/lib/explore/person-reference";
 import { buildExploreGenerationInstructions } from "@/lib/explore/generation-input-instructions";
 import { buildStartingFrameAnimationPrompt } from "@/lib/explore/starting-frame-workflow";
 import { resolveApprovedHookStartingFrame } from "@/lib/explore/hook-keyframe-result";
-import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider } from "@/worker/src/lib/hook-starting-frame-video";
+import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations, hookStartingFrameVideoProvider, hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 
 import { getExploreVideoPromptMaxLength, WALL_TEXT_VIDEO_BACKGROUND_INSTRUCTIONS } from "@/lib/explore/format-generation-prompt";
 import { resolveGalleryGenerationVideo } from "@/lib/explore/generation-video-reference";
+import { canAccessCreatorAccounts, isCreatorAccountReference } from "@/lib/explore/creator-account-access";
 import { OMNI_EDIT_MAX_VIDEO_SECONDS } from "@/worker/src/lib/video-reference-input";
 import { FirebaseAuthRequestError } from "@/lib/firebase/server-auth";
 import {
@@ -187,6 +188,8 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const body = (await request.json().catch(() => null)) as
     | GenerateVideoRequest
     | null;
+  if (isCreatorAccountReference(body?.referenceId) && !canAccessCreatorAccounts(user)) return NextResponse.json({ ok: false, error: "This reference is unavailable." }, { status: 404 });
+  if (isCreatorAccountReference(body?.referenceId) && !body?.startingFrameAssetId) return NextResponse.json({ ok: false, error: "Choose Recreate and approve a starting image for this private reference first." }, { status: 400 });
   const prompt = normalizeAIStudioPrompt(body?.prompt ?? body?.hookIdea);
   const usesStartingFrame = body?.startingFrameAssetId !== undefined || body?.startingFrameJobId !== undefined;
   if (usesStartingFrame) {
@@ -198,15 +201,21 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       typeof body.startingFrameJobId !== "string" || !UUID_PATTERN.test(body.startingFrameJobId)) {
       return NextResponse.json({ ok: false, error: "Choose a generated Hook starting image and a supported animation model." }, { status: 400 });
     }
-    if (body.avatarImageUrl || (Array.isArray(body.referenceImageUrls) && body.referenceImageUrls.length) ||
-      body.imageReferencePurpose !== undefined || body.referenceVideoUrl || body.referenceVideoAssetId ||
+    const faceCount = Array.isArray(body.referenceImageUrls) ? body.referenceImageUrls.length : 0;
+    if (faceCount && (!hookStartingFrameFaceReferenceLimit(body.model) || faceCount > hookStartingFrameFaceReferenceLimit(body.model))) {
+      return NextResponse.json({ ok: false, error: "Use Omni Flash 1.1 with up to 5 optional face photos, or remove the face references before choosing another animation model." }, { status: 400 });
+    }
+    if ((faceCount && body.imageReferencePurpose !== "person") || (!faceCount && body.imageReferencePurpose !== undefined)) {
+      return NextResponse.json({ ok: false, error: "Use the additional images as face references for the same person." }, { status: 400 });
+    }
+    if (body.avatarImageUrl || body.referenceVideoUrl || body.referenceVideoAssetId ||
       body.referenceVideoDurationSeconds != null || body.referenceVideoMode !== undefined || body.useGalleryVideoReference === true ||
       (Array.isArray(body.referenceAudioUrls) && body.referenceAudioUrls.length) ||
       (Array.isArray(body.referenceAudioAssetIds) && body.referenceAudioAssetIds.length) || body.referenceUrl) {
-      return NextResponse.json({ ok: false, error: "Animate only the approved starting image. Remove source videos, person photos and audio references; use Sound on for generated audio." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Keep the approved starting image and optional face photos. Remove source videos and audio references; use Sound on for generated audio." }, { status: 400 });
     }
     if (typeof body.durationSeconds !== "number" || !hookStartingFrameVideoDurations(body.model).includes(body.durationSeconds)) {
-      return NextResponse.json({ ok: false, error: `Choose a whole-number starting-frame duration from 4 to ${body.model === "google_omni" ? 10 : 15} seconds.` }, { status: 400 });
+      return NextResponse.json({ ok: false, error: `Choose a whole-number starting-frame duration from ${body.model === "seedance_2_5" ? 4 : 3} to ${body.model === "google_omni" ? 10 : 15} seconds.` }, { status: 400 });
     }
   }
   if (body?.quantity !== undefined && !isAIStudioGenerationQuantity(body.quantity)) {
@@ -312,10 +321,14 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         imageJobId: body!.startingFrameJobId as string,
         ownerId: user.uid,
       });
+      if (isCreatorAccountReference(startingFrame.referenceId) && !canAccessCreatorAccounts(user)) return NextResponse.json({ ok: false, error: "This reference is unavailable." }, { status: 404 });
       if ((body?.referenceId !== undefined && body.referenceId !== startingFrame.referenceId) ||
         body?.exploreFormat !== startingFrame.exploreFormat ||
         (body?.referenceType !== undefined && body.referenceType !== startingFrame.exploreFormat)) {
         return NextResponse.json({ ok: false, error: "The starting image belongs to a different Hook reference. Choose it again." }, { status: 400 });
+      }
+      if (referenceImageUrls.includes(startingFrame.imageUrl)) {
+        return NextResponse.json({ ok: false, error: "Keep the starting frame separate. Choose clear photos of the same person as optional face references." }, { status: 400 });
       }
       // The provider animates the generated full-scene asset, not the source
       // video's frame. Verify that actual output's stored shape before billing.
@@ -536,15 +549,16 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   // A trusted storage host does not prove ownership. Resolve timed references
   // before billing or freezing an Explore receipt; never silently discard them.
   try {
-    if (model === "wan_3_0" && (referenceAudioUrls.length || referenceVideoUrl) && referenceImageUrls.length) {
+    if ((usesStartingFrame || model === "wan_3_0" && (referenceAudioUrls.length || referenceVideoUrl)) && referenceImageUrls.length) {
       const images = await getMediaAssetsForOwnerByUrls({ urls: referenceImageUrls as string[], userId: user.uid });
       for (const url of referenceImageUrls) {
         const asset = images.find(image => image.url === url);
-        if (!asset || asset.user_id !== user.uid || asset.deleted_at !== null || asset.status !== "ready" || asset.collection !== "image" ||
+        if (!asset || asset.user_id !== user.uid || asset.deleted_at !== null || asset.status !== "ready" ||
+          (asset.collection !== "image" && !(usesStartingFrame && asset.collection === "influencer")) ||
           !["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(asset.mime_type) ||
           typeof asset.file_size_bytes !== "number" || !Number.isFinite(asset.file_size_bytes) ||
           asset.file_size_bytes <= 0 || asset.file_size_bytes > referencePolicy.maxImageBytes) {
-          return NextResponse.json({ error: "Choose your own ready PNG, JPEG or WebP reference images up to 16 MB when using audio or video with WAN 3.0.", ok: false }, { status: 400 });
+          return NextResponse.json({ error: usesStartingFrame ? "Choose your own ready PNG, JPEG or WebP face photos up to 20 MB." : "Choose your own ready PNG, JPEG or WebP reference images up to 16 MB when using audio or video with WAN 3.0.", ok: false }, { status: 400 });
         }
       }
     }
@@ -629,7 +643,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         ...(referenceVideoMode ? { referenceVideoMode } : {}),
         referenceId: startingFrame?.referenceId ?? (typeof body?.referenceId === "string" ? body.referenceId : null),
         referenceType: startingFrame ? startingFrame.exploreFormat : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
-        referenceUrl: useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
+        referenceUrl: isCreatorAccountReference(startingFrame?.referenceId) ? null : useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
         ...referenceSoundtrackInput(body),
         ...startingFrameInput,
         resolution, userId: user.uid, videoId: crypto.randomUUID(),
@@ -685,7 +699,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
           referenceType:
             startingFrame ? startingFrame.exploreFormat : useGalleryVideoReference ? body!.exploreFormat as string : typeof body?.referenceType === "string" ? body.referenceType : null,
           referenceUrl:
-            useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
+            isCreatorAccountReference(startingFrame?.referenceId) ? null : useGalleryVideoReference ? referenceVideoUrl : typeof body?.referenceUrl === "string" ? body.referenceUrl : null,
           ...referenceSoundtrackInput(body),
           ...startingFrameInput,
           resolution,

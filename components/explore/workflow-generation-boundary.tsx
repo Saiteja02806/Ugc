@@ -18,6 +18,7 @@ import type { AIStudioVideoAspectRatio } from "@/lib/ai-studio/generation-settin
 import { workflowVisitStorage } from "@/lib/explore/workflow-visit-storage";
 import { workflowDraftStorage, workflowDraftRequestStorage, workflowRequestDraft } from "@/lib/explore/workflow-draft-lifecycle";
 import { fetchFormatReferenceImage } from "@/lib/explore/format-reference-images";
+import { workflowGenerationPrompt } from "@/lib/explore/workflow-generation-client";
 
 export type WorkflowGenerationView = {
   busy: boolean;
@@ -28,7 +29,7 @@ export type WorkflowGenerationView = {
   results: MediaAsset[];
   selected: MediaAsset | null;
   pendingCount?: number;
-  pendingPreview?: { aspectRatio: AIStudioVideoAspectRatio; referenceImageUrl: string | null; label: string };
+  pendingPreview?: { aspectRatio: AIStudioVideoAspectRatio; referenceImageUrl: string | null; label: string; prompt?: string; createdAt?: string };
   onGenerate: () => void;
   selectResult: (id: string) => void;
   refreshStatus: () => void;
@@ -101,7 +102,7 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
   const [recovering, setRecovering] = useState(false);
   const recoveringRef = useRef(false);
   const submittingRef = useRef(false);
-  const [submittedPreview, setSubmittedPreview] = useState<{ aspectRatio: AIStudioVideoAspectRatio; referenceImageUrl: string | null; quantity: number } | null>(null);
+  const [submittedPreview, setSubmittedPreview] = useState<{ aspectRatio: AIStudioVideoAspectRatio; referenceImageUrl: string | null; quantity: number; prompt: string; createdAt: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -133,7 +134,7 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
     queryFn: async () => {
       const token = await getCurrentUserIdToken(ownerId);
       if (!token) throw new Error("Sign in to view your generated video.");
-      const asset = await fetchAIStudioMediaAsset(assetId, token);
+      const asset = await fetchAIStudioMediaAsset(assetId, token, { generationDetails: true });
       if (!active.current) throw new Error("This workflow is no longer active.");
       if (asset.id !== assetId || asset.collection !== "video" || asset.status !== "ready" || asset.sourceType !== "generated_video" || !asset.url.startsWith("https://")) {
         throw new Error("The generated video is not ready to preview.");
@@ -273,7 +274,7 @@ function ConnectedGeneration({ ownerId, draft, children, restoredSelection, onSe
   async function generate() {
     if (disabled || !active.current || submittingRef.current) return;
     submittingRef.current = true;
-    setSubmittedPreview({ aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.startingFrame?.url ?? (draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null), quantity: draft.settings.quantity });
+    setSubmittedPreview({ aspectRatio: draft.settings.aspectRatio, referenceImageUrl: draft.startingFrame?.url ?? (draft.referenceImages ? draft.referenceImages[0]?.url ?? null : draft.creator?.url ?? null), quantity: draft.settings.quantity, prompt: workflowGenerationPrompt(draft), createdAt: new Date().toISOString() });
     setSubmitting(true);
     setActionError(null);
     setNotice(null);

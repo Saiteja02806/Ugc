@@ -1,5 +1,22 @@
 # Explore context and UI decision record
 
+## 2026-10-24 Combined production release verified
+
+- Website and MCP are promoted from app commit `4cb252d5`; all eight Cloud Run
+  targets use the pinned worker image from `5f7b7747`. Their worker Git trees are
+  identical. All service traffic and generation startup source identity pass;
+  functional configuration remains unchanged. A clean hosted build caught a
+  final plaintext identity import, corrected before promotion.
+- Production read-only checks verify all 12 private selected frame PNGs and all
+  39 slideshow originals through approved temporary capabilities, with exact
+  hashes; anonymous browser metadata/media reads and unsigned frame links fail.
+  The package remains encrypted in Git and runtime access remains restricted
+  to verified `vtu19403@veltech.edu.in`. No paid generation in release checks.
+- User elects to verify the signed-in gallery personally. Do not present fixture
+  checks or provider-byte delivery as positive production browser playback or
+  generated-output fidelity acceptance. Details and exclusions are in
+  docs/combined-release-2026-10-24.md; earlier local-only entries are historical.
+
 ## 2026-10-24 Combined release: private creator packaging
 
 - The Git remote is public. The user explicitly approves encrypted creator

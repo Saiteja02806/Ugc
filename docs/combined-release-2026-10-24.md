@@ -82,7 +82,53 @@ transient encrypted-variable request are inside ignored `.tmp/release-20261024/`
 
 ## Rollout
 
-Pending: commit/source identity, immutable worker image, all eight worker target
-identities, website/MCP staged deployment IDs, alias verification and production
-smoke results are recorded after rollout. Website promotion must follow verified
-worker deployment. Existing build-ignore settings are restored after promotion.
+Released on the production domains after worker verification:
+
+| Target | Verified source / deployment |
+| --- | --- |
+| Website: apex and www | `4cb252d572a8a26de2172d99788f5a1e5f6067ec`; `dpl_5Xtc7PQxMo36uVmaqfgzkQ6hz7uL` |
+| MCP | Same app source; `dpl_5Qy8yPnDBTiT8o1UTSniYXgoQvSC` |
+| All eight Cloud Run targets | `5f7b77470c83644a3d1d5cd800a39191c7d1d7ef` |
+| Immutable worker image | `us-central1-docker.pkg.dev/ugcsaas/ugc-worker/ugc-worker@sha256:eb73d206213b7c9f28d9fb26ec1223c7e9489163cbde16704b3fbdd13b5775e2` |
+| Cloud Build | `56db6a13-27e3-4b65-be64-312a4ba7745a`; SUCCESS |
+
+The app follow-up changes only the remaining starting-frame identity reader to
+use encrypted metadata. Its worker Git tree is exactly equal to the baked worker
+commit; no worker change is missing. The final evidence-only documentation
+commit does not alter either deployed runtime tree.
+
+All six service workers have a single verified new revision at 100% traffic;
+both jobs identify the same pinned image/source. The generation worker's
+`ugc-ai-generation-worker-r-5f7b7747` startup log verifies baked and runtime SHA.
+All eight functional configuration fingerprints match the initial baseline.
+Only gcloud's generated job-template nonce is excluded, after the original
+fingerprint was reconstructed exactly from the original-image audit nonce.
+
+The first hosted build caught one remaining local-plaintext manifest import.
+It was fixed before promotion; superseded builds were never promoted. A rollout
+guard also stopped at the first job: its runtime source identity was corrected
+to the baked worker commit before any new execution, and the separate nonce
+difference was proven before rollout resumed. The latest execution timestamp
+remained unchanged throughout that correction.
+
+Production read-only smoke checks pass on the real domains: homepage/sign-in
+and MCP health return 200; anonymous metadata/video/poster/slide-preview reads
+are denied; all 12 selected creator PNGs and all 39 original slideshow images
+return their exact hashes through approved short-lived provider capabilities.
+The remaining 29 slideshow checks additionally match original byte sizes and
+actual MIME types. Unsigned creator-frame capabilities are denied. No generation,
+paid provider call or user-content mutation was made for these checks.
+
+The user elects to verify the signed-in gallery personally. Final browser
+acceptance under verified `vtu19403@veltech.edu.in`, including positive original
+video playback and live generation quality, is therefore not claimed here.
+Check [Hook video](https://www.getugcpilot.com/explore/hook-video) and
+[Slideshows](https://www.getugcpilot.com/explore/slideshows), switch each private
+account, open Recreate and return to All references.
+
+Exact local receipts: `.tmp/release-20261024/identity.json`,
+`workers-verification.json`, `worker-guard-proof.json`,
+`generation-worker-acceptance.json`, `vercel-verify.json` and
+`production-smoke.json`. Automatic-build settings are restored to the recorded
+original values after the evidence-only documentation push; restoration is
+verified separately in the same receipt directory.

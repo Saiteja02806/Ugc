@@ -1,5 +1,17 @@
 # Carousel System Context
 
+## 2026-10-24 Shared manual typography released with combined changes
+
+- Website/MCP app source `4cb252d5` and all eight existing worker targets with
+  image source `5f7b7747` are deployed; the worker trees match exactly. Shared
+  Poppins/TikTok Sans faces and outlined manual export changes are included.
+  Existing Carousel sourcing, schema and automatic-generation typography remain
+  independent. No new Carousel migration or sourcing decision in this release.
+- Combined regression/build checks pass; hosted private-media delivery checks
+  pass. The user will verify the signed-in galleries. Do not treat local font
+  fixtures as paid generation quality qualification. Rollout/evidence/exclusions:
+  docs/combined-release-2026-10-24.md.
+
 ## 2026-10-24 Poppins correction in the shared manual font list (local)
 
 - User rejects TikTok Sans as the matching reference font and requests the closer

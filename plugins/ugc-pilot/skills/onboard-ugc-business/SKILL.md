@@ -19,7 +19,9 @@ Existing draft answers, exact business name, goals and logo belong to the same
 website setup. Preserve fields the user did not ask to change.
 
 For an intended setup action, `mutate_business_onboarding` requires enabled
-writes and fresh `brand:write` consent. Pass the complete opaque
+writes and fresh `brand:write` consent. The first call returns a preview and
+does not change the business setup. Show it and pass `confirm_token` only
+after an explicit yes. Pass the complete opaque
 `expected_state` from the current read and save a fresh UUID plus exact inputs
 in a non-secret workspace record before submission. `start` can analyze the
 source. `identity` saves the exact name; omit `logo_storage_key` to preserve

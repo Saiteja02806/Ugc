@@ -33,6 +33,9 @@ assert.equal(resource.resource, endpoint, "Protected-resource metadata names a d
 assert.deepEqual(resource.authorization_servers, [origin], "Protected-resource metadata names a different issuer");
 assert(resource.scopes_supported?.includes("account:read"), "The initial read scope is not advertised");
 assert(resource.scopes_supported?.includes("creative:write"), "The finishing scope is not advertised");
+assert(resource.scopes_supported?.includes("analytics:read"), "Saved analytics scope is not advertised");
+assert(resource.scopes_supported?.includes("publishing:read"), "Schedule read scope is not advertised");
+assert(resource.scopes_supported?.includes("publishing:write"), "Schedule write scope is not advertised");
 
 const issuer = await json("/.well-known/oauth-authorization-server");
 assert.equal(issuer.issuer, origin, "Issuer metadata does not match the protected resource");

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 import { mock, test } from "node:test";
 
 const iso = "2026-10-17T06:30:00.000Z";
@@ -111,8 +112,10 @@ async function rpc(method, params, owner = "owner-a", scopes = ["account:read", 
 }
 
 async function call(name, args = {}, owner, scopes, emailVerified) {
-  const body = await rpc("tools/call", { name, arguments: args }, owner, scopes, emailVerified);
-  return body.result ?? { isError: true, content: [{ type: "text", text: JSON.stringify(body.error) }] };
+  return confirmToolResult(async (next) => {
+    const body = await rpc("tools/call", { name, arguments: next }, owner, scopes, emailVerified);
+    return body.result ?? { isError: true, content: [{ type: "text", text: JSON.stringify(body.error) }] };
+  }, args);
 }
 
 function error(result) {

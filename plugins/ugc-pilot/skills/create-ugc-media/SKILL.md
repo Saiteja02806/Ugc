@@ -16,6 +16,8 @@ Use the connected UGC Pilot tools. If absent, explain the connection step; do no
 
 ## Submit once
 
+The first `generate_image` or `generate_video` call returns a preview and a single-use `confirm_token`. It does not reserve credits. Show the preview, including the credit cost, and call again with the same arguments plus that token only after an explicit yes. Do not invent a yes from an earlier general request.
+
 Use `generate_image` with `prompt`, `aspect_ratio`, `count`, optional `reference_asset_id`, and `client_request_id`. The image prompt limit is 2,000 characters.
 
 Use `generate_video` with the same fields and explicit `duration_seconds`. Its prompt limit is 1,000 characters. The reference is an optional owned image to animate. This generates a short clip. To attach a demo or render exact text afterward, use [video finishing](../finish-ugc-video/SKILL.md) when capabilities permit it. For speech generation use the [audio workflow](../manage-ugc-media/references/audio-workflow.md), including its separate capability, voice and request contracts. Creator marketplace, Carousel and social publishing remain separate capabilities.
@@ -37,6 +39,6 @@ For image → video requests, finish and retrieve the image first, then pass its
 
 When discovered, use `list_operations` to find owned website or MCP jobs and `get_operation` for safe status, verified output IDs and a saved finishing request handle. History reads never start work. Older `get_job` remains restricted to MCP generation jobs.
 
-Only cancel/retry when the user requests that action. Both controls require `jobs:write` through normal OAuth consent. Read `get_operation` first. Persist a new request UUID and its complete `expected_updated_at` with the selected action/job ID in a non-secret local receipt before calling. Do not truncate timestamp precision. A supported retry may reserve the original generation cost again; follow the returned retry policy and current credits. Never retry uncertain or terminal provider submissions automatically.
+Only cancel/retry when the user requests that action. Both controls require `jobs:write` through normal OAuth consent. Read `get_operation` first. Persist a new request UUID and its complete `expected_updated_at` with the selected action/job ID in a non-secret local receipt before calling. Do not truncate timestamp precision. A supported retry may reserve the original generation cost again; follow the returned retry policy and current credits. `retry_operation` previews that cost first and runs only after an explicit yes and its `confirm_token`. Never retry uncertain or terminal provider submissions automatically.
 
 After a lost control response, reuse the exact saved request UUID, action, job ID and expected revision. A replay reports the current job; it never requests another retry. On `OPERATION_CHANGED`, read current status and get a new explicit action before making another request; do not silently mint a new key. Cancellation may be asynchronous. If these tools are absent, report that deployment state rather than calling Firebase website routes with an MCP token.

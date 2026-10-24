@@ -5,6 +5,7 @@ import { ACTIVE_BACKGROUND_JOB_STATUSES, CANONICAL_BACKGROUND_JOB_TYPES, getImpl
 import { listBackgroundJobsForUser } from "@/lib/jobs/background-jobs";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
 import { controlOperation, getOperationForOwner, operationDetails, operationSummary } from "./operation-service";
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 export const registeredOperationMcpTools = ["list_operations", "get_operation", "cancel_operation", "retry_operation"] as const;
@@ -65,10 +66,18 @@ export function registerOperationMcpTools(server: McpServer) {
   }, (args, ctx) => executeTool(async () => controlOperation({ userId: principal(ctx, "jobs:write"),
     jobId: args.operation_id, requestId: args.request_id, expectedUpdatedAt: args.expected_updated_at, action: "cancel" })));
   server.registerTool("retry_operation", {
-    description: "Retry a supported owned failed/stalled job using existing attempt, provider and original-plan credit rules. May reserve credits again. Save the request ID and exact revision before calling; replay recovers this action without funding another retry.",
-    inputSchema: controlInput, outputSchema: controlOutput,
+    description: confirmedToolDescription("Retry a supported owned failed/stalled job using existing attempt, provider and original-plan credit rules. May reserve credits again. Save the request ID and exact revision before calling; replay recovers this action without funding another retry."),
+    inputSchema: withConfirmToken(controlInput), outputSchema: confirmableOutputSchema(controlOutput),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("jobs:write"), _meta: oauthMetadata("jobs:write"),
-  }, (args, ctx) => executeTool(async () => controlOperation({ userId: principal(ctx, "jobs:write"),
-    jobId: args.operation_id, requestId: args.request_id, expectedUpdatedAt: args.expected_updated_at, action: "retry" })));
+  }, (args, ctx) => executeTool(async () => {
+    const userId = principal(ctx, "jobs:write");
+    return requireConfirmation({
+      tool: "retry_operation", accountId: userId, args, effect: "spend_credits",
+      summary: "Retry the selected job. A generation retry may reserve credits again.",
+      creditCost: null, creditCostIsEstimate: true,
+      affected: [{ type: "operation", id: args.operation_id, label: "Owned job retry" }],
+      run: () => controlOperation({ userId, jobId: args.operation_id, requestId: args.request_id, expectedUpdatedAt: args.expected_updated_at, action: "retry" }),
+    });
+  }));
 }

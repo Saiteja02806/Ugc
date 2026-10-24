@@ -5,6 +5,7 @@ import { findDemoVideo, type DemoVideoRow } from "@/lib/demo/demo-storage";
 import { deleteDemoForOwner, DemoLibraryError, listDemosForOwner, registerDemoForOwner } from "@/lib/demo/demo-library";
 import { getMediaAssetForOwner } from "@/lib/media/media-storage";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 const projectId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$/).default("test-project-001");
@@ -79,14 +80,22 @@ export function registerDemoMcpTools(server: McpServer) {
   }));
 
   server.registerTool("delete_demo", {
-    description: "Remove an owned Demo and its linked source asset from the active libraries together. Retains stored bytes for existing renders. Repeating deletion is safe; does not cancel jobs or erase finished outputs.",
-    inputSchema: z.strictObject({ demo_id: z.uuid(), project_id: projectId }),
-    outputSchema: z.strictObject({ demo_id: z.uuid(), deleted: z.literal(true) }),
+    description: confirmedToolDescription("Remove an owned Demo and its linked source asset from the active libraries together. Retains stored bytes for existing renders. Repeating deletion is safe; does not cancel jobs or erase finished outputs."),
+    inputSchema: withConfirmToken(z.strictObject({ demo_id: z.uuid(), project_id: projectId })),
+    outputSchema: confirmableOutputSchema(z.strictObject({ demo_id: z.uuid(), deleted: z.literal(true) })),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("assets:write"), _meta: oauthMetadata("assets:write"),
   }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "assets:write");
-    await withDemoErrors(() => deleteDemoForOwner({ userId, demoId: args.demo_id, projectId: args.project_id }));
-    return { demo_id: args.demo_id, deleted: true };
+    return requireConfirmation({
+      tool: "delete_demo", accountId: userId, args, effect: "delete",
+      summary: "Remove the selected Demo and its linked source from the active libraries. Existing renders keep their stored bytes.",
+      creditCost: 0, creditCostIsEstimate: false,
+      affected: [{ type: "demo", id: args.demo_id, label: "Dedicated Demo" }],
+      run: async () => {
+        await withDemoErrors(() => deleteDemoForOwner({ userId, demoId: args.demo_id, projectId: args.project_id }));
+        return { demo_id: args.demo_id, deleted: true };
+      },
+    });
   }));
 }

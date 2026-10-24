@@ -8,6 +8,7 @@ import { audioAssetSchema, audioGenerationSchema, getAudioAssetForOwner, getAudi
   getAudioGenerationForOwner, listAudioForOwner, listAudioVoicesForOwner } from "@/lib/audio/mcp-library";
 import { getAudioBookmarks, setAudioBookmark } from "@/lib/audio/bookmarks";
 import { getAudioVoiceSelection, setAudioVoiceSelection } from "@/lib/audio/selection";
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 export const registeredAudioMcpTools=["get_audio_capabilities","list_audio_voices","list_audio_assets","get_audio_asset",
@@ -73,15 +74,24 @@ export function registerAudioMcpTools(server:McpServer) {
     annotations:read,scopeChallenge:requireScopes("jobs:read"),_meta:oauthMetadata("jobs:read"),
   },(args,ctx)=>executeTool(()=>audioErrors(()=>getAudioGenerationForOwner(principal(ctx,"jobs:read"),args.request_id))));
   server.registerTool("generate_audio",{
-    description:"Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; use get_audio_asset for its expiring download, while video import remains a separate adapter.",
-    inputSchema:z.strictObject({request_id:z.uuid(),script:z.string().trim().min(1).max(AUDIO_MAX_CHARACTERS),voice_id:voiceId,
-      model_id:z.enum(AUDIO_MODEL_IDS),speed:z.number().min(0.8).max(1.2).default(1),name:z.string().trim().min(1).max(100).default("Untitled audio")}),
-    outputSchema:z.strictObject({request_id:z.uuid(),generation_id:z.uuid(),status:z.string(),test_only:z.boolean(),credits:z.number().int().nonnegative()}),
+    description:confirmedToolDescription("Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; use get_audio_asset for its expiring download, while video import remains a separate adapter."),
+    inputSchema:withConfirmToken(z.strictObject({request_id:z.uuid(),script:z.string().trim().min(1).max(AUDIO_MAX_CHARACTERS),voice_id:voiceId,
+      model_id:z.enum(AUDIO_MODEL_IDS),speed:z.number().min(0.8).max(1.2).default(1),name:z.string().trim().min(1).max(100).default("Untitled audio")})),
+    outputSchema:confirmableOutputSchema(z.strictObject({request_id:z.uuid(),generation_id:z.uuid(),status:z.string(),test_only:z.boolean(),credits:z.number().int().nonnegative()})),
     annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:true,openWorldHint:false},scopeChallenge:requireScopes("generation:write"),_meta:oauthMetadata("generation:write"),
-  },(args,ctx)=>executeTool(()=>audioErrors(async()=>{
-    const result=await generateAudioForOwner(principal(ctx,"generation:write"),{requestKey:args.request_id,script:args.script,voiceId:args.voice_id,modelId:args.model_id,speed:args.speed,name:args.name});
-    return {request_id:args.request_id,generation_id:result.id,status:result.status,test_only:result.testOnly,credits:result.credits};
-  })));
+  },(args,ctx)=>executeTool(async()=>{
+    const owner=principal(ctx,"generation:write");
+    return requireConfirmation({
+      tool:"generate_audio",accountId:owner,args,effect:"spend_credits",
+      summary:"Generate speech. This may spend credits or provider allowance.",
+      creditCost:null,creditCostIsEstimate:true,
+      affected:[{type:"audio_request",id:args.request_id,label:args.name}],
+      run:()=>audioErrors(async()=>{
+        const result=await generateAudioForOwner(owner,{requestKey:args.request_id,script:args.script,voiceId:args.voice_id,modelId:args.model_id,speed:args.speed,name:args.name});
+        return {request_id:args.request_id,generation_id:result.id,status:result.status,test_only:result.testOnly,credits:result.credits};
+      }),
+    });
+  }));
   server.registerTool("create_audio_upload",{
     description:"Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection.",
     inputSchema:audioUploadInput,outputSchema:z.strictObject({request_id:z.uuid(),url:z.url().regex(/^https:\/\//),method:z.literal("POST"),headers:z.strictObject({"Content-Type":z.string()}),expires_at:z.iso.datetime({offset:true})}),

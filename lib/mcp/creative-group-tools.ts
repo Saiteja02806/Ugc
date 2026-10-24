@@ -1,6 +1,7 @@
 import "server-only";
 import {McpServer,requireScopes} from "@modelcontextprotocol/server";
 import {z} from "zod";
+import {confirmableOutputSchema,confirmedToolDescription,omitConfirmToken,requireConfirmation,withConfirmToken} from "./confirm-token";
 import {executeTool,oauthMetadata,principal,ToolFailure} from "./read-tools";
 import {groupSchema,groupStateSchema,groupReceiptSchema,getCreativeGroupState,listCreativeGroups,listCreativeGroupItems,mutateCreativeGroup,getCreativeGroupRequest,listCreativeGroupRequests} from "./creative-group-service";
 const id=z.uuid(),revision=z.string().regex(/^[a-f0-9]{64}$/),type=z.enum(["video","image"]);
@@ -29,10 +30,20 @@ export function registerCreativeGroupMcpTools(server:McpServer){
   {tool:"add_assets_to_group",op:"add",description:"Add 1-100 selected owned ready Creative Assets matching the group type, atomically at its exact revision. Full batch rejects invalid/foreign/hidden inputs; preserves a receipt before responding.",schema:z.strictObject({request_id:id,group_id:id,expected_revision:revision,asset_ids:assets})},
   {tool:"remove_assets_from_group",op:"remove",description:"Remove selected membership links at the group's exact revision. Preserves all media and other groups. Unavailable members may be removed using their verified membership IDs.",schema:z.strictObject({request_id:id,group_id:id,expected_revision:revision,asset_ids:assets})},
  ] as const;
- for(const operation of operations)server.registerTool(operation.tool,{description:operation.description+" Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",inputSchema:operation.schema,outputSchema:output,
+ for(const operation of operations){
+  const gated=operation.tool==="delete_asset_group";
+  server.registerTool(operation.tool,{description:(gated?confirmedToolDescription(operation.description):operation.description)+" Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",inputSchema:gated?withConfirmToken(operation.schema):operation.schema,outputSchema:gated?confirmableOutputSchema(output):output,
   annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write")},
-  (args:z.infer<typeof operation.schema>,ctx:Parameters<typeof principal>[0])=>executeTool(async()=>{const owner=principal(ctx,"assets:write");if(process.env.MCP_CREATIVE_GROUPS_ENABLED!=="true")throw new ToolFailure("LIBRARY_WRITES_DISABLED","IDE group writes are not enabled. Saved receipts remain readable.");
-    const{request_id,...input}=args;return mutateCreativeGroup(owner,request_id.toLowerCase(),operation.op,input);}));
+  (args:z.infer<typeof operation.schema> & {confirm_token?:string},ctx:Parameters<typeof principal>[0])=>executeTool(async()=>{
+    const owner=principal(ctx,"assets:write");
+    const {request_id,...input}=omitConfirmToken(args);
+    const run=()=>{if(process.env.MCP_CREATIVE_GROUPS_ENABLED!=="true")throw new ToolFailure("LIBRARY_WRITES_DISABLED","IDE group writes are not enabled. Saved receipts remain readable.");
+      return mutateCreativeGroup(owner,request_id.toLowerCase(),operation.op,input);};
+    if(!gated)return run();
+    const groupId="group_id" in args && typeof args.group_id==="string"?args.group_id:request_id;
+    return requireConfirmation({tool:"delete_asset_group",accountId:owner,args,effect:"delete",summary:"Delete the selected Creative Asset group and its membership. Media files stay in the library.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"asset_group",id:groupId,label:"Creative Asset group"}],run});
+  }));
+ }
  server.registerTool("get_asset_group_request",{description:"Recover the immutable owned result of an accepted group change without reapplying it. Later website edits/deletions are preserved; receipt state is historical, use get_asset_group for current state.",inputSchema:z.strictObject({request_id:id}),outputSchema:z.strictObject({receipt:groupReceiptSchema}),annotations:readOnly,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read")},
   ({request_id},ctx)=>executeTool(()=>getCreativeGroupRequest(principal(ctx,"assets:read"),request_id.toLowerCase())));
  server.registerTool("list_asset_group_requests",{description:"Discover lost owned group-change request UUIDs and operation timestamps. Does not expose another account or repeat changes.",inputSchema:z.strictObject(paging),outputSchema:z.strictObject({items:z.array(z.strictObject({request_id:id,operation:z.enum(["create","rename","delete","add","remove"]),created_at:z.string()})).max(50),next_cursor:z.string().nullable()}),annotations:readOnly,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read")},

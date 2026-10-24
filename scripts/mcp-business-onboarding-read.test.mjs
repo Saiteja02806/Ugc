@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 import { readFile, readdir } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { before, after, test } from "node:test";
@@ -68,7 +69,7 @@ async function rpc(method,params,owner,scopes=["brand:read"]) {
   const response=await handler.fetch(new Request("https://mcp.getugcpilot.com/mcp",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json, text/event-stream"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})}),{authInfo:{token:"fixture",clientId:"fixture",scopes,extra:owner?{firebaseUid:owner}:{}}});
   const text=await response.text(),line=text.split("\n").find(value=>value.startsWith("data: "));return JSON.parse(line?line.slice(6):text);
 }
-async function call(name,owner,args={},scopes) {const result=await rpc("tools/call",{name,arguments:args},owner,scopes);return result.result??{isError:true,content:[{type:"text",text:JSON.stringify(result.error)}]};}
+async function call(name,owner,args={},scopes) {return confirmToolResult(async(next)=>{const result=await rpc("tools/call",{name,arguments:next},owner,scopes);return result.result??{isError:true,content:[{type:"text",text:JSON.stringify(result.error)}]};},args);}
 async function state(owner){const result=await call("get_business_onboarding",owner);assert.ok(!result.isError,JSON.stringify(result));return result.structuredContent;}
 async function one(sql,values=[]) {return (await db.query(sql,values)).rows[0];}
 async function mutate(owner,action,payload){return one("select * from public.mutate_business_onboarding_v1($1,$2,$3::jsonb)",[owner,action,JSON.stringify(payload)]);}

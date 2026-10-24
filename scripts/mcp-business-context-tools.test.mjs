@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {beforeEach,afterEach,after,test} from 'node:test';
 import {fixture,id,context,input,applyInput} from './mcp-business-context-fixture.mjs';
 import {createMcpHandler,McpServer} from '@modelcontextprotocol/server';
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 let h,requests=[],loseAck=false;
 const envKeys=['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','MCP_BUSINESS_CONTEXT_WRITES_ENABLED'],oldEnv=envKeys.map(k=>[k,process.env[k]]),oldFetch=globalThis.fetch;
 Object.assign(process.env,{SUPABASE_URL:'https://business-fixture.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'offline-fixture',MCP_BUSINESS_CONTEXT_WRITES_ENABLED:'true'});
@@ -41,7 +42,7 @@ beforeEach(async()=>{h=await fixture();requests=[];loseAck=false;process.env.MCP
 async function rpc(method,params,owner='owner-a',scopes=['brand:read','brand:write']){
  const response=await handler.fetch(new Request('https://mcp.getugcpilot.com/mcp',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})}),{authInfo:{token:'fixture',clientId:'fixture',scopes,extra:{firebaseUid:owner}}});const text=await response.text(),line=text.split('\n').find(l=>l.startsWith('data: '));return JSON.parse(line?line.slice(6):text);
 }
-async function call(name,args={},owner,scopes){const body=await rpc('tools/call',{name,arguments:args},owner,scopes);return body.result??{isError:true,content:[{type:'text',text:JSON.stringify(body.error)}]};}
+async function call(name,args={},owner,scopes){return confirmToolResult(async(next)=>{const body=await rpc('tools/call',{name,arguments:next},owner,scopes);return body.result??{isError:true,content:[{type:'text',text:JSON.stringify(body.error)}]};},args);}
 function error(result){assert.equal(result.isError,true,JSON.stringify(result));try{return JSON.parse(result.content[0].text);}catch{return {message:result.content[0].text};}}
 function args(state,next=context,operation='save_draft',key=id(1)){return {request_id:key,...(operation==='apply'?applyInput(state,next):input(state,next))};}
 

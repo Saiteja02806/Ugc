@@ -79,6 +79,16 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
     description: "View saved Instagram, TikTok, and YouTube reports. This does not refresh provider data or change social connections.",
     icon: BarChart3,
   },
+  "publishing:read": {
+    title: "Schedules and social accounts",
+    description: "View connected social-account labels and existing schedules. This does not connect an account or publish a post.",
+    icon: Link2,
+  },
+  "publishing:write": {
+    title: "Create schedules",
+    description: "Create a future schedule for media and accounts you select, after you confirm the preview. This does not publish immediately.",
+    icon: ArrowUpRight,
+  },
 };
 
 type OAuthConsentViewProps = {

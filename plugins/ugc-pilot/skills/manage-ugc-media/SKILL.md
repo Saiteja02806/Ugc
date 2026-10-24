@@ -31,7 +31,7 @@ For hook-plus-demo requests, upload the hook as creator footage (`collection: "i
 
 ## Delete
 
-Use `delete_demo` for a verified dedicated Demo when available; it hides the Demo and its linked source together while preserving existing renders. Call `delete_asset` only when the user explicitly requests deletion and the target is unambiguous. Name the item and use its verified owned ID. Ask for clarification for multiple matches or an unclear bulk request. Do not delete generated outputs as automatic cleanup. The tool removes the library entry using the product's soft-deletion behavior; do not promise that the physical storage object is erased.
+Use `delete_demo` for a verified dedicated Demo when available; it hides the Demo and its linked source together while preserving existing renders. Call `delete_asset` only when the user explicitly requests deletion and the target is unambiguous. Name the item and use its verified owned ID. Ask for clarification for multiple matches or an unclear bulk request. The first delete call returns a preview. Show the affected item and pass `confirm_token` only after an explicit yes. Do not delete generated outputs as automatic cleanup. The tool removes the library entry using the product's soft-deletion behavior; do not promise that the physical storage object is erased.
 
 For missing authentication or insufficient permissions, use the client's OAuth connection flow. For `NOT_FOUND`, explain that the item is unavailable to this connected account; do not probe other accounts.
 

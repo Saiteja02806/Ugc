@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getMediaAssetForOwner, markMediaAssetReady, softDeleteMediaAsset, type MediaAssetRow } from "@/lib/media/media-storage";
 import { MEDIA_UPLOAD_EXPIRES_IN_SECONDS } from "@/lib/media/media-upload";
 import { createSignedPutUrl } from "@/lib/storage/storage";
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { asset, executeTool, MCP_MEDIA_COLLECTIONS, oauthMetadata, principal, toAsset, ToolFailure } from "./read-tools";
 import {
   assertMcpUploadConfirmable,
@@ -214,31 +215,40 @@ export function registerMutationMcpTools(server: McpServer) {
   }));
 
   server.registerTool("delete_asset", {
-    description: "Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted.",
-    inputSchema: z.strictObject({ asset_id: z.uuid() }),
-    outputSchema: z.strictObject({ asset_id: z.uuid(), deleted: z.literal(true) }),
+    description: confirmedToolDescription("Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted."),
+    inputSchema: withConfirmToken(z.strictObject({ asset_id: z.uuid() })),
+    outputSchema: confirmableOutputSchema(z.strictObject({ asset_id: z.uuid(), deleted: z.literal(true) })),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("assets:write"),
     _meta: oauthMetadata("assets:write"),
-  }, async ({ asset_id }, ctx) => executeTool(async () => {
+  }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "assets:write");
-    const current = await getMediaAssetForOwner({ assetId: asset_id, userId });
-    if (!current) throw new ToolFailure("NOT_FOUND", "Asset not found.");
-    if (current.status === "uploading" && isMcpUpload(current)) {
-      const pending = await softDeleteUnconfirmedMcpUpload({ assetId: asset_id, userId });
-      if (pending) {
-        try {
-          await sealDeletedMcpUpload(pending);
-        } catch {
-          // The row stays counted in the quota and the next upload retries
-          // storage cleanup after the signed URL's validity window.
-          console.error("MCP deleted upload storage sealing will retry", { assetId: asset_id });
+    const asset_id = args.asset_id;
+    return requireConfirmation({
+      tool: "delete_asset", accountId: userId, args, effect: "delete",
+      summary: "Delete the selected owned media asset. Ready assets are soft-deleted.",
+      creditCost: 0, creditCostIsEstimate: false,
+      affected: [{ type: "asset", id: asset_id, label: "Owned media asset" }],
+      run: async () => {
+        const current = await getMediaAssetForOwner({ assetId: asset_id, userId });
+        if (!current) throw new ToolFailure("NOT_FOUND", "Asset not found.");
+        if (current.status === "uploading" && isMcpUpload(current)) {
+          const pending = await softDeleteUnconfirmedMcpUpload({ assetId: asset_id, userId });
+          if (pending) {
+            try {
+              await sealDeletedMcpUpload(pending);
+            } catch {
+              // The row stays counted in the quota and the next upload retries
+              // storage cleanup after the signed URL's validity window.
+              console.error("MCP deleted upload storage sealing will retry", { assetId: asset_id });
+            }
+            return { asset_id, deleted: true };
+          }
         }
+        const deleted = await softDeleteMediaAsset({ assetId: asset_id, userId });
+        if (!deleted) throw new ToolFailure("NOT_FOUND", "Asset not found.");
         return { asset_id, deleted: true };
-      }
-    }
-    const deleted = await softDeleteMediaAsset({ assetId: asset_id, userId });
-    if (!deleted) throw new ToolFailure("NOT_FOUND", "Asset not found.");
-    return { asset_id, deleted: true };
+      },
+    });
   }));
 }

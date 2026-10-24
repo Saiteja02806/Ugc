@@ -20,10 +20,11 @@ import {
 import { listSocialConnections } from "@/lib/social/oauth";
 import { socialProviders } from "@/lib/social/types";
 
+import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, principalIdentity, ToolFailure } from "./read-tools";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
-const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
+const write = { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true } as const;
 const timestamp = z.string().datetime({ offset: true });
 const id = z.uuid();
 const scheduleCreationSource = z.strictObject({
@@ -270,40 +271,51 @@ export function registerSchedulingMcpTools(server: McpServer) {
   }));
 
   server.registerTool("create_schedule", {
-    description: "Create one requested future schedule for selected owned media or a saved Library item and selected owned social connections. Requires an explicit schedule time and stable request ID. This does not connect a social account, publish immediately, edit/cancel/retry a schedule, or return provider credentials.",
-    inputSchema: createScheduleInput,
-    outputSchema: z.strictObject({
+    description: confirmedToolDescription("Create one requested future schedule for selected owned media or a saved Library item and selected owned social connections. Requires an explicit schedule time and stable request ID. This does not connect a social account, publish immediately, edit/cancel/retry a schedule, or return provider credentials."),
+    inputSchema: withConfirmToken(createScheduleInput),
+    outputSchema: confirmableOutputSchema(z.strictObject({
       created: z.boolean(),
       schedule,
-    }),
+    })),
     annotations: write,
     scopeChallenge: requireScopes("publishing:write"),
     _meta: oauthMetadata("publishing:write"),
   }, (args, ctx) => executeTool(async () => {
     const owner = principalIdentity(ctx, "publishing:write");
-    if (!writesEnabled()) throw writeUnavailable();
-    if (getMissingSchedulingRuntimeEnvVars().length) throw unavailable("Scheduling is not configured for this deployment.");
-    try {
-      const result = await createUserSchedule({
-        allowTikTokTargets: owner.emailVerified,
-        allowYouTubeTargets: owner.emailVerified,
-        input: {
-          caption: args.caption,
-          idempotencyKey: args.request_id,
-          scheduledFor: args.scheduled_for,
-          source: {
-            id: args.source.id,
-            kind: args.source.kind,
-          },
-          targets: args.target_connection_ids.map((connectionId) => ({ connectionId })),
-          timezone: args.timezone,
-          title: args.title,
-        },
-        userId: owner.uid,
-      });
-      return { created: result.created, schedule: serializeSchedule(result.schedule) };
-    } catch (error) {
-      schedulingFailure(error);
-    }
+    return requireConfirmation({
+      tool: "create_schedule", accountId: owner.uid, args, effect: "publish",
+      summary: `Schedule the selected source for ${args.scheduled_for} (${args.timezone}) on ${args.target_connection_ids.length} connection${args.target_connection_ids.length === 1 ? "" : "s"}. This does not publish immediately.`,
+      creditCost: 0, creditCostIsEstimate: false,
+      affected: [
+        { type: args.source.kind, id: args.source.id, label: "Schedule source" },
+        ...args.target_connection_ids.slice(0, 5).map((id) => ({ type: "social_connection", id, label: "Selected social connection" })),
+      ],
+      run: async () => {
+        if (!writesEnabled()) throw writeUnavailable();
+        if (getMissingSchedulingRuntimeEnvVars().length) throw unavailable("Scheduling is not configured for this deployment.");
+        try {
+          const result = await createUserSchedule({
+            allowTikTokTargets: owner.emailVerified,
+            allowYouTubeTargets: owner.emailVerified,
+            input: {
+              caption: args.caption,
+              idempotencyKey: args.request_id,
+              scheduledFor: args.scheduled_for,
+              source: {
+                id: args.source.id,
+                kind: args.source.kind,
+              },
+              targets: args.target_connection_ids.map((connectionId) => ({ connectionId })),
+              timezone: args.timezone,
+              title: args.title,
+            },
+            userId: owner.uid,
+          });
+          return { created: result.created, schedule: serializeSchedule(result.schedule) };
+        } catch (error) {
+          schedulingFailure(error);
+        }
+      },
+    });
   }));
 }

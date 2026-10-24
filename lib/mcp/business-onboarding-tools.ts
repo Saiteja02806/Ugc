@@ -6,6 +6,7 @@ import { getMissingBackgroundJobCloudTasksEnvVars } from "../jobs/gcp-cloud-task
 import { businessContextStorageConfigured } from "./business-context-service";
 import { onboardingStateSchema, onboardingMutationSchema, onboardingMutationResultSchema, onboardingReceiptSchema } from "./business-onboarding-contract";
 import { readMcpBusinessOnboarding, mutateMcpBusinessOnboarding, getMcpBusinessOnboardingRequest, listMcpBusinessOnboardingRequests } from "./business-onboarding-service";
+import { confirmableOutputSchema, confirmedToolDescription, omitConfirmToken, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal } from "./read-tools";
 
 export const registeredBusinessOnboardingMcpTools = ["get_business_onboarding_capabilities", "get_business_onboarding", "mutate_business_onboarding", "get_business_onboarding_request", "list_business_onboarding_requests"] as const;
@@ -26,10 +27,20 @@ export function registerBusinessOnboardingMcpTools(server: McpServer) {
     inputSchema:z.strictObject({}), outputSchema:onboardingStateSchema, annotations:readOnly, scopeChallenge:requireScopes("brand:read"), _meta:oauthMetadata("brand:read"),
   }, (_args,ctx) => executeTool(() => readMcpBusinessOnboarding(principal(ctx,"brand:read"))));
   server.registerTool("mutate_business_onboarding", {
-    description:"Start or resume the application's saved onboarding: website, manual details/description or mobile-app IDE facts; save identity and verified owned logo; save goals; submit goals/timezone; reopen a background submission. Use the exact expected_state from get_business_onboarding and a saved UUID. Omit logo_storage_key to preserve the current logo, null to remove it. Legacy edit/reopen is unsupported. Requires brand:write, deployed schema and an enabled write gate. Start can analyze a source; submit can activate application access/trial and prepare Trending content. Preserve exact UUID/inputs; recover receipts after a lost response before any new action.",
-    inputSchema:onboardingMutationSchema, outputSchema:onboardingMutationResultSchema,
+    description:confirmedToolDescription("Start or resume the application's saved onboarding: website, manual details/description or mobile-app IDE facts; save identity and verified owned logo; save goals; submit goals/timezone; reopen a background submission. Use the exact expected_state from get_business_onboarding and a saved UUID. Omit logo_storage_key to preserve the current logo, null to remove it. Legacy edit/reopen is unsupported. Requires brand:write, deployed schema and an enabled write gate. Start can analyze a source; submit can activate application access/trial and prepare Trending content. Preserve exact UUID/inputs; recover receipts after a lost response before any new action."),
+    inputSchema:withConfirmToken(onboardingMutationSchema), outputSchema:confirmableOutputSchema(onboardingMutationResultSchema),
     annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:true,openWorldHint:true},scopeChallenge:requireScopes("brand:write"),_meta:oauthMetadata("brand:write"),
-  },(args,ctx)=>executeTool(()=>mutateMcpBusinessOnboarding(principal(ctx,"brand:write"),args)));
+  },(args,ctx)=>executeTool(async()=>{
+    const owner=principal(ctx,"brand:write");
+    const change=omitConfirmToken(args);
+    return requireConfirmation({
+      tool:"mutate_business_onboarding",accountId:owner,args,effect:"mutate_profile",
+      summary:`Apply the ${change.change.action} onboarding change to the saved business setup.`,
+      creditCost:0,creditCostIsEstimate:false,
+      affected:[{type:"business_onboarding",id:change.request_id,label:"Business onboarding"}],
+      run:()=>mutateMcpBusinessOnboarding(owner,change),
+    });
+  }));
   server.registerTool("get_business_onboarding_request", {
     description:"Recover your immutable accepted onboarding receipt and durable job IDs without repeating the action. Accepted answers/profile are historical; get_business_onboarding reads current progress. Works while onboarding writes are disabled. Use get_operation/retry_operation only under their supported job policies.",
     inputSchema:z.strictObject({request_id:z.uuid()}),outputSchema:z.strictObject({receipt:onboardingReceiptSchema}),annotations:readOnly,scopeChallenge:requireScopes("brand:read"),_meta:oauthMetadata("brand:read"),

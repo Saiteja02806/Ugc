@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
@@ -149,4 +150,8 @@ test("only approved OAuth scopes can be granted", () => {
   assert.deepEqual(parseMcpScopes("analytics:read"), ["analytics:read"]);
   assert.deepEqual(parseMcpScopes("publishing:read publishing:write"), ["publishing:read", "publishing:write"]);
   assert.equal(parseMcpScopes("publishing:read")?.includes("publishing:write"), false);
+  const consent = readFileSync(new URL("../../app/oauth/authorize/oauth-consent-view.tsx", import.meta.url), "utf8");
+  for (const scope of ["publishing:read", "publishing:write", "analytics:read"]) {
+    assert.match(consent, new RegExp(`"${scope}"`));
+  }
 });

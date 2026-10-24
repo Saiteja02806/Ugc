@@ -52,6 +52,7 @@ test("the authenticated job-status API returns the safe portrait reason for an e
 
 test("both Explore workflows render the actual public rejection as an alert instead of an empty workspace", () => {
   const { WorkflowPreviewCanvas } = load("components/explore/workflow-preview-canvas.tsx", {
+    "@/components/video/video-results.module.css": { default: {} },
     "react/jsx-runtime": jsxRuntime,
     "@/components/explore/hook-workflow-media-controls": { WorkflowMediaPlayer() { throw new Error("No video exists for this failed request"); } },
     "@/components/ui/button": {},

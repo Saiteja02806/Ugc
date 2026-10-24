@@ -2,7 +2,7 @@ import "server-only";
 import { getBackgroundJobForUser, type BackgroundJobRecord } from "../jobs/background-jobs";
 import { getMediaAssetForOwner } from "../media/media-storage";
 import { canonicalMediaReference, isTrustedMediaReferenceUrl } from "../media/media-reference";
-import { getHookReferenceGalleryItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
+import { getHookReferenceReleaseItems } from "../../worker/src/lib/explore-hook-reference-release.ts";
 import { parseHookKeyframeGenerationReceipt, isHookKeyframeImageInput, hookKeyframeSourceRatio } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
 import { hookKeyframeReceiptImageModel } from "../../worker/src/lib/hook-keyframe-image-model.ts";
 
@@ -47,12 +47,12 @@ export async function resolveOwnedHookKeyframeResult(params: { assetId: string; 
   const imageUrl = await canonicalMediaReference(asset.url, params.ownerId);
   if (typeof imageUrl !== "string" || !isTrustedMediaReferenceUrl(imageUrl)) throw new HookKeyframeGenerationError("This starting image is unavailable.", 409);
   return { imageUrl, assetId: asset.id, imageJobId: job.id, referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256,
-    startingFrameIndex: 0 as const, receipt, output: { mediaAssetId: asset.id, url: imageUrl, width: asset.width, height: asset.height,
+    startingFrameIndex: receipt.sourceFrame.index, receipt, output: { mediaAssetId: asset.id, url: imageUrl, width: asset.width, height: asset.height,
       ratio: asset.ratio, generationId } };
 }
 export async function resolveApprovedHookStartingFrame(params: { assetId: string; imageJobId: string; ownerId: string }) {
   const result = await resolveOwnedHookKeyframeResult(params);
-  const hook = getHookReferenceGalleryItems().find(item => item.id === result.referenceId);
+  const hook = getHookReferenceReleaseItems().find(item => item.id === result.referenceId);
   const source = hook ?? (await import("./starting-frame-reference-source.ts")).getAdditionalStartingFrameSources().find(item => item.id === result.referenceId);
   if (!source || source.videoSha256 !== result.sourceSha256) throw new HookKeyframeGenerationError("The Hook source changed. Prepare a new starting image.", 409);
   const workflow = "workflow" in source && source.workflow === "wall_text" ? "wall_text" as const

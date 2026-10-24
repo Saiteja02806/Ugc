@@ -1,4 +1,6 @@
 import catalogData from "./hook-keyframe-motion-catalog.json" with { type: "json" };
+import { getCuratedHookMotionPlan } from "./hook-curated-motion.ts";
+import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import plansA from "./hook-keyframe-motion-plans-a.json" with { type: "json" };
 import plansB from "./hook-keyframe-motion-plans-b.json" with { type: "json" };
 import plansC from "./hook-keyframe-motion-plans-c.json" with { type: "json" };
@@ -110,7 +112,15 @@ export type HookMotionCompilation =
     visualQualification: HookMotionReview["visualQualification"];
   };
 
-export function getHookKeyframeMotionReviewDraft(referenceId: string, sourceSha256: string) {
+export function getHookKeyframeMotionReviewDraft(referenceId: string, sourceSha256: string, startingFrameIndex = 0) {
+  const selected = getCuratedHookFrame(referenceId, sourceSha256);
+  const plan = getCuratedHookMotionPlan(referenceId, sourceSha256, startingFrameIndex);
+  if (selected && plan) return {
+    status: "review_draft" as const, referenceId, sourceSha256, displayTitle: `Hook ${selected.number}`,
+    sourceDurationSeconds: hookKeyframeMotionCatalog[referenceId]?.sourceDurationSeconds ?? 4, previewDurationSeconds: 4, sourceObservations: "Adapted to the selected visible moment; inspect the approved image and motion before generation.",
+    riskFlags: [] as HookMotionRisk[], candidatePlan: plan, staticReview: null, requiresDecision: false,
+    canSubmitPaidAnimation: false as const,
+  };
   const entry = hookKeyframeMotionCatalog[referenceId];
   if (!entry || entry.sourceSha256 !== sourceSha256) return undefined;
   const rewrite = hookKeyframeMotionRewrites[referenceId];

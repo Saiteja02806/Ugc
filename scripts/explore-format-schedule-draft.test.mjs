@@ -28,6 +28,24 @@ test("unsent schedule forms are versioned and isolated by owner, format, mode an
   }
 });
 
+test("a deliberately cleared caption survives draft reload without reapplying the account default", () => {
+  const key = drafts.formatScheduleDraftKey(scope);
+  const cleared = { ...draft, caption: "", captionInitialized: true };
+  const restored = drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key, cleared), key);
+  assert.equal(restored.caption, ""); assert.equal(restored.captionInitialized, true);
+  assert.equal(drafts.readFormatScheduleDraft(JSON.stringify({ version: 1, key, draft: { ...cleared, captionInitialized: "true" } }), key), null);
+});
+
+test("saved caption defaults wait for owned draft and schedule recovery before the form becomes eligible", () => {
+  const h = harness();
+  h.render(); assert.equal(h.form().captionEnabled, false);
+  h.hydrate(); h.render(); assert.equal(h.form().captionEnabled, true);
+  assert.equal(h.form().ownerId, "alice");
+  h.form().onChange({ ...draft, caption: "", captionInitialized: true });
+  h.render(); assert.equal(h.form().draft.captionInitialized, true);
+  assert.equal(h.externalCalls, 0);
+});
+
 test("slideshow shares the review form while labeling Instagram as an image post", () => {
   const h = harness();
   h.props.format = "slideshow"; h.props.imageOnly = true;

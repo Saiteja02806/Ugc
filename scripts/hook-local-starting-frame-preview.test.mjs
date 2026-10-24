@@ -23,6 +23,7 @@ const scope = { ownerId: "local", draftId: "draft", referenceId: "keyboard-hook"
 test("anonymous preview reads the selected canonical extraction receipt and never substitutes its poster", async () => {
   const calls = [];
   const client = load("lib/explore/hook-starting-frame-client.ts", {
+    "../../worker/src/lib/hook-curated-frames.ts": { getCuratedHookFrame: () => undefined },
     "../firebase/auth": { getCurrentUserIdToken: () => assert.fail("Anonymous extraction does not authenticate") },
     "../http/read-deadline": {},
   });

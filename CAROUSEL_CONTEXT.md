@@ -1,5 +1,52 @@
 # Carousel System Context
 
+## 2026-10-24 User resumes combined deployment
+
+- Saved-caption production migration is applied as `20261024061601`; RLS and service-only privileges verified. Current release includes all intentional worktree changes, including slideshow Save recovery, paired slide rendering and dedicated edit-worker/queue concurrency of two. Deployment and hosted acceptance are in progress; do not describe the earlier local fixture checks as final production acceptance.
+
+## 2026-10-24 Trending edit recovery and rendering latency (local; release paused)
+
+- Repeated report: Save edit appears reset after navigation/tab return and final
+  slideshow output is slow. Production read-only evidence: a six-slide edit took
+  9.48 seconds before worker start and 17.34 seconds in the worker; a separate
+  stale render waited 39.76 seconds. The service has one warm instance (service
+  minScale=1; revision minScale=0 is not evidence of scale-to-zero), one active
+  instance/request and one queue dispatch. Cold starts are not established.
+- Carousel PATCH skips its redundant initial editor read and returns the durable
+  queued snapshot after dispatch. A post-dispatch editor read can no longer mark
+  a successfully accepted render failed. Ownership/source/revision checks remain
+  in the existing save service; no schema or generation change.
+- Owner/scope-bound in-flight saves survive route remounts; small PATCH requests
+  use keepalive for document navigation. Lost responses get one read, never an
+  automatic second mutation. Reopened pending edits show Rendering and prevent
+  duplicate saves. Foreground status recovery preserves new unsaved typing;
+  unchanged completed edits show Edits saved. Initial feed recovery retries
+  transient read failures instead of silently retaining the original slides.
+- Changed slides render/upload in pairs, maintaining ordered immutable output,
+  fingerprint reuse and revision fencing. Each pair drains before failure, and
+  partial output is never published. Infrastructure proposes two edit instances
+  and two queue dispatches, retaining one warm instance and one job per instance.
+- Real-component Edge fixtures verify desktop/mobile Save -> document navigation
+  during PATCH -> retry failed recovery read -> tab return -> new rendered image,
+  with exactly one PATCH. This is isolated local acceptance, not production UI
+  verification. No production mutation, deployment or new paid generation.
+- Details and deployment requirements: `docs/trending-edit-recovery-2026-10-24.md`.
+
+## 2026-10-23 Saved post captions in shared scheduling UI (local)
+
+- Trending Carousel/Wall/Reaction publishing uses the shared saved-caption library
+  also available in Explore scheduling. Users can save multiple exact captions,
+  pick a default for untouched new posts, clear the current caption, or remove a
+  saved entry. Intentional blank drafts and accepted schedule snapshots remain
+  independent of later library/default changes. This is post metadata only;
+  generated slideshow copy, on-media text, rendering and content allocation do
+  not change. No provider receives the saved-caption library.
+- Owner-authenticated storage uses a separate service-only, revision-fenced row.
+  Additive migration `20261024061601_saved_post_captions.sql` and website release
+  are pending; production was not modified. Local browser fixtures cover default
+  reuse, save/clear/delete, account isolation, concurrency and lost responses.
+  Details: `docs/saved-post-captions-2026-10-23.md`.
+
 ## 2026-10-23 Trending feed idle-return request boundary (local)
 
 - Feed reads now bound owner-scoped browser authentication, HTTP and parsing

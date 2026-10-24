@@ -1,4 +1,6 @@
 import "server-only";
+import { startingFrameErrorMessage } from "./starting-frame-error";
+import { hookKeyframeProviderImageLabels } from "../../worker/src/lib/hook-keyframe-generation-contract.ts";
 import { createHash } from "node:crypto";
 import { requireAIStudioProUser } from "../ai-studio/server-access";
 import { FirebaseAuthRequestError } from "../firebase/server-auth";
@@ -38,7 +40,7 @@ async function readRequest(request: Request) {
     if (size > 16_384) throw new HookKeyframeGenerationError("This preparation is too large.", 413); chunks.push(next.value); }
   } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
   let input: unknown; try { input = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new HookKeyframeGenerationError("Send a valid starting-image preparation.", 400); }
-  if (!record(input) || Object.keys(input).some(key => !["referenceId", "sourceSha256", "draftId", "personImageAssetIds", "instructions", "idempotencyKey", "imageModel"].includes(key)) ||
+  if (!record(input) || input.preparationInputKey !== undefined && (typeof input.preparationInputKey !== "string" || input.preparationInputKey.length > 7000) || Object.keys(input).some(key => !["referenceId", "sourceSha256", "draftId", "personImageAssetIds", "instructions", "idempotencyKey", "imageModel", "preparationInputKey"].includes(key)) ||
     input.imageModel !== undefined && !isHookKeyframeImageModel(input.imageModel) ||
     typeof input.referenceId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(input.referenceId) ||
     typeof input.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/.test(input.sourceSha256) ||
@@ -51,12 +53,12 @@ async function readRequest(request: Request) {
   }
   // Missing model is the cached legacy Flash client, never an implicit Pro
   // upgrade of an already accepted request. Current clients send it explicitly.
-  return input as { referenceId: string; sourceSha256: string; draftId: string; personImageAssetIds: string[]; instructions: string; idempotencyKey: string; imageModel?: HookKeyframeImageModel };
+  return input as { referenceId: string; sourceSha256: string; draftId: string; personImageAssetIds: string[]; instructions: string; idempotencyKey: string; imageModel?: HookKeyframeImageModel; preparationInputKey?: string };
 }
 function samePreparation(receipt: HookKeyframeGenerationReceipt, input: Awaited<ReturnType<typeof readRequest>>) {
   return receipt.referenceId === input.referenceId && receipt.sourceSha256 === input.sourceSha256 && receipt.draftId === input.draftId &&
     (receipt.version === 1 ? input.imageModel === undefined : receipt.imageModel === input.imageModel) &&
-    receipt.instructions === input.instructions && JSON.stringify(receipt.personImageAssetIds) === JSON.stringify(input.personImageAssetIds);
+    (input.preparationInputKey === undefined || input.preparationInputKey === receipt.inputKey) && receipt.instructions === input.instructions && JSON.stringify(receipt.personImageAssetIds) === JSON.stringify(input.personImageAssetIds);
 }
 function queuedResponse(job: BackgroundJobRecord, ownerId: string) {
   const { receipt, generationId } = hookKeyframeReceiptFromJob(job, ownerId);
@@ -68,7 +70,7 @@ export async function handleHookKeyframeGeneration(request: Request) {
   try {
     const user = await requireAIStudioProUser(request), input = await readRequest(request);
     const key = requestStorageKey(user.uid, input.idempotencyKey);
-    const preparation = JSON.stringify([input.referenceId, input.sourceSha256, input.draftId, input.personImageAssetIds, input.instructions, input.imageModel ?? "legacy_flash"]);
+    const preparation = JSON.stringify([input.referenceId, input.sourceSha256, input.draftId, input.personImageAssetIds, input.instructions, input.imageModel ?? "legacy_flash", input.preparationInputKey ?? null]);
     const pending = inFlight.get(key);
     if (pending) {
       if (pending.preparation !== preparation) throw new HookKeyframeGenerationError("This request ID already belongs to different image instructions. Recover its saved result.", 409);
@@ -110,13 +112,15 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     if (!aspectRatio) throw new HookKeyframeGenerationError("This Hook's frame shape is not supported without changing its composition.", 400);
     if (frame.workflow && frame.workflow !== "hook" && !["9:16", "16:9"].includes(aspectRatio)) throw new HookKeyframeGenerationError("This reference's frame shape is not supported for starting-frame animation. Choose a portrait or landscape reference.", 400);
     const prompt = buildHookKeyframeImagePrompt({ personImageCount: photos.length, instructions: input.instructions,
-      referenceId: input.referenceId, sourceSha256: frame.sourceSha256 }).prompt;
+      referenceId: input.referenceId, sourceSha256: frame.sourceSha256, sourceFrameIndex: frame.frameIndex }).prompt;
     const model = input.imageModel ?? "nano_banana_2";
-    const partial = { ...(input.imageModel === undefined ? {} : { version: 2 as const, imageModel: input.imageModel }), ownerId, draftId: input.draftId, referenceId: input.referenceId, sourceSha256: frame.sourceSha256,
-      sourceFrame: { index: 0 as const, timeSeconds: 0 as const, width: frame.width, height: frame.height, sha256: frame.frameSha256 },
+    const partial = { version: frame.frameIndex > 0 ? 3 as const : input.imageModel === undefined ? 1 as const : 2 as const,
+      ...(frame.frameIndex > 0 || input.imageModel !== undefined ? { imageModel: model } : {}), ownerId, draftId: input.draftId, referenceId: input.referenceId, sourceSha256: frame.sourceSha256,
+      sourceFrame: { index: frame.frameIndex, timeSeconds: frame.frameTimeSeconds, width: frame.width, height: frame.height, sha256: frame.frameSha256 },
       personImageAssetIds: input.personImageAssetIds, instructions: input.instructions };
-    const receipt: HookKeyframeGenerationReceipt = { ...partial, version: input.imageModel === undefined ? 1 : 2, purpose: "hook_starting_frame", promptVersion: HOOK_KEYFRAME_IMAGE_PROMPT_VERSION,
+    const receipt: HookKeyframeGenerationReceipt = { ...partial, version: partial.version ?? 1, purpose: "hook_starting_frame", promptVersion: HOOK_KEYFRAME_IMAGE_PROMPT_VERSION,
       inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(prompt) };
+    if (frame.frameIndex > 0 && input.imageModel === undefined || (frame.frameIndex > 0 || input.preparationInputKey !== undefined) && input.preparationInputKey !== receipt.inputKey) throw new HookKeyframeGenerationError("The source frame changed. Refresh this preparation before generating.", 409);
     // Only already-public canonical source pixels are stored here. No portraits,
     // account ID or draft ID enter this content-addressed snapshot path.
     const snapshot = await uploadBufferToStorage({ key: hookKeyframeSnapshotKey(receipt),
@@ -124,12 +128,13 @@ async function submitPreparation(ownerId: string, input: Awaited<ReturnType<type
     const referenceImageUrls = [snapshot.url, ...photos.map(photo => photo.url)];
     if (!isTrustedMediaReferenceUrl(snapshot.url) || !isHookKeyframeImageInput({ receipt, ownerId, model, aspectRatio, prompt,
       referenceImageUrl: snapshot.url, referenceImageUrls })) throw new HookKeyframeGenerationError("The Hook scene snapshot could not be verified. No generation was submitted.", 503);
+    if (model === "seedream_5_pro" && `${prompt}\n\nIMAGE INPUT ORDER:\n${hookKeyframeProviderImageLabels(input.personImageAssetIds.length, HOOK_KEYFRAME_IMAGE_PROMPT_VERSION).join("\n")}`.length > 4_000) throw new HookKeyframeGenerationError("Shorten the image instructions for Seedream to fit its 4,000-character prompt limit including image roles.", 400);
     const creditCost = hookImageCreditCost(model);
     await reserveBillingCredits({ amount: creditCost, idempotencyKey: key, jobType: "generate_image", userId: ownerId });
     // Use the existing image reservation/job primitives. An uncertain dispatch is
     // retained for recovery, never refunded or retried as a new paid generation.
     const job = await createAndDispatchBackgroundJob({ jobType: "generate_image", userId: ownerId, projectId: "hook-starting-frame", idempotencyKey: key, maxAttempts: 1,
-      input: { generationId: crypto.randomUUID(), model, aspectRatio, prompt, referenceImageUrl: snapshot.url,
+      input: { generationId: crypto.randomUUID(), model, ...(model === "seedream_5_pro" ? { provider: "openrouter" } : {}), aspectRatio, prompt, referenceImageUrl: snapshot.url,
         referenceImageUrls, hookKeyframe: receipt, exploreFormat: frame.workflow === "wall_text" ? "wall_text" : "hook", creditCost, batchSize: 1, batchIndex: 1 },
     }, { beforeDispatch: async stored => {
       const existing = hookKeyframeReceiptFromJob(stored, ownerId);
@@ -161,7 +166,7 @@ export async function handleHookKeyframeStatus(request: Request) {
       output = (await resolveOwnedHookKeyframeResult({ assetId: raw.mediaAssetId, imageJobId: job.id, ownerId: user.uid })).output;
     }
     return Response.json({ ok: true, creditCost: input.creditCost ?? hookImageCreditCost(hookKeyframeReceiptImageModel(receipt)), job: { id: job.id, status: job.status,
-      isTerminal: ["completed", "failed", "cancelled"].includes(job.status), error: job.errorMessage, generationId, receipt, output } }, { headers });
+      isTerminal: ["completed", "failed", "cancelled"].includes(job.status), error: startingFrameErrorMessage(job.errorMessage), generationId, receipt, output } }, { headers });
   } catch (error) { return errorResult(error); }
 }
 

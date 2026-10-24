@@ -4,6 +4,8 @@ import type { ScheduleCreateTargetInput } from "../scheduling/types.ts";
 export type WorkflowScheduleDraft = {
   platform: string; caption: string; date: string; time: string; connectionId?: string; timezone?: string;
   platforms?: string[]; connectionIds?: Record<string, string>;
+  /** A deliberate blank must survive returning to a saved draft. */
+  captionInitialized?: boolean;
 };
 
 export function workflowSelectedPlatforms(draft: WorkflowScheduleDraft): string[] {

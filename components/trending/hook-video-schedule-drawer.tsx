@@ -23,6 +23,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { usePublishingPreferencesDefault } from "@/components/scheduling/use-publishing-preferences-default";
+import { PostCaptionDefault, PostCaptionField } from "@/components/scheduling/post-caption-field";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getBrowserTimeZone, getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
@@ -128,7 +129,11 @@ export function HookVideoScheduleDrawer({
   >({});
   const [manualScheduledDate, setScheduledDate] = useState(initialDateTime.date);
   const [manualScheduledTime, setScheduledTime] = useState(initialDateTime.time);
-  const [caption, setCaption] = useState("");
+  const [captionState, setCaptionState] = useState({ owner: accountId, text: "", initialized: false });
+  const caption = captionState.owner === accountId ? captionState.text : "";
+  const captionInitialized = captionState.owner === accountId && captionState.initialized;
+  function setCaption(text: string) { setCaptionState(previous => ({ owner: accountId, text, initialized: previous.owner === accountId && previous.initialized })); }
+  function setCaptionInitialized(initialized: boolean) { setCaptionState(previous => ({ owner: accountId, text: previous.owner === accountId ? previous.text : "", initialized })); }
   const [hasManualScheduleTime, setHasManualScheduleTime] = useState(false);
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
@@ -429,6 +434,7 @@ export function HookVideoScheduleDrawer({
         overlayClassName="bg-overlay [backdrop-filter:none] supports-backdrop-filter:[backdrop-filter:none]"
         className="max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-[18px] border border-border bg-background p-0 ring-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-[960px]"
       >
+        <PostCaptionDefault ownerId={user?.uid ?? null} enabled={!submitting} value={caption} initialized={captionInitialized} onChange={value => { setCaptionInitialized(true); setCaption(value); }} />
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2">
             {stage === "review" ? (
@@ -536,27 +542,8 @@ export function HookVideoScheduleDrawer({
                 </section>
 
                 <div className="min-w-0 space-y-5">
-                  <section className="border-t border-border pt-4" aria-labelledby="schedule-caption-heading">
-                    <label className="block text-xs font-semibold text-muted">
-                      <span id="schedule-caption-heading">
-                        Caption <span className="font-medium">(optional)</span>
-                      </span>
-                      <span className="mt-1 block text-[11px] font-medium leading-4 text-muted">
-                        This appears with the published post, separately from the text in your Hook Video.
-                      </span>
-                      <textarea
-                        name="caption"
-                        rows={4}
-                        maxLength={5000}
-                        value={caption}
-                        onChange={(event) => setCaption(event.target.value)}
-                        placeholder="Write a caption for this post..."
-                        className="mt-2 w-full resize-y rounded-control border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground-strong outline-none placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
-                      />
-                      <span className="mt-1 block text-right text-[11px] font-medium text-muted">
-                        {caption.length}/5000
-                      </span>
-                    </label>
+                  <section className="border-t border-border pt-4">
+                    <PostCaptionField applyDefault={false} ownerId={user?.uid ?? null} value={caption} initialized={captionInitialized} disabled={submitting} onChange={value => { setCaptionInitialized(true); setCaption(value); }} description="This appears with the published post, separately from the text in your Hook Video." />
                   </section>
 
                   <section className="border-t border-border pt-4" aria-labelledby="schedule-time-heading">

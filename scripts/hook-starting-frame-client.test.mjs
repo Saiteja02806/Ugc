@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { getCuratedHookFrame } from "../worker/src/lib/hook-curated-frames.ts";
+import curatedFrames from "../worker/src/lib/hook-curated-frames.json" with { type: "json" };
 
 const sha = "a".repeat(64), png = Buffer.from("decoded PNG fixture"), pngSha = createHash("sha256").update(png).digest("hex");
 function fixture({ token = "owner-token", headerChanges = {}, body = png, status = 200, error } = {}) {
@@ -20,6 +22,7 @@ function fixture({ token = "owner-token", headerChanges = {}, body = png, status
       "X-Hook-Frame-Width": "720", "X-Hook-Frame-Height": "1280", ...headerChanges,
     } });
   }, require(name) {
+    if (name.includes("hook-curated-frames")) return { getCuratedHookFrame };
     if (name === "../firebase/auth") return { getCurrentUserIdToken: async owner => { owners.push(owner); return token; } };
     if (name === "../http/read-deadline") return { withReadDeadline: (fn, signal) => fn(signal ?? new AbortController().signal) };
     throw Error(`Unexpected import ${name}`);
@@ -44,6 +47,19 @@ test("stale source, poster/nonzero frame, malformed dimensions and partial downl
     await assert.rejects(fixture({ headerChanges }).run(), /does not match/);
   }
   await assert.rejects(fixture({ body: Buffer.from("incomplete PNG") }).run(), /incomplete/);
+});
+test("curated response must carry the exact approved pixels and timestamp rather than frame zero", async () => {
+  const selected = curatedFrames.frames[0], bytes = readFileSync(new URL(`../public${selected.publicPath}`, import.meta.url));
+  const scope = { referenceId: selected.referenceId, sourceSha256: selected.sourceSha256 };
+  const headers = { "Content-Type": "image/png", "X-Hook-Reference-Id": selected.referenceId, "X-Hook-Source-Sha256": selected.sourceSha256,
+    "X-Hook-Frame-Sha256": selected.sha256, "X-Hook-Frame-Index": String(selected.index), "X-Hook-Frame-Time": String(selected.timeSeconds),
+    "X-Hook-Frame-Width": String(selected.width), "X-Hook-Frame-Height": String(selected.height) };
+  const read = fixture().exports.readVerifiedHookStartingFrame;
+  const result = await read(new Response(bytes, { headers }), scope); assert.equal(result.frame.index, selected.index);
+  for (const patch of [{ "X-Hook-Frame-Index": "0" }, { "X-Hook-Frame-Time": "0" }, { "X-Hook-Frame-Sha256": pngSha }]) {
+    await assert.rejects(read(new Response(bytes, { headers: { ...headers, ...patch } }), scope), /does not match/);
+  }
+  await assert.rejects(read(new Response(png, { headers }), scope), /incomplete/);
 });
 test("authentication and server admission failures are actionable and never retried as generation", async () => {
   const signedOut = fixture({ token: null }); await assert.rejects(signedOut.run(), /Sign in/); assert.equal(signedOut.calls.length, 0);

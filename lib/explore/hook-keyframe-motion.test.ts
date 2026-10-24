@@ -46,7 +46,7 @@ function fixture(plan?: HookMotionPlan): HookMotionCatalogEntry {
 
 test("every active canonical reference has an exact source-bound motion review record", () => {
   const active = getHookReferenceGalleryItems();
-  assert.equal(active.length, 98 + (octoberBatch.mediaStatus === "published" && octoberBatch.activation === "active" ? 1 : 0) + (octoberRefresh.mediaStatus === "published" && octoberRefresh.activation === "active" ? 8 : 0));
+  assert.equal(active.length, 95 + (octoberBatch.mediaStatus === "published" && octoberBatch.activation === "active" ? 1 : 0) + (octoberRefresh.mediaStatus === "published" && octoberRefresh.activation === "active" ? 8 : 0));
   assert.equal(Object.keys(hookKeyframeMotionCatalog).length, 107);
   for (const hook of active) {
     const entry = hookKeyframeMotionCatalog[hook.id];

@@ -125,7 +125,7 @@ test("carries one resolved soundtrack across the complete Hook and Demo render",
   assert.match(databaseAccess, /selectHookAudio/u);
   assert.match(scheduleRoute, /hookAudioAssetId: hookAudio\?\.audioAssetId/u);
   assert.match(scheduleRoute, /hookCompositionAudioRenderVersion/u);
-  assert.match(workerRender, /downloadAudioToBuffer\(payload\.hookAudio\.audioUrl/u);
+  assert.match(workerRender, /resolveOwnedPrivateMediaUrl\(payload\.hookAudio\.audioUrl, payload\.userId\)\.then\(url => downloadAudioToBuffer\(url/u);
   assert.match(workerRender, /audioFitMode: payload\.hookAudio\.fitMode/u);
   assert.match(workerRender, /-stream_loop/u);
   assert.match(workerRender, /Skipping short composition soundtrack/u);

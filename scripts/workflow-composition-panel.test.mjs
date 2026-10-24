@@ -18,6 +18,7 @@ function harness(code, exportName) {
   let cursor = 0;
   const slots = [];
   const imports = {
+    "@/components/video/video-results.module.css": { default: {} },
     react: { useState(initial) { const i = cursor++; slots[i] ??= initial; return [slots[i], (value) => { slots[i] = value; }]; }, useRef(initial) { return slots[cursor++] ??= {current:initial}; } },
     "lucide-react": Object.fromEntries(["AudioLines", "Check", "ChevronDown", "Info", "Play", "Plus", "Video", "Volume2"].map((name) => [name, name])),
     "@/components/explore/hook-workflow-media-controls": { RemoveMediaButton: "remove", WorkflowFilePicker: "picker", WorkflowMediaPlayer: "player", formatMediaSeconds: (seconds) => `${seconds}s` },

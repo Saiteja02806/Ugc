@@ -31,7 +31,8 @@ import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import { parseImageReferenceContext } from "../lib/image-reference-context.js";
 import { slideshowReferencePrompt, slideshowReferenceImagesPrompt } from "../lib/slideshow-reference-prompt.js";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "../lib/slideshow-generation-contract.js";
-import { isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
+import { isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, hookKeyframeSceneBytesMatch, hookKeyframeProviderImageLabels, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
+import { downloadReferenceImageContext } from "../lib/reference-image-download.js";
 
 const MAX_CHARACTER_PROMPT_LENGTH = 32_000;
 
@@ -85,6 +86,7 @@ function getInput(job: BackgroundJobRow): GenerateImageInput {
   const referenceImageUrl = getOptionalHttpsUrl(job.input_json.referenceImageUrl);
   const referenceImageUrls = job.input_json.referenceImageUrls === undefined ? undefined : parseImageReferenceContext(job.input_json.referenceImageUrls);
   const hookKeyframe = job.input_json.hookKeyframe === undefined ? undefined : parseHookKeyframeGenerationReceipt(job.input_json.hookKeyframe);
+  if (hookKeyframe && model === "seedream_5_pro" && provider !== "openrouter") throw new ProviderRequestNotSubmittedError("Starting-frame Seedream jobs require the saved OpenRouter route.");
   if (job.input_json.hookKeyframe !== undefined && (!hookKeyframe || job.input_json.exploreFormat !== "hook" ||
     job.input_json.slideshowReferenceContract !== undefined || job.input_json.slideshowGeneration !== undefined ||
     job.input_json.slideshowBusinessContext !== undefined || job.input_json.subjectReferenceIndex !== undefined ||
@@ -213,11 +215,19 @@ export async function runGenerateImageJob(
         ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
         : referenceImageUrl;
       const plan = input.slideshowReferenceContract?.version === 4 ? input.slideshowReferenceContract.plan : undefined;
-      const referenceLabels = plan ? input.referenceImageUrls!.map((_, index) => plan.images.filter(image => image.imageIndex === index + 1).map(image => `${image.label} (${image.role})`).join("; ")) : undefined;
+      const hook = input.hookKeyframe;
+      if (hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model)) {
+        const downloaded = await downloadReferenceImageContext(referenceImages as string[]);
+        if (downloaded.length !== hook.personImageAssetIds.length + 1 || !hookKeyframeSceneBytesMatch(hook, downloaded[0])) throw new ProviderRequestNotSubmittedError("The starting frame does not match its verified source. No image generation was submitted.");
+      }
+      const hookLabels = hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model) ? hookKeyframeProviderImageLabels(hook.personImageAssetIds.length, hook.promptVersion === 1 ? 2 : hook.promptVersion) : undefined;
+      const labelledPrompt = hookLabels ? `${providerPrompt}\n\nIMAGE INPUT ORDER:\n${hookLabels.join("\n")}` : providerPrompt;
+      if (input.model === "seedream_5_pro" && labelledPrompt.length > 4_000) throw new ProviderRequestNotSubmittedError("Shorten the Seedream image instructions to fit its 4,000-character limit including image roles.");
+      const referenceLabels = hookLabels ?? (plan ? input.referenceImageUrls!.map((_, index) => plan.images.filter(image => image.imageIndex === index + 1).map(image => `${image.label} (${image.role})`).join("; ")) : undefined);
       generated =
         input.model === "seedream_5_pro"
           ? await generateOpenRouterSeedreamImage({
-              prompt: providerPrompt, aspectRatio: input.aspectRatio,
+              prompt: labelledPrompt, aspectRatio: input.aspectRatio,
               referenceImageUrl,
               ...(input.referenceImageUrls ? { referenceImageUrls: referenceImages as string[] } : {}),
             })
@@ -229,11 +239,11 @@ export async function runGenerateImageJob(
               ...(input.hookKeyframe && input.hookKeyframe.promptVersion >= 2 ? [input.hookKeyframe] as const : []),
             )
           : await generateOpenAiImageBuffer(
-              providerPrompt,
+              labelledPrompt,
               input.aspectRatio,
               referenceImages,
               input.model === "gpt_image_2_5" ? SLIDESHOW_IMAGE_MODEL : input.model === "gpt_image_2_5_flare" ? SLIDESHOW_FLARE_IMAGE_MODEL : undefined,
-              Boolean(input.slideshowReferenceContract),
+              Boolean(input.slideshowReferenceContract || input.hookKeyframe),
               ...(referenceLabels ? [referenceLabels] as const : []),
             );
     } catch (error) {
@@ -298,7 +308,7 @@ export async function runGenerateImageJob(
     generatedImageBuffer,
     input.aspectRatio,
     { preserveComposition: Boolean(input.slideshowReferenceContract || input.hookKeyframe),
-      ...(input.hookKeyframe?.version === 2 && input.hookKeyframe.promptVersion >= 2 ? { cropNearRatioPadding: true } : {}) },
+      ...(input.hookKeyframe && input.hookKeyframe.version !== 1 && input.hookKeyframe.promptVersion >= 2 ? { cropNearRatioPadding: true } : {}) },
   );
 
   await context.checkpoint({

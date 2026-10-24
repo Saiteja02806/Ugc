@@ -123,10 +123,10 @@ export default function Home() {
 
             <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
-                You built the SaaS.
+                Meet your SaaS&apos;s
               </span>
               <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                Now get it seen.
+                new content creator.
               </span>
             </h1>
 
@@ -254,10 +254,10 @@ export default function Home() {
       <footer className="border-t border-border bg-card px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-10 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <LandingLogo />
               <div>
-                <p className="font-semibold text-foreground-strong">UGC Pilot</p>
+                <p className="font-semibold text-foreground-strong">UGCPilot</p>
                 <p className="mt-0.5 text-xs text-muted">
                   AI UGC video &amp; content studio
                 </p>
@@ -275,7 +275,7 @@ export default function Home() {
         </div>
 
         <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} UGC Pilot. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
           <p>{visibleSocialPlatformList} are trademarks of their respective owners.</p>
         </div>
       </footer>

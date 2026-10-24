@@ -19,7 +19,9 @@ resource "google_cloud_run_v2_service" "carousel_edit_worker" {
 
     scaling {
       min_instance_count = 0
-      max_instance_count = 1
+      # Separate interactive edits need not wait behind another user's render.
+      # Keep one request per instance to bound raster memory/CPU contention.
+      max_instance_count = 2
     }
 
     containers {

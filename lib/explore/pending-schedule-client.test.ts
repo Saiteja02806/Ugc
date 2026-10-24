@@ -5,7 +5,9 @@ import { getConfirmedScheduleTargetSettings, getDefaultScheduleTargetSettings, n
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 function fixture() {
-  const settings = getConfirmedScheduleTargetSettings("tiktok", { ...getDefaultScheduleTargetSettings("tiktok"), privacyLevel: "PUBLIC_TO_EVERYONE" });
+  // This fixture exercises an explicitly selected commercial disclosure. The
+  // application's default is off; do not make the test depend on the old default.
+  const settings = getConfirmedScheduleTargetSettings("tiktok", { ...getDefaultScheduleTargetSettings("tiktok"), privacyLevel: "PUBLIC_TO_EVERYONE", commercialContentDisclosureEnabled: true, brandOrganic: true });
   const saved: SavedExploreSchedule = { version: 1, owner: "owner", signature: "test", confirmed: false,
     input: { version: 1, requestKey: id(1), draft: { version: 1, kind: "hook", sourceAssetId: id(6), demoAssetId: null, demoAudioAssetId: null,
       demoAudioPlayback: "once", backgroundAssetId: null, backgroundPlayback: "once", subtitles: null },

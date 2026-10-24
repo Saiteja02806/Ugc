@@ -6,10 +6,12 @@ import path from "node:path";
 import ts from "typescript";
 
 function load(file, imports = {}, globals = {}) {
+  if (file.endsWith(".json")) return { default: JSON.parse(readFileSync(new URL(`../${file}`, import.meta.url), "utf8")) };
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file,
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, Error, URL, URLSearchParams, Headers, AbortController, AbortSignal, process: { env: {} }, require: name => {
+    if (name.endsWith(".module.css")) return { default: {} };
     if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts");
     if (name in imports) return imports[name];
     if (name === "@/lib/ai-studio/pending-generation") return load("lib/ai-studio/pending-generation.ts", imports, globals);
@@ -17,6 +19,7 @@ function load(file, imports = {}, globals = {}) {
     if (name === "@/components/generation/use-generation-discovery") return load("components/generation/use-generation-discovery.ts", imports, globals);
     if (name === "@/lib/explore/slideshow-image") return { resolveSlideshowImage: async image => image };
     if (name === "@/worker/src/lib/image-reference-context") return load("worker/src/lib/image-reference-context.ts");
+    if (name.startsWith("@/worker/src/")) return load(`${name.slice(2)}.ts`, imports, globals);
     if (name.startsWith("./") || name.startsWith("../")) return load(path.posix.join(path.posix.dirname(file), name), imports, globals);
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, component) => String(component) });
     throw new Error(`Unexpected import ${name}`);
@@ -126,7 +129,7 @@ test('switching references replaces its suggestion, preserves user text, and rem
   assert.equal(next.props.prompt, 'My requested changes');
   assert.equal(h.find(next.props.promptSupplement, 'textarea').props.value, 'Second performance');
   const removed = h.selectGallery(undefined).composer;
-  assert.equal(removed.props.promptSupplement, undefined);
+  assert.equal(h.find(removed.props.promptSupplement, 'textarea'), null);
   assert.equal(removed.props.prompt, 'My requested changes');
 });
 
@@ -139,7 +142,7 @@ for (const format of ["hook", "wall_text"]) {
     const composer = h.render().composer;
     const duration = composer.props.settings.props.children.find(n => h.find(n, 'output'));
     assert.equal(h.find(duration, 'span').props.children, 'Duration');
-    assert.equal(h.find(duration, 'output').props.children[1].props.children, `${Math.round(seconds)} sec`);
+    assert.equal(h.find(duration, 'output').props.children[1].props.children, `${seconds} sec`);
     assert.equal(h.find(duration, 'small').props.children, `${seconds}s reference · source timing kept`);
     assert.equal(composer.props.estimatedCredits, Math.round(seconds) * 4);
     await composer.props.onSubmit({ preventDefault() {} });
@@ -147,25 +150,26 @@ for (const format of ["hook", "wall_text"]) {
     assert.equal(h.requests[0].body.referenceVideoMode, 'edit');
     assert.equal(h.requests[0].body.prompt, 'Keep the reference performance. Remove captions.\n\nMy requested changes');
   });
-  for (const [seconds, selected] of [[2.8, 3], [3.3, 3], [3.49, 3], [3.5, 4], [3.7, 4], [6.3, 6], [6.7, 7]]) test(`${format}: ${seconds}s reference auto-selects ${selected}s`, async () => {
+  for (const [seconds, selected] of [[2.8, 3], [3.3, 3], [3.49, 3], [3.5, 4], [3.7, 4], [6.3, 6], [6.7, 7]]) test(`${format}: ${seconds}s source displays its exact duration and bills ${selected}s`, async () => {
     const h = harness(format, { captureRequests: true, referenceDuration: seconds });
     await h.flushEffects();
     const composer = h.render().composer;
     const duration = composer.props.settings.props.children.find(n => h.find(n, 'output'));
-    assert.equal(h.find(duration, 'output').props.children[1].props.children, `${selected} sec`);
+    assert.equal(h.find(duration, 'output').props.children[1].props.children, `${seconds} sec`);
     assert.equal(composer.props.estimatedCredits, selected * 4);
     await composer.props.onSubmit({ preventDefault() {} });
     assert.equal(h.requests[0].body.durationSeconds, selected);
     assert.equal(h.requests[0].body.referenceVideoMode, 'edit');
   });
-  test(format + ': WAN reference guidance keeps an independent supported output duration', async () => {
+  test(format + ': WAN Create from reference keeps an independent supported output duration', async () => {
     const h = harness(format, { captureRequests: true, referenceDuration: 6.7, wanEnabled: true });
     await h.flushEffects();
     h.render().composer.props.settings.props.children.find(n => n?.props?.ariaLabel === 'Video model').props.onChange('wan_3_0');
+    h.find(h.render().composer.props.promptSupplement, 'select').props.onChange({ target: { value: 'reference' } });
     const composer = h.render().composer;
     assert.equal(composer.props.settings.props.children.some(n => h.find(n, 'output')), false);
     await composer.props.onSubmit({ preventDefault() {} });
-    assert.equal(h.requests[0].body.referenceVideoMode, undefined);
+    assert.equal(h.requests[0].body.referenceVideoMode, 'reference');
     assert.equal(Number.isInteger(h.requests[0].body.durationSeconds), true);
     assert.equal(h.requests[0].body.useGalleryVideoReference, true);
   });

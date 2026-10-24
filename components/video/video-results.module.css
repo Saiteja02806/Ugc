@@ -14,3 +14,28 @@
 @container video-result (min-width: 880px) {
   .row[data-ratio="16:9"] { grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr); }
 }
+
+/* Explore's result list is a compact review surface, including while generating. */
+.card[data-compact], .canvasResults { --result-preview-height: clamp(180px, calc(100dvh - 320px), 300px); }
+.card[data-compact] { max-width: 48rem; margin-inline: 0; }
+.card[data-compact] .row { --result-ratio: .5625; gap: 12px 20px; }
+.card[data-compact] .row[data-ratio="4:5"] { --result-ratio: .8; }
+.card[data-compact] .row[data-ratio="1:1"] { --result-ratio: 1; }
+.card[data-compact] .row[data-ratio="16:9"] { --result-ratio: 1.777778; }
+.card[data-compact] .media { width: min(100%, calc(var(--result-preview-height) * var(--result-ratio))); max-width: 100%; }
+.card[data-compact] .prompt { max-width: 26rem; padding-top: 0; }
+.card[data-compact] .promptHeading { margin-bottom: 6px; gap: 4px 8px; }
+.card[data-compact] .promptToggle { padding: 8px 10px; gap: 8px; border-radius: 10px; }
+.card[data-compact] .promptText { font-size: 12px; line-height: 20px; }
+.card[data-compact] .promptText[data-expanded="false"] { -webkit-line-clamp: 2; }
+@container video-result (min-width: 580px) {
+  .card[data-compact] .row { grid-template-columns: minmax(0, min(44cqw, calc(var(--result-preview-height) * var(--result-ratio)))) minmax(0, 1fr); gap: 20px; }
+}
+
+/* Talking Head uses a separate result canvas, with the same preview height budget. */
+.canvasResults { gap: 16px; }
+.canvasPending { width: min(100%, calc(var(--result-preview-height) * .5625)); }
+.canvasPending[data-ratio="4:5"] { width: min(100%, calc(var(--result-preview-height) * .8)); }
+.canvasPending[data-ratio="1:1"] { width: min(100%, var(--result-preview-height)); }
+.canvasPending[data-ratio="16:9"] { width: min(100%, calc(var(--result-preview-height) * 16 / 9)); }
+.canvasResults .canvasPlayer { max-height: var(--result-preview-height); }

@@ -28,6 +28,17 @@ async function main() {
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/trending";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const items=[1,2,3].map(n=>{const slides=[1,2].map(s=>({headline:'Post '+n+' slide '+s,renderedUrl:'/slide-'+s+'.jpg',slideNumber:s,slideType:s===1?'hook':'body',status:'ready',subtext:null}));return {id:'post-'+n,assignmentId:'assignment-'+n,creativeId:'creative-'+n,feedItemId:'post-'+n,format:'carousel',position:n,readiness:'preview_ready',source:'new',creative:{candidateIndex:n,carouselId:'carousel-'+n,categorySlug:null,generationBatchId:'batch',projectId:'project',readySlideCount:2,selectedAngle:'Post '+n,slideCount:2,slides,status:'completed',thumbnailUrl:slides[0].renderedUrl,updatedAt:'2026-10-19T00:00:00Z'}}});
   const decisions=[], errors=[], writes=[];
+  let editRecord = null, editReadFailures = 0, editSaveGate = null;
+  const editPatches = [];
+  const editMode = process.argv.includes('--edit-recovery');
+  const initialEdit = item => ({ assignmentId:item.assignmentId,creativeId:item.creativeId,format:'carousel',id:null,
+    revision:0,renderState:'draft',renderError:null,renderJobId:null,renderOutput:null,updatedAt:null,source:null,
+    content:{format:'carousel',version:'trending-creative-edit-v1',slides:item.creative.slides.map(s=>({
+      slideId:'slide-'+s.slideNumber,slideNumber:s.slideNumber,headline:s.headline,subtext:'',ctaText:'',
+      backgroundAssetId:'image-'+s.slideNumber,backgroundUrl:s.renderedUrl,originalBackgroundAssetId:'image-'+s.slideNumber,
+      originalBackgroundUrl:s.renderedUrl,renderedUrl:s.renderedUrl,textPosition:{x:.5,y:.5},renderFormat:'4:5',
+      structureId:'structure_1',visualRole:'human',originalVisualRole:'human',productVisualEligibility:null,
+      storyLayoutVariant:null,storyTextTreatment:null }))} });
   let historyFailure=false, quotaEmpty=false, releaseOlder;
   let olderPageGate = process.argv.includes('--quota-only') ? new Promise(resolve=>{releaseOlder=resolve}) : null;
   const reactions=items.map(item=>({...item,format:'reaction',creative:{aspectRatio:'9:16',caption:'Post '+item.position,clipAssetId:'clip',durationSeconds:10,mediaAssetId:'media',previewUrl:'/reel.mp4',primaryReaction:'preview',thumbnailUrl:null,title:'Reel '+item.position}}));
@@ -37,9 +48,11 @@ async function main() {
     if(u.pathname==='/')return res.end('<!doctype html><html class="dark"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><body style="background:#202020;color:white"><div id="root"></div><script src="/bundle.js"></script>');
     if(u.pathname==='/favicon.ico'){res.writeHead(204);return res.end();}
     if(u.pathname==='/bundle.js'){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(out,'bundle.js')));}
+    if(/^\/[\w.-]+\.js$/.test(u.pathname)&&fs.existsSync(path.join(out,u.pathname.slice(1)))){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(out,u.pathname.slice(1))));}
     if(u.pathname==='/style.css'){res.setHeader('Content-Type','text/css');return res.end(css);}
     if(u.pathname==='/reel.mp4'){res.setHeader('Content-Type','video/mp4');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/hook2-preview.mp4')));}
-    if(/^\/slide-[12]\.jpg$/.test(u.pathname)){res.setHeader('Content-Type','image/jpeg');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/slideshow/image_'+(Number(u.pathname[7])-1)+'.jpg')));}
+    if(/^\/(?:updated-)?slide-[12]\.jpg$/.test(u.pathname)){res.setHeader('Content-Type','image/jpeg');return res.end(fs.readFileSync(path.join(root,'public/marketing/showcase-part2/slideshow/image_'+(Number(u.pathname.match(/slide-(\d)/)[1])-1)+'.jpg')));}
+    if(/^\/explore-text-fonts\/[a-z]+-(400|500|700)\.woff2$/.test(u.pathname)){res.setHeader('Content-Type','font/woff2');return res.end(fs.readFileSync(path.join(root,'public',u.pathname)));}
     if(u.pathname==='/fixture/feed'){
       if(u.searchParams.get('quota')) return json(u.searchParams.get('owner')==='owner-a'&&u.searchParams.get('quota')==='quota-a'&&!quotaEmpty?[items[2]]:[]);
       return json(u.searchParams.get('owner')==='owner-a'?(req.headers.referer?.includes('format=reaction')?reactions:items).filter(item=>!decisions.some(d=>d.assignmentId===item.assignmentId)):[]);
@@ -47,6 +60,22 @@ async function main() {
     if(u.pathname==='/fixture/decision'){let body='';for await(const part of req)body+=part;decisions.push(JSON.parse(body));return json({ok:true});}
     if(u.pathname.startsWith('/api/')){
       if(req.method!=='GET')writes.push(u.pathname);
+      if(editMode && u.pathname==='/api/trending/carousel-product-assets')return json({ok:true,assets:[]});
+      if(editMode && u.pathname.startsWith('/api/trending/creatives/carousel/') && u.pathname.endsWith('/edit')){
+        const item=items.find(item=>u.pathname.includes('/'+item.creativeId+'/'));
+        if(!item)throw Error('Unknown edit scope');
+        if(req.method==='PATCH'){
+          let body='';for await(const part of req)body+=part;const input=JSON.parse(body);editPatches.push(input);
+          if(editSaveGate)await editSaveGate;
+          const previous=editRecord||initialEdit(item);assert.equal(input.expectedRevision,previous.revision);
+          editRecord={...previous,id:'saved-edit',revision:previous.revision+1,renderState:'queued',renderJobId:'job',updatedAt:new Date().toISOString(),
+            content:{...previous.content,slides:previous.content.slides.map((s,i)=>({...s,...input.slides[i]}))}};
+          return json({ok:true,edit:editRecord});
+        }
+        if(editReadFailures>0){editReadFailures--;res.statusCode=503;return json({ok:false,error:'Read temporarily unavailable'});}
+        const edit=editRecord?.creativeId===item.creativeId?editRecord:initialEdit(item);
+        return json(u.searchParams.get('view')==='status'?{ok:true,status:edit}:{ok:true,edit});
+      }
       if(u.pathname==='/api/trending/feed/history'){
         if(historyFailure){res.statusCode=503;return json({ok:false});}
         const feedId=u.searchParams.get('feedId');
@@ -66,12 +95,50 @@ async function main() {
   }catch(e){errors.push(e.message);res.writeHead(500);res.end();}});
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
   const browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
-  const page=await browser.newPage({viewport:{width:1366,height:900}});page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
+  const browserContext=await browser.newContext({viewport:{width:1366,height:900}});
+  const page=await browserContext.newPage();page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
   const active=()=>page.locator('[data-post-feed-active=true]');
   async function expectPost(n){await page.locator('[data-post-feed-active=true][data-post-feed-item="post-'+n+'"]').waitFor();await page.waitForFunction(()=>{const e=document.querySelector('[data-post-interaction-feed]');if(!e||e.getAttribute('aria-busy')!=='false'||e.dataset.postSettling)return false;for(let node=e;node;node=node.parentElement)if(Number(getComputedStyle(node).opacity)<.999)return false;return [...e.querySelectorAll('[data-post-feed-active=true] img')].every(image=>image.complete&&image.naturalWidth>0)});}
   async function key(name){await page.locator('[data-post-interaction-feed]').focus();await page.keyboard.press(name);}
   async function wheelBack(n){const feed=page.locator('[data-post-interaction-feed]');await feed.hover();await page.mouse.wheel(0,-1000);await expectPost(n);}
   try{
+    if(editMode){
+      for(const viewport of [{width:1366,height:900},{width:390,height:844}]){
+        editRecord=null;editPatches.length=0;decisions.length=0;
+        await page.setViewportSize(viewport);await page.goto(origin);await page.evaluate(()=>localStorage.clear());await page.reload();await expectPost(1);
+        await key('e');await page.getByLabel('Hook',{exact:true}).waitFor();
+        await page.getByLabel('Hook',{exact:true}).fill('My saved slideshow update');
+        let releaseSave;editSaveGate=new Promise(resolve=>{releaseSave=resolve});
+        await Promise.all([page.waitForRequest(r=>r.method()==='PATCH'),page.getByRole('button',{name:'Confirm and save creative edit',exact:true}).click()]);
+        // Real document navigation while Save is in flight; keepalive completes
+        // the existing request. Return must show its job, not create a new one.
+        await page.goto(origin+'/away');releaseSave();editSaveGate=null;
+        while(!editRecord)await new Promise(resolve=>setTimeout(resolve,10));
+        editReadFailures=1;
+        await page.getByRole('link',{name:'Return to Trending'}).click();await expectPost(1);
+        await active().locator('[data-carousel-edit-state="queued"]').waitFor();
+        assert.equal(editPatches.length,1);
+        // Return from another browser tab after the server completes rendering.
+        const other=await page.context().newPage();await other.goto(origin+'/away');await other.bringToFront();
+        await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});document.dispatchEvent(new Event('visibilitychange'))});
+        editRecord={...editRecord,renderState:'ready',updatedAt:new Date().toISOString(),renderOutput:{slides:editRecord.content.slides.map(s=>({slideNumber:s.slideNumber,renderedS3Key:'new-'+s.slideNumber,renderedUrl:'/updated-slide-'+s.slideNumber+'.jpg'}))}};
+        await page.bringToFront();await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new Event('visibilitychange'))});
+        await active().locator('[data-carousel-edit-state="ready"]').waitFor();
+        await active().locator('img[src="/updated-slide-1.jpg"]').waitFor();
+        assert.equal(editPatches.length,1);
+        await page.screenshot({path:path.join(out,'saved-edit-return-'+viewport.width+'.png')});
+        await other.close();
+        await page.getByRole('link',{name:'Leave Trending'}).click();await page.getByRole('link',{name:'Return to Trending'}).click();await expectPost(1);
+        await active().locator('img[src="/updated-slide-1.jpg"]').waitFor();
+        await key('e');await page.getByText('Edits saved',{exact:true}).waitFor();
+        assert.equal(await page.getByLabel('Hook',{exact:true}).inputValue(),'My saved slideshow update');
+        assert.equal(await page.getByRole('button',{name:'Confirm and save creative edit',exact:true}).isDisabled(),true);
+        assert.equal(editPatches.length,1);
+      }
+      assert.deepEqual(errors,[]);
+      console.log('PASS actual Trending gallery + editor: one Save, document navigation during PATCH, failed first recovery read retries, tab return shows new rendered image, another screen return and editor reopening retain updated text; desktop/mobile; exactly one PATCH per scenario');
+      return;
+    }
     if(process.argv.includes('--quota-only')){
       const quotaUrl=origin+'/?quota=quota-a';
       await page.goto(quotaUrl);await expectPost(3);

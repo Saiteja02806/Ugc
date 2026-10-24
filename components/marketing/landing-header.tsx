@@ -55,17 +55,17 @@ export function LandingHeader({
       >
         <Link
           href="/"
-          className="flex min-w-0 items-center gap-3 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="UGC Pilot home"
+          className="flex min-w-0 items-center gap-2 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label="UGCPilot home"
         >
           <LandingLogo
-            sizes={isScrolled ? "32px" : "36px"}
+            sizes={isScrolled ? "24px" : "28px"}
             className={`transition-[width,height] duration-300 ease-out motion-reduce:transition-none ${
-              isScrolled ? "size-8" : "size-9"
+              isScrolled ? "size-6" : "size-7"
             }`}
           />
           <span className="truncate text-[17px] font-semibold text-foreground-strong">
-            UGC Pilot
+            UGCPilot
           </span>
         </Link>
 

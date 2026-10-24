@@ -1,10 +1,11 @@
 import { getCurrentUserIdToken } from "../firebase/auth";
+import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import { withReadDeadline } from "../http/read-deadline";
 
 export type HookStartingFrame = {
   referenceId: string;
   sourceSha256: string;
-  frame: { index: 0; timeSeconds: 0; width: number; height: number; sha256: string };
+  frame: { index: number; timeSeconds: number; width: number; height: number; sha256: string };
   blob: Blob;
 };
 
@@ -48,10 +49,13 @@ export async function readVerifiedHookStartingFrame(response: Response, input: {
     const width = Number(response.headers.get("X-Hook-Frame-Width"));
     const height = Number(response.headers.get("X-Hook-Frame-Height"));
     const frameSha256 = response.headers.get("X-Hook-Frame-Sha256") ?? "";
+    const selected = getCuratedHookFrame(input.referenceId, input.sourceSha256);
+    const index = selected?.index ?? 0, timeSeconds = selected?.timeSeconds ?? 0;
     if (response.headers.get("Content-Type")?.split(";")[0] !== "image/png" ||
       response.headers.get("X-Hook-Reference-Id") !== input.referenceId ||
       response.headers.get("X-Hook-Source-Sha256") !== input.sourceSha256 ||
-      response.headers.get("X-Hook-Frame-Index") !== "0" || response.headers.get("X-Hook-Frame-Time") !== "0" ||
+      response.headers.get("X-Hook-Frame-Index") !== String(index) || response.headers.get("X-Hook-Frame-Time") !== String(timeSeconds) ||
+      selected && (selected.sha256 !== frameSha256 || selected.width !== width || selected.height !== height) ||
       !SHA256.test(frameSha256) || !Number.isInteger(width) || !Number.isInteger(height) ||
       width < 1 || height < 1 || width > 8192 || height > 8192) {
       throw new Error("This opening frame does not match the selected source. Choose the reference again.");
@@ -62,5 +66,5 @@ export async function readVerifiedHookStartingFrame(response: Response, input: {
       .map(byte => byte.toString(16).padStart(2, "0")).join("");
     if (actual !== frameSha256) throw new Error("The opening frame download was incomplete. Try again.");
     return { referenceId: input.referenceId, sourceSha256: input.sourceSha256,
-      frame: { index: 0, timeSeconds: 0, width, height, sha256: frameSha256 }, blob };
+      frame: { index, timeSeconds, width, height, sha256: frameSha256 }, blob };
 }

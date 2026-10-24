@@ -18,6 +18,7 @@ function harness(upload, { images = [], queryError = false, queryPending = false
     "@/lib/media/image-picker": imagePicker,
     "@/lib/explore/hook-starting-frame-history-client": { fetchRecentStartingFrames: async () => frames, fetchRecentStartingFrame: fetchFrame },
     "@/lib/explore/person-reference": personReference,
+    "@/components/explore/inline-photo-picker": { InlinePhotoPicker: "InlinePhotoPicker", InlinePhotoPickerTrigger: "InlinePhotoPickerTrigger", InlinePhotoPickerContent: "InlinePhotoPickerContent" },
     "@/components/explore/person-photo-guide": { PersonPhotoGuide: "PersonPhotoGuide" },
 
     "@/lib/explore/reference-image-batch": imageBatch,
@@ -87,9 +88,9 @@ test("one image tile opens saved influencers and uploads in the same chooser", a
   assert.equal(triggers.length, 1); assert.equal(triggers[0].props.render.props["aria-label"], "Choose image");
   h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
   assert.equal(h.all(tree, node => node.type === "TabsRoot")[0].props.value, "influencers");
-  assert.deepEqual(h.all(tree, node => node.type === "TabsTab").map(node => node.props.value), ["influencers", "user", "catalog"]);
+  assert.deepEqual(h.all(tree, node => node.type === "TabsTab").map(node => node.props.value), ["influencers", "user"]);
   h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1 as main photo")[0].props.onClick(); await flush(); tree = h.render(options);
-  assert.deepEqual(selected, ["generated-image"]); assert.equal(h.all(tree, node => node.type === "Dialog")[0].props.open, false);
+  assert.deepEqual(selected, ["generated-image"]); assert.equal(h.all(tree, node => node.type === "Dialog")[0].props.open, true);
   assert.equal(h.calls.length, 0, "Selecting an existing influencer never uploads or generates again");
 });
 
@@ -158,7 +159,7 @@ test("saved images load only when the image picker opens and stay scoped to its 
   const opened = h.openImage();
   assert.equal(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).enabled, true);
   assert.equal(JSON.stringify(h.queries.filter(q => q.queryKey[0] === "explore-reference-images").at(-1).queryKey), JSON.stringify(["explore-reference-images", "expected-owner", "explore-only-v2"]));
-  assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "Your images").length, 1);
+  assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "Uploaded photos").length, 1);
   assert.equal(h.all(opened, node => node.type === "TabsPanel" && node.props["aria-label"] === "UGC Pilot images").length, 1);
   for (const options of [{ preview: true }, { ownerId: null }]) {
     const isolated = harness(async () => {}, options); isolated.openImage();
@@ -219,13 +220,13 @@ test("disabled controls cannot reuse saved images or start catalogue uploads", a
   assert.deepEqual(h.pending, []); assert.equal(h.calls.length, 0); assert.equal(h.savedReads.length, 0);
 });
 
-test("the image picker defaults to saved uploads, otherwise the catalogue, while manual tab changes survive data refresh", () => {
+test("the image picker defaults to uploaded photos even when empty, while manual source choices survive refresh", () => {
   const root = h => h.all(h.render(), node => node.type === "TabsRoot")[0];
   const saved = harness(async () => {}, { images: [savedImage()] });
   saved.openImage(); assert.equal(root(saved).props.value, "user");
   root(saved).props.onValueChange("catalog"); assert.equal(root(saved).props.value, "catalog");
   saved.openImage(); assert.equal(root(saved).props.value, "user");
-  const empty = harness(async () => {}); empty.openImage(); assert.equal(root(empty).props.value, "catalog");
+  const empty = harness(async () => {}); empty.openImage(); assert.equal(root(empty).props.value, "user");
   empty.imageCache.set(JSON.stringify(["explore-reference-images", "expected-owner", "explore-only-v2"]), [savedImage()]);
   assert.equal(root(empty).props.value, "user");
   const manuallyChosen = harness(async () => {}); manuallyChosen.openImage(); root(manuallyChosen).props.onValueChange("catalog");
@@ -237,7 +238,7 @@ test("a first successful upload switches the open picker to Your images", async 
   const h = harness(async () => ({ kind: "image", asset: savedImage() }));
   h.openImage();
   const root = () => h.all(h.render(), node => node.type === "TabsRoot")[0];
-  assert.equal(root().props.value, "catalog");
+  assert.equal(root().props.value, "user");
   h.choose("image"); await flush();
   assert.equal(root().props.value, "user");
 });

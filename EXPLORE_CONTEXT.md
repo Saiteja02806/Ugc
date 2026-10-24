@@ -1,5 +1,543 @@
 # Explore context and UI decision record
 
+## 2026-10-24 Combined release resumed by user; rollout in progress
+
+- User explicitly resumes deployment of all intentional worktree changes and requests live verification afterward. The earlier deployment pause is lifted for this combined release; historical paused entries below describe earlier stages.
+- Scope includes cleaner-frame receipt v3 and twenty PNGs, three discovery exclusions, five starting-image model options, shared v4 image prompt/frame-specific motion suggestions, Hook Remix v7, inline photo picking, hover-only card playback, responsive result inspection, scheduling/footer fixes, saved post captions, slideshow edit recovery/concurrency, and current landing branding/copy/documentation changes. No intentional source/configuration/migration/test/documentation path may be silently omitted.
+- Applied additive saved-caption migration through the connected production project. Canonical source is renamed to `20261024061601_saved_post_captions.sql` to match its actual production ledger entry. Verified RLS, denied anon/authenticated SELECT and permitted service-role operations. No customer rows were added or changed.
+- Wider release regression review repaired outdated fixture imports, exact-duration display and archive/audio catalog counts. Also removed an unnecessary generation-job lookup on ordinary video asset reads; image history metadata and explicitly requested Remix provenance retain their lookups.
+- Required rollout sequence: hold automatic website builds; push the complete source snapshot; migration prerequisites; pinned backward-compatible workers including the dedicated edit worker and its queue/instance limits; staged website/MCP; promote and restore original build settings; authenticated production checks. Evidence/report: `docs/combined-release-2026-10-24.md` and ignored `outputs/release-2026-10-24/`.
+
+## 2026-10-24 Twenty cleaner frames wired locally; deployment remains paused
+
+- User authorizes safe implementation and asks why the replacement filter showed 21. There are twenty approved entries and one unapproved Hook 88 proposal. Local audit filters now separate Approved replacements (20) and Proposed replacement (1). Hook 88 keeps frame zero. Hooks 27/84/89 are excluded by stable ID in their owning release manifests; local new discovery has 104 references. Original media, soundtrack/text identities and saved work remain archival/recoverable.
+- Twenty exact approved PNGs (11,422,314 bytes) are bundled under `public/explore/curated-hook-frames/v1/`; `worker/src/lib/hook-curated-frames.json` binds source hash, image hash, dimensions, index and timestamp. Both source preparation and generation API routes trace the PNG assets. API/client/draft/worker/result paths agree on the selected frame. Missing or altered assets/source versions stop rather than silently returning frame zero.
+- Draft/receipt v3 accepts only those exact approved selections. Legacy v1/v2 input keys and frame-zero receipts remain unchanged. Curated requests require the matching preparation key before snapshot storage or credit reservation; accepted-request recovery is retained. Keep the v1 curated catalog's approved bindings immutable for historical v3 recovery. Existing scene snapshot storage is reused.
+- Shared image prompt v4 remains active. Curated later frames omit frame-zero-specific prose; original openings keep their existing guidance. Twenty adapted motion suggestions begin from the selected moment, but remain preparation previews without video visual qualification. Starting frames history now passes the saved receipt's actual source frame into motion preview, including legacy opening results.
+- Combined validation: 242 automated tests pass, including all twenty asset hashes, browser receipts, stale admission, all five mocked still-model routes, history, variations, discovery/archive and audio regressions. Worker build and full website production build pass, including type checking/native bundle checks. Both API traces include all twenty unique PNGs with matching hashes (normalize Windows trace path spellings). Local review serves HTTP 200 and filter counts verify. No new paid image/video test, authenticated browser/production acceptance, push or deployment. Implementation report: `docs/cleaner-hook-frame-implementation-2026-10-24.md`.
+- Release implementation differs from the earlier plan's separately uploaded source assets: PNGs ship with the website/API bundles. When resumed, deploy the backward-compatible worker first, then website producer/catalog plus PNG assets, then authenticated hosted acceptance and a reviewed motion pilot. Deployment pause remains in force.
+
+## 2026-10-24 Production visibility and curated Recreate rollout requested; plan prepared
+
+- User requests hiding Hooks 27, 84 and 89 from user-facing production references, and making Recreate load approved cleaner source frames. This supersedes Hook 27's hold and the provisional retention of 84/89 for new discovery. Preserve original media, archived identities and existing saved/generated work; hide via stable-ID release exclusions, not CSS or deletion. Expected new-discovery count is 104 from current local 107. No live change is claimed yet.
+- Twenty approved selections remain exact/hash-bound in `docs/approved-hook-frame-selections-2026-10-24.json`. Hook 88's candidate remains unapproved and should keep the original opening. User-accepted openings for 45/63/73/78/83 remain unchanged.
+- Traced the source-frame service/API/client, frame-zero draft/worker contracts, result resolution, active/archive gallery membership and frame-bound motion requirements. A preview-only thumbnail change is insufficient. Plan `docs/cleaner-hook-frame-rollout-plan-2026-10-24.md` specifies immutable curated PNGs, versioned selection/receipts, shared preview/admission resolution, compatible history recovery, matching motion review, tests and hosted acceptance. No runtime source/config mutation or deployment performed in this planning turn. Deployment pause remains in force.
+- Release order when resumed: source assets, backward-compatible generation worker, website producer/catalog, then real authenticated production acceptance. Keep local audit review distinct from production checks. Review full action sequences before marking new frame-specific motion plans ready; preserve old paid-request recovery and prevent stale frame-zero directions.
+
+## 2026-10-24 User approves twenty frame selections; four difficult clips fully rechecked
+
+- User approves all nineteen proposed alternatives and Hook 18's displayed later face frame (44). This explicitly supersedes preserving the airplane-window opening for this image-based adaptation. Hook 27 stays on hold. Hooks 45, 63, 73 and 83 retain their current review-section openings by user acceptance; no alternative was displayed for 63/73, so “use that” is interpreted as retaining those openings. Original source videos are not overwritten or trimmed.
+- Inspected every decoded frame of Hooks 78 (47), 84 (342), 88 (74), 89 (77): 540 total, with seven contact sheets and full-resolution detail on 88/89. Hook 78 never uncovers mouth: keep original under user's fallback authorization. Hook 84 never reveals lower face: no better alternative; keep current provisionally pending decision. Hook 89's later clearer eyes coincide with sleeve covering mouth: no clearly better whole-face option; current frame retained provisionally pending decision.
+- Hook 88 has one new, unapproved candidate: frame 23 at elapsed 0.766667 s. Mouth remains uncovered and more eyes fall below caption than at opening, but strip still overlaps upper-eye/brow area, and footage remains dim/soft. Do not auto-approve or call it a clean full-face frame.
+- Gallery now distinguishes twenty user-approved replacements, eighty-three keep openings, one new proposal (88), and three hold/review cases (27/84/89). `review-initial.json` preserves earlier recommendations; `user-decisions.json` and current `review.json` record decisions. Exact source/frame hashes and timestamps for twenty approved choices: `docs/approved-hook-frame-selections-2026-10-24.json`. Detailed report: `docs/hook-frame-decisions-2026-10-24.md`.
+- Local gallery remains `http://127.0.0.1:8201/opening-frame-audit`; full-resolution source links, full-frame evidence and video controls available. Integrity/source-frame hashes and 251 local routes pass. Browser interaction not asserted. These are approved preparation records, not runtime implementation: current generation contract still assumes frame zero. Versioned extraction/receipt/history integration and frame-bound motion plans remain necessary before Recreate uses later frames. No paid calls or deployment; deployment remains paused.
+
+## 2026-10-24 Opening-frame screening covers all 107 local active Hooks
+
+- User authorizes starting the catalog audit and review gallery. Verified source SHA-256 for all 107 references in the current local active catalog, including the nine newer additions; no live production acceptance claimed. Screened every extracted opening image. For 29 flagged clips, reviewed nine decoded timeline samples each (261 images) plus larger opening/candidate pairs. This is a first-pass screening, not a new exhaustive all-frame/full-video qualification or proof of earliest/optimal selections.
+- Final groups: 78 keep opening, 19 proposed clearer frames, 10 need review. Proposed Hooks: 12, 14, 19, 25, 29, 34, 38, 46, 47, 50, 52, 64, 71, 85, 93, 94, 96, 101, 104. Review Hooks: 18, 27, 45, 63, 73, 78, 83, 84, 88, 89. Hook 73 was demoted after larger comparison still showed eye obstruction. Side angles/glasses alone do not fail; keep-opening status is not a generation-quality guarantee.
+- Hook 18's later face frame is illustrative only because the existing airplane-window reveal was explicitly preserved by the user. Persistent mouth coverage, cropped faces, caption strips over eyes and multiple-performer handling remain review cases. No forced replacement when no clearly better sampled option exists. Every proposal records an action/timing tradeoff; not all original opening beats can be preserved from the new pose.
+- Read-only review gallery: `http://127.0.0.1:8201/opening-frame-audit`, with filters/search, original/candidate images, elapsed timestamps, full-image links, source video controls and timestamped sample sheets. Provenance saves exact source/frame hashes, decoded frame indices and absolute PTS as well as elapsed time (important for nonzero first PTS). Record `runtimeApplied` remains false.
+- Evidence: `outputs/opening-frame-audit-2026-10-24/`; report `docs/opening-frame-audit-2026-10-24.md`. Integrity checks pass: 107 unique active references, source/opening/candidate hashes, proposal completeness, script syntax and 243 HTTP routes including video byte ranges. Local browser interaction remains unverified because browser use was disabled. No paid requests, runtime prompt/extraction/receipt change, catalog mutation or deployment. Review full performance and selected-frame transitions before applying proposals; deployment remains paused.
+
+## 2026-10-24 Second clearer-frame pilot: Hook 29
+
+- User prefers Hook 50's clearer-frame output and authorizes another reference. Selected Hook 29 (`explore-paired-hook-9309a041061ae5abc6970d52`), source SHA `5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451`. Inspected all 63 frames in the contact sheet plus full-size frames 0 and 40. Opening hand overlaps mouth; frame 40 at 1.333333 s reveals the open mouth and widened eyes with hand lower. Source remains soft; clearer refers to facial visibility.
+- Two fresh Gemini 3 Pro / 2K / 9:16 results completed without retries. Same exact v4 prompt as Hook 50 (no optional opening description), same three influencer photos, labels and order. Both retain recognizable selected-person features and remove captions visually. However the later-frame output covers the mouth again, turns toward camera and changes the gray sleeveless top to a gray short-sleeve shirt; original-opening output also changes gaze/background. Do not label this a demonstrated clearer-pose preservation success.
+- Frozen prompts/receipts, original outputs, source probe and comparison: `outputs/recreate-ui-preview/prompt-test-clearer-hook29-2026-10-24/`. Both completed outputs and input/output hashes verified; local preview `http://127.0.0.1:8200/comparison-clearer-hook29`. One sample per arm, no fixed seed, no video test or production acceptance. Deployment remains paused; no runtime prompt/frame-selection changes.
+
+## 2026-10-24 Clearer-frame pilot completed on Hook 50; mixed image fidelity
+
+- User authorizes selecting one difficult-opening reference, extracting a clearer frame and regenerating with the existing influencer photos. Reviewed the complete 84-frame contact sheet of Hook 50, source SHA `483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8`, and full-size frames 0, 24, 30. Selected frame 30 at decoded timestamp 1.00 s: both eyes/more facial structure visible, same scene and finger-at-lip gesture. Original frame 0 is side-facing rather than literally half cropped.
+- Two fresh Gemini 3 Pro / 2K / 9:16 outputs completed: original opening versus selected frame. Exact same v4 prompt without optional frame-zero description, same ordered three influencer photos/labels/settings. Hashes and receipts verified. One output per condition, no fixed seed; no claim of causal improvement or catalog reliability. Runtime v4/defaults and frame-zero contract unchanged; no video generation/deployment.
+- Both remove captions and visibly depict the selected person's features, but both rearrange the room/lighting. Clearer-frame result is more frontal yet looks away from lens and moves the finger toward the chin; expression is less exaggerated. Source selection is feasible, but this pilot does not establish sufficient same-shot fidelity or motion quality. Do not auto-promote or animate without reviewing these differences.
+- Initial submissions failed with APIConnectionError; independent Google DNS check returned ENOTFOUND in restricted network. Preserved failure receipts, verified external connectivity, then explicitly retried the two prepared inputs once with host network access. Two completed provider operation IDs saved; no success was discarded/replaced and no further generation queued. No invoice amount inferred from returned token usage.
+- Evidence: `outputs/recreate-ui-preview/prompt-test-clearer-frame-2026-10-24/` (source probe, frozen prompts, inputs, receipts, originals, comparison PNG/HTML). Local preview `http://127.0.0.1:8199/comparison-clearer-frame`. Report: `docs/clearer-source-frame-pilot-2026-10-24.md`. Deployment remains paused.
+
+## 2026-10-23 Clearer-frame direction clarified; validate before implementation
+
+- User confirms the objective is a clearer regenerated base image and an adapted performance preserving the reference's main actions/emotion, not merely trimming away the beginning. Suitable original openings retain their existing path. A later selected frame becomes the generated opening; motion may need reordering/timing changes consistent with that actual pose. Do not promise exact original chronology or pixel-identical video reproduction.
+- User asks to establish whether the approach works before deciding implementation. Static inspection confirms first-frame conditioning in the Omni adapter, frame-zero-only image receipts and frame-bound reviewed motion plans. This establishes current constraints, not image/video quality. No reference selection or paid pilot has been performed for this proposal.
+- Evaluation plan: `docs/clearer-source-frame-validation-plan-2026-10-23.md`. First isolate source-frame choice with identical shared prompt/model/person inputs, then test adapted motion on acceptable images. Manual frame review precedes an automatic selector; do not roll out over the catalog or switch to v6 during this experiment. Deployment remains paused. This clarification supersedes the pending timeline question below.
+
+## 2026-10-23 Clearer source-frame selection proposed; timeline decision pending
+
+- User shifts priority from prompt wording to source-frame suitability: retain frame zero when clear, otherwise choose a clearer frame of the performer from the same video and regenerate that shot with the selected influencer. Do not describe this as face swapping. Treat this as a hypothesis to test, not a proven explanation of all earlier failures.
+- Inspected saved glasses/keyboard/can v4-v5 comparisons and source code. Browser access to the local comparison was disabled. Glasses source has nearly closed eyes and glasses across the face; keyboard/can still show composition drift, so clarity does not explain every failure. No later video frames were reviewed in this turn.
+- Current draft/worker receipts and generation/result paths explicitly require frame index/time zero. Motion plans are bound to a reviewed source frame; image guidance also assumes frame zero. Supporting a later frame needs coordinated extraction, provenance/cache/receipt, recovery/history and image/motion prompt changes, not simply a thumbnail replacement. Preserve old receipts and prevent old frame-zero motion guidance from attaching to a new frame.
+- Proposed pilot: earliest suitable sharp, sufficiently visible face in the same performance shot, maintaining useful gesture/context and avoiding demo segments or unrelated cuts. A side view alone is not automatic failure. Cache reviewed selections per source version; allow a simple Change frame choice. Recreate the selected shot, then bind animation to the approved generated image and chosen action plan. Test original versus clearer frames with the same model, influencer photos and shared prompt before catalog-wide selection.
+- Pending user clarification: may generated footage start from the clearer later moment, or must original opening actions also be preserved? A later image used as the first-frame input defines the generated opening; a text prompt alone does not restore earlier chronology. Do not silently discard opening actions, reverse footage, or claim arbitrary middle/end conditioning is available. No runtime change, paid generation or deployment in this review; deployment remains paused.
+
+## 2026-10-23 Reusable post captions (local; migration and website release pending)
+
+- Trending's shared publishing modal and Hook drawer, plus Explore Hook, Wall,
+  Slideshow and Talking Head scheduling forms now share Save caption / Saved
+  captions controls. Up to twenty exact captions (5,000 characters each) are
+  stored per account. Line breaks, URLs, hashtags and emoji are preserved.
+- The first saved caption becomes the default; users can select another default
+  or toggle it off. Defaults fill only untouched empty new-post forms. Existing
+  text wins, and clearing with × records an intentional blank in recovered
+  workflow drafts. A late default read cannot replace new typing. Selecting a
+  saved caption explicitly replaces the current post's text.
+- × clears only the current post. Deleting from Saved captions removes only that
+  saved entry; deleting the default unsets it without changing the current post,
+  existing drafts, publishing receipts or scheduled posts. Library failures keep
+  manual caption editing and scheduling available.
+- New authenticated `/api/account/saved-captions` GET/PUT binds ownership to the
+  Firebase user. The service-only `user_saved_captions` row uses revision checks
+  to prevent stale-tab overwrite. A lost save response is followed by a read,
+  with explicit Retry before further writes; there are no automatic PUT retries.
+  Caption data is not sent to text/image/video providers.
+- Additive migration `20261024061601_saved_post_captions.sql` is prepared and
+  tested locally only. Website/migration release remains paused. Local component
+  and browser fixtures are not hosted acceptance. Evidence and rollout notes:
+  `docs/saved-post-captions-2026-10-23.md`.
+
+## 2026-10-23 Starting-frame same-shot refinement prepared as v6 candidate
+
+- User clarifies: recreate the reference shot with their influencer, preserving position, clothing, background, emotion and lighting. Added explicit opt-in starting-frame v6 derived from v4: tighter opening and scene direction, and visible-source precedence over supplementary opening descriptions. Person features still come from the influencer photos; v4 caption-removal/output instructions stay intact. This version is unrelated to Hook Remix numbering.
+- V4 remains the application default and v5 historical prompts remain reproducible. No paid images or deployment; v6 is unproven until a controlled visual comparison. Do not claim the wording guarantees likeness or scene fidelity. Exact changed wording and acceptance plan: `docs/starting-frame-v6-candidate-2026-10-23.md`.
+
+## 2026-10-23 User accepts Hook Remix v7; adopted locally, no deployment
+
+- User says keep it this way after reviewing all twelve v7 results. Adopted the
+  exact tested v7 builder for new Hook requests in the local shared Remix API;
+  receipt promptVersion is 7. Wall of Text/slideshows retain the exact existing
+  v2 prompt/version. No model, user payload, business-context or output-schema
+  change. Previously saved requests recover their immutable output before prompt
+  selection, without generating again. No historical receipt is rewritten.
+- V7 keeps the source with minimal necessary word changes and preserves human
+  roles in relationship jokes. Acceptance concerns the selected prompt direction;
+  it is not a guarantee against the variability or unsupported-history issue seen
+  in the test batch. Review/Apply remains required. Exact paid-test evidence stays
+  unchanged in `docs/hook-remix-role-v7-results-2026-10-23.json`.
+- Deployment remains paused; no paid requests were submitted during adoption.
+  Local validation is distinct from hosted acceptance. Adoption notes:
+  `docs/hook-remix-role-v7-adoption-2026-10-23.md`.
+
+## User prefers Gemini; exact prompt artifacts validated before Sunburst
+
+- User prefers Gemini 3 Pro over Seedream and asks to validate prompts before considering Sunburst. Explain revised candidate as experimental starting-frame v5, with v4 still default; unrelated Hook Remix numbering is separate. Audited twelve completed request artifacts: compiler/base prompts, input bytes/order, label text, full Seedream prompt limits, version/model/receipt binding and output hashes all pass. No local truncation or role-order error found. Provider-retained payloads are unavailable, so do not claim internal provider verification.
+- Wording concern: glasses opening description “held forward just above the face” is ambiguous against the source's diagonally held glasses in front of the face. Proposed targeted correction only; no production/historical prompt edited. V4 permits scene interpretation and v5 has not demonstrated a consistent benefit. Gemini 2K vs Seedream 1K and interleaved vs appended labels remain comparison caveats. Keep user-preferred Gemini/v4 baseline. No new paid images or deployment in this audit. Details docs/starting-frame-prompt-validation-2026-10-23.md; outputs/recreate-ui-preview/prompt-payload-audit.json. Sunburst comparison pending subsequent testing step.
+
+## Seedream six-image pilot completed; no model or prompt promotion
+
+- Six authorized Seedream 5.0 Pro images completed through OpenRouter using the Cloud inference key in memory: v4/v5 on glasses, keyboard and drink can. Same hashed image bytes/order and frozen shared prompts as Gemini comparisons; roles appended to Seedream prompt. Seedream uses 1K versus prior Gemini 2K, so resolution/transport are disclosed differences. Provider reports $0.054 per output, $0.324 summed; this is returned usage, not an audited account ledger or app-credit charge.
+- Local signed-URL preparation failed before submission (unsupported lifetime, then local ADC lacks signing identity). Each temporary uploaded source was deleted. Automatic approval review rejected a public-URL proposal; it was not applied or executed. Used official documented private inline base64 references instead, without further hosted uploads or any storage permission change. This validates local model output, not the application's HTTPS-reference route. No paid retries, environment edits, new credentials or deployments.
+- All six remove creator captions on visual inspection. Seedream v4 keeps source scenery/clothing more closely than Gemini v4 in these samples, with pose/scale differences; selected-person appearance is more apparent in keyboard/can than in glasses. Seedream v5 closely retains source-performer appearance in glasses/keyboard despite strong scene fidelity. Neither version establishes reliable likeness across scenes. One output per condition, one person set, no fixed seed/biometric/OCR scoring. Keep current production defaults pending user review; GPT Sunburst not tested. Comparison http://127.0.0.1:8197/comparison-seedream; six verified screenshots and originals in outputs/recreate-ui-preview/prompt-test-seedream; report docs/starting-frame-seedream-pilot-2026-10-23.md. Deployment paused.
+
+## 2026-10-23 Human-role v7: twelve tests complete; targeted cases match
+
+- User explicitly requests twelve paid OpenAI tests using the same saved cases
+  and business context, all results shown and focus on #2/#7/#8, no deployment.
+  All twelve completed once using unchanged original model/settings/context/user
+  messages and the frozen v7 prompt. No extra example answers were appended beyond
+  the approved role rule's IT guy to marketing guy instruction.
+- Targeted results: #2 is pov: you’re dating a marketing guy; #7 and #8 are POV
+  you married the marketing guy. All three preserve the human partner as intended.
+  All twelve pass length/block validation; the three LEGAL outputs stay unchanged.
+  This is evidence on the supplied examples, not unseen-source reliability.
+- Fresh non-target outputs can vary: #1 now has less-clear posts point you back
+  to marketing wording, and #5 reintroduces unverified 3 years of marketing.
+  Do not treat target-case success as accepting every new output. The previously
+  accepted v6 outputs and all experiment receipts remain untouched.
+- All twelve pairs: `docs/hook-remix-role-v7-paid-review-2026-10-23.md`.
+  Exact provider/prompt/usage record: `docs/hook-remix-role-v7-results-2026-10-23.json`.
+  Usage: 10,414 tokens, no inferred invoice amount. Active app still v2; no account
+  remix receipts, media jobs, edits or deployment. Authorization fully used; no
+  additional calls queued. Scoped lint and experiment-integrity checks pass.
+
+## Google Cloud OpenRouter credential verified; local key was stale
+
+- User asked to check Google Cloud after the local Seedream access block. Read-only check of project ugcsaas / Secret Manager openrouter-api-key version 1 (enabled, currently latest) returns is_management_key=false from OpenRouter's authenticated /key endpoint. The active generation worker references this same secret/version; no inline credential. The earlier management-key block applies to local .env.local, not the cloud credential. No new API key is needed for the prepared test; use the cloud credential in memory without overwriting local files or printing it. Null spending limit/remaining is not proof of funded account balance.
+- No generation, secret update, environment edit, key creation or deployment was submitted during this verification. Deployment remains paused. The six frozen Seedream inputs remain pending; credential source must be selected explicitly before running the local harness, which otherwise loads the stale local value.
+
+## 2026-10-23 Hook v7 scope: fix only the human-role substitutions
+
+- User says other v6 examples are fine and singles out #2, #7, #8: dating/marrying
+  a marketing SaaS or content app loses sensible meaning. Expected direction is
+  IT guy to marketing guy, preserving the human partner and original relationship.
+  This supersedes earlier permission to replace a person with an app metaphor.
+- V6 explicitly allowed product-for-person replacement. Added a separate v7
+  candidate replacing only that permission with role preservation; the rest of
+  the minimal-edit brief is identical. Do not rework the accepted other nine
+  cases or infer production acceptance from this creative direction.
+- Candidate: `lib/explore/hook-remix-role-prompt.ts`; three illustrative corrections:
+  `docs/hook-remix-role-v7-2026-10-23.md`. They are not provider results. Frozen v6
+  experiments remain intact; active app remains v2. No new paid request, active
+  prompt change or deployment is authorized/submitted for this clarification.
+
+## 2026-10-23 Minimal Hook v6: twelve paid results, no active switch
+
+- User explicitly authorizes twelve paid OpenAI tests of the simplified candidate
+  using the same saved examples/business context, all twelve pairs shown, no
+  deployment. All twelve completed once with unchanged v6 prompt, identical
+  original user messages/context/model/settings and no few-shot illustrative
+  edits. All pass existing output validation; usage totals 10,218 tokens.
+- Smaller edits now predominate: RESEARCH becomes MARKETING; two LEGAL sources
+  stay unchanged; audience-callout and relationship sentence patterns survive.
+  Weaknesses remain: dating/marrying a marketing SAAS is awkward, the faith-purpose
+  line loses its final beat/line structure, the regret line still implies personal
+  history, and the third LEGAL repeat changes to AUTOMATED unnecessarily. Do not
+  treat length/block validation as editorial acceptance or claim universal quality.
+- All twelve source/output pairs: `docs/hook-remix-minimal-v6-paid-review-2026-10-23.md`.
+  Exact prompt/provider/usage evidence: `docs/hook-remix-minimal-v6-results-2026-10-23.json`.
+  Previous baselines/v4/v5 results in this artifact are reused, not regenerated.
+  Active app remains v2. No media jobs, account remix receipts, edits or deployment.
+  Twelve-call authorization fully used; no additional provider requests queued.
+
+## Seedream comparison prepared; inference credential blocks submission
+
+- User requested Seedream 5.0 Pro first, with GPT 2.5 Sunburst deferred until further guidance. Previous six images used Gemini 3 Pro/2K. Prepared six frozen Seedream inputs for the same glasses/keyboard/can sources and v4/v5 prompts, exact photo hashes and image order. Existing OpenRouter adapter appends identical role labels, stays under 4,000 characters, and uses 1K; do not call this a resolution-matched Gemini comparison. Listed estimate is $0.342 for six outputs plus four inputs per request.
+- Read-only OpenRouter key check returns HTTP 200 and is_management_key=true. Only one distinct key is configured across existing local environment files; it is a management key, not an inference credential. Batch blocked before uploads or paid POSTs: zero submissions, zero new images. Do not infer Seedream quality/provider failure or fabricate comparison outputs. No credential created, environment changed, GPT request or deployment submitted. Local evidence outputs/recreate-ui-preview/prompt-test-seedream/access-check.json and frozen inputs/manifest. A regular inference credential is needed to continue.
+
+## 2026-10-23 Hook Remix clarification: small word edits, not a new hook
+
+- User rejects v5's dating a SaaS founder with UGCPilot output and clarifies the
+  task: keep the same source, emotion and delivery; change only the words needed
+  for product relevance. Prior instructions to rebuild the scenario or avoid mere
+  noun substitution were overcorrections. A small noun-phrase swap may be enough;
+  an already applicable source can remain unchanged. Do not invent a new founder
+  character or force brand/features into the sentence.
+- Added a short, review-only v6 candidate in
+  `lib/explore/hook-remix-minimal-prompt.ts`, separate from the app and paid runner.
+  Illustrations and rationale: `docs/hook-remix-minimal-v6-2026-10-23.md`. Earlier
+  experiments remain intact. The active API still uses v2. No additional paid
+  requests or deployment authorized, submitted or queued for this clarification.
+
+## 2026-10-23 Hook source-voice v5: twelve paid tests completed, no promotion
+
+- User explicitly authorizes twelve paid OpenAI tests with the same saved examples
+  and business context, no deployment. All twelve completed once using the same
+  model/settings and byte-identical user messages as earlier rounds. Frozen v5
+  system prompt was unchanged. Illustrative drafts were not sent as few-shot
+  answers. Prior results and app receipts remain intact; no new media jobs/edits.
+- All twelve pass existing length/block validation. Voice improves relative to
+  rejected v4: marriage joke, excited EVERYTHING, NOW cadence and informal emoji
+  survive more often; AI mentions fall from 11/12 to 0/12. This is wording evidence,
+  not an audience-performance metric or universal quality improvement.
+- Material failures remain: the faith-purpose metaphor becomes circular posting
+  wording; dating adds an awkward brand mention; regret still implies unverified
+  personal experience; all three LEGAL hooks soften to this easy. Several outputs
+  remain topic substitutions rather than the quality of the approved illustrative
+  drafts. Do not treat technical validation as creative acceptance or switch the
+  active app prompt. It remains v2. Nothing deployed; no further calls queued.
+- All-source/v4/v5 comparison: `docs/hook-remix-source-voice-v5-paid-review-2026-10-23.md`.
+  Exact receipts/prompts/usage: `docs/hook-remix-source-voice-v5-results-2026-10-23.json`.
+  The twelve-call authorization is fully used; SDK retries were disabled. Original
+  baselines/v4 results in this artifact are reused, not freshly generated controls.
+
+## V4 versus V5 image pilot completed; retain v4
+
+- User approved testing the refined shared prompt. Six fresh Gemini 3 Pro/2K images completed: glasses, keyboard and drink can, one v4 and one v5 per scene. Each pair uses identical hashed images, settings, image order and v4 labels; only shared prompt wording changes. No handwritten focused description added. No retries. Original requests, operations, usage and output digests: outputs/recreate-ui-preview/prompt-test-v5.
+- Visual inspection: all six remove creator captions. V5 follows glasses composition/clothing better but appears to retain more source-performer appearance; keyboard v5 moves the shelf to the other side and changes framing; can v5 follows source geometry but is softer and appears less faithful to selected person than v4. No overall improvement demonstrated; keep v4 default. One sample per condition, one person set, no fixed seed or biometric/OCR metrics. Comparison http://127.0.0.1:8196/comparison-v5; details docs/starting-frame-v5-candidate-2026-10-23.md. Deployment remains paused.
+
+## 2026-10-23 Hook source-voice v5: examples before another paid test
+
+- User authorizes a prompt rewrite preserving sauce/rhythm/humor, with examples
+  shown first and no deployment. Added a separate review-only candidate in
+  `lib/explore/hook-remix-source-voice-prompt.ts`; active API remains on v2.
+  Rejected v3/v4 evidence remains intact. No new provider request is authorized
+  by this instruction or queued; previous 36-call approvals are already spent.
+- Candidate anchors on the source's situation, emotional turn, cadence, emphasis
+  and punchline. Preserve deliberate exaggeration, curiosity and contextual emoji;
+  avoid mandatory AI/brand/feature/approval wording and universal word quotas.
+  Business relevance and claim grounding still apply. Recast unsupported factual
+  details without discarding the joke. No automatic feature-description fallback.
+- Four assistant-drafted source/remix pairs are review examples, not application
+  model results or demonstrated performance. They are stored separately from the
+  prompt so they are not silently used as few-shot provider examples. See
+  `docs/hook-remix-source-voice-examples-2026-10-23.json` and
+  `docs/hook-remix-source-voice-v5-2026-10-23.md`. User feedback precedes paid tests.
+
+## Current-prompt refinement prepared for testing; deployment paused
+
+- User chose the current starting-frame approach after mixed scene-focused comparisons. Added an explicit opt-in v5 candidate to the shared image-prompt builder: more concrete framing/layout/pose preservation, distinct scene versus person-photo roles, source pixels taking precedence over conflicting opening-scene descriptions, and overlay cleanup including outlines/shadows. No per-video manual prompt migration.
+- Application requests and previews still compile byte-identical v4. Candidate has not generated images or demonstrated improved quality; no production switch or deployment. Local prompt-contract checks are separate from visual acceptance. Reasoning and proposed comparison: docs/starting-frame-v5-candidate-2026-10-23.md.
+
+## 2026-10-23 User rejects Hook v3/v4: source voice takes priority
+
+- User explicitly says fresh prompts lose the source's sauce/taste. Re-review of
+  all twelve cases in both candidate rounds supports that: relationship setups,
+  excited callouts, delayed-discovery regret and exaggerated disbelief become
+  feature descriptions. Eleven of twelve v4 outputs mention AI despite seven
+  distinct source texts. Length/schema success is not creative acceptance.
+- Earlier praise for specificity and shorter copy was over-weighted. Do not ban
+  excited EVERYTHING, rhetorical this, informal punctuation or expressive emoji
+  categorically; they can carry the hook. Preserve social setup, emotional
+  reversal, curiosity and punchline before adapting business details. Clearly
+  fictional POV/metaphor must not be conflated with factual lived-experience
+  claims. Unsupported autobiographical claims still require correction.
+- Disconnected experimental Hook helpers from the active local Remix API and
+  restored the pre-experiment v2 prompt/version. This contains the rejected
+  regression; v2 is not claimed to solve the original complaint. Experimental
+  prompts, paid results and historical receipts remain intact. No deployment
+  or further provider request was submitted. No new paid round is queued.
+- Full all-case review and revised creative direction:
+  `docs/hook-remix-source-voice-review-2026-10-23.md`. Establish human-reviewed
+  source-faithful examples before another model comparison. The previous v4
+  comparison record is historical and must not be treated as release approval.
+
+## New prompt test: drink-can reference (no production switch)
+
+- User requested another different frame. Two fresh Pro/2K outputs completed on Hook 05 with identical scene/person images per comparison condition. Native source and focused description reviewed before submission. Both remove creator captions and retain printed can text. Baseline changes scene geometry but appears closer to selected person photos; focused preserves scene more closely yet appears to retain source-person appearance. Do not label focused successful based on scene fidelity alone. Evidence/limits in docs/starting-frame-prompt-pilot-2026-10-23.md; deployment paused.
+
+## 2026-10-23 Hook prompt comparison and v4 follow-up complete locally
+
+- User authorized a local Hook prompt improvement and then explicitly approved
+  sending twelve saved examples/business context to OpenAI for 24 billable text
+  calls. All 24 completed: one current-v2 baseline and one Hook-v3 candidate per
+  saved case, same model/settings/context/user messages, alternating order.
+  Historical receipts stay unchanged. No app account receipts or video edits
+  were created. Exact snapshots/results: `docs/hook-remix-prompt-comparison-2026-10-23.json`.
+- V3 replaces generic hype with some grounded product details, but is not
+  qualified: 11/12 candidate outputs pass length/shape checks versus 12/12 v2;
+  one candidate is 83 characters against an 80-character limit, and the regret
+  example retains an unsupported first-person years-of-effort story. Some
+  inherited emoji/awkward phrasing remains. Do not claim universal improvement.
+- User separately approved twelve more billable OpenAI requests. All twelve v4
+  follow-up calls completed using identical user messages/context/model/settings.
+  V4 adds exact per-source character budgets, stronger unsupported-history
+  instructions and AI-partner/emoji clarity. All twelve pass current length/shape
+  validation; the former overlong output is now 38/80 characters. The regret case
+  becomes an audience scenario rather than the speaker's years of experience.
+  This is not blanket grounding acceptance: it still assumes hours of effort.
+- Final local implementation passes 36 focused tests, TypeScript and scoped lint.
+  Wall/slideshow retain exact v2; old receipts recover without paid regeneration.
+  Some copy is now generic/descriptive, source humor can be lost, and one output
+  says AI content, approved, leaving human approval ambiguous. Existing explicit
+  Apply/manual review remains essential. This is a regression set used to develop
+  the prompt, not a held-out audience-performance experiment. No universal win
+  or automatic publishing readiness is claimed. Deployment remains paused.
+- Completed follow-up evidence: `docs/hook-remix-prompt-followup-2026-10-23.json`.
+  All-case comparison and caveats: `docs/hook-remix-prompt-review-2026-10-23.md`.
+  Total authorized calls: 36, all completed without automatic retries. No app
+  account remix receipts, generation jobs, video edits or deployments were created.
+
+## Starting-frame model extension and plain-language errors (local)
+
+- Added requested GPT Image, GPT Image 2.5 Sunburst and Seedream 5.0 Pro to shared starting-frame contracts and selector. API records selected model/credit quote/receipt, pins Seedream to OpenRouter and validates its full 4K prompt budget before reservation. Non-Google worker routes verify source bytes and preserve ordered scene/main/support roles; GPT uses native ratio. New-route live provider acceptance still pending; no production deployment.
+- Known Google content blocks now explain the observed rejection without HTTP jargon or guessing its trigger. Do not infer model-wide failure or a refund from a generic error. Local preview uses the same explanation.
+- Two Pro outputs completed on a new reclining reference. Both remove captions. Current is closer to source composition, but focused candidate contained authoring mistakes (closed lips/added chest hand) and is explicitly marked as a flawed comparison. Evidence and limits in docs/starting-frame-prompt-pilot-2026-10-23.md. No catalogue-wide prompt migration; deployment remains paused.
+
+## 2026-10-23 Hook Remix writing-quality audit (no prompt change)
+
+- User requested comparing source copy and generated remixes. Recovered the
+  connected account's 12 completed Hook receipts (16–23 October) via application
+  history; owner-scoped database reads confirm the same business profile, empty
+  extra instructions and model, with six prompt-v1 and six prompt-v2 requests.
+  Recent outputs show literal topic swaps, generic hype, lost source humor and
+  an unsupported transferred three-year personal-experience claim.
+- Current prompt explicitly favors smallest useful changes; validators enforce
+  structure/length, not editorial quality. The short-source 80-character allowance
+  lets a 28-character hook become 74 characters; prompt input has no timing.
+  Recommend a Hook-specific brief preserving persuasive mechanism rather than
+  noun sequence, grounded feature selection and duration-aware brevity. Model
+  replacement has not been tested. Context contains useful facts plus potentially
+  distracting carousel/CTA suggestions. Changed single-box text is also sent as
+  guidance, a latent ambiguity absent from these empty-instruction samples.
+- All 12 receipt outputs preserve exact copy through actual Apply/serialization,
+  except the documented legacy screen-cut-tail normalization, and all 12 source
+  texts match the current local catalogue. This does not verify hosted rendered
+  videos or establish audience performance. Wider checks: 37 pass, 2 fail because
+  the ordinary-media-read assertion conflicts with current metadata job lookup
+  and reference inventory has 283 entries versus 296 current references (nine
+  Hooks and four slideshows omitted by the inventory helper). Failures recorded,
+  not hidden or fixed by relaxing assertions.
+- Audit/evidence: `docs/hook-remix-quality-audit-2026-10-23.md` and
+  `docs/hook-remix-quality-samples-2026-10-23.json`. No remix prompt, receipt,
+  account, API or worker change; no provider requests or deployments submitted.
+  Deployment remains paused. Human-written example improvements are illustrative,
+  not saved model outputs or proven winners.
+
+## 2026-10-23 Person picker implemented locally; deployment paused
+
+- User authorized separate **My AI influencers** and **Uploaded photos** sources,
+  a small labelled **UGC Pilot images** control, inline selection and results below
+  setup. The shared Hook, Talking Head and Wall of Text Recreate preparation now
+  implements this direction. Catalogue switches the same grid and returns to the
+  prior owned source; empty libraries do not silently switch to stock. Upload and
+  Create a new influencer remain explicit actions. Main/supporting roles, saved
+  media verification and pagination are retained. Choosing a different generated
+  influencer retains the existing replacement/reset of prior supporting photos.
+- Person selection expands within preparation, without a second dialog. Done
+  returns focus to Change photos. Results remain below setup in bounded,
+  start-aligned cards. The regular shared chooser and independent Talking Head
+  upload chooser also use Uploaded photos and the compact catalogue control;
+  generated influencer history remains available in Recreate preparation.
+- Completed jobs now have separate preview loading/ready/error state, including
+  a 15-second loading timeout. Approval checks that the exact selected asset and
+  current URL have loaded. Retry preview reloads the image and reads saved job
+  status; it does not submit another paid generation. The screenshot's original
+  blank-preview cause remains unverified; this is recovery/readiness handling,
+  not proof that its hosted media-delivery cause has been repaired.
+- Local evidence: 88 focused tests pass; 12 real-component browser scenarios
+  cover all three Recreate workflows at desktop, short desktop, 390px and 320px.
+  Six regular Hook/Talking Head picker scenarios plus pagination/cache checks
+  also pass. TypeScript and scoped lint pass. Browser fixtures provide account,
+  upload and generation responses; these do not establish hosted acceptance.
+  The older image-picker-performance test cannot import optimizeImage from this
+  installed Next version; no optimizer implementation/configuration changed.
+- No deployment or paid generation was submitted for these UI changes. Production
+  Hook redirected the available browser to sign-in. Evidence and limitations:
+  `docs/explore-person-picker-implementation-2026-10-23.md`.
+
+## HTTP 400 diagnostic replacement confirms provider safety filtering
+
+- User authorized cause investigation and another test. Local SDK exposed error details the old harness had discarded; sanitized message/body capture and block classification now added to local runners, with three passing tests. Two new calls repeated the exact laptop prompts/inputs. Baseline returned explicit safety-filter block, and provider states blocked output is not charged. Focused completed. Specific triggering input is not identified; original missing error body cannot be reconstructed. No format-fix, automatic retry, filter workaround or completed visual comparison is claimed. See docs/starting-frame-prompt-pilot-2026-10-23.md. Production prompt unchanged; deployment paused.
+
+## Third prompt comparison incomplete: baseline provider error
+
+- User requested another comparison. Hook 02 laptop/glasses source used identical Pro/2K and person photos. Baseline returned HTTP 400 with no operation/output retained; cause and billing outcome are unverified. Focused candidate completed and removes captions, but no current-vs-focused winner can be inferred. No automatic replacement/retry. Evidence in docs/starting-frame-prompt-pilot-2026-10-23.md. Deployment remains paused.
+
+## Focused-prompt repeat: second reference did not improve composition
+
+- User requested another source-frame test. Two fresh Pro/2K images completed using Hook 01's native first frame and the same three person photos as the glasses test. Both remove captions; focused candidate widens framing and moves the shelf to screen-left despite screen-right guidance. Baseline follows the source layout more closely in this pair. Do not extrapolate the first sample's apparent improvement or migrate the full catalogue. Findings and source/request/output evidence: docs/starting-frame-prompt-pilot-2026-10-23.md. Deployment remains paused; production prompt unchanged.
+
+## Focused-prompt pilot completed locally; no production switch
+
+- User requested testing before authoring source-specific prompts for the full Hook catalogue. Two fresh Pro/2K provider images completed on the same source and three person photos, comparing current v4 against a fuller scene/caption candidate. Both remove captions; candidate follows glasses placement/background more closely in this pair. This is one stochastic sample per condition, not reliability acceptance or proof of likeness. See docs/starting-frame-prompt-pilot-2026-10-23.md for exact evidence and limits.
+- Prototype lists Pro/Flash starting-frame routes and clearly disabled ChatGPT/Seedream candidates from the broader app catalogue. No additional model adapter, production compiler change or release was made. Deployment remains paused. Further representative/repeated comparisons are proposed, not automatically queued.
+
+## Local Recreate interaction prototype (not production integration)
+
+- User requested a visible test UI before implementing the redesign. Local-only prototype at outputs/recreate-ui-preview/index.html, served on 127.0.0.1:8194 by its explicit-asset-allowlist server, uses real earlier source/person images and v2/v3/v4 outputs labelled as previous tests. Generation is disabled; this is not evidence for a new prompt or a connected account library.
+- Working prototype interactions: inline main-photo selection and session-only uploads, result selection/enlargement, Use this frame into a sample composer, and replacing through Starting frames history. Desktop/mobile browser checks passed for visible images, selection/history/enlargement and horizontal overflow. Account persistence, supporting-role management, stock source and provider integration remain for the real component implementation. Deployment stays paused.
+
+## 2026-10-23 Scheduling confirmation visibility and distinct photo sources
+
+- User clarified that View in Scheduling remains present after scheduling but
+  looks like normal text; this is a discoverability complaint, not a disappearing
+  receipt report. Keep the existing confirmation and repeat handlers. All three
+  Explore confirmation renderers now use a shared explicit orange, semibold,
+  underlined link with an arrow, hover feedback and keyboard focus. A local browser
+  reproduced the global unlayered `a { text-decoration: none }` cancelling the old
+  Tailwind underline; orange itself remained computed in that local build. Do not
+  claim the exact hosted neutral-colour cause was independently reproduced.
+- Scheduling cross-checks cover direct and background confirmation, saved receipt
+  recovery, time/account validation, lost responses and duplicate prevention.
+  All 78 focused frontend/client/service/route checks pass; desktop/mobile browser
+  checks pass for four scheduling paths plus Talking Head confirmation styling.
+  TypeScript and scoped lint pass. These use local fixture accounts and APIs.
+  Two baseline TikTok receipt tests incorrectly depended on the old commercial
+  disclosure default; their fixture now explicitly selects disclosure/own-brand
+  promotion so they test canonical mapping and changed-setting rejection. No
+  publishing default or scheduling API/worker behavior changed.
+- User rejects merging generated influencers with uploads. Keep separate sources;
+  recommended labels are My AI influencers (created in Build AI influencer) and
+  Uploaded photos (Explore reference uploads). Keep UGC Pilot images as a small
+  labelled source control in the same inline library. This supersedes earlier
+  Your photos merge proposals. Keep starting frames below setup and preserve
+  main/supporting roles, selected images and independent preview error handling.
+- Production Hook entry redirected the available browser to sign-in. No real post
+  was created, modified or published. Deployment remains paused; local scheduling
+  checks do not establish hosted end-to-end publishing acceptance. Evidence:
+  `docs/explore-scheduling-visibility-review-2026-10-23.md`.
+
+## 2026-10-23 Revised starting-frame and library direction (discussion)
+
+- User corrected the proposal: keep generated starting frames **below** setup;
+  do not move them to a right-hand review column. Compact the source/person/settings
+  area and the result section without changing that order.
+- Earlier proposal, superseded by the later separate-source correction: retain UGC Pilot images. Merge uploads and saved generated person images into
+  Your photos; remove only the separate Your influencers tab after preserving its
+  contents. This supersedes the earlier proposal to remove the stock catalogue.
+- The new screenshot includes a top-right mark near library actions. Reading this
+  as a compact secondary catalogue entry is an interpretation, not a confirmed
+  icon specification. Recommend a labelled UGC Pilot images control that switches
+  the same inline grid, with a visible route back to Your photos. Do not mix stock
+  people into the owner's grid or add another popup.
+- Inline photo selection and separate blank-preview diagnosis/loading/error/retry
+  remain the proposed direction. No person-picker or starting-frame redesign was
+  implemented for this clarification; deployment remains paused.
+
+## 2026-10-23 Compact Your videos results (local)
+
+- The separate user request about oversized Your videos content now has a local
+  implementation: Explore pending/completed previews use a height budget capped
+  at 300px, preserve aspect ratio, and use a narrower two-line prompt summary with
+  expansion/copy retained. Hook/Wall share this layout. Talking Head's separate
+  generated-result canvas uses the same height budget. Standalone AI Studio retains
+  its existing presentation; slideshow outputs do not use these video components.
+- TypeScript and scoped lint passed. The local isolated browser harness passed 70
+  pending/completed, ratio and viewport cases plus a standalone Studio scope check;
+  existing desktop/mobile generated-result action checks also passed. Screenshots
+  and receipt: `.tmp/explore-compact-video-results/`; runner:
+  `scripts/explore-compact-video-results.browser.cjs`. Auth, inference, surrounding
+  workflow state and download transport are isolated; physical touch and browser
+  zoom were not tested. No deployed or authenticated production acceptance.
+
+## Reference playback: hover-only implemented locally
+
+- User approved implementing hover-only reference playback while keeping deployment paused. Removed the visible-autoplay option from the shared cover hook and the reference gallery caller. Cards remain on their posters until sustained pointer hover or keyboard focus; leave, blur, click, offscreen visibility, hidden tabs and reduced-motion preferences stop/unload playback. Touch hover does not start playback; the existing tap-to-preview dialog remains.
+- Supersedes earlier pending-hover and visible-autoplay notes. The 21 focused cover/navigation/reference-preview checks pass locally. This has not been deployed or freshly accepted in the authenticated production browser.
+- Recreate simplification remains a proposal: retain the generation/state flow, expand the photo picker inline, preserve selected photos and completed/pending results, maintain keyboard focus and responsive scrolling, and retain deliberate Generate/Use frame actions. Scene-specific prompt changes require representative comparisons; clearer instructions may improve caption removal but do not guarantee it.
+
+## 2026-10-23 Hook starting-frame layout and photo-library confusion (open review)
+
+- User supplied two more screenshots: a generated starting-frame card sits below
+  setup despite unused horizontal space, its selected preview is blank, and the
+  person picker splits Your influencers / Your images / UGC Pilot images. Add this
+  recurrence to the existing simplification review; no runtime change or release.
+- Earlier proposal (superseded by the user's later keep-results-below correction): compact source/person/settings left, principal selected-frame
+  review right with variations beneath; responsive stacking and a visible approval
+  footer. Expand the photo library inline only on request. A blank selected card
+  needs separate preview loading/error/retry handling and production diagnosis;
+  neither successful job metadata nor a spacing change proves it viewable.
+- Earlier picker proposal (superseded by the separate-source correction): one Your photos grid combining eligible owned Explore uploads
+  and generated person history. Remove Your influencers as a separate tab only
+  after its media remains selectable there. The earlier proposal to remove stock
+  UGC Pilot images is superseded: retain it as a distinct optional source. Preserve explicit main/supporting
+  roles, ownership, provenance, pagination and verified asset/job identity. Do not
+  include unrelated uploads or scene outputs, delete saved media, or remove the
+  influencer builder. Starting frames history remains distinct in the composer.
+- Source review confirms shared Recreate exposure in Hook, Wall and Talking Head.
+  Normal Hook/Wall image selection repeats two source tabs; Talking Head has an
+  independent WorkflowImageLibrary with the same two tabs and needs follow-through.
+  Slideshow source/background pickers have different paths: no exact three-tab or
+  starting-frame layout recurrence found; preserve their meaningful source roles.
+- Screenshot/source audit only; no fresh authenticated browser acceptance or
+  cross-workflow reproduction of the blank preview. Evidence, source locations,
+  proposed layout and acceptance matrix are in
+  `docs/starting-frame-simplification-review-2026-10-23.md`. Deployment stays paused.
+
+## Starting-frame follow-up: optional face references for animation (proposed)
+
+- User requests Add face references beside the selected starting image because a side-facing or obscured face may provide insufficient appearance detail during animation. This is an animation-input request, separate from person photos used to create the still.
+- Current worker admission explicitly rejects face photos mixed with an approved starting frame; the Omni adapter also separates these modes. A UI tile alone is insufficient. Verify literal-first-frame plus separate appearance-reference support per provider/model before changing the API/worker contract or enabling this option.
+- Prefer optional reuse of the user's selected original person photos, with inline add/change, over automatically generating extra frames. Preserve the approved opening composition and show which inputs are actually submitted. Do not silently discard photos or promise facial consistency. Proposal and evidence are in docs/starting-frame-simplification-review-2026-10-23.md. Deployment remains paused.
+
+## 2026-10-23 Slideshow business adaptation clarification — confirmed production cause
+
+- User reported Recreate asking for exact UGCPilot copy for Source slides 1–6
+  despite a saved business profile. Read-only production lookup found the exact
+  clarification in three completed planning records (12:44:06–12:44:47 UTC).
+  Each had six targets, zero planned slides, one clarification, and no business
+  context/snapshot in its durable input. The owner's applied UGCPilot profile
+  version 2 already existed, with product summary, value propositions and audience.
+- API loads `slideshowBusinessContext` before planning, but passes only `named`
+  (prompt, images, target IDs) to `planSlideshowRequest`. That service's model
+  message omits business facts. Context is attached only to later image jobs,
+  which the clarification branch prevents from being admitted.
+- Planner system wording compounds the missing data: “Do not invent business
+  copy” treats requested factual copy adaptation like unsupported claim invention.
+  The user's explicit adaptation request should authorize writing grounded copy;
+  numerical results, guarantees, medical/product claims still require evidence.
+- Investigation only: no runtime fix, provider request, database write or
+  deployment. Proposed correction must supply the server-frozen profile to the
+  planner and durable input/hash, distinguish adaptation from unsupported claims,
+  preserve unrelated visuals/wording, and test context handoff plus six-slide
+  cross-topic adaptation. Existing completed clarification receipts remain
+  immutable; recovery must not silently resubmit them after a prompt change.
+  Evidence: `docs/slideshow-business-context-root-cause-2026-10-23.md`.
+
+## 2026-10-23 Deployment paused again; simplify Recreate before further rollout
+
+- The user paused further deployment to reconsider stacked Recreate/image-picker screens and inconsistent starting-image results. The preceding website/worker release is already live; the separate MCP target remains on its prior deployment. Do not describe the pause as undoing the completed release. Hover-only reference playback was requested but has not yet been implemented/deployed.
+- Two latest Hook 100 saved requests both use Pro/v4, identical scene/person inputs and an identical prompt with caption removal plus a verified opening description. The supplied screenshot shows retained creator text and scene drift. Current output admission checks ownership/receipt/media validity, not visual caption/likeness/scene quality. These technical checks cannot be presented as image-quality acceptance.
+- Proposal under discussion: one focused workspace with a collapsed inline person library, retained explicit person choice, compact default settings, same-screen results, and deliberate image approval before separate paid animation. Preserve Starting frames history in the Create image chooser. A stable identity prompt plus source-bound frame-specific scene/cleanup guidance should be evaluated; no new prompt is qualified or deployed during the pause.
+- Read-only findings, evidence limits and proposed checks: `docs/starting-frame-simplification-review-2026-10-23.md`. No new paid generation or production mutation is authorized by this thinking discussion.
+
 ## 2026-10-23 New Hook Remix and Recreate readiness follow-up
 
 - Verified all eight refresh references through the actual caption resolver,
@@ -4143,6 +4681,15 @@ mistake recurs; add the recurrence and its cause rather than deleting the row.
 | EX-48 | Hook source icons navigated free users straight to the original social post | Check verified Pro access at every source-icon rendering path. Free clicks open Upgrade to Pro; Pro links retain safe external navigation. Keep Wall source-free and Preview/Recreate independent. **Local change; production acceptance pending.** |
 | EX-49 | Font controls were demonstrated as extra full-width rows that made Text style tall and pushed useful controls away | Preserve the compact inspector. Add Font and Weight together in one small bottom row; verify inside the real editor at laptop and narrow sizes. Do not use an isolated wide fixture as the product design. **Compact full-editor checks passed locally.** |
 | EX-50 | A font appeared selectable in the browser while native export lookup could silently substitute another face | Bundle matching faces and licenses, validate the saved choice, and render glyphs from that exact file. Verify all four families at all three weights with actual raster/video output and save/reopen. Preserve legacy appearance. **Local checks passed; production pending.** |
+
+Recurring open issues added 23 October 2026:
+
+| ID | Mistake and user impact | Prevention / current status |
+| --- | --- | --- |
+| EX-51 | Starting-frame results sit below a tall setup area while space beside the person remains unused; another large picker interrupts comparison | Results stay below compact setup; person selection expands inline. **Implemented locally; all three Recreate workflows passed desktop/mobile fixture checks. Hosted acceptance pending deployment.** |
+| EX-52 | Your influencers / Your images / UGC Pilot images make users understand separate inventories before choosing a person | My AI influencers and Uploaded photos remain separate; UGC Pilot images is a compact source control. Separate Talking Head upload chooser updated; roles/history retained. **Implemented and checked locally; hosted acceptance pending deployment.** |
+| EX-53 | Screenshot shows a blank selected result with approval available; job success does not establish a viewable preview | Loading/error/timeout/free retry and selected-image readiness now guard approval. **Recovery implemented and checked locally; original hosted blank-preview root cause remains unverified.** |
+| EX-54 | Confirmed View in Scheduling action blends into surrounding text; the global anchor reset also strips its utility underline | Use shared explicit orange/semibold/underline/arrow/focus styling in direct, background and Talking Head confirmation paths. Preserve receipt and repeat logic. **Local change and regression checks; production acceptance pending sign-in and release.** |
 
 Process incident: an intermediate edit introduced an invalid UTF-8 byte and
 temporarily broke local compilation. It was corrected. Preserve UTF-8 and check

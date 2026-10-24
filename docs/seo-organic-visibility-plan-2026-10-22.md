@@ -1,6 +1,6 @@
 # UGC Pilot organic visibility plan
 
-Updated: 22 October 2026 (IST)
+Updated: 24 October 2026 (IST)
 
 ## Focus
 
@@ -26,6 +26,13 @@ These copy changes are local source changes. They need the normal application re
 - Current public search results for AI UGC and SaaS demo terms are crowded with broad “generate a video/ad” claims. UGC Pilot's useful editorial angle is to help founders pair creator-style opening footage with a real product demonstration and review it for accuracy. This is a content distinction, not a claim that other products cannot do it.
 - Fresh Search Console reporting could not be read through the connected GSC Wizard service today: it returned `payment_required` because its trial ended or there is no active subscription. The previous 28-day snapshot remains the latest verified baseline; no current change or uplift is claimed.
 - The current local copy and guide improvements need the normal site release before public users can access them. Google's Search guidance favors original, people-first work; it does not promise that a daily edit will improve rankings.
+
+## Daily progress — 24 October 2026
+
+- Rechecked the connected Windsor.ai Search Console account for `https://getugcpilot.com/`. The latest 28-day page report returned 1 click on the homepage (12 impressions); `/ai-ugc-video-generator` had 65 impressions, 0 clicks and average position 80.1; `/guides/mobile-app-marketing` had 5 impressions, 0 clicks and average position 14.4; `/instagram-carousel-maker` had 4 impressions, 0 clicks and average position 14.0. These are small samples, so they do not establish a trend or justify adding pages or rewriting titles again.
+- Compared the public mobile-app guide with its source. The source includes a useful “Prepare a product demo people can trust” section and a blank demo brief, but the live page crawled on 24 October does not show that section. The existing content is a better next release candidate than adding a generic seven-day calendar that would repeat the guide's launch-sequence advice.
+- Next action: release the existing guide improvement through the normal site release, then verify that the section and brief appear on the public URL. After Google has had time to recrawl, compare the guide's impressions, clicks and queries in a consistent Search Console window. Do not request indexing repeatedly or claim ranking gains before the data supports them.
+- No SEO source code was changed today. The repository contains many unrelated in-progress changes; they were left untouched. This plan note records the evidence and the release dependency only.
 
 ## Next 30 days
 

@@ -41,7 +41,32 @@
 .supportHeading h4 { font-size: 12px; font-weight: 600; }
 .supportHeading span { margin-left: 6px; color: var(--muted); font-size: 11px; font-weight: 400; }
 .library { display: flex; flex-direction: column; gap: 16px; min-height: 0; padding: 22px 24px 0; }
-.libraryHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.libraryHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.libraryHeading h3 { flex: 1; }
+.catalogControl { width: auto; min-height: 32px; padding: 4px 6px; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
+.catalogControl[aria-pressed="true"] { color: var(--primary); }
+.builderLink { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.builderLink:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.inlineRoot { min-width: 0; }
+.inlineContent { container: person-picker / inline-size; min-width: 0; width: 100%; margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: clip; }
+.inlineContent .header { padding: 14px; }
+.inlineContent .title { font-size: 15px; }
+.inlineContent .description { margin-top: 6px; font-size: 12px; }
+.inlineContent .headerActions { margin-top: 8px; }
+.inlineContent .body { display: flex; flex-direction: column; }
+.inlineContent .selection { border-right: 0; border-bottom: 1px solid var(--border); padding: 14px; overflow: visible; }
+.inlineContent .emptySelection { min-height: 0; padding: 12px; gap: 6px; }
+.inlineContent .emptySelection svg { display: none; }
+.inlineContent .selectedGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.inlineContent .mainPhoto { grid-column: auto; }
+.inlineContent .selectedVisual img, .inlineContent .mainPhoto .selectedVisual img { height: 112px; object-fit: contain; }
+.inlineContent .supportHeading { display: none; }
+.inlineContent .library { padding: 14px; gap: 10px; }
+.inlineContent .libraryGrid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.inlineContent .libraryPanel { max-height: 320px; padding-bottom: 6px; }
+.inlineContent .footer { padding: 10px 14px; }
+.inlineContent .footerStatus { font-size: 11px; }
+@container person-picker (max-width: 380px) { .libraryHeading h3 { flex-basis: 100%; } .catalogControl { margin-right: auto; } }
 .tabs { display: flex; flex-direction: column; gap: 14px; min-height: 0; flex: 1; }
 .sourceTabs { display: flex; flex: none; flex-wrap: wrap; gap: 8px; }
 .libraryPanel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px 3px 24px; }

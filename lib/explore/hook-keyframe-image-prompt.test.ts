@@ -67,3 +67,39 @@ test("invalid capacities and control text fail before any image request can be b
   assert.throws(() => buildHookKeyframeImagePrompt({ personImageCount: 1, instructions: "x".repeat(2_001) }));
   assert.throws(() => buildHookKeyframeImagePrompt({ personImageCount: 1, instructions: "bad\u0000text" }));
 });
+
+test("v5 is opt-in, retains image roles and uses only source-matched opening guidance", () => {
+  const scope = { personImageCount: 3, referenceId: "explore-paired-hook-4585ee949081c4e5cd835cd3", sourceSha256: "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49" };
+  const baseline = buildHookKeyframeImagePrompt(scope);
+  const candidate = buildHookKeyframeImagePrompt({ ...scope, promptVersion: 5, instructions: "Make the room background slightly darker." });
+  assert.equal(baseline.version, 4);
+  assert.equal(candidate.version, 5);
+  assert.deepEqual(candidate.roles, baseline.roles);
+  assert.equal(candidate.imageCount, baseline.imageCount);
+  assert.match(candidate.prompt, /VERIFIED OPENING SCENE — The performer sits behind a pink keyboard/);
+  assert.doesNotMatch(candidate.prompt, /Lift the hand from screen-right to cover the mouth|ENDING STATE/);
+  assert.ok(candidate.prompt.endsWith("USER IMAGE INSTRUCTIONS:\nMake the room background slightly darker."));
+  assert.doesNotMatch(buildHookKeyframeImagePrompt({ ...scope, promptVersion: 5, sourceSha256: "a".repeat(64) }).prompt, /VERIFIED OPENING SCENE/);
+  assert.doesNotMatch(buildHookKeyframeImagePrompt({ personImageCount: 1, promptVersion: 5 }).prompt, /Image 3|SUPPORTING VIEWS/);
+  assert.ok(buildHookKeyframeImagePrompt({ ...scope, promptVersion: 5, personImageCount: 5, instructions: "x".repeat(2_000) }).prompt.length < HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH);
+  // A malformed test-harness version must never silently run a different prompt.
+  assert.throws(() => buildHookKeyframeImagePrompt({ personImageCount: 1, promptVersion: 99 as 5 }));
+});
+
+test("v6 remains opt-in with the same input order, source provenance and instruction budget", () => {
+  const scope = { personImageCount: 3, referenceId: "explore-paired-hook-4585ee949081c4e5cd835cd3", sourceSha256: "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49" };
+  const baseline = buildHookKeyframeImagePrompt(scope);
+  const candidate = buildHookKeyframeImagePrompt({ ...scope, promptVersion: 6 });
+  assert.equal(baseline.version, 4);
+  assert.equal(candidate.version, 6);
+  assert.deepEqual(candidate.roles, baseline.roles);
+  assert.equal(candidate.imageCount, baseline.imageCount);
+  assert.match(candidate.prompt, /VERIFIED OPENING SCENE — The performer sits behind a pink keyboard/);
+  assert.doesNotMatch(candidate.prompt, /Lift the hand from screen-right to cover the mouth|ENDING STATE/);
+  assert.doesNotMatch(buildHookKeyframeImagePrompt({ ...scope, promptVersion: 6, sourceSha256: "a".repeat(64) }).prompt, /VERIFIED OPENING SCENE|The opening description is supplementary/);
+  assert.doesNotMatch(buildHookKeyframeImagePrompt({ personImageCount: 1, promptVersion: 6 }).prompt, /Image 3|SUPPORTING VIEWS/);
+  const instructions = "x".repeat(2_000);
+  const full = buildHookKeyframeImagePrompt({ ...scope, promptVersion: 6, personImageCount: 5, instructions });
+  assert.ok(full.prompt.endsWith(`USER IMAGE INSTRUCTIONS:\n${instructions}`));
+  assert.ok(full.prompt.length < HOOK_KEYFRAME_IMAGE_PROMPT_MAX_LENGTH);
+});

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
-import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit } from "../worker/src/lib/explore-format-edit.ts";
+import { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, formatTextEmojiError } from "../worker/src/lib/explore-format-edit.ts";
 import * as editDraft from "../lib/explore/format-edit-draft.ts";
 import * as wallTextEditor from "../lib/explore/wall-text-editor.ts";
 import * as hookTextTiming from "../lib/explore/hook-text-timing.ts";
@@ -35,7 +35,7 @@ function load(path, imports, globals = {}) {
     if (name === "@/lib/explore/hook-remix-source") return hookRemix;
     if (name === "@/lib/explore/clip-preview-time") return clipTime;
     if (name === "@/lib/explore/remix-text-edit") return { applyVideoTextRemix };
-    if (name === "@/worker/src/lib/explore-format-edit") return { formatTextLayout, formatTextOverlays, parseExploreFormatEdit };
+    if (name === "@/worker/src/lib/explore-format-edit") return { formatTextLayout, formatTextOverlays, parseExploreFormatEdit, formatTextEmojiError };
     if (name === "@/worker/src/lib/explore-finishing-contract") return { isExploreUuid };
     return imports[name] ?? (name === "react/jsx-runtime" ? jsx : new Proxy({}, { get: (_, key) => String(key) }));
   } });

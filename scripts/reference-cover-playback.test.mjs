@@ -4,7 +4,7 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 
-test("visible reference videos start without hover, unload offscreen and resume after tab return", async () => {
+test("reference videos stay still until hover, stop on leave and respect visibility and reduced motion", async () => {
   const listeners = new Map(), events = new Map();
   let intersect, timer, cleanup, source;
   const link = { addEventListener: (name, fn) => events.set(name, fn), removeEventListener() {} };
@@ -17,13 +17,19 @@ test("visible reference videos start without hover, unload offscreen and resume 
   vm.runInNewContext(code, { exports: exported, document, window: { matchMedia: () => preference }, setTimeout: fn => { timer = fn; return 1; }, clearTimeout: () => { timer = undefined; },
     IntersectionObserver: class { constructor(fn) { intersect = fn; } observe() {} disconnect() {} },
     require: () => ({ useRef: () => ({ current: video }), useEffect: fn => { cleanup = fn(); } }) });
-  exported.useCoverPlayback("https://media.test/clip.mp4", "button", true);
+  exported.useCoverPlayback("https://media.test/clip.mp4", "button");
   assert.equal(source, undefined);
-  intersect([{ isIntersecting: true }]); timer(); assert.equal(video.plays, 1);
+  intersect([{ isIntersecting: true }]); assert.equal(timer, undefined); assert.equal(video.plays, 0);
+  events.get("pointerenter")({ pointerType: "touch" }); assert.equal(timer, undefined);
+  events.get("pointerenter")({ pointerType: "mouse" }); timer(); assert.equal(video.plays, 1);
+  events.get("pointerleave")(); assert.equal(source, undefined);
+  document.visibilityState = "hidden"; listeners.get("visibilitychange")();
+  document.visibilityState = "visible"; listeners.get("visibilitychange")(); assert.equal(source, undefined); assert.equal(video.plays, 1);
+  events.get("focus")(); timer(); assert.equal(video.plays, 2);
   intersect([{ isIntersecting: false }]); assert.equal(source, undefined);
-  intersect([{ isIntersecting: true }]); timer(); assert.equal(video.plays, 2);
+  intersect([{ isIntersecting: true }]); timer(); assert.equal(video.plays, 3);
   document.visibilityState = "hidden"; listeners.get("visibilitychange")(); assert.equal(source, undefined);
-  document.visibilityState = "visible"; listeners.get("visibilitychange")(); timer(); assert.equal(video.plays, 3);
+  document.visibilityState = "visible"; listeners.get("visibilitychange")(); timer(); assert.equal(video.plays, 4);
   preference.matches = true; events.get("change")(); assert.equal(source, undefined);
   cleanup();
 });

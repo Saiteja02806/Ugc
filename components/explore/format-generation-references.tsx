@@ -15,6 +15,7 @@ import { imagePickerThumbnailUrl, REFERENCE_IMAGE_PAGE_SIZE, REFERENCE_IMAGE_STA
 import { prepareReferenceImageBatch, validateReferenceImageFiles } from "@/lib/explore/reference-image-batch";
 import { makeMainReference, type ExploreImagePurpose } from "@/lib/explore/person-reference";
 import { PersonPhotoGuide } from "@/components/explore/person-photo-guide";
+import { InlinePhotoPicker, InlinePhotoPickerContent, InlinePhotoPickerTrigger } from "@/components/explore/inline-photo-picker";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 import type { CharacterHistoryImage } from "@/lib/characters/types";
 import { fetchRecentStartingFrame, fetchRecentStartingFrames } from "@/lib/explore/hook-starting-frame-history-client";
@@ -39,12 +40,13 @@ type InfluencerImageLibrary = {
 };
 
 /** Optional generation guidance; imported editor footage uses the separate source picker. */
-export function FormatGenerationReferences({ startingFrame, onSelectStartingFrame, onClearStartingFrame, previewStartingFrames, influencerLibrary, selection, imageSelection, imageSelections, imagePurpose = "general", imagePresentation = "tile", onImagePurposeChange, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true, heading = "Optional references" }: {
+export function FormatGenerationReferences({ startingFrame, onSelectStartingFrame, onClearStartingFrame, previewStartingFrames, influencerLibrary, inlineImagePicker = false, selection, imageSelection, imageSelections, imagePurpose = "general", imagePresentation = "tile", onImagePurposeChange, videoSelection, audioSelection, onImagesChange, maxImages = 6, onChange, onPendingChange, onErrorChange, disabled, preview, ownerId, styleVideo, onStyleVideoDurationChange, onClearStyle, active = true, videoInputEnabled = true, audioInputEnabled = false, maxImageBytes = 20 * 1024 ** 2, maxVideoDuration = 10, maxAudioDuration = 30, maxVideoBytes = 32 * 1024 ** 2, maxAudioBytes = 25 * 1024 ** 2, preserveVideoTiming = true, heading = "Optional references" }: {
   startingFrame?: HookStartingFrameSelection;
   onSelectStartingFrame?: (frame: HookStartingFrameSelection) => void;
   onClearStartingFrame?: () => void;
   previewStartingFrames?: HookStartingFrameSelection[];
   influencerLibrary?: InfluencerImageLibrary;
+  inlineImagePicker?: boolean;
   heading?: string;
   selection: AIStudioReferenceMedia | null;
   imageSelection?: AIStudioReferenceMedia | null;
@@ -112,13 +114,18 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
     staleTime: REFERENCE_IMAGE_STALE_MS,
     refetchOnWindowFocus: true,
   });
-  const activeImageTab = imageTab ?? (influencerLibrary ? "influencers" : !preview && ownerId && (imagesQuery.isPending || imagesQuery.data?.length) ? "user" : "catalog");
+  const activeImageTab = imageTab ?? (influencerLibrary ? "influencers" : "user");
+  const previousOwnedTab = useRef<"user" | "influencers">("user");
+  function changeImageTab(value: "user" | "catalog" | "starting" | "influencers") {
+    if (value === "catalog" && (activeImageTab === "user" || activeImageTab === "influencers")) previousOwnedTab.current = activeImageTab;
+    setImageTab(value);
+  }
   async function chooseInfluencer(image: CharacterHistoryImage) {
     if (!influencerLibrary || disabled || pending || working.current) return;
     const request = ++revision.current;
     working.current = true; setPending("image"); setError(null);
     try {
-      if (await influencerLibrary.onSelect(image) && request === revision.current) setOpenKind(null);
+      await influencerLibrary.onSelect(image);
     } catch (cause) {
       if (request === revision.current) setError(cause instanceof Error ? cause.message : "Could not use this influencer image.");
     } finally {
@@ -321,14 +328,17 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
         const asset = kind === "image" && startingFrame ? { name: "Starting frame", url: startingFrame.url, duration: null } : selected ? { name: selected.asset.fileName ?? selected.asset.title, url: selected.asset.url, duration: selected.asset.durationSeconds } : isStyle ? styleVideo : null;
         const input = kind === "image" ? imageInput : kind === "video" ? videoInput : audioInput;
         const inputEnabled = kind === "image" || kind === "video" && videoInputEnabled || kind === "audio" && audioInputEnabled;
-        const uploadActions = <div className="flex flex-wrap items-center gap-2">{inputEnabled ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || kind === "image" && imageLimitReached} onClick={() => input.current?.click()} className={kind === "image" ? "h-8 gap-1.5 rounded-xl px-3 text-xs" : "h-9 rounded-lg text-sm"}>{kind === "image" ? <><Plus className="size-3.5" aria-hidden="true" />{onImagesChange ? "Add images" : "Add image"}</> : isStyle ? "Upload video reference" : asset ? `Replace ${kind}` : `Attach ${kind}`}</Button> : null}
+        const uploadActions = <div className="flex flex-wrap items-center gap-2">{inputEnabled ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || kind === "image" && imageLimitReached} onClick={() => input.current?.click()} className={kind === "image" ? "h-8 gap-1.5 rounded-xl px-3 text-xs" : "h-9 rounded-lg text-sm"}>{kind === "image" ? <><Plus className="size-3.5" aria-hidden="true" />{personPhotos ? "Upload photos" : onImagesChange ? "Add images" : "Add image"}</> : isStyle ? "Upload video reference" : asset ? `Replace ${kind}` : `Attach ${kind}`}</Button> : null}
           {asset && kind !== "image" ? <Button type="button" variant="ghost" aria-label={isStyle ? "Remove gallery video reference" : `Remove ${kind} reference`} disabled={disabled || Boolean(pending)} onClick={isStyle ? removeStyleVideo : () => remove(kind)} className="h-9 rounded-lg text-sm">{`Remove ${kind}`}</Button> : null}
 
           {kind === "image" && activeImageTab === "user" && !preview && ownerId ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh your images" title="Refresh your images" disabled={Boolean(pending) || imagesQuery.isFetching} onClick={() => void imagesQuery.refetch()}><RefreshCw className={cn("size-3.5", imagesQuery.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" /></Button> : null}
         </div>;
-        const Picker = kind === "image" ? Dialog : Popover;
-        const PickerTrigger = kind === "image" ? DialogTrigger : PopoverTrigger;
-        const PickerContent = kind === "image" ? DialogContent : PopoverContent;
+        const inline = kind === "image" && inlineImagePicker;
+        const Picker = inline ? InlinePhotoPicker : kind === "image" ? Dialog : Popover;
+        const PickerTrigger = inline ? InlinePhotoPickerTrigger : kind === "image" ? DialogTrigger : PopoverTrigger;
+        const PickerContent = inline ? InlinePhotoPickerContent : kind === "image" ? DialogContent : PopoverContent;
+        const PickerTitle = inline ? "h4" : DialogTitle;
+        const PickerDescription = inline ? "p" : DialogDescription;
         const personStrip = kind === "image" && personPhotos && imagePresentation === "person-strip";
         const approvedFrame = kind === "image" ? startingFrame : undefined;
         return <div key={kind} data-reference-state={asset ? "selected" : "empty"} style={approvedFrame ? { "--starting-frame-ratio": approvedFrame.width / approvedFrame.height } as CSSProperties : personStrip ? { minHeight: 0 } : undefined} className={cn("relative min-w-0", presentation.referenceCard, approvedFrame && imagePreview.startingFrameCard)}>
@@ -342,8 +352,8 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
             <span>{index === 0 ? "Main" : `Support ${index}`}</span>
           </div>)}</div> : kind === "image" && selectedImages.length ? <><div className={imagePreview.images} data-count={personPhotos ? 1 : selectedImages.length}>{(personPhotos ? selectedImages.slice(0, 1) : selectedImages).map(image => <WorkflowReferencePreview key={image.asset.id} url={image.asset.url} name={image.asset.fileName ?? image.asset.title} disabled={disabled || Boolean(pending)} onRemove={() => removeImage(image)} />)}</div>{personPhotos || selectedImages.length > 1 ? <span className={imagePreview.count}>{personPhotos ? `Main${selectedImages.length > 1 ? ` + ${selectedImages.length - 1} ${selectedImages.length === 2 ? "view" : "views"}` : " photo"}` : `${selectedImages.length} images`}</span> : null}</> : asset ? <WorkflowReferencePreview key={asset.url} kind={kind === "audio" ? "voice" : kind} url={asset.url} name={asset.name ?? "Selected reference"} disabled={disabled || Boolean(pending)} onRemove={isStyle ? onClearStyle ? removeStyleVideo : undefined : () => remove(kind)} media={kind === "video" ? <ReferenceVideoThumbnail url={asset.url} onDurationChange={isStyle ? duration => onStyleVideoDurationChange?.(asset.url, duration) : undefined} /> : undefined} /> : null}
           <Picker open={active && openKind === kind} onOpenChange={open => { if (open && kind === "image") setImageTab(startingFrame ? "starting" : null); setImagePages(1); setOpenKind(open ? kind : null); }}>
-            <PickerTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={kind === "image" && startingFrame ? "Change starting frame" : kind === "image" && influencerLibrary ? asset ? "Change image" : "Choose image" : personStrip ? selectedImages.length ? "Change photos" : "Choose face photos" : isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={personStrip ? "Choose the main face photo and supporting views" : asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={personStrip ? imagePreview.personChange : cn(creation.referenceButton, imagePreview.action, kind === "image" && startingFrame && imagePreview.startingFrameChange)} />}>
-              {kind === "image" && startingFrame ? "Change" : personStrip ? pending === kind ? "Preparing…" : selectedImages.length ? "Change photos" : "Choose photos" : <>
+            <PickerTrigger render={<Button type="button" variant="outline" data-workflow-tile="reference" aria-label={kind === "image" && startingFrame ? "Change starting frame" : inline ? asset ? "Change photos" : "Choose face photos" : kind === "image" && influencerLibrary ? asset ? "Change image" : "Choose image" : personStrip ? selectedImages.length ? "Change photos" : "Choose face photos" : isStyle ? "Choose gallery video reference" : `${asset ? "Replace" : "Add"} ${kind} reference`} aria-busy={pending === kind} title={personStrip ? "Choose the main face photo and supporting views" : asset?.name ?? `Choose an optional ${kind} reference`} disabled={disabled || Boolean(pending)} data-state={pending === kind ? "loading" : asset ? "selected" : "empty"} className={personStrip ? imagePreview.personChange : cn(creation.referenceButton, imagePreview.action, kind === "image" && startingFrame && imagePreview.startingFrameChange)} />}>
+              {kind === "image" && startingFrame ? "Change" : inline || personStrip ? pending === kind ? "Preparing…" : selectedImages.length ? "Change photos" : "Choose photos" : <>
                 {pending === kind ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : !asset ? kind === "image" ? <UserRound aria-hidden="true" /> : kind === "video" ? <Video aria-hidden="true" /> : <AudioLines aria-hidden="true" /> : null}
                 {pending === kind || !asset ? <span className={creation.referenceLabel}>{pending === kind ? "Preparing…" : `Choose ${kind}`}</span> : null}<Plus className={imagePreview.add} aria-hidden="true" />
               </>}
@@ -351,8 +361,8 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
             <PickerContent ref={popup} initialFocus={popup} tabIndex={-1} {...(kind === "image" ? { className: picker.dialog } : { side: "bottom" as const, align: "center" as const, className: cn(studio.floating, creation.floating), style: { maxHeight: "min(calc(100dvh - 2rem), var(--available-height))", maxWidth: "min(calc(100vw - 2rem), var(--available-width))" } })}>
               {kind === "image" ? <>
               <header className={picker.header}>
-                <DialogTitle className={picker.title}>{startingFrame || activeImageTab === "starting" ? "Choose starting frame" : personPhotos ? "Choose person photos" : "Choose images"}</DialogTitle>
-                <DialogDescription className={picker.description}>{startingFrame || activeImageTab === "starting" ? "Choose a generated scene to use as the first frame of your video." : personPhotos ? "Choose one person. Set their clearest face photo as the main image." : "Add appearance, product or scene references for your video."}</DialogDescription>
+                <PickerTitle className={picker.title}>{startingFrame || activeImageTab === "starting" ? "Choose starting frame" : personPhotos ? "Choose person photos" : "Choose images"}</PickerTitle>
+                <PickerDescription className={picker.description}>{startingFrame || activeImageTab === "starting" ? "Choose a generated scene to use as the first frame of your video." : personPhotos ? "Choose one person. Set their clearest face photo as the main image." : "Add appearance, product or scene references for your video."}</PickerDescription>
               <div className={picker.headerActions}>
               {onImagePurposeChange && !startingFrame && activeImageTab !== "starting" ? <div role="group" aria-label="How to use these images" className={picker.purpose}>
                 {(["person", "general"] as const).map(purpose => <Button key={purpose} type="button" size="sm" variant="outline"
@@ -390,16 +400,16 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
               </div>}
                 </aside>
                 <div className={picker.library}>
-                  <div className={picker.libraryHeading}><h3>Image library</h3>{activeImageTab === "starting" ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh starting frames" disabled={Boolean(pending) || startingFramesQuery.isFetching || preview} onClick={() => void startingFramesQuery.refetch()}><RefreshCw className="size-3.5" aria-hidden="true" /></Button> : uploadActions}</div>
-              <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog" || value === "starting" && onSelectStartingFrame || value === "influencers" && influencerLibrary) setImageTab(value); }} className={picker.tabs}>
+                  <div className={picker.libraryHeading}><h3>{activeImageTab === "catalog" ? "UGC Pilot images" : "Image library"}</h3><Button type="button" size="sm" variant="ghost" className={picker.catalogControl} aria-pressed={activeImageTab === "catalog"} onClick={() => changeImageTab(activeImageTab === "catalog" ? previousOwnedTab.current : "catalog")}>{activeImageTab === "catalog" ? "Back to your library" : "UGC Pilot images"}</Button>{activeImageTab === "starting" ? <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh starting frames" disabled={Boolean(pending) || startingFramesQuery.isFetching || preview} onClick={() => void startingFramesQuery.refetch()}><RefreshCw className="size-3.5" aria-hidden="true" /></Button> : uploadActions}</div>
+              <Tabs.Root value={activeImageTab} onValueChange={value => { if (value === "user" || value === "catalog" || value === "starting" && onSelectStartingFrame || value === "influencers" && influencerLibrary) changeImageTab(value); }} className={picker.tabs}>
                 <Tabs.List aria-label="Image sources" className={picker.sourceTabs}>
-                  {influencerLibrary ? <Tabs.Tab value="influencers" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted hover:bg-card-muted focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:text-foreground-strong">Your influencers</Tabs.Tab> : null}
-                  <Tabs.Tab value="user" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:bg-card-muted data-[active]:text-foreground-strong">Your images</Tabs.Tab>
-                  <Tabs.Tab value="catalog" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:bg-card-muted data-[active]:text-foreground-strong">UGC Pilot images</Tabs.Tab>
+                  {influencerLibrary ? <Tabs.Tab value="influencers" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted hover:bg-card-muted focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:text-foreground-strong">My AI influencers</Tabs.Tab> : null}
+                  <Tabs.Tab value="user" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-card-muted hover:text-foreground-strong focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:bg-card-muted data-[active]:text-foreground-strong">Uploaded photos</Tabs.Tab>
+
                 {onSelectStartingFrame ? <Tabs.Tab value="starting" type="button" className="min-w-0 flex-1 rounded-xl border border-border px-2 py-2 text-xs font-medium text-muted hover:bg-card-muted focus-visible:outline-2 focus-visible:outline-focus data-[active]:border-primary/50 data-[active]:text-foreground-strong">Starting frames</Tabs.Tab> : null}
                 </Tabs.List>
-                {influencerLibrary ? <Tabs.Panel value="influencers" aria-label="Your influencers" className={picker.libraryPanel}>
-                  <p className={picker.libraryHint}>Choose an influencer image as your main face photo.</p>
+                {influencerLibrary ? <Tabs.Panel value="influencers" aria-label="My AI influencers" className={picker.libraryPanel}>
+                  <p className={picker.libraryHint}>Created in Build AI influencer. Choose photos of the same person.</p>
                   {influencerLibrary.images.length ? <div className={picker.libraryGrid}>{influencerLibrary.images.map((image, index) => <Button key={`${image.jobId}:${image.mediaAssetId}`} type="button" variant="ghost" className={picker.libraryPhoto}
                     aria-label={`Use saved influencer ${index + 1} as main photo`} aria-pressed={selectedImages[0]?.asset.id === image.mediaAssetId}
                     disabled={disabled || Boolean(pending)} onClick={() => void chooseInfluencer(image)}>
@@ -408,7 +418,7 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
                   </Button>)}</div> : null}
                   {influencerLibrary.loading && !influencerLibrary.images.length ? <p role="status">Loading your influencers…</p> : null}
                   {influencerLibrary.error ? <div role="alert"><p>{influencerLibrary.error.message}</p><Button type="button" size="sm" variant="ghost" disabled={influencerLibrary.loading} onClick={influencerLibrary.onRetry}>Retry</Button></div> : null}
-                  {!influencerLibrary.loading && !influencerLibrary.error && !influencerLibrary.images.length ? <p>No influencer images yet. Add a photo or choose one from UGC Pilot images.</p> : null}
+                  {!influencerLibrary.loading && !influencerLibrary.error && !influencerLibrary.images.length ? <p>No AI influencers yet. <a href="/explore/build-character" target="_blank" rel="noopener noreferrer" className={picker.builderLink}>Create a new influencer<span className="sr-only"> in a new tab</span></a></p> : null}
                   {influencerLibrary.selectionError ? <p role="alert" className="text-destructive">{influencerLibrary.selectionError}</p> : null}
                   {influencerLibrary.hasMore ? <Button type="button" variant="outline" size="sm" disabled={disabled || Boolean(pending) || influencerLibrary.loadingMore} onClick={influencerLibrary.onLoadMore}>{influencerLibrary.loadingMore ? "Loading…" : "Load more influencers"}</Button> : null}
                 </Tabs.Panel> : null}
@@ -424,7 +434,7 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
                       {startingFrame?.assetId === frame.assetId ? <Check className="absolute right-1 top-1 size-5 rounded bg-primary p-0.5 text-primary-foreground" aria-hidden="true" /> : null}
                     </Button>)}</div> : <p className="text-sm text-muted">No starting frames yet. Choose Recreate on a Hook to generate one.</p>}
                 </Tabs.Panel> : null}
-                <Tabs.Panel value="user" keepMounted aria-label="Your images" className={picker.libraryPanel}>
+                <Tabs.Panel value="user" keepMounted aria-label="Uploaded photos" className={picker.libraryPanel}>
                   <p className="text-[11px] leading-4 text-muted">Images uploaded as references in Explore. Your other uploads remain in Creative Assets.</p>
                   {preview ? <p className="text-xs leading-5 text-muted">Sign in to save and reuse your uploaded images. Preview uploads are temporary.</p>
                     : !ownerId ? <p className="text-xs leading-5 text-muted">Sign in to see your saved images.</p>
@@ -433,7 +443,7 @@ export function FormatGenerationReferences({ startingFrame, onSelectStartingFram
                     : imagesQuery.data?.length ? <div className={picker.libraryGrid}>{imagesQuery.data.slice(0, imagePages * REFERENCE_IMAGE_PAGE_SIZE).map(saved => <Button key={saved.id} type="button" variant="ghost" aria-label={`Use your image ${saved.fileName ?? saved.title}`} title={saved.fileName ?? saved.title} aria-pressed={selectedImages.some(image => image.asset.id === saved.id)} disabled={disabled || Boolean(pending) || imageLimitReached && !selectedImages.some(image => image.asset.id === saved.id)} className={picker.libraryPhoto} onClick={() => void chooseSavedImage(saved)}>
 
                       <ReferenceCreatorImage url={activeImageTab === "user" ? saved.thumbnailUrl ?? saved.url : undefined} /><span aria-hidden="true" className={cn("pointer-events-none absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border-2 shadow-sm", selectedImages.some(image => image.asset.id === saved.id) ? "border-primary bg-primary text-primary-foreground" : "border-white bg-black/60")}>{selectedImages.some(image => image.asset.id === saved.id) ? <Check className="size-3.5" /> : null}</span>
-                    </Button>)}</div> : <p className="text-xs leading-5 text-muted">Upload an image to keep it here for next time.</p>}
+                    </Button>)}</div> : <p className="text-xs leading-5 text-muted">No uploaded photos yet. Use Upload photos to add one.</p>}
                   {imagesQuery.data && imagesQuery.data.length > imagePages * REFERENCE_IMAGE_PAGE_SIZE ? <Button type="button" variant="outline" size="sm" onClick={() => setImagePages(value => value + 1)}>Load more images</Button> : null}
                 </Tabs.Panel>
                 <Tabs.Panel value="catalog" keepMounted aria-label="UGC Pilot images" className={picker.libraryPanel}>

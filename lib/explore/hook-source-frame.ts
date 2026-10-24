@@ -1,4 +1,5 @@
 import "server-only";
+import { getCuratedHookFrame, hasCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -26,8 +27,8 @@ export type HookSourceFrame = {
   referenceId: string;
   sourceSha256: string;
   frameSha256: string;
-  frameIndex: 0;
-  frameTimeSeconds: 0;
+  frameIndex: number;
+  frameTimeSeconds: number;
   width: number;
   height: number;
   png: Buffer;
@@ -182,6 +183,16 @@ export function createHookSourceFrameService(options: {
   };
   return async function getHookSourceFrame(referenceId: string): Promise<HookSourceFrame> {
     const source = options.items ? checkedSource(referenceId, options.items()) : await resolveStartingFrameSource(referenceId);
+    const selected = getCuratedHookFrame(referenceId, source.videoSha256);
+    if (!selected && hasCuratedHookFrame(referenceId)) throw new HookSourceFrameError("This video changed. Its selected frame needs review.", 409);
+    if (selected) {
+      const png = await readFile(join(process.cwd(), "public", selected.publicPath));
+      const frame = checkedFrame(png, source);
+      if (frame.frameSha256 !== selected.sha256 || frame.width !== selected.width || frame.height !== selected.height) {
+        throw new HookSourceFrameError("The selected frame changed. Refresh the reference before continuing.", 409);
+      }
+      return { ...frame, referenceId, workflow: source.workflow ?? "hook", frameIndex: selected.index, frameTimeSeconds: selected.timeSeconds };
+    }
     const key = `${source.videoSha256}:${source.width}:${source.height}:frame0-png-v1`;
     for (const [id, entry] of cache) if (entry.expires <= now()) drop(id);
     const hit = cache.get(key);

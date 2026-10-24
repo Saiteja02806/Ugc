@@ -10,6 +10,7 @@ import * as promptPreviews from "../lib/explore/hook-keyframe-prompt-preview.ts"
 import * as keyframeClient from "../lib/explore/hook-keyframe-client.ts";
 import * as variationClient from "../lib/explore/hook-keyframe-variations.ts";
 import * as statusPolling from "../lib/explore/hook-starting-image-polling.ts";
+import * as curatedFrames from "../worker/src/lib/hook-curated-frames.ts";
 
 const draftId = "00000000-0000-4000-8000-000000000001";
 const photoId = "00000000-0000-4000-8000-000000000002";
@@ -21,7 +22,7 @@ const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.t
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
-function harness({ presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false } = {}) {
+function harness({ presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready" } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
   let cursor = 0, closed = 0, uuidIndex = 43;
   const jobs = new Map();
@@ -33,11 +34,13 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
   const historyData = { pages: [{ images: [{ mediaAssetId: secondId, jobId: "saved-influencer" }], nextCursor: null }] };
   const element = (type, props) => typeof type === "function" ? type(props) : { type, props };
   const imports = {
+    "@/worker/src/lib/hook-curated-frames": curatedFrames,
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
     react: {
       useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
         return [slots[i], next => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }]; },
       useRef(value) { const i = cursor++; return slots[i] ??= { current: value }; },
+      useCallback(fn) { return fn; },
       useMemo(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((x, n) => !Object.is(x, previous.deps[n]))) slots[i] = { deps, value: fn() }; return slots[i].value; },
       useEffect(fn, deps) { const i = cursor++, previous = slots[i];
         if (!previous || deps.some((x, n) => !Object.is(x, previous.deps[n]))) { const next = { deps }; slots[i] = next; effects.push(() => { previous?.cleanup?.(); next.cleanup = fn(); }); } },
@@ -46,8 +49,8 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
       useQuery(options) {
         queries.push(options);
         const name = options.queryKey[0];
-        return { data: name === "hook-opening-frame" ? frameData : name === "hook-starting-image-cost" ? 1 : undefined,
-          isPending: false, error: name === "hook-opening-frame" ? frameError : null, refetch: () => {}, isFetching: false };
+        return { data: name === "hook-source-frame-v3" ? frameData : name === "hook-starting-image-cost" ? 1 : undefined,
+          isPending: false, error: name === "hook-source-frame-v3" ? frameError : null, refetch: () => {}, isFetching: false };
       },
       useQueries({ queries: batchQueries }) {
         return batchQueries.map(options => {
@@ -93,7 +96,7 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
     return Response.json({ ok: true, jobId: `00000000-0000-4000-8000-${String(500 + submissions.length).padStart(12, "0")}`, generationId: photoId,
       receipt: { ...scope, version: frozenInput.version, imageModel: frozenInput.imageModel, promptVersion: 2, purpose: "hook_starting_frame", inputKey: saved.inputKey } }, { status: 202 });
   } });
-  return { stored, key, fetched, queries, urls, revoked, errors, submissions, selections, setJob(value) { jobs.set(value.id, value); }, closed: () => closed,
+  return { stored, key, fetched, queries, urls, revoked, errors, submissions, selections, previewStatus(value) { previewState = value; }, setJob(value) { jobs.set(value.id, value); }, closed: () => closed,
     restoreStore(other) { for (const [key, value] of other.stored) stored.set(key, value); for (const query of other.queries) {
       if (query.queryKey[0] === "hook-starting-image-job") { const value = other.jobFor(query.queryKey[4]); if (value) jobs.set(value.id, value); }
     } },
@@ -101,7 +104,9 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
     render() { cursor = 0; const tree = exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime,
       reference: { id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4` }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) });
       for (const image of nodes(tree).filter(node => node.type === "img")) if (image.props.ref) image.props.ref.current = { src: "", removeAttribute() {} };
-      for (const effect of effects.splice(0)) effect(); return tree; },
+      for (const effect of effects.splice(0)) effect();
+      for (const image of nodes(tree).filter(node => node.type === "StartingFrameImage")) image.props.onStateChange(image.props.assetId, image.props.url, previewState);
+      cursor = 0; return exports.HookStartingFrameWorkspace({ presentation, preparationFormat, ownerId, draftId, previewRuntime, reference: { id: referenceId, title: "Hook 2", videoUrl: `https://media.example.test/${sourceHash}.mp4` }, onClose: () => closed++, onUseStartingFrame: value => selections.push(value) }); },
     async settle() { await new Promise(resolve => setImmediate(resolve)); await new Promise(resolve => setImmediate(resolve)); },
   };
 }
@@ -147,12 +152,13 @@ test("opening preparation shows the actual frame and separate inputs without aut
   assert.equal(button(tree, "Save preparation").props.disabled, true);
   assert.equal(nodes(tree).some(node => node.type === "video"), false);
   assert.equal(h.queries[0].retry, false); assert.equal(h.queries[0].queryKey[1], "owner");
-  assert.equal(h.urls.length, 1); assert.equal(find(tree, "img").props.alt, "Actual first frame of Hook 2");
+  assert.equal(h.urls.length, 1); assert.equal(find(tree, "img").props.alt, "Selected source frame of Hook 2");
   assert.equal(find(tree, "img").props.src, "blob:fixture-0", "the frame URL is rendered declaratively and survives later renders");
   const picker = find(tree, "FormatGenerationReferences").props;
   assert.equal(picker.imagePurpose, "person"); assert.equal(picker.videoInputEnabled, false); assert.equal(picker.audioInputEnabled, false);
   assert.equal(picker.ownerId, "owner"); assert.equal(picker.maxImages, 5);
-  assert.notEqual(picker.imagePresentation, "person-strip");
+  assert.equal(picker.imagePresentation, "person-strip");
+  assert.equal(picker.inlineImagePicker, true);
   assert.ok(picker.influencerLibrary);
   assert.equal(nodes(tree).some(node => node.type === "SavedInfluencerPicker"), false);
   assert.match(text(tree), /Variations/);
@@ -389,8 +395,8 @@ async function prepareVariations(h, count) {
   find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId), photo(secondId)]); tree = h.render();
   nodes(tree).find(node => node.props?.["aria-label"] === "Number of starting frame variations").props.onChange({ target: { value: String(count) } });
   tree = h.render();
-  assert.match(text(tree), new RegExp(`${count} credits total`));
-  button(tree, `Generate ${count} starting images`).props.onClick(); await h.settle(); return h.render();
+  assert.match(text(tree), new RegExp(`${count} ${count === 1 ? "credit" : "credits"} total`));
+  button(tree, count === 1 ? "Generate starting image" : `Generate ${count} starting images`).props.onClick(); await h.settle(); return h.render();
 }
 function completeVariations(h) {
   const store = variationClient.readHookKeyframeVariations(h.stored.get(variationClient.hookKeyframeVariationsKey(scope)), scope);
@@ -412,7 +418,7 @@ test("four-image choice displays total credits, submits four unique requests and
   const third = nodes(tree).find(node => node.props?.["aria-label"] === "View starting image 3");
   third.props.onClick(); await h.settle(); tree = h.render();
   assert.equal(nodes(tree).find(node => node.props?.["aria-label"] === "View starting image 3").props["aria-pressed"], true);
-  assert.equal(nodes(tree).find(node => node.props?.alt === "Generated starting frame to review before animation").props.src, jobs[2].output.url);
+  assert.equal(nodes(tree).find(node => node.props?.alt === "Generated starting frame to review before animation").props.url, jobs[2].output.url);
   button(tree, "Use as starting frame").props.onClick();
   assert.equal(h.selections[0].assetId, jobs[2].output.mediaAssetId);
   assert.equal(h.selections[0].jobId, jobs[2].id); assert.equal(h.submissions.length, 4);
@@ -535,4 +541,22 @@ test("Recreate footer remains present and blocks stale approval after changing g
   tree = h.render(); assert.equal(button(tree, "Use selected frame").props.disabled, true);
   assert.match(text(tree), /Inputs changed/);
   assert.equal(h.selections.length, 0); assert.equal(h.submissions.length, 1);
+});
+
+test("completed jobs cannot be approved before the selected preview loads or after a preview error", async () => {
+  const h = harness({ presentation: "recreation", previewState: "loading" });
+  await prepareVariations(h, 1); completeVariations(h);
+  let tree = h.render();
+  assert.equal(button(tree, "Use selected frame").props.disabled, true);
+  button(tree, "Use selected frame").props.onClick();
+  assert.equal(h.selections.length, 0, "Handler rejects a click before the image is viewable");
+  h.previewStatus("error"); tree = h.render();
+  assert.equal(button(tree, "Use selected frame").props.disabled, true);
+  const count = h.submissions.length;
+  button(tree, "Retry preview").props.onClick();
+  assert.equal(h.submissions.length, count, "Retrying preview never creates a paid image request");
+  h.previewStatus("ready"); tree = h.render();
+  assert.equal(button(tree, "Use selected frame").props.disabled, false);
+  button(tree, "Use selected frame").props.onClick();
+  assert.equal(h.selections.length, 1);
 });

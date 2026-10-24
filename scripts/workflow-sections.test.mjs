@@ -20,6 +20,7 @@ function load(source) {
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/input": { Input: "input" },
+    "@/components/scheduling/post-caption-field": { PostCaptionField: "post-caption-field" },
     "@/lib/social/platform-visibility": { isSocialPlatformVisible: (platform) => platform !== "tiktok" },
     "@/lib/explore/workflow-scheduling-draft": schedulingDraft,
     "@/components/generation/ai-studio-composer": { AiStudioSettingSelect: "select" },
@@ -157,13 +158,14 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platforms");
   assert.deepEqual(nodes(tree).filter((node) => node.type === "platform-icon").map((node) => node.props.platform), ["instagram", "youtube"]);
   platforms[0].props.onClick();
-  nodes(tree).find((node) => node.type === "textarea").props.onChange({ target: { value: "  My caption\nunchanged  " } });
+  nodes(tree).find((node) => node.type === "post-caption-field").props.onChange("  My caption\nunchanged  ");
   nodes(tree).find((node) => node.props.type === "date").props.onChange({ target: { value: "2026-10-20" } });
   nodes(tree).find((node) => node.props.type === "time").props.onChange({ target: { value: "14:30" } });
   assert.deepEqual(changes.map((draft) => [draft.platform, draft.caption, draft.date, draft.time]), [["instagram", "", "", ""], ["", "  My caption\nunchanged  ", "", ""], ["", "", "2026-10-20", ""], ["", "", "", "14:30"]]);
   assert.equal(nodes(tree).filter((node) => node.type === "input").length, 2);
   assert.doesNotMatch(visibleText(tree), /Account|Select platform|Local draft only|no post will be scheduled/);
-  assert.match(text(tree), /The caption shown below your social post/);
+  assert.equal(nodes(tree).find(node => node.type === "post-caption-field").props.value, "");
+  assert.equal(changes[1].captionInitialized, true);
   assert.equal(nodes(tree).find((node) => node.props.type === "date").props["aria-describedby"], "schedule-test-timezone");
   assert.match(text(nodes(tree).find((node) => node.props.id === "schedule-test-timezone")), /Time zone:/);
   assert.equal(original.caption, "");

@@ -24,6 +24,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -65,6 +66,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserIdToken } from "@/lib/firebase/auth";
+import { useAuth } from "@/contexts/auth-context";
+import { pollInForeground } from "@/lib/http/foreground-polling";
+import { readCreativeEdit, readCarouselEditStatus, submitCreativeEdit } from "@/lib/trending/creative-edit-client";
+import { refreshTrendingCarouselEdit } from "@/lib/trending/carousel-edit-refresh";
 import type { MediaAsset } from "@/lib/media/types";
 import {
   clampNormalizedTextPosition,
@@ -150,10 +155,6 @@ type GroupAssetsResponse =
       ok: true;
     }
   | { error?: string; ok?: false };
-type EditResponse =
-  | { edit: TrendingCreativeEditRecord; ok: true }
-  | { error?: string; ok?: false };
-
 type CarouselProductAsset = {
   businessProfileId: string;
   categorySlug: string;
@@ -215,6 +216,16 @@ export function TrendingCreativeEditor({
   onClose: () => void;
   onSaved: (edit: TrendingCreativeEditRecord) => void;
 }) {
+  const { user } = useAuth();
+  const ownerId = user?.uid ?? "";
+  const scopeKey = JSON.stringify([ownerId, item?.format, item?.assignmentId, item?.creativeId]);
+  const session = useRef<object | null>(null);
+  const callbacks = useRef({ onSaved, onClose });
+  useLayoutEffect(() => { callbacks.current = { onSaved, onClose }; }, [onSaved, onClose]);
+  useLayoutEffect(() => {
+    session.current = {};
+    return () => { session.current = null; };
+  }, [scopeKey]);
   const [edit, setEdit] = useState<TrendingCreativeEditRecord | null>(null);
   const [content, setContent] = useState<TrendingCreativeEditContent | null>(
     null,
@@ -264,13 +275,23 @@ export function TrendingCreativeEditor({
   >(null);
   const groupRequestRef = useRef(0);
   const productAssetInputRef = useRef<HTMLInputElement>(null);
+  const editorLoadSequence = useRef(0);
+  const renderPending = edit?.format === "carousel" && (edit.renderState === "queued" || edit.renderState === "rendering");
+  const carouselUnchanged = edit?.format === "carousel" && content?.format === "carousel" &&
+    JSON.stringify(toPatchPayload(edit, content, undefined)) === JSON.stringify(toPatchPayload(edit, edit.content, undefined));
+  const latestEditor = useRef(edit);
+  useLayoutEffect(() => { latestEditor.current = edit; }, [edit]);
 
   const loadEditor = useCallback(async () => {
     if (!item) {
       return;
     }
+    const currentSession = session.current;
+    const sequence = ++editorLoadSequence.current;
+    const active = () => session.current === currentSession && editorLoadSequence.current === sequence;
 
     setLoading(true);
+    setSaving(false);
     setError(null);
     groupRequestRef.current += 1;
     setActiveSlideIndex(0);
@@ -286,18 +307,9 @@ export function TrendingCreativeEditor({
     setHyperHookFolderOpen(false);
 
     try {
-      const token = await requireToken();
-      const response = await fetch(getEditorEndpoint(item, true), {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json().catch(() => null)) as
-        | EditResponse
-        | null;
-
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(getApiError(data, "Could not open this editor."));
-      }
+      if (item.format === "reaction") throw new Error("Use the reaction editor for this post.");
+      const data = { edit: await readCreativeEdit(ownerId, { assignmentId: item.assignmentId, creativeId: item.creativeId, format: item.format }, "editor") };
+      if (!active()) return;
 
       setEdit(data.edit);
       setContent(data.edit.content);
@@ -307,14 +319,38 @@ export function TrendingCreativeEditor({
       setSourceChoice(toSourceChoice(data.edit));
       setSelectedAsset(null);
     } catch (loadError) {
+      if (!active()) return;
       setEdit(null);
       setContent(null);
       setInitialContent(null);
       setError(getErrorMessage(loadError, "Could not open this editor."));
     } finally {
-      setLoading(false);
+      if (active()) setLoading(false);
     }
-  }, [item]);
+  }, [item, ownerId]);
+
+  useEffect(() => {
+    if (!latestEditor.current || !renderPending || loading || saving) return;
+    let latest = latestEditor.current;
+    const currentSession = session.current;
+    const controller = new AbortController();
+    const stop = pollInForeground({ intervalMs: 1500, immediate: true, poll: async () => {
+      const next = await refreshTrendingCarouselEdit(latest,
+        () => readCarouselEditStatus(ownerId, latest, controller.signal),
+        () => readCreativeEdit(ownerId, latest, "history", controller.signal));
+      if (controller.signal.aborted || session.current !== currentSession) return;
+      const previous = latest;
+      latest = next;
+      setEdit(next);
+      // Refresh render metadata/output without replacing edits typed while waiting.
+      setContent(current => current && JSON.stringify(toPatchPayload(previous, current, undefined)) ===
+        JSON.stringify(toPatchPayload(previous, previous.content, undefined)) ? next.content : current);
+      setInitialContent(next.content);
+      if (next.renderState === "ready") callbacks.current.onSaved(next);
+    }});
+    return () => { controller.abort(); stop(); };
+  // Metadata changes do not restart the in-flight status request.
+  }, [edit?.id, edit?.revision, renderPending, loading, saving, ownerId]);
 
   const loadGroup = useCallback(async (groupId: string, token?: string) => {
     setLoadingGroupId(groupId);
@@ -895,7 +931,8 @@ export function TrendingCreativeEditor({
   }
 
   async function saveEdit() {
-    if (!item || !content || !edit || saving || slideImageBusyRef.current || productAssetsUploading) {
+    if (!item || !content || !edit || saving || renderPending ||
+      (carouselUnchanged && edit.id && edit.renderState === "ready") || slideImageBusyRef.current || productAssetsUploading) {
       return;
     }
 
@@ -918,34 +955,24 @@ export function TrendingCreativeEditor({
 
     setSaving(true);
     setError(null);
+    const currentSession = session.current;
 
     try {
-      const token = await requireToken();
-      const response = await fetch(getEditorEndpoint(item, false), {
-        body: JSON.stringify(toPatchPayload(edit, content, sourceChoice)),
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        method: "PATCH",
-      });
-      const data = (await response.json().catch(() => null)) as
-        | EditResponse
-        | null;
-
-      if (!response.ok || data?.ok !== true) {
-        throw new Error(getApiError(data, "Could not save this edit."));
-      }
+      const data = { edit: await submitCreativeEdit(ownerId, edit, toPatchPayload(edit, content, sourceChoice),
+        recovered => recovered.format === "carousel" && recovered.assignmentId === edit.assignmentId &&
+          recovered.creativeId === edit.creativeId && recovered.revision === edit.revision + 1 &&
+          ["queued", "rendering", "ready"].includes(recovered.renderState) &&
+          JSON.stringify(toPatchPayload(edit, recovered.content, undefined)) === JSON.stringify(toPatchPayload(edit, content, undefined))) };
+      if (session.current !== currentSession) return;
 
       setEdit(data.edit);
       setContent(data.edit.content);
       onSaved(data.edit);
       onClose();
     } catch (saveError) {
-      setError(getErrorMessage(saveError, "Could not save this edit."));
+      if (session.current === currentSession) setError(getErrorMessage(saveError, "Could not save this edit."));
     } finally {
-      setSaving(false);
+      if (session.current === currentSession) setSaving(false);
     }
   }
 
@@ -1123,13 +1150,16 @@ export function TrendingCreativeEditor({
         </ScrollArea>
 
         <DialogFooter className="m-0 shrink-0 rounded-none bg-card px-5 py-4 sm:px-6">
+          {renderPending ? <p role="status" className="mr-auto text-sm text-muted-foreground">
+            {edit?.refreshError ? "Could not check progress. Retrying automatically." : "Edits saved. Your slides are rendering in the background. You can leave this screen."}
+          </p> : null}
           <Button
             type="button"
             variant="outline"
             disabled={saving || slideImageUploading}
             onClick={onClose}
           >
-            Cancel
+            {renderPending ? "Close" : "Cancel"}
           </Button>
           <Button
             type="button"
@@ -1138,13 +1168,15 @@ export function TrendingCreativeEditor({
               !content ||
               loading ||
               saving ||
+              renderPending ||
+              Boolean(carouselUnchanged && edit?.id && edit.renderState === "ready") ||
               productAssetsUploading ||
               slideImageUploading ||
               Boolean(loadingGroupId)
             }
             onClick={() => void saveEdit()}
           >
-            {saving ? (
+            {saving || renderPending ? (
               <Loader2
                 data-icon="inline-start"
                 className="animate-spin motion-reduce:animate-none"
@@ -1152,7 +1184,7 @@ export function TrendingCreativeEditor({
             ) : (
               <Check data-icon="inline-start" />
             )}
-            {saving ? "Saving…" : "Save edit"}
+            {saving ? "Saving…" : renderPending ? "Rendering…" : carouselUnchanged && edit?.id && edit.renderState === "ready" ? "Edits saved" : "Save edit"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -3113,13 +3145,6 @@ function EditorLoadError({
       </EmptyContent>
     </Empty>
   );
-}
-
-function getEditorEndpoint(item: TrendingFeedItem, includeAssignment: boolean) {
-  const base = `/api/trending/creatives/${encodeURIComponent(item.format)}/${encodeURIComponent(item.creativeId)}/edit`;
-  return includeAssignment
-    ? `${base}?assignmentId=${encodeURIComponent(item.assignmentId)}`
-    : base;
 }
 
 function toSourceChoice(

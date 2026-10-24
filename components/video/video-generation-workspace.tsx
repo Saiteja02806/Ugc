@@ -1358,6 +1358,7 @@ export function VideoGenerationStudioPanel({
           <VideoResultCard
             key={video.id}
             video={video}
+            compact={Boolean(workflow)}
             onSelect={workflow?.onSelectVideo ? () => workflow.onSelectVideo?.(video) : undefined}
             selectLabel={workflowFormat === "hook" ? "Edit hook video" : "Edit video"}
             isNew={video.id === latestCompletedVideoId}
@@ -1369,6 +1370,7 @@ export function VideoGenerationStudioPanel({
               (_, index) => (
                 <OptimisticVideoCard
                   key={`pending-video-${index}`}
+                  compact={Boolean(workflow)}
                   aspectRatio={aspectRatio}
                   avatarThumbnail={activeReferenceImageUrl}
                   avatarLabel={uploadedReference?.asset.title ?? null}
@@ -1678,6 +1680,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 function OptimisticVideoCard({
+  compact = false,
   aspectRatio,
   avatarThumbnail,
   avatarLabel,
@@ -1686,6 +1689,7 @@ function OptimisticVideoCard({
   durationSeconds,
   resolution,
 }: {
+  compact?: boolean;
   aspectRatio: AIStudioVideoAspectRatio;
   avatarThumbnail?: string | null;
   avatarLabel?: string | null;
@@ -1697,7 +1701,7 @@ function OptimisticVideoCard({
   const [createdAt] = useState(() => new Date().toISOString());
 
   return (
-    <article className={cn(resultLayout.card, "mx-auto w-full max-w-[64rem] py-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300")}>
+    <article data-compact={compact || undefined} className={cn(resultLayout.card, "mx-auto w-full max-w-[64rem] py-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300")}>
       <div className={resultLayout.row} data-ratio={aspectRatio}>
         <div
           className={cn(
@@ -1728,11 +1732,13 @@ function OptimisticVideoCard({
 
 function VideoResultCard({
   video,
+  compact = false,
   isNew = false,
   onSelect,
   selectLabel = "Edit video",
 }: {
   video: GeneratedVideo;
+  compact?: boolean;
   isNew?: boolean;
   onSelect?: () => void;
   selectLabel?: string;
@@ -1785,6 +1791,7 @@ function VideoResultCard({
   return (
     <article
       id={`ai-studio-video-result-${video.id}`}
+      data-compact={compact || undefined}
       className={cn(
         resultLayout.card, "mx-auto w-full max-w-[64rem] scroll-mt-4 py-2",
         isNew &&
@@ -1962,7 +1969,7 @@ function VideoPromptBubble({
 
   return (
     <div className="w-full min-w-0">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted">
+      <div className={cn(resultLayout.promptHeading, "mb-2 flex flex-wrap items-center justify-between gap-2 px-0.5 text-[11px] font-medium text-muted")}>
         <span className="text-foreground-strong">Prompt</span>
         <span>{formatGeneratedAt(createdAt)}</span>
       </div>
@@ -1972,12 +1979,15 @@ function VideoPromptBubble({
         aria-label={expanded ? "Collapse video prompt" : "Show full video prompt"}
         onClick={() => setExpanded((current) => !current)}
         className={cn(
+          resultLayout.promptToggle,
           "group flex w-full items-start gap-3 rounded-[14px] border border-border bg-card-muted/50 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none",
           expanded && "bg-card",
         )}
       >
         <span
+          data-expanded={expanded}
           className={cn(
+            resultLayout.promptText,
             "min-w-0 flex-1 whitespace-pre-wrap text-sm font-normal leading-6 text-foreground [overflow-wrap:anywhere]",
             expanded ? "max-h-48 overflow-y-auto overscroll-contain pr-2" : "line-clamp-3",
           )}

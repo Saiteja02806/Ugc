@@ -5,7 +5,7 @@ import { buildStartingFrameAnimationPrompt, startingFrameWorkflowDirections, typ
 
 /** Preparation only. This is deliberately not a HookMotionCompilation ready receipt. */
 export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: StartingFrameWorkflow = "hook") {
-  const suggestion = getHookKeyframeMotionReviewDraft(draft.scope.referenceId, draft.scope.sourceSha256);
+  const suggestion = getHookKeyframeMotionReviewDraft(draft.scope.referenceId, draft.scope.sourceSha256, draft.sourceFrame?.index ?? 0);
   const suggestedDirections = format !== "hook" ? startingFrameWorkflowDirections(format) : suggestion?.candidatePlan ? hookMotionPlanDirections(suggestion.candidatePlan) : "";
   const directions = draft.motionInstructions ?? suggestedDirections;
   const durationSeconds = format === "hook" ? suggestion?.previewDurationSeconds ?? 4 : 4;
@@ -23,7 +23,7 @@ export function getHookKeyframePromptPreview(draft: HookKeyframeDraft, format: S
     requiresDecision: format === "hook" && (suggestion?.requiresDecision ?? false),
     decisionIssues: suggestion?.staticReview?.issues ?? [],
     imagePrompt: draft.imageAssetIds.length ? buildHookKeyframeImagePrompt({ personImageCount: draft.imageAssetIds.length, instructions: draft.instructions,
-      referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256 }).prompt : null,
+      referenceId: draft.scope.referenceId, sourceSha256: draft.scope.sourceSha256, sourceFrameIndex: draft.sourceFrame?.index }).prompt : null,
     directions, suggestedDirections, customized: draft.motionInstructions !== null,
     animationPrompt, animationError, durationSeconds,
     generateAudio: draft.generateAudio,

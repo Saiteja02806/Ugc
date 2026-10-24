@@ -37,6 +37,9 @@ mock.module("@/lib/billing/subscription-db", { namedExports: {
   reserveBillingCredits: async (input) => { reservations.set(`${input.userId}:${input.idempotencyKey}`, input); },
   releaseBillingCredits: async (input) => { reservations.delete(`${input.userId}:${input.idempotencyKey}`); },
 } });
+mock.module(new URL("../lib/explore/hook-keyframe-result.ts", import.meta.url), { namedExports: {
+  resolveApprovedHookStartingFrame: async () => assert.fail("This legacy-request fixture does not submit starting-frame assets"),
+} });
 const { handleAIStudioVideoGeneration } = await import("../lib/ai-studio/video-generation-api.ts");
 const { createWorkflowGenerationClient } = await import("../lib/explore/workflow-generation-client.ts");
 const { normalizeWorkflowGenerationSettings } = await import("../lib/explore/workflow-generation-settings.ts");

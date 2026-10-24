@@ -6,7 +6,7 @@ const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url),'utf8'));
 const release=read('./data/hook-reference-scene-release.json');
 const audit=read('./data/hook-reference-scene-audit-2026-10-19.json');
 const manifests=['explore-hook-reference-release.json','explore-hook-reference-addition-release.json','explore-hook-reference-new-batch-release.json'].map(f=>read('../worker/src/lib/'+f));
-const active=manifests.flatMap(m=>m.items.filter(i=>!m.excludedReferenceIds.includes(i.id)));
+const active=manifests.flatMap(m=>m.items.filter(i=>audit.items.some(row=>row.id===i.id)));
 const captions=read('../lib/explore/reference-text-catalog.json');
 test('exactly the 18 approved scene trims activate matching source, gallery preview, duration, prompt and text identities',()=>{
  assert.equal(active.length,98);assert.equal(release.items.length,18);

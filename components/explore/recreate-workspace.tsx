@@ -226,7 +226,7 @@ export function ReferenceSourceAction({ source, label, canOpen, overlay = false,
 
 function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference; onPreview: () => void }) {
   const [useOriginal, setUseOriginal] = useState(false);
-  const videoRef = useCoverPlayback(reference.videoUrl ? useOriginal ? reference.videoUrl : reference.previewVideoUrl ?? reference.videoUrl : null, "button", true);
+  const videoRef = useCoverPlayback(reference.videoUrl ? useOriginal ? reference.videoUrl : reference.previewVideoUrl ?? reference.videoUrl : null, "button");
   const [failed, setFailed] = useState(false);
   const playable = Boolean(reference.videoUrl);
 

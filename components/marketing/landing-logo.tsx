@@ -4,13 +4,13 @@ import { cn } from "@/lib/utils";
 
 export function LandingLogo({
   className,
-  sizes = "36px",
+  sizes = "28px",
 }: {
   className?: string;
   sizes?: string;
 }) {
   return (
-    <span aria-hidden="true" className={cn("inline-block size-9 shrink-0", className)}>
+    <span aria-hidden="true" className={cn("inline-block size-7 shrink-0", className)}>
       <Image
         src="/brand/ugc-pilot-icon-light-theme.png"
         alt=""

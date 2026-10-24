@@ -54,12 +54,13 @@ async function handleRequest(
 
     if (action === "get") {
       const serialized = serializeMediaAsset(asset);
-      const job = asset.source_record_id && (asset.source_type === "generated_video" || asset.source_type === "generated_image")
+      const wantsRemixSource = new URL(request.url).searchParams.get("remixSource") === "1";
+      const job = asset.source_record_id && (asset.source_type === "generated_image" || asset.source_type === "generated_video" && wantsRemixSource)
         ? await getBackgroundJobForUser({ jobId: asset.source_record_id, userId: user.uid }) : null;
       if (asset.source_type === "generated_image" && job?.jobType === "generate_image") {
         serialized.metadata = { ...serialized.metadata, ...getGeneratedImageHistoryMetadata(job.input) };
       }
-      if (new URL(request.url).searchParams.get("remixSource") === "1") {
+      if (wantsRemixSource) {
         // Read provenance from this owner's original job, never browser state.
         // Original reference imports already contain server-validated provenance.
         // Unlike generated assets, they have no background generation job.

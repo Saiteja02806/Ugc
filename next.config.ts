@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingIncludes: {
     "/api/explore/emoji/**": ["./worker/src/assets/emoji/*.json.gz"],
-    "/api/explore/hook-keyframe": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4"],
-    "/api/explore/hook-starting-frame": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4"],
+    "/api/explore/hook-keyframe": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png"],
+    "/api/explore/hook-starting-frame": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png"],
     "/api/audio/transfer": nativeMedia.mediaFiles,
     // External native packages used by /mcp are traced from their imports.
     // A /mcp include glob also matches health/discovery routes in Next.

@@ -1350,6 +1350,36 @@ Last updated: 2026-10-14
   `docs/demo-library-explore-fix-2026-10-14.md` (169 focused regressions, web
   TypeScript and scoped lint with no errors).
 
+## 2026-10-13 Combined MCP candidate reconciliation (unreleased)
+
+- The business release integration retains both the reviewed MCP Business
+  Context/onboarding/logo candidates and the latest live application source
+  `07a4e516407151d5411f37e05fece468e8dcfdbd` (PR #57), including its Explore
+  navigation/preview and editor-loading fixes. No production promotion, worker
+  update, schema application or write enablement has occurred in this branch.
+- Existing application release decisions and deployment holds below remain
+  recorded. The combined source must be validated against current production
+  and its migration history before any specifically authorized release.
+- Screenshot upload/matcher changes remain future MCP work; dedicated logo
+  reservations do not substitute for app screenshots or Carousel product assets.
+
+
+## 2026-10-13 MCP onboarding candidate (not released)
+
+- The separate MCP onboarding candidate adapts both existing legacy profile
+  setup and saved background drafts. Reads never prepare Trending content.
+  Onboarding writes are disabled by default and require `brand:write`.
+- Background completion retains the existing worker finalization/prebuild.
+  Legacy MCP submission atomically completes the profile and reserves a
+  `media_analysis` job; its existing authenticated application callback invokes
+  `prebuildTrendingAfterOnboarding` only if the owned completed profile still
+  matches the accepted version. Failed queue publication remains recoverable.
+  No worker rollout or Carousel generation/copy/layout policy is changed.
+- Legacy analysis callbacks use an owner/source/profile fence so cancelled or
+  replaced source jobs cannot reset newer website answers or active context.
+  The candidate migration must precede deploying its callback code. Source
+  acceptance, durable jobs and immutable MCP receipts commit atomically.
+
 ## 2026-10-13 Landing slideshow showcase (local; deployment held by user)
 
 - The landing page's former three-format interactive daily-feed demo is now a

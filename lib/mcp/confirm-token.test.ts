@@ -136,4 +136,24 @@ test("confirmed tool contracts accept a preview and an execution result", () => 
   assert.equal(input.parse({ asset_id: assetId }).confirm_token, undefined);
   assert.equal(input.parse({ asset_id: assetId, confirm_token: "token" }).confirm_token, "token");
   assert.equal(input.safeParse({ asset_id: assetId, user_id: "owner-b" }).success, false);
+  const link = confirmableOutputSchema(z.strictObject({
+    request_id: z.uuid(),
+    expires_at: z.iso.datetime({ offset: true }),
+  }));
+  const deadline = "2026-10-24T17:30:00.000Z";
+  link.parse({
+    confirmation_required: true,
+    confirm_token: "token",
+    expires_at: deadline,
+    preview: {
+      tool: "create_audio_upload",
+      effect: "mutate",
+      summary: "Issue a content-bound upload link.",
+      credit_cost: 0,
+      credit_cost_is_estimate: false,
+      affected: [],
+    },
+  });
+  link.parse({ request_id: assetId, expires_at: deadline });
+  assert.throws(() => link.parse({ request_id: assetId }));
 });

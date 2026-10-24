@@ -19,7 +19,8 @@ The helper saves a new UUID, absolute local path, MIME, byte count and SHA-256
 with a durable receipt. Keep it private to the workspace. Pass its
 `create_business_logo_upload` object unchanged to that tool. New reservations
 require `brand:write`, deployed schema and an enabled write gate. A successful
-reservation returns no URL and does not attach the logo.
+reservation returns no URL and does not attach the logo. `create_business_logo_upload`
+and `renew_business_logo_upload` are not the confirm gate.
 
 Recover with `get_business_logo_upload` using request UUID or upload ID, or
 discover interrupted reservations with `list_business_logo_uploads`. Preserve
@@ -41,7 +42,7 @@ checks exact file identity, destination, signed headers and expiry. Its separate
 `.transfer.json` file binds the upload ID durably before PUT without overwriting
 the original intent. Preserve both records after interruption.
 
-Call `confirm_business_logo_upload` for that exact upload ID. The server decodes
+Call `confirm_business_logo_upload` for that exact upload ID. Its first call returns a preview and does not decode the file. Show that preview and pass `confirm_token` only after an explicit yes. The confirmed call decodes
 the image and verifies checksum, MIME, bytes and dimensions. A timeout or 412
 transfer response is not a reason to reserve or upload another file; confirm
 the same ID. Invalid bytes remain unconfirmed and do not become a usable logo.

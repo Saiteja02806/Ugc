@@ -8,7 +8,7 @@ import { audioAssetSchema, audioGenerationSchema, getAudioAssetForOwner, getAudi
   getAudioGenerationForOwner, listAudioForOwner, listAudioVoicesForOwner } from "@/lib/audio/mcp-library";
 import { getAudioBookmarks, setAudioBookmark } from "@/lib/audio/bookmarks";
 import { getAudioVoiceSelection, setAudioVoiceSelection } from "@/lib/audio/selection";
-import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation, withConfirmToken } from "./confirm-token";
+import { confirmableOutputSchema, confirmedToolDescription, omitConfirmToken, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 export const registeredAudioMcpTools=["get_audio_capabilities","list_audio_voices","list_audio_assets","get_audio_asset",
@@ -93,10 +93,14 @@ export function registerAudioMcpTools(server:McpServer) {
     });
   }));
   server.registerTool("create_audio_upload",{
-    description:"Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection.",
-    inputSchema:audioUploadInput,outputSchema:z.strictObject({request_id:z.uuid(),url:z.url().regex(/^https:\/\//),method:z.literal("POST"),headers:z.strictObject({"Content-Type":z.string()}),expires_at:z.iso.datetime({offset:true})}),
-    annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write"),
-  },(args,ctx)=>executeTool(()=>audioErrors(()=>createAudioUploadForOwner(principal(ctx,"assets:write"),args))));
+    description:confirmedToolDescription("Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. There is no separate audio confirm tool: this link is the step that authorizes the bytes. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection."),
+    inputSchema:withConfirmToken(audioUploadInput),outputSchema:confirmableOutputSchema(z.strictObject({request_id:z.uuid(),url:z.url().regex(/^https:\/\//),method:z.literal("POST"),headers:z.strictObject({"Content-Type":z.string()}),expires_at:z.iso.datetime({offset:true})})),
+    annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:true,openWorldHint:false},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write"),
+  },(args,ctx)=>executeTool(async()=>{
+    const owner=principal(ctx,"assets:write");
+    const request=omitConfirmToken(args);
+    return requireConfirmation({tool:"create_audio_upload",accountId:owner,args,effect:"mutate",summary:"Issue a content-bound upload link for this exact audio file. The helper POST stores the bytes.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"audio_upload",id:request.request_id,label:request.file_name}],run:()=>audioErrors(()=>createAudioUploadForOwner(owner,request))});
+  }));
   server.registerTool("get_audio_preferences",{
     description:"Read the same saved voice selection and bookmarks as the website. Preferences do not grant access to a voice; resolve IDs against list_audio_voices before generating.",
     inputSchema:empty,outputSchema:z.strictObject({voice_id:voiceId.nullable(),bookmarked_voice_ids:z.array(voiceId)}),
@@ -106,17 +110,23 @@ export function registerAudioMcpTools(server:McpServer) {
     return {voice_id,bookmarked_voice_ids};
   })));
   server.registerTool("set_audio_voice_selection",{
-    description:"Save the user's requested voice preference in the website's shared account record. Idempotent assignment; does not grant voice access or generate speech.",
-    inputSchema:z.strictObject({voice_id:voiceId}),outputSchema:z.strictObject({voice_id:voiceId}),annotations:preferenceWrite,
+    description:confirmedToolDescription("Save the user's requested voice preference in the website's shared account record. Idempotent assignment; does not grant voice access or generate speech."),
+    inputSchema:withConfirmToken(z.strictObject({voice_id:voiceId})),outputSchema:confirmableOutputSchema(z.strictObject({voice_id:voiceId})),annotations:{...preferenceWrite,destructiveHint:true},
     scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write"),
-  },(args,ctx)=>executeTool(()=>audioErrors(async()=>{
-    await setAudioVoiceSelection(principal(ctx,"assets:write"),args.voice_id);return {voice_id:args.voice_id};
-  })));
+  },(args,ctx)=>executeTool(async()=>{
+    const owner=principal(ctx,"assets:write");
+    return requireConfirmation({tool:"set_audio_voice_selection",accountId:owner,args,effect:"mutate",summary:"Save this voice as the account's selected voice. This does not generate speech.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"audio_voice",id:args.voice_id,label:"Selected voice"}],run:()=>audioErrors(async()=>{
+      await setAudioVoiceSelection(owner,args.voice_id);return {voice_id:args.voice_id};
+    })});
+  }));
   server.registerTool("set_audio_voice_bookmark",{
-    description:"Bookmark or remove the selected voice bookmark using the same account preferences as the website. Repeating the same assignment is safe. Does not grant voice access or generate speech.",
-    inputSchema:z.strictObject({voice_id:voiceId,bookmarked:z.boolean()}),outputSchema:z.strictObject({voice_id:voiceId,bookmarked:z.boolean()}),annotations:preferenceWrite,
+    description:confirmedToolDescription("Bookmark or remove the selected voice bookmark using the same account preferences as the website. Repeating the same assignment is safe. Does not grant voice access or generate speech."),
+    inputSchema:withConfirmToken(z.strictObject({voice_id:voiceId,bookmarked:z.boolean()})),outputSchema:confirmableOutputSchema(z.strictObject({voice_id:voiceId,bookmarked:z.boolean()})),annotations:{...preferenceWrite,destructiveHint:true},
     scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write"),
-  },(args,ctx)=>executeTool(()=>audioErrors(async()=>{
-    await setAudioBookmark(principal(ctx,"assets:write"),args.voice_id,args.bookmarked);return args;
-  })));
+  },(args,ctx)=>executeTool(async()=>{
+    const owner=principal(ctx,"assets:write");
+    return requireConfirmation({tool:"set_audio_voice_bookmark",accountId:owner,args,effect:"mutate",summary:args.bookmarked?"Bookmark the selected voice.":"Remove the selected voice bookmark.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"audio_voice",id:args.voice_id,label:args.bookmarked?"Voice bookmark":"Voice bookmark removal"}],run:()=>audioErrors(async()=>{
+      await setAudioBookmark(owner,args.voice_id,args.bookmarked);return {voice_id:args.voice_id,bookmarked:args.bookmarked};
+    })});
+  }));
 }

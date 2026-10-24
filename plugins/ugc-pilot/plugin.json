@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ugc-pilot",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Draft UGC hooks, wall-of-text videos, and slideshows; generate supported media and manage reviewable creative through a connected UGC Pilot account. Shared Business Context, saved onboarding, verified logo upload, saved social analytics, and schedule discovery are included where their gates permit.",
   "author": {
     "name": "UGC Pilot",

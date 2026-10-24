@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {test,mock} from 'node:test';
+import { confirmToolResult } from './mcp-confirm-client.mjs';
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const draft=text=>({trimStartSeconds:1,trimEndSeconds:8,textOverlays:[{id:'title',position:'top',style:'clean',text}]});
 let h;
@@ -45,8 +46,11 @@ function setup(){
   };
   const tools=new Map();registerEditExportMcpTools({registerTool:(name,config,callback)=>tools.set(name,{config,callback})});h.tools=tools;
   h.call=async(name,args={},owner='owner-a',scopes=['account:read','creative:write','jobs:read'])=>{
-    const t=tools.get(name),r=await t.callback(t.config.inputSchema.parse(args),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
-    if(!r.isError)t.config.outputSchema.parse(r.structuredContent);return r;
+    const t=tools.get(name);
+    return confirmToolResult(async(next)=>{
+      const r=await t.callback(t.config.inputSchema.parse(next),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
+      if(!r.isError)t.config.outputSchema.parse(r.structuredContent);return r;
+    },args);
   };return h;
 }
 const args=()=>({draft_id:id(2),request_id:id(4),expected_revision:0});

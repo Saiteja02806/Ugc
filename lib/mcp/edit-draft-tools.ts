@@ -8,6 +8,7 @@ import { getSavedEditDraftForOwner, listSavedEditDraftsForOwner, updateSavedEdit
 import { getMediaAssetForOwner, serializeMediaAsset } from "@/lib/media/media-storage";
 import { isEditableMediaAsset } from "@/lib/media/editable-video";
 import { decodeAssetCursor, encodeAssetCursor } from "./asset-cursor";
+import { confirmableOutputSchema, confirmedToolDescription, omitConfirmToken, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 
 export const registeredEditDraftMcpTools = ["list_edit_drafts", "get_edit_draft", "update_edit_draft", "open_edit_draft"] as const;
@@ -28,17 +29,23 @@ async function errors<T>(run: () => Promise<T>) {
 }
 export function registerEditDraftMcpTools(server: McpServer) {
   server.registerTool("open_edit_draft", {
-    description: "Open or create the application's Edit-page draft for one ready owned raw video/influencer asset. Resolve the asset through list_assets/get_asset first. Reopening or retrying the same asset returns its current saved draft, preserving text, trims, revision and render history. Source metadata initializes new drafts only. No video is generated/rendered, no credits are spent, and Explore compositions/slideshows are separate.",
-    inputSchema: z.strictObject({ asset_id: z.uuid() }),
-    outputSchema: z.strictObject({ draft: summarySchema, content: editDraftInput.nullable(), source_asset_id: z.uuid(), reused: z.boolean() }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    description: confirmedToolDescription("Open or create the application's Edit-page draft for one ready owned raw video/influencer asset. Resolve the asset through list_assets/get_asset first. Reopening or retrying the same asset returns its current saved draft, preserving text, trims, revision and render history. Source metadata initializes new drafts only. No video is generated/rendered, no credits are spent, and Explore compositions/slideshows are separate."),
+    inputSchema: withConfirmToken(z.strictObject({ asset_id: z.uuid() })),
+    outputSchema: confirmableOutputSchema(z.strictObject({ draft: summarySchema, content: editDraftInput.nullable(), source_asset_id: z.uuid(), reused: z.boolean() })),
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("creative:write"), _meta: oauthMetadata("creative:write"),
   }, (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "creative:write");
-    return errors(async () => {
-      const opened = await openEditDraftForOwner(userId, args.asset_id);
-      return { draft: summary(opened.video), content: normalizeEditableVideoDraftInput(opened.video.draft_json),
-        source_asset_id: args.asset_id, reused: opened.reused };
+    return requireConfirmation({
+      tool: "open_edit_draft", accountId: userId, args, effect: "mutate",
+      summary: "Open or create the Edit draft for this video. Reopening keeps the saved draft.",
+      creditCost: 0, creditCostIsEstimate: false,
+      affected: [{ type: "asset", id: args.asset_id, label: "Edit draft source" }],
+      run: () => errors(async () => {
+        const opened = await openEditDraftForOwner(userId, args.asset_id);
+        return { draft: summary(opened.video), content: normalizeEditableVideoDraftInput(opened.video.draft_json),
+          source_asset_id: args.asset_id, reused: opened.reused };
+      }),
     });
   }));
   server.registerTool("list_edit_drafts", {
@@ -76,17 +83,24 @@ export function registerEditDraftMcpTools(server: McpServer) {
     });
   }));
   server.registerTool("update_edit_draft", {
-    description: "Save trim and up to three text overlays to the SAME draft used by the Edit page. Blank text is allowed. Read its revision first; save a stable request UUID and reuse every input after a lost response. A conflict requires rereading and explicitly reconciling edits. Saving does not generate/export media or spend credits. The response is the accepted snapshot; reread before making later edits after recovery.",
-    inputSchema: z.strictObject({ draft_id: z.uuid(), request_id: z.uuid(), expected_revision: editDraftRevision, content: editDraftInput }),
-    outputSchema: z.strictObject({ draft: summarySchema, content: editDraftInput, request_id: z.uuid(), replayed: z.boolean() }),
+    description: confirmedToolDescription("Save trim and up to three text overlays to the SAME draft used by the Edit page. Blank text is allowed. Read its revision first; save a stable request UUID and reuse every input after a lost response. A conflict requires rereading and explicitly reconciling edits. Saving does not generate/export media or spend credits. The response is the accepted snapshot; reread before making later edits after recovery."),
+    inputSchema: withConfirmToken(z.strictObject({ draft_id: z.uuid(), request_id: z.uuid(), expected_revision: editDraftRevision, content: editDraftInput })),
+    outputSchema: confirmableOutputSchema(z.strictObject({ draft: summarySchema, content: editDraftInput, request_id: z.uuid(), replayed: z.boolean() })),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("creative:write"), _meta: oauthMetadata("creative:write"),
   }, (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "creative:write");
-    return errors(async () => {
-      const receipt = await updateSavedEditDraftForOwner({ userId, draftId: args.draft_id, requestId: args.request_id,
-        expectedRevision: args.expected_revision, draft: args.content });
-      return { draft: summary(receipt.video), content: editDraftInput.parse(receipt.video.draft_json), request_id: args.request_id, replayed: receipt.replayed };
+    const change = omitConfirmToken(args);
+    return requireConfirmation({
+      tool: "update_edit_draft", accountId: userId, args, effect: "mutate",
+      summary: "Save the trim and text overlays on this Edit draft. This does not render or spend credits.",
+      creditCost: 0, creditCostIsEstimate: false,
+      affected: [{ type: "edit_draft", id: change.draft_id, label: "Edit draft save" }],
+      run: () => errors(async () => {
+        const receipt = await updateSavedEditDraftForOwner({ userId, draftId: change.draft_id, requestId: change.request_id,
+          expectedRevision: change.expected_revision, draft: change.content });
+        return { draft: summary(receipt.video), content: editDraftInput.parse(receipt.video.draft_json), request_id: change.request_id, replayed: receipt.replayed };
+      }),
     });
   }));
 }

@@ -56,7 +56,7 @@ function assertHttpsUrl(value: string) {
 
 export function registerMutationMcpTools(server: McpServer) {
   server.registerTool("create_upload", {
-    description: "Reserve a media asset and return a temporary upload URL. Preserve an optional request_id before calling to recover a lost response without a duplicate reservation.",
+    description: "Reserve a media asset and return a temporary upload URL. Preserve an optional request_id before calling to recover a lost response without a duplicate reservation. This does not make the asset ready. confirm_upload is the confirmed commit after the bytes are stored.",
     inputSchema: z.strictObject({
       request_id: z.uuid().optional().describe("Stable UUID for this upload intent. Reuse it with identical inputs after a lost response; recover it through get_upload."),
       collection: uploadCollection,
@@ -147,19 +147,29 @@ export function registerMutationMcpTools(server: McpServer) {
   }));
 
   server.registerTool("confirm_upload", {
-    description: "Verify an owned temporary upload in storage and make its asset ready.",
-    inputSchema: z.strictObject({
+    description: confirmedToolDescription("Verify an owned temporary upload in storage and make its asset ready. create_upload and renew_upload only reserve or refresh the transfer link."),
+    inputSchema: withConfirmToken(z.strictObject({
       upload_id: z.uuid().describe("ID returned as upload_id by create_upload."),
       width: z.number().int().positive().describe("Width of the uploaded media in pixels."),
       height: z.number().int().positive().describe("Height of the uploaded media in pixels."),
       duration_seconds: z.number().positive().optional().describe("Required duration in seconds for video uploads; omit for images."),
-    }),
-    outputSchema: z.strictObject({ asset }),
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true },
+    })),
+    outputSchema: confirmableOutputSchema(z.strictObject({ asset })),
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("assets:write"),
     _meta: oauthMetadata("assets:write"),
   }, async (args, ctx) => executeTool(async () => {
     const userId = principal(ctx, "assets:write");
+    return requireConfirmation({
+      tool: "confirm_upload", accountId: userId, args, effect: "mutate",
+      summary: "Verify the stored file and make this upload ready in the library.",
+      creditCost: 0, creditCostIsEstimate: false,
+      affected: [{ type: "upload", id: args.upload_id, label: "Pending upload" }],
+      run: async () => confirmOwnedUpload(userId, args),
+    });
+  }));
+
+  async function confirmOwnedUpload(userId: string, args: { upload_id: string; width: number; height: number; duration_seconds?: number }) {
     const current = await getMediaAssetForOwner({ assetId: args.upload_id, userId });
     if (!current) throw new ToolFailure("NOT_FOUND", "Upload not found.");
     try { assertMcpUploadConfirmable(current); } catch (error) { asToolFailure(error); }
@@ -212,7 +222,7 @@ export function registerMutationMcpTools(server: McpServer) {
       if (!result.alreadyReady) throw new UploadValidationError("UPLOAD_NOT_READY", "The upload is still being confirmed.");
     } catch (error) { asToolFailure(error); }
     return { asset: responseAsset(latest) };
-  }));
+  }
 
   server.registerTool("delete_asset", {
     description: confirmedToolDescription("Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted."),

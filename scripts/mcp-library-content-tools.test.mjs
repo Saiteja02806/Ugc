@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {after,beforeEach,afterEach,mock,test} from "node:test";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 import {fixture,id} from "./mcp-library-content-fixture.mjs";
 let h,requests=[],loseAck=false,sourceUnavailable=false,planAllowed=true,prepareCalls=0;
 const envKeys=['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','MCP_LIBRARY_WRITES_ENABLED','EXPLORE_SLIDESHOW_SAVING_ENABLED'],oldEnv=envKeys.map(k=>[k,process.env[k]]),oldFetch=globalThis.fetch;
@@ -50,7 +51,7 @@ async function rpc(method,params,owner='owner-a',scopes=['account:read','assets:
  const response=await handler.fetch(new Request('https://mcp.getugcpilot.com/mcp',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})}),{authInfo:{token:'fixture',clientId:'fixture',scopes,extra:{firebaseUid:owner}}});
  const text=await response.text(),line=text.split('\n').find(l=>l.startsWith('data: '));return JSON.parse(line?line.slice(6):text);
 }
-async function call(name,args={},owner,scopes){const body=await rpc('tools/call',{name,arguments:args},owner,scopes);return body.result??{isError:true,content:[{type:'text',text:JSON.stringify(body.error)}]};}
+async function call(name,args={},owner,scopes){return confirmToolResult(async(next)=>{const body=await rpc('tools/call',{name,arguments:next},owner,scopes);return body.result??{isError:true,content:[{type:'text',text:JSON.stringify(body.error)}]};},args);}
 function error(result){assert.equal(result.isError,true,JSON.stringify(result));try{return JSON.parse(result.content[0].text);}catch{return {message:result.content[0].text};}}
 async function inspection(){return(await call('inspect_carousel_library_save',{carousel_id:id(100)})).structuredContent;}
 async function saveArgs(key=id(1)){const ready=await inspection();return{request_id:key,carousel_id:id(100),source_revision:ready.source_revision,destination_revision:ready.destination_revision};}

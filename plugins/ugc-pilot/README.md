@@ -1,4 +1,4 @@
-# UGC Pilot — 0.2.7 public-submission candidate
+# UGC Pilot — 0.2.8 public-submission candidate
 
 Draft UGC hooks, wall-of-text copy, video prompts, and slideshow plans in ordinary language, then use your connected UGC Pilot account when you ask to generate supported media. This package includes eighteen skills covering connection, media generation, five creative workflows, media transfer, video finishing, shared Edit drafts/export, speech/private audio transfer, application references, Creative Asset groups, saved Library outputs, shared Business Context, saved business onboarding, saved social analytics, and read-only connected-social-account and schedule discovery where enabled.
 
@@ -61,7 +61,7 @@ Use the [analytics workflow](skills/manage-ugc-analytics/SKILL.md) for the accou
 3. “Animate that image into one five-second vertical video with a slow camera push-in. Return the finished video link.”
 4. “Check the progress of the UGC Pilot job we already started. Do not create a new generation.”
 
-The reviewed production server contract contains **79 tools**. This 0.2.7 candidate registers **106** tools, including shared Business Context, saved onboarding, verified logo upload, saved social analytics, and schedule discovery, after its server/schema release; hosted acceptance remains pending. Paid generation, deletes, schedule creation, publishing-default changes, and business-profile writes preview first and run only with a single-use confirm token. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
+The reviewed production server contract contains **79 tools**. This 0.2.8 candidate registers **106** tools, including shared Business Context, saved onboarding, verified logo upload, saved social analytics, and schedule discovery, after its server/schema release; hosted acceptance remains pending. Paid generation, deletes, schedule creation, publishing and profile changes, upload commits, library and group edits, edit drafts and exports, audio upload and preferences, and the other account writes preview first and run only with a single-use confirm token. Reserving a media or logo file, or refreshing its transfer link, is not that commit. Existing conversations can retain an older cached catalogue. Tool discovery and live capability checks are authoritative; installing this package does not enable server features or refresh a cached catalogue.
 
 - Account/brand reads, owned visual media, image generation and short-video generation. Counts are 1, 2 or 4; clips are 3–10 seconds and prompts have a 1,000-character limit. Check live costs and options before generation.
 - Owned Demo registration/list/get/delete, upload reservation lookup/list/renewal, and server probing before readiness. The helper preserves reservation intent and transfer confirmation separately.

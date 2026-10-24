@@ -24,10 +24,29 @@ export const CONFIRMED_MCP_TOOLS = [
   "save_business_context_draft",
   "apply_business_context",
   "mutate_business_onboarding",
+  "confirm_upload",
+  "register_demo",
+  "cancel_operation",
+  "open_edit_draft",
+  "update_edit_draft",
+  "export_edit_draft",
+  "create_audio_upload",
+  "import_audio_for_video",
+  "set_audio_voice_selection",
+  "set_audio_voice_bookmark",
+  "create_asset_group",
+  "rename_asset_group",
+  "add_assets_to_group",
+  "remove_assets_from_group",
+  "save_carousel_to_library",
+  "save_slideshow_to_library",
+  "remove_library_item",
+  "initialize_account_timezone",
+  "confirm_business_logo_upload",
 ] as const;
 
 export type ConfirmedMcpTool = (typeof CONFIRMED_MCP_TOOLS)[number];
-export type ConfirmEffect = "spend_credits" | "delete" | "publish" | "mutate_profile";
+export type ConfirmEffect = "spend_credits" | "delete" | "publish" | "mutate_profile" | "mutate";
 
 export const confirmTokenInput = z.string().trim().min(1).max(2000).optional().describe(
   "Omit on the first call. After the user explicitly agrees to the returned preview, pass this token unchanged.",
@@ -41,7 +60,7 @@ const affectedSchema = z.strictObject({
 
 const previewSchema = z.strictObject({
   tool: z.string().min(1).max(80),
-  effect: z.enum(["spend_credits", "delete", "publish", "mutate_profile"]),
+  effect: z.enum(["spend_credits", "delete", "publish", "mutate_profile", "mutate"]),
   summary: z.string().min(1).max(500),
   credit_cost: z.number().int().nonnegative().nullable(),
   credit_cost_is_estimate: z.boolean(),
@@ -61,15 +80,23 @@ export function confirmableOutputSchema<
   Shape extends z.core.$ZodShape,
   Config extends z.core.$ZodObjectConfig,
 >(execution: z.ZodObject<Shape, Config>) {
-  for (const key of CONFIRM_FIELDS) {
+  for (const key of ["confirmation_required", "confirm_token", "preview"] as const) {
     if (key in execution.shape) throw new Error(`Confirmation output collided with ${key}.`);
   }
-  return execution.partial().extend({
+  const confirmationFields = {
     confirmation_required: z.literal(true).optional(),
     confirm_token: z.string().min(1).max(2000).optional(),
-    expires_at: z.string().min(1).max(40).optional(),
     preview: previewSchema.optional(),
-  }).superRefine((value, ctx) => {
+  };
+  // A link's own expires_at stays on the execution result. The preview uses that same field for the token deadline.
+  const output = "expires_at" in execution.shape
+    ? execution.partial().extend(confirmationFields)
+    : execution.partial().extend({
+      ...confirmationFields,
+      expires_at: z.string().min(1).max(40).optional(),
+    });
+  const executionKeys = new Set(Object.keys(execution.shape));
+  return output.superRefine((value, ctx) => {
     const record = value as Record<string, unknown>;
     if (record.confirmation_required === true) {
       const parsed = confirmationResultSchema.safeParse({
@@ -83,7 +110,8 @@ export function confirmableOutputSchema<
     }
     const rest: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(record)) {
-      if (CONFIRM_FIELDS.has(key) || item === undefined) continue;
+      if (item === undefined) continue;
+      if (CONFIRM_FIELDS.has(key) && !executionKeys.has(key)) continue;
       rest[key] = item;
     }
     const parsed = execution.safeParse(rest);

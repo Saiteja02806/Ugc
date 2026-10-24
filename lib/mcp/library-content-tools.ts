@@ -1,6 +1,7 @@
 import "server-only";
 import { McpServer,requireScopes } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { confirmableOutputSchema,confirmedToolDescription,omitConfirmToken,requireConfirmation,withConfirmToken } from "./confirm-token";
 import { executeTool,oauthMetadata,principal } from "./read-tools";
 import { libraryStateSchema,libraryReceiptSchema,listCarouselLibrarySources,listLibraryItems,readLibraryItem,inspectCarouselLibrarySave,mutateLibrary,getLibraryRequest,listLibraryRequests } from "./library-content-service";
 
@@ -30,17 +31,29 @@ export function registerLibraryContentMcpTools(server:McpServer) {
     annotations:readOnly,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read")},
     (args,ctx)=>executeTool(()=>listCarouselLibrarySources(principal(ctx,"assets:read"),args)));
   const output=z.strictObject({replayed:z.boolean(),receipt:libraryReceiptSchema});
-  server.registerTool("save_carousel_to_library",{description:"Save the intended completed owned Carousel/latest ready edit at the inspected source AND Library revisions. Refreshes an existing snapshot using the website's canonical payload; changed revisions reject. Recreating a removed save requires explicit allow_recreate_removed. Preserve request UUID/inputs before submitting.",
-    inputSchema:z.strictObject({request_id:id,carousel_id:id,source_revision:revision,destination_revision:revision,allow_recreate_removed:z.boolean().default(false)}),outputSchema:output,
+  server.registerTool("save_carousel_to_library",{description:confirmedToolDescription("Save the intended completed owned Carousel/latest ready edit at the inspected source AND Library revisions. Refreshes an existing snapshot using the website's canonical payload; changed revisions reject. Recreating a removed save requires explicit allow_recreate_removed. Preserve request UUID/inputs before submitting."),
+    inputSchema:withConfirmToken(z.strictObject({request_id:id,carousel_id:id,source_revision:revision,destination_revision:revision,allow_recreate_removed:z.boolean().default(false)})),outputSchema:confirmableOutputSchema(output),
     annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write")},
-    ({request_id,carousel_id,...input},ctx)=>executeTool(()=>mutateLibrary(principal(ctx,"assets:write"),request_id.toLowerCase(),"save_carousel",{carousel_id:carousel_id.toLowerCase(),...input})));
-  server.registerTool("save_slideshow_to_library",{description:"Save 2-10 selected owned READY raster outputs in exact order through the application's slideshow validator/transaction. This saves already rendered images; it does not render text overlays. Catalogue references are optional guidance and never silently enter the output. Preserve request UUID/inputs for recovery.",
-    inputSchema:z.strictObject({request_id:id,reference_id:z.string().min(1).max(160).nullable().default(null),slides:z.array(z.strictObject({position_id:z.string().min(1).max(160),asset_id:id})).min(2).max(10)}),outputSchema:output,
-    annotations:{readOnlyHint:false,destructiveHint:false,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write")},
-    ({request_id,reference_id,slides},ctx)=>executeTool(()=>mutateLibrary(principal(ctx,"assets:write"),request_id.toLowerCase(),"save_slideshow",{version:2,requestKey:request_id.toLowerCase(),referenceId:reference_id,slides:slides.map(slide=>({referenceSlideId:slide.position_id,mediaAssetId:slide.asset_id.toLowerCase()}))})));
-  server.registerTool("remove_library_item",{description:"Archive the explicitly selected Library entry at its exact revision, matching the application's metadata-only removal. Preserves source media and saved slide files. Existing scheduling rules remain authoritative; this does not cancel or schedule posts. Preserve request UUID/inputs for recovery.",
-    inputSchema:z.strictObject({request_id:id,item_id:id,expected_revision:revision}),outputSchema:output,annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write")},
-    ({request_id,item_id,expected_revision},ctx)=>executeTool(()=>mutateLibrary(principal(ctx,"assets:write"),request_id.toLowerCase(),"remove",{item_id:item_id.toLowerCase(),expected_revision})));
+    (args,ctx)=>executeTool(async()=>{
+      const owner=principal(ctx,"assets:write");
+      const {request_id,carousel_id,...input}=omitConfirmToken(args);
+      return requireConfirmation({tool:"save_carousel_to_library",accountId:owner,args,effect:"mutate",summary:"Save the selected Carousel into the Library at the inspected revisions.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"carousel",id:carousel_id,label:"Carousel library save"}],run:()=>mutateLibrary(owner,request_id.toLowerCase(),"save_carousel",{carousel_id:carousel_id.toLowerCase(),...input})});
+    }));
+  server.registerTool("save_slideshow_to_library",{description:confirmedToolDescription("Save 2-10 selected owned READY raster outputs in exact order through the application's slideshow validator/transaction. This saves already rendered images; it does not render text overlays. Catalogue references are optional guidance and never silently enter the output. Preserve request UUID/inputs for recovery."),
+    inputSchema:withConfirmToken(z.strictObject({request_id:id,reference_id:z.string().min(1).max(160).nullable().default(null),slides:z.array(z.strictObject({position_id:z.string().min(1).max(160),asset_id:id})).min(2).max(10)})),outputSchema:confirmableOutputSchema(output),
+    annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write")},
+    (args,ctx)=>executeTool(async()=>{
+      const owner=principal(ctx,"assets:write");
+      const {request_id,reference_id,slides}=omitConfirmToken(args);
+      return requireConfirmation({tool:"save_slideshow_to_library",accountId:owner,args,effect:"mutate",summary:"Save the selected rendered slides into the Library in this order.",creditCost:0,creditCostIsEstimate:false,affected:slides.slice(0,5).map(slide=>({type:"asset",id:slide.asset_id,label:"Slideshow slide"})),run:()=>mutateLibrary(owner,request_id.toLowerCase(),"save_slideshow",{version:2,requestKey:request_id.toLowerCase(),referenceId:reference_id,slides:slides.map(slide=>({referenceSlideId:slide.position_id,mediaAssetId:slide.asset_id.toLowerCase()}))})});
+    }));
+  server.registerTool("remove_library_item",{description:confirmedToolDescription("Archive the explicitly selected Library entry at its exact revision, matching the application's metadata-only removal. Preserves source media and saved slide files. Existing scheduling rules remain authoritative; this does not cancel or schedule posts. Preserve request UUID/inputs for recovery."),
+    inputSchema:withConfirmToken(z.strictObject({request_id:id,item_id:id,expected_revision:revision})),outputSchema:confirmableOutputSchema(output),annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("assets:write"),_meta:oauthMetadata("assets:write")},
+    (args,ctx)=>executeTool(async()=>{
+      const owner=principal(ctx,"assets:write");
+      const {request_id,item_id,expected_revision}=omitConfirmToken(args);
+      return requireConfirmation({tool:"remove_library_item",accountId:owner,args,effect:"delete",summary:"Archive the selected Library entry. Source media and slide files stay stored.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"library_item",id:item_id,label:"Library entry"}],run:()=>mutateLibrary(owner,request_id.toLowerCase(),"remove",{item_id:item_id.toLowerCase(),expected_revision})});
+    }));
   server.registerTool("get_library_request",{description:"Recover the immutable accepted Library result without repeating its save or removal. Receipt state is historical; get_library_item gives current state. Works after write gates or plan/media readiness change.",inputSchema:z.strictObject({request_id:id}),outputSchema:z.strictObject({receipt:libraryReceiptSchema}),annotations:readOnly,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read")},
     ({request_id},ctx)=>executeTool(()=>getLibraryRequest(principal(ctx,"assets:read"),request_id.toLowerCase())));
   server.registerTool("list_library_requests",{description:"Discover this account's accepted Library request UUIDs and timestamps after an interruption. Does not repeat any write.",inputSchema:z.strictObject(paging),outputSchema:z.strictObject({items:z.array(z.strictObject({request_id:id,operation:z.enum(["save_carousel","save_slideshow","remove"]),created_at:z.string()})).max(20),next_cursor:z.string().nullable()}),annotations:readOnly,scopeChallenge:requireScopes("assets:read"),_meta:oauthMetadata("assets:read")},

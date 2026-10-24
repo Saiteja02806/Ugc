@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { confirmToolResult } from './mcp-confirm-client.mjs';
 import { registerMutationMcpTools } from '../lib/mcp/mutation-tools.ts';
 import { registerUploadRecoveryMcpTools } from '../lib/mcp/upload-recovery-tools.ts';
 import { gcsStorageProvider } from '../lib/storage/gcs.ts';
@@ -81,9 +82,12 @@ function harness() {
   const server={registerTool:(name,config,callback)=>tools.set(name,{config,callback})};
   registerMutationMcpTools(server);registerUploadRecoveryMcpTools(server);
   const call=async(name,input,owner='owner-a',scopes=['assets:read','assets:write'])=>{
-    const t=tools.get(name);const result=await t.callback(t.config.inputSchema.parse(input),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
-    if(!result.isError)t.config.outputSchema.parse(result.structuredContent);
-    return result;
+    const t=tools.get(name);
+    return confirmToolResult(async(next)=>{
+      const result=await t.callback(t.config.inputSchema.parse(next),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
+      if(!result.isError)t.config.outputSchema.parse(result.structuredContent);
+      return result;
+    },input);
   };
   return {rows,calls,tools,state,row,call};
 }

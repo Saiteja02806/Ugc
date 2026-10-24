@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 import {readFile,readdir} from "node:fs/promises";
 import {randomUUID,createHash} from "node:crypto";
 import {before,after,test,mock} from "node:test";
@@ -48,7 +49,7 @@ after(async()=>{globalThis.fetch=originalFetch;for(const[key,value]of oldEnv){if
 const owner=()=>`logo-owner-${randomUUID()}`;
 const intent=(bytes=png,key=randomUUID())=>({request_id:key,file_name:"brand-logo.png",mime_type:"image/png",file_size_bytes:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex")});
 async function rpc(method,params,uid,scopes=["brand:read","brand:write"]){const response=await handler.fetch(new Request("https://mcp.getugcpilot.com/mcp",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json, text/event-stream"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})}),{authInfo:{token:"fixture",clientId:"fixture",scopes,extra:{firebaseUid:uid}}});const text=await response.text(),line=text.split("\n").find(line=>line.startsWith("data: "));return JSON.parse(line?line.slice(6):text);}
-async function call(name,args,uid,scopes){const body=await rpc("tools/call",{name,arguments:args},uid,scopes);return body.result??{isError:true,content:[{type:"text",text:JSON.stringify(body.error)}]};}
+async function call(name,args,uid,scopes){return confirmToolResult(async(next)=>{const body=await rpc("tools/call",{name,arguments:next},uid,scopes);return body.result??{isError:true,content:[{type:"text",text:JSON.stringify(body.error)}]};},args);}
 function ok(result){assert.ok(!result.isError,JSON.stringify(result));return result.structuredContent;}
 function code(result){assert.equal(result.isError,true,JSON.stringify(result));return JSON.parse(result.content[0].text).code;}
 async function one(sql,args=[]){return (await db.query(sql,args)).rows[0];}

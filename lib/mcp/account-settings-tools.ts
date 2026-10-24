@@ -1,7 +1,7 @@
 import "server-only";
 import {McpServer,requireScopes} from "@modelcontextprotocol/server";
 import {z} from "zod";
-import {confirmableOutputSchema,confirmedToolDescription,omitConfirmToken,requireConfirmation} from "./confirm-token";
+import {confirmableOutputSchema,confirmedToolDescription,omitConfirmToken,requireConfirmation,withConfirmToken} from "./confirm-token";
 import {executeTool,oauthMetadata,principal} from "./read-tools";
 import {accountSettingsOperationSchema,accountSettingsReceiptSchema,accountSettingsResultSchema,accountSettingsStateSchema,publishingPreferencesWriteSchema,timezoneInitializeSchema} from "./account-settings-contract";
 import {getAccountSettingsRequest,listAccountSettingsRequests,mutateAccountSettings,readAccountSettings} from "./account-settings-service";
@@ -18,8 +18,12 @@ export function registerAccountSettingsMcpTools(server:McpServer) {
       const {request_id,...input}=omitConfirmToken(args);
       return requireConfirmation({tool:"update_publishing_preferences",accountId:owner,args,effect:"publish",summary:"Update the selected account publishing defaults. Existing scheduled posts stay unchanged.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"publishing_preferences",id:request_id,label:"Account publishing defaults"}],run:()=>mutateAccountSettings(owner,request_id,"publishing_preferences",input)});
     }));
-  server.registerTool("initialize_account_timezone",{description:"Initialize an unset persisted account timezone at its saved timezone_revision, matching the application's initialize-once policy. An already initialized timezone is preserved, even when another zone is supplied. This does not reschedule existing posts. Preserve request UUID/inputs for recovery.",inputSchema:timezoneInitializeSchema,outputSchema:accountSettingsResultSchema,annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("account:write"),_meta:oauthMetadata("account:write")},
-    ({request_id,...input},ctx)=>executeTool(()=>mutateAccountSettings(principal(ctx,"account:write"),request_id,"initialize_timezone",input)));
+  server.registerTool("initialize_account_timezone",{description:confirmedToolDescription("Initialize an unset persisted account timezone at its saved timezone_revision, matching the application's initialize-once policy. An already initialized timezone is preserved, even when another zone is supplied. This does not reschedule existing posts. Preserve request UUID/inputs for recovery."),inputSchema:withConfirmToken(timezoneInitializeSchema),outputSchema:confirmableOutputSchema(accountSettingsResultSchema),annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("account:write"),_meta:oauthMetadata("account:write")},
+    (args,ctx)=>executeTool(async()=>{
+      const owner=principal(ctx,"account:write");
+      const {request_id,...input}=omitConfirmToken(args);
+      return requireConfirmation({tool:"initialize_account_timezone",accountId:owner,args,effect:"mutate",summary:"Initialize the account timezone once. Existing scheduled posts stay unchanged.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"account_timezone",id:request_id,label:input.timezone}],run:()=>mutateAccountSettings(owner,request_id,"initialize_timezone",input)});
+    }));
   server.registerTool("get_account_settings_request",{description:"Recover an owned immutable accepted settings receipt without applying it again. Its state is historical: get_account_settings shows current values. Works while new writes are disabled.",inputSchema:z.strictObject({request_id:z.uuid()}),outputSchema:z.strictObject({receipt:accountSettingsReceiptSchema}),annotations:readOnly,scopeChallenge:requireScopes("account:read"),_meta:oauthMetadata("account:read")},
     ({request_id},ctx)=>executeTool(()=>getAccountSettingsRequest(principal(ctx,"account:read"),request_id)));
   server.registerTool("list_account_settings_requests",{description:"Discover accepted account settings request UUIDs and timestamps after interruption. Reads only the connected account; never resubmits a change.",inputSchema:z.strictObject({limit:z.number().int().min(1).max(50).default(20),cursor:z.string().min(1).max(1024).optional()}),outputSchema:z.strictObject({items:z.array(z.strictObject({request_id:z.uuid(),operation:accountSettingsOperationSchema,created_at:z.string()})).max(50),next_cursor:z.string().nullable()}),annotations:readOnly,scopeChallenge:requireScopes("account:read"),_meta:oauthMetadata("account:read")},

@@ -10,14 +10,14 @@ export function LandingBottomCta({
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-[1200px] rounded-[28px] border border-border bg-card px-6 py-12 text-center sm:px-10 sm:py-16">
-        <p className="text-sm font-semibold text-primary">From your next idea to your next post</p>
+        <p className="text-sm font-semibold text-primary">From the next idea to a file you can keep</p>
         <h2 className="mx-auto mt-4 max-w-3xl text-balance text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
           More time for your business.<br />
           Your content, ready to go.
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-muted">
-          Create, review, and schedule from one workspace.
-          You stay in control of every post.
+          Create, review, and export from one workspace.
+          You approve every asset before it leaves the studio.
         </p>
         <div className="mt-7 flex justify-center">
           <LandingAuthCta
@@ -36,7 +36,7 @@ export function LandingBottomCta({
           </span>
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="size-3.5 text-emerald-500" aria-hidden="true" />
-            Human approval before publishing
+            Human approval before export
           </span>
         </div>
       </div>

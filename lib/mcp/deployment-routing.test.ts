@@ -24,6 +24,9 @@ test("recognizes only the MCP and OAuth routes that belong to the MCP service", 
     "/",
     "/api/jobs",
     "/mcpress",
+    "/mcp/claude",
+    "/mcp/codex",
+    "/mcp/claude/opengraph-image",
     "/oauthish",
     "/.well-known/security.txt",
   ]) {
@@ -77,4 +80,16 @@ test("isolates both deployment targets while preserving local MCP development", 
     isProduction: false,
     pathname: "/oauth/token",
   }), false);
+  assert.equal(shouldBlockDeploymentRoute({
+    hostname: "www.getugcpilot.com",
+    isMcpOnlyDeployment: false,
+    isProduction: true,
+    pathname: "/mcp/claude",
+  }), false);
+  assert.equal(shouldBlockDeploymentRoute({
+    hostname: "mcp.getugcpilot.com",
+    isMcpOnlyDeployment: false,
+    isProduction: true,
+    pathname: "/mcp/codex",
+  }), true);
 });

@@ -26,8 +26,17 @@ export const metadata: Metadata = {
   },
 };
 
+const extraGuides = [
+  {
+    slug: "how-to-create-ugc-videos-with-ai",
+    keyword: "UGC video creator",
+    title: "How to create UGC videos with an AI video creator",
+    description: "Brief, generate, review, and download an AI UGC video. One example comes from the Teja Chundu channel, with links to AI Studio and the Claude connector.",
+  },
+];
+
 export default function GuidesPage() {
-  const guides = Object.values(founderGuides);
+  const guides = [...Object.values(founderGuides), ...extraGuides];
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -101,10 +110,22 @@ export default function GuidesPage() {
               <p className="mt-3 text-sm leading-6 text-muted">Use AI Studio to turn a product message into reviewable short-form video with optional reference media.</p>
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore video workflow <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
             </Link>
+            <Link href="/case-studies/ai-ugc-video-generator-saas-founders" className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Case study</p>
+              <h3 className="mt-4 text-xl font-semibold leading-7 tracking-[-0.025em] text-foreground-strong">Watch the founder videos made with the AI UGC video generator.</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">Two public videos from the Teja Chundu channel, including the Short the owner features first.</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Open the case study <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+            </Link>
+            <Link href="/blog/ugc-video-generator-examples" className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Examples</p>
+              <h3 className="mt-4 text-xl font-semibold leading-7 tracking-[-0.025em] text-foreground-strong">Browse real UGC video generator examples.</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">YouTube files from the same series, plus Instagram reels and TikTok videos on accounts named Clara.</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Open the gallery <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+            </Link>
             <Link href="/instagram-carousel-maker" className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Instagram carousel maker</p>
               <h3 className="mt-4 text-xl font-semibold leading-7 tracking-[-0.025em] text-foreground-strong">Build an Instagram carousel that explains one clear point.</h3>
-              <p className="mt-3 text-sm leading-6 text-muted">Plan the slide sequence from your business context, review the full post, then schedule it when it is ready.</p>
+              <p className="mt-3 text-sm leading-6 text-muted">Plan the slide sequence from your business context, review the full carousel, and keep the approved version in your library.</p>
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore carousel workflow <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
             </Link>
           </div>

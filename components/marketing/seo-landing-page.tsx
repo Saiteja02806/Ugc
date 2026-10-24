@@ -59,7 +59,7 @@ export const seoPageContent = {
     eyebrow: "Instagram carousel maker",
     title: "Create Instagram carousels from your business context.",
     description:
-      "Turn your product message into a complete Instagram carousel, review every slide, then schedule it to a connected account when it is ready.",
+      "Turn your product message into a complete carousel, review every slide, and keep the approved version in your library.",
     proof: "Business context → creative direction → human approval",
     workflowLabel: "A carousel is a complete post, not a loose set of slide ideas.",
     workflow: [
@@ -76,15 +76,15 @@ export const seoPageContent = {
           "Review a carousel angle and its slide structure before it becomes a post for your library.",
       },
       {
-        eyebrow: "Approval and publishing",
+        eyebrow: "Review",
         title: "Keep the final call with your team",
         description:
-          "Approve the finished carousel, add an optional caption, and schedule it to a connected Instagram account.",
+          "Approve the finished carousel and optional caption, then keep that version in your library.",
       },
     ],
-    featuresTitle: "A clearer route from an idea to an Instagram post.",
+    featuresTitle: "A clearer route from an idea to a finished carousel.",
     featuresDescription:
-      "The carousel workflow keeps the message, slides, review, and publishing decision in one place.",
+      "The carousel workflow keeps the message, slides, and review in one place.",
     features: [
       {
         title: "Start from your offer",
@@ -95,13 +95,13 @@ export const seoPageContent = {
       {
         title: "Review the whole sequence",
         description:
-          "Evaluate the finished carousel as one coherent post before it reaches a publishing decision.",
+          "Evaluate the finished carousel as one coherent sequence before you download it.",
         icon: ImageIcon,
       },
       {
-        title: "Publish with intent",
+        title: "Download the approved version",
         description:
-          "Choose the connected Instagram account, optional caption, and timing only after approval.",
+          "Keep the optional caption with the slides and download the carousel after approval.",
         icon: CircleCheckBig,
       },
     ],
@@ -112,14 +112,14 @@ export const seoPageContent = {
           "It helps you turn one business idea into a sequence of slides that works together as a single Instagram post.",
       },
       {
-        question: "Can I review a carousel before it is scheduled?",
+        question: "Can I review a carousel before I download it?",
         answer:
-          "Yes. UGC Pilot keeps the carousel in review so you can approve the creative before selecting an Instagram account and publish time.",
+          "Yes. UGC Pilot keeps the carousel in review so you can approve the creative before you download it.",
       },
       {
-        question: "Do I need to write a caption before scheduling?",
+        question: "Do I need to write a caption?",
         answer:
-          "No. Captions are optional, and a blank caption stays blank when you schedule the carousel.",
+          "No. Captions are optional, and a blank caption stays blank on the saved carousel.",
       },
     ],
     relatedPages: [
@@ -141,7 +141,7 @@ export const seoPageContent = {
     ],
     ctaTitle: "Start your next carousel from the business behind it.",
     ctaDescription:
-      "Set up your business context, review a complete carousel, and decide what gets published.",
+      "Set up your business context, review a complete carousel, and download the version you approve.",
   },
   video: {
     example: productExamples.video,
@@ -228,6 +228,21 @@ export const seoPageContent = {
       },
     ],
     relatedPages: [
+      {
+        title: "Founder videos made with UGC Pilot",
+        description: "Two public YouTube videos from the brand series, with the titles YouTube returns.",
+        href: "/case-studies/ai-ugc-video-generator-saas-founders",
+      },
+      {
+        title: "UGC video generator examples",
+        description: "A gallery of the YouTube files, Instagram reels, and Clara TikTok videos.",
+        href: "/blog/ugc-video-generator-examples",
+      },
+      {
+        title: "How to create UGC videos with AI",
+        description: "Brief, generate, review, and download, with one example from the same series.",
+        href: "/guides/how-to-create-ugc-videos-with-ai",
+      },
       {
         title: "Turn a product demo into a short video",
         description: "Choose one genuine product action, write its opening and review a complete edit.",
@@ -358,9 +373,9 @@ export const seoPageContent = {
     eyebrow: "AI social media manager",
     title: "Keep social content moving without losing the human decision.",
     description:
-      "UGC Pilot brings business context, creative formats, review, and available publishing workflows together so your team can manage the content process in one place.",
-    proof: "Business context → content formats → review → publishing decision",
-    workflowLabel: "The work stays connected from the first business brief to the final publish decision.",
+      "UGC Pilot brings business context, creative formats, and review into one workspace so your team can create the asset and keep the version they approve.",
+    proof: "Business context → content formats → human review",
+    workflowLabel: "The work stays connected from the first business brief to the reviewed asset.",
     workflow: [
       {
         eyebrow: "Context",
@@ -378,12 +393,12 @@ export const seoPageContent = {
         eyebrow: "Decision",
         title: "Review before a post moves forward",
         description:
-          "Keep media, copy, captions, account selection, and timing close to the person approving the final action.",
+          "Keep the media and copy with the person who decides which version to keep.",
       },
     ],
     featuresTitle: "A content workflow that leaves room for judgment.",
     featuresDescription:
-      "Use AI to move the creative process forward while your team retains control of the final post.",
+      "Use AI to move the creative process forward while your team retains control of the finished asset.",
     features: [
       {
         title: "One working context",
@@ -400,7 +415,7 @@ export const seoPageContent = {
       {
         title: "Human approval",
         description:
-          "Review the output before selecting account and timing for a publishing workflow.",
+          "Review the output and keep the version that represents the business.",
         icon: CircleCheckBig,
       },
     ],
@@ -408,12 +423,12 @@ export const seoPageContent = {
       {
         question: "What does an AI social media manager do?",
         answer:
-          "It helps a team organize and accelerate parts of the social content process, such as creating formats, reviewing work, and preparing posts for publishing.",
+          "It helps a team create formats, review the work, and keep a finished asset they can download.",
       },
       {
         question: "Does UGC Pilot replace the person managing social media?",
         answer:
-          "UGC Pilot is designed to support the content workflow. The team still decides which ideas represent the business and what should be approved for publishing.",
+          "UGC Pilot supports the content workflow. The team still decides which ideas represent the business and which file to keep.",
       },
       {
         question: "Can I use the same business context across formats?",
@@ -445,7 +460,7 @@ export const seoPageContent = {
     ],
     ctaTitle: "Bring your social content work into one focused workspace.",
     ctaDescription:
-      "Add the business context, choose the format, review the result, and make the final publishing decision with confidence.",
+      "Add the business context, choose the format, and review the result before you download it.",
   },
 } satisfies Record<string, SeoLandingPageContent>;
 

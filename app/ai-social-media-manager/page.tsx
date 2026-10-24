@@ -10,12 +10,13 @@ const content = seoPageContent.manager;
 export const metadata: Metadata = {
   title: "AI Social Media Manager",
   description:
-    "Bring business context, content formats, review, and publishing decisions together in one focused social content workflow.",
+    "Bring business context, content formats, and review together in one focused creative workflow.",
   alternates: { canonical: content.canonicalPath },
+  robots: { index: false, follow: true },
   openGraph: {
     title: "AI Social Media Manager | UGCPilot",
     description:
-      "A focused workflow for business-aware content creation, review, and publishing decisions.",
+      "A focused workflow for business-aware content creation and review.",
     url: content.canonicalPath,
     type: "website",
   },
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "AI Social Media Manager | UGCPilot",
     description:
-      "A focused workflow for business-aware content creation, review, and publishing decisions.",
+      "A focused workflow for business-aware content creation and review.",
   },
 };
 

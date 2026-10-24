@@ -616,7 +616,7 @@ export const founderGuides = {
       {
         title: "Build a reviewable publishing rhythm",
         paragraphs: [
-          "A small SaaS team needs a rhythm that protects accuracy. Plan one core message, prepare the related assets, review product claims and visual context, then schedule the approved work. This keeps the final publishing decision with the people who know the product and audience best.",
+          "A small SaaS team needs a rhythm that protects accuracy. Plan one core message, prepare the related assets, review product claims and visual context, then share the approved work on the channel you already manage. This keeps the final publishing decision with the people who know the product and audience best.",
           "After publishing, save the message and note which topics earned qualified responses. Use the strongest questions and conversations to choose the next brief instead of starting the following week from zero.",
         ],
       },

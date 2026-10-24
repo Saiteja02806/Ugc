@@ -1,10 +1,16 @@
 [
   "/",
   "/pricing",
+  "/connect-ai",
+  "/mcp",
+  "/mcp/claude",
+  "/mcp/codex",
+  "/docs/mcp-tools",
   "/instagram-carousel-maker",
   "/ai-ugc-video-generator",
+  "/case-studies/ai-ugc-video-generator-saas-founders",
+  "/blog/ugc-video-generator-examples",
   "/social-media-marketing-for-startups",
-  "/ai-social-media-manager",
   "/guides",
   "/guides/saas-marketing",
   "/guides/saas-content-marketing",
@@ -14,5 +20,6 @@
   "/guides/social-media-marketing-for-saas",
   "/guides/product-demo-to-short-video",
   "/guides/readable-video-text",
+  "/guides/how-to-create-ugc-videos-with-ai",
   "/free-hook-lines"
 ]

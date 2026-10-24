@@ -3,20 +3,20 @@ import Link from "next/link";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import {
-  MCP_TOOL_COUNT,
   mcpEndpoint,
-  mcpToolCatalog,
+  publicMcpToolCatalog,
+  publicMcpToolCount,
   publicOrigin,
   publicPageMetadata,
 } from "@/lib/marketing/mcp-public";
 
 const path = "/docs/mcp-tools";
 const title = "MCP tool reference";
-const description = `Reference for all ${MCP_TOOL_COUNT} UGC Pilot MCP tools, grouped by job and copied from the live registry, with the OAuth scope each tool requires.`;
+const description = `Reference for ${publicMcpToolCount} UGC Pilot MCP tools, grouped by job, with the OAuth scope each listed tool requires.`;
 
 export const metadata = publicPageMetadata({ title, description, path });
 
-const tools = mcpToolCatalog.groups.flatMap((group) => group.tools);
+const tools = publicMcpToolCatalog.groups.flatMap((group) => group.tools);
 
 export default function McpToolReferencePage() {
   return (
@@ -54,10 +54,10 @@ export default function McpToolReferencePage() {
           UGC Pilot MCP tool reference
         </h1>
         <p className="mt-5 text-base leading-7 text-muted">
-          {MCP_TOOL_COUNT} tools from the registered server catalog at {mcpEndpoint}. Descriptions and scopes are generated from the tool registry. A write tool can still be closed by a live capability check.
+          {publicMcpToolCount} tools listed for {mcpEndpoint}. Names and scopes match the registered catalog. A write tool can still be closed by a live capability check.
         </p>
         <nav aria-label="Tool groups" className="mt-8 flex flex-wrap gap-2">
-          {mcpToolCatalog.groups.map((group) => (
+          {publicMcpToolCatalog.groups.map((group) => (
             <a
               key={group.id}
               href={`#${group.id}`}
@@ -70,7 +70,7 @@ export default function McpToolReferencePage() {
         </nav>
 
         <div className="mt-12 space-y-12">
-          {mcpToolCatalog.groups.map((group) => (
+          {publicMcpToolCatalog.groups.map((group) => (
             <section key={group.id} id={group.id} className="scroll-mt-28">
               <h2 className="text-2xl font-semibold tracking-tight text-foreground-strong">{group.title}</h2>
               <p className="mt-2 text-sm leading-6 text-muted">{group.summary}</p>

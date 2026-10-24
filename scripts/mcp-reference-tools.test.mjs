@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { confirmToolResult } from "./mcp-confirm-client.mjs";
 import { after, beforeEach, mock, test } from "node:test";
 
 let owner, authError, source, profile, providerOutput, providerError, providerWait, providerCalls, providerOptions, providerRequest, readError, saveError, quotaError;
@@ -73,7 +74,7 @@ async function rpc(method,params,scopes=["account:read","assets:read","generatio
   const response=await handler.fetch(request,{authInfo:{token:"fixture-not-a-real-token",clientId:"fixture-client",scopes,extra:{firebaseUid:uid}}});
   const text=await response.text(),line=text.split("\n").find(l=>l.startsWith("data: "));return JSON.parse(line?line.slice(6):text);
 }
-async function call(name,args={},scopes,uid) {const body=await rpc("tools/call",{name,arguments:args},scopes,uid);return body.result??{isError:true,content:[{type:"text",text:JSON.stringify(body.error)}]};}
+async function call(name,args={},scopes,uid) {return confirmToolResult(async(next)=>{const body=await rpc("tools/call",{name,arguments:next},scopes,uid);return body.result??{isError:true,content:[{type:"text",text:JSON.stringify(body.error)}]};},args);}
 function error(result){assert.equal(result.isError,true,JSON.stringify(result));try { return JSON.parse(result.content[0].text); } catch { return {message:result.content[0].text}; }}
 const input=()=>({requestKey:id,referenceId:"hook-a",slideId:null,instructions:"Keep the structure"});
 beforeEach(()=>{allowed=true;planError=false;initializationNeeded=false;allowanceInitializations=0;planReads.length=0;catalogue=[structuredClone(hook),structuredClone(slideshow)];});

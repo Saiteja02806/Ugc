@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     const { error } = await store.from("mcp_oauth_authorization_codes").insert({
       code_hash: hashOAuthSecret(code),
       client_id: authorization.client.clientId,
+      email_verified: user.emailVerified,
       firebase_uid: user.uid,
       redirect_uri: authorization.redirectUri,
       resource: authorization.resource,

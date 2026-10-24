@@ -27,12 +27,11 @@ export function registerEditExportMcpTools(server:McpServer) {
     return {available:reason==="available",reason,ratios:["9:16","1:1","4:5","16:9"],required_write_scope:"creative:write"};
   }));
   server.registerTool("export_edit_draft",{
-    description:"Render the selected SAVED Edit-page draft revision with the website's renderer. Read/save the draft first. This submits real video processing; use only for a requested export. Save a request UUID and reuse it with identical draft ID/revision after interruption; it recovers one durable job without rendering newer edits. Returns a receipt, not an immediate download. Check get_edit_export, then get_asset for the ready output.",
+    description:"Render the selected SAVED Edit-page draft revision with the website's renderer. Read/save the draft first. This submits real video processing and does not spend generation credits. Use only for a requested export. Save a request UUID and reuse it with identical draft ID/revision after interruption; it recovers one durable job without rendering newer edits. Returns a receipt, not an immediate download. Check get_edit_export, then get_asset for the ready output.",
     inputSchema:z.strictObject({draft_id:z.uuid(),expected_revision:editDraftRevision,request_id:z.uuid()}),
-    outputSchema:result.extend({replayed:z.boolean()}),annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:true,openWorldHint:false},
+    outputSchema:result.extend({replayed:z.boolean()}),annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},
     scopeChallenge:requireScopes("creative:write"),_meta:oauthMetadata("creative:write"),
-  },(args,ctx)=>executeTool(()=>errors(()=>startEditExportForOwner({userId:principal(ctx,"creative:write"),draftId:args.draft_id,
-    requestId:args.request_id,expectedRevision:args.expected_revision}))));
+  },(args,ctx)=>executeTool(()=>errors(()=>startEditExportForOwner({userId:principal(ctx,"creative:write"),draftId:args.draft_id,requestId:args.request_id,expectedRevision:args.expected_revision}))));
   server.registerTool("get_edit_export",{
     description:"Read one owned Edit export by its saved request UUID. Does not submit, requeue or regenerate media. Recover the exported revision/job and verified ready output asset ID; remains available when creation is disabled. Removed outputs are reported as unavailable.",
     inputSchema:z.strictObject({request_id:z.uuid()}),outputSchema:result,annotations:readOnly,

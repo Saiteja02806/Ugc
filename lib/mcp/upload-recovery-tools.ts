@@ -48,7 +48,7 @@ export function registerUploadRecoveryMcpTools(server: McpServer) {
   }));
 
   server.registerTool("renew_upload", {
-    description: "Renew the create-only PUT link for the same owned pending reservation. If bytes already exist, confirm the existing upload instead of transferring again.",
+    description: "Renew the create-only PUT link for the same owned pending reservation. If bytes already exist, confirm the existing upload instead of transferring again. Renewing a link does not make the asset ready; confirm_upload verifies the stored bytes.",
     inputSchema: z.strictObject({ upload_id: z.uuid() }), outputSchema: uploadReservation,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("assets:write"), _meta: oauthMetadata("assets:write"),

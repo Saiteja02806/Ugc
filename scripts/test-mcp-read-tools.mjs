@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { ONE_TIME_FREE_GENERATION_CREDITS } from "../lib/billing/free-generation-credit-policy.ts";
+import { CONFIRMED_MCP_TOOLS } from "../lib/mcp/confirm-token.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://local-mcp-test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "local-test-secret";
@@ -54,6 +55,7 @@ globalThis.fetch = async (input, init) => {
     if (bearerMode === "missing") return Response.json(null);
     return Response.json({
       client_id: "local-test-client", firebase_uid: "owner-a",
+      email_verified: bearerMode === "email-verified",
       resource: bearerMode === "wrong-resource" ? "https://other.example.test/mcp" : "https://mcp.getugcpilot.com/mcp",
       scopes: ["account:read", "brand:read", "assets:read"],
       expires_at: bearerMode === "expired" ? "2020-01-01T00:00:00.000Z" : "2099-01-01T00:00:00.000Z",
@@ -186,6 +188,7 @@ globalThis.fetch = async (input, init) => {
 };
 
 const { mcpHandler, registeredMcpTools } = await import("../lib/mcp/server.ts");
+const { authenticateMcpRequest } = await import("../lib/mcp/auth.ts");
 const { decodeAssetCursor, encodeAssetCursor } = await import("../lib/mcp/asset-cursor.ts");
 const { POST: mcpRoutePost } = await import("../app/mcp/route.ts");
 const { gcsStorageProvider } = await import("../lib/storage/gcs.ts");
@@ -221,6 +224,14 @@ gcsStorageProvider.uploadBuffer = async ({ key, buffer, contentType }) => {
 gcsStorageProvider.deleteObject = async ({ key }) => { deletedObjects.push(key); };
 
 const resource = new URL("https://mcp.getugcpilot.com/mcp");
+const authenticatedIdentity = await authenticateMcpRequest(new Request(resource, { headers: { authorization: "Bearer local-route-bearer-secret" } }));
+assert(!(authenticatedIdentity instanceof Response));
+assert.equal(authenticatedIdentity.authInfo.extra?.emailVerified, false);
+bearerMode = "email-verified";
+const verifiedIdentity = await authenticateMcpRequest(new Request(resource, { headers: { authorization: "Bearer local-route-bearer-secret" } }));
+assert(!(verifiedIdentity instanceof Response));
+assert.equal(verifiedIdentity.authInfo.extra?.emailVerified, true);
+bearerMode = "valid";
 const unauthenticated = await mcpRoutePost(new Request(resource, { method: "POST" }));
 assert.equal(unauthenticated.status, 401);
 assert.match(unauthenticated.headers.get("www-authenticate") ?? "", /resource_metadata=/);
@@ -313,7 +324,7 @@ const makeAuth = (firebaseUid, scopes) => ({
   resource, extra: { firebaseUid },
 });
 let callId = 0;
-async function call(method, params, authInfo = makeAuth("owner-a", ["account:read", "brand:read", "assets:read"])) {
+async function rawCall(method, params, authInfo = makeAuth("owner-a", ["account:read", "brand:read", "assets:read"])) {
   const id = ++callId;
   const request = new Request(resource, {
     method: "POST",
@@ -326,6 +337,14 @@ async function call(method, params, authInfo = makeAuth("owner-a", ["account:rea
   const body = JSON.parse(dataLine ? dataLine.slice(6) : text);
   return { status: response.status, body };
 }
+async function call(method, params, authInfo) {
+  const response = await rawCall(method, params, authInfo);
+  const preview = response.body?.result?.structuredContent;
+  if (method === "tools/call" && !response.body?.result?.isError && preview?.confirmation_required === true && typeof preview.confirm_token === "string") {
+    return rawCall(method, { ...params, arguments: { ...(params.arguments ?? {}), confirm_token: preview.confirm_token } }, authInfo);
+  }
+  return response;
+}
 
 const discovered = await call("tools/list", {});
 assert.equal(discovered.status, 200, JSON.stringify(discovered));
@@ -334,11 +353,17 @@ assert.equal(discovered.body.result.tools.find((tool) => tool.name === "get_prof
 for (const tool of discovered.body.result.tools) {
   assert.equal(tool._meta.securitySchemes[0].type, "oauth2");
   assert.equal(tool._meta.securitySchemes[0].scopes.length, tool.name === "remix_reference_text" ? 2 : 1);
-  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft", "generate_audio", "create_audio_upload", "import_audio_for_video", "set_audio_voice_selection", "set_audio_voice_bookmark", "remix_reference_text", "create_asset_group", "rename_asset_group", "delete_asset_group", "add_assets_to_group", "remove_assets_from_group", "save_carousel_to_library", "save_slideshow_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone"];
-  const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft", "export_edit_draft", "generate_audio", "remix_reference_text", "create_asset_group", "rename_asset_group", "delete_asset_group", "add_assets_to_group", "remove_assets_from_group", "save_carousel_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone"];
+  const writes = ["create_upload", "confirm_upload", "delete_asset", "generate_image", "generate_video", "finish_video", "register_demo", "delete_demo", "renew_upload", "cancel_operation", "retry_operation", "update_edit_draft", "open_edit_draft", "export_edit_draft", "generate_audio", "create_audio_upload", "import_audio_for_video", "set_audio_voice_selection", "set_audio_voice_bookmark", "remix_reference_text", "create_asset_group", "rename_asset_group", "delete_asset_group", "add_assets_to_group", "remove_assets_from_group", "save_carousel_to_library", "save_slideshow_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone", "create_schedule", "save_business_context_draft", "apply_business_context", "mutate_business_onboarding", "create_business_logo_upload", "renew_business_logo_upload", "confirm_business_logo_upload"];
+  const irreversible = ["delete_asset", "generate_image", "generate_video", "finish_video", "delete_demo", "cancel_operation", "retry_operation", "update_edit_draft", "generate_audio", "delete_asset_group", "remove_assets_from_group", "save_carousel_to_library", "remove_library_item", "update_publishing_preferences", "initialize_account_timezone", "save_business_context_draft", "apply_business_context", "mutate_business_onboarding"];
   assert.equal(tool.annotations.readOnlyHint, !writes.includes(tool.name), `${tool.name}: read-only annotation`);
   assert.equal(tool.annotations.destructiveHint, irreversible.includes(tool.name), `${tool.name}: destructive annotation`);
-  assert.equal(tool.annotations.openWorldHint, tool.name === "remix_reference_text", `${tool.name}: bounded account annotation`);
+  assert.equal(tool.annotations.openWorldHint, ["remix_reference_text", "mutate_business_onboarding"].includes(tool.name), `${tool.name}: bounded account annotation`);
+}
+for (const name of CONFIRMED_MCP_TOOLS) {
+  const tool = discovered.body.result.tools.find((item) => item.name === name);
+  assert.ok(tool, name);
+  assert.match(tool.description, /confirm_token/);
+  assert.equal(tool.inputSchema.properties.confirm_token.type, "string");
 }
 
 const finishingTool = discovered.body.result.tools.find((tool) => tool.name === "finish_video");

@@ -3,7 +3,21 @@
   "mcpServers": {
     "ugc-pilot": {
       "type": "streamable-http",
-      "url": "https://mcp.getugcpilot.com/mcp"
+      "url": "https://mcp.getugcpilot.com/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "oauth",
+            "client": {
+              "mode": "cimd"
+            },
+            "resource": "https://mcp.getugcpilot.com/mcp",
+            "baseScopes": [
+              "account:read"
+            ]
+          }
+        }
+      }
     }
   }
 }

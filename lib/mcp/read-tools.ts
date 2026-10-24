@@ -60,11 +60,15 @@ export const asset = assetSummary.extend({
 type ToolContext = { http?: { authInfo?: { scopes: string[]; extra?: Record<string, unknown> } } };
 
 export function principal(ctx: ToolContext, scope: string) {
+  return principalIdentity(ctx, scope).uid;
+}
+
+export function principalIdentity(ctx: ToolContext, scope: string) {
   const auth = ctx.http?.authInfo;
   const uid = auth?.extra?.firebaseUid;
   if (!auth || typeof uid !== "string" || !uid.trim()) throw new ToolFailure("UNAUTHENTICATED", "Connect your UGC Pilot account.");
   if (!auth.scopes.includes(scope)) throw new ToolFailure("INSUFFICIENT_SCOPE", `The ${scope} permission is required.`);
-  return uid;
+  return { uid, emailVerified: auth.extra?.emailVerified === true };
 }
 
 export class ToolFailure extends Error {

@@ -63,12 +63,16 @@ async function rpc(method, params, notification = false) {
   return decodeResponse(await response.text(), id);
 }
 
-async function tool(name, args = {}) {
+async function tool(name, args = {}, confirmed = false) {
   const result = await rpc("tools/call", { name, arguments: args });
   const text = result.content?.find((part) => part.type === "text")?.text;
   let output = result.structuredContent;
   if (!output && text) {
     try { output = JSON.parse(text); } catch { /* Report a safe error below. */ }
+  }
+  // --generate is the operator's explicit yes. Accept the preview, then send its one-time token.
+  if (!confirmed && output?.confirmation_required === true && typeof output.confirm_token === "string") {
+    return tool(name, { ...args, confirm_token: output.confirm_token }, true);
   }
   const code = typeof output?.code === "string" && /^[A-Z_]+$/.test(output.code) ? output.code : "UNKNOWN";
   assert(!result.isError, `${name} failed (${code}).`);

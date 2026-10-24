@@ -21,6 +21,7 @@ User-stated facts are inputs, not independently verified facts. Do not invent me
 | Organize Creative Asset groups / membership | [Manage UGC Groups](../skills/manage-ugc-groups/SKILL.md) |
 | Browse or save rendered Carousel/slideshow Library snapshots | [Manage UGC Library](../skills/manage-ugc-library/SKILL.md) |
 | Read/change account publishing defaults / initialize unset timezone | [Manage UGC Account](../skills/manage-ugc-account/SKILL.md) |
+| Read connected social accounts and existing schedule delivery state | [Manage UGC Scheduling](../skills/manage-ugc-scheduling/SKILL.md) |
 
 These are instructions for the host model, not a keyword router. Use the requested deliverable and conversation context. For an ambiguous “make a hook,” infer text from a copywriting conversation and a prompt from a directing conversation; otherwise ask whether they want words, a prompt, or a generated clip.
 

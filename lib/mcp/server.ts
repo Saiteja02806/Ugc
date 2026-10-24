@@ -28,10 +28,18 @@ import { registerCreativeGroupMcpTools, registeredCreativeGroupMcpTools } from "
 import { registerLibraryContentMcpTools, registeredLibraryContentMcpTools } from "./library-content-tools";
 
 import {registerAccountSettingsMcpTools,registeredAccountSettingsMcpTools} from "./account-settings-tools";
+import { registerSchedulingMcpTools, registeredSchedulingMcpTools } from "./scheduling-tools";
+import { registerAnalyticsMcpTools, registeredAnalyticsMcpTools } from "./analytics-tools";
+
+import {registerBusinessContextMcpTools,registeredBusinessContextMcpTools} from "./business-context-tools";
+
+import { registerBusinessOnboardingMcpTools, registeredBusinessOnboardingMcpTools } from "./business-onboarding-tools";
+
+import {registerBusinessLogoMcpTools,registeredBusinessLogoMcpTools} from "./business-logo-tools";
 
 export const registeredMcpTools: readonly string[] = [
   ...registeredReadMcpTools, ...registeredMutationMcpTools, ...registeredGenerationMcpTools,
-  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools,
+  ...registeredFinishingMcpTools, ...registeredDemoMcpTools, ...registeredUploadRecoveryMcpTools, ...registeredOperationMcpTools, ...registeredEditDraftMcpTools, ...registeredEditExportMcpTools, ...registeredAudioMcpTools, ...registeredAudioVideoImportMcpTools, ...registeredReferenceMcpTools, ...registeredCreativeGroupMcpTools, ...registeredLibraryContentMcpTools, ...registeredAccountSettingsMcpTools, ...registeredBusinessContextMcpTools, ...registeredBusinessOnboardingMcpTools, ...registeredBusinessLogoMcpTools, ...registeredSchedulingMcpTools, ...registeredAnalyticsMcpTools,
 ];
 
 export const mcpHandler = createMcpHandler(
@@ -52,6 +60,11 @@ export const mcpHandler = createMcpHandler(
     registerCreativeGroupMcpTools(server);
     registerLibraryContentMcpTools(server);
     registerAccountSettingsMcpTools(server);
+    registerBusinessContextMcpTools(server);
+    registerBusinessOnboardingMcpTools(server);
+    registerBusinessLogoMcpTools(server);
+    registerSchedulingMcpTools(server);
+    registerAnalyticsMcpTools(server);
     return server;
   },
   {

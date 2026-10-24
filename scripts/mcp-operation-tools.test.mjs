@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { confirmToolResult } from './mcp-confirm-client.mjs';
 
 process.env.NEXT_PUBLIC_SUPABASE_URL='https://operation-fixture.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY='operation-offline-test-key';
@@ -75,7 +76,8 @@ function harness(){
   };
   const tools=new Map();registerOperationMcpTools({registerTool:(name,config,callback)=>tools.set(name,{config,callback})});
   h.tools=tools;h.call=async(name,args={},owner='owner-a',scopes=['jobs:read','jobs:write'])=>{
-    const t=tools.get(name),result=await t.callback(t.config.inputSchema.parse(args),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}});
+    const t=tools.get(name);
+    const result=await confirmToolResult(async(next)=>t.callback(t.config.inputSchema.parse(next),{http:{authInfo:{scopes,extra:{firebaseUid:owner}}}}),args);
     if(!result.isError)t.config.outputSchema.parse(result.structuredContent);return result;
   };return h;
 }

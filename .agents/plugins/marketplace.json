@@ -1,0 +1,20 @@
+{
+  "name": "ugc-pilot-local",
+  "interface": {
+    "displayName": "UGC Pilot local development"
+  },
+  "plugins": [
+    {
+      "name": "ugc-pilot",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ugc-pilot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

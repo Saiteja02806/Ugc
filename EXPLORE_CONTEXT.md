@@ -2837,7 +2837,6 @@
   production soak or proof the deployed app is fixed. See
   `docs/idle-tab-refresh-fix-2026-10-19.md` for scope, commands and acceptance limits.
 
-
 ### Trending same-quota older-post recovery — 19 October 2026, local correction
 
 - Recovery scope is the same quota/delivered feed, including posts viewed hours

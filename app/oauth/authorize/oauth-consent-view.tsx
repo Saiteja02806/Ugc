@@ -3,6 +3,7 @@
 import {
   ArrowRight,
   ArrowUpRight,
+  BarChart3,
   BriefcaseBusiness,
   CircleCheck,
   Eye,
@@ -35,7 +36,12 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
   },
   "brand:read": {
     title: "Brand profile",
-    description: "View your business, product, audience, and source URL.",
+    description: "View your business, product, audience, source URL, saved Business Context drafts and change receipts.",
+    icon: BriefcaseBusiness,
+  },
+  "brand:write": {
+    title: "Edit Business Context",
+    description: "Save Business Context drafts and apply reviewed changes for future content. Existing generated content stays unchanged.",
     icon: BriefcaseBusiness,
   },
   "assets:read": {
@@ -67,6 +73,21 @@ const SCOPE_DETAILS: Record<string, { title: string; description: string; icon: 
     title: "Edit and finish videos",
     description: "Render your selected clips, demos, text, audio, and requested subtitles.",
     icon: Sparkles,
+  },
+  "analytics:read": {
+    title: "Saved social analytics",
+    description: "View saved Instagram, TikTok, and YouTube reports. This does not refresh provider data or change social connections.",
+    icon: BarChart3,
+  },
+  "publishing:read": {
+    title: "Schedules and social accounts",
+    description: "View connected social-account labels and existing schedules. This does not connect an account or publish a post.",
+    icon: Link2,
+  },
+  "publishing:write": {
+    title: "Create schedules",
+    description: "Create a future schedule for media and accounts you select, after you confirm the preview. This does not publish immediately.",
+    icon: ArrowUpRight,
   },
 };
 

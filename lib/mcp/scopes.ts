@@ -2,12 +2,16 @@ export const MCP_SCOPES = [
   "account:read",
   "account:write",
   "brand:read",
+  "brand:write",
   "assets:read",
   "assets:write",
   "generation:write",
   "jobs:read",
   "jobs:write",
   "creative:write",
+  "analytics:read",
+  "publishing:read",
+  "publishing:write",
 ] as const;
 
 export function parseMcpScopes(value: string | null) {

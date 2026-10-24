@@ -14,7 +14,7 @@ import { prebuildTrendingAfterOnboarding } from "@/lib/trending/onboarding-prebu
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
 import { isBackgroundOnboardingEnabled } from "./onboarding-rollout";
 
-type DraftRow = {
+export type DraftRow = {
   id: string; user_id: string; revision: number; source_revision: number;
   source_input: BusinessProfileSetupInput; source_job_id: string;
   analysis_id: string | null; business_name: string; logo: BusinessLogoAsset | null;

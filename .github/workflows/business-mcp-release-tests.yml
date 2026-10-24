@@ -1,0 +1,47 @@
+name: Business MCP combined release tests
+
+on:
+  push:
+    branches: ["codex/mcp-business-release"]
+  pull_request:
+    paths:
+      - ".github/workflows/business-mcp-release-tests.yml"
+      - "lib/business-profiles/**"
+      - "lib/mcp/**"
+      - "app/api/business-profile/**"
+      - "app/api/internal/jobs/process-media-analysis/**"
+
+permissions:
+  contents: read
+
+jobs:
+  preserved-application:
+    if: github.head_ref == 'codex/mcp-business-release' || github.ref == 'refs/heads/codex/mcp-business-release' || github.head_ref == 'codex/mcp-analytics-read-20261018' || github.ref == 'refs/heads/codex/mcp-analytics-read-20261018'
+    runs-on: ubuntu-latest
+    env:
+      FFMPEG_BIN: /usr/bin/ffmpeg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install the worker-compatible test media stack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fontconfig fonts-noto-cjk fonts-noto-color-emoji
+          sudo mkdir -p /usr/local/share/fonts/ugc-pilot
+          sudo cp worker/src/assets/fonts/*.ttf /usr/local/share/fonts/ugc-pilot/
+          sudo cp worker/src/assets/fonts/61-ugc-inter.conf /etc/fonts/conf.d/61-ugc-inter.conf
+          sudo fc-cache -f
+      - run: npm ci
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci --legacy-peer-deps
+      - run: node scripts/check-test-media-capabilities.mjs
+      - run: npm run test:explore
+      - run: node --test --test-concurrency=1 "worker/dist/**/*.test.js"
+      - run: npm run test:scheduling-ui
+      - run: npm run test:scheduling-metadata
+      - run: npm run test:business-context
+      - run: node --import ./scripts/next-server-only-test-loader.mjs --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/business-profiles/onboarding-schema-contract.test.ts

@@ -44,12 +44,16 @@ async function rpc(method, params, notification = false) {
   return unpack(await response.text(), id);
 }
 
-async function tool(name, args = {}, expectedError = false) {
+async function tool(name, args = {}, expectedError = false, confirmed = false) {
   const result = await rpc('tools/call', { name, arguments: args });
   const text = result.content?.find(part => part.type === 'text')?.text;
   let output = result.structuredContent;
   if (!output && text) {
     try { output = JSON.parse(text); } catch { /* Report the safe state below. */ }
+  }
+  // This script is the operator's explicit yes. Accept the server preview, then send its one-time token.
+  if (!expectedError && !confirmed && output?.confirmation_required === true && typeof output.confirm_token === 'string') {
+    return tool(name, { ...args, confirm_token: output.confirm_token }, expectedError, true);
   }
   if (expectedError) {
     assert(result.isError, `${name} unexpectedly succeeded.`);

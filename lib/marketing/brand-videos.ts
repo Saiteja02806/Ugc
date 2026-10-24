@@ -73,13 +73,16 @@ export function tiktokVideoUrl(video: (typeof tiktokVideos)[number]) {
 /** Founder profile linked from the homepage. */
 export const brandXProfileUrl = "https://x.com/Teja_chundu";
 
-/**
- * Profiles that can be verified from this file or the homepage.
- * Instagram entries above are reel codes only, so no Instagram profile is included.
- */
+export const brandInstagramProfileUrls = [
+  "https://www.instagram.com/mira_handles/",
+  "https://www.instagram.com/clara_iamm/",
+] as const;
+
+/** Profiles linked from the homepage Organization node and the README. */
 export const brandOrganizationSameAs = [
   brandXProfileUrl,
   ...new Set(Object.values(brandYouTubeVideos).map((video) => video.authorUrl)),
+  ...brandInstagramProfileUrls,
   ...new Set(tiktokVideos.map((video) => `https://www.tiktok.com/${video.handle}`)),
 ];
 

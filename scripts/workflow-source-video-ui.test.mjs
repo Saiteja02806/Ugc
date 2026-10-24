@@ -98,6 +98,7 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     const finishing = { options: {}, setOptions() {}, output: null, pendingComposition: null, captions: { transcript: null }, music: { source: null, playback: "repeat", selectionError: null }, edit: { busy: false }, schedule: { busy: false } };
     const imports = {
       "next/dynamic": { default: () => "starting-frame-preparation" },
+      "./lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "starting-frame-preparation" },
       "next/image": { default: "image" },
       "./use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, ready: true, error: null, setFrame() {}, retry() {} }) },
       "@/worker/src/lib/hook-starting-frame-video": { isHookStartingFrameVideoModel: () => true, hookStartingFrameVideoDurations: () => [4, 8] },

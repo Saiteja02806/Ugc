@@ -37,7 +37,7 @@ jobs:
       - run: npm ci
       - name: Install worker dependencies
         working-directory: worker
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       - run: node scripts/check-test-media-capabilities.mjs
       - run: npm run test:explore
       - run: node --test --test-concurrency=1 "worker/dist/**/*.test.js"

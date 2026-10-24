@@ -79,6 +79,7 @@ function layout(kind) {
   };
   const imports = {
     "next/dynamic": { default: () => "starting-frame-preparation" },
+    "./lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "starting-frame-preparation" },
     "next/image": { default: "image" },
     "./use-hook-composer-selection": { useHookComposerSelection: (...scope) => { frameScopes.push(scope); return frameSelection; } },
     "@/worker/src/lib/hook-starting-frame-video": startingFrameVideo,

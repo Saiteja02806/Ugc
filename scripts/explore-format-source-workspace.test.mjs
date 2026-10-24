@@ -55,6 +55,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
+  "@/components/explore/lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "HookStartingFrameWorkspace" },
   "@/components/explore/use-hook-composer-selection": { useHookComposerSelection() {
     const [frame, setFrame] = imports.react.useState(null);
     return { frame, setFrame, ready: true, error: null };

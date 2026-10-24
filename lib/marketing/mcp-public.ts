@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { brandOrganizationSameAs } from "./brand-videos";
 import { ogSize } from "./og-card";
 import catalog from "./mcp-tool-catalog.json";
 
@@ -260,6 +261,7 @@ export function homepageJsonLd(description: string) {
         name: "UGC Pilot",
         url: publicOrigin,
         logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
+        sameAs: [...brandOrganizationSameAs],
       },
       {
         "@type": "WebSite",

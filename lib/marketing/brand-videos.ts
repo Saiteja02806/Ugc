@@ -70,6 +70,19 @@ export function tiktokVideoUrl(video: (typeof tiktokVideos)[number]) {
   return `https://www.tiktok.com/${video.handle}/video/${video.id}`;
 }
 
+/** Founder profile linked from the homepage. */
+export const brandXProfileUrl = "https://x.com/Teja_chundu";
+
+/**
+ * Profiles that can be verified from this file or the homepage.
+ * Instagram entries above are reel codes only, so no Instagram profile is included.
+ */
+export const brandOrganizationSameAs = [
+  brandXProfileUrl,
+  ...new Set(Object.values(brandYouTubeVideos).map((video) => video.authorUrl)),
+  ...new Set(tiktokVideos.map((video) => `https://www.tiktok.com/${video.handle}`)),
+];
+
 export function videoObjectJsonLd(video: BrandYouTubeVideo) {
   return {
     "@type": "VideoObject",

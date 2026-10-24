@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { HookStartingFrameWorkspace, type HookKeyframePreviewRuntime } from "@/components/explore/hook-starting-frame-workspace";
+import type { HookKeyframePreviewRuntime } from "@/components/explore/hook-starting-frame-workspace";
+import { LazyHookStartingFrameWorkspace as HookStartingFrameWorkspace } from "@/components/explore/lazy-hook-starting-frame-workspace";
 import { VideoGenerationStudioPanel } from "@/components/video/video-generation-workspace";
 import { Button } from "@/components/ui/button";
 import { ReferenceCard } from "@/components/explore/recreate-workspace";

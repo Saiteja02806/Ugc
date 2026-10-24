@@ -11,7 +11,9 @@ export function useCoverPlayback(source: string | null, target: "a" | "button" =
     if (!link) return;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     let visible = false;
-    let interested = false;
+    // An authenticated private source can resolve after pointerenter. Preserve
+    // the current hover/focus when its blob URL becomes available.
+    let interested = link.matches(":hover") || document.activeElement === link;
     let startTimer: ReturnType<typeof setTimeout> | null = null;
     const stop = () => {
       if (startTimer !== null) { clearTimeout(startTimer); startTimer = null; }

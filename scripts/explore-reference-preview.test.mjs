@@ -40,6 +40,7 @@ function harness(format, reducedMotion = false, canOpenSource = false, showSourc
     "@/lib/explore/reference-source-access": { canOpenReferenceSource },
     "@/lib/explore/reference-source-link": { getReferenceSource, referenceSourceLabel },
     "@/components/explore/use-cover-playback": { useCoverPlayback: (source, target) => { playbackSources.push({ source, target }); return { current: video }; } },
+    "@/components/explore/use-creator-video-preview": { useCreatorVideoPreview: url => ({ url, loading: false, failed: false }) },
     "@/worker/src/lib/explore-instagram-source": { canonicalHookSource: () => showSource && format === "hook" ? { platform: "instagram", url: "https://www.instagram.com/reel/fixture/" } : null },
   };
   const exports = {};
@@ -125,7 +126,7 @@ test("muted reference covers delegate interest and visibility handling to the sh
 test("reduced motion and media failures still allow the in-app preview", () => {
   const h = harness("hook", true), tree = h.render();
   const preview = tree.find(node => node.props?.["aria-label"] === "Preview Reference");
-  assert.equal(preview.props.onPointerEnter, undefined);
+  preview.props.onPointerEnter({ pointerType: "mouse" });
   assert.equal(h.video.plays, 0);
   tree.find(node => node.type === "video").props.onError();
   const failed = h.render();

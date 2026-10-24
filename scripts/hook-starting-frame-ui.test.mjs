@@ -187,6 +187,36 @@ test("restoration resolves the owned photo IDs again and the builder preserves t
   assert.equal(builder.props.target, "_blank"); assert.match(builder.props.rel, /noopener/);
 });
 
+test("source and price load while saved photo validation is pending without enabling generation or overwriting recovery", async () => {
+  let finishAuth;
+  const pendingAuth = new Promise(resolve => { finishAuth = resolve; });
+  const saved = drafts.updateHookKeyframeDraft(drafts.createHookKeyframeDraft(scope), { imageAssetIds: [photoId], instructions: "Preserve this preparation." });
+  const raw = drafts.serializeHookKeyframeDraft(saved);
+  const h = harness({ raw, token: () => pendingAuth }); h.render(); await h.settle();
+  let tree = h.render();
+  for (const name of ["hook-source-frame-v3", "hook-starting-image-cost"]) {
+    assert.equal(h.queries.filter(query => query.queryKey[0] === name).at(-1).enabled, true, `${name} does not wait for photos`);
+  }
+  assert.equal(button(tree, "Generate starting image").props.disabled, true);
+  assert.equal(h.stored.get(h.key), raw);
+  assert.equal(h.submissions.length, 0);
+  finishAuth("fixture-token"); await h.settle(); tree = h.render();
+  assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections[0].asset.id, photoId);
+  assert.equal(button(tree, "Generate starting image").props.disabled, false);
+  assert.equal(h.submissions.length, 0);
+});
+
+test("failed photo restoration leaves source readable and preserves the saved request with generation blocked", async () => {
+  const saved = drafts.updateHookKeyframeDraft(drafts.createHookKeyframeDraft(scope), { imageAssetIds: [photoId] });
+  const raw = drafts.serializeHookKeyframeDraft(saved);
+  const h = harness({ raw, token: null }); h.render(); await h.settle(); const tree = h.render();
+  assert.equal(h.queries.filter(query => query.queryKey[0] === "hook-source-frame-v3").at(-1).enabled, true);
+  assert.equal(button(tree, "Generate starting image").props.disabled, true);
+  assert.match(text(tree), /saved preparation has not been overwritten/);
+  assert.equal(h.stored.get(h.key), raw);
+  assert.equal(h.submissions.length, 0);
+});
+
 test("a different saved influencer clears the previous person's supporting photos", async () => {
   const h = harness(); h.render(); await h.settle(); let tree = h.render();
   find(tree, "FormatGenerationReferences").props.onImagesChange([photo(photoId), photo(secondId)]); tree = h.render();

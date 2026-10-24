@@ -57,6 +57,17 @@ export default function GuidesPage() {
         </div>
       </section>
 
+      <section className="px-4 pt-12 sm:px-6 lg:px-8" aria-labelledby="free-hook-resource">
+        <Link href="/free-hook-lines" className="group mx-auto flex max-w-[1200px] flex-col justify-between gap-5 rounded-[24px] border border-primary/30 bg-card p-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:flex-row sm:items-center sm:p-9">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Free creator toolkit · No signup</p>
+            <h2 id="free-hook-resource" className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-foreground-strong sm:text-3xl">The Reaction Hook Library</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">110 natural reaction hooks for TikTok, Reels, Shorts and app demos. Copy a line or download the free PDF.</p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">Get the free hooks <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+        </Link>
+      </section>
+
       <section className="px-4 py-16 sm:px-6 sm:py-22 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <div className="flex items-end justify-between gap-6">

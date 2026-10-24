@@ -74,6 +74,7 @@ const productFooterLinks = [
   { label: "Multi-platform publishing", href: "#multi-platform" },
   { label: "Try UGC Pilot", href: "/try-ugcpilot" },
   { label: "Founder marketing guides", href: "/guides" },
+  { label: "The Reaction Hook Library", href: "/free-hook-lines" },
   { label: "Instagram carousel maker", href: "/instagram-carousel-maker" },
   { label: "AI UGC video generator", href: "/ai-ugc-video-generator" },
   { label: "Workflow", href: "#workflow" },
@@ -123,10 +124,10 @@ export default function Home() {
 
             <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
-                Meet your SaaS&apos;s
+                Find viral content.
               </span>
               <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                new content creator.
+                Recreate for yours
               </span>
             </h1>
 

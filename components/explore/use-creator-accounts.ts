@@ -34,7 +34,7 @@ export function useCreatorAccounts(user: { uid: string; email: string | null; em
   const accounts = allowed ? query.data ?? EMPTY : EMPTY;
   const wanted = Boolean(selectedId || restoredReferenceId?.startsWith("creator-slideshow-") || isCreatorAccountReference(restoredReferenceId));
   const [loaded, setLoaded] = useState<{ owner: string; catalog: CreatorAccount[]; accounts: CreatorAccount[]; attempt: number; lifetime: { active: boolean } } | null>(null);
-  const [failure, setFailure] = useState<{ owner: string; message: string } | null>(null);
+  const [failure, setFailure] = useState<{ owner: string; messages: Record<string, string> } | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!allowed || !ownerId || !wanted || !accounts.length) return;
@@ -43,7 +43,7 @@ export function useCreatorAccounts(user: { uid: string; email: string | null; em
     // Keep pilot accounts available so changing the gallery does not
     // revoke the reference currently used by an open preparation or draft.
     async function load() {
-      const token = await getCurrentUserIdToken(owner);
+      const token = await withReadDeadline(() => getCurrentUserIdToken(owner), controller.signal);
       if (!token) throw new Error("Sign in to preview these videos.");
       async function media(url: string, contentType: string) {
         return withReadDeadline(async signal => {
@@ -55,32 +55,44 @@ export function useCreatorAccounts(user: { uid: string; email: string | null; em
         const local = URL.createObjectURL(blob); urls.push(local); return local;
         }, controller.signal);
       }
-      const ready: CreatorAccount[] = [];
-      for (const account of accounts) {
-        const items: RecreateReference[] = [];
-        for (const item of account.items) {
-          if (item.format === "slideshow") {
-            const slides = [];
-            for (let offset=0;offset<item.slides.length;offset+=3) slides.push(...await Promise.all(item.slides.slice(offset,offset+3).map(async slide=>({ ...slide, url:await media(slide.url,"image") }))));
-            items.push({ ...item, slides, posterUrl: slides[0].url }); continue;
+      // A gallery needs stills, not every MP4 in both accounts. Publish each
+      // account as soon as its stills are ready; videos resolve on interest.
+      await Promise.all(accounts.map(async account => {
+        try {
+          const items: RecreateReference[] = [];
+          for (let offset = 0; offset < account.items.length; offset += 3) {
+            items.push(...await Promise.all(account.items.slice(offset, offset + 3).map(async item => {
+              if (item.format === "slideshow") {
+                const slides = [];
+                for (let offset=0;offset<item.slides.length;offset+=3) slides.push(...await Promise.all(item.slides.slice(offset,offset+3).map(async slide=>({ ...slide, url:await media(slide.url,"image") }))));
+                return { ...item, slides, posterUrl: slides[0].url };
+              }
+              return { ...item, posterUrl: await media(item.posterUrl, "image/png") };
+            })));
           }
-          const [posterUrl, videoUrl] = await Promise.all([media(item.posterUrl, "image/png"), media(item.videoUrl!, "video/mp4")]);
-          items.push({ ...item, posterUrl, videoUrl });
+          if (lifetime.active) {
+            setLoaded(current => ({ owner, catalog: accounts,
+              accounts: [...(current?.lifetime === lifetime ? current.accounts : []), { ...account, items }], attempt, lifetime }));
+          }
+        } catch (error) {
+          if (lifetime.active) setFailure(current => ({ owner,
+            messages: { ...(current?.owner === owner ? current.messages : {}),
+              [account.id]: error instanceof Error ? error.message : "Creator references could not be loaded." } }));
         }
-        ready.push({ ...account, items });
-      }
-      if (lifetime.active) { setLoaded({ owner, catalog: accounts, accounts: ready, attempt, lifetime }); setFailure(null); }
+      }));
     }
     void load().catch(error => {
-      if (lifetime.active) { controller.abort(); urls.forEach(URL.revokeObjectURL); setFailure({ owner, message: error instanceof Error ? error.message : "Creator videos could not be loaded." }); }
+      if (lifetime.active) { controller.abort(); urls.forEach(URL.revokeObjectURL); setFailure({ owner, messages: Object.fromEntries(accounts.map(account => [account.id, error instanceof Error ? error.message : "Creator videos could not be loaded."])) }); }
     });
     return () => { lifetime.active = false; controller.abort(); urls.forEach(URL.revokeObjectURL); };
   }, [allowed, ownerId, accounts, wanted, attempt]);
   const hydrated = allowed && loaded && loaded.lifetime.active && loaded.owner === ownerId && loaded.catalog === accounts && loaded.attempt === attempt && wanted ? loaded.accounts : EMPTY;
   const account = hydrated.find(item => item.id === selectedId);
-  const error = failure && failure.owner === ownerId ? failure.message : null;
+  const error = failure && failure.owner === ownerId && selectedId ? failure.messages[selectedId] ?? null : null;
   return { accounts, selectedId, account, catalogueError: allowed && query.isError ? "Creator accounts could not be loaded." : null,
-    retryCatalogue: () => void query.refetch(), references: hydrated.length ? hydrated.flatMap(item => item.items) : format === "slideshow" ? accounts.flatMap(item=>item.items) : EMPTY_REFERENCES,
+    // Recreate/restore only needs canonical identity and directions. Never make
+    // opening its dialog wait for unrelated gallery stills or video transfers.
+    retryCatalogue: () => void query.refetch(), references: accounts.length ? accounts.flatMap(account => hydrated.find(item => item.id === account.id)?.items ?? account.items) : EMPTY_REFERENCES,
     loading: Boolean(selectedId && !account && !error), error: selectedId ? error : null,
     select: (id: string | null) => { if (user) setSelection({ owner: user.uid, id }); },
     retry: () => { setFailure(null); setAttempt(current => current + 1); },

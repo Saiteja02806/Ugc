@@ -74,3 +74,13 @@ The next strongest improvement depends on a publishable example from a real SaaS
 - Buyer and product context: `docs/seo-product-and-buyer-research-2026-10-22.md`.
 - Product-demo media limits: `docs/seo-product-demo-media-evidence-2026-10-22.json`.
 - Google's guidance: [people-first content](https://developers.google.com/search/docs/fundamentals/creating-helpful-content), [SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide), [title links](https://developers.google.com/search/docs/appearance/title-link), [snippets](https://developers.google.com/search/docs/appearance/snippet), and [spam policies](https://developers.google.com/search/docs/essentials/spam-policies).
+
+## Free hook resource — 24 October 2026
+
+- Implemented `/free-hook-lines` from the owner's reference layout, with the application's dark theme and orange accents. The supplied 12-page PDF was inspected and verified to contain 110 distinct hooks across 11 collections. The page uses the actual PDF cover, offers a direct download without signup, includes four copyable previews and an expandable HTML library of all 110 hooks, and explains how to pair a short reaction with an honest app demonstration.
+- Added descriptive metadata, a canonical URL, a share image, structured data matching the visible collection, sitemap inventory membership, and discovery links from the guide hub and homepage footer. Hook text comes from the supplied PDF; it is not presented as proven viral copy or a measured result.
+- This is a local implementation pending the normal site release and production acceptance. It does not alter generation prompts, authenticated workflows, analytics, privacy choices, or social publishing. Do not repeatedly request indexing; verify the deployed URL, PDF, copy controls and sitemap after release, then measure relevant query impressions and clicks over a consistent period.
+
+### Resource naming and typography — 24 October 2026
+
+Renamed the free resource The Reaction Hook Library across the page, PDF cover, share preview and discovery links. Repaired the tightly spaced 110 in the headline and replacement PDF cover. The 110 hook texts and all 11 original content pages are preserved. The resource and PDF URLs remain stable. This is a local refinement pending the normal release; no SEO gain is claimed.

@@ -6,6 +6,38 @@ import catalog from "./mcp-tool-catalog.json";
 export const mcpToolCatalog = catalog;
 export const MCP_TOOL_COUNT = catalog.toolCount;
 
+/** Gated account write for social posting defaults. Posting is unreleased, so the public reference omits it. */
+const hiddenPublicToolNames = new Set(["update_publishing_preferences"]);
+
+const publicDescriptionByName: Record<string, string> = {
+  list_references:
+    "Browse the Hook, Wall-of-Text, and slideshow reference catalogue in the application, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
+  list_operations:
+    "Discover owned application and MCP jobs across generation, finishing, and preparation. Returns safe status summaries without inputs, diagnostics or provider/storage identifiers.",
+  get_library_item:
+    "Read the selected owned Library snapshot, ordered rendered outputs, removal state and exact revision. Does not edit or restore it.",
+  remove_library_item:
+    "Archive the explicitly selected Library entry at its exact revision, matching the application's metadata-only removal. Preserves source media and saved slide files. Preserve request UUID/inputs for recovery.",
+  get_account_settings_capabilities:
+    "Read account-default settings support and rollout gate. Does not initialize timezone or change defaults.",
+  get_account_settings:
+    "Read persisted account settings and the account timezone without initializing either. Returns distinct revisions for settings and timezone.",
+  initialize_account_timezone:
+    "Initialize an unset persisted account timezone at its saved timezone_revision, matching the application's initialize-once policy. An already initialized timezone is preserved, even when another zone is supplied. Preserve request UUID/inputs for recovery.",
+};
+
+const publicMcpGroups = catalog.groups.map((group) => ({
+  ...group,
+  tools: group.tools
+    .filter((tool) => !hiddenPublicToolNames.has(tool.name))
+    .map((tool) => ({
+      ...tool,
+      description: publicDescriptionByName[tool.name] ?? tool.description,
+    })),
+}));
+export const publicMcpToolCount = publicMcpGroups.reduce((count, group) => count + group.tools.length, 0);
+export const publicMcpToolCatalog = { toolCount: publicMcpToolCount, groups: publicMcpGroups };
+
 export const publicOrigin = "https://getugcpilot.com";
 export const mcpEndpoint = "https://mcp.getugcpilot.com/mcp";
 export const mcpIssuer = "https://mcp.getugcpilot.com";
@@ -82,7 +114,7 @@ const sharedFaqs: McpFaq[] = [
   },
   {
     question: "How many tools does the server expose?",
-    answer: `The reviewed registry contains ${MCP_TOOL_COUNT} tools, grouped by the job they perform. A client can keep an older cached list until you start a new conversation. The tool reference lists every name, description, and OAuth scope from that registry.`,
+    answer: `The reviewed registry contains ${MCP_TOOL_COUNT} tools, grouped by the job they perform. A client can keep an older cached list until you start a new conversation. The public tool reference lists ${publicMcpToolCount} of them, with each name, description, and OAuth scope.`,
   },
   {
     question: "What does a connected agent do with my account?",
@@ -255,7 +287,7 @@ export function homepageJsonLd(description: string) {
 }
 
 export function buildLlmsText() {
-  const groups = catalog.groups
+  const groups = publicMcpToolCatalog.groups
     .map((group) => `- ${group.title} (${group.tools.length}): ${group.tools.map((tool) => tool.name).join(", ")}`)
     .join("\n");
   return `# UGC Pilot
@@ -275,7 +307,7 @@ UGC Pilot creates UGC-style images, short videos, speech, and video edits from t
 - Registration: dynamic client registration and client ID metadata documents are advertised. Public clients use token endpoint auth method none.
 - Default scopes: ${mcpSetupScopes.join(", ")}
 - Optional separate scope for account-default updates: ${mcpOptionalAccountScope}
-- Tool count: ${MCP_TOOL_COUNT}, taken from the registered server catalog
+- Tool count: ${publicMcpToolCount}, matching the public reference at ${publicOrigin}/docs/mcp-tools
 
 ### Claude
 

@@ -19,7 +19,7 @@ Read the live schema for exact casing. `remix_reference_text` uses camelCase `re
 - For explicitly user-reviewed replacement starting text, pass the chosen `referenceBlocks`. For custom copy use `referenceId: null`, explicit `format`, and 1–20 blocks with at most 6,000 total characters. Hook/wall text use `slideId: null`; a custom slideshow may use its chosen slide identity or null.
 - Preserve the chosen format and instructions (up to 2,000 characters). Use the account's saved business context when ready. Missing business context needs that prerequisite resolved; do not invent profile facts or bypass the service with an unrelated provider call.
 
-Before submitting, persist a fresh random `requestKey` and exact normalized inputs. Check `remix_available`; a disabled gate or missing prerequisite stops new work. `remix_reference_text` first returns a preview because it may use allowance. Show it and pass `confirm_token` only after an explicit yes. Save the returned source/output receipt. Do not change keys or inputs to bypass a conflict, quota or an uncertain outcome.
+Before submitting, persist a fresh random `requestKey` and exact normalized inputs. Check `remix_available`; a disabled gate or missing prerequisite stops new work. `remix_reference_text` runs directly. It does not deduct account credits; it uses the daily remix quota and may initialize the one-time free allowance. Save the returned source/output receipt. Do not change keys or inputs to bypass a conflict, quota or an uncertain outcome.
 
 ## Recover and use the result
 

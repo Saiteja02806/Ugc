@@ -24,7 +24,7 @@ import { confirmableOutputSchema, confirmedToolDescription, requireConfirmation,
 import { executeTool, oauthMetadata, principal, principalIdentity, ToolFailure } from "./read-tools";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
-const write = { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true } as const;
+const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true } as const;
 const timestamp = z.string().datetime({ offset: true });
 const id = z.uuid();
 const scheduleCreationSource = z.strictObject({

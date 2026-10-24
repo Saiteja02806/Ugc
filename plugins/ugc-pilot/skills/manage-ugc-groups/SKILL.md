@@ -20,7 +20,7 @@ For membership additions, resolve selected IDs through `get_asset`. Assets must 
 - `add_assets_to_group` / `remove_assets_from_group`: the same identity/revision fields and 1–100 distinct `asset_ids`. The full batch validates atomically; do not silently omit an invalid selection or claim partial success.
 - `delete_asset_group`: the same identity/revision fields. Only perform an explicitly requested group deletion: it removes the group and membership, has no application undo, and preserves media files and other groups. Membership removal also preserves media.
 
-Create, rename, add, remove, and delete each return a preview on the first call. Show the affected group and pass `confirm_token` only after an explicit yes.
+Create, rename, add, and remove run directly. Only `delete_asset_group` returns a preview on the first call. Show the affected group and pass `confirm_token` only after an explicit yes. Membership removal preserves the media files.
 
 Before each intentional mutation, save a fresh random UUID and the exact inputs in the conversation and a non-secret workspace record when possible. Sequential changes use the current revision after each preceding accepted change. On `GROUP_CONFLICT`, recover the saved request first and read current state; do not advance the revision or change the UUID merely to force an old intent over newer website edits. A newly reconciled change is a new intentional operation.
 

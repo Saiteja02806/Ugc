@@ -42,7 +42,7 @@ checks exact file identity, destination, signed headers and expiry. Its separate
 `.transfer.json` file binds the upload ID durably before PUT without overwriting
 the original intent. Preserve both records after interruption.
 
-Call `confirm_business_logo_upload` for that exact upload ID. Its first call returns a preview and does not decode the file. Show that preview and pass `confirm_token` only after an explicit yes. The confirmed call decodes
+Call `confirm_business_logo_upload` for that exact upload ID. It runs directly, without a confirm token, and does not change the active logo. The call decodes
 the image and verifies checksum, MIME, bytes and dimensions. A timeout or 412
 transfer response is not a reason to reserve or upload another file; confirm
 the same ID. Invalid bytes remain unconfirmed and do not become a usable logo.

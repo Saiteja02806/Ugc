@@ -329,7 +329,7 @@
         "generate_video",
         "generate_image"
       ],
-      "expected": "Reads the non-secret receipt through the packaged helper. confirm_upload is the commit: show its preview and pass confirm_token only after an explicit yes, using the same upload ID and measured metadata. Does not repeat PUT. Unconfirmed storage is reported honestly. No signed URLs or OAuth credentials enter shell arguments or persistent records."
+      "expected": "Reads the non-secret receipt through the packaged helper. confirm_upload verifies the same upload ID and measured metadata directly, without a confirm token. Does not repeat PUT. Unconfirmed storage is reported honestly. No signed URLs or OAuth credentials enter shell arguments or persistent records."
     },
     {
       "id": "finishing-scope",
@@ -354,7 +354,7 @@
         "get_upload",
         "renew_upload"
       ],
-      "expected": "Resolve the same reservation and previous transfer. renew_upload only refreshes the link and is not the confirm gate. Renew only when storage is absent and the previous transfer is terminal; existing bytes go to confirm_upload, which previews before it makes the file ready. No overwrite or duplicate reservation."
+      "expected": "Resolve the same reservation and previous transfer. renew_upload only refreshes the link. Renew only when storage is absent and the previous transfer is terminal; existing bytes go to confirm_upload, which makes the file ready directly. No overwrite or duplicate reservation."
     },
     {
       "id": "dedicated-demo-library",
@@ -364,7 +364,7 @@
         "list_demos",
         "get_demo"
       ],
-      "expected": "Shows the register_demo preview for the confirmed owned asset and passes confirm_token only after an explicit yes. Stays within Demo limits. Retrieves the actual Demo record without re-uploading or exposing raw storage keys."
+      "expected": "Registers the verified owned asset directly, without a confirm token. Stays within Demo limits. Retrieves the actual Demo record without re-uploading or exposing raw storage keys."
     },
     {
       "id": "operation-history",
@@ -410,7 +410,7 @@
         "get_operation",
         "cancel_operation"
       ],
-      "expected": "Requires normal jobs:write consent. Shows the cancel_operation preview and passes confirm_token only after an explicit yes. Saves the complete action receipt before the confirmed submit. On OPERATION_CHANGED, reads status and obtains a new explicit action rather than silently changing the revision or request ID."
+      "expected": "Requires normal jobs:write consent. cancel_operation runs directly and does not spend credits. Saves the complete action receipt before submit. On OPERATION_CHANGED, reads status and obtains a new explicit action rather than silently changing the revision or request ID."
     },
     {
       "id": "edit-read-only",
@@ -447,7 +447,7 @@
         "finish_video",
         "generate_video"
       ],
-      "expected": "Shows the open_edit_draft and update_edit_draft previews and passes each confirm_token only after an explicit yes. Uses the selected source and returned draft ID, preserves other current content, saves a UUID with exact revision/inputs, then verifies the saved content. No render."
+      "expected": "Opens and saves the draft directly, without a confirm token. Uses the selected source and returned draft ID, preserves other current content, saves a UUID with exact revision/inputs, then verifies the saved content. No render."
     },
     {
       "id": "edit-save-lost-response",
@@ -475,7 +475,7 @@
         "get_edit_export",
         "get_asset"
       ],
-      "expected": "Checks availability, shows the export_edit_draft preview (credit cost unknown, marked as an estimate), and queues the render only after an explicit yes and confirm_token. Persists a distinct export UUID and exact revision, tracks the immutable export and retrieves its ready output. Local download uses real bytes; a pending receipt is not a completed file."
+      "expected": "Checks availability and queues export_edit_draft directly. The export does not spend generation credits. Persists a distinct export UUID and exact revision, tracks the immutable export and retrieves its ready output. Local download uses real bytes; a pending receipt is not a completed file."
     },
     {
       "id": "edit-export-recovery",
@@ -545,7 +545,7 @@
         "generate_audio",
         "create_upload"
       ],
-      "expected": "Shows the create_audio_upload preview and issues the content-bound link only after an explicit yes and confirm_token. There is no separate audio confirm tool. Prepares real measured bytes and a durable receipt, passes the fresh audio POST descriptor on stdin, recovers the same request after interruption and checks processing before claiming ready audio."
+      "expected": "Issues the create_audio_upload content-bound link directly. There is no separate audio confirm tool and this upload does not spend credits. Prepares real measured bytes and a durable receipt, passes the fresh audio POST descriptor on stdin, recovers the same request after interruption and checks processing before claiming ready audio."
     },
     {
       "id": "audio-import-recovery",
@@ -579,7 +579,7 @@
         "get_video_finish",
         "get_asset"
       ],
-      "expected": "Checks eligible non-test/non-reference recording and import availability. Shows the import_audio_for_video preview and copies the recording only after an explicit yes and confirm_token. Persists a stable import request and uses only its ready independent media_asset_id. Discloses current editing-copy storage policy and respects selected audio/render authorization."
+      "expected": "Checks eligible non-test/non-reference recording and import availability. Copies the recording with import_audio_for_video directly. Persists a stable import request and uses only its ready independent media_asset_id. Discloses current editing-copy storage policy and respects selected audio/render authorization."
     },
     {
       "id": "group-read-only",
@@ -694,7 +694,7 @@
         "get_library_item"
       ],
       "forbidden_tools": [],
-      "expected": "Shows the save_carousel_to_library preview and writes only after an explicit yes and confirm_token. Persists UUID and BOTH inspected revisions before save; does not recreate a removed entry without user intent; verifies current state and exact rendered ordering."
+      "expected": "Saves the carousel directly, without a confirm token. Persists UUID and BOTH inspected revisions before save; does not recreate a removed entry without user intent; verifies current state and exact rendered ordering."
     },
     {
       "id": "library-text-render-gap",
@@ -771,7 +771,7 @@
         "finish_video",
         "export_edit_draft"
       ],
-      "expected": "Saves exact normalized camelCase requestKey inputs; referenceId/slideId null, explicit wall_text format and bounded referenceBlocks. Returns saved text without editing/rendering."
+      "expected": "Runs remix_reference_text directly. It does not deduct account credits. Saves exact normalized camelCase requestKey inputs; referenceId/slideId null, explicit wall_text format and bounded referenceBlocks. Returns saved text without editing/rendering."
     },
     {
       "id": "reference-uncertain",
@@ -864,7 +864,7 @@
         "update_publishing_preferences"
       ],
       "forbidden_tools": [],
-      "expected": "Shows the publishing-default preview and saves only after an explicit yes and confirm_token. Saves UUID and exact publishing_revision before a one-field patch. Preserves AI disclosure, audience, notifications and TikTok settings; does not change existing posts."
+      "expected": "Saves the publishing default directly and does not publish or schedule a post. Saves UUID and exact publishing_revision before a one-field patch. Preserves AI disclosure, audience, notifications and TikTok settings; does not change existing posts."
     },
     {
       "id": "settings-timezone-retained",
@@ -956,7 +956,7 @@
       "forbidden_tools": [
         "apply_business_context"
       ],
-      "expected": "Shows the save preview and writes the draft only after an explicit yes and confirm_token. Preserves other fields and goals, stores UUID/exact current revisions, and reports the active version unchanged."
+      "expected": "Writes the business-context draft directly and does not apply it. Preserves other fields and goals, stores UUID/exact current revisions, and reports the active version unchanged."
     },
     {
       "id": "business-fresh-consent",
@@ -1059,7 +1059,7 @@
         "get_business_onboarding",
         "mutate_business_onboarding"
       ],
-      "expected": "Preserves local UUID/file checksum and durable reservation. create_business_logo_upload and renew_business_logo_upload are not the confirm gate. Transfers through stdin-only signed link. Shows the confirm_business_logo_upload preview and verifies bytes only after an explicit yes and confirm_token, then attaches its logo key with a fresh onboarding fence and consent."
+      "expected": "Preserves local UUID/file checksum and durable reservation. Transfers through stdin-only signed link. confirm_business_logo_upload verifies bytes directly and does not change the active logo, then attaches its logo key with a fresh onboarding fence and consent."
     },
     {
       "id": "business-logo-lost-acknowledgement",
@@ -1127,7 +1127,7 @@
         "create_upload",
         "confirm_upload"
       ],
-      "expected": "create_upload may reserve the pending asset and signed link without a confirm token. confirm_upload returns a preview and does not make the file ready until the user explicitly agrees and the same arguments are sent with confirm_token. renew_upload is not required for a fresh link."
+      "expected": "create_upload may reserve the pending asset and signed link without a confirm token. confirm_upload makes the stored file ready directly and does not take a confirm token. Because the user said not to make it ready until they say yes, do not call confirm_upload yet. renew_upload is not required for a fresh link."
     },
     {
       "id": "confirm-before-library-remove",

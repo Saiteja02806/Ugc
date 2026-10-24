@@ -59,19 +59,13 @@ export function registerOperationMcpTools(server: McpServer) {
     return operationDetails(await getOperationForOwner(userId, args.operation_id), userId);
   }));
   server.registerTool("cancel_operation", {
-    description: confirmedToolDescription("Request cancellation of the selected owned job using the application's existing cancellation policy. Running work may stop asynchronously. Reuse saved inputs after a lost response."),
-    inputSchema: withConfirmToken(controlInput), outputSchema: confirmableOutputSchema(controlOutput),
+    description: "Request cancellation of the selected owned job using the application's existing cancellation policy. Running work may stop asynchronously. Reuse saved inputs after a lost response.",
+    inputSchema: controlInput, outputSchema: controlOutput,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     scopeChallenge: requireScopes("jobs:write"), _meta: oauthMetadata("jobs:write"),
-  }, (args, ctx) => executeTool(async () => {
+  }, (args, ctx) => executeTool(() => {
     const userId = principal(ctx, "jobs:write");
-    return requireConfirmation({
-      tool: "cancel_operation", accountId: userId, args, effect: "mutate",
-      summary: "Request cancellation of the selected job. Running work may stop asynchronously.",
-      creditCost: 0, creditCostIsEstimate: false,
-      affected: [{ type: "operation", id: args.operation_id, label: "Owned job cancellation" }],
-      run: () => controlOperation({ userId, jobId: args.operation_id, requestId: args.request_id, expectedUpdatedAt: args.expected_updated_at, action: "cancel" }),
-    });
+    return controlOperation({ userId, jobId: args.operation_id, requestId: args.request_id, expectedUpdatedAt: args.expected_updated_at, action: "cancel" });
   }));
   server.registerTool("retry_operation", {
     description: confirmedToolDescription("Retry a supported owned failed/stalled job using existing attempt, provider and original-plan credit rules. May reserve credits again. Save the request ID and exact revision before calling; replay recovers this action without funding another retry."),

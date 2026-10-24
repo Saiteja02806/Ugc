@@ -17,12 +17,15 @@ export function registerBusinessContextMcpTools(server:McpServer) {
     (_args,ctx)=>executeTool(async()=>withBusinessContextReadiness(await readMcpBusinessContext(principal(ctx,"brand:read")))));
   for(const {operation,tool} of [{operation:"save_draft",tool:"save_business_context_draft"},{operation:"apply",tool:"apply_business_context"}] as const){
     const description=operation==="apply"?"Apply exactly reviewed Business Context to a new active profile version using the website's atomic promotion. Requires factual anchors, current context/profile/draft revisions, fresh brand:write consent and enabled gate. Existing content and today's pinned pack stay unchanged; next local-day content uses the new version. Preserve UUID and exact inputs for recovery.":"Save the requested Business Context into the application's shared Settings draft without changing active profile/version. Preserves saved goals and rejects stale context/profile/draft revisions. No provider request. Requires brand:write and enabled gate; preserve UUID and exact inputs.";
-    server.registerTool(tool,{description:confirmedToolDescription(description),
-      inputSchema:withConfirmToken(operation==="apply"?businessContextWriteSchema:businessContextSaveSchema),outputSchema:confirmableOutputSchema(businessContextResultSchema),annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("brand:write"),_meta:oauthMetadata("brand:write")},
+    const schema=operation==="apply"?businessContextWriteSchema:businessContextSaveSchema;
+    const gated=operation==="apply";
+    server.registerTool(tool,{description:gated?confirmedToolDescription(description):description,
+      inputSchema:gated?withConfirmToken(schema):schema,outputSchema:gated?confirmableOutputSchema(businessContextResultSchema):businessContextResultSchema,annotations:{readOnlyHint:false,destructiveHint:true,openWorldHint:false,idempotentHint:true},scopeChallenge:requireScopes("brand:write"),_meta:oauthMetadata("brand:write")},
       (args,ctx)=>executeTool(async()=>{
         const owner=principal(ctx,"brand:write");
+        if(!gated){const {request_id,...input}=args;return mutateMcpBusinessContext(owner,request_id,operation,input);}
         const {request_id,...input}=omitConfirmToken(args);
-        return requireConfirmation({tool,accountId:owner,args,effect:"mutate_profile",summary:operation==="apply"?"Apply the reviewed Business Context as the new active profile version.":"Save Business Context into the shared Settings draft without changing the active profile.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"business_context",id:request_id,label:operation==="apply"?"Active business profile":"Business Context draft"}],run:()=>mutateMcpBusinessContext(owner,request_id,operation,input)});
+        return requireConfirmation({tool,accountId:owner,args,effect:"mutate_profile",summary:"Apply the reviewed Business Context as the new active profile version.",creditCost:0,creditCostIsEstimate:false,affected:[{type:"business_context",id:request_id,label:"Active business profile"}],run:()=>mutateMcpBusinessContext(owner,request_id,operation,input)});
       }));
   }
   server.registerTool("get_business_context_request",{description:"Recover an owned immutable accepted Business Context receipt without repeating a save or apply. Its state is historical; get_business_context reads current website state. Works while writes are disabled.",inputSchema:z.strictObject({request_id:z.uuid()}),outputSchema:z.strictObject({receipt:businessContextReceiptSchema}),annotations:readOnly,scopeChallenge:requireScopes("brand:read"),_meta:oauthMetadata("brand:read")},

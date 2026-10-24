@@ -33,20 +33,14 @@ function summary(row: DemoVideoRow) {
 
 export function registerDemoMcpTools(server: McpServer) {
   server.registerTool("register_demo", {
-    description: confirmedToolDescription("Register a confirmed create_upload/confirm_upload video in the application's dedicated Demo library. Requires 1–60 seconds and at most 100 MB. Keeps the same asset ID for attaching it to hooks. Replay preserves website edits; no new upload or render is submitted."),
-    inputSchema: withConfirmToken(z.strictObject({ asset_id: z.uuid(), project_id: projectId })),
-    outputSchema: confirmableOutputSchema(z.strictObject({ demo_id: z.uuid(), asset_id: z.uuid(), project_id: z.string() })),
-    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false, idempotentHint: true },
+    description: "Register a confirmed create_upload/confirm_upload video in the application's dedicated Demo library. Requires 1–60 seconds and at most 100 MB. Keeps the same asset ID for attaching it to hooks. Replay preserves website edits; no new upload or render is submitted.",
+    inputSchema: z.strictObject({ asset_id: z.uuid(), project_id: projectId }),
+    outputSchema: z.strictObject({ demo_id: z.uuid(), asset_id: z.uuid(), project_id: z.string() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true },
     scopeChallenge: requireScopes("assets:write"), _meta: oauthMetadata("assets:write"),
-  }, async (args, ctx) => executeTool(async () => {
+  }, async (args, ctx) => executeTool(() => {
     const userId = principal(ctx, "assets:write");
-    return requireConfirmation({
-      tool: "register_demo", accountId: userId, args, effect: "mutate",
-      summary: "Add the confirmed video to the dedicated Demo library. This does not upload or render a new file.",
-      creditCost: 0, creditCostIsEstimate: false,
-      affected: [{ type: "asset", id: args.asset_id, label: "Demo registration" }],
-      run: () => withDemoErrors(() => registerDemoForOwner({ userId, assetId: args.asset_id, projectId: args.project_id })),
-    });
+    return withDemoErrors(() => registerDemoForOwner({ userId, assetId: args.asset_id, projectId: args.project_id }));
   }));
 
   server.registerTool("list_demos", {

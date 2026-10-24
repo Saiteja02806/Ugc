@@ -4,7 +4,6 @@ import { z } from "zod";
 import { getUserSubscription } from "@/lib/billing/subscription-db";
 import { getBusinessProfileForUser } from "@/lib/business-profiles/db";
 import { ReferenceTextSchema, RemixOutputSchema, RemixRequestSchema } from "@/lib/explore/reference-text";
-import { confirmableOutputSchema, confirmedToolDescription, omitConfirmToken, requireConfirmation, withConfirmToken } from "./confirm-token";
 import { executeTool, oauthMetadata, principal, ToolFailure } from "./read-tools";
 import type { RecreateReference } from "@/lib/explore/recreate-types";
 
@@ -85,26 +84,17 @@ export function registerReferenceMcpTools(server: McpServer) {
     catch (error) { return referenceFailure(error); }
   }));
   server.registerTool("remix_reference_text",{
-    description:confirmedToolDescription("Generate and save a requested business-specific text remix through the application's same provider/claim service. May use provider allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. First-use submission may initialize the application's standard one-time free allowance. This does not edit a draft or render media."),
-    inputSchema:withConfirmToken(RemixRequestSchema), outputSchema:confirmableOutputSchema(resultSchema),
-    annotations:{ readOnlyHint:false, destructiveHint:true, openWorldHint:true, idempotentHint:true }, scopeChallenge:requireScopes("generation:write","brand:read"), _meta:oauthMetadata("generation:write",{securitySchemes:[{type:"oauth2",scopes:["generation:write","brand:read"]}]}),
+    description:"Generate and save a requested business-specific text remix through the application's same provider/claim service. This does not deduct account credits; it uses the daily remix quota and may initialize the one-time free allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. This does not edit a draft or render media.",
+    inputSchema:RemixRequestSchema, outputSchema:resultSchema,
+    annotations:{ readOnlyHint:false, destructiveHint:false, openWorldHint:true, idempotentHint:true }, scopeChallenge:requireScopes("generation:write","brand:read"), _meta:oauthMetadata("generation:write",{securitySchemes:[{type:"oauth2",scopes:["generation:write","brand:read"]}]}),
   },async (args,ctx) => executeTool(async () => {
     const owner = principal(ctx,"generation:write");
     principal(ctx,"brand:read");
-    const request = omitConfirmToken(args);
-    return requireConfirmation({
-      tool:"remix_reference_text", accountId:owner, args, effect:"spend_credits",
-      summary:"Create a business-specific text remix. This may use provider allowance or the one-time free allowance.",
-      creditCost:null, creditCostIsEstimate:true,
-      affected:[{ type:"text_remix", id:args.requestKey, label:"Text remix request" }],
-      run: async () => {
-        if (process.env.MCP_TEXT_REMIX_ENABLED !== "true") throw new ToolFailure("REMIX_UNAVAILABLE","IDE text-remix creation is not enabled. Saved results remain readable.");
-        // Explicit new work follows website first-use access; catalogue/history reads never grant credits.
-        await requireAccess(owner,true);
-        const service = await import("@/lib/explore/remix-text-api");
-        return receipt(await service.remixTextForOwner(owner,request),request.requestKey);
-      },
-    });
+    if (process.env.MCP_TEXT_REMIX_ENABLED !== "true") throw new ToolFailure("REMIX_UNAVAILABLE","IDE text-remix creation is not enabled. Saved results remain readable.");
+    // Explicit new work follows website first-use access; catalogue/history reads never grant credits.
+    await requireAccess(owner,true);
+    const service = await import("@/lib/explore/remix-text-api");
+    return receipt(await service.remixTextForOwner(owner,args),args.requestKey);
   }));
   server.registerTool("get_text_remix",{
     description:"Read and verify an owned saved application or MCP text-remix result by its caller request UUID. Never claims, calls a provider or retries. Remains readable after plan/gate changes; pending/failed work is not automatically repeated.",

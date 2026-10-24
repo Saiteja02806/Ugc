@@ -60,7 +60,7 @@ const server = http.createServer(async (incoming, outgoing) => {
   try {
     const url = new URL(incoming.url, "http://127.0.0.1");
     if (url.pathname.startsWith("/api/")) {
-      requests.push({ path: url.pathname, method: incoming.method, authorization: incoming.headers.authorization });
+      requests.push({ path: url.pathname, variant: url.searchParams.get("variant"), method: incoming.method, authorization: incoming.headers.authorization });
       const chunks = []; for await (const chunk of incoming) chunks.push(chunk);
       const request = new Request(url, { method: incoming.method, headers: incoming.headers, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) });
       let response;
@@ -95,10 +95,13 @@ try {
     });
     await page.getByText("2 creator accounts", { exact: true }).waitFor();
     if (width === 1280 && height === 720) await page.screenshot({ path: path.join(out, "account-dropdown.png") });
+    const initialVideos = requests.filter(request => request.variant === "video").length;
     await page.getByRole("button", { name: /Creator Account 1/ }).click();
+    await page.mouse.move(0, 0);
     await page.locator('[data-reference-id="creator-account-1-01"]').waitFor();
     assert.equal(await page.locator("article").count(), 6);
     await page.waitForFunction(() => [...document.querySelectorAll('article img')].every(image => image.complete && image.naturalWidth > 0));
+    assert.equal(requests.filter(request => request.variant === "video").length, initialVideos, "gallery stills must not download MP4s before hover");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: path.join(out, `account-1-${width}.png`) });
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
@@ -118,9 +121,11 @@ try {
       await page.waitForFunction(() => [...document.querySelectorAll('article img')].every(image => image.complete && image.naturalWidth > 0));
       await page.locator("article").first().hover();
       await page.waitForFunction(() => [...document.querySelectorAll('article video')].some(video => video.readyState >= 2));
+      assert.ok(requests.some(request => request.variant === "video" && request.authorization === "Bearer pilot-fixture"), "hover resolves the private video with bearer authorization");
     }
     await page.getByRole("button", { name: "Recreate the account" }).click();
     await page.getByRole("button", { name: /Creator Account 2/ }).click();
+    await page.locator('[data-reference-id="creator-account-2-01"]').waitFor();
     assert.equal(await page.locator('[data-reference-id^="creator-account-1-"]').count(), 0);
     assert.equal(await page.locator('[data-reference-id^="creator-account-2-"]').count(), 6);
     await page.locator('[data-reference-id="creator-account-2-01"]').getByRole("button", { name: "Recreate Hook", exact: true }).click();
@@ -168,7 +173,7 @@ try {
     slideshowReceipts.push({...viewport,tenSets:true,allSetRecreateSelections:true,slideSelectionPreserved:true});await ctx.close();
   }
   const otherSlides=await browser.newPage();await otherSlides.goto(`http://127.0.0.1:${server.address().port}?slideshow=1&other=1`);await otherSlides.getByText('All references',{exact:true}).waitFor();assert.equal(await otherSlides.getByRole('button',{name:'Recreate the account'}).count(),0);await otherSlides.close();
-  fs.writeFileSync(path.join(out, "receipt.json"), JSON.stringify({ receipts,slideshowReceipts,otherEmailHidden: true, retryAfterReadFailure: true, returnToAllAndReopen: true, hoverPlaybackAfterReopen: true, keyboardEscape: true,
+  fs.writeFileSync(path.join(out, "receipt.json"), JSON.stringify({ receipts,slideshowReceipts,otherEmailHidden: true, retryAfterReadFailure: true, returnToAllAndReopen: true, hoverPlaybackAfterReopen: true, noVideoTransferBeforeHover: true, bearerAuthorizedHoverVideo: true, keyboardEscape: true,
     limitations: "Local fixture: actual account menu, gallery cards, hook, authenticated APIs and preparation component; fixture auth/entitlements/photo picker and surrounding layout. No paid generation, hosted acceptance, zoom or coarse-pointer verification." }, null, 2));
   console.log(JSON.stringify({ cases: receipts.length, otherEmailHidden: true, paidRequests: 0, output: out }));
   await context.close();

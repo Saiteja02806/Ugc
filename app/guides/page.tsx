@@ -26,8 +26,17 @@ export const metadata: Metadata = {
   },
 };
 
+const extraGuides = [
+  {
+    slug: "how-to-create-ugc-videos-with-ai",
+    keyword: "UGC video creator",
+    title: "How to create UGC videos with an AI video creator",
+    description: "Brief, generate, review, and download an AI UGC video. One example comes from the Teja Chundu channel, with links to AI Studio and the Claude connector.",
+  },
+];
+
 export default function GuidesPage() {
-  const guides = Object.values(founderGuides);
+  const guides = [...Object.values(founderGuides), ...extraGuides];
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -55,6 +64,17 @@ export default function GuidesPage() {
           <h1 className="mt-6 text-4xl font-semibold leading-[0.98] tracking-[-0.05em] text-foreground-strong sm:text-5xl lg:text-6xl">Practical UGC video and content marketing guides.</h1>
           <p className="mx-auto mt-6 max-w-3xl text-base leading-7 text-muted sm:text-lg sm:leading-8">Practical guides for founders who need to explain their product with UGC video, carousels, and content their team can sustain.</p>
         </div>
+      </section>
+
+      <section className="px-4 pt-12 sm:px-6 lg:px-8" aria-labelledby="free-hook-resource">
+        <Link href="/free-hook-lines" className="group mx-auto flex max-w-[1200px] flex-col justify-between gap-5 rounded-[24px] border border-primary/30 bg-card p-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:flex-row sm:items-center sm:p-9">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Free creator toolkit · No signup</p>
+            <h2 id="free-hook-resource" className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-foreground-strong sm:text-3xl">The Reaction Hook Library</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">110 natural reaction hooks for TikTok, Reels, Shorts and app demos. Copy a line or download the free PDF.</p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">Get the free hooks <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+        </Link>
       </section>
 
       <section className="px-4 py-16 sm:px-6 sm:py-22 lg:px-8">
@@ -90,10 +110,22 @@ export default function GuidesPage() {
               <p className="mt-3 text-sm leading-6 text-muted">Use AI Studio to turn a product message into reviewable short-form video with optional reference media.</p>
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore video workflow <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
             </Link>
+            <Link href="/case-studies/ai-ugc-video-generator-saas-founders" className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Case study</p>
+              <h3 className="mt-4 text-xl font-semibold leading-7 tracking-[-0.025em] text-foreground-strong">Watch the founder videos made with the AI UGC video generator.</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">Two public videos from the Teja Chundu channel, including the Short the owner features first.</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Open the case study <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+            </Link>
+            <Link href="/blog/ugc-video-generator-examples" className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Examples</p>
+              <h3 className="mt-4 text-xl font-semibold leading-7 tracking-[-0.025em] text-foreground-strong">Browse real UGC video generator examples.</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">YouTube files from the same series, plus Instagram reels and TikTok videos on accounts named Clara.</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Open the gallery <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+            </Link>
             <Link href="/instagram-carousel-maker" className="group rounded-[22px] border border-border bg-card p-6 shadow-card transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-floating focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Instagram carousel maker</p>
               <h3 className="mt-4 text-xl font-semibold leading-7 tracking-[-0.025em] text-foreground-strong">Build an Instagram carousel that explains one clear point.</h3>
-              <p className="mt-3 text-sm leading-6 text-muted">Plan the slide sequence from your business context, review the full post, then schedule it when it is ready.</p>
+              <p className="mt-3 text-sm leading-6 text-muted">Plan the slide sequence from your business context, review the full carousel, and keep the approved version in your library.</p>
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore carousel workflow <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
             </Link>
           </div>

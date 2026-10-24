@@ -1,7 +1,9 @@
 const MCP_HOSTNAME = "mcp.getugcpilot.com";
 
 export function isMcpExclusivePath(pathname: string) {
-  return pathname === "/mcp" || pathname.startsWith("/mcp/") ||
+  // /mcp and /mcp/health are the protocol endpoints. Marketing pages such as
+  // /mcp/claude stay on the website deployment.
+  return pathname === "/mcp" || pathname === "/mcp/health" || pathname.startsWith("/mcp/health/") ||
     pathname === "/oauth" || pathname.startsWith("/oauth/") ||
     pathname === "/.well-known/oauth-authorization-server" ||
     pathname === "/.well-known/oauth-protected-resource" ||

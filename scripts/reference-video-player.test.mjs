@@ -11,6 +11,7 @@ test("reference preview has custom playback and no native download menu, and see
   vm.runInNewContext(code, { exports: exported, require(name) {
     if (name === "react") return { useRef: () => ({ current: player }), useState: value => { const i = cursor++; if (!(i in state)) state[i] = value; return [state[i], next => { state[i] = next; }]; } };
     if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
+    if (name === "./use-creator-video-preview") return { useCreatorVideoPreview: url => ({ url, loading: false, failed: false }) };
     return { ClipPreviewControls: "ClipPreviewControls" };
   } });
   const render = () => { cursor = 0; return exported.ReferenceVideoPlayer({ title: "Reference", url: "/reference.mp4" }); };

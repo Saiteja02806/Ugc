@@ -6,10 +6,25 @@ import { ProductLogoMark } from "@/components/brand/product-logo";
 import { ConnectAiPanel } from "@/components/mcp-onboarding/connect-ai-panel";
 import styles from "./connect-ai.module.css";
 
+const connectTitle = "Connect your AI";
+const connectDescription = "Connect your UGC Pilot account to Codex, ChatGPT, or Claude. OAuth sign-in, then create images, short videos, and edits from the conversation.";
+
 export const metadata: Metadata = {
-  title: "Connect your AI",
-  description: "Connect your UGC Pilot account to Codex, ChatGPT, or Claude and create images and short videos from your conversation.",
-  robots: { index: false, follow: false },
+  title: connectTitle,
+  description: connectDescription,
+  alternates: { canonical: "/connect-ai" },
+  openGraph: {
+    type: "website",
+    url: "https://getugcpilot.com/connect-ai",
+    siteName: "UGC Pilot",
+    title: connectTitle,
+    description: connectDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: connectTitle,
+    description: connectDescription,
+  },
 };
 
 export default function ConnectAiPage() {
@@ -22,9 +37,13 @@ export default function ConnectAiPage() {
           <Link href="/" className="flex items-center gap-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
             <ProductLogoMark className="size-9" sizes="36px" />UGC Pilot
           </Link>
-          <Link href="/library" className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-            <ArrowLeft className="size-4" aria-hidden="true" />Your library
-          </Link>
+          <nav aria-label="Connect navigation" className="flex items-center gap-4 text-sm text-muted">
+            <Link href="/guides" className="hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Guides</Link>
+            <Link href="/mcp" className="hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">MCP server</Link>
+            <Link href="/library" className="inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <ArrowLeft className="size-4" aria-hidden="true" />Your library
+            </Link>
+          </nav>
         </div>
       </header>
 
@@ -69,7 +88,7 @@ export default function ConnectAiPage() {
           <div className="rounded-2xl border border-border bg-card p-5">
             <h2 className="text-lg font-semibold">What you can create today</h2>
             <p className="mt-2 text-sm leading-6 text-muted">Generate images and short videos, upload hook/demo clips from a supported IDE, attach demos, and retrieve finished media. Open and save Edit drafts, then export a selected revision when enabled.</p>
-            <p className="mt-3 text-sm leading-6 text-muted">Local file transfer needs Node.js and ffprobe in your IDE. Full application access, including carousels and social publishing, remains in development. Public directory availability is pending platform review.</p>
+            <p className="mt-3 text-sm leading-6 text-muted">Local file transfer needs Node.js and ffprobe in your IDE. Public directory listings are still in platform review. The setup guides for Claude and Codex are on the MCP pages.</p>
             <Link href="/ai-studio" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open AI Studio<ArrowRight className="size-4" aria-hidden="true" /></Link>
           </div>
         </section>

@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { JobQueryProvider } from "@/components/providers/job-query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { WorkspaceRouteBoundary } from "@/components/layout/workspace-route-boundary";
-import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
 import {
   THEME_BACKGROUND_COLORS,
   THEME_STORAGE_KEY,
@@ -104,7 +103,7 @@ export const metadata: Metadata = {
     template: "%s | UGC Pilot",
   },
   description:
-    `Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset for ${visibleSocialPlatformList}.`,
+    "Create UGC video concepts, visuals, and short videos with AI, then review and organize each asset in UGC Pilot.",
 };
 
 const RETIRED_GLOBAL_CONTENT_STORAGE_KEYS = [

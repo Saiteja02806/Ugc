@@ -53,10 +53,10 @@ import { createLocalHookStartingFramePreviewRuntime, LOCAL_HOOK_PREVIEW_OWNER_ID
 import { useHookComposerSelection } from "@/components/explore/use-hook-composer-selection";
 import { useCreatorAccounts } from "@/components/explore/use-creator-accounts";
 import { CreatorAccountMenu } from "@/components/explore/creator-account-menu";
+import { LazyHookStartingFrameWorkspace as HookStartingFrameWorkspace } from "@/components/explore/lazy-hook-starting-frame-workspace";
 
 const ImagePanel = dynamic(() => import("@/components/workspace/ugc-chat-workspace").then(module => module.ImageGenerationStudioPanel));
 const VideoPanel = dynamic(() => import("@/components/video/video-generation-workspace").then(module => module.VideoGenerationStudioPanel));
-const HookStartingFrameWorkspace = dynamic(() => import("@/components/explore/hook-starting-frame-workspace").then(module => module.HookStartingFrameWorkspace));
 const FormatVideoEditor = dynamic(() => import("@/components/explore/format-video-editor").then(module => module.FormatVideoEditor));
 const FormatSlideshowEditor = dynamic(() => import("@/components/explore/format-slideshow-editor").then(module => module.FormatSlideshowEditor));
 const WallSchedulePreview = dynamic(() => import("@/components/explore/wall-schedule-preview").then(module => module.WallSchedulePreview));

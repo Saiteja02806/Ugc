@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Check, Filter, Layers3, LockKeyhole, RefreshCw, 
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCoverPlayback } from "@/components/explore/use-cover-playback";
+import { useCreatorVideoPreview } from "@/components/explore/use-creator-video-preview";
 
 import { RecreateGenerationPanel } from "@/components/explore/recreate-generation-panel";
 import { RecreateSplitPane } from "@/components/explore/recreate-split-pane";
@@ -226,16 +227,18 @@ export function ReferenceSourceAction({ source, label, canOpen, overlay = false,
 
 function ReferenceMedia({ reference, onPreview }: { reference: RecreateReference; onPreview: () => void }) {
   const [useOriginal, setUseOriginal] = useState(false);
-  const videoRef = useCoverPlayback(reference.videoUrl ? useOriginal ? reference.videoUrl : reference.previewVideoUrl ?? reference.videoUrl : null, "button");
+  const [interested, setInterested] = useState(false);
+  const preview = useCreatorVideoPreview(reference.videoUrl ? useOriginal ? reference.videoUrl : reference.previewVideoUrl ?? reference.videoUrl : undefined, interested, 250);
+  const videoRef = useCoverPlayback(preview.url ?? null, "button");
   const [failed, setFailed] = useState(false);
   const playable = Boolean(reference.videoUrl);
 
   // A native video poster avoids a separate image that browser visual-search
   // overlays can turn into an external action. The button owns all card clicks.
-  return <button type="button" aria-label={`Preview ${reference.title}`} title={`Preview ${reference.title}`} onClick={onPreview} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
+  return <button type="button" aria-label={`Preview ${reference.title}`} title={`Preview ${reference.title}`} onClick={onPreview} onPointerEnter={event => { if (event.pointerType !== "touch" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) setInterested(true); }} onPointerLeave={() => setInterested(false)} onFocus={() => { if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setInterested(true); }} onBlur={() => setInterested(false)} className={cn("relative block w-full overflow-hidden bg-card-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus", reference.format === "slideshow" ? "aspect-[4/5]" : "aspect-[9/16]")}>
     {playable ? <video ref={videoRef} data-reference-preview-video aria-hidden="true" className="pointer-events-none absolute inset-0 size-full object-cover" muted loop playsInline preload="none" poster={reference.posterUrl} onPlaying={() => setFailed(false)} onError={() => { if (!useOriginal && reference.previewVideoUrl && reference.previewVideoUrl !== reference.videoUrl) setUseOriginal(true); else setFailed(true); }} /> : <img alt="" draggable={false} src={reference.posterUrl} width={reference.slides[0]?.width ?? 720} height={reference.slides[0]?.height ?? 1280} className="pointer-events-none absolute inset-0 size-full object-cover" loading="lazy" onError={() => setFailed(true)} />}
     <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-transparent" />
-    {failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : null}
+    {failed || preview.failed ? <span className="absolute inset-0 flex items-center justify-center bg-card-muted/90 px-3 text-center text-xs text-muted">Preview unavailable</span> : preview.loading ? <span role="status" className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/60 px-2 py-1 text-xs text-white">Loading preview…</span> : null}
     {reference.format === "slideshow" ? <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm"><Layers3 className="size-3" aria-hidden="true" />{reference.slides.length}</span> : null}
   </button>;
 }

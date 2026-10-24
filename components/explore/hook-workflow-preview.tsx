@@ -2,13 +2,12 @@
 
 import { useTalkingHeadReference } from "./use-talking-head-reference";
 import { TalkingHeadReferences } from "./talking-head-references";
-import dynamic from "next/dynamic";
+import { LazyHookStartingFrameWorkspace as HookStartingFrameWorkspace } from "./lazy-hook-starting-frame-workspace";
 import Image from "next/image";
 import { useHookComposerSelection } from "./use-hook-composer-selection";
 import type { TalkingHeadReference } from "@/lib/explore/talking-head-reference";
 import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-client";
 import { hookStartingFrameVideoDurations, isHookStartingFrameVideoModel } from "@/worker/src/lib/hook-starting-frame-video";
-const HookStartingFrameWorkspace = dynamic(() => import("./hook-starting-frame-workspace").then(module => module.HookStartingFrameWorkspace));
 import referenceStyles from "./talking-head-references.module.css";
 import { Tabs } from "@base-ui/react/tabs";
 import { Button } from "@/components/ui/button";

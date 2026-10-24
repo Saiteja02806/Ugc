@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/marketing/json-ld";
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { LandingBottomCta } from "@/components/marketing/landing-bottom-cta";
 import { LandingComparisonSection } from "@/components/marketing/landing-comparison-section";
@@ -16,12 +17,12 @@ import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcas
 import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
 import { LandingContentShowcase } from "@/components/marketing/landing-content-showcase";
-import { visibleSocialPlatformList } from "@/lib/social/platform-visibility";
+import { homepageJsonLd } from "@/lib/marketing/mcp-public";
 
 const authHref = "/sign-in";
 const homepageTitle = "UGC Pilot — AI UGC Video & Content Studio";
 const homepageDescription =
-  "Create UGC video ideas, visuals, and short videos with AI. Review, organize, and prepare every asset for publishing in UGC Pilot.";
+  "Create UGC video ideas, visuals, and short videos with AI. Review, organize, and keep every finished asset in your UGC Pilot library.";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://getugcpilot.com/" },
@@ -60,27 +61,28 @@ const workflowSteps = [
     step: "03",
     title: "Review the creative",
     description:
-      "Check the media, text, caption, and account before anything moves to publishing.",
+      "Check the media, text, and caption before you export the finished asset.",
   },
   {
     step: "04",
-    title: "Approve the schedule",
+    title: "Save the finished asset",
     description:
-      `Choose your ${visibleSocialPlatformList} destinations and timing, then confirm the final publishing action.`,
+      "Keep the reviewed video, carousel, or slideshow in your library so you can download the version you approved.",
   },
 ];
 
 const productFooterLinks = [
-  { label: "Multi-platform publishing", href: "#multi-platform" },
+  { label: "MCP server", href: "/mcp" },
+  { label: "Connect your AI", href: "/connect-ai" },
+  { label: "MCP tool reference", href: "/docs/mcp-tools" },
+  { label: "Creative workflow", href: "#workflow" },
   { label: "Try UGC Pilot", href: "/try-ugcpilot" },
   { label: "Founder marketing guides", href: "/guides" },
+  { label: "The Reaction Hook Library", href: "/free-hook-lines" },
   { label: "Instagram carousel maker", href: "/instagram-carousel-maker" },
   { label: "AI UGC video generator", href: "/ai-ugc-video-generator" },
-  { label: "Workflow", href: "#workflow" },
-  {
-    label: "Dating swipe demo",
-    href: "/tinder",
-  },
+  { label: "Founder video case study", href: "/case-studies/ai-ugc-video-generator-saas-founders" },
+  { label: "UGC video examples", href: "/blog/ugc-video-generator-examples" },
   { label: "Pricing", href: "/pricing" },
   { label: "Sign in", href: authHref },
 ];
@@ -111,6 +113,7 @@ export default function Home() {
 
   return (
     <main className="instagram-theme min-h-screen overflow-x-hidden bg-background text-foreground">
+      <JsonLd data={homepageJsonLd(homepageDescription)} />
       <a href="#landing-content" className="sr-only rounded-control bg-card px-4 py-3 text-sm font-semibold text-foreground-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:outline-2 focus:outline-focus">
         Skip to content
       </a>
@@ -123,16 +126,16 @@ export default function Home() {
 
             <h1 id="landing-content" tabIndex={-1} className="mx-auto max-w-[1200px] scroll-mt-24 text-balance text-[clamp(2.25rem,5.28vw,4.8rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-foreground-strong sm:leading-[0.94]">
               <span className="block lg:whitespace-nowrap">
-                Meet your SaaS&apos;s
+                Find viral content.
               </span>
               <span className="mt-3 block lg:whitespace-nowrap sm:mt-4">
-                new content creator.
+                Recreate for yours
               </span>
             </h1>
 
             <p className="mx-auto mt-7 max-w-[740px] text-pretty text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Create an AI influencer for your SaaS, make videos that show what
-              it does, and schedule them across your social channels.
+              Create an AI creator for your SaaS, make videos that show what
+              it does, and review every asset in one studio.
             </p>
 
             <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-5">
@@ -140,8 +143,8 @@ export default function Home() {
                 className="group inline-flex h-12 w-full max-w-[220px] items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto sm:max-w-none sm:px-7"
                 initialHasSession={initialHasSession}
               />
-              <a href="#multi-platform" className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-medium text-muted transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                See one-click publishing
+              <a href="/mcp" className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-medium text-muted transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                Connect Claude or Codex
                 <ArrowDown className="size-4" aria-hidden="true" />
               </a>
             </div>
@@ -162,14 +165,14 @@ export default function Home() {
           <div className="max-w-2xl">
             <p className="text-sm font-semibold text-primary">Start with the work in front of you</p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-              Pick a workflow. Keep the final publishing decision human.
+              Pick a workflow. Keep the final creative decision human.
             </h2>
           </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MarketingPathCard
               href="/instagram-carousel-maker"
               title="Instagram carousel maker"
-              description="Turn one business idea into a complete carousel, review it, and prepare it for Instagram."
+              description="Turn one business idea into a complete carousel and review every slide in your library."
             />
             <MarketingPathCard
               href="/ai-ugc-video-generator"
@@ -180,6 +183,31 @@ export default function Home() {
               href="/guides"
               title="Founder marketing guides"
               description="Build a clear message and content routine for the website or app you are bringing to market."
+            />
+            <MarketingPathCard
+              href="/mcp"
+              title="MCP server for agents"
+              description="Connect Claude, Codex, or ChatGPT and create images, short videos, and edits from the conversation."
+            />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <MarketingPathCard
+              href="/case-studies/ai-ugc-video-generator-saas-founders"
+              title="Founder video case study"
+              description="Two public videos UGC Pilot made for its own brand on the Teja Chundu YouTube channel."
+              cta="Watch the videos"
+            />
+            <MarketingPathCard
+              href="/blog/ugc-video-generator-examples"
+              title="UGC video examples"
+              description="YouTube files from that series, Instagram reels, and TikTok videos on accounts named Clara."
+              cta="Open the gallery"
+            />
+            <MarketingPathCard
+              href="/guides/how-to-create-ugc-videos-with-ai"
+              title="Create a UGC video"
+              description="A short guide from the brief to the downloaded file, with one example video."
+              cta="Read the guide"
             />
           </div>
         </div>
@@ -205,7 +233,7 @@ export default function Home() {
             <span className="hidden sm:inline text-border-strong">•</span>
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
-              <span>Review before scheduling</span>
+              <span>Review before you export</span>
             </span>
           </div>
 
@@ -214,7 +242,7 @@ export default function Home() {
               One social workflow
             </p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.035em] text-foreground-strong sm:text-5xl">
-              Keep the creative and the publishing decision together.
+              Keep the brief and the finished asset together.
             </h2>
           </div>
 
@@ -264,8 +292,8 @@ export default function Home() {
               </div>
             </div>
             <p className="mt-5 max-w-sm text-sm leading-6 text-muted">
-              Create, review, and schedule content for {visibleSocialPlatformList}
-              {" "}from your own business context and approved media.
+              Create and review AI UGC videos, carousels, and edits from your
+              own business context.
             </p>
           </div>
 
@@ -276,7 +304,7 @@ export default function Home() {
 
         <div className="mx-auto mt-10 flex max-w-[1200px] flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} UGCPilot. All rights reserved.</p>
-          <p>{visibleSocialPlatformList} are trademarks of their respective owners.</p>
+          <p>Third-party names are trademarks of their owners.</p>
         </div>
       </footer>
     </main>
@@ -287,10 +315,12 @@ function MarketingPathCard({
   href,
   title,
   description,
+  cta = "Explore workflow",
 }: {
   href: string;
   title: string;
   description: string;
+  cta?: string;
 }) {
   return (
     <Link
@@ -300,7 +330,7 @@ function MarketingPathCard({
       <p className="text-lg font-semibold text-foreground-strong">{title}</p>
       <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
       <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-        Explore workflow <span className="ml-2" aria-hidden="true">→</span>
+        {cta} <span className="ml-2" aria-hidden="true">→</span>
       </span>
     </Link>
   );

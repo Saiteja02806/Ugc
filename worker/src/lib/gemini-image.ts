@@ -9,6 +9,7 @@ import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
 import { hookKeyframePromptSha256, hookKeyframeProviderImageLabels, hookKeyframeSceneBytesMatch, parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "./hook-keyframe-generation-contract.js";
+import { hookKeyframeReceiptImageModel } from "./hook-keyframe-image-model.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
 export const GEMINI_3_PRO_IMAGE_MODEL = "gemini-3-pro-image";
@@ -24,7 +25,7 @@ export async function generateGeminiImageBuffer(
   slideshowLabels?: string[],
 ) {
   const ai = getGoogleClient();
-  const model = hookKeyframe?.version === 2 ? HOOK_GEMINI_FLASH_IMAGE_MODEL :
+  const model = hookKeyframe && hookKeyframe.version !== 1 ? HOOK_GEMINI_FLASH_IMAGE_MODEL :
     process.env.GEMINI_IMAGE_MODEL?.trim() || DEFAULT_GEMINI_IMAGE_MODEL;
   const downloadedImages = Array.isArray(referenceImageUrl) ? await downloadReferenceImageContext(referenceImageUrl) : undefined;
   if (slideshowLabels && (hookKeyframe || slideshowLabels.length !== downloadedImages?.length)) throw new ProviderRequestNotSubmittedError("The slideshow image labels do not match the inputs.");
@@ -164,10 +165,13 @@ function verifiedHookImageLabels(prompt: string, images: Awaited<ReturnType<type
   receipt: HookKeyframeGenerationReceipt | undefined, model: "gemini_3_pro" | "nano_banana_2") {
   if (!receipt) return undefined;
   if (!parseHookKeyframeGenerationReceipt(receipt) || (receipt.promptVersion !== 2 && receipt.promptVersion !== 3 && receipt.promptVersion !== 4) ||
-    (receipt.version === 2 ? receipt.imageModel !== model : model !== "nano_banana_2") ||
+    hookKeyframeReceiptImageModel(receipt) !== model ||
     hookKeyframePromptSha256(prompt) !== receipt.promptSha256 || !images ||
-    images.length !== receipt.personImageAssetIds.length + 1 || !hookKeyframeSceneBytesMatch(receipt, images[0])) {
-    throw new ProviderRequestNotSubmittedError("The downloaded Hook scene does not match its verified opening frame. No image generation request was sent.");
+    images.length !== receipt.personImageAssetIds.length + 1) {
+    throw new ProviderRequestNotSubmittedError("The starting-frame model or reference inputs could not be verified. No image generation request was sent.");
+  }
+  if (!hookKeyframeSceneBytesMatch(receipt, images[0])) {
+    throw new ProviderRequestNotSubmittedError("The downloaded source image does not match the selected starting frame. No image generation request was sent.");
   }
   return hookKeyframeProviderImageLabels(receipt.personImageAssetIds.length, receipt.promptVersion);
 }

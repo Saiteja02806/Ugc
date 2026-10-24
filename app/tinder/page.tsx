@@ -5,6 +5,7 @@ const TINDER_DEMO_URL = "https://ugc-tinder-deck-ano542ohmq-uc.a.run.app/";
 export const metadata: Metadata = {
   title: "Dating Swipe Demo",
   description: "Try the UGCPilot Tinder-style dating swipe demonstration.",
+  robots: { index: false, follow: false },
 };
 
 export default function TinderDemoPage() {

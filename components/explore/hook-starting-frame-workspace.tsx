@@ -109,6 +109,9 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     return Boolean(job.output && previewStates[job.output.mediaAssetId]?.url === outputPreviewUrl(job.output) && previewStates[job.output.mediaAssetId]?.state === "ready");
   }
   const [restored, setRestored] = useState(false);
+  // Source provenance can load alongside owned-photo validation. Keep `restored`
+  // as the stricter gate for editing, persistence, and paid submission.
+  const [sourceRestored, setSourceRestored] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -132,18 +135,18 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const key = hookKeyframeDraftStorageKey(scope.ownerId, scope.draftId, scope.referenceId);
   const checkpointKey = hookKeyframeCheckpointKey(scope);
   const variationsKey = hookKeyframeVariationsKey(scope);
-  const retainedFrame = reference.creatorAccountId && restored && draft.version !== 3 && draft.sourceFrame
+  const retainedFrame = reference.creatorAccountId && sourceRestored && checkpointRestored && draft.version !== 3 && draft.sourceFrame
     && (draft.generatedImage || draft.approval || variations?.entries.some(entry=>entry.state !== "planned" && entry.state !== "rejected" && entry.checkpoint.inputKey === hookKeyframeInputKey(draft))) ? draft.sourceFrame : undefined;
   const motionDraft = getHookKeyframeMotionReviewDraft(scope.referenceId, scope.sourceSha256, getCuratedHookFrame(scope.referenceId, scope.sourceSha256)?.index ?? 0);
   const frameQuery = useQuery({
-    queryKey: ["hook-source-frame-v3", scope.ownerId, scope.referenceId, scope.sourceSha256,retainedFrame?.sha256 ?? "current"], enabled: restored,
+    queryKey: ["hook-source-frame-v3", scope.ownerId, scope.referenceId, scope.sourceSha256,retainedFrame?.sha256 ?? "current"], enabled: sourceRestored && checkpointRestored,
     queryFn: ({ signal }) => previewRuntime ? previewRuntime.loadSource({ reference, scope, signal }) : fetchHookStartingFrame({ ...scope, signal,retainedFrame }), retry: false,
     staleTime: 5 * 60_000, gcTime: 5 * 60_000,
   });
   const incompatibleAnimationShape = preparationFormat !== "hook" && frameQuery.data &&
     frameQuery.data.frame.width * 16 !== frameQuery.data.frame.height * 9 && frameQuery.data.frame.width * 9 !== frameQuery.data.frame.height * 16;
   const generationDisabledReason = retainedFrame ? "This saved result uses the earlier source frame. Use its saved image, or choose the clearer source frame for a new generation." : previewRuntime?.generationDisabledReason ?? (incompatibleAnimationShape ? "This reference has a shape that cannot be animated without cropping. Choose a 9:16 or 16:9 reference before generating an image." : undefined);
-  const costQuery = useQuery({ queryKey: ["hook-starting-image-cost", scope.ownerId, draft.imageModel], enabled: restored && !generationDisabledReason, retry: false, staleTime: 60_000,
+  const costQuery = useQuery({ queryKey: ["hook-starting-image-cost", scope.ownerId, draft.imageModel], enabled: sourceRestored && checkpointRestored && !generationDisabledReason, retry: false, staleTime: 60_000,
     queryFn: ({ signal }) => keyframeRead(`?cost=1&model=${draft.imageModel}`, signal).then(body => {
       if (typeof body.creditCost !== "number" || !Number.isFinite(body.creditCost) || body.creditCost <= 0 || body.model !== draft.imageModel) throw new Error("The starting-image price could not be verified.");
       return body.creditCost as number;
@@ -212,7 +215,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     }, signal);
   }
   const history = useInfiniteQuery({
-    queryKey: ["hook-influencer-history", scope.ownerId], enabled: restored, retry: false,
+    queryKey: ["hook-influencer-history", scope.ownerId], enabled: sourceRestored, retry: false,
     staleTime: 60_000, gcTime: 5 * 60_000,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => withReadDeadline(async bounded => {
@@ -254,7 +257,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     void Promise.resolve().then(async () => {
       try {
         const previous = readHookKeyframeDraft(localStorage.getItem(key), scope);
-        if (!previous) { if (active) setRestored(true); return; }
+        if (active) { if (previous) setDraft(previous); setSourceRestored(true); }
+        if (!previous || !previous.imageAssetIds.length) { if (active) setRestored(true); return; }
         const restoredImages = await withReadDeadline(async signal => {
           const token = previewRuntime ? "local-fixture" : await getCurrentUserIdToken(scope.ownerId);
           signal.throwIfAborted();
@@ -517,7 +521,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       <div className={styles.controls} data-recreation-step={presentation === "recreation" ? "person" : undefined}>
       <section className={styles.person} aria-label="Face reference">
         <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">2</span> : null}Face reference</h2><p>Choose whose face to use.</p></div><UserRound aria-hidden="true" /></div>
-        {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); setRestoreError(null); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
+        {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); setRestoreError(null); setSourceRestored(true); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
         <div className={styles.photos} data-unified-face-picker data-selected-face-photos={images.length}>
           <FormatGenerationReferences inlineImagePicker imagePresentation="person-strip" selection={null} imageSelections={images} imagePurpose="person" heading="Person photos"
             influencerLibrary={{ images: historyImages, loading: history.isPending, error: history.error, selectionError: error,

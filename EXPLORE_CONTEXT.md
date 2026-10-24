@@ -1,5 +1,66 @@
 # Explore context and UI decision record
 
+## 2026-10-24 Creator repair and PR 85 production release verified
+
+- Website and MCP now serve reviewed main commit `e9f441e6`, which includes
+  Recreate release `0f9f2eba`, the integration of PR 84, and correctly merged
+  PR 85. Website deployment `dpl_F8NBi11GSzP3MdVwJyPUmaxA4G39` owns apex/www;
+  MCP deployment `dpl_68dGPSrZVBAVgGU28k32RV5jMLSy` owns its production host.
+- Generation worker `ugc-ai-generation-worker-r-e8cf2663` serves 100% traffic
+  using a pinned image with verified baked/runtime commit `e8cf2663`. That
+  worker Git tree is identical to `e9f441e6`. Functional configuration matches
+  the previous revision. The v3 Gemini receipt-routing fix is deployed.
+- Production checks pass: 13 public/authorization/media checks, 30 SEO checks
+  across 23 pages, MCP health, exact hook-library PDF hash and all 12 private
+  selected frame hashes through short-lived provider capabilities. PR 85's
+  page titles and hidden unreleased posting-default tool are verified live.
+  Normal automatic-build settings are restored. No paid generation was run;
+  signed-in performance, playback and new output fidelity remain separate.
+- The new how-to guide intentionally uses Article/HowTo/VideoObject schema.
+  The public-page audit now verifies its five matching visible step anchors
+  rather than applying the older founder-guide FAQ/breadcrumb requirements.
+- Full rollout and exact exclusions: docs/creator-recreate-release-2026-10-24.md.
+
+## 2026-10-24 Creator starting-frame failure and loading recurrence (local fix)
+
+- Two production creator Gemini 3 Pro starting-frame jobs failed before Google
+  submission. The worker recognized model selection only on v2 receipts, so
+  approved v3 clearer-frame receipts were misread as legacy Flash and rejected
+  with a misleading scene-mismatch message. Both existing app credit reservations
+  are released; no provider submission or paid retry occurred. Use the shared
+  v1/v2/v3 model resolver and explicit v3 Flash routing. Preserve exact scene
+  byte/dimension, prompt and receipt checks; report model/contract mismatch
+  separately from a true scene-byte mismatch. Details:
+  docs/creator-starting-frame-generation-fix-2026-10-24.md.
+- Creator galleries previously waited for all twelve complete MP4s plus posters
+  before showing either account. Publish each account's stills independently in
+  bounded parallel batches. Expose canonical metadata immediately for restored
+  Recreate references; media hydration must not gate preparation mounting. Load
+  a private video only on sustained hover/focus (250ms) or explicit full preview.
+  Keep bearer-authenticated, owner-scoped object URLs; abort/revoke on leave
+  while loading, source/owner change, logout and unmount. A ready preview can be
+  reused on repeat hover. Isolate account loading failures. First playback still
+  requires downloading one authenticated MP4; no streaming-latency claim.
+- Recreate opens a dismissible loading dialog during its lazy UI download. After
+  validating saved draft/checkpoint metadata, source frame and price load in
+  parallel with saved face-photo validation. Editing, persistence, approval and
+  paid generation remain blocked until the stronger restoration checks pass.
+  A failed photo restore preserves the original saved preparation.
+- Keep the approved three columns: source; person/model/variations/instructions;
+  selected result and its thumbnails. Use a softer 26px outer radius (20px on
+  mobile), lighter edges and rounded previews/actions. Generate, credit cost,
+  Generate another and Use this frame belong beneath the result in column three.
+  No separate full-width action footer. Preserve complete-image inspection,
+  enlargement, explicit approval, recovery and pending/error states.
+- Local checks pass: 43 preparation/variation tests, 16 loading/playback tests,
+  135 worker image tests, scoped lint, app TypeScript and webpack production
+  build/native decoder bundle checks. Independent review finds no blockers.
+  Browser fixtures verify seven creator Hook sizes, three slideshow sizes and
+  twelve Recreate layout cases with four variations, approval/enlargement and
+  dismissal during delayed UI loading. Source/auth/provider boundaries are
+  simulated locally; no new paid output fidelity or positive production browser
+  acceptance is claimed. These fixes are now deployed as recorded above.
+
 ## 2026-10-24 Combined production release verified
 
 - Website and MCP are promoted from app commit `4cb252d5`; all eight Cloud Run

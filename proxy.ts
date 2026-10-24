@@ -12,8 +12,22 @@ const privateRoutePrefixes = [
   "/video-gen", "/viral",
 ];
 
+function isBrowserDocument(request: NextRequest) {
+  return request.method === "GET" && (request.headers.get("accept") ?? "").includes("text/html");
+}
+
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const hostname = request.nextUrl.hostname.toLowerCase().replace(/\.$/u, "");
+  const mcpHost = process.env.MCP_ONLY_DEPLOYMENT === "true" || hostname === "mcp.getugcpilot.com";
+  // The protocol handler owns /mcp on the MCP host. The website serves the
+  // landing page for every GET, and for browser requests during local dev.
+  const serveMarketingPage = process.env.NODE_ENV === "production" || isBrowserDocument(request);
+  if (!mcpHost && pathname === "/mcp" && request.method === "GET" && serveMarketingPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/mcp-server";
+    return NextResponse.rewrite(url);
+  }
   if (shouldBlockDeploymentRoute({
     hostname: request.nextUrl.hostname,
     isMcpOnlyDeployment: process.env.MCP_ONLY_DEPLOYMENT === "true",

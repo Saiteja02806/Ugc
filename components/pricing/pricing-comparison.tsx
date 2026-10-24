@@ -24,10 +24,10 @@ const featureMatrix: FeatureRow[] = [
   { label: "Daily slideshow concepts in Trending", free: `During ${FREE_TRIAL_CONTENT_DAYS}-day trial`, starter: true, growth: true },
   { label: "Hook, text-led video & slideshow creation in Explore", free: true, starter: true, growth: true },
   { label: "Review, edit & demo library", free: true, starter: true, growth: true },
-  { label: "Instagram scheduling", free: "Unlimited during trial", starter: true, growth: true },
+  { label: "Download finished assets", free: "During trial", starter: true, growth: true },
   { label: "Connect Instagram, TikTok & YouTube", free: true, starter: true, growth: true },
-  { label: "TikTok scheduling (supported videos and photo posts)", free: true, starter: true, growth: true },
-  { label: "YouTube video scheduling", free: true, starter: true, growth: true },
+  { label: "Saved captions with the finished asset", free: true, starter: true, growth: true },
+  { label: "Video editing and export", free: true, starter: true, growth: true },
   { label: "AI Studio images & videos", free: "Uses free credits", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "AI character generation", free: "1 assisted generation", starter: "Uses shared credits", growth: "Uses shared credits" },
   { label: "Connected-account analytics", free: true, starter: true, growth: true },
@@ -51,7 +51,7 @@ export function PricingComparison({ plans }: PricingComparisonProps) {
             Compare plan features &amp; limits
           </h2>
           <p className="mt-2 text-sm font-normal text-muted">
-            Daily slideshow allowances and custom AI credits are separate. Review each output before scheduling; destination options depend on the format and connected account.
+            Daily slideshow allowances and custom AI credits are separate. Review each output before you download it.
           </p>
         </div>
 

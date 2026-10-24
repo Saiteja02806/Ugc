@@ -1,0 +1,535 @@
+{
+  "toolCount": 79,
+  "groups": [
+    {
+      "id": "account-and-media",
+      "title": "Account, plan, brand, and media",
+      "summary": "Identify the connected account, read the plan and credits, load the business profile, and retrieve owned images and videos.",
+      "registry": "registeredReadMcpTools",
+      "source": "lib/mcp/read-tools.ts",
+      "tools": [
+        {
+          "name": "get_profile",
+          "description": "Identify the connected UGC Pilot account.",
+          "scope": "account:read"
+        },
+        {
+          "name": "get_entitlements",
+          "description": "Show the current plan, available credits, and generation access.",
+          "scope": "account:read"
+        },
+        {
+          "name": "get_saas_brand",
+          "description": "Get the completed brand profile and grounded business context for this account.",
+          "scope": "brand:read"
+        },
+        {
+          "name": "list_assets",
+          "description": "Find ready assets owned by the connected account, with search and pagination.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_asset",
+          "description": "Get one ready, undeleted asset owned by this account.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_capabilities",
+          "description": "Show generation settings usable with the current account plan.",
+          "scope": "account:read"
+        }
+      ]
+    },
+    {
+      "id": "uploads",
+      "title": "Upload media",
+      "summary": "Reserve an upload, confirm the finished file, and delete an owned asset.",
+      "registry": "registeredMutationMcpTools",
+      "source": "lib/mcp/mutation-tools.ts",
+      "tools": [
+        {
+          "name": "create_upload",
+          "description": "Reserve a media asset and return a temporary upload URL. Preserve an optional request_id before calling to recover a lost response without a duplicate reservation.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "confirm_upload",
+          "description": "Verify an owned temporary upload in storage and make its asset ready.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "delete_asset",
+          "description": "Delete one owned media asset. Unconfirmed MCP uploads are removed from storage; ready assets remain soft-deleted.",
+          "scope": "assets:write"
+        }
+      ]
+    },
+    {
+      "id": "generation",
+      "title": "Generate images and video",
+      "summary": "Queue image and short-video jobs against the account plan, then read job status.",
+      "registry": "registeredGenerationMcpTools",
+      "source": "lib/mcp/generation-tools.ts",
+      "tools": [
+        {
+          "name": "generate_image",
+          "description": "Reserve image credits and queue 1, 2, or 4 images. Reusing the request ID with the same input returns the existing jobs.",
+          "scope": "generation:write"
+        },
+        {
+          "name": "generate_video",
+          "description": "Reserve video credits by duration and queue 1, 2, or 4 videos. Reusing the request ID with the same input returns the existing jobs.",
+          "scope": "generation:write"
+        },
+        {
+          "name": "get_job",
+          "description": "Check an owned MCP image or video job and retrieve its completed output asset ID.",
+          "scope": "jobs:read"
+        }
+      ]
+    },
+    {
+      "id": "finishing",
+      "title": "Finish a video",
+      "summary": "Compose hook text, trims, volume, framing, a demo clip, and optional subtitles on owned footage.",
+      "registry": "registeredFinishingMcpTools",
+      "source": "lib/mcp/finishing-tools.ts",
+      "tools": [
+        {
+          "name": "get_video_finishing_capabilities",
+          "description": "Check this account's video editing/composition rollout and prerequisites without submitting work.",
+          "scope": "account:read"
+        },
+        {
+          "name": "finish_video",
+          "description": "Save and queue owned video edits or opening-plus-demo composition. Prepare edits/framing in separate stages before demo/subtitle composition. Reuse the exact request key and draft after interruption; returns a durable receipt, not an instant video.",
+          "scope": "creative:write"
+        },
+        {
+          "name": "get_video_finish",
+          "description": "Read an owned saved video-finishing receipt by request key, including website requests. Never submits or requeues work; remains available when creation is disabled.",
+          "scope": "jobs:read"
+        }
+      ]
+    },
+    {
+      "id": "demos",
+      "title": "Demo clips",
+      "summary": "Register, list, read, and delete owned product-demo clips.",
+      "registry": "registeredDemoMcpTools",
+      "source": "lib/mcp/demo-tools.ts",
+      "tools": [
+        {
+          "name": "register_demo",
+          "description": "Register a confirmed create_upload/confirm_upload video in the application's dedicated Demo library. Requires 1–60 seconds and at most 100 MB. Keeps the same asset ID for attaching it to hooks. Replay preserves website edits; no new upload or render is submitted.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "list_demos",
+          "description": "Browse the connected account's dedicated Demo library, including website demos and unfinished uploads. Use get_demo to check whether a demo has a ready asset for composition.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_demo",
+          "description": "Get an owned Demo record and its ready source asset ID, when available. Retrieve playable media through get_asset. Does not expose raw storage keys or draft internals.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "delete_demo",
+          "description": "Remove an owned Demo and its linked source asset from the active libraries together. Retains stored bytes for existing renders. Repeating deletion is safe; does not cancel jobs or erase finished outputs.",
+          "scope": "assets:write"
+        }
+      ]
+    },
+    {
+      "id": "upload-recovery",
+      "title": "Recover uploads",
+      "summary": "Find an interrupted upload, list recent reservations, and renew one that is still valid.",
+      "registry": "registeredUploadRecoveryMcpTools",
+      "source": "lib/mcp/upload-recovery-tools.ts",
+      "tools": [
+        {
+          "name": "get_upload",
+          "description": "Recover one owned MCP upload by saved upload ID or stable request ID. Returns metadata, not signed URLs or storage keys.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_uploads",
+          "description": "Find owned pending MCP upload reservations, including older reservations whose response was lost. Never creates a replacement upload.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "renew_upload",
+          "description": "Renew the create-only PUT link for the same owned pending reservation. If bytes already exist, confirm the existing upload instead of transferring again.",
+          "scope": "assets:write"
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "Operations",
+      "summary": "List owned work, read one operation, and cancel or retry it when the contract allows.",
+      "registry": "registeredOperationMcpTools",
+      "source": "lib/mcp/operation-tools.ts",
+      "tools": [
+        {
+          "name": "list_operations",
+          "description": "Discover owned application and MCP jobs across generation, finishing, preparation, publishing and analytics. Returns safe status summaries without inputs, diagnostics or provider/storage identifiers.",
+          "scope": "jobs:read"
+        },
+        {
+          "name": "get_operation",
+          "description": "Read any owned customer job, its safe retry/cancellation status and verified completed output IDs. Recover finishing or saved Edit export request IDs when available; use get_video_finish or get_edit_export for their receipts. Never submits work.",
+          "scope": "jobs:read"
+        },
+        {
+          "name": "cancel_operation",
+          "description": "Request cancellation of the selected owned job using the application's existing cancellation policy. Running work may stop asynchronously. Reuse saved inputs after a lost response.",
+          "scope": "jobs:write"
+        },
+        {
+          "name": "retry_operation",
+          "description": "Retry a supported owned failed/stalled job using existing attempt, provider and original-plan credit rules. May reserve credits again. Save the request ID and exact revision before calling; replay recovers this action without funding another retry.",
+          "scope": "jobs:write"
+        }
+      ]
+    },
+    {
+      "id": "edit-drafts",
+      "title": "Edit drafts",
+      "summary": "Open, list, read, and save the same video edit draft used in the studio.",
+      "registry": "registeredEditDraftMcpTools",
+      "source": "lib/mcp/edit-draft-tools.ts",
+      "tools": [
+        {
+          "name": "list_edit_drafts",
+          "description": "List the connected account's existing Edit-page projects and saved drafts, including website edits. Explore compositions and slideshows use separate draft systems. No render is submitted.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_edit_draft",
+          "description": "Read the exact saved Edit-page trim/text draft and its revision. Returns a ready owned source asset ID for get_asset when available; no private URLs or storage/provider details. Does not render.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "update_edit_draft",
+          "description": "Save trim and up to three text overlays to the SAME draft used by the Edit page. Blank text is allowed. Read its revision first; save a stable request UUID and reuse every input after a lost response. A conflict requires rereading and explicitly reconciling edits. Saving does not generate/export media or spend credits. The response is the accepted snapshot; reread before making later edits after recovery.",
+          "scope": "creative:write"
+        },
+        {
+          "name": "open_edit_draft",
+          "description": "Open or create the application's Edit-page draft for one ready owned raw video/influencer asset. Resolve the asset through list_assets/get_asset first. Reopening or retrying the same asset returns its current saved draft, preserving text, trims, revision and render history. Source metadata initializes new drafts only. No video is generated/rendered, no credits are spent, and Explore compositions/slideshows are separate.",
+          "scope": "creative:write"
+        }
+      ]
+    },
+    {
+      "id": "edit-export",
+      "title": "Export edits",
+      "summary": "Check export support, export one saved revision, and read that export.",
+      "registry": "registeredEditExportMcpTools",
+      "source": "lib/mcp/edit-export-tools.ts",
+      "tools": [
+        {
+          "name": "get_edit_export_capabilities",
+          "description": "Check dedicated Edit-page export availability without submitting a render. Uses the application's existing trim/text renderer and saved draft revisions.",
+          "scope": "account:read"
+        },
+        {
+          "name": "export_edit_draft",
+          "description": "Render the selected SAVED Edit-page draft revision with the website's renderer. Read/save the draft first. This submits real video processing; use only for a requested export. Save a request UUID and reuse it with identical draft ID/revision after interruption; it recovers one durable job without rendering newer edits. Returns a receipt, not an immediate download. Check get_edit_export, then get_asset for the ready output.",
+          "scope": "creative:write"
+        },
+        {
+          "name": "get_edit_export",
+          "description": "Read one owned Edit export by its saved request UUID. Does not submit, requeue or regenerate media. Recover the exported revision/job and verified ready output asset ID; remains available when creation is disabled. Removed outputs are reported as unavailable.",
+          "scope": "jobs:read"
+        }
+      ]
+    },
+    {
+      "id": "audio",
+      "title": "Speech and audio",
+      "summary": "Read audio readiness, list voices, generate speech, and manage private recordings.",
+      "registry": "registeredAudioMcpTools",
+      "source": "lib/mcp/audio-tools.ts",
+      "tools": [
+        {
+          "name": "get_audio_capabilities",
+          "description": "Read account-specific audio generation/model/cost readiness without generating speech or modifying private voice verification. Reports MCP upload/download/clone limits separately from website capability.",
+          "scope": "account:read"
+        },
+        {
+          "name": "list_audio_voices",
+          "description": "Browse the current account's permitted voice catalogue. Public preview voices can be listed without generation access. Read-only: does not verify/promote private voices, generate a sample, or supply a storage URL.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_audio_assets",
+          "description": "Page through owned saved audio metadata, excluding deleted recordings. Audio uses a separate private library. usable_for_video excludes reference recordings and free test audio; these IDs are not generic get_asset IDs. Use import_audio_for_video to create a separate editing snapshot.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_audio_asset",
+          "description": "Read owned private audio metadata and an expiring verified download link when ready/configured. Feed the link to the local binary helper; refresh this read if it expires. Free tests/reference recordings stay ineligible for video use. Does not copy or convert the record into a visual-media-library asset.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_audio_generations",
+          "description": "Page through owned website and MCP audio request history with stable request UUIDs, safe states and verified completed generated audio IDs. Hides scripts, provider diagnostics and storage. Does not resume or requeue jobs.",
+          "scope": "jobs:read"
+        },
+        {
+          "name": "get_audio_generation",
+          "description": "Recover audio generation by the saved CLIENT request UUID, including after a lost submission response. Unconfirmed does not prove no submission. Read-only across generation rollout/plan changes; never dispatches a job.",
+          "scope": "jobs:read"
+        },
+        {
+          "name": "generate_audio",
+          "description": "Generate requested speech using the application's existing voices, models, plan/rollout/quota/credit rules. May spend credits and provider allowance. Save a new request UUID and exact inputs before submission; recover with get_audio_generation, or replay identical inputs. Do not generate to test connectivity. Output is a private audio-library ID; use get_audio_asset for its expiring download, while video import remains a separate adapter.",
+          "scope": "generation:write"
+        },
+        {
+          "name": "get_audio_preferences",
+          "description": "Read the same saved voice selection and bookmarks as the website. Preferences do not grant access to a voice; resolve IDs against list_audio_voices before generating.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "set_audio_voice_selection",
+          "description": "Save the user's requested voice preference in the website's shared account record. Idempotent assignment; does not grant voice access or generate speech.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "set_audio_voice_bookmark",
+          "description": "Bookmark or remove the selected voice bookmark using the same account preferences as the website. Repeating the same assignment is safe. Does not grant voice access or generate speech.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "create_audio_upload",
+          "description": "Prepare a requested local audio transfer from measured file metadata/SHA-256. Save the request UUID and exact file/purpose before calling. Returns a short-lived content-bound POST link, not an uploaded asset. Use the local binary helper to send exact bytes; recover with get_audio_generation by the same UUID or renew this identical intent. Three MB/three minute audio limit; uses the website's existing plan/quota/replay service. Never accepts arbitrary source URLs or uploads just to test connection.",
+          "scope": "assets:write"
+        }
+      ]
+    },
+    {
+      "id": "audio-import",
+      "title": "Attach audio to video",
+      "summary": "Import an eligible recording onto a video edit and read that import.",
+      "registry": "registeredAudioVideoImportMcpTools",
+      "source": "lib/mcp/audio-video-import-tools.ts",
+      "tools": [
+        {
+          "name": "import_audio_for_video",
+          "description": "Copy explicitly selected owned ready saved audio into an independent video-editing audio snapshot, matching the website's attachment flow. Excludes voice references and free tests. Save a request UUID before calling; reuse it after a lost response. Only a ready media_asset_id can be used as finish_video's demoAudioAssetId or backgroundAssetId. Uses the current media-upload storage policy; the private original remains private. Does not render or charge generation credits. import_id identifies this separate copy for delete_asset, including a pending copy; deleting it does not delete the original private audio.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "get_audio_video_import",
+          "description": "Recover a saved audio-to-video import by its CLIENT request UUID. Read-only: never copies bytes, creates a reservation, or renders. Unconfirmed does not prove no request was accepted. import_id identifies this separate copy for delete_asset; media_asset_id is ready-only for finishing. A ready media_asset_id is a separate editing snapshot, usable even if its original audio is later retired.",
+          "scope": "assets:read"
+        }
+      ]
+    },
+    {
+      "id": "references",
+      "title": "References and remix",
+      "summary": "Browse reviewed references and remix their text into a new draft.",
+      "registry": "registeredReferenceMcpTools",
+      "source": "lib/mcp/reference-tools.ts",
+      "tools": [
+        {
+          "name": "get_reference_capabilities",
+          "description": "Read reference/text-remix access and runtime readiness without initializing credits, extracting text or calling a provider.",
+          "scope": "account:read"
+        },
+        {
+          "name": "list_references",
+          "description": "Browse the application's published Hook, Wall-of-Text and slideshow reference catalogue, including slide IDs and supplied paired soundtrack metadata. Catalogue identities are distinct from owned media IDs; this does not upload, transcribe or render anything.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_reference",
+          "description": "Retrieve one application reference and its existing reviewed text. Select a slide_id for slideshow text. Reports missing/unreviewed extraction without generating it. Uses the application's text access policy.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "remix_reference_text",
+          "description": "Generate and save a requested business-specific text remix through the application's same provider/claim service. May use provider allowance. Save the caller's stable requestKey and exact inputs before calling; recover interrupted or uncertain work with get_text_remix. First-use submission may initialize the application's standard one-time free allowance. This does not edit a draft or render media.",
+          "scope": "generation:write brand:read"
+        },
+        {
+          "name": "get_text_remix",
+          "description": "Read and verify an owned saved application or MCP text-remix result by its caller request UUID. Never claims, calls a provider or retries. Remains readable after plan/gate changes; pending/failed work is not automatically repeated.",
+          "scope": "jobs:read"
+        },
+        {
+          "name": "list_text_remixes",
+          "description": "Discover this account's saved website/MCP text-remix request keys, status and timestamps. Metadata only; recover a selected result with get_text_remix. No provider call or current creation access is required.",
+          "scope": "jobs:read"
+        }
+      ]
+    },
+    {
+      "id": "groups",
+      "title": "Creative asset groups",
+      "summary": "Browse owned image and video groups and change membership when the write gate is open.",
+      "registry": "registeredCreativeGroupMcpTools",
+      "source": "lib/mcp/creative-group-tools.ts",
+      "tools": [
+        {
+          "name": "get_asset_group_capabilities",
+          "description": "Read Creative Asset group support and write gate. No media writes, billing, schema changes or rendering.",
+          "scope": "account:read"
+        },
+        {
+          "name": "list_asset_groups",
+          "description": "Browse this account's application Creative Asset video/image groups. Generic assets and Carousel Library are separate surfaces.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_asset_group",
+          "description": "Read an owned group and revision covering its metadata and full membership. Save this revision before a requested change; reading does not mutate it.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_asset_group_items",
+          "description": "Browse an owned group's exact membership at its saved revision. Unavailable members are marked without leaking removed media metadata; get_asset delivers ready media. A changing group requires a fresh read.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "create_asset_group",
+          "description": "Create a requested application Creative Asset group. Caller request_id is also its stable group ID; preserve identical inputs for recovery. No media is created. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "rename_asset_group",
+          "description": "Rename the selected owned group at its exact revision. Stale metadata/membership returns a conflict without overwriting newer website changes. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "delete_asset_group",
+          "description": "Delete the selected group and its membership at an exact revision. Preserves all media files/library assets. This group removal has no application undo; only perform when explicitly requested. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "add_assets_to_group",
+          "description": "Add 1-100 selected owned ready Creative Assets matching the group type, atomically at its exact revision. Full batch rejects invalid/foreign/hidden inputs; preserves a receipt before responding. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "remove_assets_from_group",
+          "description": "Remove selected membership links at the group's exact revision. Preserves all media and other groups. Unavailable members may be removed using their verified membership IDs. Save the request UUID/inputs before submission; recover interruption using get_asset_group_request.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "get_asset_group_request",
+          "description": "Recover the immutable owned result of an accepted group change without reapplying it. Later website edits/deletions are preserved; receipt state is historical, use get_asset_group for current state.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_asset_group_requests",
+          "description": "Discover lost owned group-change request UUIDs and operation timestamps. Does not expose another account or repeat changes.",
+          "scope": "assets:read"
+        }
+      ]
+    },
+    {
+      "id": "library",
+      "title": "Library",
+      "summary": "Read saved carousel and slideshow library items, and save or archive them when writes are enabled.",
+      "registry": "registeredLibraryContentMcpTools",
+      "source": "lib/mcp/library-content-tools.ts",
+      "tools": [
+        {
+          "name": "get_library_capabilities",
+          "description": "Read Library save/removal gates and supported source types. A catalogue entry does not prove schema rollout or rendering support.",
+          "scope": "account:read"
+        },
+        {
+          "name": "list_library_items",
+          "description": "Browse this account's actual saved Carousel/slideshow Library with ordered rendered slides. Library IDs differ from media asset IDs. Optional removed entries are tombstones; this is not generic demo footage listing.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "get_library_item",
+          "description": "Read the selected owned Library snapshot, ordered rendered outputs, removal state and exact revision. Does not edit, schedule or restore it.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "inspect_carousel_library_save",
+          "description": "Resolve the selected owned completed Carousel exactly as the website does, including its latest ready rendered edit. Read source/destination revisions before an intended save; queued/failed/incomplete edits reject without falling back to originals.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_carousel_library_sources",
+          "description": "Discover owned Carousel generation IDs, including unsaved outputs, using owner/filter-bound pagination. Defaults to completed generations. Inspect the selected source before saving: completion alone does not prove its latest edit is ready.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "save_carousel_to_library",
+          "description": "Save the intended completed owned Carousel/latest ready edit at the inspected source AND Library revisions. Refreshes an existing snapshot using the website's canonical payload; changed revisions reject. Recreating a removed save requires explicit allow_recreate_removed. Preserve request UUID/inputs before submitting.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "save_slideshow_to_library",
+          "description": "Save 2-10 selected owned READY raster outputs in exact order through the application's slideshow validator/transaction. This saves already rendered images; it does not render text overlays. Catalogue references are optional guidance and never silently enter the output. Preserve request UUID/inputs for recovery.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "remove_library_item",
+          "description": "Archive the explicitly selected Library entry at its exact revision, matching the application's metadata-only removal. Preserves source media and saved slide files. Existing scheduling rules remain authoritative; this does not cancel or schedule posts. Preserve request UUID/inputs for recovery.",
+          "scope": "assets:write"
+        },
+        {
+          "name": "get_library_request",
+          "description": "Recover the immutable accepted Library result without repeating its save or removal. Receipt state is historical; get_library_item gives current state. Works after write gates or plan/media readiness change.",
+          "scope": "assets:read"
+        },
+        {
+          "name": "list_library_requests",
+          "description": "Discover this account's accepted Library request UUIDs and timestamps after an interruption. Does not repeat any write.",
+          "scope": "assets:read"
+        }
+      ]
+    },
+    {
+      "id": "account-settings",
+      "title": "Account defaults",
+      "summary": "Read account defaults and recover settings receipts. Default updates use a separate account:write consent.",
+      "registry": "registeredAccountSettingsMcpTools",
+      "source": "lib/mcp/account-settings-tools.ts",
+      "tools": [
+        {
+          "name": "get_account_settings_capabilities",
+          "description": "Read account-default settings support and rollout gate. Does not initialize timezone, change defaults or publish anything.",
+          "scope": "account:read"
+        },
+        {
+          "name": "get_account_settings",
+          "description": "Read the application's publishing defaults, including TikTok promotional-content disclosure, and persisted account timezone without initializing either. Returns distinct revisions for preferences and timezone. No selected social-account policy or per-post settings are changed.",
+          "scope": "account:read"
+        },
+        {
+          "name": "update_publishing_preferences",
+          "description": "Update only requested account publishing-default fields at their saved publishing_revision. Requires fresh account:write consent and enabled rollout. Existing scheduled posts and target restrictions remain unchanged. Preserve request UUID and exact inputs; recover lost responses before retrying.",
+          "scope": "account:write"
+        },
+        {
+          "name": "initialize_account_timezone",
+          "description": "Initialize an unset persisted account timezone at its saved timezone_revision, matching the application's initialize-once policy. An already initialized timezone is preserved, even when another zone is supplied. This does not reschedule existing posts. Preserve request UUID/inputs for recovery.",
+          "scope": "account:write"
+        },
+        {
+          "name": "get_account_settings_request",
+          "description": "Recover an owned immutable accepted settings receipt without applying it again. Its state is historical: get_account_settings shows current values. Works while new writes are disabled.",
+          "scope": "account:read"
+        },
+        {
+          "name": "list_account_settings_requests",
+          "description": "Discover accepted account settings request UUIDs and timestamps after interruption. Reads only the connected account; never resubmits a change.",
+          "scope": "account:read"
+        }
+      ]
+    }
+  ]
+}

@@ -62,7 +62,7 @@ test("Free pricing consistently advertises the seven-day trial", () => {
   }
   assert.equal(free.capacityLabel, "2 free credits · once per account");
   assert.ok(free.features.includes("20 daily concepts for 7 days"));
-  assert.ok(free.features.includes("Unlimited Instagram scheduling during trial"));
+  assert.ok(free.features.includes("Download finished carousels and videos"));
 });
 
 test("Free allows one Instagram account, Starter three, and Growth five", () => {

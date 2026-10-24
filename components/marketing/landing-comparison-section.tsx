@@ -13,7 +13,7 @@ export function LandingComparisonSection() {
             Bring your content workflow into one place.
           </h2>
           <p className="mx-auto mt-3.5 max-w-lg text-sm leading-6 text-muted sm:text-base">
-            Get daily slideshow ideas for your business, then review and schedule your content. Create hook and text-led videos in Explore when you need them.
+            Get daily slideshow ideas for your business, then review and export the work you want to keep. Create hook and text-led videos in Explore when you need them.
           </p>
         </div>
 
@@ -30,7 +30,7 @@ export function LandingComparisonSection() {
                     Manual Workflow
                   </span>
                   <h3 className="mt-0.5 text-xl font-semibold text-foreground-strong">
-                    Build each post from scratch
+                    Build each asset from scratch
                   </h3>
                 </div>
                 <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-red-500">
@@ -50,7 +50,7 @@ export function LandingComparisonSection() {
                   <span className="text-muted">→</span>
                   <span className="rounded-control bg-card px-2 py-0.5 border border-border">Canva / Editing</span>
                   <span className="text-muted">→</span>
-                  <span className="rounded-control bg-card px-2 py-0.5 border border-border">Manual Post</span>
+                  <span className="rounded-control bg-card px-2 py-0.5 border border-border">Manual files</span>
                 </div>
               </div>
 
@@ -78,13 +78,13 @@ export function LandingComparisonSection() {
                   <span className="text-base leading-none select-none mt-0.5" aria-hidden="true">
                     😅
                   </span>
-                  <span>Juggling social account logins with manual scheduling routines</span>
+                  <span>Juggling separate tools for the script, the footage, and the captions</span>
                 </li>
               </ul>
             </div>
 
             <div className="mt-6 rounded-control border border-border bg-card-muted p-2.5 text-center text-[11px] font-medium text-muted">
-              😫 High creative burnout, slow turnaround, and inconsistent posting cadence
+              😫 High creative burnout, slow turnaround, and a scattered creative process
             </div>
           </div>
 
@@ -99,7 +99,7 @@ export function LandingComparisonSection() {
                     The UGC Pilot Flow
                   </span>
                   <h3 className="mt-0.5 text-xl font-semibold text-foreground-strong">
-                    Create, review, then schedule
+                    Create, review, then export
                   </h3>
                 </div>
                 <span className="rounded-full border border-primary/30 bg-card px-2.5 py-0.5 text-[11px] font-semibold text-primary">
@@ -117,7 +117,7 @@ export function LandingComparisonSection() {
                   <span className="text-primary font-bold">→</span>
                   <span className="rounded-control bg-primary text-primary-foreground px-2 py-0.5 font-semibold">Ready Formats</span>
                   <span className="text-primary font-bold">→</span>
-                  <span className="rounded-control bg-card px-2 py-0.5 border border-primary/30 text-primary font-semibold">Multi-Account Post</span>
+                  <span className="rounded-control bg-card px-2 py-0.5 border border-primary/30 text-primary font-semibold">Reviewed export</span>
                 </div>
               </div>
 
@@ -145,13 +145,13 @@ export function LandingComparisonSection() {
                   <span className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary mt-0.5">
                     <Check className="size-3" aria-hidden="true" />
                   </span>
-                  <span><strong>Supported connected accounts</strong> for scheduling after you review the finished post</span>
+                  <span><strong>Edit and export</strong> keep the saved revision in the same account as the studio</span>
                 </li>
               </ul>
             </div>
 
             <div className="mt-6 rounded-control border border-border bg-card-muted p-2.5 text-center text-[11px] font-semibold text-primary">
-              1 unified workspace from business analysis to published social posts
+              1 unified workspace from business analysis to a reviewed export
             </div>
           </div>
         </div>

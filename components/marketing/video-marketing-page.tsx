@@ -14,7 +14,7 @@ export function VideoMarketingPage({
   jsonLd: unknown;
   eyebrow: string;
   h1: string;
-  lede: string;
+  lede: ReactNode;
   children: ReactNode;
 }) {
   return (

@@ -96,6 +96,9 @@ export default function UgcVideoExamplesPage() {
         links={[
           { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "The two YouTube videos featured for the AI UGC video generator query." },
           { href: "/guides/how-to-create-ugc-videos-with-ai", title: "Create a UGC video", description: "Steps from a brief to a downloaded file, with one example embed." },
+          { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
+          { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Make a short video from a prompt and optional reference media." },
           { href: "/guides", title: "Founder guides", description: "Practical guides for the message and the review." },
         ]}

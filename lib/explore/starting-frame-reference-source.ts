@@ -2,7 +2,8 @@ import "server-only";
 import { getExploreWallTextVideoAssetsForImport } from "./wall-text-video-library.ts";
 import { getExplorePairedReferences } from "../../worker/src/lib/explore-reference-soundtrack.ts";
 import talkingSources from "./talking-head-source-manifest.json" with { type: "json" };
-import creatorSources from "./creator-accounts.json" with { type: "json" };
+import { readCreatorPrivateJson, type CreatorCatalog } from "./creator-private-files.ts";
+const creatorSources = readCreatorPrivateJson<CreatorCatalog>("creator-accounts.json", {version: 1, accounts: []});
 
 /** Server-owned identities only. Never turn a browser URL into an input path. */
 export function getAdditionalStartingFrameSources() {

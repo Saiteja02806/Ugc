@@ -1,5 +1,15 @@
 # Carousel System Context
 
+## 2026-10-25 Manual Explore slideshow UX deployed
+
+- Website/MCP c32a7893 deploy the manual slideshow changes below and explicit
+  24-hour scheduling. All eight worker targets use the matching worker tree at
+  45bf657b. Automated Carousel sourcing and planner behavior are unchanged.
+- Regression/build/local browser checks and live public-page checks pass;
+  authenticated live workflow acceptance was declined in favor of public checks.
+  A separate existing slideshow planner clarification gap remains open. Evidence
+  and limits: docs/combined-release-2026-10-25.md and EXPLORE_CONTEXT.md.
+
 ## 2026-10-25 Manual Explore slideshow UX (local)
 
 - Explore slideshow reference selection adds Select all; reference uploads and

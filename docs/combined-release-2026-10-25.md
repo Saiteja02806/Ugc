@@ -42,8 +42,29 @@ merged from origin/main through f20a4f4f; none are removed.
 - Website flags enable stored frames and automatic text on the new deployment.
   Existing text Remix remains enabled. MCP's independent environment is retained;
   it does not serve Explore UI or the website's video admission route.
-- Final deployment identities, aliases and worker receipts will be recorded
-  after promotion. Do not infer promotion from this preparation record.
+- Website and MCP promoted successfully from
+  c32a7893495e3a6ba92d3f5ec191f73c4cd024c6. Verified website deployment
+  dpl_HegUvs5SKkZALLictfcb85EchKFd on apex/www and MCP deployment
+  dpl_FZU5Wpav5wy4XckaTLnpV8KRRrLz on mcp.getugcpilot.com. Both are READY.
+  All eight worker targets identify the pinned image above; all six services
+  have a single verified revision at 100% traffic. Worker source matches the
+  app commit's worker tree exactly.
+- Independent storage verification reports 83 ready, zero missing. Three cold
+  production-bucket reads with source download and decode forbidden pass exact
+  hash checks; local-machine network timings are 4.2–5.2 seconds, cached reads
+  under 1 ms. These are not authenticated hosted route latency measurements.
+  Bucket metadata contains no automatic deletion lifecycle rule.
+- Live public browser verification passes 40 layouts over four pages, five
+  widths and two themes, clipboard/setup interactions, and zero page errors.
+  Desktop/mobile screenshots visually checked. Twenty real-domain HTTP checks
+  pass, including all seven newer articles, exact deployment identity, MCP
+  health and anonymous denial on the changed APIs using supported methods.
+- Receipts: .tmp/release-20261025/vercel-verify.json,
+  workers-verification.json, generation-worker-acceptance.json,
+  production-flags.json, frames-verify.log, storage-acceptance.json and
+  public-smoke.json; public browser receipt:
+  .tmp/marketing-layout-browser-live/receipt.json. Final documentation-only
+  commit does not change the deployed runtime source.
 
 ## Scope exclusions and acceptance limits
 
@@ -59,3 +80,9 @@ The production browser redirects Explore to sign-in. The user explicitly chooses
 checks that do not require sign-in. Public live acceptance is therefore separate
 from local authenticated fixtures. No signed-in editing, live paid generation,
 or real social scheduling/publishing is claimed by this release report.
+
+A concurrent read-only investigation records an existing slideshow planner
+clarification issue in docs/slideshow-planner-recurrence-2026-10-25.md: the saved
+business snapshot is omitted from planner input, and person-photo mapping can
+ask unnecessary questions. This release does not modify that planner path and
+does not claim the issue is fixed. Its investigation document is included.

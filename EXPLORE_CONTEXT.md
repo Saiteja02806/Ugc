@@ -1,5 +1,38 @@
 # Explore context and UI decision record
 
+## 2026-10-25 Combined release deployed
+
+- Website/MCP c32a7893 and all eight worker targets (matching worker tree at
+  45bf657b) are deployed. Includes the local changes below, saved-caption and
+  scheduling fixes, and explicit 24-hour time. Migration 20261025114510 is applied.
+- All 83 ordinary Hook frames are stored and independently verified. Website
+  stored-frame and automatic-text server/client flags are enabled. No MP4 decode
+  occurs in the stored-only path. Cold storage-network latency still exists.
+- Local: 1,168 combined tests, 104 worker tests, 89 additional schedule/migration
+  checks, production builds and caption/scheduling browser fixtures pass. Live:
+  40 public layouts and 20 HTTP checks pass. User chose checks without sign-in;
+  signed-in generation, editing and real scheduling are not accepted by these
+  public tests. The planner recurrence below remains an open separate issue.
+- Full identities, exclusions and evidence: docs/combined-release-2026-10-25.md.
+
+## 2026-10-25 Slideshow planner clarification recurrence (production read-only)
+
+- The new screenshot matches production plan `29708ff4-e4fc-470d-bb1d-3aa1ce57214a`
+  at 17:50:24 IST, following two equivalent attempts. Six source targets and two
+  uploads reach planning; zero output slides are planned. Neither saved business
+  context field is present. The 23 October handoff defect below remains in code:
+  the API loads the server-owned profile but passes only named image context to
+  the planner. Its blanket business-copy prohibition compounds the missing facts.
+- A second clarification unnecessarily requests Upload B/C primary-face mapping.
+  Per-slide execution already supports both uploads with role person; no required
+  primary-face field exists. Existing tests prove compiled support, not that the
+  live planner will choose the expected assignments from conversational text.
+- Clarifications return 422 before image credit reservation/dispatch. Completed
+  plan status means a stored planning response, not completed generated slides.
+  Do not diagnose face-model quality or failed image uploads from this response.
+- Investigation only: no runtime correction, paid generation or deployment.
+  Proposed correction and exact evidence: docs/slideshow-planner-recurrence-2026-10-25.md.
+
 ## 2026-10-25 Explicit 24-hour scheduling time (local)
 
 - User requests 24-hour display instead of AM/PM. The shared workflow field

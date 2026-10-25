@@ -334,7 +334,7 @@ export async function handleAIStudioImageGeneration(request: Request) {
         if (prompt.length > 24000) return NextResponse.json({ ok: false, message: "Use up to 24,000 characters so every slide's instructions can be preserved." }, { status: 400 });
         const missing = getMissingRuntimeEnv();
         if (missing.length) return NextResponse.json({ ok: false, message: "Image generation is not configured yet. Your draft is preserved." }, { status: 501 });
-        const planned = await planSlideshowRequest(user.uid, baseIdempotencyKey, named);
+        const planned = await planSlideshowRequest(user.uid, baseIdempotencyKey, named, slideshowBusinessContext!);
         if (planned.clarifications.length) return NextResponse.json({ ok: false, message: planned.clarifications.join(" "), clarifications: planned.clarifications }, { status: 422 });
         plannedOutputs = named.targetIds.map((_, index) => compileSlideshowOutputPlan(named, planned, index));
         for (const output of plannedOutputs) {

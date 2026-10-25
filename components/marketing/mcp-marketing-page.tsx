@@ -10,15 +10,15 @@ import {
   codexConfigToml,
   codexLoginCommands,
   connectionCheckPrompt,
-  MCP_TOOL_COUNT,
   mcpEndpoint,
   mcpIssuer,
   mcpOptionalAccountScope,
   mcpPages,
   mcpSetupScopes,
   mcpSoftwareJsonLd,
-  mcpToolCatalog,
   mcpWorkflows,
+  publicMcpToolCatalog,
+  publicMcpToolCount,
   type McpPageKey,
 } from "@/lib/marketing/mcp-public";
 
@@ -27,7 +27,7 @@ const relatedLinks = [
   { href: "/mcp/claude", title: "Claude setup", description: "Custom connector steps for Claude on the web and desktop." },
   { href: "/mcp/codex", title: "Codex setup", description: "The ~/.codex/config.toml block and login command." },
   { href: "/connect-ai", title: "Connect your AI", description: "Choose Claude, Codex, ChatGPT, or Claude Code." },
-  { href: "/docs/mcp-tools", title: "Tool reference", description: `All ${MCP_TOOL_COUNT} tools, copied from the registry.` },
+  { href: "/docs/mcp-tools", title: "Tool reference", description: `All ${publicMcpToolCount} tools, copied from the registry.` },
   { href: "/pricing", title: "Pricing", description: "Trial credits and the Starter and Growth plans." },
   { href: "/guides", title: "Founder guides", description: "Message, format, and review routines for the product." },
 ];
@@ -76,7 +76,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             </p>
             <dl className="mt-8 grid grid-cols-3 gap-3">
               {[
-                [String(MCP_TOOL_COUNT), "live tools"],
+                [String(publicMcpToolCount), "live tools"],
                 ["OAuth", "PKCE sign-in"],
                 ["HTTP", "hosted server"],
               ].map(([value, label]) => (
@@ -195,7 +195,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             <div className="max-w-2xl">
               <p className="text-sm font-semibold text-primary">Tool groups</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
-                {MCP_TOOL_COUNT} tools, grouped by the job they do.
+                {publicMcpToolCount} tools, grouped by the job they do.
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted">
                 Names come from the registered server catalog. Some writes stay behind a live capability check. Open the reference for the description and scope of every tool.
@@ -206,7 +206,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             </Link>
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mcpToolCatalog.groups.map((group) => (
+            {publicMcpToolCatalog.groups.map((group) => (
               <Link
                 key={group.id}
                 href={`/docs/mcp-tools#${group.id}`}

@@ -8,6 +8,6 @@ export default function OpenGraphImage() {
   return marketingOgImage({
     kicker: "UGC Pilot MCP",
     title: "UGC video MCP server for your agent.",
-    subtitle: "79 tools. OAuth sign-in. One hosted URL for Claude, Codex, and ChatGPT.",
+    subtitle: "78 tools. OAuth sign-in. One hosted URL for Claude, Codex, and ChatGPT.",
   });
 }

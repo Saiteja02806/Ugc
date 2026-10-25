@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BrandInstagramExampleAccounts } from "@/components/marketing/brand-instagram-profile-links";
 import { YouTubeCard } from "@/components/marketing/youtube-card";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import { articleJsonLd, brandYouTubeVideos, publicOrigin, videoObjectJsonLd } from "@/lib/marketing/brand-videos";
@@ -53,6 +54,9 @@ export default function FounderVideoCaseStudyPage() {
             <p>The videos are brand files from UGC Pilot, uploaded to the owner&apos;s YouTube channel @Teja.Chundu. The first Short is the one the owner asked us to feature. The second is a horizontal video whose public title is about a founders&apos; marketing problem and a tool.</p>
             <p>The repeatable part is the studio workflow, not a hidden prompt. Start with one audience and one message, generate a short creator-style video, watch it, and download the version you approve. A generated clip can invent a product screen, so a real recording still has to carry any claim about what the product does.</p>
             <p>The same channel has a third Short, and there are Instagram reels and TikTok videos on accounts named Clara. Those files are collected on the examples page. Avatar names the team uses include Mira, Julia, and Clara. The YouTube titles do not name which avatar is in each file, so this page does not assign one.</p>
+            <p>
+              <BrandInstagramExampleAccounts />
+            </p>
           </div>
         </div>
       </section>

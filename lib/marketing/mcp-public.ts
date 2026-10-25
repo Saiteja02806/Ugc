@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { brandOrganizationSameAs } from "./brand-videos";
 import { ogSize } from "./og-card";
 import catalog from "./mcp-tool-catalog.json";
 
@@ -114,7 +115,7 @@ const sharedFaqs: McpFaq[] = [
   },
   {
     question: "How many tools does the server expose?",
-    answer: `The reviewed registry contains ${MCP_TOOL_COUNT} tools, grouped by the job they perform. A client can keep an older cached list until you start a new conversation. The public tool reference lists ${publicMcpToolCount} of them, with each name, description, and OAuth scope.`,
+    answer: `The public tool reference lists ${publicMcpToolCount} tools, grouped by the job they perform, with each name, description, and OAuth scope. A client can keep an older cached list until you start a new conversation.`,
   },
   {
     question: "What does a connected agent do with my account?",
@@ -128,7 +129,7 @@ export const mcpPages = {
     eyebrow: "MCP server",
     title: "UGC video MCP server",
     h1: "UGC video MCP server for Claude, Codex, and ChatGPT",
-    description: "Connect Claude, Codex, or ChatGPT to the hosted UGC Pilot MCP server. OAuth sign-in, 79 tools, and copy-paste setup for UGC images, short video, speech, and edits.",
+    description: `Connect Claude, Codex, or ChatGPT to the hosted UGC Pilot MCP server. OAuth sign-in, ${publicMcpToolCount} tools, and copy-paste setup for UGC images, short video, speech, and edits.`,
     lede: "Point your agent at one Streamable HTTP server, approve scoped access for your UGC Pilot account, and ask for the image, video, or edit in the chat.",
     faqs: [
       ...sharedFaqs,
@@ -147,7 +148,7 @@ export const mcpPages = {
     eyebrow: "Claude connector",
     title: "UGC video MCP server for Claude",
     h1: "UGC video MCP server for Claude",
-    description: "Add the UGC Pilot MCP server in Claude with a custom connector. OAuth sign-in, the hosted server URL, and 79 tools for UGC video, images, speech, and edits.",
+    description: `Add the UGC Pilot MCP server in Claude with a custom connector. OAuth sign-in, the hosted server URL, and ${publicMcpToolCount} tools for UGC video, images, speech, and edits.`,
     lede: "Claude connects to the hosted server from Customize → Connectors. You sign in to UGC Pilot, approve the scopes, and enable the connector in the conversation.",
     faqs: [
       ...sharedFaqs,
@@ -166,7 +167,7 @@ export const mcpPages = {
     eyebrow: "Codex config",
     title: "UGC video MCP server for Codex",
     h1: "UGC video MCP server for Codex",
-    description: "Add the UGC Pilot MCP server to Codex in ~/.codex/config.toml. Streamable HTTP, OAuth login, and 79 tools for UGC video, images, speech, and edits.",
+    description: `Add the UGC Pilot MCP server to Codex in ~/.codex/config.toml. Streamable HTTP, OAuth login, and ${publicMcpToolCount} tools for UGC video, images, speech, and edits.`,
     lede: "Codex stores the server in ~/.codex/config.toml, then opens a browser so you can sign in to UGC Pilot and approve the scopes.",
     faqs: [
       ...sharedFaqs,
@@ -238,7 +239,7 @@ export function mcpSoftwareJsonLd(path: string, description: string, faqs: reado
         url: new URL(path, publicOrigin).href,
         installUrl: `${publicOrigin}/connect-ai`,
         description,
-        featureList: `${MCP_TOOL_COUNT} MCP tools for account reads, image and video generation, speech, edit drafts, and exports`,
+        featureList: `${publicMcpToolCount} MCP tools for account reads, image and video generation, speech, edit drafts, and exports`,
         provider: {
           "@type": "Organization",
           name: "UGC Pilot",
@@ -260,6 +261,7 @@ export function homepageJsonLd(description: string) {
         name: "UGC Pilot",
         url: publicOrigin,
         logo: `${publicOrigin}/brand/ugc-pilot-logo.png`,
+        sameAs: [...brandOrganizationSameAs],
       },
       {
         "@type": "WebSite",

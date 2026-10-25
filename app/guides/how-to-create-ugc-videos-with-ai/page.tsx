@@ -99,6 +99,13 @@ export default function HowToCreateUgcVideosPage() {
           { href: "/mcp/claude", title: "UGC video MCP server for Claude", description: "Custom connector steps, OAuth, and the hosted server URL." },
           { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "Two videos from the same brand series, with the public YouTube titles." },
           { href: "/blog/ugc-video-generator-examples", title: "More examples", description: "The third Short, Instagram reels, and Clara TikTok videos." },
+          { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
+          { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
+          { href: "/blog/ugc-videos-with-codex-mcp", title: "UGC videos with Codex", description: "Connect the MCP server and make a UGC-style video from the terminal." },
+          { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
+          { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },
+          { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to choose a UGC video maker", description: "A 10-point checklist for output, editing, voice, pricing, and limits." },
           { href: "/guides", title: "All founder guides", description: "The rest of the guide library." },
         ]}
       />

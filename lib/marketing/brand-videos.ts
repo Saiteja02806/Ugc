@@ -70,6 +70,23 @@ export function tiktokVideoUrl(video: (typeof tiktokVideos)[number]) {
   return `https://www.tiktok.com/${video.handle}/video/${video.id}`;
 }
 
+/** Founder profile linked from the homepage. */
+export const brandXProfileUrl = "https://x.com/Teja_chundu";
+
+export const brandInstagramProfileUrls = [
+  "https://www.instagram.com/mira_handles/",
+  "https://www.instagram.com/juliarose.daily/",
+  "https://www.instagram.com/clara_iamm/",
+] as const;
+
+/** Profiles linked from the homepage Organization node and the README. */
+export const brandOrganizationSameAs = [
+  brandXProfileUrl,
+  ...new Set(Object.values(brandYouTubeVideos).map((video) => video.authorUrl)),
+  ...brandInstagramProfileUrls,
+  ...new Set(tiktokVideos.map((video) => `https://www.tiktok.com/${video.handle}`)),
+];
+
 export function videoObjectJsonLd(video: BrandYouTubeVideo) {
   return {
     "@type": "VideoObject",
@@ -82,7 +99,7 @@ export function videoObjectJsonLd(video: BrandYouTubeVideo) {
   };
 }
 
-export function articleJsonLd(input: { path: string; headline: string; description: string; imagePath: string }) {
+export function articleJsonLd(input: { path: string; headline: string; description: string; imagePath: string; datePublished?: string }) {
   const url = new URL(input.path, publicOrigin).href;
   return {
     "@type": "Article",
@@ -90,6 +107,7 @@ export function articleJsonLd(input: { path: string; headline: string; descripti
     description: input.description,
     mainEntityOfPage: url,
     image: new URL(input.imagePath, publicOrigin).href,
+    ...(input.datePublished ? { datePublished: input.datePublished } : {}),
     author: {
       "@type": "Organization",
       name: "UGC Pilot",

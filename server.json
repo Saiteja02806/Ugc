@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.getugcpilot/ugc-pilot",
+  "description": "AI UGC video generator over MCP: create and edit UGC-style marketing videos from Claude or Codex.",
+  "version": "1.0.0",
+  "websiteUrl": "https://getugcpilot.com",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.getugcpilot.com/mcp"
+    }
+  ]
+}

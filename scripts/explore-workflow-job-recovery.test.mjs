@@ -87,7 +87,7 @@ function harness(format, { saved = false, listed = true, history = "failure", di
   let activeOptions, individualOptions = [];
   const query = {
     useQueryClient: () => queryClient,
-    useQuery(options) { activeOptions = options; return { data: discovery === "pending" ? undefined : listedJobs,
+    useQuery(options) { if (options.queryKey[0] === "automatic-hook-text-readiness") return { data: undefined }; activeOptions = options; return { data: discovery === "pending" ? undefined : listedJobs,
       isPending: discovery === "pending", isError: discovery === "failure",
       isFetching: discovery === "pending" || discovery === "cached", isFetchedAfterMount: discovery !== "pending" && discovery !== "cached" }; },
     useQueries({ queries }) { individualOptions = queries;

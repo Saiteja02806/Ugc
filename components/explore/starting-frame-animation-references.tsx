@@ -81,7 +81,7 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
       heading="Starting frame" selection={null} imageSelections={[]} imagePurpose="general" videoInputEnabled={false} audioInputEnabled={false}
       active={active} ownerId={ownerId} preview={preview} disabled={disabled} onChange={() => {}} onPendingChange={onPendingChange} onErrorChange={onErrorChange} />
     <div className={styles.faces}>
-      <FormatGenerationReferences heading="Face references · Optional" inlineImagePicker imagePresentation="person-strip" imagePurpose="person" imagePickerDisabled={!limit}
+      <FormatGenerationReferences heading="Your photos" inlineImagePicker imagePresentation="person-strip" imagePurpose="person" imagePickerDisabled={!limit}
         selection={photos[0] ?? null} imageSelections={photos} onImagesChange={onPhotosChange} maxImages={limit || hookStartingFrameFaceReferenceLimit("google_omni")}
         active={active} ownerId={ownerId} preview={preview} disabled={disabled} videoInputEnabled={false} audioInputEnabled={false}
         influencerLibrary={{ images: historyImages, loading: !preview && history.isPending, error: history.error, selectionError, hasMore: history.hasNextPage,

@@ -41,7 +41,14 @@ export async function handleReferenceText(request: Request) {
     const enabled = process.env.EXPLORE_TEXT_REMIX_ENABLED === "true"
       && Boolean(process.env.OPENAI_API_KEY?.trim())
       && Boolean((process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+    let automaticTextRemaining: number | undefined;
+    if (url.searchParams.get("automatic") === "true" && enabled) {
+      const allowance = await client().from("explore_text_remixes").select("request_key", { count: "exact", head: true }).eq("user_id", user.uid).gt("created_at", new Date(Date.now() - 86400000).toISOString());
+      if (allowance.error) return json({ ok: false, message: "Could not check your text allowance. Retry or turn off automatic text." }, 503);
+      automaticTextRemaining = Math.max(0, 20 - (allowance.count ?? 20));
+    }
     return json({ ok: true, source: source ? hookRemixSource(source) : null, enabled,
+      ...(url.searchParams.get("automatic") === "true" ? { automaticTextEnabled: enabled && process.env.EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED === "true", automaticTextRemaining } : {}),
       businessContext: { name: profile?.context.businessName ?? null, ready: Boolean(profile?.context.businessName && profile.context.productSummary) } });
   } catch (error) { return errorResponse(error); }
 }

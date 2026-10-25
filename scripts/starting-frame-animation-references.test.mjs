@@ -60,7 +60,7 @@ test("scene history and optional faces have independent selectors and removals",
   assert.equal(first.faces.onSelectStartingFrame, undefined);
   assert.equal(first.faces.startingFrame, undefined);
   assert.equal(first.faces.inlineImagePicker, true);
-  assert.equal(first.faces.heading, "Face references · Optional");
+  assert.equal(first.faces.heading, "Your photos");
   assert.equal(await first.faces.influencerLibrary.onSelect({ mediaAssetId: "face-a" }), true);
   assert.equal(h.clearedFrames(), 0);
   assert.deepEqual(Array.from(h.changes.at(-1), value => value.asset.id), ["face-a"]);

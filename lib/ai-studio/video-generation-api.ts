@@ -54,6 +54,7 @@ import {
 } from "@/lib/billing/subscription-db";
 
 type GenerateVideoRequest = {
+  automaticHookText?: unknown;
   exploreFormat?: unknown;
   aspectRatio?: unknown;
   avatarImageUrl?: unknown;
@@ -622,12 +623,21 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
   const baseIdempotencyKey = cleanIdempotencyKey(
     request.headers.get("Idempotency-Key") ?? body?.idempotencyKey,
   );
+  let automaticHookText;
+  try {
+    automaticHookText = body?.automaticHookText === undefined || body.automaticHookText === false ? null : await (await import("@/lib/explore/automatic-hook-text-plan")).prepareAutomaticHookText({ enabled: body?.automaticHookText, format: body?.exploreFormat,
+      referenceId: startingFrame?.referenceId ?? body?.referenceId, owner: user, requestKey: baseIdempotencyKey,
+      firstJobKey: options ? `explore:${baseIdempotencyKey}:1` : getChildIdempotencyKey(baseIdempotencyKey, 0, quantity) });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Could not prepare automatic text. No video was started." }, { status: 409 });
+  }
   if (options) {
     return options.startBatch({
       amountPerVideo: getGenerationCreditCost("video", durationSeconds),
       requestKey: baseIdempotencyKey,
       userId: user.uid,
       inputs: Array.from({ length: quantity }, (_, index) => ({
+        ...(automaticHookText ? { automaticHookText: automaticHookText as unknown as Json } : {}),
         aspectRatio, avatarImageUrl, referenceImageUrls, referenceAudioUrls,
         ...(imageRoles ? { personReference: imageRoles } : {}),
         ...(soundWorkflow ? { generateAudio, generationIntent: inputInstructions.intent } : {}),
@@ -673,6 +683,7 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
       const backgroundJob = await createAndDispatchBackgroundJob({
         idempotencyKey,
         input: {
+          ...(automaticHookText ? { automaticHookText: automaticHookText as unknown as Json } : {}),
           aspectRatio,
           ...(body?.exploreFormat === "hook" || body?.exploreFormat === "wall_text" || body?.exploreFormat === "slideshow" ? { exploreFormat: body.exploreFormat } : {}),
           avatarImageUrl,

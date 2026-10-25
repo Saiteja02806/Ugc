@@ -10,6 +10,7 @@ import * as promptPreviews from "../lib/explore/hook-keyframe-prompt-preview.ts"
 import * as keyframeClient from "../lib/explore/hook-keyframe-client.ts";
 import * as variationClient from "../lib/explore/hook-keyframe-variations.ts";
 import * as statusPolling from "../lib/explore/hook-starting-image-polling.ts";
+import * as recentPhotos from "../lib/explore/recent-person-photos.ts";
 import * as curatedFrames from "../worker/src/lib/hook-curated-frames.ts";
 
 const draftId = "00000000-0000-4000-8000-000000000001";
@@ -22,7 +23,7 @@ const photo = id => ({ kind: "image", asset: { id, url: `https://media.example.t
   status: "ready", collection: "image", sourceType: "generated_image", mimeType: "image/png", metadata: {} } });
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
 function text(tree) { return Array.isArray(tree) ? tree.map(text).join(" ") : tree && typeof tree === "object" ? text(tree.props?.children) : typeof tree === "string" || typeof tree === "number" ? String(tree) : ""; }
-function harness({ presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready" } = {}) {
+function harness({ presentation = "dialog", preparationFormat = "hook", frameWidth = 720, frameHeight = 1280, raw = null, sourceHash = sha, ownerId = "owner", frameError = null, submitError = false, failureAt = 1, rejectionAt = null, token = "fixture-token", previewRuntime, motionBlocked = false, previewState = "ready", resolvePhoto } = {}) {
   const stored = new Map(), effects = [], slots = [], queries = [], fetched = [], urls = [], revoked = [], errors = [];
   let cursor = 0, closed = 0, uuidIndex = 43;
   const jobs = new Map();
@@ -35,6 +36,7 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
   const element = (type, props) => typeof type === "function" ? type(props) : { type, props };
   const imports = {
     "@/worker/src/lib/hook-curated-frames": curatedFrames,
+    "@/lib/explore/recent-person-photos": recentPhotos,
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
     react: {
       useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial;
@@ -60,7 +62,7 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
       },
       useInfiniteQuery: options => { queries.push(options); return { data: historyData, isPending: false, error: null, refetch() {}, hasNextPage: false }; },
     },
-    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async id => { fetched.push(id); return { ...photo(id).asset, collection: "influencer" }; } },
+    "@/lib/ai-studio/media-client": { fetchAIStudioMediaAsset: async id => { fetched.push(id); return resolvePhoto ? resolvePhoto(id) : { ...photo(id).asset, collection: "influencer" }; } },
     "@/lib/characters/history": { mergeCharacterHistoryPages: pages => pages.flatMap(page => page.images) },
     "@/lib/firebase/auth": { getCurrentUserIdToken: async () => typeof token === "function" ? token() : token },
     "@/lib/http/read-deadline": { withReadDeadline: fn => fn(new AbortController().signal) },
@@ -113,6 +115,62 @@ function harness({ presentation = "dialog", preparationFormat = "hook", frameWid
 function find(tree, type) { return nodes(tree).find(node => node.type === type); }
 function button(tree, label) { return nodes(tree).find(node => node.type === "Button" && (node.props?.["aria-label"] === label || text(node).trim() === label)); }
 
+test("fresh recreation resolves remembered photos once without submitting generation", async () => {
+  const first = harness(); first.render(); await first.settle();
+  find(first.render(), "FormatGenerationReferences").props.onImagesChange([photo(photoId), photo(secondId)]);
+  const memoryKey = recentPhotos.recentPersonPhotosKey("owner");
+  const next = harness(); next.stored.set(memoryKey, first.stored.get(memoryKey));
+  next.render(); await next.settle(); let tree = next.render();
+  assert.deepEqual(Array.from(find(tree, "FormatGenerationReferences").props.imageSelections, x => x.asset.id), [photoId, secondId]);
+  assert.deepEqual(next.fetched, [photoId, secondId]); assert.equal(next.submissions.length, 0);
+  find(tree, "FormatGenerationReferences").props.onImagesChange([]); tree = next.render();
+  assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections.length, 0);
+  assert.deepEqual(recentPhotos.readRecentPersonPhotos(next.stored.get(memoryKey), "owner"), []);
+  const reopened = harness(); reopened.restoreStore(next); reopened.render(); await reopened.settle();
+  assert.equal(find(reopened.render(), "FormatGenerationReferences").props.imageSelections.length, 0);
+  assert.deepEqual(reopened.fetched, []);
+});
+
+test("saved drafts including empty selections win and do not change the most recent preference", async () => {
+  const memoryKey = recentPhotos.recentPersonPhotosKey("owner");
+  const remembered = recentPhotos.serializeRecentPersonPhotos("owner", [secondId]);
+  for (const ids of [[], [photoId]]) {
+    const draft = drafts.updateHookKeyframeDraft(drafts.createHookKeyframeDraft(scope), { imageAssetIds: ids });
+    const h = harness({ raw: drafts.serializeHookKeyframeDraft(draft) }); h.stored.set(memoryKey, remembered);
+    h.render(); await h.settle();
+    assert.deepEqual(Array.from(find(h.render(), "FormatGenerationReferences").props.imageSelections, x => x.asset.id), ids);
+    assert.equal(h.stored.get(memoryKey), remembered);
+  }
+});
+
+test("account changes never reuse another account's photos", async () => {
+  const h = harness({ ownerId: "other" });
+  h.stored.set(recentPhotos.recentPersonPhotosKey("owner"), recentPhotos.serializeRecentPersonPhotos("owner", [photoId]));
+  h.render(); await h.settle();
+  assert.equal(find(h.render(), "FormatGenerationReferences").props.imageSelections.length, 0);
+  assert.deepEqual(h.fetched, []);
+});
+
+test("missing remembered photos discard the whole default and allow choosing again", async () => {
+  const h = harness({ resolvePhoto: async id => { if (id === secondId) throw Error("Deleted"); return photo(id).asset; } });
+  h.stored.set(recentPhotos.recentPersonPhotosKey("owner"), recentPhotos.serializeRecentPersonPhotos("owner", [photoId, secondId]));
+  h.render(); await h.settle(); const tree = h.render();
+  assert.equal(find(tree, "FormatGenerationReferences").props.imageSelections.length, 0);
+  assert.match(text(tree), /previous photos could not be loaded/);
+  assert.equal(find(tree, "FormatGenerationReferences").props.disabled, false);
+});
+
+test("photo edits are gated until default resolution finishes so late defaults cannot overwrite choices", async () => {
+  let resolve;
+  const h = harness({ resolvePhoto: () => new Promise(done => { resolve = done; }) });
+  h.stored.set(recentPhotos.recentPersonPhotosKey("owner"), recentPhotos.serializeRecentPersonPhotos("owner", [photoId]));
+  h.render(); await h.settle(); let tree = h.render();
+  assert.equal(find(tree, "FormatGenerationReferences").props.disabled, true);
+  resolve(photo(photoId).asset); await h.settle(); tree = h.render();
+  find(tree, "FormatGenerationReferences").props.onImagesChange([photo(secondId)]); tree = h.render(); await h.settle();
+  assert.deepEqual(Array.from(find(h.render(), "FormatGenerationReferences").props.imageSelections, x => x.asset.id), [secondId]);
+});
+
 test("Talking Head and Wall reuse approval controls with workflow-specific guidance and shape admission", async () => {
   for (const preparationFormat of ["talking_head", "wall_text"]) {
     const h = harness({ presentation: "recreation", preparationFormat }); h.render(); await h.settle();
@@ -143,7 +201,7 @@ test("source-only local preview cannot submit an image or create a fake generati
 
 test("opening preparation shows the actual frame and separate inputs without automatically submitting generation", async () => {
   const h = harness(); h.render(); await h.settle(); const tree = h.render();
-  assert.match(text(tree), /Create your starting frame/); assert.match(text(tree), /Source frame/); assert.match(text(tree), /Face reference/);
+  assert.match(text(tree), /Create your starting frame/); assert.match(text(tree), /Source frame/); assert.match(text(tree), /Your photos/);
   assert.equal(nodes(tree).some(node => node.props?.role === "switch"), false);
   assert.doesNotMatch(text(tree), /Video settings|Review animation instructions/);
   assert.equal(button(tree, "Generate starting image").props.disabled, true);
@@ -538,7 +596,7 @@ test("Recreate reserves source, person and result columns before generation with
   const person = nodes(tree).find(node => node.props?.["data-recreation-step"] === "person");
   const result = nodes(tree).find(node => node.props?.["data-recreation-step"] === "result");
   assert.ok(source && person && result);
-  assert.match(text(source), /1 Source frame/); assert.match(text(person), /2 Face reference/); assert.match(text(result), /3 Your starting frame/);
+  assert.match(text(source), /1 Source frame/); assert.match(text(person), /2 Your photos/); assert.match(text(result), /3 Your starting frame/);
   assert.match(text(result), /will appear here/);
   assert.equal(button(tree, "Use selected frame"), undefined);
   assert.ok(button(tree, "Generate starting image"));

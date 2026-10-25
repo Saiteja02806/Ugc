@@ -1,4 +1,6 @@
 import { logger } from "../logger.js";
+import { automaticHookEdit, type AutomaticHookTextPlan } from "../lib/automatic-hook-text.js";
+import { generateAutomaticHookText } from "../lib/automatic-hook-text-worker.js";
 import { getGenerationReferenceSoundtrack, isSilentExploreReference } from "../lib/explore-reference-soundtrack.js";
 import { applyGeneratedReferenceAudio, silenceGeneratedVideo } from "../lib/explore-generated-reference-audio.js";
 import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
@@ -89,6 +91,35 @@ const MAX_PRODUCT_NAME_LENGTH = 120;
 const MAX_PRODUCT_DESCRIPTION_LENGTH = 500;
 
 export async function runGenerateHookVideoJob(
+  job: BackgroundJobRow,
+  context: WorkerJobContext,
+): Promise<WorkerJobOutput> {
+  // Validate the video input before any text provider call. Only admitted jobs carry this plan.
+  const input = getInput(job);
+  const raw = isJsonObject(job.input_json) ? job.input_json.automaticHookText : null;
+  if (!raw) return runGenerateHookVideo(job, context);
+  const plan = raw as unknown as AutomaticHookTextPlan;
+  if (job.user_id !== input.userId || plan.version !== 1 || plan.source?.format !== "hook" || plan.source.status !== "ready" ||
+      !isJsonObject(job.input_json) || job.input_json.exploreFormat !== "hook" || plan.source.referenceId !== job.input_json.referenceId)
+    throw new ProviderRequestNotSubmittedError("The automatic Hook text source could not be verified.");
+  const text = generateAutomaticHookText(job.user_id!, plan).catch(() => null);
+  try {
+    const output = await runGenerateHookVideo(job, context);
+    const copy = await text;
+    try {
+      if (!copy) throw new Error("Automatic text needs review.");
+      const editing = automaticHookEdit(copy, plan, Number(output.durationSeconds), String(output.ratio));
+      return { ...output, automaticHookText: { version: 1, requestKey: plan.requestKey, status: "ready", editing: editing as unknown as Json } };
+    } catch {
+      return { ...output, automaticHookText: { version: 1, requestKey: plan.requestKey, status: "needs_review" } };
+    }
+  } finally {
+    // Keep the durable text receipt alive even when the video provider asks the job to poll again.
+    await text;
+  }
+}
+
+async function runGenerateHookVideo(
   job: BackgroundJobRow,
   context: WorkerJobContext,
 ): Promise<WorkerJobOutput> {

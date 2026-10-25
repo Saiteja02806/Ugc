@@ -6,6 +6,8 @@ import { parseWorkflowConnectedAccounts, workflowAccountBlock } from "./workflow
 import { workflowScheduleTargets, type WorkflowScheduleDraft } from "./workflow-scheduling-draft.ts";
 import type { ScheduleCreateSourceInput } from "../scheduling/types";
 import type { TikTokPublishCapabilities } from "../social/tiktok-publishing.ts";
+import { isScheduleTimeout } from "./workflow-schedule-transport.ts";
+import { ScheduleRequestError } from "./workflow-schedule-client.ts";
 
 /** Resolve the existing simple form on the explicit Schedule post click only. */
 export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, title, load }: {
@@ -17,9 +19,18 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
   if (draft.caption.length > 5000) throw new Error("Keep your post caption within 5,000 characters.");
   const scheduledFor = resolveZonedDateTime({ date: draft.date, time: draft.time, timeZone: timezone });
   const needsPreferences = targets.some(target => target.platform !== "instagram");
+  async function readSetting(url: string, label: string) {
+    try { return await load(url); }
+    catch (error) {
+      if (isScheduleTimeout(error) || error instanceof ScheduleRequestError && error.code === "schedule_request_timeout") {
+        throw new Error(`${label} took too long to load. Your post has not been submitted. Your choices are kept; try Schedule post again.`);
+      }
+      throw error;
+    }
+  }
   const [rawConfig, rawAccounts, rawPreferences] = await Promise.all([
-    load("/api/schedules?configOnly=1"), load("/api/social/connections"),
-    needsPreferences ? load("/api/account/publishing-preferences?schema=3") : null,
+    readSetting("/api/schedules?configOnly=1", "Scheduling limits"), readSetting("/api/social/connections", "Your connected accounts"),
+    needsPreferences ? readSetting("/api/account/publishing-preferences?schema=3", "Your publishing defaults") : null,
   ]);
   const config = rawConfig as { minimumScheduleLeadMinutes?: number };
   if (typeof config?.minimumScheduleLeadMinutes !== "number" || !Number.isFinite(config.minimumScheduleLeadMinutes) || config.minimumScheduleLeadMinutes < 0) throw new Error("Could not load scheduling limits. Try again.");
@@ -40,7 +51,7 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
     if (preferences && account.platform === "youtube") Object.assign(value, { containsSyntheticMedia: preferences.containsSyntheticMedia, privacyStatus: preferences.youtubePrivacyStatus, madeForKids: preferences.youtubeMadeForKids, notifySubscribers: preferences.youtubeNotifySubscribers });
     if (preferences && account.platform === "tiktok") {
       Object.assign(value, { containsSyntheticMedia: preferences.containsSyntheticMedia, privacyLevel: preferences.tiktokPrivacyLevel, allowComment: preferences.tiktokAllowComments, brandOrganic: preferences.tiktokBrandOrganic, commercialContentDisclosureEnabled: preferences.tiktokBrandOrganic });
-      const raw = await load(`/api/social/connections/${encodeURIComponent(account.id)}/publish-settings`) as { capabilities?: TikTokPublishCapabilities };
+      const raw = await readSetting(`/api/social/connections/${encodeURIComponent(account.id)}/publish-settings`, "TikTok publishing settings") as { capabilities?: TikTokPublishCapabilities };
       if (!raw?.capabilities || !Array.isArray(raw.capabilities.privacyLevels) || typeof raw.capabilities.directPostAudited !== "boolean") throw new Error("Could not load TikTok publishing settings. Try again.");
       capabilities[account.id] = { status: "ready", capabilities: raw.capabilities };
     }

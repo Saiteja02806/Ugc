@@ -13,7 +13,6 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "MCP", href: "/mcp" },
   { label: "Guides", href: "/guides" },
   { label: "Pricing", href: "/pricing" },
 ];

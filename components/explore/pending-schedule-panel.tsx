@@ -12,7 +12,7 @@ import { invalidateAccountSchedules, upsertAccountSchedule } from "@/lib/schedul
 import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlatforms, selectWorkflowAccount, type WorkflowScheduleDraft } from "@/lib/explore/workflow-scheduling-draft";
 import { prepareSimpleWorkflowSchedule } from "@/lib/explore/simple-workflow-schedule";
 import { archiveConfirmedSchedule } from "@/lib/explore/schedule-repeat-intent";
-import { requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
+import { isScheduleTimeout, requestWorkflowSchedule } from "@/lib/explore/workflow-schedule-transport";
 import { parseExplorePendingSchedule, type ExplorePendingScheduleResult } from "@/lib/explore/pending-schedule-contract";
 import { readSavedExploreSchedule, verifyExploreScheduleReply, type ExploreScheduleComposition, type SavedExploreSchedule } from "@/lib/explore/pending-schedule-client";
 import { isScheduleTimeRejected, SCHEDULE_TIME_REJECTED_MESSAGE } from "@/lib/explore/workflow-schedule-client";
@@ -37,6 +37,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const storageKey = `ugc-explore:background-schedule:v1:${encodeURIComponent(owner)}:${encodeURIComponent(scope)}`;
   const [saved, setSaved] = useState<SavedExploreSchedule | null>(null), [result, setResult] = useState<ExplorePendingScheduleResult | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState("Checking your publishing settings…");
   const [restored, setRestored] = useState(false);
   const current = useRef(composition), working = useRef(false), alive = useRef(true);
   const scheduledCallback = useRef(onScheduled);
@@ -106,6 +107,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
     finally { working.current = false; if (alive.current) setBusy(false); }
   }
   async function send(entry: SavedExploreSchedule) {
+    setProgress("Saving your scheduled post…");
     try {
       accept(entry, await authorized(owner, "/api/explore/schedules", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": entry.input.requestKey }, body: JSON.stringify(entry.input) }));
     } catch (error) {
@@ -116,16 +118,17 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
       }
       // A lost response is reconciled silently. Only a verified server receipt
       // can show success; this read never creates a second post.
+      setProgress("Checking whether your post was saved…");
       try {
         const checked = verifyExploreScheduleReply(await authorized(owner, `/api/explore/schedules?requestKey=${encodeURIComponent(entry.input.requestKey)}`), entry);
         if (checked.preparation.state !== "unconfirmed") { accept(entry, checked); return; }
       } catch { /* Keep the exact durable request for the single Try again action. */ }
-      throw new Error("Could not schedule your post. Try again.");
+      throw new Error("We could not confirm whether your post was scheduled. Your request is kept; Try again checks the same post.");
     }
   }
   async function schedule() {
     if (!active || !restored || working.current || confirmed || composition.error || !composition.draft) return;
-    working.current = true; setBusy(true); setError(null);
+    working.current = true; setBusy(true); setError(null); setProgress("Checking your publishing settings…");
     try {
       if (!navigator.locks) throw new Error("Use a browser with Web Locks to schedule safely across tabs.");
       await navigator.locks.request(storageKey, { ifAvailable: true }, async lock => {
@@ -148,7 +151,13 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
           // replaced only by this new explicit confirmation, never by polling.
         }
         const submission = await prepareSimpleWorkflowSchedule({ draft, timezone, source: { kind: "media_asset", id: composition.sourceId }, title: composition.title, load: url => authorized(owner, url) });
-        const finishDraft = await composition.resolve();
+        setProgress("Preparing your video and background audio…");
+        let finishDraft;
+        try { finishDraft = await composition.resolve(); }
+        catch (error) {
+          if (isScheduleTimeout(error)) throw new Error("Preparing your video or background audio took too long. Your post has not been submitted. Try Schedule post again; if it repeats, return to Edit to check your audio.");
+          throw error;
+        }
         if (!alive.current || current.current.signature !== composition.signature || currentIdentity.current.storageKey !== storageKey || currentIdentity.current.targetSignature !== targetSignature) throw new Error("Your clips or accounts changed. Review the updated schedule before confirming.");
         if (finishDraft.sourceAssetId !== composition.sourceId) throw new Error("The prepared video changed. Review the updated video before scheduling.");
         const entry: SavedExploreSchedule = { version: 1, owner, signature: composition.signature, confirmed: false, input: parseExplorePendingSchedule({ version: 1, requestKey: crypto.randomUUID(), draft: finishDraft,
@@ -169,7 +178,7 @@ export function PendingExploreSchedulePanel({ owner, scope, composition, draft, 
   const actions = <div className={styles.actions} aria-label="Schedule actions">
     {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     <div className={styles.actionRow}>{onBackToEdit ? <Button type="button" variant="outline" className={styles.backButton} disabled={busy} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
-      <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{busy ? "Scheduling your post…" : actionHelp}</p>
+      <div className={styles.reviewAction}><p role="status" className={styles.actionHelp}>{busy ? progress : actionHelp}</p>
       <Button type="button" size="lg" className={styles.reviewButton} disabled={!restored || busy || !!composition.error || !composition.draft || !confirmed && !unresolved && !targets.length} onClick={() => { if (confirmed) void startAnother(); else void schedule(); }}>{busy ? "Scheduling…" : !confirmed && unresolved ? "Try again" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button></div></div>
     {confirmed ? <Link href="/scheduling" className={styles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}
   </div>;

@@ -3,11 +3,13 @@
 .header label { font-size: .875rem; font-weight: 600; }
 .header label span { font-weight: 400; color: var(--muted-foreground); }
 .actions, .savedActions { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .75rem; }
-.field button { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 36px; padding: .25rem .35rem; font-size: .75rem; font-weight: 500; border-radius: .4rem; color: var(--foreground); cursor: pointer; }
-.field button:hover { background: var(--surface-subtle); }
-.field button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.field button:disabled { opacity: .45; cursor: default; }
-.field button svg { width: 14px; height: 14px; flex-shrink: 0; }
+.actions { margin-left: auto; }
+.actions .libraryTrigger { margin-left: auto; }
+.field button, .drawer button { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 36px; padding: .25rem .35rem; font-size: .75rem; font-weight: 500; border-radius: .4rem; color: var(--foreground); cursor: pointer; touch-action: manipulation; }
+.field button:hover, .drawer button:hover { background: var(--surface-subtle); }
+.field button:focus-visible, .drawer button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.field button:disabled, .drawer button:disabled { opacity: .45; cursor: default; }
+.field button svg, .drawer button svg { width: 14px; height: 14px; flex-shrink: 0; }
 .help, .empty { color: var(--muted-foreground); font-size: .75rem; line-height: 1.6; margin-top: .35rem; }
 .input { position: relative; margin-top: .75rem; }
 .input textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid var(--border); border-radius: .65rem; padding: .8rem 2.75rem .8rem .85rem; background: var(--card-muted, var(--card)); color: var(--foreground); font-size: .875rem; line-height: 1.65; }
@@ -15,12 +17,20 @@
 .input .clear { position: absolute; right: .4rem; top: .35rem; width: 32px; min-height: 32px; background: var(--card); }
 .meta { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; color: var(--muted-foreground); font-size: .7rem; line-height: 1.5; margin-top: .3rem; }
 .meta > :last-child { flex-shrink: 0; }
-.library { border-top: 1px solid var(--border); margin-top: .8rem; padding-top: .5rem; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
+.backdrop { position: fixed; inset: 0; z-index: 70; background: var(--overlay, rgb(0 0 0 / .4)); }
+.drawer { position: fixed; z-index: 71; inset: 0 0 0 auto; width: min(440px, 100%); height: 100dvh; display: flex; flex-direction: column; min-height: 0; background: var(--card); color: var(--foreground); border-left: 1px solid var(--border); box-shadow: -12px 0 40px rgb(0 0 0 / .18); }
+.drawer:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.drawerHeader { display: flex; align-items: flex-start; gap: 16px; padding: max(20px, env(safe-area-inset-top)) 20px 18px; border-bottom: 1px solid var(--border); }
+.drawerHeader > div { min-width: 0; flex: 1; }
+.drawerTitle { margin: 0; font-size: 1rem; line-height: 1.5; font-weight: 600; }
+.drawer .close { flex: 0 0 40px; min-height: 40px; }
+.library { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 0 max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) 20px; }
+.library > .empty, .library > .help, .library > .error { margin-top: 16px; }
 .saved { padding: .8rem 0; border-bottom: 1px solid var(--border); }
 .saved:last-child { border-bottom: 0; }
-.saved p { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 7rem; overflow-y: auto; font-size: .8rem; line-height: 1.6; }
+.saved p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; line-height: 1.6; }
 .savedActions { margin-top: .35rem; }
 .savedActions button[aria-pressed="true"] { color: var(--primary); }
 .savedActions button:last-child { margin-left: auto; }
 .error { font-size: .75rem; line-height: 1.6; margin-top: .5rem; }
-@media (max-width: 480px) { .actions { width: 100%; justify-content: space-between; } .field button { min-height: 40px; } }
+@media (max-width: 480px) { .actions { width: 100%; justify-content: space-between; } .field button, .drawer button { min-height: 44px; } }

@@ -47,6 +47,10 @@ export const practicalGuides = {
       },
       {
         title: "Give the opening a job, then show the proof",
+        resource: {
+          label: "Need a starting line? Browse The Reaction Hook Library: 110 free hooks to adapt to your demo.",
+          href: "/free-hook-lines",
+        },
         paragraphs: [
           "The opening should make the viewer's question clear. A direct line such as 'Add your app demo after an opening clip' can be enough. A face or reaction shot is optional; it should introduce the same idea that the demonstration explains. Avoid an unrelated surprise or a claim about time saved without evidence.",
           "If you use generated opening footage, treat it as illustrative performance, not footage of a real customer. Put the genuine product recording in the demonstration. Add exact words in an editor rather than relying on a video model to render accurate text or a faithful interface.",

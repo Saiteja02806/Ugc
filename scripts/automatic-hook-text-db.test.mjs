@@ -1,0 +1,47 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+const root=new URL("../supabase/migrations/",import.meta.url);
+const asset="11111111-1111-4111-8111-111111111111",job="22222222-2222-4222-8222-222222222222",key="33333333-3333-4333-8333-333333333333";
+const edit={version:1,format:"hook",trimStartMs:0,trimEndMs:5000,originalVolume:1,musicVolume:.2,text:null,textOverlays:[{value:"Your next video",width:.84,y:.18,fontSize:48,color:"#ffffff",startMs:0,endMs:5000}]};
+test("completion atomically saves editable text, binds ownership and preserves every later user edit",async t=>{
+  const db=new PGlite();t.after(()=>db.close());
+  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
+    create table media_assets(id uuid primary key,user_id text,collection text,status text,deleted_at timestamptz,metadata jsonb,duration_seconds numeric,source_record_id text);
+    create table background_jobs(id uuid primary key,user_id text,status text,job_type text,input_json jsonb,output_json jsonb);
+    insert into media_assets values('${asset}','owner','video','ready',null,'{}',5,'${job}');
+    grant select,update on media_assets to service_role; grant select,update on background_jobs to service_role;`);
+  await db.exec(await readFile(new URL("20261012212314_explore_clip_draft_saves.sql",root),"utf8"));
+  await db.exec(await readFile(new URL("20261025010000_automatic_hook_text_drafts.sql",root),"utf8"));
+  const input={exploreFormat:"hook",referenceId:"hook-test",automaticHookText:{version:1,requestKey:key,source:{referenceId:"hook-test"}}};
+  await db.query("insert into background_jobs values($1,'owner','processing','generate_hook_video',$2,null)",[job,JSON.stringify(input)]);
+  const complete=async(text={version:1,requestKey:key,status:"ready",editing:edit})=>db.query("update background_jobs set status='completed',output_json=$1 where id=$2",[JSON.stringify({mediaAssetId:asset,automaticHookText:text}),job]);
+  await db.exec("set role service_role");await complete();
+  let draft=(await db.query("select * from explore_clip_drafts")).rows[0];assert.deepEqual(draft.content.editing,edit);assert.equal(draft.scope,"hook");
+  assert.equal((await db.query("select metadata from media_assets")).rows[0].metadata.automaticHookText.status,"ready");
+  // Explicit removal is a saved empty edit and must never be repopulated.
+  const empty={...draft.content,editing:{...edit,textOverlays:[]}};
+  await db.query("select explore_save_clip_draft($1,'hook',$2,$3,1,$4)",["owner",asset,"44444444-4444-4444-8444-444444444444",JSON.stringify(empty)]);
+  await complete();draft=(await db.query("select * from explore_clip_drafts")).rows[0];assert.deepEqual(draft.content,empty);assert.equal(Number(draft.revision),2);
+  await assert.rejects(complete({version:1,requestKey:"wrong",status:"ready",editing:edit}),/receipt_invalid/);
+  await db.exec("reset role");
+  await db.query("update media_assets set user_id='other' where id=$1",[asset]);
+  await assert.rejects(complete(),/asset_unavailable/);
+  const privileges=(await db.query("select has_function_privilege('anon','public.explore_initialize_automatic_hook_text()','EXECUTE') as anon,has_function_privilege('authenticated','public.explore_initialize_automatic_hook_text()','EXECUTE') as authenticated")).rows[0];
+  assert.deepEqual(privileges,{anon:false,authenticated:false});
+});
+test("failed text completes the video with review metadata and no empty automatic draft",async t=>{
+  const db=new PGlite();t.after(()=>db.close());
+  await db.exec(`create role anon;create role authenticated;create role service_role;
+    create table media_assets(id uuid primary key,user_id text,collection text,status text,deleted_at timestamptz,metadata jsonb,duration_seconds numeric,source_record_id text);
+    create table background_jobs(id uuid primary key,user_id text,status text,job_type text,input_json jsonb,output_json jsonb);
+    insert into media_assets values('${asset}','owner','video','ready',null,'{}',5,'${job}');`);
+  await db.exec(await readFile(new URL("20261012212314_explore_clip_draft_saves.sql",root),"utf8"));
+  await db.exec(await readFile(new URL("20261025010000_automatic_hook_text_drafts.sql",root),"utf8"));
+  const input={exploreFormat:"hook",referenceId:"hook-test",automaticHookText:{version:1,requestKey:key,source:{referenceId:"hook-test"}}};
+  await db.query("insert into background_jobs values($1,'owner','processing','generate_hook_video',$2,null)",[job,JSON.stringify(input)]);
+  await db.query("update background_jobs set status='completed',output_json=$1 where id=$2",[JSON.stringify({mediaAssetId:asset,automaticHookText:{version:1,requestKey:key,status:"needs_review"}}),job]);
+  assert.equal((await db.query("select * from explore_clip_drafts")).rows.length,0);
+  assert.equal((await db.query("select metadata from media_assets")).rows[0].metadata.automaticHookText.status,"needs_review");
+});

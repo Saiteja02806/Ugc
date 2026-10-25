@@ -17,6 +17,8 @@ const requests = [], operations = [], stored = [];
 const buffer = Buffer.from([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]);
 const provider = name => async params => { requests.push({ provider: name, ...params }); await params.onOperationCreated("operation-fixture"); await params.onOperationSucceeded("operation-fixture", "https://output.test/video.mp4"); return buffer; };
 const { runGenerateHookVideoJob } = load("worker/src/jobs/generate-hook-video.ts", {
+  "../lib/automatic-hook-text.js": { automaticHookEdit: () => assert.fail("Legacy jobs must not adapt text") },
+  "../lib/automatic-hook-text-worker.js": { generateAutomaticHookText: () => assert.fail("Legacy jobs must not request text") },
   "../lib/explore-reference-soundtrack.js": { getGenerationReferenceSoundtrack: () => null },
   "../lib/explore-generated-reference-audio.js": { applyGeneratedReferenceAudio: () => assert.fail("No soundtrack is selected in this provider fixture"), silenceGeneratedVideo: () => assert.fail("This legacy fixture has no explicit sound setting") },
   "../lib/video-reference-input.js": load("worker/src/lib/video-reference-input.ts"),

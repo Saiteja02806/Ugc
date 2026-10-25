@@ -67,6 +67,7 @@ const workers = await Promise.allSettled(Array.from({ length: 3 }, async () => {
 }));
 const failed = workers.find(result => result.status === "rejected");
 if (failed) throw failed.reason;
+await (await import("./prepare-published-hook-frames.mjs")).preparePublishedHookFrames(eligible);
 if (readFileSync(manifestPath, "utf8") !== before || readFileSync(textPath, "utf8") !== textBefore) throw new Error("Release changed during upload; activation was not applied. Run readiness again.");
 atomicJsonSync(manifestPath, { ...release, mediaStatus: "published", activation: "active" });
 console.log(JSON.stringify({ readyForDeployment: true, hooks: eligible.length, excluded, verifiedObjects: assets.length, uploadedObjects: uploaded }));

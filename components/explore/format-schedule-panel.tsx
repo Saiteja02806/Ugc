@@ -117,7 +117,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         const match = Array.isArray(value.schedules) && value.schedules.find((item: { idempotencyKey?: string }) => item.idempotencyKey === entry.input.idempotencyKey);
         if (match) { accept(entry, { ok: true, schedule: match }); return; }
       } catch { /* Preserve the same idempotency key for Try again. */ }
-      throw new Error("Could not schedule your post. Try again.");
+      throw new Error("We could not confirm whether your post was scheduled. Your request is kept; Try again checks the same post.");
     }
   }
   async function schedule() {

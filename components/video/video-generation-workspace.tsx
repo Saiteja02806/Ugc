@@ -21,7 +21,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
@@ -492,6 +492,29 @@ export function VideoGenerationStudioPanel({
   const retryJob = useRetryBackgroundJob();
   const generationLocked = recreateView?.preview === true || accessState !== "pro";
   const galleryVideoReference = workflow && !startingFrame && !startingFramePreparation ? recreateView?.styleVideo : undefined;
+  const [automaticHookText, setAutomaticHookText] = useState(true);
+  const automaticHookTextAvailable = process.env.NEXT_PUBLIC_EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED === "true" && workflowFormat === "hook" && Boolean(startingFrame?.referenceId ?? galleryVideoReference?.id ?? referenceContext?.id);
+  const automaticTextReferenceId = startingFrame?.referenceId ?? galleryVideoReference?.id ?? referenceContext?.id;
+  const automaticTextReadiness = useQuery({ queryKey: ["automatic-hook-text-readiness", user?.uid, automaticTextReferenceId],
+    enabled: automaticHookTextAvailable && automaticHookText && Boolean(user) && !recreateView?.preview,
+    staleTime: 30000, retry: false,
+    queryFn: async ({ signal }) => {
+      const value = await withReadDeadline(async boundedSignal => {
+        const token = await getCurrentUserIdToken(user?.uid);
+        if (!token) throw new Error("Sign in to prepare automatic text.");
+        const response = await fetch(`/api/explore/reference-text?${new URLSearchParams({ referenceId: automaticTextReferenceId!, automatic: "true" })}`, { signal: boundedSignal, cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+        const value = await response.json();
+        if (!response.ok || !value.ok) throw new Error("Could not check automatic text. Retry or turn it off.");
+        return value;
+      }, signal);
+      if (!value.automaticTextEnabled) return "Automatic text is unavailable. Turn it off to generate footage only.";
+      if (value.source?.status !== "ready" || value.source?.format !== "hook") return "This reference's text is not prepared. Choose another reference or turn off automatic text.";
+      if (!value.businessContext?.ready) return "Add your business context in Settings, or turn off automatic text.";
+      if (!(value.automaticTextRemaining > 0)) return "You've used today's 20 text remixes. Turn off automatic text or try again tomorrow.";
+      return null;
+    } });
+  const automaticTextProblem = automaticHookTextAvailable && automaticHookText && !recreateView?.preview
+    ? automaticTextReadiness.isPending ? "Checking automatic text…" : automaticTextReadiness.isError ? "Could not check automatic text. Retry or turn it off." : automaticTextReadiness.data : null;
   useEffect(() => { activeGalleryVideoUrl.current = galleryVideoReference?.url; }, [galleryVideoReference?.url]);
   const uploadedReferenceVideo = startingFrame || awaitingStartingFrame || galleryVideoReference ? null : uploadedVideoReference;
   const hasWorkflowVideoReference = Boolean(workflow && workflowSourceMode === "edit" && (uploadedReferenceVideo || galleryVideoReference));
@@ -999,6 +1022,7 @@ export function VideoGenerationStudioPanel({
         onStored(saved) { setPendingSubmission(saved); submissionKeyRef.current = saved.requestKey; }, input: {
           aspectRatio,
           exploreFormat: workflow?.format,
+          ...(automaticHookTextAvailable ? { automaticHookText } : {}),
           ...(supportsWorkflowSound ? { generateAudio } : {}),
           ...(startingFrame ? startingFrameAnimationInput(startingFrame, referenceImages) : {
             avatarImageUrl: activeReferenceImageUrl,
@@ -1456,7 +1480,7 @@ export function VideoGenerationStudioPanel({
         active={workflow?.controlsActive ?? active}
         ariaLabel="Video prompt"
         contextBanner={
-          recreateView?.contextBanner ?? (referenceContext ? (
+          <>{automaticHookTextAvailable ? <div><label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={automaticHookText} onChange={event => setAutomaticHookText(event.target.checked)} disabled={isGenerating || Boolean(pendingSubmission)} className="mt-1 accent-primary" /><span>Automatically adapt and add Hook text<span className="block text-xs text-muted">Uses your business context and one text remix per batch. You can edit the text on the video.</span></span></label>{automaticTextProblem ? <p role="status" className="mt-2 text-xs text-muted">{automaticTextProblem}{automaticTextReadiness.isError ? <button type="button" onClick={() => void automaticTextReadiness.refetch()} className="ml-2 underline">Retry</button> : null}</p> : null}</div> : null}{recreateView?.contextBanner ?? (referenceContext ? (
             <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground shadow-sm">
               <div className="flex items-center gap-2 truncate">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-selected text-primary">
@@ -1494,7 +1518,7 @@ export function VideoGenerationStudioPanel({
                 <X className="size-3.5" aria-hidden="true" />
               </button>
             </div>
-          ) : null)
+          ) : null)}</>
         }
         generateDisabled={
           recreateView?.preview || (!pendingSubmission && (!isAIStudioVideoModelAvailable(model) ||
@@ -1503,7 +1527,7 @@ export function VideoGenerationStudioPanel({
           !combinedPrompt.trim() ||
           Boolean(getAIStudioPromptLengthError(combinedPrompt, promptMaxLength)) ||
           creatorReferenceUploadPending ||
-          Boolean(generationReferenceError) ||
+          Boolean(generationReferenceError) || Boolean(automaticTextProblem) ||
           referenceFilesPending)) ||
           isGenerating || recoveringJobs
         }

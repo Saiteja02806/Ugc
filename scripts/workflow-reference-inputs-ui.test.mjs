@@ -46,7 +46,7 @@ function harness(format, { reference = true, referenceUrls, referencePrompt, ref
       useEffect: callback => { if (completedJob || captureRequests) effects.push(callback); }, useMemo: fn => fn(),
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
-    "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
+    "@tanstack/react-query": { useQuery: () => ({ data: undefined }), useQueryClient: () => ({ invalidateQueries: async () => {} }) },
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(captureRequests ? `refType=${format}&refId=${format}-fixture&exploreRecreate=1` : "") },
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: { uid: "test-owner" } }) },

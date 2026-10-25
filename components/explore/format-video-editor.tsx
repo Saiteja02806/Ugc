@@ -186,8 +186,18 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   }, [format, video.mediaAssetId, draftKey, onDirty, fullDurationHookText]);
   const clipDraftContent: ExploreClipDraftContent | null = video.mediaAssetId ? { version: 1, sourceAssetId: video.mediaAssetId, editing,
     backgroundAssetId: backgroundId, backgroundPlayback: backgroundId ? playback : "once" } : null;
+  const latestClipContent = useRef(clipDraftContent);
+  useEffect(() => { latestClipContent.current = clipDraftContent; });
   const draftSave = useClipDraftSave({ owner, sourceAssetId: video.mediaAssetId ?? null, scope: draftScope ?? format,
     content: clipDraftContent, enabled: enabled && !localPreview, onRestore: restoreSavedDraft });
+  const [continueWithoutAutomaticText, setContinueWithoutAutomaticText] = useState(false);
+  const automaticText = sourceQuery.data?.metadata?.automaticHookText as { status?: string } | undefined;
+  const automaticTextNeedsReview = format === "hook" && (draftScope ?? format) === "hook" && automaticText?.status === "needs_review" &&
+    !continueWithoutAutomaticText && !draftSave.saved && !overlays.some(text => text.value.trim());
+  if (automaticTextNeedsReview) {
+    validation ??= "Your video is ready, but automatic text needs review. Add text or choose Continue without text.";
+    draftValidation ??= validation;
+  }
   const finishing = useWorkflowFinishing({ ownerId: owner, enabled, kind: "hook", source: sourceQuery.data ?? null, demo: null, demoAudio: null, playback: "once", options: DEFAULT_FINISHING_OPTIONS,
     editing: exportEditing, backgroundSource: backgroundQuery.data ?? null, backgroundPlayback: playback, scope: `${draftScope ?? `format:${format}`}:${video.mediaAssetId}`, onRestoreDraft: restore,
     reuseUnchangedSource: canReuseUnchangedHookSource(sourceQuery.data ?? null, exportEditing, backgroundId), fastStatus: prepareRequest > 0,
@@ -304,13 +314,23 @@ export function FormatVideoEditor({ format, video, active, controlsTarget, resul
   });
   const previewTextTime = clipPreviewTextTimeMs(time, editing.trimEndMs - editing.trimStartMs);
   const referenceFirst = allowRemix && boundReference?.format === format && !boundReference.id.startsWith("uploaded:");
+  const saveDisabled = !enabled || localPreview || pendingSource || uploading || !!audioSelectionError || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data);
+  async function saveAndContinue() {
+    if (saveDisabled) return;
+    const snapshot = JSON.stringify(clipDraftContent);
+    const saved = await draftSave.save();
+    if (!alive.current || !saved || snapshot !== JSON.stringify(latestClipContent.current)) return;
+    if (format === "wall_text") onContinue(); else (onBackToPreview ?? onContinue)();
+  }
   const originalSound = <div className="space-y-2"><label className="block space-y-2 text-xs text-muted">Demo original sound · {Math.round(editing.originalVolume * 100)}%<input aria-label="Demo original volume" type="range" min={0} max={100} value={editing.originalVolume * 100} disabled={pendingSource || uploading || draftSave.busy || enabled && !draftSave.loaded} onChange={event => change({ ...editing, originalVolume: Number(event.target.value) / 100 })} className="w-full accent-primary" /></label>{enabled && draftSave.dirty ? <Button type="button" variant="outline" size="sm" disabled={Boolean(draftError) || !draftSave.loaded || !sourceQuery.data || draftSave.busy} onClick={() => void draftSave.save()}>Save demo edits</Button> : null}{draftError ? <p role="alert" className="text-xs text-destructive">{draftError}</p> : null}</div>;
   if (!active || !controlsTarget || !resultsTarget) return originalSoundTarget ? createPortal(originalSound, originalSoundTarget) : null;
   const actions = <div className={styles.clipActionContent}>
     {validation || draftSave.error || finishing.action.error ? <p role="alert" className="text-xs leading-5 text-destructive">{validation ?? draftSave.error ?? finishing.action.error}</p> : null}
+    {automaticTextNeedsReview ? <Button type="button" size="sm" variant="outline" disabled={!draftSave.loaded || draftSave.busy} onClick={() => { setContinueWithoutAutomaticText(true); void draftSave.save(); }}>Continue without text</Button> : null}
     <div className={editorStyles.actionBar}>
       {onBackToPreview ? <Button type="button" variant="ghost" onClick={onBackToPreview} disabled={draftSave.busy} className="h-11 rounded-xl px-4"><ArrowLeft className="size-4" aria-hidden="true" />{backLabel}</Button> : null}
-      <Button type="button" disabled={!enabled || localPreview || pendingSource || uploading || !!audioSelectionError || draftSave.busy || !draftSave.loaded || !sourceQuery.data || !!draftValidation || !!uploadError || Boolean(backgroundId && !backgroundQuery.data)} onClick={() => void draftSave.save()} className={`${editorStyles.saveAction} h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`}>{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
+      <Button type="button" variant="outline" disabled={saveDisabled} onClick={() => void draftSave.save()} className={`${editorStyles.saveAction} h-11 min-w-28 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`}>{draftSave.busy ? "Saving…" : draftSave.saved && !draftSave.dirty ? "Edits saved" : "Save edits"}</Button>
+      <Button type="button" disabled={saveDisabled} onClick={() => void saveAndContinue()} className="h-11 rounded-xl px-5 font-semibold">{format === "wall_text" ? "Save & review post" : "Save & return"}</Button>
       {!prepareInSequence && ((draftSave.saved && !draftSave.dirty) || localPreview) ? <div className={editorStyles.nextAction}><Button type="button" variant="outline" disabled={pendingSource || draftSave.busy} onClick={onContinue} className="h-11 rounded-xl px-5 font-semibold">{continueLabel}</Button></div> : null}
     </div>
     {enabled && !draftSave.loaded ? <p role="status" className="text-xs leading-5 text-muted">Loading saved edits…</p> : null}

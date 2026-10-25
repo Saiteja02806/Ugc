@@ -1,5 +1,16 @@
 # Carousel System Context
 
+## 2026-10-25 Manual Explore slideshow UX (local)
+
+- Explore slideshow reference selection adds Select all; reference uploads and
+  finished-slide imports have explicit labels and direct picker entry points.
+  Manual editing adds bulk appearance/Undo, confirmed Save & review post, and
+  single-slide recreation in an editor dialog. No automatic Trending Carousel
+  sourcing, generation, schema or typography change. Existing Library save,
+  owner validation, fitting and recovery contracts remain in place.
+- This is local implementation, not a production release. Details and tests:
+  docs/slideshow-click-reduction-2026-10-25.md; product rules: EXPLORE_CONTEXT.md.
+
 ## 2026-10-24 Shared manual typography released with combined changes
 
 - Website/MCP app source `4cb252d5` and all eight existing worker targets with

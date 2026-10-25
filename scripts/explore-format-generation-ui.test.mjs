@@ -64,7 +64,7 @@ function harness(format, { reference = true, referenceUrls, slideshowSources, sl
       }, useMemo: fn => fn(), useCallback: fn => fn,
     },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" },
-    "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries: async () => {} }) },
+    "@tanstack/react-query": { useQuery: () => ({ data: undefined, isPending: false, isFetching: false, isError: false }), useQueryClient: () => ({ invalidateQueries: async () => {} }) },
     "next/navigation": { usePathname: () => `/explore/${format}`, useRouter: () => ({}), useSearchParams: () => new URLSearchParams(captureRequests ? `refType=${format}&refId=${format}-fixture&exploreRecreate=1` : "") },
     "next/link": "Link",
     "@/contexts/auth-context": { useAuth: () => ({ loading: false, user: fixtureUser }) },
@@ -287,7 +287,7 @@ test("unapproved Hook Recreate stays blocked after leaving preparation and never
   const h = harness("hook", { startingFrameRequired: true, captureRequests: true });
   let composer = h.render().composer;
   assert.equal(composer.props.referenceControls.props["aria-label"], "Starting frame required");
-  assert.equal(composer.props.contextBanner, null, "legacy URL reference metadata must not be presented as attached context");
+  assert.equal(resultNodes(composer.props.contextBanner).filter(node => node.type !== "Fragment").length, 0, "legacy URL reference metadata must not be presented as attached context");
   assert.equal(composer.props.estimatedCredits, undefined);
   assert.equal(composer.props.generateDisabled, true);
   assert.match(composer.props.accessMessage, /approve a starting frame/);

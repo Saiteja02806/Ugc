@@ -20,6 +20,27 @@ function browserFetch(reply: (url: string, init?: RequestInit) => Response): typ
 }
 const token = async () => "local-test-token";
 
+test("default music token, download and body stalls are bounded before scheduling", async () => {
+  const timer = setInterval(() => {}, 1000);
+  const stalled = () => new Promise<never>(() => {});
+  try {
+    for (const stage of ["token", "download", "body"]) {
+      let calls = 0;
+      await assert.rejects(loadWorkflowDefaultMusic({ timeoutMs: 10, assertActive() {}, token: stage === "token" ? stalled : token,
+        fetch: (async () => {
+          calls++;
+          if (stage === "download") return stalled();
+          return { ok: true, headers: new Headers({ "Content-Type": "audio/mpeg" }), blob: stalled } as unknown as Response;
+        }) as typeof fetch }), /too long/);
+      assert.equal(calls, stage === "token" ? 0 : 1);
+    }
+    let resolve!: (token: string) => void, calls = 0;
+    await assert.rejects(loadWorkflowDefaultMusic({ timeoutMs: 10, assertActive() {}, token: () => new Promise(done => { resolve = done; }),
+      fetch: async () => { calls++; return new Response(); } }), /too long/);
+    resolve("late-token"); await new Promise(setImmediate); assert.equal(calls, 0);
+  } finally { clearInterval(timer); }
+});
+
 test("clip draft reads and saves preserve browser fetch invocation and request identity", async () => {
   const draft = { id: "33333333-3333-4333-8333-333333333333", scope: "hook", revision: 1, content, updatedAt: "2026-10-13T00:00:00Z" };
   const calls: Array<{ url: string; init?: RequestInit }> = [];

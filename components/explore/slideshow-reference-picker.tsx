@@ -11,9 +11,10 @@ import creation from "./workflow-creation.module.css";
 import styles from "./format-workspace.module.css";
 import pickerStyles from "./slideshow-reference-picker.module.css";
 
-export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideIds, disabled, localPreview, onPreview, onRemove, onUpload, onSelectionChange, onBusy }: {
+export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideIds, disabled, localPreview, onPreview, onRemove, onUpload, onSelectionChange, onBusy, onUseFinishedSlides }: {
   reference: RecreateReference | null; slideIndex: number; disabled: boolean; localPreview: boolean;
   selectedSlideIds: string[];
+  onUseFinishedSlides?: () => void;
   onPreview: () => void; onRemove: () => void; onUpload: (reference: RecreateReference) => void; onSelectionChange: (ids: string[], previewIndex?: number) => void; onBusy: (busy: boolean) => void;
 }) {
   const { user } = useAuth();
@@ -68,11 +69,14 @@ export function SlideshowReferencePicker({ reference, slideIndex, selectedSlideI
         </div>
         <div className={pickerStyles.referenceCopy}><strong title={reference.title}>{reference.title}</strong><span>{reference.slides.length} slides</span></div>
       </div> : null}
-      <Button type="button" variant="outline" data-workflow-tile={reference ? undefined : "reference"} className={`${creation.referenceButton} ${pickerStyles.upload}`} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-4" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload slides"}</span></Button>
+      <Button type="button" variant="outline" data-workflow-tile={reference ? undefined : "reference"} className={`${creation.referenceButton} ${pickerStyles.upload}`} disabled={disabled || busy} onClick={() => input.current?.click()}><Upload className="size-4" aria-hidden="true" /><span className={creation.referenceLabel}>{busy ? "Uploading…" : "Upload reference slides"}</span></Button>
+      {onUseFinishedSlides ? <Button type="button" variant="outline" disabled={disabled || busy} onClick={onUseFinishedSlides}>Use my finished slides</Button> : null}
     </div>
-    <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload slideshow images" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
+    <p className="text-xs leading-5 text-muted">Reference slides guide new images. Finished slides go straight into your post.</p>
+    <input ref={input} className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Upload reference slides" tabIndex={-1} onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; if (files.length) void upload(files); }} />
     {error ? <p role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     {reference ? <details className={pickerStyles.selection} open><summary>Source slides<span aria-live="polite">{selectedSlideIds.length} selected</span></summary><div>
+      <div className="mb-2 flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={disabled || busy || reference.slides.every(slide => selectedSlideIds.includes(slide.id))} onClick={() => onSelectionChange(reference.slides.map(slide => slide.id))}>Select all</Button><span className="text-xs text-muted">Choose the slides to recreate. Generation starts separately.</span></div>
       <div className={styles.slideshowContextStrip} role="group" aria-label="Select reference slides">
         {reference.slides.map((slide, index) => {
           const checked = selectedSlideIds.includes(slide.id);

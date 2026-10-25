@@ -56,3 +56,42 @@ test("video scheduling continues to use its source-upload state", () => {
     assert.equal(expression("FormatSchedulePanel", "pendingSource", { source: { busy }, format, slideshowSaving: true, slideshowUploadBusy: true }), busy);
   }
 });
+
+function workspaceCode(name, path, bindings) {
+  let target;
+  function visit(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === name) target = node;
+    if (ts.isVariableDeclaration(node) && node.name.getText(source) === name) target = node.initializer;
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  for (const key of path) target = target.properties.find(p => p.name?.getText(source) === key).initializer;
+  const code = ts.isFunctionDeclaration(target) ? `(${target.getText(source)})` : target.getText(source);
+  const context = vm.createContext(bindings);
+  vm.runInContext(ts.transpileModule(`globalThis.result = ${code}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  return context.result;
+}
+
+test("Recreate opens inside Edit and routes only that image into the existing generation panel", () => {
+  const image = { id: "selected", url: "https://media.test/slide.png" }, actions = [];
+  const bindings = { generating: false, slideshowSaving: false,
+    setRegenerationSlideNumber: n => actions.push(["slide", n]), setSlideshowRegenerationImage: value => actions.push(["image", value]), setStep: value => actions.push(["step", value]) };
+  workspaceCode("regenerateSlide", [], bindings)(2, image);
+  assert.deepEqual(actions, [["slide", 3], ["image", image], ["step", "edit"]]);
+  const state = { slideshowRegenerationImage: image, format: "slideshow", step: "edit", regenerationControls: "inside-editor", regenerationResults: "replacement-options" };
+  assert.equal(workspaceCode("recreateView", ["referenceImageUrls"], state), undefined);
+  assert.equal(workspaceCode("recreateView", ["slideshowSources"], state), undefined);
+  assert.equal(workspaceCode("recreateView", ["slideshowSlideCount"], state), undefined);
+  assert.equal(workspaceCode("recreateView", ["workflow", "controlsTarget"], state), "inside-editor");
+  assert.equal(workspaceCode("recreateView", ["workflow", "resultsTarget"], state), "replacement-options");
+  assert.equal(workspaceCode("recreateView", ["workflow", "controlsActive"], state), true);
+  workspaceCode("recreateView", ["workflow", "onGenerationStart"], state)();
+  assert.equal(workspaceCode("recreateView", ["workflow", "onGeneratedSlideshow"], state)([image]), false);
+  assert.equal(workspaceCode("recreateView", ["workflow", "onSelectSlideshow"], state)([image]), false);
+});
+
+test("closing recreation clears the replacement target without changing the slideshow", () => {
+  const actions = [];
+  const close = expression("Dialog", "onOpenChange", { setSlideshowRegenerationImage: value => actions.push(value), slideshowEditor: { current: { startNewSlide: () => actions.push("clear-target") } } });
+  close(false); assert.deepEqual(actions, [null, "clear-target"]);
+});

@@ -279,6 +279,7 @@ async function uploadBuffer(params: UploadBufferParams) {
   const file = getStorageClient(config).bucket(config.bucket).file(cleanKey);
 
   await file.save(params.buffer, {
+    ...(params.createOnly ? { preconditionOpts: { ifGenerationMatch: 0 } } : {}),
     contentType: params.contentType,
     metadata: {
       cacheControl: params.cacheControl ?? DEFAULT_CACHE_CONTROL,

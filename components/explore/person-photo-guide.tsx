@@ -6,9 +6,9 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, Dia
 import styles from "./person-photo-guide.module.css";
 
 const examples = [
-  { title: "Main face photo", angle: "Face the camera", position: "0%", description: "Choose a sharp, front-facing photo. Keep your full face visible, with no hand, hair or sunglasses covering it." },
-  { title: "Supporting photo 1", angle: "Turn slightly to one side", position: "50%", description: "Show the same person from a different angle so their cheek, nose and jaw are easier to see." },
-  { title: "Supporting photo 2", angle: "Turn to the other side", position: "100%", description: "Add the opposite view with similar lighting. A different angle is more useful than repeating the same photo." },
+  { title: "Facing the camera", angle: "Face the camera", position: "0%", description: "Choose a sharp, front-facing photo. Keep your full face visible, with no hand, hair or sunglasses covering it." },
+  { title: "One side", angle: "Turn slightly to one side", position: "50%", description: "Show the same person from a different angle so their cheek, nose and jaw are easier to see." },
+  { title: "The other side", angle: "Turn to the other side", position: "100%", description: "Add the opposite view with similar lighting. A different angle is more useful than repeating the same photo." },
 ];
 
 /** Instructional examples only; never enter the user's selected references. */
@@ -40,7 +40,6 @@ export function PersonPhotoGuide() {
           </figure>)}
         </div>
         <div className={styles.tips}>
-          <p><strong>Choose the main photo yourself.</strong> The first photo you select becomes the main photo. Use “Use as main” to change it.</p>
           <p><strong>Focus on the face.</strong> Use even light and natural detail, without beauty filters. There is no required 9:16 or 4:5 ratio, and you don’t need a waist-up photo for a face change.</p>
         </div>
         <p className={styles.note}>AI-generated examples for guidance only. These photos are never added to your video. Different views can provide more detail; results still depend on the model.</p>

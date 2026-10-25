@@ -35,6 +35,7 @@ import type { StartingFrameWorkflow } from "@/lib/explore/starting-frame-workflo
 import styles from "./hook-starting-frame-workspace.module.css";
 import { StartingFrameImage, type StartingFramePreviewState } from "@/components/explore/starting-frame-image";
 import { getCuratedHookFrame } from "@/worker/src/lib/hook-curated-frames";
+import { readRecentPersonPhotos, recentPersonPhotosKey, serializeRecentPersonPhotos } from "@/lib/explore/recent-person-photos";
 
 /** Only development fixtures supply this adapter. Production uses owned APIs. */
 export type HookKeyframePreviewRuntime = {
@@ -113,6 +114,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   // as the stricter gate for editing, persistence, and paid submission.
   const [sourceRestored, setSourceRestored] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -256,22 +258,35 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
     let active = true;
     void Promise.resolve().then(async () => {
       try {
-        const previous = readHookKeyframeDraft(localStorage.getItem(key), scope);
+        const rawDraft = localStorage.getItem(key);
+        const previous = readHookKeyframeDraft(rawDraft, scope);
         if (active) { if (previous) setDraft(previous); setSourceRestored(true); }
-        if (!previous || !previous.imageAssetIds.length) { if (active) setRestored(true); return; }
-        const restoredImages = await withReadDeadline(async signal => {
-          const token = previewRuntime ? "local-fixture" : await getCurrentUserIdToken(scope.ownerId);
-          signal.throwIfAborted();
-          if (!token) throw new Error("Sign in to restore your person photos.");
-          return Promise.all(previous.imageAssetIds.map(async id => {
-            const asset = previewRuntime ? await previewRuntime.resolvePhoto(id, signal) : await fetchAIStudioMediaAsset(id, token, { signal });
-            if ((asset.collection !== "image" && asset.collection !== "influencer") || asset.status !== "ready" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mimeType)) {
-              throw new Error("A selected photo is no longer available. Choose your photos again.");
-            }
-            return { kind: "image" as const, asset };
-          }));
-        }, controller.signal);
-        if (active) { setDraft(previous); setImages(restoredImages); setRestored(true); }
+        // An existing draft, even an empty/unreadable one, never receives defaults.
+        const remembered = !rawDraft && !previewRuntime
+          ? readRecentPersonPhotos(localStorage.getItem(recentPersonPhotosKey(scope.ownerId)), scope.ownerId) : [];
+        const ids = previous?.imageAssetIds ?? remembered;
+        if (!ids.length) { if (active) setRestored(true); return; }
+        try {
+          const restoredImages = await withReadDeadline(async signal => {
+            const token = previewRuntime ? "local-fixture" : await getCurrentUserIdToken(scope.ownerId);
+            signal.throwIfAborted();
+            if (!token) throw new Error("Sign in to restore your person photos.");
+            return Promise.all(ids.map(async id => {
+              const asset = previewRuntime ? await previewRuntime.resolvePhoto(id, signal) : await fetchAIStudioMediaAsset(id, token, { signal });
+              if (asset.id !== id || (asset.collection !== "image" && asset.collection !== "influencer") || asset.status !== "ready" || !["image/png", "image/jpeg", "image/webp"].includes(asset.mimeType)) {
+                throw new Error("A selected photo is no longer available. Choose your photos again.");
+              }
+              return { kind: "image" as const, asset };
+            }));
+          }, controller.signal);
+          if (active) {
+            setDraft(previous ?? updateHookKeyframeDraft(createHookKeyframeDraft(scope), { imageAssetIds: ids }));
+            setImages(restoredImages); setRestored(true);
+          }
+        } catch (cause) {
+          if (previous) throw cause;
+          if (active) { setPhotoNotice("Your previous photos could not be loaded. Choose photos to continue."); setRestored(true); }
+        }
       } catch (cause) {
         if (active) setRestoreError(cause instanceof Error ? cause.message : "Your preparation could not be restored.");
       }
@@ -305,11 +320,19 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
 
   function changeImages(next: AIStudioReferenceMedia[]) {
     if (!restored || choosingInfluencer) return;
+    rememberPhotos(next);
     setImages(next); setDraft(current => updateHookKeyframeDraft(current, { imageAssetIds: next.map(image => image.asset.id) })); setSaved(false);
+  }
+  function rememberPhotos(next: AIStudioReferenceMedia[]) {
+    if (previewRuntime) return;
+    try {
+      localStorage.setItem(recentPersonPhotosKey(scope.ownerId), serializeRecentPersonPhotos(scope.ownerId, next.map(image => image.asset.id)));
+      setPhotoNotice(null);
+    } catch { setPhotoNotice("These photos work for this recreation, but could not be remembered in this browser."); }
   }
   async function selectInfluencer(image: CharacterHistoryImage) {
     if (!restored || pending || choosingInfluencer) return false;
-    if (images[0]?.asset.id === image.mediaAssetId) return true;
+    if (images[0]?.asset.id === image.mediaAssetId) { rememberPhotos(images); return true; }
     const request = ++revision.current;
     const controller = new AbortController();
     influencerRequest.current?.abort();
@@ -331,6 +354,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       // A different saved influencer starts a new person selection. It must not
       // inherit supporting photos belonging to the previous person.
       setImages([{ kind: "image", asset }]);
+      rememberPhotos([{ kind: "image", asset }]);
       setDraft(current => updateHookKeyframeDraft(current, { imageAssetIds: [asset.id] }));
       setSaved(false); return true;
     } catch (cause) { if (request === revision.current) setError(cause instanceof Error ? cause.message : "This influencer could not be selected."); return false; }
@@ -519,9 +543,9 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
       {presentation !== "recreation" ? generatedPreview : null}
       </div>
       <div className={styles.controls} data-recreation-step={presentation === "recreation" ? "person" : undefined}>
-      <section className={styles.person} aria-label="Face reference">
-        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">2</span> : null}Face reference</h2><p>Choose whose face to use.</p></div><UserRound aria-hidden="true" /></div>
-        {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); setRestoreError(null); setSourceRestored(true); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
+      <section className={styles.person} aria-label="Your photos">
+        <div className={styles.sectionHeading}><div><h2>{presentation === "recreation" ? <span className={styles.stepNumber} aria-hidden="true">2</span> : null}Your photos</h2><p>Choose photos of the same person.</p></div><UserRound aria-hidden="true" /></div>
+        {restoreError ? <div className={styles.notice} role="alert"><p>{restoreError} Your saved preparation has not been overwritten.</p><Button type="button" variant="outline" onClick={() => { setDraft(createHookKeyframeDraft(scope)); setImages([]); rememberPhotos([]); setRestoreError(null); setSourceRestored(true); setRestored(true); }}>Start a new preparation</Button></div> : !restored ? <p role="status">Restoring your preparation…</p> : null}
         <div className={styles.photos} data-unified-face-picker data-selected-face-photos={images.length}>
           <FormatGenerationReferences inlineImagePicker imagePresentation="person-strip" selection={null} imageSelections={images} imagePurpose="person" heading="Person photos"
             influencerLibrary={{ images: historyImages, loading: history.isPending, error: history.error, selectionError: error,
@@ -531,7 +555,8 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
             disabled={busy} videoInputEnabled={false} audioInputEnabled={false}
             onChange={selection => changeImages(selection?.kind === "image" ? [...images.filter(image => image.asset.id !== selection.asset.id), selection] : [])}
             onImagesChange={changeImages} onPendingChange={setPending} onErrorChange={setError} />
-          <p>Use one clear face photo. Extra views are optional.</p>
+          <p>Your last photo selection is remembered in this browser.</p>
+          {photoNotice ? <p role="status">{photoNotice}</p> : null}
         </div>
         {tooManyImages ? <p className={styles.notice} role="alert">To generate a new image, Gemini 3.1 Flash supports up to {maxPersonImages} person photos. Remove an extra photo or choose Gemini 3 Pro.</p> : null}
         <a href="/explore/build-character" target="_blank" rel="noopener noreferrer" className={styles.builder}>Create a new influencer <ExternalLink aria-hidden="true" /><span className="sr-only"> in a new tab; your preparation stays here</span></a>

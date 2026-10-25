@@ -4,6 +4,11 @@ import newBatch from "../lib/explore-hook-reference-new-batch-release.json" with
 mock.module(new URL("../../dist/lib/explore-hook-reference-new-batch-release.json", import.meta.url), { defaultExport: { ...newBatch, mediaStatus: "published", activation: "active" } });
 
 const received = [];
+const automaticTextCalls = [];
+let automaticTextResult = { blocks: ["Your next video is already drafted"], heading: "", body: "" };
+mock.module(new URL("../../dist/lib/automatic-hook-text-worker.js", import.meta.url), { namedExports: {
+  generateAutomaticHookText: async (owner, plan) => { automaticTextCalls.push({ owner, plan }); return automaticTextResult; },
+} });
 const privateReads = [];
 mock.module(new URL("../../dist/lib/private-media.js", import.meta.url), { namedExports: {
   resolveOwnedPrivateMediaUrl: async (url, owner) => {
@@ -432,4 +437,19 @@ test("uncertain provider operations still cannot submit duplicate videos", async
   const before = received.length;
   await assert.rejects(runGenerateHookVideoJob(f.job, f.context), ProviderSubmissionUncertainError);
   assert.equal(received.length, before);
+});
+
+test("completed Hook jobs carry fitted editable text for the exact output, including recovery", async () => {
+  const plan = { version: 1, requestKey: "11111111-1111-4111-8111-111111111111", source: { format: "hook", status: "ready", referenceId: "hook-fixture", blocks: [{ text: "Your next video is already drafted", startMs: 0, endMs: 4000 }] } };
+  const f = fixture({ automaticHookText: plan, exploreFormat: "hook", referenceId: "hook-fixture" }); f.job.user_id = "fixture-user";
+  const output = await runGenerateHookVideoJob(f.job, f.context);
+  assert.equal(output.automaticHookText.status, "ready");
+  assert.equal(output.automaticHookText.editing.textOverlays[0].value, automaticTextResult.blocks[0]);
+  assert.equal(output.automaticHookText.editing.textOverlays[0].endMs, output.durationSeconds * 1000);
+  assert.equal(output.videoId, f.job.input_json.videoId); assert.equal(automaticTextCalls.at(-1).owner, "fixture-user");
+  const previous = automaticTextResult; automaticTextResult = null;
+  try { const noText = await runGenerateHookVideoJob(f.job, f.context); assert.equal(noText.ok, true); assert.equal(noText.automaticHookText.status, "needs_review"); }
+  finally { automaticTextResult = previous; }
+  const before = automaticTextCalls.length; f.job.user_id = "other";
+  await assert.rejects(runGenerateHookVideoJob(f.job, f.context), /could not be verified/); assert.equal(automaticTextCalls.length, before);
 });

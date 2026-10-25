@@ -5,6 +5,8 @@ export type UploadBufferParams = {
   buffer: Buffer;
   contentType: string;
   cacheControl?: string;
+  /** Publish an immutable object only if no generation already exists. */
+  createOnly?: boolean;
 };
 
 export type CreateSignedPutUrlParams = {

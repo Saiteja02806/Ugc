@@ -364,7 +364,7 @@ test("the screenshot's 02:49 is past at 14:40 IST, while 14:49 submits the inten
   await renderSettled(h);
   assert.equal(h.save().props.disabled, true);
   assert.match(text(h.nodes().find(node => node.props?.id === "schedule-time-feedback")), /in the past/);
-  assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Now: 2026-10-14 02:40 PM.*Asia\/Calcutta.*Earliest: 2026-10-14 02:46 PM/);
+  assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Now: 2026-10-14 14:40.*Asia\/Calcutta.*Earliest: 2026-10-14 14:46/);
   h.save().props.onClick(); assert.equal(h.submitted.length, 0);
   control(h, "ScheduleTimePicker").props.onChange("14:49"); h.render();
   assert.equal(h.save().props.disabled, false);
@@ -376,21 +376,21 @@ test("the screenshot's 02:49 is past at 14:40 IST, while 14:49 submits the inten
   h.unmount();
 });
 
-test("AM/PM selection converts correctly while keeping the scheduling API in 24-hour time", () => {
-  for (const [value, label, toggled] of [["02:49", "02:49 AM", "14:49"], ["14:49", "02:49 PM", "02:49"], ["00:05", "12:05 AM", "12:05"], ["12:05", "12:05 PM", "00:05"]]) {
+test("24-hour selection preserves morning, afternoon, midnight and noon without period conversion", () => {
+  for (const value of ["02:49", "14:49", "00:05", "12:05", "23:59"]) {
     const h = fixture(); let changed;
     const tree = h.picker(value, next => { changed = next; });
     const trigger = h.nodes().find(node => node.type === "PopoverTrigger");
-    assert.match(text(trigger), new RegExp(label));
-    assert.equal(trigger.props.render.props["aria-label"], `Choose publish time, currently ${label}`);
+    assert.equal(text(trigger), value);
+    assert.equal(trigger.props.render.props["aria-label"], `Choose publish time, currently ${value}`);
     assert.equal(h.nodes().find(node => node.props?.name === "scheduledTime").props.value, value);
-    const period = control(h, "ScheduleTimeRail");
     const rails = nodes(tree).filter(node => node.type?.name === "ScheduleTimeRail");
-    assert.deepEqual(Array.from(period.props.values), ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]);
-    rails.find(node => node.props.label === "AM/PM").props.onSelect(label.endsWith("AM") ? "PM" : "AM");
-    assert.equal(changed, toggled);
+    assert.deepEqual(Array.from(rails, node => node.props.label), ["Hour", "Minute"]);
+    assert.deepEqual(Array.from(rails[0].props.values), Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")));
     rails.find(node => node.props.label === "Hour").props.onSelect("12");
-    assert.equal(changed, `${label.endsWith("AM") ? "00" : "12"}:${value.slice(3)}`);
+    assert.equal(changed, `12:${value.slice(3)}`);
+    rails.find(node => node.props.label === "Hour").props.onSelect("00");
+    assert.equal(changed, `00:${value.slice(3)}`);
     rails.find(node => node.props.label === "Minute").props.onSelect("17");
     assert.equal(changed, `${value.slice(0, 2)}:17`);
   }
@@ -420,7 +420,7 @@ test("submission revalidates a sleeping tab and minute refresh disables a newly 
     if (refresh) assert.equal(h.save().props.disabled, true);
     h.save().props.onClick(); h.render();
     assert.equal(h.submitted.length, 0); assert.equal(h.save().props.disabled, true);
-    assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Earliest: 2026-10-14 02:47 PM/);
+    assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Earliest: 2026-10-14 14:47/);
     h.unmount();
   }
 });

@@ -19,6 +19,37 @@ const draft = { caption: "My post", date: "2099-12-01", time: "18:30", platform:
 const normalize = value => JSON.parse(JSON.stringify(value));
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
 
+test("the shared workflow time field preserves 24-hour values and the rest of the scheduling draft", () => {
+  const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
+  const imports = {
+    react: { useId: () => "schedule-test" }, "react/jsx-runtime": jsx,
+    "lucide-react": { Check: "Check" },
+    "@/components/social/platform-icon": { SocialPlatformIcon: "SocialPlatformIcon" },
+    "@/components/ui/button": { Button: "Button" }, "@/components/ui/input": { Input: "Input" },
+    "@/components/scheduling/post-caption-field": { PostCaptionField: "PostCaptionField" },
+    "@/components/explore/workflow-creation.module.css": { default: {} },
+    "@/components/explore/workflow-schedule-review.module.css": { default: {} },
+    "@/lib/social/platform-visibility": { isSocialPlatformVisible: () => true },
+    "@/lib/explore/workflow-scheduling-draft": scheduling,
+  };
+  const exported = {};
+  const code = ts.transpileModule(readFileSync(new URL("../components/explore/workflow-scheduling-panel.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  vm.runInNewContext(code, { exports: exported, require(name) { assert.ok(name in imports, name); return imports[name]; } });
+  for (const time of ["00:00", "05:30", "12:00", "17:30", "23:59"]) {
+    const current = { ...draft, time, timezone: "Asia/Calcutta" };
+    let next;
+    const tree = exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = value; }, timezone: current.timezone });
+    const field = nodes(tree).find(node => node.props?.name === "postTime");
+    assert.equal(field.props.type, "text", "Browser locale must not introduce a 12-hour picker");
+    assert.equal(field.props.value, time);
+    assert.match(time, new RegExp(`^(?:${field.props.pattern})$`));
+    for (const invalid of ["24:00", "12:60", "5:30 PM", "17:3"]) assert.doesNotMatch(invalid, new RegExp(`^(?:${field.props.pattern})$`));
+    field.props.onChange({ target: { value: "17:30" } });
+    assert.deepEqual(normalize(next), { ...current, time: "17:30" });
+    assert.equal(current.time, time, "Editing must not mutate the existing draft");
+  }
+});
+
 test("unsent schedule forms are versioned and isolated by owner, format, mode and exact output", () => {
   const key = drafts.formatScheduleDraftKey(scope);
   const raw = drafts.serializeFormatScheduleDraft(key, draft);

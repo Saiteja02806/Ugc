@@ -953,7 +953,8 @@ test("the inline carousel modal implements publishing-account content and time s
   assert.doesNotMatch(carouselScheduleModal, /Select connected account/);
   assert.doesNotMatch(carouselScheduleModal, /const platformConnections = useMemo/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
-  assert.match(carouselScheduleModal, /Caption[\s\S]*?\(optional\)/);
+  assert.match(carouselScheduleModal, /<PostCaptionField/);
+  assert.match(readProjectFile("components/scheduling/post-caption-field.tsx"), /Post caption[\s\S]*?\(optional\)/);
   assert.match(
     carouselScheduleModal,
     /self-start overflow-hidden rounded-card border border-border bg-card/,
@@ -1110,7 +1111,7 @@ test("the main scheduler uses one video picker with direct uploads and existing 
   assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
   assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
   assert.match(scheduleEditor, /setFailedThumbnailUrl/);
-  assert.match(scheduleEditor, /Choose AM or PM\. Times use the selected timezone\./);
+  assert.match(scheduleEditor, /Use 24-hour time \(00:00–23:59\) in the selected timezone\./);
   assert.match(scheduleEditor, /function ScheduleTimeRail/);
   assert.match(
     scheduleEditor,

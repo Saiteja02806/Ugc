@@ -13,7 +13,7 @@ test("completion atomically saves editable text, binds ownership and preserves e
     insert into media_assets values('${asset}','owner','video','ready',null,'{}',5,'${job}');
     grant select,update on media_assets to service_role; grant select,update on background_jobs to service_role;`);
   await db.exec(await readFile(new URL("20261012212314_explore_clip_draft_saves.sql",root),"utf8"));
-  await db.exec(await readFile(new URL("20261025010000_automatic_hook_text_drafts.sql",root),"utf8"));
+  await db.exec(await readFile(new URL("20261025114510_automatic_hook_text_drafts.sql",root),"utf8"));
   const input={exploreFormat:"hook",referenceId:"hook-test",automaticHookText:{version:1,requestKey:key,source:{referenceId:"hook-test"}}};
   await db.query("insert into background_jobs values($1,'owner','processing','generate_hook_video',$2,null)",[job,JSON.stringify(input)]);
   const complete=async(text={version:1,requestKey:key,status:"ready",editing:edit})=>db.query("update background_jobs set status='completed',output_json=$1 where id=$2",[JSON.stringify({mediaAssetId:asset,automaticHookText:text}),job]);
@@ -38,7 +38,7 @@ test("failed text completes the video with review metadata and no empty automati
     create table background_jobs(id uuid primary key,user_id text,status text,job_type text,input_json jsonb,output_json jsonb);
     insert into media_assets values('${asset}','owner','video','ready',null,'{}',5,'${job}');`);
   await db.exec(await readFile(new URL("20261012212314_explore_clip_draft_saves.sql",root),"utf8"));
-  await db.exec(await readFile(new URL("20261025010000_automatic_hook_text_drafts.sql",root),"utf8"));
+  await db.exec(await readFile(new URL("20261025114510_automatic_hook_text_drafts.sql",root),"utf8"));
   const input={exploreFormat:"hook",referenceId:"hook-test",automaticHookText:{version:1,requestKey:key,source:{referenceId:"hook-test"}}};
   await db.query("insert into background_jobs values($1,'owner','processing','generate_hook_video',$2,null)",[job,JSON.stringify(input)]);
   await db.query("update background_jobs set status='completed',output_json=$1 where id=$2",[JSON.stringify({mediaAssetId:asset,automaticHookText:{version:1,requestKey:key,status:"needs_review"}}),job]);

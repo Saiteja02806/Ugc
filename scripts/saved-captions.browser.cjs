@@ -45,7 +45,9 @@ function App(){const[post,setPost]=useState(1),[owner,setOwner]=useState('owner-
     for(const viewport of [{width:1280,height:900},{width:390,height:844},{width:320,height:568}]){
       rows.clear();const context=await browser.newContext({viewport}),page=await context.newPage(),errors=[];page.on("pageerror",error=>errors.push(error.message));
       await page.goto("http://127.0.0.1:"+server.address().port);
-      const caption=page.getByRole("textbox",{name:"Post caption"}),save=page.getByRole("button",{name:"Save caption",exact:true});
+      // The modal correctly hides the background field from the accessibility tree.
+      // Include it for value-only assertions while the library is open.
+      const caption=page.getByRole("textbox",{name:"Post caption",includeHidden:true}),save=page.getByRole("button",{name:"Save caption",exact:true});
       const closeLibrary=async()=>{await page.getByRole("button",{name:"Close saved captions",exact:true}).click();await page.getByRole("dialog",{name:"Saved captions",exact:true}).waitFor({state:"hidden"});};
       const openLibrary=async()=>{await page.getByRole("button",{name:/^Saved captions/}).click();await page.getByRole("dialog",{name:"Saved captions",exact:true}).waitFor();};
       await caption.waitFor(); await openLibrary(); await page.getByText(/No saved captions yet/).waitFor(); await closeLibrary();

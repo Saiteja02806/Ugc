@@ -35,7 +35,7 @@ If text fails, the video still completes with `needs_review` metadata. The edito
 
 ## Rollout and production acceptance
 
-1. Deploy migration `supabase/migrations/20261025010000_automatic_hook_text_drafts.sql`, then the worker and web changes. Keep rollout flags off during preparation.
+1. Deploy migration `supabase/migrations/20261025114510_automatic_hook_text_drafts.sql`, then the worker and web changes. Keep rollout flags off during preparation.
 2. In the intended storage environment, run:
 
    ```powershell

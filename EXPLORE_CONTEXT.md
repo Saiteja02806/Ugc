@@ -1,5 +1,21 @@
 # Explore context and UI decision record
 
+## 2026-10-25 Explicit 24-hour scheduling time (local)
+
+- User requests 24-hour display instead of AM/PM. The shared workflow field
+  displays exact HH:mm text with a 24-hour label and 00:00–23:59 guidance,
+  avoiding locale-dependent native time controls. Existing drafts and scheduling
+  payloads retain their HH:mm values and selected timezone.
+- The main Scheduling picker uses hours 00–23 and minutes 00–59 with no period
+  rail. Its selected time, current clock and earliest-slot help all use 24 hours.
+  Noon is 12:00; midnight is 00:00. Existing future-time checks remain in place.
+- This supersedes earlier AM/PM presentation guidance. Local change only;
+  no schedule submission or production deployment in this adjustment.
+- Validation: 112 scheduling tests, application TypeScript and scoped ESLint
+  pass. The shared field regression covers midnight, noon, afternoon, invalid
+  time formats and preservation of the remaining draft fields. Browser fixture
+  assertions are updated; a fresh browser run was not made.
+
 ## 2026-10-25 Slideshow click reduction and combined save actions (local)
 
 - Create's Source slides now has Select all for generation references. This does
@@ -85,7 +101,7 @@
   identity. The video worker runs text alongside video, using one durable Remix
   claim per batch with no provider retries or extra quality-review model call.
 - Worker outputs carry a fitted editable overlay and a text receipt. Migration
-  `20261025010000_automatic_hook_text_drafts.sql` initializes scope `hook` in the
+  `20261025114510_automatic_hook_text_drafts.sql` initializes scope `hook` in the
   same transaction as media/job completion. Existing drafts always win, including
   empty drafts after deliberate text removal. The existing editor restores the
   draft into the main preview and uses identical edit JSON for rendering.

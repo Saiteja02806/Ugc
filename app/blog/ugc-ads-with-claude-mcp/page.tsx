@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BrandInstagramExampleAccounts } from "@/components/marketing/brand-instagram-profile-links";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import {
   ArticleBody,
@@ -187,6 +188,9 @@ export default function UgcAdsWithClaudeMcpPage() {
         </ol>
         <p>
           For more on the general workflow, see <ArticleLink href="/guides/how-to-create-ugc-videos-with-ai">How to create UGC videos with AI</ArticleLink>. For finished output from UGC Pilot&apos;s own channel, see <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink>.
+        </p>
+        <p>
+          <BrandInstagramExampleAccounts />
         </p>
 
         <ArticleH2>Why use Claude instead of a web editor?</ArticleH2>

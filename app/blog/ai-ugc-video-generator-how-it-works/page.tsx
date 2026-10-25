@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BrandInstagramExampleAccounts } from "@/components/marketing/brand-instagram-profile-links";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import { ArticleBody, ArticleCode, ArticleH2, ArticleH3, ArticleLink, FaqList } from "@/components/marketing/seo-article";
 import { articleJsonLd, publicOrigin } from "@/lib/marketing/brand-videos";
@@ -111,6 +112,9 @@ export default function AiUgcVideoGeneratorHowItWorksPage() {
         </ul>
         <p>
           You can see real output from UGC Pilot&apos;s own brand series in <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink> and the <ArticleLink href="/case-studies/ai-ugc-video-generator-saas-founders">founder video case study</ArticleLink>.
+        </p>
+        <p>
+          <BrandInstagramExampleAccounts />
         </p>
 
         <ArticleH2>Using an AI UGC video generator from Claude or Codex</ArticleH2>

@@ -75,6 +75,7 @@ export const brandXProfileUrl = "https://x.com/Teja_chundu";
 
 export const brandInstagramProfileUrls = [
   "https://www.instagram.com/mira_handles/",
+  "https://www.instagram.com/juliarose.daily/",
   "https://www.instagram.com/clara_iamm/",
 ] as const;
 

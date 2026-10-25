@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BrandInstagramExampleAccounts } from "@/components/marketing/brand-instagram-profile-links";
 import { ExternalLiteEmbed } from "@/components/marketing/lite-embed";
 import { YouTubeCard } from "@/components/marketing/youtube-card";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
@@ -64,6 +65,9 @@ export default function UgcVideoExamplesPage() {
         <div className="mx-auto max-w-[1100px]">
           <h2 className="text-3xl font-semibold tracking-[-0.035em] text-foreground-strong">Instagram reels</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Four reels from the owner. The embed loads only after you ask for it. The link opens the reel on Instagram if you would rather leave this page.</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+            <BrandInstagramExampleAccounts />
+          </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {instagramReels.map((code) => (
               <article key={code} className="space-y-3">

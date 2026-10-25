@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BrandInstagramExampleAccounts } from "@/components/marketing/brand-instagram-profile-links";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
 import { ArticleBody, ArticleCode, ArticleH2, ArticleH3, ArticleLink, FaqList } from "@/components/marketing/seo-article";
 import { articleJsonLd, publicOrigin } from "@/lib/marketing/brand-videos";
@@ -158,6 +159,9 @@ export default function UgcPilotVsHiringCreatorsPage() {
         </p>
         <p>
           To judge quality yourself, look at real output from UGC Pilot&apos;s brand series in <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink> and the <ArticleLink href="/case-studies/ai-ugc-video-generator-saas-founders">founder case study</ArticleLink>.
+        </p>
+        <p>
+          <BrandInstagramExampleAccounts />
         </p>
 
         <ArticleH2>Control and workflow</ArticleH2>

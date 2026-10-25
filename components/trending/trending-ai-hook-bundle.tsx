@@ -1,8 +1,8 @@
 "use client";
 
-import { Play, Search, VolumeX } from "lucide-react";
+import { Play, Search } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import bundle from "@/lib/trending/ai-hook-bundle.json";
@@ -14,7 +14,7 @@ function reactionLabel(value: string | null) {
   return value ? value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()) : "Other";
 }
 
-export function TrendingAiHookBundle() {
+export function TrendingAiHookBundle({ intro }: { intro: ReactNode }) {
   const [query, setQuery] = useState("");
   const [reaction, setReaction] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,15 +31,13 @@ export function TrendingAiHookBundle() {
       <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-10">
         <header className="mb-12 flex items-center justify-between border-b border-border pb-5">
           <Link href="/" className="text-lg font-semibold tracking-tight">UGC Pilot</Link>
-          <Link href="/dashboard" className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Open app →</Link>
+          <nav className="flex items-center gap-1" aria-label="Hook videos">
+            <Link href="/guides" className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Guides</Link>
+            <Link href="/dashboard" className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Open app →</Link>
+          </nav>
         </header>
         <section className="mb-10 flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
-          <div className="max-w-2xl">
-            <p className="mb-3 text-sm font-medium text-primary">The Trending collection</p>
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">A hook for every reaction.</h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">{bundle.videos.length} AI-generated hook videos from UGC Pilot’s Trending library. Browse reactions and preview a clip for your next video.</p>
-            <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><VolumeX className="size-4" aria-hidden="true" />Silent opening clips · Add your own text, music and demo</p>
-          </div>
+          <div className="max-w-2xl">{intro}</div>
         </section>
         <section aria-label="Hook video collection">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">

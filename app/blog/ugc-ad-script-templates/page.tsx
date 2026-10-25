@@ -233,7 +233,7 @@ export default function UgcAdScriptTemplatesPage() {
 
         <ArticleH2>Hooks: where most scripts win or lose</ArticleH2>
         <p>
-          The first three seconds decide whether anyone hears the rest. Write five hooks per script and keep the best. Good hooks are short (under 10 words), specific and about the viewer, not you. UGC Pilot&apos;s <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page has a list to adapt, and the <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink> post shows hooks in finished videos.
+          The first three seconds decide whether anyone hears the rest. Write five hooks per script and keep the best. Good hooks are short (under 10 words), specific and about the viewer, not you. UGC Pilot&apos;s <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page has a list to adapt, and the <ArticleLink href="/blog/ugc-video-generator-examples">UGC video generator examples</ArticleLink> post shows hooks in finished videos. <ArticleLink href="/blog/ugc-hooks">UGC hooks that stop the scroll</ArticleLink> groups 20 real lines by type.
         </p>
 
         <ArticleH2>Turning a template into an AI UGC video</ArticleH2>
@@ -298,6 +298,7 @@ export default function UgcAdScriptTemplatesPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
+          { href: "/blog/ugc-hooks", title: "UGC hooks that stop the scroll", description: "20 real hook lines by type, and how to turn one into a video." },
           { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },
           { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to choose a UGC video maker", description: "A 10-point checklist for output, editing, voice, pricing, and limits." },
           { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },

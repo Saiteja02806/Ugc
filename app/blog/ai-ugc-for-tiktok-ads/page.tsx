@@ -130,7 +130,7 @@ export default function AiUgcForTikTokAdsPage() {
           Strong formats for TikTok include POV scenes, &quot;things I wish I knew&quot;, objection busters and question-plus-demo. All eight formats, with timings and filled examples, are in <ArticleLink href="/blog/ugc-ad-script-templates">UGC ad script templates</ArticleLink>.
         </p>
         <p>
-          Write at least five hooks per script. The hook is the part you&apos;ll test most. The <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page is a quick starting list.
+          Write at least five hooks per script. The hook is the part you&apos;ll test most. The <ArticleLink href="/free-hook-lines">free hook lines</ArticleLink> page is a quick starting list. <ArticleLink href="/blog/ugc-hooks">UGC hooks that stop the scroll</ArticleLink> groups 20 of them by type and explains why each one works.
         </p>
 
         <ArticleH2>Step 3: Generate the video</ArticleH2>
@@ -276,6 +276,7 @@ export default function AiUgcForTikTokAdsPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
+          { href: "/blog/ugc-hooks", title: "UGC hooks that stop the scroll", description: "20 real hook lines by type, and how to turn one into a video." },
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
           { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },

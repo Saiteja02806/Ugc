@@ -1,5 +1,22 @@
 # Explore context and UI decision record
 
+## 2026-10-25 Slideshow planner follow-up
+
+- Named-source planning receives the validated server-owned business snapshot
+  already used by image jobs. Snapshot, model and planner version are included
+  in the durable request hash. Changed facts cannot silently reuse an old plan.
+- Explicit business adaptation permits supported replacement copy; visual-only
+  requests preserve copy. Shared same-person photos can both guide applicable
+  slides without asking for a primary-photo mapping.
+- This corrects the missing handoff recorded below. 141 regression tests,
+  TypeScript and scoped lint pass, covering the actual API handoff, captured
+  planner message, profile/hash conflicts, both person uploads, immutable old
+  clarifications, UI submission and private plan storage. Model responses are mocked; live wording and
+  generated image quality still need authenticated acceptance.
+- Follow-up source 20228597 is deployed to website and MCP; production aliases
+  and twenty real-domain HTTP checks pass. Deployment evidence and limits are in
+  docs/combined-release-2026-10-25.md.
+
 ## 2026-10-25 Combined release deployed
 
 - Website/MCP c32a7893 and all eight worker targets (matching worker tree at

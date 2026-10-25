@@ -81,8 +81,24 @@ checks that do not require sign-in. Public live acceptance is therefore separate
 from local authenticated fixtures. No signed-in editing, live paid generation,
 or real social scheduling/publishing is claimed by this release report.
 
-A concurrent read-only investigation records an existing slideshow planner
-clarification issue in docs/slideshow-planner-recurrence-2026-10-25.md: the saved
-business snapshot is omitted from planner input, and person-photo mapping can
-ask unnecessary questions. This release does not modify that planner path and
-does not claim the issue is fixed. Its investigation document is included.
+A concurrent investigation records a slideshow planner clarification issue in
+docs/slideshow-planner-recurrence-2026-10-25.md. Its runtime correction arrived
+before this task finished and is included in follow-up source 20228597:
+the validated business snapshot reaches planning and its durable hash; prompt
+guidance permits requested business-copy adaptation and shared same-person
+photos. Forty-seven focused tests, TypeScript and lint pass. Model responses
+are mocked: this verifies the handoff and request contracts, not live quality.
+No migration or worker rebuild is needed; its worker tree is unchanged.
+
+## Final follow-up deployment
+
+Promoted source 20228597b097997287e275df36f7e377ca95a4ae to both production
+projects. Website dpl_TonRYirXUHjUasNatFbCUnvw1Kq3 and MCP
+dpl_Apv9YKkQE8K1MkR4E5n7RyDVHcCu are READY; apex, www and MCP aliases verified.
+Hosted builds pass compilation, TypeScript and native decoder bundle checks.
+All twenty real-domain HTTP checks pass again against this deployment identity.
+All forty live public browser layouts also pass again, including clipboard and
+setup navigation, with zero page errors.
+Receipts are in .tmp/release-20261025-followup. Earlier release receipts remain
+historical evidence for the same unchanged UI/worker portions. The final
+evidence-only Git commit does not alter deployed runtime code.

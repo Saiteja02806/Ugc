@@ -64,3 +64,30 @@ Nine request-plan/service tests passed, including the existing test assigning
 both face uploads to every target. These check transport, compilation, recovery
 and assignments using supplied model outputs. They do not test the planner's
 ability to choose those outputs from this request. No fresh paid test was run.
+
+## Correction implemented, 25 October
+
+Source 20228597 supplies the validated server-owned business snapshot as a
+separate planner argument. The exact snapshot, configured model and planner
+version 2 are stored and hashed with the request. The model message receives
+the facts, and queued slide jobs retain the same snapshot. Browser-injected
+business facts do not replace the saved profile.
+
+The planning policy now authorizes concrete, grounded replacement copy for an
+explicit business-adaptation request. It preserves exact user wording and
+visual-only requests, rejects unsupported claims, and treats saved tone/CTA
+ideas as context rather than redesign instructions. Shared requests to use the
+supplied influencer photos wherever a person appears permit both person views
+on applicable slides without a mandatory primary-photo choice. Genuinely
+unresolved person/destination conflicts still require clarification.
+
+Validation: 141 tests passed across API admission, plan service, business
+snapshots, per-slide compilation, UI submission and private database contracts.
+Application TypeScript and scoped ESLint passed. Tests verify that facts reach
+the real planning message and both face references reach the intended outputs;
+model responses remain mocked. Old completed clarification records remain
+immutable and cannot silently incur a new provider call under the same key.
+
+The attempted live-planner test setup was not executed because automatic
+approval review could not complete after hitting a usage limit. No live model
+quality result, generated slide output or production UI acceptance is claimed.

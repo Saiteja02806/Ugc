@@ -1,5 +1,14 @@
 # Carousel System Context
 
+## 2026-10-25 Explore named-source planner handoff
+
+- Manual Explore named-source planning includes the server-owned business
+  snapshot in model input and its durable hash. Prompt guidance permits requested
+  business-copy adaptation and shared same-person photos. Automated Trending
+  Carousel paths are unchanged. Forty-seven API/planner tests pass; live model
+  quality remains unverified. Follow-up source 20228597 is deployed; evidence is in
+  docs/combined-release-2026-10-25.md.
+
 ## 2026-10-25 Manual Explore slideshow UX deployed
 
 - Website/MCP c32a7893 deploy the manual slideshow changes below and explicit

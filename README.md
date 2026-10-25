@@ -22,6 +22,7 @@ These are the same public videos embedded on [UGC video generator examples](http
 ### Instagram
 
 - https://www.instagram.com/mira_handles/
+- https://www.instagram.com/juliarose.daily/
 - https://www.instagram.com/clara_iamm/
 - https://www.instagram.com/reel/DePXM_Pg_Lv/
 - https://www.instagram.com/reel/DeW8kYYN_lz/

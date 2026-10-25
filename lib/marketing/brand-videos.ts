@@ -98,7 +98,7 @@ export function videoObjectJsonLd(video: BrandYouTubeVideo) {
   };
 }
 
-export function articleJsonLd(input: { path: string; headline: string; description: string; imagePath: string }) {
+export function articleJsonLd(input: { path: string; headline: string; description: string; imagePath: string; datePublished?: string }) {
   const url = new URL(input.path, publicOrigin).href;
   return {
     "@type": "Article",
@@ -106,6 +106,7 @@ export function articleJsonLd(input: { path: string; headline: string; descripti
     description: input.description,
     mainEntityOfPage: url,
     image: new URL(input.imagePath, publicOrigin).href,
+    ...(input.datePublished ? { datePublished: input.datePublished } : {}),
     author: {
       "@type": "Organization",
       name: "UGC Pilot",

@@ -9,6 +9,14 @@ export function ArticleLink({ href, children }: { href: string; children: ReactN
   );
 }
 
+export function ArticleExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a href={href} className="font-semibold text-primary" rel="noopener noreferrer" target="_blank">
+      {children}
+    </a>
+  );
+}
+
 export function ArticleBody({ children }: { children: ReactNode }) {
   return (
     <article className="px-4 pb-8 sm:px-6 lg:px-8">

@@ -225,6 +225,10 @@ export default function UgcAdsWithClaudeMcpPage() {
           { href: "/mcp/codex", title: "Connect Codex", description: "The config.toml route and OAuth login." },
           { href: "/guides/how-to-create-ugc-videos-with-ai", title: "Create a UGC video", description: "The brief, review, and download steps." },
           { href: "/blog/ugc-video-generator-examples", title: "UGC video examples", description: "Finished output from UGC Pilot's own channel." },
+          { href: "/blog/ugc-videos-with-codex-mcp", title: "UGC videos with Codex", description: "Connect the MCP server and make a UGC-style video from the terminal." },
+          { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
+          { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },
+          { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to choose a UGC video maker", description: "A 10-point checklist for output, editing, voice, pricing, and limits." },
         ]}
       />
     </VideoMarketingPage>

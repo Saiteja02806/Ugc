@@ -160,7 +160,12 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   platforms[0].props.onClick();
   nodes(tree).find((node) => node.type === "post-caption-field").props.onChange("  My caption\nunchanged  ");
   nodes(tree).find((node) => node.props.type === "date").props.onChange({ target: { value: "2026-10-20" } });
-  nodes(tree).find((node) => node.props.type === "time").props.onChange({ target: { value: "14:30" } });
+  const timeFields = nodes(tree).filter((node) => node.props.name === "postTime");
+  assert.equal(timeFields.length, 1, "One named time field must forward the draft clock value");
+  const timeField = timeFields[0];
+  assert.equal(timeField.props.value, original.time);
+  assert.match(timeField.props["aria-describedby"], /schedule-test-timezone/);
+  timeField.props.onChange({ target: { value: "14:30" } });
   assert.deepEqual(changes.map((draft) => [draft.platform, draft.caption, draft.date, draft.time]), [["instagram", "", "", ""], ["", "  My caption\nunchanged  ", "", ""], ["", "", "2026-10-20", ""], ["", "", "", "14:30"]]);
   assert.equal(nodes(tree).filter((node) => node.type === "input").length, 2);
   assert.doesNotMatch(visibleText(tree), /Account|Select platform|Local draft only|no post will be scheduled/);
@@ -175,6 +180,24 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
     assert.equal(pressed.length, 1);
     assert.equal(pressed[0].props["data-platform"], platform);
   }
+});
+
+test("named schedule time edits preserve other draft fields and support canonical edge values", () => {
+  const { WorkflowSchedulingPanel } = load(schedule);
+  const draft = { platform: "instagram", caption: "Keep this caption", date: "2026-10-30", time: "21:30", connectionId: "owned-account", captionInitialized: true };
+  const original = structuredClone(draft), changes = [];
+  const tree = WorkflowSchedulingPanel({ draft, timezone: "Asia/Kolkata", onChange: value => changes.push(value) });
+  assert.equal(changes.length, 0, "Rendering must not submit or modify a draft");
+  const timeField = nodes(tree).find(node => node.props.name === "postTime");
+  assert.equal(timeField.props.value, "21:30");
+  for (const time of ["00:00", "09:30", "21:30", "23:59", ""]) {
+    timeField.props.onChange({ target: { value: time } });
+    assert.deepEqual({ ...changes.at(-1) }, { ...original, time });
+  }
+  assert.deepEqual(draft, original, "Controlled field must not mutate the accepted draft");
+  const restored = WorkflowSchedulingPanel({ draft: changes[2], timezone: "Asia/Kolkata", onChange() {} });
+  assert.equal(nodes(restored).find(node => node.props.name === "postTime").props.value, "21:30");
+  assert.match(text(restored), /Asia\/Kolkata/);
 });
 
 test("Schedule footer stays clean without implying publishing is connected", () => {

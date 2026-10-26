@@ -1,5 +1,287 @@
 # Explore context and UI decision record
 
+## 2026-10-25 Slideshow planner follow-up
+
+- Named-source planning receives the validated server-owned business snapshot
+  already used by image jobs. Snapshot, model and planner version are included
+  in the durable request hash. Changed facts cannot silently reuse an old plan.
+- Explicit business adaptation permits supported replacement copy; visual-only
+  requests preserve copy. Shared same-person photos can both guide applicable
+  slides without asking for a primary-photo mapping.
+- This corrects the missing handoff recorded below. 141 regression tests,
+  TypeScript and scoped lint pass, covering the actual API handoff, captured
+  planner message, profile/hash conflicts, both person uploads, immutable old
+  clarifications, UI submission and private plan storage. Model responses are mocked; live wording and
+  generated image quality still need authenticated acceptance.
+- Follow-up source 20228597 is deployed to website and MCP; production aliases
+  and twenty real-domain HTTP checks pass. Deployment evidence and limits are in
+  docs/combined-release-2026-10-25.md.
+
+## 2026-10-25 Combined release deployed
+
+- Website/MCP c32a7893 and all eight worker targets (matching worker tree at
+  45bf657b) are deployed. Includes the local changes below, saved-caption and
+  scheduling fixes, and explicit 24-hour time. Migration 20261025114510 is applied.
+- All 83 ordinary Hook frames are stored and independently verified. Website
+  stored-frame and automatic-text server/client flags are enabled. No MP4 decode
+  occurs in the stored-only path. Cold storage-network latency still exists.
+- Local: 1,168 combined tests, 104 worker tests, 89 additional schedule/migration
+  checks, production builds and caption/scheduling browser fixtures pass. Live:
+  40 public layouts and 20 HTTP checks pass. User chose checks without sign-in;
+  signed-in generation, editing and real scheduling are not accepted by these
+  public tests. The planner recurrence below remains an open separate issue.
+- Full identities, exclusions and evidence: docs/combined-release-2026-10-25.md.
+
+## 2026-10-25 Slideshow planner clarification recurrence (production read-only)
+
+- The new screenshot matches production plan `29708ff4-e4fc-470d-bb1d-3aa1ce57214a`
+  at 17:50:24 IST, following two equivalent attempts. Six source targets and two
+  uploads reach planning; zero output slides are planned. Neither saved business
+  context field is present. The 23 October handoff defect below remains in code:
+  the API loads the server-owned profile but passes only named image context to
+  the planner. Its blanket business-copy prohibition compounds the missing facts.
+- A second clarification unnecessarily requests Upload B/C primary-face mapping.
+  Per-slide execution already supports both uploads with role person; no required
+  primary-face field exists. Existing tests prove compiled support, not that the
+  live planner will choose the expected assignments from conversational text.
+- Clarifications return 422 before image credit reservation/dispatch. Completed
+  plan status means a stored planning response, not completed generated slides.
+  Do not diagnose face-model quality or failed image uploads from this response.
+- Investigation only: no runtime correction, paid generation or deployment.
+  Proposed correction and exact evidence: docs/slideshow-planner-recurrence-2026-10-25.md.
+
+## 2026-10-25 Explicit 24-hour scheduling time (local)
+
+- User requests 24-hour display instead of AM/PM. The shared workflow field
+  displays exact HH:mm text with a 24-hour label and 00:00–23:59 guidance,
+  avoiding locale-dependent native time controls. Existing drafts and scheduling
+  payloads retain their HH:mm values and selected timezone.
+- The main Scheduling picker uses hours 00–23 and minutes 00–59 with no period
+  rail. Its selected time, current clock and earliest-slot help all use 24 hours.
+  Noon is 12:00; midnight is 00:00. Existing future-time checks remain in place.
+- This supersedes earlier AM/PM presentation guidance. Local change only;
+  no schedule submission or production deployment in this adjustment.
+- Validation: 112 scheduling tests, application TypeScript and scoped ESLint
+  pass. The shared field regression covers midnight, noon, afternoon, invalid
+  time formats and preservation of the remaining draft fields. Browser fixture
+  assertions are updated; a fresh browser run was not made.
+
+## 2026-10-25 Slideshow click reduction and combined save actions (local)
+
+- Create's Source slides now has Select all for generation references. This does
+  not generate or import images; Add slides' original-image bulk import remains
+  a separate action. Reference order and explicit generation/cost approval stay.
+- Upload reference slides and Use my finished slides now identify the two paths.
+  Finished slides open the file picker directly from Create or Your slides;
+  choosing that source inside Add slides also opens the picker immediately.
+  Existing upload validation, 10-slide limit and 4:5 fit behavior are preserved.
+- Clip editors offer Save & return; Wall and Slideshow offer Save & review post.
+  Save-only remains available. Navigation waits for confirmed saved edits; failure
+  stays in the editor. Slideshow interrupted saves retain the same request identity.
+  Review does not submit a scheduled post.
+- Slideshow Edit offers Apply appearance to all or selected slides and Undo.
+  Copy only font, size, color, alignment, position, background shape/color/opacity;
+  never copy words. Undo preserves later words and manual style changes, does not
+  resurrect removed slides, and resets after sequence/image changes. Existing
+  preview/export text fitting remains authoritative; baked-in text is unaffected.
+- Recreate slide opens a dialog inside Edit with the existing generation composer
+  and result picker. It submits the owned regeneration target without catalogue
+  references or the whole-slideshow count field. Multiple image alternatives may
+  be requested, but a replacement changes only the selected slot after an explicit
+  choice. Existing text, order and neighbors remain. Close clears the pending
+  replacement target; already-submitted jobs continue through existing recovery.
+- Local tests and production acceptance remain distinct. No deployment, paid
+  generation or authenticated production visual verification in this change.
+  See docs/slideshow-click-reduction-2026-10-25.md for validation and remaining checks.
+
+## 2026-10-25 Remember the last photos; no photo packages (implemented locally)
+
+- User replaces the earlier photo-package proposal with simple automatic reuse.
+  Do not introduce named packages, a default-package toggle, or main/supporting
+  roles in the UI. Recreate shows "Your photos", equal photo thumbnails and
+  Choose/Change photos. The shared photo chooser and guide remove role badges,
+  "Use as main" and reference headings for person photos. Internal ordered-photo
+  generation contracts remain unchanged; users choose photos of the same person.
+- Explicit photo changes in starting-frame preparation remember only ordered
+  asset IDs, scoped to the signed-in account in this browser. A fresh preparation
+  resolves those IDs through the existing authenticated media API before reuse.
+  No backend package table, reupload or automatic generation is introduced.
+- Existing drafts, including intentionally empty selections, always take priority.
+  Restoring an older draft does not update the remembered selection. Clearing
+  photos remembers an empty selection. Photo editing remains gated while initial
+  restoration runs, and unmount/account changes discard late reads. Invalid or
+  unavailable remembered photos load no partial selection and allow choosing again.
+- Applies to shared Recreate preparation for Hook, Wall and Talking Head; it does
+  not inject photos into existing animation drafts. Model caps and explicit paid
+  generation/frame approval are preserved. This browser preference does not sync
+  between devices. UI copy states that scope.
+- Local verification: 78 focused tests, application TypeScript and scoped lint
+  pass, covering restoration, clearing, account separation, failed reads and late
+  results. Production deployment and authenticated browser/visual
+  acceptance remain separate and have not been performed. Earlier photo-package
+  notes below are superseded by this decision.
+
+## 2026-10-25 Stored frames and automatic Hook text (implemented locally)
+
+- User selects these two improvements for the first implementation plan. Deliver
+  durable ordinary-reference frames first, then automatic editable Hook text.
+  Photo sets and other click-reduction proposals remain separate future scope.
+- Plan: `docs/hook-automatic-text-and-stored-frames-plan-2026-10-25.md`.
+  Reuse current source snapshot/object storage, prepared Remix source and prompt
+  rules, request recovery and revision-checked clip drafts. Background text must
+  be linked to the accepted video batch and survive page closure. Recommend one
+  adapted copy per batch, fitted separately per result, with no late overwrite.
+- Automatic initial text includes fitting/persistence and main-preview display.
+  Keep existing deliberate frame approval and scheduling; unresolved text cannot
+  silently disappear from a scheduled snapshot. Existing private frames remain
+  private.
+- Ordinary Hook frame zero now has a durable, immutable object-store index keyed
+  by source SHA and extractor version. The stored-only read path verifies PNG
+  bytes/hash/dimensions; it never downloads or decodes the MP4 on a cache miss.
+  Prepare existing active ordinary references with
+  `scripts/prepare-hook-source-frames.mjs --write`, then run without `--write`
+  to verify. Hook release publishers prepare frames before catalogue activation.
+  Curated/private frames and Wall/Talking Head fallback paths stay separate.
+  Missing/corrupt stored frames fail visibly and require preparation/restoration;
+  user Recreate requests do not start background extraction or storage writes.
+- Automatic text is optional and checked by default for eligible reference-backed
+  Hook generations when enabled. The composer preflights reviewed source,
+  business context and the existing 20-per-24-hours Remix allowance. Server
+  admission freezes the source, business context, prompts, model and batch text
+  identity. The video worker runs text alongside video, using one durable Remix
+  claim per batch with no provider retries or extra quality-review model call.
+- Worker outputs carry a fitted editable overlay and a text receipt. Migration
+  `20261025114510_automatic_hook_text_drafts.sql` initializes scope `hook` in the
+  same transaction as media/job completion. Existing drafts always win, including
+  empty drafts after deliberate text removal. The existing editor restores the
+  draft into the main preview and uses identical edit JSON for rendering.
+  Failed/uncertain text keeps the video and requires adding text or explicitly
+  continuing without it; that decision can be saved as an ordinary draft.
+- Rollout remains OFF in example configuration: stored-frame server flag
+  `EXPLORE_STORED_SOURCE_FRAMES_ENABLED`; automatic-text server/client flags
+  `EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED` and
+  `NEXT_PUBLIC_EXPLORE_AUTOMATIC_HOOK_TEXT_ENABLED`. Deploy the migration and
+  worker before enabling the automatic-text UI. Existing Remix must also be on.
+- Local evidence and production acceptance are separate. See
+  `docs/hook-frames-and-automatic-text-implementation-2026-10-25.md` for tests,
+  rollout sequence and remaining hosted checks. No production rollout or paid
+  generation was performed during implementation.
+
+## 2026-10-25 Saved-caption drawer and scheduling timeout recovery (local)
+
+- User screenshots show Saved captions expanding below the post caption with
+  nested list/per-caption scrollbars, pushing the date/time and Schedule actions
+  down. The shared caption field now opens a right-side dialog drawer with one
+  list scroll area, a fixed close header and full-width mobile layout. Save
+  caption keeps the drawer closed; Use caption applies the exact text, closes
+  it and returns focus to the field. Defaults/intentional blank rules remain.
+- The screenshot also shows raw `signal timed out`. The saved-caption library
+  is not awaited by scheduling; do not claim its layout caused a network timeout.
+  Preflight reads now retry a timeout once and identify the failed settings
+  check. Background music token/download/body reads have a bounded deadline.
+  Background scheduling reports settings, media and save/recovery progress,
+  describes pre-submit media timeouts, and retains uncertain submitted requests.
+  No automatic schedule POST retries or new idempotency keys on a lost reply.
+- Local checks: 76 focused tests, scoped lint and application TypeScript pass.
+  Updated browser fixture is not executed: browser access was disabled earlier.
+  No hosted reproduction, successful production schedule or deployment is claimed.
+  Vercel denied the read-only request-log query (HTTP 403); no retry against that
+  denied source. Exact production timeout cause remains unverified. Details:
+  `docs/saved-caption-scheduling-fixes-2026-10-25.md`.
+
+## 2026-10-25 Automatic text on newly generated Hooks proposed
+
+- User wants generated Hooks to arrive with adapted Remix text already fitted
+  and visible on the main video. Current generation selects footage; generating
+  Remix and applying it are separate actions. Proposed initial scope is new
+  reference-backed Hooks with prepared source text and saved business context.
+- Link one text request to the accepted video request and prepare them in
+  parallel. Persist an editable overlay on that exact output once, retaining
+  minimal source-word adaptation, readable wrapping/sizing, Hook timing and
+  preview/export parity. Keep Demo text independent. Show Edit text/Remove text.
+- Initial auto-apply is a proposed exception to manual Remix's review/Apply
+  rule. Existing drafts, user edits/removal and late results must not overwrite
+  each other; reopening/history must not start new generation. Missing context,
+  text failure or allowance limits retain footage and offer truthful recovery.
+  Keep final publishing confirmation explicit. This remains a proposal only;
+  no automatic Remix request, billing change or generation implementation.
+
+## 2026-10-25 Reusable person photo sets proposed
+
+- User proposes selecting multiple person photos once, saving them as a small
+  package, and auto-selecting/showing them when Recreate opens. Current code
+  restores photos per owner/draft/reference; new preparations start empty and
+  changing saved influencer resets supporting photos to prevent mixed identities.
+- Recommended design, not yet accepted implementation: a named Photo set with
+  main/supporting photos and an explicit default for new recreations. Reuse owned
+  assets and existing influencer/library entry points. Show set name/thumbnails
+  and Change without automatically opening the picker. Saving a set is optional.
+- Existing draft choices (including cleared photos) override defaults. Replacing
+  a set replaces the whole person selection; accepted requests retain frozen
+  asset IDs/version. Preserve model limits, ownership and explicit Generate/cost
+  and result approval. Opening Recreate must not submit a paid request.
+- Full rationale, first-use/repeat-use flow and acceptance checks are in
+  `docs/explore-click-friction-review-2026-10-24.md`. Photo sets are distinct from
+  stored source frames and generated results; no identity-quality guarantee.
+  This turn records a proposal only, with no runtime change or deployment.
+
+## 2026-10-24 Recreate source-frame latency recurrence (issue and proposal)
+
+- User reports a long source-frame wait every time Recreate is opened and asks
+  to prepare the reference frame once and store it in the backend. Add this as
+  a P1 latency issue in `docs/explore-click-friction-review-2026-10-24.md`.
+- Current ordinary-reference fallback still reads/downloads MP4 and decodes
+  frame zero on a process-cache miss: eight entries / 24 MiB / five minutes.
+  Curated and private creator frames already use stored PNGs; do not attribute
+  their remaining wait to repeated extraction without a production timing trace.
+- Proposed direction: precompute/backfill exact selected source frames into
+  durable versioned storage and serve them on Recreate. Preserve source/frame
+  hash bindings, approved later frames, legacy receipts and private access.
+  Reuse existing stored frames, separate display readiness from unrelated loads,
+  and measure click-to-frame on cold and warm paths. Personalized generated
+  frames remain bound to their own person/instructions/accepted receipt.
+- This records the recurrence and recommendation only. No runtime change,
+  migration, media upload, paid request, production measurement or deployment.
+
+## 2026-10-24 Four-workflow click-friction review (recommendations only)
+
+- User reports excessive clicks after heavy Hook and Slideshow use and requests
+  checking all four public workflows, including Wall and Talking Head + Demo.
+  Prioritize removing repeated choices, indirect picker actions and unnecessary
+  return navigation while preserving intentional content and publishing decisions.
+- Current code review identifies indirect video pickers, per-slide-only generation
+  selection, nested slideshow uploads, split save/return actions and ambiguous
+  reference-versus-finished-slide uploads. Proposed fixes and acceptance checks:
+  `docs/explore-click-friction-review-2026-10-24.md`. No workflow behavior changed.
+- Reuse existing Hook scheduling shortcuts, whole-set slideshow assembly,
+  overview Save/Schedule, draft recovery and single-account auto-selection. Do
+  not count these as missing, make Demo compulsory, or flatten audio scopes.
+- One fresh authenticated production Explore landing capture was inspected.
+  Browser access was then disabled in Work settings; all four deeper workflows
+  were assessed from current code, not visually accepted in production. Agent
+  review stopped at a usage limit; parent completed the source review. No paid
+  calls, production mutations, implementation tests or deployment were run.
+
+## 2026-10-24 Creator identity fidelity audit
+
+- User reports source appearance retained after choosing influencer photos.
+  The completed Creator Account 1 clip 6 production request has v4, Pro and both
+  owned face images in source/main/support order. Exact prompt/hash and offline
+  real-adapter byte replay pass. Its existing output supports the quality concern;
+  input correctness does not qualify facial likeness. This is distinct from the
+  earlier pre-submission v3 model-routing failure.
+- Both creator Hook accounts use normal v4. Preserve the previously approved
+  baseline and immutable accepted receipts; do not silently promote v5/v6 or
+  claim stronger wording fixes fidelity. Prior stricter trials were mixed.
+  A new identity-focused prompt needs a versioned, controlled output comparison.
+- Private TikTok sets use the ordinary per-slide planner, not Hook face roles.
+  Choosing the collection alone does not request person replacement. Explicit
+  per-slide replacement instructions and assigned person attachments survive
+  compilation; generated quality and live planner behavior remain unqualified.
+- 54 application and 135 worker tests, 36 creator/model simulations and the
+  saved-input offline replay pass. No paid calls, production changes or deployment.
+  Details: docs/creator-identity-prompt-audit-2026-10-24.md.
+
 ## 2026-10-24 Creator repair and PR 85 production release verified
 
 - Website and MCP now serve reviewed main commit `e9f441e6`, which includes

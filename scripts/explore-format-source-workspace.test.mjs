@@ -52,6 +52,7 @@ function harness(format, query = "", { local = true, selected = video, catalogue
   "@base-ui/react/tabs": { Tabs: { Root: "tabs-root", List: "tablist", Tab: "tab", Panel: "tabpanel" } },
   "@tanstack/react-query": { useQuery(options) { queries.push(options); return options.queryKey[0] === "recreate-references" ? { data: catalogue } : {}; } },
   "@/contexts/auth-context": { useAuth: () => ({ user: { uid: "owner" }, loading: false }) },
+  "@/components/explore/lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "HookStartingFrameWorkspace" },
   "@/components/billing/use-billing-subscription": { useBillingSubscription: () => ({ data: subscription }) },
   "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
   "@/components/explore/use-workflow-source-video": { useWorkflowSourceVideo(input) { sourceInput = input; return source; } },
@@ -145,7 +146,10 @@ test("Slideshow Create Your Slides reuses the current editor sequence and keeps 
   editor().props.onBackToPreview();
   assert.equal(editor().props.active, false); assert.equal(editor().props.previewActive, true);
   editor().props.onRegenerate(0, { id: "owned-image" });
-  assert.equal(editor().props.previewActive, false, "Recreating a selected slide still opens generation results");
+  assert.equal(editor().props.previewActive, true, "Recreation keeps the slide workspace visible");
+  assert.equal(editor().props.active, true);
+  nodes(h.render()).find(n => n.type === "Dialog" && n.props.open).props.onOpenChange(false);
+  editor().props.onBackToPreview();
   select("References"); assert.equal(editor().props.previewActive, false);
 });
 
@@ -329,9 +333,10 @@ test("slideshow context supports all, subsets and zero without sending unchecked
   assert.equal(view().referenceImageUrl, refs[0].slides[1].url);
   assert.equal(view().slideshowSlideCount, 2);
   nodes(h.render()).find(n => n.type === "FormatSlideshowEditor").props.onRegenerate(2, { id: video.id, url: "https://owned.test/generated.png" });
-  assert.deepEqual(Array.from(view().referenceImageUrls), [refs[0].slides[4].url, refs[0].slides[1].url]);
+  assert.equal(view().referenceImageUrls, undefined, "Single-slide recreation uses only its owned target");
   assert.equal(view().referenceImageAssetId, video.id);
   assert.equal(view().slideshowSlideCount, undefined);
+  nodes(h.render()).find(n => n.type === "Dialog" && n.props.open).props.onOpenChange(false);
   view().contextBanner.props.onSelectionChange(refs[0].slides.map(slide => slide.id));
   assert.equal(view().referenceImageUrls.length, 6);
   view().contextBanner.props.onSelectionChange([]);

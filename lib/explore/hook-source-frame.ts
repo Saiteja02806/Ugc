@@ -170,6 +170,9 @@ export function createHookSourceFrameService(options: {
   maxCacheEntries?: number;
   cacheTtlMs?: number;
   maxConcurrent?: number;
+  /** A stored-only read never falls through to MP4 decoding on a cache miss. */
+  readStoredFrame?: (sourceSha256: string) => Promise<Frame | null>;
+  storedOnly?: boolean;
 } = {}) {
   const now = options.now ?? Date.now;
   const cache = new Map<string, { frame: Frame; expires: number }>();
@@ -180,6 +183,19 @@ export function createHookSourceFrameService(options: {
   const drop = (key: string) => {
     const entry = cache.get(key);
     if (entry) { cachedBytes -= entry.frame.png.length; cache.delete(key); }
+  };
+  const remember = (key: string, frame: Frame) => {
+    if (frame.png.length <= byteLimit && entryLimit > 0) {
+      drop(key);
+      while (cache.size >= entryLimit || cachedBytes + frame.png.length > byteLimit) {
+        const oldest = cache.keys().next().value;
+        if (!oldest) break;
+        drop(oldest);
+      }
+      cache.set(key, { frame, expires: now() + (options.cacheTtlMs ?? 5 * 60_000) });
+      cachedBytes += frame.png.length;
+    }
+    return frame;
   };
   return async function getHookSourceFrame(referenceId: string, retainedSha256?: string): Promise<HookSourceFrame> {
     if (!options.items && referenceId.startsWith("creator-account-")) {
@@ -215,6 +231,14 @@ export function createHookSourceFrameService(options: {
         throw new HookSourceFrameError("Starting frames are being prepared. Try again shortly.", 429);
       }
       work = (async () => {
+        if (options.readStoredFrame || options.storedOnly || !options.items && (!source.workflow || source.workflow === "hook") && process.env.EXPLORE_STORED_SOURCE_FRAMES_ENABLED === "true") {
+          const read = options.readStoredFrame ?? (await import("./hook-source-frame-store.ts")).createStoredHookFrames().read;
+          const stored = await read(source.videoSha256);
+          if (!stored) throw new HookSourceFrameError("This reference's starting frame is not prepared yet. Try another reference or retry after preparation.", 503);
+          const checked = checkedFrame(stored.png, source);
+          if (stored.frameIndex !== 0 || stored.frameTimeSeconds !== 0 || stored.sourceSha256 !== checked.sourceSha256 || stored.frameSha256 !== checked.frameSha256 || stored.width !== checked.width || stored.height !== checked.height) throw new HookSourceFrameError("The stored starting frame changed. It needs review.", 409);
+          return remember(key, checked);
+        }
         let bytes: Buffer;
         if (source.localFile) {
           const path = join(process.cwd(), "public", source.localFile);
@@ -226,16 +250,7 @@ export function createHookSourceFrameService(options: {
           throw new HookSourceFrameError("The Hook source changed. Refresh the library before continuing.", 409);
         }
         const frame = checkedFrame(await (options.decode ?? decodeHookFirstFrame)(bytes), source);
-        if (frame.png.length <= byteLimit && entryLimit > 0) {
-          while (cache.size >= entryLimit || cachedBytes + frame.png.length > byteLimit) {
-            const oldest = cache.keys().next().value;
-            if (!oldest) break;
-            drop(oldest);
-          }
-          cache.set(key, { frame, expires: now() + (options.cacheTtlMs ?? 5 * 60_000) });
-          cachedBytes += frame.png.length;
-        }
-        return frame;
+        return remember(key, frame);
       })();
       pending.set(key, work);
       // Cleanup belongs to this work promise, even when the request is canceled.

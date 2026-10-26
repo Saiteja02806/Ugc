@@ -1,5 +1,35 @@
 # Carousel System Context
 
+## 2026-10-25 Explore named-source planner handoff
+
+- Manual Explore named-source planning includes the server-owned business
+  snapshot in model input and its durable hash. Prompt guidance permits requested
+  business-copy adaptation and shared same-person photos. Automated Trending
+  Carousel paths are unchanged. Forty-seven API/planner tests pass; live model
+  quality remains unverified. Follow-up source 20228597 is deployed; evidence is in
+  docs/combined-release-2026-10-25.md.
+
+## 2026-10-25 Manual Explore slideshow UX deployed
+
+- Website/MCP c32a7893 deploy the manual slideshow changes below and explicit
+  24-hour scheduling. All eight worker targets use the matching worker tree at
+  45bf657b. Automated Carousel sourcing and planner behavior are unchanged.
+- Regression/build/local browser checks and live public-page checks pass;
+  authenticated live workflow acceptance was declined in favor of public checks.
+  A separate existing slideshow planner clarification gap remains open. Evidence
+  and limits: docs/combined-release-2026-10-25.md and EXPLORE_CONTEXT.md.
+
+## 2026-10-25 Manual Explore slideshow UX (local)
+
+- Explore slideshow reference selection adds Select all; reference uploads and
+  finished-slide imports have explicit labels and direct picker entry points.
+  Manual editing adds bulk appearance/Undo, confirmed Save & review post, and
+  single-slide recreation in an editor dialog. No automatic Trending Carousel
+  sourcing, generation, schema or typography change. Existing Library save,
+  owner validation, fitting and recovery contracts remain in place.
+- This is local implementation, not a production release. Details and tests:
+  docs/slideshow-click-reduction-2026-10-25.md; product rules: EXPLORE_CONTEXT.md.
+
 ## 2026-10-24 Shared manual typography released with combined changes
 
 - Website/MCP app source `4cb252d5` and all eight existing worker targets with

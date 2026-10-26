@@ -1,6 +1,6 @@
 # UGC Pilot organic visibility plan
 
-Updated: 24 October 2026 (IST)
+Updated: 25 October 2026 (IST)
 
 ## Focus
 
@@ -33,6 +33,16 @@ These copy changes are local source changes. They need the normal application re
 - Compared the public mobile-app guide with its source. The source includes a useful “Prepare a product demo people can trust” section and a blank demo brief, but the live page crawled on 24 October does not show that section. The existing content is a better next release candidate than adding a generic seven-day calendar that would repeat the guide's launch-sequence advice.
 - Next action: release the existing guide improvement through the normal site release, then verify that the section and brief appear on the public URL. After Google has had time to recrawl, compare the guide's impressions, clicks and queries in a consistent Search Console window. Do not request indexing repeatedly or claim ranking gains before the data supports them.
 - No SEO source code was changed today. The repository contains many unrelated in-progress changes; they were left untouched. This plan note records the evidence and the release dependency only.
+
+## Daily progress — 25 October 2026
+
+Today's plan: verify the released resource, connect it to the relevant existing guide, and measure discovery after the link is released. Keep the current titles stable while the sample is small.
+
+- Retrieved finalized Windsor.ai Search Console page and page/query reports for 24 September–21 October (28 days; fresh-data option disabled). The AI UGC page returned 65 impressions, 0 clicks and average position 80.1; the mobile-app guide returned 5 impressions, 0 clicks and position 14.4. Visible generator queries included “ai ugc video generator” (17 impressions), “ugc video generator” (10) and “ugc video ai generator” (7). These small, overlapping-window figures are not evidence of an improvement or decline; recent days outside this reporting window are not covered.
+- Direct production HTTP checks confirm that The Reaction Hook Library is now live at `/free-hook-lines`: HTTP 200, 110 distinct hook entries in HTML, the approved title and canonical, and no page-level noindex directive in the checked HTML/headers. The live PDF returns application/pdf and exactly matches the approved local SHA-256 (`d0b9b870c40cc037d8077a0b90e06a967dc5067925d4fef0db9181ab09c9aa73`). The homepage and guide hub link to it, and the live sitemap includes it. The mobile-app guide's demo-preparation section is also live. These observations supersede the earlier pending-release notes for those specific items; HTTP availability does not establish Google indexing or ranking.
+- Found a specific navigation gap: the resource links to the product-demo guide, but that guide's opening section provides no path back to the hook library. Added one descriptive link beside “Give the opening a job, then show the proof,” where a reader is choosing an opening line. It uses the existing guide styles and normal Next Link markup, with an optional section resource field; no other guide is opted in. This is a local change awaiting the normal release.
+- Validation: targeted ESLint passed for both changed source files. An isolated React server-render check covered all 8 guides: the product-demo guide differs by exactly one anchor paragraph; the other 7 render identically to HEAD. The check used the real guide content/renderer and Next Link, with the authentication header and interactive brief stubbed. No full application build, browser interaction test, or production acceptance of this new link is claimed.
+- Owner/release step: include the two-file contextual-link change in the next normal site release, then open `/guides/product-demo-to-short-video`, follow the library link in the opening section and confirm the PDF still downloads. No release or publishing was performed by this daily task. First review discovery again around 8 November, then compare complete 28-day post-release reporting periods when available. Track the library, product-demo guide and AI UGC page separately; do not repeatedly request indexing or claim organic signup attribution from these figures.
 
 ## Next 30 days
 

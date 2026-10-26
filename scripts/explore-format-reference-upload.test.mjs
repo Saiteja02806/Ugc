@@ -114,7 +114,7 @@ test("one image tile opens saved influencers and uploads in the same chooser", a
   h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
   assert.equal(h.all(tree, node => node.type === "TabsRoot")[0].props.value, "influencers");
   assert.deepEqual(h.all(tree, node => node.type === "TabsTab").map(node => node.props.value), ["influencers", "user"]);
-  h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1 as main photo")[0].props.onClick(); await flush(); tree = h.render(options);
+  h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1")[0].props.onClick(); await flush(); tree = h.render(options);
   assert.deepEqual(selected, ["generated-image"]); assert.equal(h.all(tree, node => node.type === "Dialog")[0].props.open, true);
   assert.equal(h.calls.length, 0, "Selecting an existing influencer never uploads or generates again");
 });
@@ -124,26 +124,26 @@ test("failed influencer selection keeps the chooser open and preserves the previ
   const options = { selection: null, videoInputEnabled: false, influencerLibrary: { images: [{ jobId: "job", mediaAssetId: "image", url: "https://owned.test/person.png" }],
     loading: false, error: null, selectionError: "This photo is unavailable.", hasMore: false, loadingMore: false, onRetry() {}, onLoadMore() {}, onSelect: async () => false } };
   let tree = h.render(options); h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true); tree = h.render(options);
-  h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1 as main photo")[0].props.onClick(); await flush(); tree = h.render(options);
+  h.all(tree, node => node.props?.["aria-label"] === "Use saved influencer 1")[0].props.onClick(); await flush(); tree = h.render(options);
   assert.equal(h.all(tree, node => node.type === "Dialog")[0].props.open, true); assert.equal(h.changes.length, 0);
 });
 
-test("compact face strip shows every main/support photo and opens the existing photo editor", () => {
+test("compact face strip shows all photos without roles and opens the photo chooser", () => {
   const h = harness(async () => {});
   const selected = [1, 2, 3].map(id => ({ kind: "image", asset: savedImage(`face-${id}`) }));
   const options = { selection: null, imageSelections: selected, imagePurpose: "person", imagePresentation: "person-strip", videoInputEnabled: false, onImagesChange() {} };
   const tree = h.render(options);
   const previews = h.all(tree, node => node.type === "ImagePreview");
   assert.equal(previews.length, 3);
-  assert.match(previews[0].props.name, /^Main face photo:/);
-  assert.match(previews[1].props.name, /^Supporting view 1:/);
-  assert.match(previews[2].props.name, /^Supporting view 2:/);
+  assert.match(previews[0].props.name, /^Photo 1:/);
+  assert.match(previews[1].props.name, /^Photo 2:/);
+  assert.match(previews[2].props.name, /^Photo 3:/);
   const trigger = h.all(tree, node => node.type === "DialogTrigger")[0];
   assert.equal(trigger.props.render.props["aria-label"], "Change photos");
   h.all(tree, node => node.type === "Dialog")[0].props.onOpenChange(true);
   const opened = h.render(options);
   assert.equal(h.all(opened, node => node.type === "Dialog")[0].props.open, true);
-  assert.equal(h.all(opened, node => node.type === "Button" && node.props["aria-label"] === "Make photo 2 the main face photo").length, 1);
+  assert.equal(h.all(opened, node => node.type === "Button" && node.props["aria-label"] === "Make photo 2 the main face photo").length, 0);
   assert.equal(h.calls.length, 0);
   const legacy = h.render({ ...options, imagePresentation: "tile" });
   assert.equal(h.all(legacy, node => node.type === "ImagePreview").length, 1, "other workflows retain their existing person tile");
@@ -280,29 +280,26 @@ test("tile removal detaches only the chosen image and preserves the ordered coll
   assert.deepEqual(h.errors, [null]);
 });
 
-test("person photos promote a supporting view explicitly and removal preserves the remaining order", () => {
+test("person photos have no role controls and removal preserves the remaining order", () => {
   const h = harness(async () => {});
   let images = ["front", "left", "right"].map(id => ({ kind: "image", asset: savedImage(id) }));
   const props = () => ({ imagePurpose: "person", imageSelections: images, onImagesChange: next => { images = next; } });
   const tree = () => h.render(props());
   assert.equal(h.all(tree(), node => node.type === "PersonPhotoGuide").length, 1);
-  h.all(tree(), node => node.props?.["aria-label"] === "Make photo 3 the main face photo")[0].props.onClick();
-  assert.deepEqual(Array.from(images, image => image.asset.id), ["right", "front", "left"]);
-  assert.equal(h.all(tree(), node => node.type === "ImagePreview")[0].props.url, savedImage("right").url);
-  h.all(tree(), node => node.props?.["aria-label"] === "Remove supporting photo 1")[0].props.onClick();
-  assert.deepEqual(Array.from(images, image => image.asset.id), ["right", "left"]);
-  h.all(tree(), node => node.props?.["aria-label"] === "Remove main photo")[0].props.onClick();
-  assert.deepEqual(Array.from(images, image => image.asset.id), ["left"]);
-  assert.equal(h.calls.length, 0, "Choosing a role never reuploads a photo");
-  assert.equal(h.all(h.render({ ...props(), imagePurpose: "general" }), node => node.type === "PersonPhotoGuide").length, 0);
+  assert.equal(h.all(tree(), node => /main|support/i.test(node.props?.["aria-label"] ?? "")).length, 0);
+  h.all(tree(), node => node.props?.["aria-label"] === "Remove photo 2")[0].props.onClick();
+  assert.deepEqual(Array.from(images, image => image.asset.id), ["front", "right"]);
+  h.all(tree(), node => node.props?.["aria-label"] === "Remove photo 1")[0].props.onClick();
+  assert.deepEqual(Array.from(images, image => image.asset.id), ["right"]);
+  assert.equal(h.calls.length, 0);
 });
 
-test("busy person selections cannot reorder or remove photos", () => {
+test("busy person selections cannot remove photos", () => {
   const h = harness(async () => {}, { disabled: true });
   let changes = 0;
   const tree = h.render({ imagePurpose: "person", imageSelections: ["one", "two"].map(id => ({ kind: "image", asset: savedImage(id) })), onImagesChange: () => changes++ });
-  const main = h.all(tree, node => node.props?.["aria-label"] === "Make photo 2 the main face photo")[0];
-  assert.equal(main.props.disabled, true); main.props.onClick();
+  const remove = h.all(tree, node => node.props?.["aria-label"] === "Remove photo 2")[0];
+  assert.equal(remove.props.disabled, true); remove.props.onClick();
   assert.equal(changes, 0);
 });
 

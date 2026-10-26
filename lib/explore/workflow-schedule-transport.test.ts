@@ -6,6 +6,28 @@ import { ScheduleRequestError } from "./workflow-schedule-client.ts";
 const stalled = () => new Promise<never>(() => {});
 const keepAlive = () => setInterval(() => {}, 1000);
 
+test("a transient read timeout retries once, while a mutation never retries automatically", async () => {
+  for (const method of ["GET", "POST"]) {
+    let calls = 0;
+    const action = requestWorkflowSchedule({ token: async () => "owner-token", fetch: async () => {
+      if (++calls === 1) throw new DOMException("signal timed out", "TimeoutError");
+      return Response.json({ ok: true });
+    } }, "/api/schedules", { method });
+    if (method === "GET") { assert.equal((await action).ok, true); assert.equal(calls, 2); }
+    else { await assert.rejects(action, error => error instanceof ScheduleRequestError && error.code === "schedule_request_timeout"); assert.equal(calls, 1); }
+  }
+});
+
+test("read retries are bounded and caller cancellation never retries", async () => {
+  let calls = 0;
+  const deps = { token: async () => "owner-token", fetch: async () => { calls++; throw new DOMException("signal timed out", "TimeoutError"); } };
+  await assert.rejects(requestWorkflowSchedule(deps, "/api/schedules"), /choices are kept/);
+  assert.equal(calls, 2);
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(requestWorkflowSchedule(deps, "/api/schedules", { signal: controller.signal }));
+  assert.equal(calls, 2);
+});
+
 test("native browser fetch is invoked without a foreign receiver", async () => {
   const result = await requestWorkflowSchedule({ token: async () => "owner-token",
     fetch: async function (this: unknown) { assert.equal(this, undefined); return Response.json({ ok: true }); },

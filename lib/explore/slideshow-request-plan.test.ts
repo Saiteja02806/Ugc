@@ -3,7 +3,7 @@ import test from "node:test";
 import { assignSlideshowUploadNames } from "./slideshow-image-names.ts";
 import { readSlideshowComposerDraft } from "./slideshow-composer-draft.ts";
 import { compileSlideshowOutputPlan, validateSlideshowRequestPlan, type SlideshowPlanningInput, type SlideshowRequestPlan } from "./slideshow-request-plan.ts";
-import { parseSlideshowReferenceContract } from "../../worker/src/lib/slideshow-generation-contract.ts";
+import { parseSlideshowReferenceContract, slideshowGenerationPrompt } from "../../worker/src/lib/slideshow-generation-contract.ts";
 
 const input: SlideshowPlanningInput = { version: 1, prompt: "Recreate these two slides", images: [
   { id: "source:1", label: "Source slide 1", kind: "source", sourceSlideNumber: 1, url: "https://owned.test/1.png" },
@@ -33,6 +33,25 @@ test("each output keeps the original source number and only its assigned upload"
   assert.deepEqual(laptop.urls, [input.images[1].url, input.images[3].url]);
   assert.equal(laptop.plan.sourceSlideNumber, 4); assert.equal(laptop.plan.outputSlideIndex, 2);
   assert.deepEqual(laptop.plan.images.map(image => [image.label, image.imageIndex, image.role]), [["Source slide 4", 1, "source"], ["Upload C", 2, "screenshot"]]);
+});
+
+test("requested person replacement retains both face uploads on every targeted slide", () => {
+  const request = structuredClone(input);
+  request.prompt = "Use Upload A as the main face and Upload C as another view of the same person on both slides. Keep each source scene.";
+  const plan: SlideshowRequestPlan = { version: 1, clarifications: [], unusedUploadIds: [], slides: request.targetIds.map(targetId => ({
+    targetId, baseUploadId: null, instructions: request.prompt, preserve: ["Keep the source scene and clothing"],
+    attachments: [{ imageId: "upload:a", role: "person" }, { imageId: "upload:c", role: "person" }],
+  })) };
+  for (const index of [0, 1]) {
+    const output = compileSlideshowOutputPlan(request, plan, index);
+    assert.deepEqual(output.urls, [request.images[index].url, request.images[2].url, request.images[3].url]);
+    assert.deepEqual(output.plan.images.map(image => [image.imageIndex, image.role]), [[1, "source"], [2, "person"], [3, "person"]]);
+    const contract = parseSlideshowReferenceContract({ version: 4, ...output }, 3);
+    const prompt = slideshowGenerationPrompt("", "4:5", contract);
+    assert.ok(prompt.includes(request.prompt));
+    assert.match(prompt, /Image 2 = Upload A; role: person/);
+    assert.match(prompt, /Image 3 = Upload C; role: person/);
+  }
 });
 
 test("unknown, duplicate, missing and orphaned assignments are rejected", () => {

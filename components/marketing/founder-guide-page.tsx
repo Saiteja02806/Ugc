@@ -9,6 +9,7 @@ type GuideSection = {
   title: string;
   paragraphs: readonly string[];
   bullets?: readonly string[];
+  resource?: { label: string; href: string };
   presentation?: "brief" | "example";
   media?: {
     src: string;
@@ -777,6 +778,9 @@ export function FounderGuidePage({ guide }: { guide: FounderGuide }) {
               <h2 className={headingClassName}>{section.title}</h2>
               <div className="mt-4 space-y-4 text-[17px] leading-[1.75] text-foreground">
                 {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                {section.resource ? (
+                  <p><Link href={section.resource.href} className={linkClassName}>{section.resource.label}</Link></p>
+                ) : null}
               </div>
               {section.media ? (
                 <figure className="mt-6">

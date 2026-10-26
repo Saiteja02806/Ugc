@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Bookmark, Check, Star, Trash2, X } from "lucide-react";
+import { Dialog } from "@base-ui/react/dialog";
 import { useSavedCaptions } from "./use-saved-captions";
 import { addSavedCaption, initialSavedCaption, MAX_SAVED_CAPTIONS, POST_CAPTION_MAX_LENGTH, removeSavedCaption } from "@/lib/scheduling/saved-captions";
 import styles from "./post-caption-field.module.css";
@@ -15,6 +16,7 @@ export function PostCaptionField({ ownerId, enabled = true, value, onChange, ini
   const [notice, setNotice] = useState<string | null>(null);
   const initializedHere = useRef<string | null>(null);
   const input = useRef<HTMLTextAreaElement | null>(null);
+  const returnToCaption = useRef(false);
   useEffect(() => {
     if (!applyDefault || !enabled || disabled || !ownerId || !saved.library || !saved.available || initializedHere.current === ownerId) return;
     initializedHere.current = ownerId;
@@ -30,14 +32,15 @@ export function PostCaptionField({ ownerId, enabled = true, value, onChange, ini
     const ok = await saved.change(library => addSavedCaption(library, text, crypto.randomUUID()));
     if (ok) setNotice(first ? "Caption saved as your default for new posts." : "Caption saved.");
   }
-  return <section className={styles.field} aria-label="Post caption">
+  return <Dialog.Root open={expanded && enabled && Boolean(ownerId)} onOpenChange={open => { returnToCaption.current = false; setExpanded(open); }}>
+    <section className={styles.field} aria-label="Post caption">
     <div className={styles.header}>
       <label htmlFor={id}>Post caption <span>(optional)</span></label>
       <div className={styles.actions}>
         <button type="button" onClick={() => void save()} disabled={busy || !saved.available || !value.trim() || value.length > POST_CAPTION_MAX_LENGTH || Boolean(matching) || (saved.library?.captions.length ?? 0) >= MAX_SAVED_CAPTIONS}>
           {matching ? <Check aria-hidden="true" /> : <Bookmark aria-hidden="true" />}{matching ? "Saved" : "Save caption"}
         </button>
-        <button type="button" aria-expanded={expanded} aria-controls={`${id}-saved`} onClick={() => setExpanded(!expanded)} disabled={!ownerId || !enabled}>Saved captions{saved.library?.captions.length ? ` (${saved.library.captions.length})` : ""}</button>
+        <Dialog.Trigger className={styles.libraryTrigger} disabled={!ownerId || !enabled}>Saved captions{saved.library?.captions.length ? ` (${saved.library.captions.length})` : ""}</Dialog.Trigger>
       </div>
     </div>
     <p id={`${id}-help`} className={styles.help}>{description}</p>
@@ -48,20 +51,32 @@ export function PostCaptionField({ ownerId, enabled = true, value, onChange, ini
     </div>
     <div className={styles.meta}><span role="status">{notice ?? (saved.loading ? "Loading saved captions…" : "")}</span><span id={`${id}-count`}>{value.length}/{POST_CAPTION_MAX_LENGTH}</span></div>
     {saved.error ? <div role="alert" className={styles.error}>{saved.error} <button type="button" disabled={saved.pending} onClick={saved.retry}>Retry</button></div> : null}
-    {expanded ? <div id={`${id}-saved`} className={styles.library}>
-      <p className={styles.help}>Choose a caption to replace this post’s text. Your default fills new posts.</p>
-      {!saved.loading && !saved.library?.captions.length ? <p className={styles.empty}>Write a caption above, then choose Save caption. Your first saved caption becomes the default.</p> : null}
+    </section>
+    <Dialog.Portal>
+      <Dialog.Backdrop className={styles.backdrop} />
+      <Dialog.Popup className={styles.drawer} finalFocus={() => returnToCaption.current ? input.current : true}>
+        <header className={styles.drawerHeader}>
+          <div><Dialog.Title className={styles.drawerTitle}>Saved captions</Dialog.Title>
+            <Dialog.Description className={styles.help}>Choose a caption for this post. Your default fills new posts.</Dialog.Description></div>
+          <Dialog.Close aria-label="Close saved captions" className={styles.close}><X aria-hidden="true" /></Dialog.Close>
+        </header>
+        <div className={styles.library} aria-busy={saved.loading || saved.pending}>
+      {saved.loading ? <p className={styles.help} role="status">Loading saved captions…</p> : null}
+      {saved.error ? <div role="alert" className={styles.error}>{saved.error} <button type="button" disabled={saved.pending} onClick={saved.retry}>Retry</button></div> : null}
+      {!saved.loading && !saved.error && !saved.library?.captions.length ? <p className={styles.empty}>No saved captions yet. Close this panel, write a post caption, then choose Save caption.</p> : null}
       {saved.library?.captions.map(caption => <div key={caption.id} className={styles.saved}>
         <p>{caption.text}</p>
         <div className={styles.savedActions}>
-          <button type="button" disabled={busy || !enabled} onClick={() => { initializedHere.current = ownerId; onChange(caption.text); setNotice("Saved caption applied to this post."); input.current?.focus(); }}>Use caption</button>
+          <button type="button" disabled={busy || !enabled} onClick={() => { initializedHere.current = ownerId; onChange(caption.text); setNotice("Saved caption applied to this post."); returnToCaption.current = true; setExpanded(false); }}>Use caption</button>
           <button type="button" disabled={busy || !saved.available} aria-pressed={saved.library?.defaultId === caption.id} onClick={() => void saved.change(library => ({ ...library, defaultId: library.defaultId === caption.id ? null : caption.id }))}><Star aria-hidden="true" />{saved.library?.defaultId === caption.id ? "Default" : "Make default"}</button>
           <button type="button" disabled={busy || !saved.available} aria-label={`Delete saved caption: ${caption.text.slice(0, 60)}`} title="Delete saved caption" onClick={() => void saved.change(library => removeSavedCaption(library, caption.id))}><Trash2 aria-hidden="true" /></button>
         </div>
       </div>)}
       {(saved.library?.captions.length ?? 0) >= MAX_SAVED_CAPTIONS ? <p className={styles.help}>You have 20 saved captions. Delete one to save another.</p> : null}
-    </div> : null}
-  </section>;
+        </div>
+      </Dialog.Popup>
+    </Dialog.Portal>
+  </Dialog.Root>;
 }
 
 /** Load the default while account selection is open, before the caption step mounts. */

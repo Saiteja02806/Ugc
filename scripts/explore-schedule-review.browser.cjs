@@ -61,12 +61,13 @@ async function main() {
   try {
     await page.clock.setFixedTime(new Date("2026-10-14T09:10:30Z"));
     await page.goto(base + "/?presentation=workflow&date=2026-10-14&time=02:49");
-    const timePicker = page.getByRole("button", { name: "Choose publish time, currently 02:49 AM", exact: true });
+    const timePicker = page.getByRole("button", { name: "Choose publish time, currently 02:49", exact: true });
     await timePicker.waitFor();
     assert.equal(await page.getByRole("button", { name: "Choose date and time", exact: true }).isDisabled(), true);
-    assert.match(await page.locator("#schedule-clock-help").innerText(), /Now: 2026-10-14 02:40 PM.*Asia\/Calcutta[\s\S]*Earliest: 2026-10-14 02:46 PM/);
+    assert.match(await page.locator("#schedule-clock-help").innerText(), /Now: 2026-10-14 14:40.*Asia\/Calcutta[\s\S]*Earliest: 2026-10-14 14:46/);
     await timePicker.click();
-    await page.getByRole("group", { name: "AM/PM", exact: true }).getByRole("button", { name: "PM", exact: true }).click();
+    assert.equal(await page.getByRole("group", { name: "AM/PM", exact: true }).count(), 0);
+    await page.getByRole("group", { name: "Hour", exact: true }).getByRole("button", { name: "14", exact: true }).click();
     await page.getByRole("button", { name: "Done", exact: true }).click();
     assert.equal(await page.locator('input[name="scheduledTime"]').inputValue(), "14:49");
     assert.equal(await page.locator("#schedule-time-feedback").count(), 0);
@@ -76,7 +77,7 @@ async function main() {
     const afternoon = await page.evaluate(() => window.__submission);
     assert.equal(afternoon.scheduledTime, "14:49"); assert.equal(afternoon.scheduledFor, "2026-10-14T09:19:00.000Z");
     await page.screenshot({ path: path.join(out, "schedule-afternoon-corrected.png"), fullPage: true });
-    console.log("PASS screenshot regression: explicit PM clears the warning and submits 14:49 IST at the correct UTC instant");
+    console.log("PASS screenshot regression: 24-hour selection clears the warning and submits 14:49 IST at the correct UTC instant");
 
     await page.clock.setFixedTime(new Date("2026-10-14T18:27:30Z"));
     await page.goto(base + "/?presentation=workflow&date=2026-10-14&time=23:59");

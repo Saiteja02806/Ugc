@@ -60,8 +60,9 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
         <Input id={`${id}-date`} name="postDate" type="date" value={draft.date} onChange={(event) => onChange({ ...draft, date: event.target.value })} aria-describedby={`${id}-timezone`} />
       </div>
       <div className={creation.scheduleField}>
-        <label htmlFor={`${id}-time`} className="text-sm font-medium">Time</label>
-        <Input id={`${id}-time`} name="postTime" type="time" value={draft.time} onChange={(event) => onChange({ ...draft, time: event.target.value })} aria-describedby={`${id}-timezone`} />
+        <div className="flex items-center justify-between gap-2"><label htmlFor={`${id}-time`} className="text-sm font-medium">Time</label><span className="text-xs text-muted">24-hour</span></div>
+        <Input id={`${id}-time`} name="postTime" type="text" placeholder="HH:mm" autoComplete="off" maxLength={5} pattern="([01][0-9]|2[0-3]):[0-5][0-9]" value={draft.time} onChange={(event) => onChange({ ...draft, time: event.target.value })} aria-describedby={`${id}-time-format ${id}-timezone`} />
+        <p id={`${id}-time-format`} className="text-xs text-muted">00:00–23:59</p>
       </div>
     </div>
     <p id={`${id}-timezone`} className="text-xs text-muted">Time zone: {timezone ?? "your device’s time zone"}</p>

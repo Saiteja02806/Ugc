@@ -88,9 +88,6 @@ const MAX_SCHEDULE_CAPTION_LENGTH = 5_000;
 const scheduleHourValues = Array.from({ length: 24 }, (_, hour) =>
   String(hour).padStart(2, "0"),
 );
-const scheduleDisplayHourValues = Array.from({ length: 12 }, (_, hour) =>
-  String(hour + 1).padStart(2, "0"),
-);
 const scheduleMinuteStepMinutes = Math.max(
   1,
   Math.round(SOCIAL_SCHEDULING_TIME_STEP_SECONDS / 60),
@@ -1425,9 +1422,7 @@ function ScheduleTimePicker({
   const [rawHour = "00", rawMinute = "00"] = value.split(":");
   const hour = scheduleHourValues.includes(rawHour) ? rawHour : "00";
   const minute = scheduleMinuteValues.includes(rawMinute) ? rawMinute : "00";
-  const period = Number(hour) >= 12 ? "PM" : "AM";
-  const displayHour = String(Number(hour) % 12 || 12).padStart(2, "0");
-  const timeLabel = `${displayHour}:${minute} ${period}`;
+  const timeLabel = `${hour}:${minute}`;
 
   useEffect(() => {
     if (!open) {
@@ -1480,7 +1475,7 @@ function ScheduleTimePicker({
               Choose publish time
             </PopoverTitle>
             <PopoverDescription className="text-xs font-semibold text-muted">
-              Choose AM or PM. Times use the selected timezone.
+              Use 24-hour time (00:00–23:59) in the selected timezone.
             </PopoverDescription>
           </PopoverHeader>
 
@@ -1488,9 +1483,9 @@ function ScheduleTimePicker({
             <ScheduleTimeRail
               label="Hour"
               selectedRef={selectedHourRef}
-              selectedValue={displayHour}
-              values={scheduleDisplayHourValues}
-              onSelect={(nextHour) => onChange(`${String(Number(nextHour) % 12 + (period === "PM" ? 12 : 0)).padStart(2, "0")}:${minute}`)}
+              selectedValue={hour}
+              values={scheduleHourValues}
+              onSelect={(nextHour) => onChange(`${nextHour}:${minute}`)}
             />
             <ScheduleTimeRail
               label="Minute"
@@ -1498,12 +1493,6 @@ function ScheduleTimePicker({
               selectedValue={minute}
               values={scheduleMinuteValues}
               onSelect={(nextMinute) => onChange(`${hour}:${nextMinute}`)}
-            />
-            <ScheduleTimeRail
-              label="AM/PM"
-              selectedValue={period}
-              values={["AM", "PM"]}
-              onSelect={(nextPeriod) => onChange(`${String(Number(hour) % 12 + (nextPeriod === "PM" ? 12 : 0)).padStart(2, "0")}:${minute}`)}
             />
           </div>
 
@@ -1527,8 +1516,7 @@ function ScheduleTimePicker({
 }
 
 function formatScheduleClock(parts: { date: string; time: string }) {
-  const [hour, minute] = parts.time.split(":");
-  return `${parts.date} ${String(Number(hour) % 12 || 12).padStart(2, "0")}:${minute} ${Number(hour) >= 12 ? "PM" : "AM"}`;
+  return `${parts.date} ${parts.time}`;
 }
 
 function centerScheduleTimeOption(

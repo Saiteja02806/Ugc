@@ -45,6 +45,7 @@ for (const asset of local) {
   }
   console.log(JSON.stringify({ verified: asset.key }));
 }
+await (await import("./prepare-published-hook-frames.mjs")).preparePublishedHookFrames(eligible);
 if (readFileSync(manifestPath, "utf8") !== before || readFileSync(textPath, "utf8") !== textBefore) throw new Error("Release changed during upload; activation was not applied. Run readiness again.");
 atomicJsonSync(manifestPath, { ...release, mediaStatus: "published", activation: "active" });
 console.log(JSON.stringify({ readyForDeployment: true, hooks: eligible.length, excluded, verifiedObjects: assets.length, uploadedObjects: uploaded }));

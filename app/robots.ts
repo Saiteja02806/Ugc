@@ -19,7 +19,6 @@ const privatePaths = [
   "/demos",
   "/edit",
   "/explore",
-  "/hookvideos",
   "/image-gen",
   "/library",
   "/onboarding",

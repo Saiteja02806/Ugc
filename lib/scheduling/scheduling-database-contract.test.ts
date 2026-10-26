@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -1114,7 +1114,7 @@ test("the main scheduler uses one video picker with direct uploads and existing 
   assert.match(scheduleEditor, /function SchedulePrimaryMediaCard/);
   assert.match(scheduleEditor, /<ScheduleMediaVisual option=\{option\}/);
   assert.match(scheduleEditor, /setFailedThumbnailUrl/);
-  assert.match(scheduleEditor, /Choose AM or PM\. Times use the selected timezone\./);
+  assert.match(scheduleEditor, /Use 24-hour time \(00:00–23:59\) in the selected timezone\./);
   assert.match(scheduleEditor, /function ScheduleTimeRail/);
   assert.match(
     scheduleEditor,

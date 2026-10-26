@@ -193,6 +193,15 @@ test("Demo restored assets bound token waits and pass cancellation through to th
   assert.equal(seen.length, 1); assert.equal(seen[0].token, "token"); assert.ok(seen[0].signal instanceof AbortSignal);
 });
 
+test("Demo Save and return saves once before leaving the clip editor", async () => {
+  const h = harness({ storage: new Map([[draftKey(), JSON.stringify(draft())]]) });
+  let returned = 0; h.props.onEditDone = () => returned++; h.render();
+  h.button("Save & return").props.onClick(); await new Promise(setImmediate);
+  assert.equal(h.draftSaves.length, 1); assert.equal(returned, 1);
+  h.button("Save edits").props.onClick(); await new Promise(setImmediate);
+  assert.equal(returned, 1);
+});
+
 test("Hook demo preview moves only its visible text block and saves/reopens its position", async () => {
   const saved = { ...draft(), framing: { version: 1, width: 1, height: 1, points: [[0, 0, 0]] } };
   const block = { value: "", width: .8, y: .18, fontSize: 48, color: "#ffffff", startMs: 0, endMs: 6000 };

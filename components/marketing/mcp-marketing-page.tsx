@@ -10,15 +10,15 @@ import {
   codexConfigToml,
   codexLoginCommands,
   connectionCheckPrompt,
-  MCP_TOOL_COUNT,
   mcpEndpoint,
   mcpIssuer,
   mcpOptionalAccountScope,
   mcpPages,
   mcpSetupScopes,
   mcpSoftwareJsonLd,
-  mcpToolCatalog,
   mcpWorkflows,
+  publicMcpToolCatalog,
+  publicMcpToolCount,
   type McpPageKey,
 } from "@/lib/marketing/mcp-public";
 
@@ -27,7 +27,7 @@ const relatedLinks = [
   { href: "/mcp/claude", title: "Claude setup", description: "Custom connector steps for Claude on the web and desktop." },
   { href: "/mcp/codex", title: "Codex setup", description: "The ~/.codex/config.toml block and login command." },
   { href: "/connect-ai", title: "Connect your AI", description: "Choose Claude, Codex, ChatGPT, or Claude Code." },
-  { href: "/docs/mcp-tools", title: "Tool reference", description: `All ${MCP_TOOL_COUNT} tools, copied from the registry.` },
+  { href: "/docs/mcp-tools", title: "Tool reference", description: `All ${publicMcpToolCount} tools, copied from the registry.` },
   { href: "/pricing", title: "Pricing", description: "Trial credits and the Starter and Growth plans." },
   { href: "/guides", title: "Founder guides", description: "Message, format, and review routines for the product." },
 ];
@@ -59,8 +59,8 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
 
       <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 sm:pt-36 lg:px-8">
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(ellipse_65%_50%_at_50%_0%,rgba(255,107,69,0.14),transparent_76%)]" />
-        <div className="mx-auto grid max-w-[1200px] items-start gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-          <div>
+        <div className="mx-auto grid max-w-[1200px] items-start gap-10 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:gap-16">
+          <div className="min-w-0">
             <p className="inline-flex items-center rounded-full border border-primary/35 bg-primary/[0.08] px-3 py-1.5 text-xs font-semibold text-primary">
               {page.eyebrow}
             </p>
@@ -76,7 +76,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             </p>
             <dl className="mt-8 grid grid-cols-3 gap-3">
               {[
-                [String(MCP_TOOL_COUNT), "live tools"],
+                [String(publicMcpToolCount), "live tools"],
                 ["OAuth", "PKCE sign-in"],
                 ["HTTP", "hosted server"],
               ].map(([value, label]) => (
@@ -100,10 +100,10 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-border bg-card p-5 shadow-floating sm:p-7">
-            <CopyTextButton label="Server URL" value={mcpEndpoint} />
+          <div className="min-w-0 rounded-[28px] border border-border bg-card p-5 shadow-floating sm:p-7">
+            <CopyTextButton label="Server URL" value={mcpEndpoint} wrap />
             <div className="mt-5">
-              <CopyTextButton label="First prompt" value={connectionCheckPrompt} />
+              <CopyTextButton label="First prompt" value={connectionCheckPrompt} wrap />
             </div>
             <p className="text-xs leading-5 text-muted">
               Sign in on the UGC Pilot consent page. Generation uses the connected account&apos;s plan and credits.
@@ -122,7 +122,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
                 ? "Add the server to Codex"
                 : "Choose the client, then approve access"}
           </h2>
-          <div className={`mt-10 grid gap-6 ${pageKey === "hub" ? "lg:grid-cols-2" : ""}`}>
+          <div className={`mt-10 grid min-w-0 gap-6 ${pageKey === "hub" ? "lg:grid-cols-2" : ""}`}>
             {(pageKey === "hub" || pageKey === "claude") && <ClaudeSetup />}
             {(pageKey === "hub" || pageKey === "codex") && <CodexSetup />}
           </div>
@@ -144,7 +144,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
       </section>
 
       <section id="oauth" className="scroll-mt-24 border-t border-border px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div>
             <p className="text-sm font-semibold text-primary">OAuth</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
@@ -166,10 +166,10 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
               ))}
             </ol>
           </div>
-          <div className="rounded-[24px] border border-border bg-card p-5 sm:p-6">
+          <div className="min-w-0 rounded-[24px] border border-border bg-card p-5 sm:p-6">
             <dl className="divide-y divide-border">
               {oauthFacts.map(([label, value]) => (
-                <div key={label} className="grid gap-1 py-3 sm:grid-cols-[11rem_1fr] sm:gap-4">
+                <div key={label} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] sm:gap-4">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</dt>
                   <dd className="break-all font-mono text-xs leading-5 text-foreground-strong sm:text-sm">{value}</dd>
                 </div>
@@ -195,7 +195,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             <div className="max-w-2xl">
               <p className="text-sm font-semibold text-primary">Tool groups</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-foreground-strong sm:text-4xl">
-                {MCP_TOOL_COUNT} tools, grouped by the job they do.
+                {publicMcpToolCount} tools, grouped by the job they do.
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted">
                 Names come from the registered server catalog. Some writes stay behind a live capability check. Open the reference for the description and scope of every tool.
@@ -206,7 +206,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
             </Link>
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mcpToolCatalog.groups.map((group) => (
+            {publicMcpToolCatalog.groups.map((group) => (
               <Link
                 key={group.id}
                 href={`/docs/mcp-tools#${group.id}`}
@@ -286,7 +286,7 @@ export function McpMarketingPage({ pageKey }: { pageKey: McpPageKey }) {
 
 function ClaudeSetup() {
   return (
-    <article className="rounded-[24px] border border-border bg-card p-6 sm:p-8">
+    <article className="min-w-0 rounded-[24px] border border-border bg-card p-6 sm:p-8">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xl font-semibold text-foreground-strong">Claude</h3>
         <Link href="/mcp/claude" className="text-sm font-semibold text-primary">Claude page</Link>
@@ -316,7 +316,7 @@ function ClaudeSetup() {
 
 function CodexSetup() {
   return (
-    <article className="rounded-[24px] border border-border bg-card p-6 sm:p-8">
+    <article className="min-w-0 rounded-[24px] border border-border bg-card p-6 sm:p-8">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xl font-semibold text-foreground-strong">Codex</h3>
         <Link href="/mcp/codex" className="text-sm font-semibold text-primary">Codex page</Link>

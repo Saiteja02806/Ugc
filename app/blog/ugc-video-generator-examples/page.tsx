@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BrandInstagramExampleAccounts } from "@/components/marketing/brand-instagram-profile-links";
 import { ExternalLiteEmbed } from "@/components/marketing/lite-embed";
 import { YouTubeCard } from "@/components/marketing/youtube-card";
 import { VideoMarketingPage, VideoRelatedLinks } from "@/components/marketing/video-marketing-page";
@@ -64,6 +65,9 @@ export default function UgcVideoExamplesPage() {
         <div className="mx-auto max-w-[1100px]">
           <h2 className="text-3xl font-semibold tracking-[-0.035em] text-foreground-strong">Instagram reels</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Four reels from the owner. The embed loads only after you ask for it. The link opens the reel on Instagram if you would rather leave this page.</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+            <BrandInstagramExampleAccounts />
+          </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {instagramReels.map((code) => (
               <article key={code} className="space-y-3">
@@ -96,6 +100,13 @@ export default function UgcVideoExamplesPage() {
         links={[
           { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "The two YouTube videos featured for the AI UGC video generator query." },
           { href: "/guides/how-to-create-ugc-videos-with-ai", title: "Create a UGC video", description: "Steps from a brief to a downloaded file, with one example embed." },
+          { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
+          { href: "/blog/ugc-ads-with-claude-mcp", title: "UGC ads with Claude", description: "Connect the MCP server and make a UGC-style ad from a chat." },
+          { href: "/blog/ugc-pilot-vs-hiring-ugc-creators", title: "UGC Pilot vs hiring creators", description: "Cost, speed, and quality, including where a human creator still wins." },
+          { href: "/blog/ugc-videos-with-codex-mcp", title: "UGC videos with Codex", description: "Connect the MCP server and make a UGC-style video from the terminal." },
+          { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },
+          { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },
+          { href: "/blog/how-to-choose-a-ugc-video-maker", title: "How to choose a UGC video maker", description: "A 10-point checklist for output, editing, voice, pricing, and limits." },
           { href: "/ai-ugc-video-generator", title: "AI UGC video generator", description: "Make a short video from a prompt and optional reference media." },
           { href: "/guides", title: "Founder guides", description: "Practical guides for the message and the review." },
         ]}

@@ -232,6 +232,8 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
         return next;
       });
     }, [demoDraftSourceId, key, onDirty, allowDemoAudio]);
+    const latestDemoEdit = useRef(draft);
+    useEffect(() => { latestDemoEdit.current = draft; }, [draft]);
     const demoDraftSave = useClipDraftSave({ owner, sourceAssetId: demoDraftSourceId, scope: `${format}:demo`, enabled: !localPreview,
       content: demoDraftSourceId ? { version: 1, sourceAssetId: demoDraftSourceId, editing: draft.editing,
         backgroundAssetId: draft.audioId, backgroundPlayback: draft.audioId ? draft.playback : "once", framing: draft.framing,
@@ -519,11 +521,16 @@ export function FormatDemoSection({ format, videoId, contentDemoId = null, openi
       </fieldset> : <p className="text-sm leading-6 text-muted">Add a demo in the Demo section to edit it here.</p>}
       {problems}
     </div>;
-    const editingActions = <div className={styles.clipActionContent}><div className={editorStyles.actionBar}>{onEditDone ? <Button type="button" variant="ghost" className="h-11 rounded-xl px-4" disabled={demoDraftSave.busy} onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to videos</Button> : null}<Button type="button" className={`${editorStyles.saveAction} h-11 rounded-xl px-5 font-semibold shadow-sm hover:shadow transition-shadow`} disabled={busy || localPreview || !preview || !!validation || !!audio.error || !!backgroundAudio.error || !!audioError || !!backgroundError || !localPreview && (!demo || !demoDraftSave.loaded || Boolean(draft.audioId && !audioQuery.data) || Boolean(draft.backgroundAudioId && !backgroundQuery.data))} onClick={async () => {
-      if (busy || !preview || validation || audio.error || backgroundAudio.error || audioError || backgroundError) return;
-      if (localPreview) return;
-      await demoDraftSave.save();
-    }}>{demoDraftSave.busy ? "Saving…" : demoDraftSave.saved && !demoDraftSave.dirty ? "Edits saved" : "Save edits"}</Button></div>
+    const demoSaveDisabled = busy || localPreview || !preview || !!validation || !!audio.error || !!backgroundAudio.error || !!audioError || !!backgroundError || !localPreview && (!demo || !demoDraftSave.loaded || Boolean(draft.audioId && !audioQuery.data) || Boolean(draft.backgroundAudioId && !backgroundQuery.data));
+    async function saveDemoEdits(returnAfterSave = false) {
+      if (demoSaveDisabled) return;
+      const snapshot = JSON.stringify(draft);
+      const saved = await demoDraftSave.save();
+      if (saved && returnAfterSave && alive.current && snapshot === JSON.stringify(latestDemoEdit.current)) onEditDone?.();
+    }
+    const editingActions = <div className={styles.clipActionContent}><div className={editorStyles.actionBar}>{onEditDone ? <Button type="button" variant="ghost" className="h-11 rounded-xl px-4" disabled={demoDraftSave.busy} onClick={onEditDone}><ArrowLeft className="size-4" aria-hidden="true" />Back to videos</Button> : null}
+      <Button type="button" variant="outline" className="h-11 rounded-xl px-5" disabled={demoSaveDisabled} onClick={() => void saveDemoEdits()}>{demoDraftSave.busy ? "Saving…" : demoDraftSave.saved && !demoDraftSave.dirty ? "Edits saved" : "Save edits"}</Button>
+      {onEditDone ? <Button type="button" className="h-11 rounded-xl px-5" disabled={demoSaveDisabled} onClick={() => void saveDemoEdits(true)}>Save &amp; return</Button> : null}</div>
       {selection.busy ? <p role="status" className="text-xs leading-5 text-muted">Uploading demo… You can edit now. Save when the upload finishes.</p> : null}
       {demoDraftSave.error ? <><p role="alert" className="text-xs leading-5 text-destructive">{demoDraftSave.error}</p><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={demoDraftSave.reload}>Reload saved demo draft</Button></> : null}
     </div>;

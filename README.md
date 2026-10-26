@@ -1,6 +1,43 @@
-# UGC
+# UGC Pilot
 
-UGC is a Next.js app for generating reusable AI creator avatars for short-form UGC ad hooks.
+[UGC Pilot](https://getugcpilot.com) turns a short brief into creator-style video you can review, edit, and download. Claude and Codex can do the same work through the hosted MCP server at `https://mcp.getugcpilot.com/mcp`. Sign-in is OAuth, so you approve access in the browser instead of pasting an API key into the chat.
+
+- [Website](https://getugcpilot.com)
+- [MCP server](https://getugcpilot.com/mcp)
+- [Connect Claude](https://getugcpilot.com/mcp/claude)
+- [Connect Codex](https://getugcpilot.com/mcp/codex)
+- [MCP tools](https://getugcpilot.com/docs/mcp-tools)
+- MCP URL: `https://mcp.getugcpilot.com/mcp`
+
+## See it in action
+
+These are the same public videos embedded on [UGC video generator examples](https://getugcpilot.com/blog/ugc-video-generator-examples).
+
+### YouTube
+
+- https://www.youtube.com/shorts/2P1whMHDqi8
+- https://www.youtube.com/watch?v=9bIweHdRdVw
+- https://www.youtube.com/shorts/GDXJqTrVpIw
+
+### Instagram
+
+- https://www.instagram.com/mira_handles/
+- https://www.instagram.com/juliarose.daily/
+- https://www.instagram.com/clara_iamm/
+- https://www.instagram.com/reel/DePXM_Pg_Lv/
+- https://www.instagram.com/reel/DeW8kYYN_lz/
+- https://www.instagram.com/reel/DeqrNISlQ0Z/
+- https://www.instagram.com/reel/De1snSfiDeK/
+
+### TikTok
+
+- https://www.tiktok.com/@clara_iami/video/7698234106957548814
+- https://www.tiktok.com/@clara_iamm/video/7698738756915907862
+- https://www.tiktok.com/@clara_iamm/video/7699988037559700758
+
+## Repository
+
+This repository is the Next.js app for UGC Pilot. It generates reusable AI creator avatars for short-form UGC ad hooks.
 
 ## Current Slice
 

@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import * as inlineSymbols from "../worker/src/lib/explore-inline-symbols.ts";
 import sharp from "sharp";
+import * as bulkStyle from "../lib/explore/slideshow-bulk-style.ts";
 import * as remixSource from "../lib/explore/remix-source.ts";
 import { prepareSlideshowSequence } from "../lib/explore/slideshow-preparation.ts";
 import { readSlideshowEditableDraft } from "../lib/explore/slideshow-editable-draft.ts";
@@ -18,6 +19,7 @@ function load(file, imports = {}, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, require: name => {
+    if (name === "@/lib/explore/slideshow-bulk-style") return bulkStyle;
     if (name === "server-only") return {};
     if (name === "./creator-slideshows.ts" || name === "@/lib/explore/creator-slideshows") return { getCreatorSlideshowReference: () => undefined, creatorSlideFromUrl: () => null };
     if (name === "./creator-account-access.ts" || name === "@/lib/explore/creator-account-access") return { canAccessCreatorAccounts: () => false };
@@ -201,6 +203,62 @@ async function editor({ failFirst = false, generated = true, storedDraft = null,
   return { render, control, heading, clickSave, requests, libraryReads, renders, uploads, saved, dirty, controller, useImage: addImage, storage, props, navigations };
 }
 
+test("bulk appearance applies to all or selected slides, preserves words and undoes without losing later typing", async () => {
+  const h = await editor();
+  const tools = () => nodes(h.render()).find(node => node.type === "FormatSlideshowTextTools").props;
+  tools().onChange({ heading: "First words", color: "#ff0000", size: 64 });
+  h.control("button", "Preview slide 2").props.onClick();
+  tools().onChange({ heading: "Second words", body: "Own message", size: 28 });
+  h.control("button", "Preview slide 1").props.onClick();
+  h.control("Button", "Apply appearance").props.onClick();
+  h.control("button", "Preview slide 2").props.onClick();
+  assert.equal(tools().design.heading, "Second words"); assert.equal(tools().design.size, 64);
+  assert.equal(tools().design.color, "#ff0000");
+  tools().onChange({ heading: "Newer words", color: "#00ff00" });
+  h.control("Button", "Undo appearance").props.onClick();
+  assert.equal(tools().design.heading, "Newer words"); assert.equal(tools().design.body, "Own message");
+  assert.equal(tools().design.size, 28); assert.equal(tools().design.color, "#00ff00");
+  h.control("select", "Apply text appearance to").props.onChange({ target: { value: "selected" } });
+  const targets = nodes(h.render()).filter(node => node.type === "input" && node.props.type === "checkbox");
+  targets[0].props.onChange({ target: { checked: true } });
+  h.control("Button", "Apply appearance").props.onClick();
+  h.control("button", "Preview slide 1").props.onClick();
+  assert.equal(tools().design.heading, "First words"); assert.equal(tools().design.size, 28);
+  assert.equal(tools().design.color, "#00ff00");
+  await h.clickSave("Save slideshow");
+  assert.equal(h.requests[0].editorDraft.slides[0].design.heading, "First words");
+  assert.equal(h.requests[0].editorDraft.slides[1].design.heading, "Newer words");
+});
+
+test("Save and review waits for successful recovery and never submits a schedule", async () => {
+  let continued = 0;
+  const h = await editor({ failFirst: true, onContinue: () => continued++ });
+  await h.clickSave("Save & review post");
+  assert.equal(continued, 0); assert.equal(h.saved.length, 0);
+  await h.clickSave("Save & review post");
+  assert.equal(continued, 1); assert.equal(h.saved.length, 1);
+  assert.deepEqual(h.requests[0], h.requests[1]);
+});
+
+test("direct finished-slide action opens the file picker without an Add slides dialog", async () => {
+  const h = await editor(); let opened = 0;
+  h.control("input", "Use my finished slides").props.ref.current = { click: () => opened++ };
+  h.control("Button", "Use my finished slides").props.onClick();
+  assert.equal(opened, 1);
+  assert.equal(nodes(h.render()).some(node => node.type === "SlideshowAddSlides"), false);
+  h.props.active = false; h.props.previewActive = false; h.render();
+  h.controller.current.uploadSlides(); assert.equal(opened, 2, "Create can open the same picker while the editor is hidden");
+});
+
+test("recreation cannot replace a slot whose original image has changed", async () => {
+  const h = await editor();
+  nodes(h.render()).find(node => node.type === "Button" && text(node).startsWith("Recreate slide")).props.onClick();
+  h.useImage({ id: id(803), url: "https://storage.test/changed.png" }, 0);
+  h.render();
+  assert.equal(h.controller.current.useImage({ id: id(804), url: "https://storage.test/late.png" }, undefined, id(201)), false);
+  assert.match(text(h.render()), /original slide changed/);
+});
+
 test("Create preview shares the edited sequence, text and upload actions without mounting the inspector", async () => {
   const h = await editor();
   h.heading("Keep my manual text");
@@ -213,7 +271,7 @@ test("Create preview shares the edited sequence, text and upload actions without
   assert.equal(nodes(h.render()).some(n => n.type === "FormatSlideshowTextTools"), false);
   assert.equal(nodes(h.render()).some(n => n.type === "portal" && n.props.target === h.props.actionsTarget), false);
   assert.ok(nodes(preview).some(n => n.props?.["data-slide-text-overlay"] !== undefined));
-  assert.equal(h.control("input", "Upload slideshow images").props.multiple, true);
+  assert.equal(h.control("input", "Use my finished slides").props.multiple, true);
   assert.equal(h.control("button", "Preview slide 2").props["aria-pressed"], false);
   h.control("button", "Preview slide 2").props.onClick();
   h.control("Button", "Edit slides").props.onClick(); assert.equal(opened, 1);
@@ -224,7 +282,7 @@ test("Create preview shares the edited sequence, text and upload actions without
   assert.equal(nodes(h.render()).find(n => n.type === "FormatSlideshowTextTools").props.design.heading, "Keep my manual text");
   assert.equal(h.requests.length, 0, "Navigation never saves or replaces a draft");
   h.props.active = false; h.props.previewActive = false;
-  assert.equal(h.render(), null);
+  assert.equal(nodes(h.render()).filter(node => node.type === "portal").length, 0, "Only the direct-upload inputs remain mounted");
 });
 
 test("a fresh generated slideshow replaces the visible sequence and keeps the prior draft in history", async () => {
@@ -300,10 +358,10 @@ test("saved slideshows restore by exact ID without depending on the first sixty 
   const reopened = await editor({generated:false, storageState:first.storage, libraryItem:item});
   assert.deepEqual(reopened.libraryReads, [`/api/library/carousels/${id(99)}`]);
   assert.equal(reopened.requests.length, 0); assert.equal(reopened.saved.length, 1);
-  assert.ok(reopened.control("Button", "Schedule slideshow"));
+  assert.ok(reopened.control("Button", "Review post"));
   for (const patch of [{projectId:"other"}, {sourceId:"explore-slideshow:another-request"}, {slides:[item.slides[1],item.slides[0]]}]) {
     const invalid = await editor({generated:false, storageState:first.storage, libraryItem:{...item,...patch}});
-    assert.equal(invalid.saved.length, 0); assert.equal(invalid.control("Button", "Schedule slideshow"), undefined);
+    assert.equal(invalid.saved.length, 0); assert.equal(invalid.control("Button", "Review post"), undefined);
   }
 });
 
@@ -318,7 +376,7 @@ test("two edited slides prepare together and still save in their exact displayed
   assert.match(text(h.render()), /Preparing slides · 1 of 2/); assert.equal(h.requests.length, 0);
   finish.get("First slide")({asset:{id:id(301)}}); await new Promise(setImmediate);
   assert.deepEqual(h.requests[0].slides.map(slide => slide.mediaAssetId), [id(301),id(302)]);
-  assert.ok(h.control("Button", "Schedule slideshow"));
+  assert.ok(h.control("Button", "Review post"));
 });
 
 test("recovering another tab's earlier save preserves newer text as unsaved until its own save", async () => {
@@ -332,7 +390,7 @@ test("recovering another tab's earlier save preserves newer text as unsaved unti
   await other.clickSave("Save slideshow");
   assert.deepEqual(other.requests[0], first.requests[0]); assert.equal(other.saved.length, 0);
   assert.equal(nodes(other.render()).find(node => node.type === "FormatSlideshowTextTools").props.design.heading, "Second tab text");
-  assert.equal(other.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(other.control("Button", "Review post"), undefined);
   assert.match(text(other.render()), /newer edits are still unsaved/);
   await other.clickSave("Save slideshow");
   assert.notEqual(other.requests[1].requestKey, first.requests[0].requestKey);
@@ -352,27 +410,27 @@ test("slide selection and preview navigation retain the saved slideshow without 
   assert.equal(tools().props.design.heading, "First message");
   assert.equal(h.dirty.length, beforeDirty); assert.deepEqual([...h.storage], beforeStorage);
   assert.equal(h.requests.length, 1); assert.equal(h.saved.length, 1);
-  assert.ok(h.control("Button", "Schedule slideshow"));
+  assert.ok(h.control("Button", "Review post"));
 });
 
 test("a pending image replacement blocks scheduling the previously saved sequence and requires a new save", async () => {
   let finishUpload, continued = 0;
   const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise(resolve => { finishUpload = resolve; }) });
   await h.clickSave("Save slideshow");
-  const priorSchedule = h.control("Button", "Schedule slideshow");
+  const priorSchedule = h.control("Button", "Review post");
   h.control("input", "Replace slideshow image").props.onChange({ currentTarget: { files: [{ name: "replacement.png", type: "image/png", size: 100 }], value: "selected" } });
   priorSchedule.props.onClick();
   assert.equal(continued, 0, "The upload starts locking the old schedule before the next render");
-  assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.control("Button", "Review post"), undefined);
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
   await new Promise(setImmediate);
   finishUpload({ asset: { id: id(301), collection: "image", status: "ready", url: "https://storage.test/replacement.png", title: "Replacement", createdAt: "", ratio: "4:5" } });
   await new Promise(setImmediate);
-  assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.control("Button", "Review post"), undefined);
   assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
   assert.equal(nodes(h.render()).find(node => node.type === "img").props.src, "https://storage.test/replacement.png");
   await h.clickSave("Save slideshow");
-  h.control("Button", "Schedule slideshow").props.onClick();
+  h.control("Button", "Review post").props.onClick();
   assert.equal(continued, 1);
   assert.deepEqual(h.requests[1].slides.map(slide => slide.mediaAssetId), [id(301), id(202)]);
 });
@@ -381,7 +439,7 @@ test("slide uploads send fitted files before adding owned images and retain succ
   const prepared = [];
   const h = await editor({ fitUpload: async file => { prepared.push(file.name); if (file.name === "bad.png") throw new Error("Could not read this image"); return { ...file, name: "portrait-4x5.png" }; },
     uploadResult: file => ({ asset: { id: id(350), collection: "image", status: "ready", url: "https://storage.test/portrait-4x5.png", title: file.name, createdAt: "", ratio: "4:5" } }) });
-  h.control("input", "Upload slideshow images").props.onChange({ currentTarget: { files: ["portrait.png", "bad.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
+  h.control("input", "Use my finished slides").props.onChange({ currentTarget: { files: ["portrait.png", "bad.png"].map(name => ({ name, type: "image/png", size: 100 })), value: "chosen" } });
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
   await new Promise(setImmediate);
   assert.deepEqual(prepared, ["portrait.png", "bad.png"]);
@@ -396,7 +454,7 @@ test("a failed valid image replacement keeps the old sequence unscheduled until 
   let rejectUpload, continued = 0;
   const h = await editor({ onContinue: () => continued++, uploadResult: () => new Promise((_, reject) => { rejectUpload = reject; }) });
   await h.clickSave("Save slideshow");
-  const dirtyBefore = h.dirty.length, priorSchedule = h.control("Button", "Schedule slideshow");
+  const dirtyBefore = h.dirty.length, priorSchedule = h.control("Button", "Review post");
   h.control("input", "Replace slideshow image").props.onChange({ currentTarget: { files: [{ name: "replacement.png", type: "image/png", size: 100 }], value: "selected" } });
   assert.equal(h.dirty.length, dirtyBefore + 1);
   priorSchedule.props.onClick();
@@ -404,11 +462,11 @@ test("a failed valid image replacement keeps the old sequence unscheduled until 
   rejectUpload(new Error("Upload failed"));
   await new Promise(setImmediate);
   assert.equal(continued, 0);
-  assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.control("Button", "Review post"), undefined);
   assert.equal(h.control("Button", "Save slideshow").props.disabled, false);
   assert.equal(nodes(h.render()).find(node => node.type === "img").props.src, "https://storage.test/generated-1.png");
   await h.clickSave("Save slideshow");
-  h.control("Button", "Schedule slideshow").props.onClick();
+  h.control("Button", "Review post").props.onClick();
   assert.equal(continued, 1);
   assert.equal(h.requests.length, 1, "Explicit re-save verifies the unchanged owned Library receipt without a new write");
 });
@@ -449,7 +507,7 @@ test("slide arrangement stays beside the preview while text tools remain in the 
 test("the dedicated footer exposes exactly one save, resume or schedule action throughout recovery", async () => {
   let continued = 0;
   const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
-  const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Schedule slideshow", "Saving…"].includes(text(node)));
+  const primary = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Review post", "Saving…"].includes(text(node)));
   const assertAction = label => {
     assert.equal(primary().length, 1); assert.equal(text(primary()[0]), label);
     const footer = nodes(h.render()).find(node => node.type === "portal" && node.props.target === h.props.actionsTarget);
@@ -457,8 +515,8 @@ test("the dedicated footer exposes exactly one save, resume or schedule action t
   };
   assertAction("Save slideshow"); await h.clickSave("Save slideshow"); assertAction("Resume save");
   for (const label of ["Move slide 1 later", "Remove slide"]) assert.equal(h.control("Button", label).props.disabled, true);
-  await h.clickSave("Resume save"); assertAction("Schedule slideshow");
-  h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
+  await h.clickSave("Resume save"); assertAction("Review post");
+  h.control("Button", "Review post").props.onClick(); assert.equal(continued, 1);
   assert.deepEqual(h.requests[0], h.requests[1]);
 });
 
@@ -467,7 +525,7 @@ test("Create preview saves and resumes the same draft before scheduling, then in
   const h = await editor({ failFirst: true, actionsTarget: {}, onContinue: () => continued++ });
   h.heading("Keep this heading from Edit");
   h.props.active = false; h.props.previewActive = true;
-  const actionNodes = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Schedule slideshow", "Saving…"].includes(text(node)));
+  const actionNodes = () => nodes(h.render()).filter(node => node.type === "Button" && ["Save slideshow", "Resume save", "Review post", "Saving…"].includes(text(node)));
   const assertSurface = label => {
     const tree = h.render(), preview = nodes(tree).find(node => node.props?.["aria-label"] === "Slideshow edit preview");
     assert.equal(actionNodes().length, 1); assert.equal(text(actionNodes()[0]), label);
@@ -479,16 +537,16 @@ test("Create preview saves and resumes the same draft before scheduling, then in
   await h.clickSave("Save slideshow"); assertSurface("Resume save");
   assert.equal(continued, 0); assert.equal(h.saved.length, 0);
   assert.equal(nodes(h.render()).filter(node => node.props?.role === "alert" && text(node).includes("Interrupted save")).length, 1);
-  await h.clickSave("Resume save"); assertSurface("Schedule slideshow");
+  await h.clickSave("Resume save"); assertSurface("Review post");
   assert.deepEqual(h.requests[0], h.requests[1]);
   assert.equal(h.requests[1].editorDraft.slides[0].design.heading, "Keep this heading from Edit");
-  h.control("Button", "Schedule slideshow").props.onClick(); assert.equal(continued, 1);
-  const oldSchedule = h.control("Button", "Schedule slideshow");
+  h.control("Button", "Review post").props.onClick(); assert.equal(continued, 1);
+  const oldSchedule = h.control("Button", "Review post");
   h.control("Button", "Move slide 1 later").props.onClick(); assertSurface("Save slideshow");
   oldSchedule.props.onClick(); assert.equal(continued, 1, "A stale saved action cannot schedule the changed sequence");
   h.props.generationBusy = true; assert.equal(h.control("Button", "Save slideshow").props.disabled, true);
   h.props.generationBusy = false;
-  await h.clickSave("Save slideshow"); assertSurface("Schedule slideshow");
+  await h.clickSave("Save slideshow"); assertSurface("Review post");
   assert.equal(h.requests.at(-1).editorDraft.slides[1].design.heading, "Keep this heading from Edit");
   h.control("button", "Remove slide 1").props.onClick(); assertSurface("Save slideshow");
   assert.equal(h.control("Button", "Save slideshow").props.disabled, true, "One remaining slide cannot be saved");
@@ -502,8 +560,8 @@ test("saving edited text uploads its generated image with the owner and keeps un
   assert.equal(h.uploads[0].owner, "owner"); assert.equal(h.uploads[0].kind, "image");
   assert.equal(h.renders[0].source, "https://storage.test/generated-1.png");
   assert.equal(h.requests[0].slides[0].mediaAssetId, id(301)); assert.equal(h.requests[0].slides[1].mediaAssetId, id(202));
-  assert.equal(h.saved.length, 1); assert.ok(h.control("Button", "Schedule slideshow"));
-  h.heading("Changed heading"); assert.ok(h.control("Button", "Save slideshow")); assert.equal(h.control("Button", "Schedule slideshow"), undefined);
+  assert.equal(h.saved.length, 1); assert.ok(h.control("Button", "Review post"));
+  h.heading("Changed heading"); assert.ok(h.control("Button", "Save slideshow")); assert.equal(h.control("Button", "Review post"), undefined);
 });
 test("an interrupted save freezes editing and retries the same key and rendered asset IDs", async () => {
   const h = await editor({ failFirst: true }); h.heading("My heading"); await h.clickSave("Save slideshow");

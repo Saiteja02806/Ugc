@@ -143,8 +143,8 @@ export default function Home() {
                 className="group inline-flex h-12 w-full max-w-[220px] items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto sm:max-w-none sm:px-7"
                 initialHasSession={initialHasSession}
               />
-              <a href="/mcp" className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-medium text-muted transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                Connect Claude or Codex
+              <a href="#workflow" className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 text-sm font-medium text-muted transition-colors hover:text-foreground-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                See how it works
                 <ArrowDown className="size-4" aria-hidden="true" />
               </a>
             </div>

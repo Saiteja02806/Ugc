@@ -45,30 +45,45 @@ function App(){const[post,setPost]=useState(1),[owner,setOwner]=useState('owner-
     for(const viewport of [{width:1280,height:900},{width:390,height:844},{width:320,height:568}]){
       rows.clear();const context=await browser.newContext({viewport}),page=await context.newPage(),errors=[];page.on("pageerror",error=>errors.push(error.message));
       await page.goto("http://127.0.0.1:"+server.address().port);
-      const caption=page.getByRole("textbox",{name:"Post caption"}),save=page.getByRole("button",{name:"Save caption",exact:true});
-      await caption.waitFor(); await page.getByRole("button",{name:"Saved captions",exact:true}).click(); await page.getByText(/Write a caption above/).waitFor();
+      // The modal correctly hides the background field from the accessibility tree.
+      // Include it for value-only assertions while the library is open.
+      const caption=page.getByRole("textbox",{name:"Post caption",includeHidden:true}),save=page.getByRole("button",{name:"Save caption",exact:true});
+      const closeLibrary=async()=>{await page.getByRole("button",{name:"Close saved captions",exact:true}).click();await page.getByRole("dialog",{name:"Saved captions",exact:true}).waitFor({state:"hidden"});};
+      const openLibrary=async()=>{await page.getByRole("button",{name:/^Saved captions/}).click();await page.getByRole("dialog",{name:"Saved captions",exact:true}).waitFor();};
+      await caption.waitFor(); await openLibrary(); await page.getByText(/No saved captions yet/).waitFor(); await closeLibrary();
       const first="That’s what I’m working on with UGCPilot.\n\ngetugcpilot.com\n\n#SaaS #BuildInPublic";
       await caption.fill(first);await save.click();await page.getByText("Caption saved as your default for new posts.",{exact:true}).waitFor();
       await page.getByRole("button",{name:"Clear post caption"}).click();assert.equal(await caption.inputValue(),"");
       assert.equal(rows.get("owner-a").captions.length,1);
       const second="Another caption\n#Founder";await caption.fill(second);await save.click();await page.getByText("Caption saved.",{exact:true}).waitFor();
+      assert.equal(await page.getByRole("dialog").count(),0,"Saving must not open or expand the library");
+      await openLibrary();
       await page.getByRole("button",{name:"Make default",exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('[aria-pressed="true"]').length===1);
+      const drawer=await page.getByRole("dialog",{name:"Saved captions",exact:true}).boundingBox();
+      assert.ok(Math.abs(drawer.x+drawer.width-viewport.width)<2);assert.ok(drawer.height<=viewport.height+1);
       await page.screenshot({path:path.join(out,viewport.width+"-library.png")});
+      await page.keyboard.press("Escape");await page.getByRole("dialog").waitFor({state:"hidden"});
+      assert.match(await page.locator(':focus').innerText(),/^Saved captions/);
       await page.getByRole("button",{name:"Switch workflow",exact:true}).click();await page.waitForFunction(expected=>document.querySelector('textarea').value===expected,second);
       await page.getByRole("button",{name:"Clear post caption"}).click();assert.equal(await caption.inputValue(),"");
       await page.getByRole("button",{name:/Saved captions/}).click();await page.getByRole("button",{name:"Default",exact:true}).click();await page.getByRole("button",{name:"Make default",exact:true}).first().waitFor();
       assert.equal(await caption.inputValue(),"","Changing defaults cannot refill a deliberately blank caption");
+      await page.getByRole("button",{name:"Use caption",exact:true}).first().click();await page.getByRole("dialog").waitFor({state:"hidden"});
+      assert.equal(await caption.inputValue(),first);assert.equal(await caption.evaluate(node=>document.activeElement===node),true);
       await page.getByRole("button",{name:"Existing draft",exact:true}).click();await page.waitForFunction(()=>document.querySelector('textarea').value==='My existing draft');
-      await page.getByRole("button",{name:"Switch account",exact:true}).click();await page.getByRole("button",{name:"Saved captions",exact:true}).click();await page.getByText(/Write a caption above/).waitFor();assert.equal(await caption.inputValue(),"");
+      await page.getByRole("button",{name:"Switch account",exact:true}).click();await openLibrary();await page.getByText(/No saved captions yet/).waitFor();assert.equal(await caption.inputValue(),"");await closeLibrary();
       await page.getByRole("button",{name:"Switch account",exact:true}).click();await page.getByRole("button",{name:/Saved captions/}).click();
       const deletes=page.getByRole("button",{name:/Delete saved caption:/});await deletes.first().click();await page.waitForFunction(()=>document.querySelectorAll('button[title="Delete saved caption"]').length===1);
       assert.equal(await caption.inputValue(),"");
+      await closeLibrary();
       failNext=true;await caption.fill("Unsaved draft stays here");await save.click();await page.getByRole("alert").waitFor();assert.equal(await caption.inputValue(),"Unsaved draft stays here");await page.getByRole("button",{name:"Retry",exact:true}).click();await save.waitFor({state:"visible"});await page.waitForFunction(()=>Array.from(document.querySelectorAll('button')).some(b=>b.textContent==='Save caption'&&!b.disabled));
       loseNext=true;await save.click();await page.getByRole("alert").waitFor();await page.getByRole("button",{name:"Retry",exact:true}).click();await page.getByRole("button",{name:"Saved",exact:true}).waitFor();assert.equal(rows.get("owner-a").captions.length,2,"Lost response is recovered without duplicate save");
       const previous=rows.get("owner-a"),otherId="00000000-0000-4000-8000-000000000099";
       rows.set("owner-a",{...previous,revision:previous.revision+1,captions:[...previous.captions,{id:otherId,text:"Saved in another tab"}]});
+      await openLibrary();
       await page.getByRole("button",{name:"Make default",exact:true}).first().click();await page.getByRole("alert").waitFor();await page.getByRole("button",{name:"Retry",exact:true}).click();
       await page.getByText("Saved in another tab",{exact:true}).waitFor();assert.equal(rows.get("owner-a").captions.length,3,"Stale updates cannot erase another tab's caption");
+      await closeLibrary();
       await page.screenshot({path:path.join(out,viewport.width+"-field.png")});
       let held;await page.route("**/api/account/saved-captions",async route=>{if(route.request().method()==="GET"&&!held){held=route;return;}await route.continue();});
       await page.reload();await caption.fill("I typed before defaults loaded");

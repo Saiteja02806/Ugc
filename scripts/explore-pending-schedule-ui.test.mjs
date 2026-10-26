@@ -120,6 +120,34 @@ test("a pending preparation does not complete the editing draft; a verified sche
   h.setServerReply(reply(input(),"scheduled"));await h.tick();assert.equal(completed,1);h.unmount();
 });
 
+test("an audio preparation timeout keeps the form usable and cannot submit a schedule", async () => {
+  const h = fixture();
+  h.props.composition.resolve = async () => { throw new DOMException("signal timed out", "TimeoutError"); };
+  await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  assert.match(h.text(), /video or background audio took too long/);
+  assert.match(h.text(), /post has not been submitted/);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.equal(h.button("Schedule post").props.disabled, false);
+  assert.equal(h.props.draft.caption, submission.caption);
+  h.props.composition.resolve = async () => finishDraft;
+  h.render(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  assert.match(h.text(), /Post scheduled/);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  h.unmount();
+});
+
+test("a settings timeout names the failed check and never submits the post", async () => {
+  const h = fixture({ transport: async url => {
+    if (url === "/api/social/connections") throw new DOMException("signal timed out", "TimeoutError");
+  } });
+  await h.form(); h.button("Schedule post").props.onClick(); await settle(); h.render();
+  assert.match(h.text(), /connected accounts took too long/);
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 0);
+  assert.equal(h.calls.filter(call => call.url === "/api/social/connections").length, 2);
+  assert.equal(h.button("Schedule post").props.disabled, false);
+  h.unmount();
+});
+
 test("the original simple form submits directly with one Schedule post click", async () => {
   const h = fixture(), form = await h.form(); assert.ok(form); assert.equal(form.props.presentation, "review");
   assert.equal(h.calls.length, 0, "Entering Schedule must not replace the form or create a schedule");

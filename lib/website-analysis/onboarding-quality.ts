@@ -34,23 +34,40 @@ export function isGenericStoreBusinessName(name: string | null | undefined, sour
   return normalized === hostname || /^(app store|google play|apps on google play)$/.test(normalized);
 }
 
-export function getMissingUrlBusinessContext(analysis: RequiredBusinessContext, sourceUrl: string) {
+/** Use visible scraped text, never the request URL or Markdown link targets,
+ * as evidence that a domain-shaped name is the site's actual brand. */
+export function getVerifiedWebsiteBusinessName(name: string | null, pages: ScrapedWebsitePage[]) {
+  const trimmed = name?.trim();
+  if (!trimmed) return undefined;
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const mention = new RegExp(`(^|[^\\p{L}\\p{N}_.@-])${escaped}(?=$|[^\\p{L}\\p{N}_.@-]|\\.(?![\\p{L}\\p{N}_-]))`, "iu");
+  return pages.some(page => {
+    const visibleText = `${page.title ?? ""}\n${page.markdown}`
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/https?:\/\/[^\s<>]+/gi, "")
+      .replace(/<[^>]*>/g, "");
+    return mention.test(visibleText);
+  }) ? trimmed : undefined;
+}
+
+export function getMissingUrlBusinessContext(analysis: RequiredBusinessContext, sourceUrl: string, verifiedBusinessName?: string) {
   const name = analysis.businessName?.trim() ?? "";
   const hostname = new URL(sourceUrl).hostname.toLowerCase();
   const normalizedHost = hostname.replace(/^www\./, "");
   return {
-    businessName: !name || name.toLowerCase() === hostname || name.toLowerCase() === normalizedHost || isGenericStoreBusinessName(name, sourceUrl),
+    businessName: !name || isGenericStoreBusinessName(name, sourceUrl) ||
+      ((name.toLowerCase() === hostname || name.toLowerCase() === normalizedHost) && verifiedBusinessName !== name),
     productSummary: (analysis.productSummary?.trim().length ?? 0) < 20,
     targetAudience: !analysis.targetAudience.some((item) => item.trim().length > 0),
   };
 }
 
-export function hasRequiredUrlBusinessContext(analysis: RequiredBusinessContext, sourceUrl: string) {
-  return !Object.values(getMissingUrlBusinessContext(analysis, sourceUrl)).some(Boolean);
+export function hasRequiredUrlBusinessContext(analysis: RequiredBusinessContext, sourceUrl: string, verifiedBusinessName?: string) {
+  return !Object.values(getMissingUrlBusinessContext(analysis, sourceUrl, verifiedBusinessName)).some(Boolean);
 }
 
-export function requireUrlBusinessContext(analysis: RequiredBusinessContext, sourceUrl: string) {
-  if (!hasRequiredUrlBusinessContext(analysis, sourceUrl)) {
+export function requireUrlBusinessContext(analysis: RequiredBusinessContext, sourceUrl: string, verifiedBusinessName?: string) {
+  if (!hasRequiredUrlBusinessContext(analysis, sourceUrl, verifiedBusinessName)) {
     throw new WebsiteAnalysisError(
       "Unable to analyze that URL. Try entering your product details manually.",
       422,

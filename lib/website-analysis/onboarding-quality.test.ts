@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getMissingUrlBusinessContext, getStoreListingName, hasRequiredUrlBusinessContext, requireUrlBusinessContext } from "./onboarding-quality.ts";
+import { getMissingUrlBusinessContext, getStoreListingName, getVerifiedWebsiteBusinessName, hasRequiredUrlBusinessContext, requireUrlBusinessContext } from "./onboarding-quality.ts";
 
 const appUrl = "https://apps.apple.com/in/app/example/id123456789";
 const playUrl = "https://play.google.com/store/apps/details?id=com.example.app";
@@ -47,4 +47,32 @@ test("a store listing title supplies the app name when the model omits it", () =
   assert.equal(getStoreListingName({ title: "App Store", markdown: "", url: appUrl }, appUrl), null);
   assert.equal(getStoreListingName({ title: "App Store", markdown: "# A Useful App\nDetails", url: appUrl }, appUrl), "A Useful App");
   assert.equal(getStoreListingName({ title: "App Store", markdown: "# A Useful App\nDetails", url: appUrl }, appUrl.replace("apps.apple.com", "www.apps.apple.com")), "A Useful App");
+});
+
+test("evidenced domain brands pass without accepting hostname placeholders or relaxing required facts", () => {
+  const url = "https://cal.com/";
+  const facts = { ...complete, businessName: "Cal.com" };
+  const pages = [{ url, title: "Cal.com | Scheduling infrastructure", markdown: "Schedule meetings with Cal.com." }];
+  const verified = getVerifiedWebsiteBusinessName(facts.businessName, pages);
+  assert.equal(verified, "Cal.com");
+  assert.doesNotThrow(() => requireUrlBusinessContext(facts, url, verified));
+  assert.equal(hasRequiredUrlBusinessContext(facts, "https://www.cal.com/", verified), true);
+  assert.equal(hasRequiredUrlBusinessContext(facts, url), false);
+  assert.equal(hasRequiredUrlBusinessContext(facts, url, "Other brand"), false);
+  for (const invalid of [{ ...facts, productSummary: null }, { ...facts, productSummary: "Too short" }, { ...facts, targetAudience: [] }, { ...facts, businessName: null }]) {
+    assert.throws(() => requireUrlBusinessContext(invalid, url, verified), /Try entering/);
+  }
+  assert.equal(hasRequiredUrlBusinessContext({ ...facts, businessName: "apps.apple.com" }, appUrl, "apps.apple.com"), false);
+  assert.equal(hasRequiredUrlBusinessContext({ ...facts, businessName: "play.google.com" }, playUrl, "play.google.com"), false);
+});
+
+test("brand evidence uses visible exact names, not source URLs, link destinations, emails or lookalikes", () => {
+  const page = (markdown: string, title: string | null = null) => [{ url: "https://cal.com/", title, markdown }];
+  for (const text of ["Schedule meetings", "[Book here](https://cal.com/)", "https://cal.com/", "https://cal.com", "sales@cal.com", "notcal.com", "cal.com.evil.test", '<a href="https://cal.com/">Book</a>']) {
+    assert.equal(getVerifiedWebsiteBusinessName("Cal.com", page(text)), undefined, text);
+  }
+  for (const text of ["# Cal.com", "Meet Cal.com — your scheduling tool", "Try Cal.com.", "[Cal.com](https://cal.com/)"]) {
+    assert.equal(getVerifiedWebsiteBusinessName("Cal.com", page(text)), "Cal.com");
+  }
+  assert.equal(getVerifiedWebsiteBusinessName("Cal.com", page("", "cal.com | Scheduling")), "Cal.com");
 });

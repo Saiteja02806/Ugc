@@ -36,3 +36,13 @@ Staged hosted build, production promotion, authenticated Cal.com retry, durable 
 - worker/src/lib/gemini-image-curated.test.mjs
 
 Related incidents: UGC-OPS-007 and UGC-VID-017. Root ledger keeps historical observations and will receive the actual deployment/acceptance result. No historical incident is closed by mocked tests alone.
+
+## Production rollout result
+
+Runtime source c630c66fd19538485cebafe1a254186694459050 is pushed on codex/onboarding-domain-brand-hotfix-20261026. Hosted production build dpl_HF6A6phBxSDN9aMSpMXcuZ9jHQ5f passed compilation,TypeScript,224static pages and native decoder checks. Staged onboarding HTTP200/API anonymous401 passed. Promotion succeeded and both apex/www aliases were read back on this deployment. MCP remains dpl_6jMPY2yfUg9CV51EFPcXxM4Nv5QR and worker45bf657b remains unchanged.
+
+Public production landing/onboarding/sign-in return200 after existing www-to-apex redirects; onboarding API401 preserves auth. Website /mcp/health is404 and is not its health endpoint; the independent MCP target is unchanged. Initial new-deployment error-log read returned no error records.
+
+Broader npm test prechecks passed, but the final100case runner has93PASS/7FAIL in unchanged AI Studio fixtures. All seven reproduce on untouched adbfe498 production source:33cases/26PASS/7FAIL. The hotfix does not change those source/test inputs. Do not report the global suite green. Logs retained at .tmp/onboarding-hotfix-npm-test.log and .tmp/onboarding-hotfix-baseline-tests.log; disposable baseline extraction/archive were removed after reproduction.
+
+User will manually test the signed-in account. At initial post-promotion readback, the original analysis job had not been retried. Live successful analysis/finalization/profile and final UI/reload/mobile/GoogleOAuth remain NOT VERIFIED until that attempt executes. No SQL manufactured completion or bypassed sign-in. No paid image retry, worker rollout, schema/env/IAM change or unrelated primary-worktree release. Rollback remains dpl_EQWnJEiXsvFEdWh9T4W2SoeRm5aq.

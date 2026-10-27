@@ -123,6 +123,11 @@ class PluginBuildTests(unittest.TestCase):
             self.assertEqual(json.loads(package.read("ugc-pilot/plugin.json"))["version"], "0.2.1")
         self.assertEqual(archive.with_suffix(".zip.sha256").read_text().strip(), hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name)
 
+    def test_previous_0_2_9_candidate_bytes_remain_immutable(self):
+        archive = ROOT / "public/downloads/ugc-pilot-0.2.9.zip"
+        self.assertEqual(hashlib.sha256(archive.read_bytes()).hexdigest(),
+                         "409411370c124c6337570501068fde1f5d6a7f0fe737fd710ec621a6376b733c")
+
     def test_published_candidate_matches_current_canonical_source(self):
         archive = ROOT / "public" / "downloads" / f"ugc-pilot-{self.source_version()}.zip"
         with zipfile.ZipFile(archive) as package:

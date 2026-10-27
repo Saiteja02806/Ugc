@@ -106,6 +106,16 @@ export function validateResourceLinks(text, relative) {
   }
 }
 
+export function validatePortableMcpCompatibility(mcp) {
+  // The Agent Plugins schema accepts extensions that installed Codex clients
+  // can reject before discovering OAuth. Keep the bundled transport portable;
+  // authorization is discovered from the protected resource, never embedded.
+  assert.deepEqual(mcp.mcpServers, { "ugc-pilot": {
+    type: "streamable-http",
+    url: endpoint,
+  } }, "Bundled MCP must use the Codex-compatible transport without extensions or credentials");
+}
+
 export function validatePackage({ submission = false } = {}) {
   validateLocalMarketplace();
   assert.deepEqual(walk(pluginDir).sort(), [...packageFiles].sort(), "Unexpected or missing package file");
@@ -128,20 +138,7 @@ export function validatePackage({ submission = false } = {}) {
   for (const field of ["logo", "composerIcon"]) {
     assert.equal(ui[field], "./assets/logo.png");
   }
-  assert.deepEqual(mcp.mcpServers, { "ugc-pilot": {
-    type: "streamable-http",
-    url: endpoint,
-    extensions: {
-      "com.openai": {
-        auth: {
-          type: "oauth",
-          client: { mode: "cimd" },
-          resource: endpoint,
-          baseScopes: ["account:read"],
-        },
-      },
-    },
-  } });
+  validatePortableMcpCompatibility(mcp);
   assert.deepEqual(json(".mcp.json"), { mcpServers: { "ugc-pilot": { type: "http", url: endpoint } } });
   for (const overlay of [".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]) {
     const metadata = json(overlay);

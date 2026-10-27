@@ -1,6 +1,22 @@
 # UGC Pilot plugin context
 
-Last reviewed: 2026-10-19
+Last reviewed: 2026-10-27
+
+## Current release decision — 27 October 2026
+
+**Latest Codex-only follow-up:** local plugin **0.2.10** removes the portable MCP field rejected by Codex 0.164.0-alpha.11.1. Exact-archive native install/load, normal live OAuth with only account:read, three structured account reads and a new-process saved-login check PASS against the user's existing production account. Live discovery is **79 tools**, not the unreleased candidate's 106. The first login attempt failed after its browser callback; cause remains unknown and is preserved in the receipt. Claude is deferred by user instruction. No production settings/source/schema/worker change or publishing; package not pushed/deployed and normal installed/public versions not advanced. See [Codex compatibility and live sign-in receipt](codex-plugin-signin-2026-10-27.md). Historical staging and 0.2.9 audit statements below remain dated evidence.
+
+**Later same-day test update:** matching PR71 staging website/MCP builds are now READY and their protected health/OAuth/ZIP checksum checks pass. Actual clean Codex install exposes a release blocker: the installed client's portable MCP parser rejects server `extensions`, leaving no bundled MCP server despite successful skill installation (UGC-OPS-011). Claude installation passes but authentication is unverified. Neither client completed OAuth plus safe read. The user requested switching narrow sign-in acceptance to the real application; temporary staging Trusted Sources changes were restored and read back. See [actual staging and host-test receipt](pr71-staging-host-acceptance-2026-10-27.md). The earlier missing-build statements below describe the audit before these builds, not the final same-day state.
+
+**PR #71 is source-validated, but not accepted end to end or ready for production.** The audited head is `729cc229102979fec2816d140a3fad97c7eefbdf`: plugin **0.2.9**, **106 tools**, **18 skills**, **47 package files**. Its current MCP, preserved-application, migration and completed-video checks pass, and its website preview is READY. The earlier 79/89/98-tool and 0.2.2–0.2.6 sections below are dated history, not the current release decision.
+
+The exact candidate's dedicated staging website/MCP pair is still missing. Existing staging builds are older snapshots. Normal native-client access through deployment protection, clean Codex and Claude Code install → consent → callback → authenticated safe read, and this candidate's real Hook/Demo download remain NOT VERIFIED. The 26 October hosted staging-schema receipt records successful reconciliation; that database was not queried again in this audit.
+
+Fresh public checks show production is a separate release: MCP health is ready, OAuth advertises nine older scopes (without analytics/publishing), and the canonical connect page downloads **0.2.0**. Running the candidate's public preflight against production fails at the missing `analytics:read` scope. This is release drift, not evidence that the candidate's own OAuth endpoint is broken. The successful 24 October production Hook/Demo test and two subsequent default Codex CLI logins used the older release/existing installation; they do not certify this candidate or a clean Install plugin journey.
+
+PR #71 does **not** include the unfinished checkout's social-connection tools, schedule edit/cancel/retry/publish-now tools, their two migrations, or its CIMD transient-retry follow-up. Do not treat the larger 106-tool total as proof that these workflows were consolidated. Scheduling here is reads plus gated future creation; analytics are saved snapshots. Durable confirmation replay rejection across isolates additionally requires verified `MCP_CONFIRM_TOKEN_DURABLE=true` configuration and its table; in-memory tests alone are insufficient.
+
+Use [the current audit and ordered acceptance plan](pr71-production-readiness-2026-10-27.md) and [the exact-source inventory](pr71-release-manifest-2026-10-27.json) for the next release. The safe priority is one coherent tested release, followed by separately reviewed social/publishing parity. No production settings, migration, publication or deployment was performed in this audit.
 
 Use this file as the release record for the UGC Pilot Codex/Claude plugin. Update it when the package, deployed MCP catalogue, OAuth behaviour, capability gates, installed-host acceptance, or media-transfer readiness changes. Keep source validation, deployed endpoint checks, and real user acceptance separate.
 

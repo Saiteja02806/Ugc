@@ -1,0 +1,510 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-10-27",
+  "purpose": "Read-only candidate inventory. This file is evidence, not a deployment configuration or authorization.",
+  "repository": "Saiteja02806/Ugc",
+  "pull_request": 71,
+  "source_commit": "729cc229102979fec2816d140a3fad97c7eefbdf",
+  "base_commit_at_review": "adbfe49856f79d682fa7acc34aef281a32116296",
+  "release_status": "NOT_READY_FOR_PRODUCTION",
+  "plugin": {
+    "version": "0.2.9",
+    "archive": "public/downloads/ugc-pilot-0.2.9.zip",
+    "sha256": "409411370c124c6337570501068fde1f5d6a7f0fe737fd710ec621a6376b733c",
+    "bytes": 142182,
+    "file_count": 47,
+    "skill_count": 18,
+    "tool_count": 106
+  },
+  "tool_groups": [
+    {
+      "id": "account-and-media",
+      "source": "lib/mcp/read-tools.ts",
+      "tools": [
+        "get_profile",
+        "get_entitlements",
+        "get_saas_brand",
+        "list_assets",
+        "get_asset",
+        "get_capabilities"
+      ]
+    },
+    {
+      "id": "uploads",
+      "source": "lib/mcp/mutation-tools.ts",
+      "tools": [
+        "create_upload",
+        "confirm_upload",
+        "delete_asset"
+      ]
+    },
+    {
+      "id": "generation",
+      "source": "lib/mcp/generation-tools.ts",
+      "tools": [
+        "generate_image",
+        "generate_video",
+        "get_job"
+      ]
+    },
+    {
+      "id": "finishing",
+      "source": "lib/mcp/finishing-tools.ts",
+      "tools": [
+        "get_video_finishing_capabilities",
+        "finish_video",
+        "get_video_finish"
+      ]
+    },
+    {
+      "id": "demos",
+      "source": "lib/mcp/demo-tools.ts",
+      "tools": [
+        "register_demo",
+        "list_demos",
+        "get_demo",
+        "delete_demo"
+      ]
+    },
+    {
+      "id": "upload-recovery",
+      "source": "lib/mcp/upload-recovery-tools.ts",
+      "tools": [
+        "get_upload",
+        "list_uploads",
+        "renew_upload"
+      ]
+    },
+    {
+      "id": "operations",
+      "source": "lib/mcp/operation-tools.ts",
+      "tools": [
+        "list_operations",
+        "get_operation",
+        "cancel_operation",
+        "retry_operation"
+      ]
+    },
+    {
+      "id": "edit-drafts",
+      "source": "lib/mcp/edit-draft-tools.ts",
+      "tools": [
+        "list_edit_drafts",
+        "get_edit_draft",
+        "update_edit_draft",
+        "open_edit_draft"
+      ]
+    },
+    {
+      "id": "edit-export",
+      "source": "lib/mcp/edit-export-tools.ts",
+      "tools": [
+        "get_edit_export_capabilities",
+        "export_edit_draft",
+        "get_edit_export"
+      ]
+    },
+    {
+      "id": "audio",
+      "source": "lib/mcp/audio-tools.ts",
+      "tools": [
+        "get_audio_capabilities",
+        "list_audio_voices",
+        "list_audio_assets",
+        "get_audio_asset",
+        "list_audio_generations",
+        "get_audio_generation",
+        "generate_audio",
+        "get_audio_preferences",
+        "set_audio_voice_selection",
+        "set_audio_voice_bookmark",
+        "create_audio_upload"
+      ]
+    },
+    {
+      "id": "audio-import",
+      "source": "lib/mcp/audio-video-import-tools.ts",
+      "tools": [
+        "import_audio_for_video",
+        "get_audio_video_import"
+      ]
+    },
+    {
+      "id": "references",
+      "source": "lib/mcp/reference-tools.ts",
+      "tools": [
+        "get_reference_capabilities",
+        "list_references",
+        "get_reference",
+        "remix_reference_text",
+        "get_text_remix",
+        "list_text_remixes"
+      ]
+    },
+    {
+      "id": "groups",
+      "source": "lib/mcp/creative-group-tools.ts",
+      "tools": [
+        "get_asset_group_capabilities",
+        "list_asset_groups",
+        "get_asset_group",
+        "list_asset_group_items",
+        "create_asset_group",
+        "rename_asset_group",
+        "delete_asset_group",
+        "add_assets_to_group",
+        "remove_assets_from_group",
+        "get_asset_group_request",
+        "list_asset_group_requests"
+      ]
+    },
+    {
+      "id": "library",
+      "source": "lib/mcp/library-content-tools.ts",
+      "tools": [
+        "get_library_capabilities",
+        "list_library_items",
+        "get_library_item",
+        "inspect_carousel_library_save",
+        "list_carousel_library_sources",
+        "save_carousel_to_library",
+        "save_slideshow_to_library",
+        "remove_library_item",
+        "get_library_request",
+        "list_library_requests"
+      ]
+    },
+    {
+      "id": "account-settings",
+      "source": "lib/mcp/account-settings-tools.ts",
+      "tools": [
+        "get_account_settings_capabilities",
+        "get_account_settings",
+        "update_publishing_preferences",
+        "initialize_account_timezone",
+        "get_account_settings_request",
+        "list_account_settings_requests"
+      ]
+    },
+    {
+      "id": "business-context",
+      "source": "lib/mcp/business-context-tools.ts",
+      "tools": [
+        "get_business_context_capabilities",
+        "get_business_context",
+        "save_business_context_draft",
+        "apply_business_context",
+        "get_business_context_request",
+        "list_business_context_requests"
+      ]
+    },
+    {
+      "id": "business-onboarding",
+      "source": "lib/mcp/business-onboarding-tools.ts",
+      "tools": [
+        "get_business_onboarding_capabilities",
+        "get_business_onboarding",
+        "mutate_business_onboarding",
+        "get_business_onboarding_request",
+        "list_business_onboarding_requests"
+      ]
+    },
+    {
+      "id": "business-logo",
+      "source": "lib/mcp/business-logo-tools.ts",
+      "tools": [
+        "get_business_logo_upload_capabilities",
+        "create_business_logo_upload",
+        "get_business_logo_upload",
+        "list_business_logo_uploads",
+        "renew_business_logo_upload",
+        "confirm_business_logo_upload"
+      ]
+    },
+    {
+      "id": "scheduling",
+      "source": "lib/mcp/scheduling-tools.ts",
+      "tools": [
+        "get_scheduling_capabilities",
+        "list_social_connections",
+        "list_schedules",
+        "get_schedule",
+        "create_schedule"
+      ]
+    },
+    {
+      "id": "analytics",
+      "source": "lib/mcp/analytics-tools.ts",
+      "tools": [
+        "get_analytics_capabilities",
+        "get_instagram_account_analytics",
+        "get_instagram_content_analytics",
+        "get_tiktok_analytics",
+        "get_youtube_analytics"
+      ]
+    }
+  ],
+  "packaged_source_sha256": {
+    ".claude-plugin/plugin.json": "33cdc622072e0d180f92e4f6c5f62447a04866df1f69890ecb2013d533f95806",
+    ".codex-plugin/plugin.json": "2d1d217d32383e63e55b181d4edf3cb9f504e5826867afc030414a89a3a1cb7e",
+    ".mcp.json": "3318d752bdf18b1afc653d91bc5ae485979b3711507fb52b2ad5ebc72fdf3a72",
+    "README.md": "b050f0f69614153191f431ff69b607bd735ca21ff5d0dbc17775611b8e6f5470",
+    "assets/logo.png": "44a9e46f81ff6618d620647510c31e1c625f426c10ce8b50c8dae248522f7d36",
+    "evaluation-cases.json": "986b51d878b8180303b77eb12d2cd45abbc0620709616499aae15cc4395717f5",
+    "mcp.json": "93ad7b3b2e42e60813184cdffb0615fa2c63ad55d06715b80c48b911e755f9bb",
+    "plugin.json": "052b24b30e3ba2a6389141d59699ef4bda12ebba752395d42590b0913fec2e45",
+    "references/creative-workflow.md": "c22a0d1a3860d39bd64af0c2f49f4f36b9a243821c905f52d9d72cbce10cd443",
+    "skills/connect-ugc-pilot/SKILL.md": "5a4f10c2a9ec9a228c6e1cc90121e958e49495c73adbe7609154da087730b7df",
+    "skills/connect-ugc-pilot/references/client-setup.md": "cd5c0f54b7c2c66bbac7a91705256e6ec2303629df93b03f4530b005216b7ccf",
+    "skills/create-ugc-media/SKILL.md": "f73cb463c541c6de54375cdff3b8c6977ee361d4410aa9377b606cea7e1989d3",
+    "skills/edit-ugc-draft/SKILL.md": "48b3a54e02f32bcfa62694b6005e8d53d41a3a15940e439383ba7df7a50d90ad",
+    "skills/emotion-hook-director/SKILL.md": "a45bb1d7c99fd33f39fcb882df17baf6196b7a5f22fbea00bd63bda2609c1353",
+    "skills/emotion-hook-director/references/performance-guide.md": "e718c6e9ae3a29d45a67a4b6b3fc158ddb378fccc8f94f8ec1fac574e5ce6d9f",
+    "skills/emotion-hook-director/schemas/director-output.schema.json": "5808d194fd86b3f0b60bf2a4be84173e23948dea1427b8570f4621af89444139",
+    "skills/finish-ugc-video/SKILL.md": "f60724b255fe69b602cacbcb7d02b764704804e6032696756e450882b47fb885",
+    "skills/manage-ugc-account/SKILL.md": "69f6fb84b5106e9b9ee25a53a0698cd1de48917735411cb0519d4b18be68df4e",
+    "skills/manage-ugc-analytics/SKILL.md": "3c2c42ce5c5fab1f9e8abcc09f3326903bb5a5a94d6ce0da227ff4635968d57e",
+    "skills/manage-ugc-business/SKILL.md": "25d6dbacc1f151141177bf058e01748ae1aa3d103dd6c28811268f3bfdb6db6b",
+    "skills/manage-ugc-groups/SKILL.md": "8fd71b12b65436f494786b39918d6de354077bf1f8e18a9abfc209712b0d9bda",
+    "skills/manage-ugc-library/SKILL.md": "72621eeaa98d6160c7b6158da7d42cc60beaa32cc2ae4e9182f205af2413f4fe",
+    "skills/manage-ugc-scheduling/SKILL.md": "9f0ace979aa741a0720ad54ca31eca92b7f1c641dae42761a94037f19948ee39",
+    "skills/manage-ugc-media/SKILL.md": "cc9ef8b2b0a0247cf56616783a8cd5369dedcd1e0693262abdca6314dab6962b",
+    "skills/manage-ugc-media/references/audio-workflow.md": "5e321f6d2480b5ef1c4c9d2fe02b03aecbe9b6577bec2900108e9870cbba744f",
+    "skills/manage-ugc-media/references/business-logo-workflow.md": "0a0b9eb233bbd9a07823e40793d6fedbbb5cd07b86636c3759a5c60ccac5001a",
+    "skills/manage-ugc-media/references/local-transfer.md": "43f2f09b6744cd767e1372c182cffadad19f5d55652ceca48378d673d8c615cb",
+    "skills/manage-ugc-media/scripts/transfer-audio.mjs": "3ce0c9e11ceec6b10d6c850a7a87283e3ac82dac776b2b21a2a0696819fa861f",
+    "skills/manage-ugc-media/scripts/transfer-business-logo.mjs": "8538ce80b5866c5af4ea9fcd415fc7936a05cc603daf11b2d174ceb42fe4fcaa",
+    "skills/manage-ugc-media/scripts/transfer-media.mjs": "73f768288c248b29fad88bec825beb705581139f6260a25cae63a9675689438b",
+    "skills/onboard-ugc-business/SKILL.md": "03e342f3ff40d0d49ac31afecd0aaa07c52de0a4d27c3a047b9c61602709e9f4",
+    "skills/remix-ugc-reference/SKILL.md": "f9343d1adc1588f9c5c0f0ec33c96cdfb21b7b6a1b941c44b906414208fdd64f",
+    "skills/ugc-hook-intelligence/SKILL.md": "f7f1710ccca5f3824add770ce98b7b8c69417dccd2bf7c2f9bb7f122804b8fca",
+    "skills/ugc-hook-intelligence/references/examples.md": "bf008c0ab9e6fa35f0b5a6712cc6d748bc89b4dbeb836cbfa01f7a957fe812bc",
+    "skills/ugc-hook-intelligence/references/hook-patterns.md": "b22744a2876a1c4bfd123e1a7914aac92ab5911d633f629dcd3d7f07cc44f7d9",
+    "skills/ugc-hook-intelligence/references/source-hook-library.md": "ee769812522e828ca7f792147ae41501c1356b1e537e7df377826e3b8c617c2b",
+    "skills/ugc-hook-intelligence/schemas/hook-output.schema.json": "154f5e417e392bf9eff9488b87943cc49c81fca3ec162a9b495aedb638d9c440",
+    "skills/ugc-native-slideshow/SKILL.md": "b564ff0d3837deb12aea263b13208321a0c9c5d3e06bf4c91c985a5f064f0394",
+    "skills/ugc-native-slideshow/references/layout-guide.md": "165cb02e5c2740b90ea7abe342b899d529cf9d3288be2f7cbd23403c456a0409",
+    "skills/ugc-native-slideshow/references/output-schema.json": "12cad9d8a71ca1235d3bc46f2f04fb2b7d0186c5c727bdc5c9ab729ce0ed7580",
+    "skills/ugc-native-slideshow/references/pattern-library.md": "3a5ada2ee33893fe9b14fd340c496d909065cfba95bc8d9fcea6dc85cffebb71",
+    "skills/wall-text-generation/SKILL.md": "f1d8beeee62884fc0d49659538200d3d7e408c74e6a1c0939fb5012df21ee477",
+    "skills/wall-text-generation/references/writing-guide.md": "f79b369d38eaf5e1298a67ae31550c2a3bb6df958daeb7362aa88727987ab66f",
+    "skills/wall-text-generation/schemas/wall-copy.schema.json": "a230e5483acff8b9115dae6e17631789b986a08feee3b065b968f546c734f2b0",
+    "skills/wall-text-video-generation/SKILL.md": "f410af9560fc5a98483e6baf08914647604794ae53cf0b2dca52f01601df39fd",
+    "skills/wall-text-video-generation/references/visual-guide.md": "fae2d7ba3a6ff159a2651694a5f1d943b1ad5599bcb3540d4914bc0079eb391d",
+    "skills/wall-text-video-generation/schemas/video-output.schema.json": "3736d1c247f05b9b40a3774c3f210a6abaa8f3a09a973858ec6f5963be5c04e7"
+  },
+  "migration_blob_sha256": {
+    "supabase/migrations/20260829093001_production_baseline_v1.sql": "1921304d2c475679653c9cf0a8f03eda251b350ee2bc807db774476d7f84d70e",
+    "supabase/migrations/20260829124811_simplify_trending_hook_feed_generation.sql": "689462041b4877e60b0be5b120f01bd8d1fc07193a74c60411e051bedd80eacd",
+    "supabase/migrations/20260830081949_allow_multiple_hook_video_schedules.sql": "83999f7cfccbd6fdbd0ecea1ccf0e09f12d08cc4bf725ecf15dec67ee63ef903",
+    "supabase/migrations/20260830120123_harden_daily_trending_feed_recovery.sql": "c69d38a20796466874adf9c40835b5eb52ab85b47db056fe9ffa98eaf9c23f5e",
+    "supabase/migrations/20260830130854_reuse_unconsumed_carousel_content_plan_reservations.sql": "1d80e65cdd184f64694b128126f40d908346a241aa0454063fffdae3b076b1da",
+    "supabase/migrations/20260830130901_replace_partial_daily_carousel_refill_batches.sql": "dcd0b509040d8c808394f0c98bec095050aeb9c6c8b20f7507a9cbefd1962861",
+    "supabase/migrations/20260830130908_prevent_wall_text_background_reservation_collisions.sql": "6684acf3b98d1b40e651993b9ed4e2e64df4b9be31ffe61311176ef275fab137",
+    "supabase/migrations/20260830190000_fix_trending_hook_v2_return_ambiguity.sql": "b576cafa31e1109663629bc9af56f283f4e58d7cca35fb90d8488ae525bf565a",
+    "supabase/migrations/20260830190443_allow_wall_text_background_reuse_after_fresh_rotation.sql": "5c1d474437039caf6bb115f4c06f988d7da601eeb05923538547fd4afb7be13c",
+    "supabase/migrations/20260830190513_prioritize_fresh_carousel_images_before_reuse.sql": "1c57a769649c502f95e02ad3d622d77bbf2e288d0f15e563f373f084d95da12e",
+    "supabase/migrations/20260831053441_add_wall_text_pending_schedules.sql": "4bec2ae4a80824b59f5a05e858530c5b816a98cdbae8767b7c51ae6b877b03f6",
+    "supabase/migrations/20260831103952_enforce_30_day_content_plan_continuity.sql": "0b250075a976d05eff7d88e68c0bd7fe476c759deed6c7fb43fc038d4c85f045",
+    "supabase/migrations/20260831133000_rotate_30_day_content_plan_items.sql": "07db95f4e6711a4d6307019771b854b98fdf3af6977bd93cf9fb76f9ccce4fba",
+    "supabase/migrations/20260831151506_isolate_published_renders_from_creative_assets.sql": "2069d256c78a0c05bd9b454dd12ef5131d394be0ac6b73e4e1ce5aae792be046",
+    "supabase/migrations/20260831173300_add_per_idea_private_context.sql": "7f8bbf3ee304ea10268e1684e7af6c490ba2a69d79b3d2a15542f73bd61c5b9a",
+    "supabase/migrations/20260901115546_add_wall_text_arial_bold_typography.sql": "00ece7fe64d9f680a9ae9b9bf8c6aa03a75bc2668b02b9efcf939050d0f50056",
+    "supabase/migrations/20260902054816_recover_terminal_wall_text_plan_jobs.sql": "89bc291141ea94aa29e823797d8f29737c3cc2a2e5ee0070eac8346e58e41fb3",
+    "supabase/migrations/20260902120000_add_wall_text_regular_typography.sql": "fc8fdf2b176a36f5e39d37f2eb2ef164fd09e53db419581bd8aca6765725360c",
+    "supabase/migrations/20260903113000_add_wall_text_avenir_next_typography.sql": "e9390779bded7f2e2a44c47a2f23d2a89f42768f07fddda5566919b3cba8d876",
+    "supabase/migrations/20260905044832_expand_carousel_role_asset_reservation_to_six_slides.sql": "5f7c0e98ba486c378ffd8c0981988dd59535c6e91de71d405d8455859b23c2de",
+    "supabase/migrations/20260905110000_update_instagram_connection_plan_limits.sql": "da22f75c8c097c95486b2bc3de13df80c17ad9d5da3d1241d21f01350b8f711b",
+    "supabase/migrations/20260905123000_harden_wall_text_regeneration_recovery.sql": "851aaca2aee652f9521b9c302ff350050e717e03d8b3e7cab18fef7eaff44603",
+    "supabase/migrations/20260905150000_create_reaction_asset_catalog.sql": "790df4ded1bbf695bd5c0ab8815d74a49486a5acd1eb5a2e5761170cc63eb86c",
+    "supabase/migrations/20260906091416_fix_carousel_six_slide_reservation_initialization.sql": "a4d94f8e96776d4ec65f47c28208d53a256bef76528f507e103b225b69b5dae1",
+    "supabase/migrations/20260906093500_allow_sixth_carousel_image_usage_slot.sql": "814b68c2f90f91943600a93f743ba0b5461043b93fd22435a34c147930123ce3",
+    "supabase/migrations/20260906120000_add_reaction_trending_delivery.sql": "f4ddb1624bad38a613298a47110f67a54cafc2701ff737032092398445daf50e",
+    "supabase/migrations/20260906172732_repair_terminal_generation_recovery.sql": "dfcc0ef98b4cd7720262a069f0f669f7150b1f2ae77dc4f3e6b1ba03ce4c1a26",
+    "supabase/migrations/20260906175631_bound_daily_carousel_recovery.sql": "1c58359ffce509a98541f1b9ecdc3aa9fd2de7155eae70b7b1a3b2062bb84b6f",
+    "supabase/migrations/20260906180000_add_durable_reaction_generation_worker.sql": "988ddb0cfa192faa50a9dc9585e43d4b9ecca5aa4e9d48576cc50b9990a5bffa",
+    "supabase/migrations/20260906183128_allow_explicit_bounded_format_recovery.sql": "e4100168d78185636c8ac72f686892a284b989bcd7ef38391906d2fee1559cf7",
+    "supabase/migrations/20260906184412_restrict_carousel_recovery_rpc_access.sql": "b3614eae35ecb46df9cf3ce6004be59b6862b6f867457bf418e052c9ae1d5c9e",
+    "supabase/migrations/20260906190000_allow_reaction_daily_feed_failure_marking.sql": "d337e2d489606606283074a19b8a9dc36c22fb7889f2a032068df2037a093718",
+    "supabase/migrations/20260906200000_terminalize_wall_text_stale_layout_failures.sql": "bfed61f6eb5eb0dfa85f33f3134410c981ed323313d087b3354914c9d0616e73",
+    "supabase/migrations/20260906210000_fix_reaction_generation_plan_sql_ambiguity.sql": "c9896cd0e0928c73899f7b1cc1f8c1476e45164cd684b6e6a46c29400bad0b45",
+    "supabase/migrations/20260906213000_fix_wall_text_terminalization_current_generator_layouts.sql": "499e0007b6def842f4a51c642cca6d5e251bb42705d1312fb2ef2fdb4086ba49",
+    "supabase/migrations/20260906220000_refresh_instagram_analytics_thumbnails.sql": "9f4799a6c9917a0fdc58f8acdd5724c2d4a45f0f6837ed7fd63409c6281f038a",
+    "supabase/migrations/20260907061454_allow_reaction_render_execution_slots.sql": "62aff5384e8066b2ee89599acdf271c7e60c2af8b0cbcfcf81b78eb7cf2313ca",
+    "supabase/migrations/20260907065625_clear_resolved_daily_feed_recovery_errors.sql": "8ff6f91aca625dd348541ca4cb4e2d4d102f78a2d24027afbedfdc8f1847652c",
+    "supabase/migrations/20260907150000_add_wall_text_arial_bold_v6_typography.sql": "f6a03b939a41adff5f6bc3711807111d190bbec80a73c222bb658a8cb87fa86e",
+    "supabase/migrations/20260907160000_create_content_cards.sql": "a1440c6c7dfa32131c8a5ee530bebf21cfefcea5c96f9e95253c65bc6c534736",
+    "supabase/migrations/20260907170000_add_create_content_video_renders.sql": "b3f47bf33b1893b94bbde52c77552b25ef97793a432302b6ede9ba2bd691bc7f",
+    "supabase/migrations/20260907180000_restrict_internal_security_definer_functions.sql": "6159bf3c5c95909d519fe7bd2ea979c93c25e12d6024c58c0a0670e3802142e4",
+    "supabase/migrations/20260907190000_add_background_job_cloud_run_operation_identity.sql": "a5b201e9d2476ae3267e8d1ae25162728ded4a1288a954ec3475cbf6958a4808",
+    "supabase/migrations/20260907195000_lighten_wall_text_v11_treatment.sql": "b767c483f39fed2d19c5ae058dc45928adfbf3fd5415a65addf632c3cc2b0607",
+    "supabase/migrations/20260907200000_allow_reaction_text_edit_render_slots.sql": "349f72be115bd4b8f753c7968cf7e31b3d1cc3087c4cfbc6f5df299caf6520b5",
+    "supabase/migrations/20260908110000_match_wall_text_reference_typography_v12.sql": "aa930fb197ac166eae437b28dc010acc067cdc3a00341ca594953557ac9ee65f",
+    "supabase/migrations/20260908172213_apply_wall_text_b_52px_typography_v13.sql": "da19f56fe61e884e6268922c3ba8555ff4c91a6924d99d611c5b657e08116880",
+    "supabase/migrations/20260908173235_wall_text_early_delivery.sql": "9cbe942fb5d160bf03a92cdcf3c656ac817f8a8de6d6592b3c1c7d38afa137f2",
+    "supabase/migrations/20260909062121_enable_wall_text_early_delivery_for_all_accounts.sql": "3aed7c4beac5b061e3b1ad0b709d006f108e6f3e4c264f7dce2dca4c9b56fcdd",
+    "supabase/migrations/20260909111526_wall_text_publication_fast_delivery.sql": "f28db1c8c3ed9946b7f1207b7d19e6018866631bc2eb34b567ceebd96ebc8f57",
+    "supabase/migrations/20260909140000_split_reaction_reel_render_workers.sql": "4c7403d0ebbdac05f7296e59626cb1eeeaf8817ced0dbdfe1dcdc563f6d362d9",
+    "supabase/migrations/20260909165333_add_background_business_onboarding.sql": "a61e50f19ef9f5e72e0dc2b8e5452f828c8cf4d97cafd2760484fc08e0728599",
+    "supabase/migrations/20260909175456_restrict_reaction_render_rpc_access.sql": "e5f6684b330be40bf8e1389a2998d6b5a4696545821969dcbc21deed8f408475",
+    "supabase/migrations/20260910035008_fix_wall_text_plan_local_date.sql": "727d36d46c934c6f2a7f5279d7f9ea0b1a9dfed67d4c5da104c55298653b84dc",
+    "supabase/migrations/20260910105839_add_complimentary_plan_grants.sql": "a8cfbe7af7d69a8e09eb6d1a213c0045c9c30ac40c9867c5c219c6e435634b58",
+    "supabase/migrations/20260910112546_increase_free_trial_allowances.sql": "d33be39a9f46a02316b296232abe2446f7cb81192f8b6c70a2dfd0eb19763295",
+    "supabase/migrations/20260910113000_finalize_complimentary_plan_trial_guards.sql": "c5c62a60d94854943f6ac1ecc3347c210b37c4c8f1082e9b60b7837d97892c28",
+    "supabase/migrations/20260910150000_add_carousel_hook_template_assignments.sql": "5f32fdb154292d85619cf2e7a73b4a57f8696cad1a7d427d0dfa91101af0b2b4",
+    "supabase/migrations/20260911120000_harden_reaction_generation_provenance.sql": "b363c5554883a9faf75b47f43a129b081fcaac48b69797a5d515f34c54e44271",
+    "supabase/migrations/20260912090917_reaction_render_trending_reconciliation.sql": "98641663a9a623f02f9449457a79d2b56020c59f30b2d44ac38d39bbccf9d47c",
+    "supabase/migrations/20260912103553_repair_wall_text_daily_delivery_shortfalls.sql": "7bb81f09c0565804e7e6d665f25a88c5908c013d150a62aa2de23a7b0abe4b30",
+    "supabase/migrations/20260912110000_add_private_wall_text_failure_diagnostics.sql": "7d3a928f5a915ebe631e6110ee78248235d6913bd987615dda34e61bdd748215",
+    "supabase/migrations/20260912140000_rotate_wall_text_terminal_delivery.sql": "de3eb9459e893c4f745e5962f354a6459bc3e7d4c5f255cdaace7a48be835076",
+    "supabase/migrations/20260914120000_add_reaction_grounding_context_v2.sql": "3c632ece01961547b7fdaa483a5acaa1b27f18e115224eaa7d0898503d4eb14a",
+    "supabase/migrations/20260914121000_add_wall_text_grounding_v2.sql": "d39f2b8f613d61554f3d68dbd980154bb34d97a1f46aaf1a57acbafc4eb3070c",
+    "supabase/migrations/20260914123000_add_business_context_settings_drafts.sql": "f119c7e8e2b815e9670a904fc61cd90468f0d02b435d09c2bc1a4a605a3f1563",
+    "supabase/migrations/20260915090010_reset_terminal_instagram_container_on_manual_retry.sql": "d4bead9a6d7738ba0b11b487cd45fa3ac2cf57fab288ccd0d4bb3644d0601e0f",
+    "supabase/migrations/20260915090124_reset_terminal_instagram_container_on_manual_retry.sql": "0cc25cd840183b0da9c4bc2f6ed40d0c4d90663817da93f6e52c73608b46cecf",
+    "supabase/migrations/20260915144500_reset_terminal_instagram_container_on_manual_retry.sql": "c98f692f53f3da0ddf4c31af6d228e03dd44b4dcc38ece8ae36fcfb16c861ee1",
+    "supabase/migrations/20260915160000_apply_business_context_directly.sql": "270c4a4d5566a7034a13641cc7b5d2b08e0aa4f4050ce7b95979d078b50de300",
+    "supabase/migrations/20260916102534_allow_approved_loopable_hook_audio.sql": "c1d15ff2e8036e31a08f64df10c9811c1fe9077f095d7a0c11dd266d06ed894f",
+    "supabase/migrations/20260917130211_hook_v5_56px_typography.sql": "1a3e827b477eaafb1fdeaa5eec9feb994b9af6521829cc5e8a2846102f061592",
+    "supabase/migrations/20260922034228_carousel_structure_2_hook_templates.sql": "5c165a8dc1767212f1f7700941b1b2b618de3c41d922ae2a0cb6247fd5c5fe8e",
+    "supabase/migrations/20260923160227_store_wall_text_plan_selected_fact.sql": "3f0ecc168de1dc0d2f062f18e6300f14429f38cf7ca4b02b90500916fda15f11",
+    "supabase/migrations/20260923160429_stage_fact_matched_wall_plans_for_pro.sql": "de9a4be781f0606cad6bac4e49a9b4a19729c3022aa4df23c832e7c0f391abd8",
+    "supabase/migrations/20260923203545_allow_wall_text_background_reuse.sql": "fa4a9da2183aa964edbad90b9b70f819c98aa98320946bdc4453e7a21b9e900c",
+    "supabase/migrations/20260924183540_reopen_trending_reconciliation_on_recompleted_jobs.sql": "eebf47f9ddee6b1b2b17a70c9083b91a685746f7c9831d914108b73584571cfc",
+    "supabase/migrations/20260924185333_allow_reaction_clip_repeat_after_catalog_exhaustion.sql": "1888b058221f775442ba663a3e7301611a42d91630740f33a8d27a8930436851",
+    "supabase/migrations/20260927202555_mcp_oauth.sql": "079edebc4d5b7fe30f4c42c6898ce0af502dcb4d1d90087dcef7967877f14783",
+    "supabase/migrations/20260927202613_mcp_atomic_generation_job.sql": "19a250299c192035c3631958874f4f30d3d7a7a8b2e30e81a0887bb804be8b95",
+    "supabase/migrations/20260928111109_mcp_oauth_atomic_family_revocation.sql": "d8a66ffeab1816ae20851b41926e447eb4dac0649f366c7eb1e0e9f1c6f82988",
+    "supabase/migrations/20260928151747_mcp_upload_quota.sql": "f74a10aee760e5675117d97a3e2a83a63184a1e471473da3e33ac9f6370a5429",
+    "supabase/migrations/20260928205436_allow_higgsfield_generation_provider.sql": "7ad556191e51fa5061fc945152869482bcf015491de8249dec312adadd7c99b5",
+    "supabase/migrations/20260930093912_ai_studio_audio_references.sql": "f939471cab2c5ff41dc411c42d35609ecc0c451d77522cbadeec6b5aeadca835",
+    "supabase/migrations/20260930144135_mcp_video_generation.sql": "aeeef20e76c7fc6f3778e6e9a43ae00b48f5ab55ef4378cf9d01e7f7995a8313",
+    "supabase/migrations/20260930155642_auth_email_rate_limits.sql": "63aaba16cac6373490a1b99c5383a35cac3840bc19aba64729248b0c54daea75",
+    "supabase/migrations/20261001042901_allow_wall_text_v13_50px_typography.sql": "14d76f6b1b11af8d644818286bd31d6b6da782e5144eb042f3e77daeb66e211d",
+    "supabase/migrations/20261001120000_audio_generation.sql": "3ee4049823dba9615e46f63298192a2cd750ebaea8384a30ff0b86f843d9e78b",
+    "supabase/migrations/20261003041121_character_generation_batch.sql": "d906377e4e7ca4aec228be5749a108329f3d7f3e9a44dfc2e61bafef40b05251",
+    "supabase/migrations/20261003041127_character_preferences.sql": "304fcec3c5bfba3a0f5227337fb824c372aae8b21e72b1a90c17c9b7a3f4061b",
+    "supabase/migrations/20261003041415_character_allowance_privileges.sql": "75786c6a8132dcfa185bf34f53e851ac06e34be54abd9999375bc674e16f58a9",
+    "supabase/migrations/20261003045651_character_gemini_3_pro_image.sql": "b895dd90e6573f4c415db962f58bfbf90ff6d41a5b66823e36dd04d15f148e39",
+    "supabase/migrations/20261003061100_allow_openrouter_generation_provider.sql": "343a4ca942a4c49fb81213213d100235a2b9fcde298fcc8772288ba2132d1c97",
+    "supabase/migrations/20261003080500_dodo_billing_recovery.sql": "ed1cbd85ad149dbcdd8ddf8524d55677f76ca84a8c6ec3db8c1dd510813c5a0b",
+    "supabase/migrations/20261003092157_extend_trending_free_trial_to_seven_days.sql": "df4760c564fb120eda3b37340b5b85b9ff62a6aa8b94b458f6310ae3d45a6d5b",
+    "supabase/migrations/20261003110411_one_time_free_generation_credits.sql": "8432f6104dad3d6606ad1ca2821116ae1eeb5b05ffc7a2066f8d2828e9b8fb32",
+    "supabase/migrations/20261003114017_fund_generation_job_retries.sql": "6e56d6a4abd9db2cb9511ef59446a0c8b7e932d91b35be926c13dfaefa276bab",
+    "supabase/migrations/20261003121102_prevent_early_social_publishing.sql": "144061ce531aaab91944cb8d1084986fcca6210c859b1d2f75add51de38b9d17",
+    "supabase/migrations/20261003122024_account_timezone_preferences.sql": "3e63ac0ac0bee3dd08c0ba8173623d472cf3e902118fa9e60db98cd7583081ec",
+    "supabase/migrations/20261003190747_explore_atomic_generation_requests.sql": "eed72ec3e586fa4d752fd0a71451298a6d76a7707136d52dcb42752e42734abb",
+    "supabase/migrations/20261004053418_explore_video_finishing.sql": "4cdf8b6e3c1d694c229ef38f737d8353db8fe217b12fbcfcb3f46eb32a4fb8b9",
+    "supabase/migrations/20261005082228_audio_voice_bookmarks.sql": "45c093aec98dbc44785eca01dce3f42c9a22e27c3c0b3bac79fe9cc014cbacd3",
+    "supabase/migrations/20261005082254_character_shared_generation_credits.sql": "e9929f26c9bcf3457a1fab68711a62f2cb4a6157f91ad24607499f3142991236",
+    "supabase/migrations/20261005082258_trending_skipped_post_reconsideration.sql": "9a044a378f1417d083dc7a5a5cf69717fff09bd896c95198526eb9e2e7d639b9",
+    "supabase/migrations/20261005115049_audio_voice_selection.sql": "89744ab9ac6a6c371f9692b2eee2cf9e05826f152e556a1135a09764733e07b8",
+    "supabase/migrations/20261005140223_character_prompt_driven_generation.sql": "9d73e6bbdb757d119c20610c6d8d6e58a0f52ce75873596734ce80decfcf11b4",
+    "supabase/migrations/20261007153721_explore_subtitle_styles.sql": "7e84a9d406c62a845433eb4ecac1ac3d2cefc7316b839531dc6ad87d47160338",
+    "supabase/migrations/20261007153742_explore_existing_video_sources.sql": "25da3de7e70e2594467be8c45a17532f6b66dbc6a5be1d72974a2e08823ab3a7",
+    "supabase/migrations/20261008071151_explore_serif_box_subtitles.sql": "8d2b1be36012367817d257f51561c4866db1c74dccf67d13a555c434ff233d95",
+    "supabase/migrations/20261008071155_explore_format_workflows.sql": "dc6351aaf0bbc1385f9ae671030880b54e8edf8383fd40c77fcceca6270c31e8",
+    "supabase/migrations/20261009111108_character_seedream_sunburst_models.sql": "8248b7e2a302ed691f16317a0d5fae35eec5bafa12fa7e99eb87919ebcb52b32",
+    "supabase/migrations/20261009202401_align_six_slide_product_screenshot_metadata.sql": "743b051b5901f03ada9f841e85e35ac8b8e17490e0f88402953fbee30fae319c",
+    "supabase/migrations/20261009204135_account_publishing_preferences.sql": "b0d464e9f1a6090763bea11f7db9a85187ceab96983ad48adcc9c1f6d6b51268",
+    "supabase/migrations/20261011081756_guard_retired_carousel_reservation_replays.sql": "5530b7b649faa3aa18b2ee57372140ba413be70dd7a45e5864792bf344c6b069",
+    "supabase/migrations/20261011095743_carousel_delivery_aware_image_rotation.sql": "8234db529fc6926782147bd0a61febbb88dccba1bda4ee4c932f5ca96bd1574a",
+    "supabase/migrations/20261011095929_carousel_structure_takeover_lock_retry.sql": "12b4ae338649dfe505c5f3768f5564ce43c1d88e64dc45dd9fcffac595cffb1e",
+    "supabase/migrations/20261011144624_mcp_demo_library.sql": "7117e4818c23eeb406a681f74b7f958da943cc44661f9d63d9e34c1405751036",
+    "supabase/migrations/20261011171055_mcp_upload_recovery.sql": "674d2387f72a73188c52989b7cc78695985f262b32b43bfc8378f1c56d5b858d",
+    "supabase/migrations/20261011191633_mcp_operation_recovery.sql": "ce172144139453ff4afb4adfda9139024c00c6246f4241d3e9cb0363a1f23a89",
+    "supabase/migrations/20261012035734_edit_draft_revision_safety.sql": "4ba33b92a264aeea1dc9d2a0bfea9cf05ee1adade763ed7de4cd5613b5c76f20",
+    "supabase/migrations/20261012052534_edit_open_draft.sql": "e5d8d59213a2625f90a58f96be15a80b03a49477e81b305a101a37abd7c5ce55",
+    "supabase/migrations/20261012094628_edit_export_requests.sql": "de2cd50384572bf412e9926663182722b3e94d91883f9b8c4dd2400c4e3c2001",
+    "supabase/migrations/20261012105853_mcp_private_upload.sql": "98892c9add2fdfc21c2e30c7cdd9f4d6f2492aabb0ca895215f24d8ab12ac66e",
+    "supabase/migrations/20261012135237_explore_reference_text_remix.sql": "7ab6e6adf64a4754802f99ad54ac8c96dfb28125b361fa7b8bb1be374ac7374e",
+    "supabase/migrations/20261012135247_explore_reference_audio_pairing.sql": "03fa3fee3d57c7ffa4beeaf24393c0b41e2abb731fbb0a314bab966459e249b7",
+    "supabase/migrations/20261012135300_expanded_account_publishing_defaults.sql": "9d75012ab3425527b0602a4f7d3c37d3d03ea0da102872c63a1bfd218fb12f80",
+    "supabase/migrations/20261012150824_mcp_audio_video_import.sql": "cbfb87f007f1e8789be37ea64dc6aee6c326e4994cf51a7aab33ebbc909d69c8",
+    "supabase/migrations/20261012172333_explore_three_output_generation.sql": "32feea29b50a16de370addecf3f04df0eb81579667f1df6ed0a2a06abf0b7e63",
+    "supabase/migrations/20261012212314_explore_clip_draft_saves.sql": "1cb4c95faee860e9a046bebf34658e46dcc86ee543ba13cde527d33c901a1e0d",
+    "supabase/migrations/20261012212532_explore_pending_video_schedules.sql": "a3f8528b1f00402e98da2ae8f2f0c2a3704765f0ab694305694232695713d530",
+    "supabase/migrations/20261013060000_explore_caption_review.sql": "bbc17ab0f1e549f6df780e9a561ad63705ceb3e649b4ee31057fcf922beb3cfd",
+    "supabase/migrations/20261013072941_mcp_creative_asset_groups.sql": "25942a904843d828600dee840e225d3855d15446cf65389e1885cc4ed5335508",
+    "supabase/migrations/20261013072958_mcp_library_content.sql": "45f2ea298147507f6023f5ac90d515c75272f64bbae63567cb7fa80c3c468535",
+    "supabase/migrations/20261013073411_mcp_request_receipt_permissions.sql": "b89611dd134a1cd2cb4ecf8745dc4f92275120d479e3c5daf21e5d4c267bfab9",
+    "supabase/migrations/20261013090422_mcp_account_settings.sql": "4f98c3de5370cfdfe84606c52bf8739a9716ca99bddde4b439e3a95d528274ac",
+    "supabase/migrations/20261013112752_mcp_business_context.sql": "636a11250215c968c20267e87f508ceeccd7c4822a83961cb5aecc9fb6a283e6",
+    "supabase/migrations/20261013141043_mcp_business_onboarding.sql": "e9018c85b507c6aa777880e1e10eaf4cbda3c7e71d91d1ae7ab1f9d27c71d091",
+    "supabase/migrations/20261013143246_character_auto_save_influencer_images.sql": "50be42abbe0c4ab486c063dcb0c45d35e21098e01a041a51a2799a80bbe628f2",
+    "supabase/migrations/20261013165323_mcp_business_media_uploads.sql": "0ca7f2eecddd2d63a08a4fa68f4316fbe3f2c2147353239e59f752755c841b63",
+    "supabase/migrations/20261014034706_reuse_released_partial_carousel_content_plan_items.sql": "b0f8fdb963ac19dfdd7b163968ff47d4ddaf78c8e471840ff975d0c99c9307fd",
+    "supabase/migrations/20261014141245_atomic_direct_schedule_creation.sql": "8b373ca3b1fe2387c1f55c94d3920675a9d0e36eaf8963a8d3e5551f9e741046",
+    "supabase/migrations/20261014141251_add_trending_slideshow_style_mixer.sql": "6c7e41d5a1c0b1281989f769c6a511fc8309115ba6d187ca30a56549991a136f",
+    "supabase/migrations/20261015135636_guard_missing_queued_job_recovery.sql": "62cc745dfb2b32784d7118f5adf57151c0c6e6c46545b9198fb1206a0fc58ca3",
+    "supabase/migrations/20261015145119_defer_feed_recovery_for_active_carousel.sql": "afff19130f78a411a958f20f8cf54f0d6a9c71d280ba16f970e02dc948ebebca",
+    "supabase/migrations/20261016083524_tiktok_promotional_content_preference.sql": "3b1ce804607670b41817bd3f2db7bd034011e41f87ccc2a1a3fb9752852f1f29",
+    "supabase/migrations/20261016133514_slideshow_prompt_improvements.sql": "9cce7e468d764fb6b9f4efd34b5966b1c5a6721e60fb0a9b50659fbda53f7e2e",
+    "supabase/migrations/20261017105341_social_publish_terminal_status_and_tiktok_retry.sql": "7f84a725d09095313826fe6d9c54f1403038b482b5ebbaa9de224744f5b623c3",
+    "supabase/migrations/20261018043539_mcp_verified_identity.sql": "e500e54e92b59182f26c65633e0e440a403048bb30f2ed7af3699d18e77407b0",
+    "supabase/migrations/20261018071834_allow_reapi_generation_provider.sql": "dd11252d86bf67fe2ae0b88e19b10a4a741102622d55bff22bb76dbdf30731ea",
+    "supabase/migrations/20261019061132_allow_existing_carousel_history_edits.sql": "acbfab50088f426200373c956c13017c362cf4447decb4e0c7850e788461200a",
+    "supabase/migrations/20261020102121_allow_first_carousel_edit_from_history.sql": "3f3e71ce4ed6c641a443f34aad867377064856574d3c1002cb42f736bd74f676",
+    "supabase/migrations/20261020150800_recover_completed_provider_output.sql": "4f2b913c2db5e0302acd26a871327157ff5504e32afa3be470f22aa4dc4cf728",
+    "supabase/migrations/20261020181748_analytics_account_snapshots.sql": "07aefcb5983f20965eb1d1db17fbc37acf66a787e92d1ee03cefc9bf0d8c08da",
+    "supabase/migrations/20261021131000_default_trending_slideshows_to_structure_2.sql": "1a03a253c5529627f58e9722e20c0f091c687436da6f333bc25d0a658fa60e0f",
+    "supabase/migrations/20261022092140_slideshow_execution_plans.sql": "941823df08624ec8ddbbb42cc9940b95f0884eb33fab1f9cfaef68223a8398d3",
+    "supabase/migrations/20261024061601_saved_post_captions.sql": "afa55d36d4f6034e7406e8a2f0138945806ee622c18fada8ae508a6f85f87310",
+    "supabase/migrations/20261024170716_mcp_confirm_tokens.sql": "57938750f4ba843c04ebe7ec1c2dd98627a3f7765082fa6025ac99b0feefd2b7",
+    "supabase/migrations/20261025114510_automatic_hook_text_drafts.sql": "a8d1eef35ebe6b1d42252202eef7a66c34ab3aefd813e464e09af7ec32aededd"
+  },
+  "hash_convention": "SHA256 of bytes returned by git show at source_commit; archive digest independently matches checked-out ZIP. Migration digests are source inventory, not a live schema attestation.",
+  "acceptance": {
+    "github_exact_head_checks": "PASS: mcp, preserved-application, migration reconciliation, completed-video-delivery; website preview READY",
+    "local_package_catalogue_isolation_and_confirmation": "PASS: 24 Node tests, 9 archive tests, 4 confirmation tests",
+    "staging_schema": "RECORDED_VERIFIED_2026-10-26; not queried again in this audit",
+    "exact_candidate_staging_pair": "PASS 2026-10-27: website dpl_2psCcgVGuUkoKpt6CnyDV8zTwaG5 and MCP dpl_Bs35uwhNVLuv5kSDJo8o71hJL62p READY; exact Git SHA verified",
+    "clean_codex_install_oauth_authenticated_read": "FAILED host loader: portable server extensions rejected in installed Codex0.164.0-alpha.11.1; no bundled server; UGC-OPS-011",
+    "clean_claude_code_install_oauth_authenticated_read": "NOT_VERIFIED: install succeeds; protected gateway/interactive sign-in unresolved",
+    "exact_candidate_hook_demo_download": "NOT_VERIFIED",
+    "durable_confirmation_deployment_configuration": "NOT_VERIFIED; required for cross-isolate reuse rejection",
+    "public_listing": "INCOMPLETE: demo recording missing; platform approval unverified"
+  },
+  "live_observations": {
+    "mcp_deployment_id": "dpl_6jMPY2yfUg9CV51EFPcXxM4Nv5QR",
+    "mcp_reported_source_commit": "adbfe49856f79d682fa7acc34aef281a32116296",
+    "mcp_health": "ready",
+    "public_bundle_version": "0.2.0",
+    "public_oauth_scopes": [
+      "account:read",
+      "account:write",
+      "brand:read",
+      "assets:read",
+      "assets:write",
+      "generation:write",
+      "jobs:read",
+      "jobs:write",
+      "creative:write"
+    ],
+    "candidate_public_preflight_against_live": "FAIL: analytics:read absent; old production release, not proof of a candidate defect",
+    "staging_anonymous_health_http_status": 302
+  },
+  "outside_this_candidate": [
+    "Agent social connection handoff tools",
+    "Agent schedule edit/cancel/retry/publish-now tools",
+    "Local CIMD transient retry follow-up",
+    "Provider analytics refresh",
+    "Advanced generation parity",
+    "Server-rendered slideshow parity"
+  ],
+  "evidence_limits": [
+    "No authenticated customer tools invoked in this audit",
+    "No production or staging mutation performed",
+    "No merge, push, deployment, migration or publication",
+    "CI and offline tests are not hosted end-to-end acceptance",
+    "Tool totals are not a percentage of product completion"
+  ],
+  "staging_followup": {
+    "website_deployment": "dpl_2psCcgVGuUkoKpt6CnyDV8zTwaG5",
+    "mcp_deployment": "dpl_Bs35uwhNVLuv5kSDJo8o71hJL62p",
+    "protected_health_oauth_zip": "PASS; ZIP checksum matches source",
+    "temporary_trusted_sources": "Restored both prior null settings and verified SSO all",
+    "next_direction": "User requests narrow real-application sign-in/safe-read acceptance; no production release or settings authorized",
+    "receipt": "docs/pr71-staging-host-acceptance-2026-10-27.md"
+  }
+}

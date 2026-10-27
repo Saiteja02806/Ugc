@@ -1,0 +1,317 @@
+{
+  "baseCommit": "c630c66fd19538485cebafe1a254186694459050",
+  "deploymentId": "dpl_B6HT7nNDKy5HXq6ETmk7gY48Fnno",
+  "projectId": "prj_mVOxt7AUko5egMAESaxjGyC60Kvu",
+  "files": [
+    {
+      "path": "lib/explore/talking-head-reference-catalog.json",
+      "sha256": "235e847e328f8e78bd0f9593404127f21283725d97f5b6d00767a3971af44209",
+      "bytes": 19920
+    },
+    {
+      "path": "lib/explore/talking-head-source-manifest.json",
+      "sha256": "865b015eec4a29d5f6ef1c8e1f78f38a7f9c80d14f060c9472d2e3066b19c53d",
+      "bytes": 6203
+    },
+    {
+      "path": "lib/explore/talking-head-reference-catalog.ts",
+      "sha256": "fa0e35c290fc364506c854829d4f867bb9958efc30ce5076ddfebaef6d11f705",
+      "bytes": 867
+    },
+    {
+      "path": "lib/explore/talking-head-reference.ts",
+      "sha256": "d23e30b7b9a69880496701dec76e16443a84d96adae671edbb7933a4ce45c8a1",
+      "bytes": 1931
+    },
+    {
+      "path": "components/explore/talking-head-references.tsx",
+      "sha256": "654231e1699ef6342664c9e919e0f849fd1dda5853d30a8166a6ea18e7a860d3",
+      "bytes": 2826
+    },
+    {
+      "path": "lib/explore/hook-source-frame.ts",
+      "sha256": "9eabc0109743d291dda13abef2150b9a28730c211362a5e06af6113c90fef91d",
+      "bytes": 15024
+    },
+    {
+      "path": "next.config.ts",
+      "sha256": "b433133d154aa42a116352bc837ef12347a179a2717b97e07b620d1e306ad81d",
+      "bytes": 4869
+    },
+    {
+      "path": "lib/explore/talking-head-frames.json",
+      "sha256": "a589ac38ee15b42ae4a96d44a8a825e8b7a98c1662c0f4465c7d223147e57de2",
+      "bytes": 9220
+    },
+    {
+      "path": "scripts/talking-head-full-sources.test.mjs",
+      "sha256": "cf0552098e1245a139d9265803ed92e6dc81989231a7618f908fe0750a6e8349",
+      "bytes": 2355
+    },
+    {
+      "path": "lib/explore/starting-frame-reference-source.test.ts",
+      "sha256": "86e23e79afd83dd4174c9c4b397cacf7e5603334fadec3b71060bdf3ebc922d8",
+      "bytes": 3116
+    },
+    {
+      "path": "docs/talking-head-reference-import-2026-10-27.md",
+      "sha256": "87f44e3d13082510fad560c62b3d66963e21f0e8ef47a31c27ca256e1420eafd",
+      "bytes": 8754
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-car-story-full.mp4",
+      "sha256": "5ab551835c6b43f809349f263318057dc10894cc75b68ca066cbd2c3708933a8",
+      "bytes": 5266291
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-car-story-full.jpg",
+      "sha256": "02e673395b7db390aa5ac4e17757b9d078df0809c4dda5bfc76a2048952ed757",
+      "bytes": 22318
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-room-explainer-full.mp4",
+      "sha256": "cac6f530242841fc7bc6b1ed805fb0a8edd2ead4fd9d0dbe271ee0014e504afe",
+      "bytes": 7114309
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-room-explainer-full.jpg",
+      "sha256": "8019a4a03bce95f8f15c64b73221968d6f9c64fcc2e86570d8e125642d7e95a7",
+      "bytes": 16687
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-discovery-full.mp4",
+      "sha256": "02d20ab91be3e3375f7ab78b29e7dfb6d268866d70488bd39d4af263df250207",
+      "bytes": 4561980
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-discovery-full.jpg",
+      "sha256": "2389f0acb5b6a7ea7b96271b3c0c18f76d2c7c896b15093d6ffc46261666d82b",
+      "bytes": 22506
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-sophia-designsthings.mp4",
+      "sha256": "cb8b08f63bd15c4ef512e83741893dd5ab856e017b27b8b7adb2dbc7aa68bdba",
+      "bytes": 7013231
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-sophia-designsthings.jpg",
+      "sha256": "3ecea2e72b186dc983f64ab851a874c1fe96a79570226e848312d13e132ce836",
+      "bytes": 20802
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-emmgr4c3.mp4",
+      "sha256": "ed5d74058f3cb9539b8812a42be3c37b69dd6e28201d4e5ba4016ba89372f0fe",
+      "bytes": 4405417
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-emmgr4c3.jpg",
+      "sha256": "00939e5aa61cecefe1c7f8af3cce355b02c86099b8fa44aa6bffe88c4a13ee92",
+      "bytes": 19868
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-tessam-bible.mp4",
+      "sha256": "cd70ead6e92ea81cf2d9adcc94c98d8d12ae8bb500e6e290d778b6a2eb1993aa",
+      "bytes": 1984511
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-tessam-bible.jpg",
+      "sha256": "deb8065253a350cd94b664ee7a43530e6719e59185a016fb99a36118e9bd28f6",
+      "bytes": 20252
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-websites-explainer.mp4",
+      "sha256": "35cae40f926025ec664d9d0a30efa846f5e48bfdb8ec6970cd9cc95fb9bda2c5",
+      "bytes": 3781563
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-websites-explainer.jpg",
+      "sha256": "ef79d26da049ddbce705ca04fb52dd61814b1635951bb8c2221464d123827fb1",
+      "bytes": 20966
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-katiemeidt8.mp4",
+      "sha256": "7e618e5837d714716d606720d5c8a43dcbe57086725af49c059c2be672583d37",
+      "bytes": 10762258
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-katiemeidt8.jpg",
+      "sha256": "d74533d5eba23946488f7f4644d6643e02d0bba00d18a737e828ae7de5810992",
+      "bytes": 24171
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-studyfetchlauren.mp4",
+      "sha256": "1f79a8e9fff58383be7683f30dec32481e923c37fe8e1dada9749d28ff4b1703",
+      "bytes": 49125562
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-studyfetchlauren.jpg",
+      "sha256": "93166c2d7698dd381ba5f4ebf0071b89645ae818211c37983d0272a899f06d9a",
+      "bytes": 17796
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-sidghst.mp4",
+      "sha256": "3adc2abfaf7b9f9e0ac8cd46966134dae52a50ae87c28f01d306844543ab657b",
+      "bytes": 1620202
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-sidghst.jpg",
+      "sha256": "80d0aa1bb1492ece2177f87704903e5f23daec2f906be352b5502da11678b24a",
+      "bytes": 27150
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-studywithsab.mp4",
+      "sha256": "4214382ffaf941e75b0e4aafb2509864097c913e0fe3da219a85b54fc77921c4",
+      "bytes": 6444061
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-studywithsab.jpg",
+      "sha256": "1d0a7b0aa015e65e4d15aa4c1c1d2c05ac39481ae7004c5efc144e1b2aeff055",
+      "bytes": 19203
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-bittenbyaturtle.mp4",
+      "sha256": "3b948b9c011b6d80696b90e3b55e13deecb77b45925e04575e7669949b69b352",
+      "bytes": 1023469
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-bittenbyaturtle.jpg",
+      "sha256": "401d63bb6409e86b8dd2d565885ddfaf2283c187788957cff2a03b3e8fe9b019",
+      "bytes": 17304
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-studywithsawyer.mp4",
+      "sha256": "26d8506af4ed2a495f9f52b8e12e855126d34e715b043fe3cfda1971efa89177",
+      "bytes": 5191170
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-studywithsawyer.jpg",
+      "sha256": "4c20dd54a2e45cf52b43965f27df477af2231f59057bea3cb9a215fc743b1d7b",
+      "bytes": 19701
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-mumtipswithginny.mp4",
+      "sha256": "44959584161e80cf3468c5514d517d00523577188538b9e32666d03b154a3ccd",
+      "bytes": 5544696
+    },
+    {
+      "path": "public/explore/talking-head-references/v1/talking-mumtipswithginny.jpg",
+      "sha256": "f69eb7eb2b73d88288b69b75701d50606294874e40cb2a1aa5c0e362aa66d7a3",
+      "bytes": 28218
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-car-story.png",
+      "sha256": "0ccf784665319028633e2e84a118ca686b6944517c797d4088f8befa9ffb5c0b",
+      "bytes": 351586
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-warm-story.png",
+      "sha256": "1f181a2ef7563feb54b24fb503f6c510019ba3990350ef2d97b3a6ae077dd3c2",
+      "bytes": 424641
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-outdoor-discovery.png",
+      "sha256": "ccdafc66e4214b7bbeb6e86cc0e09cbf7340702eac12111ef877945f69756bfb",
+      "bytes": 283140
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-outdoor-reaction.png",
+      "sha256": "2c15686a1d6d5f975be1f7f326352071558e5b10a886812b86d9be0443d9eecf",
+      "bytes": 191619
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-room-explainer.png",
+      "sha256": "09266510e7cf64850aa5d5a119353d44754d773b8ac409335fa009dfcb57f826",
+      "bytes": 392235
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-car-explainer.png",
+      "sha256": "ba1512103b8092800301db96b18023c1b9916850ae603db686e350aad6074a2d",
+      "bytes": 654862
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-discovery.png",
+      "sha256": "7d82647f70079b5d91a233fe57d9cc9503eac29219a1c8d898664a11b4dd5e02",
+      "bytes": 538120
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-surprised-story.png",
+      "sha256": "23160b6c94c977ccec15044c52f843a338c3ba09f29c71e4fead381bb06f8ea4",
+      "bytes": 380449
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-mug-story.png",
+      "sha256": "5635670dab16f26f6cc43296cdf9805ab9099a967b705d1690f88b1d03c8d702",
+      "bytes": 521532
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-sophia-designsthings.png",
+      "sha256": "2a86b15c9d31ab167ac00e9a3a0301a9d662eb98f42408b6ab448f8c60dc799d",
+      "bytes": 521073
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-emmgr4c3.png",
+      "sha256": "34b798f39243f0c3e9367baecf353b50729f5119a9a6dcb16c422c6fec20a65b",
+      "bytes": 444586
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-tessam-bible.png",
+      "sha256": "9539e493eb7c59a6299aa5431b01b27187439073516af23cec838a5527db976f",
+      "bytes": 452384
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-websites-explainer.png",
+      "sha256": "1fee750eb2db8462cbe7592b0de7dddf85695421aa6a514ccc8209939c477f4d",
+      "bytes": 588405
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-katiemeidt8.png",
+      "sha256": "f6da872c1f6dfec414f515e335d87daa8b890354224d9a5d22dc5fa5602e827b",
+      "bytes": 564683
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-studyfetchlauren.png",
+      "sha256": "3c9015fd4c2ac928b46513875b021daa463b79414ecd5a8bae3cee233eedb518",
+      "bytes": 720222
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-sidghst.png",
+      "sha256": "aa1ae6202fbc135b4541abde4ef33c6bafe41a75de0feaa6afe5fa594d345390",
+      "bytes": 543124
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-studywithsab.png",
+      "sha256": "bf930fb9c2e141cb75283367a01abcd636e282ec3518c749e77b630ccc5c3292",
+      "bytes": 354020
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-bittenbyaturtle.png",
+      "sha256": "4d38b7314bdf0dfb2a4c5f646bca5b4f7c4e53eaf25434cde65dbab9667c023e",
+      "bytes": 274704
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-studywithsawyer.png",
+      "sha256": "74988644e6ce819ada813e95bcc62073022587375f755a0fb20cce31133350bd",
+      "bytes": 292423
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-mumtipswithginny.png",
+      "sha256": "3d2e4242885988404e8320c29cddee9fdc4b230b7ecf4c4ac3aea913d891e6b3",
+      "bytes": 608125
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-car-story-full.png",
+      "sha256": "228316d435db437cfa9c70b6daeb1355abe597aa045a8e586d3f946800ff15e9",
+      "bytes": 368545
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-room-explainer-full.png",
+      "sha256": "e611355c0e7c90ac63ab3c0b7db4ae80bd0abbf738eb0cf3a51e194c2f033d7d",
+      "bytes": 409122
+    },
+    {
+      "path": "public/explore/talking-head-frames/v1/talking-discovery-full.png",
+      "sha256": "ff19052e3e1ffb99b03bb737de7665d1542b0b126e63117dd696d842ab64d36f",
+      "bytes": 443874
+    }
+  ]
+}

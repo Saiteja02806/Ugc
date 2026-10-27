@@ -1,0 +1,63 @@
+{
+  "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+  "model": "gemini-3-pro-image",
+  "settings": "2K 9:16 unchanged sampling and safety defaults",
+  "cases": [
+    {
+      "id": "C1",
+      "status": "provider-rejected",
+      "requestSha256": "409ffbad4b31e668a2d0ed23c435738f264319539a2ff49fd80c9cda9688593f",
+      "wireBodySha256": "409ffbad4b31e668a2d0ed23c435738f264319539a2ff49fd80c9cda9688593f",
+      "startedAt": "2026-10-26T08:41:56.705Z",
+      "httpStatus": 400,
+      "providerError": {
+        "code": "Unable to show the generated image. The model could not generate the image based on the prompt provided. You will not be charged for this request. Try rephrasing the prompt.",
+        "status": null,
+        "message": "Image generation blocked for unspecified reasons. Please modify your input and retry."
+      },
+      "providerModel": null,
+      "operationId": null,
+      "imageSha256": null,
+      "dimensions": null
+    },
+    {
+      "id": "C2",
+      "status": "completed",
+      "requestSha256": "b95cd132118157d5b4144b4bc8440f8bb20fa9b6efcb0ce633b4471c32533db9",
+      "wireBodySha256": "b95cd132118157d5b4144b4bc8440f8bb20fa9b6efcb0ce633b4471c32533db9",
+      "startedAt": "2026-10-26T08:42:41.046Z",
+      "httpStatus": 200,
+      "providerError": null,
+      "providerModel": "gemini-3-pro-image",
+      "operationId": "v1_ChdoUkxmYXVQMUJxejA2OTRQNWZPcTZBOBIXaFJMZmF1UDFCcXowNjk0UDVmT3E2QTg",
+      "imageSha256": "862911aa2cd261288c18f1386b50460da398b3e19728aa43ec9b10d4fabe9f62",
+      "dimensions": {
+        "width": 1536,
+        "height": 2752
+      }
+    },
+    {
+      "id": "C3",
+      "status": "provider-rejected",
+      "requestSha256": "07546e49350d839d1eb2557a6fe7c096eed7c7db1c68be5ddd574dec8493c845",
+      "wireBodySha256": "07546e49350d839d1eb2557a6fe7c096eed7c7db1c68be5ddd574dec8493c845",
+      "startedAt": "2026-10-26T08:43:40.164Z",
+      "httpStatus": 400,
+      "providerError": {
+        "code": "Unable to show the generated image. The model could not generate the image based on the prompt provided. You will not be charged for this request. Try rephrasing the prompt.",
+        "status": null,
+        "message": "Image generation blocked for unspecified reasons. Please modify your input and retry."
+      },
+      "providerModel": null,
+      "operationId": null,
+      "imageSha256": null,
+      "dimensions": null
+    }
+  ],
+  "imageSubmissionAttempts": 3,
+  "automaticRetries": 0,
+  "videoSubmissions": 0,
+  "conclusion": "Observed association with source-containing conditions; precise reason unknown. Identity-only succeeded. Single samples do not establish a particular filter trigger.",
+  "billing": "C1/C3 provider error states no charge; C2 successful output has usage metadata. Actual account billing not independently verified.",
+  "runtimeChanges": 0
+}

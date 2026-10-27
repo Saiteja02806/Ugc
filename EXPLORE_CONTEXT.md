@@ -1,5 +1,22 @@
 # Explore context and UI decision record
 
+## 2026-10-26 Public Hook Video Bundle (local; hosted verification pending)
+
+- Owner requests no sign-in, one ZIP of all ordinary public Hook references and
+  a global cap of100download starts. Frozen manifest contains104public clips;
+  private creator sets/customer outputs excluded. /hook-video-bundle serves
+  everyone; signed-out /explore/hook-video shows the same offer after auth init.
+  Signed-in workflow and adjacent API/route guards retain their existing policy.
+- Generation-conditional GCS writes admit at most100starts across instances;
+  duplicate request IDs cannot start another stream. GET/prefetch do not count.
+  At100: HTTP410 and100downloads reached. Interrupted admitted transfers count;
+  no unique-human/completed-save claim. Never reset on errors or rollback.
+- Real104-file ZIP and all hashes/CRCs verified independently.36focused tests,
+  types/lint, isolated production build and desktop/mobile browser fixtures pass.
+  Current-device hosted counter read returns403; no production counter write,
+  slot or deployment. Fixtures are not hosted acceptance. Receipt/release gate:
+  docs/hook-video-bundle-2026-10-26.md.
+
 ## 2026-10-25 Slideshow planner follow-up
 
 - Named-source planning receives the validated server-owned business snapshot
@@ -5774,3 +5791,336 @@ catalogue/release records rather than copying counts from historical audits.
 - The user explicitly resumed the complete release and required the documented deployment order. Earlier deployment-pause notes are historical. Verify the already applied slideshow migration, freeze all intentional work, deploy and verify the matching generation worker, then merge/release website and MCP.
 - Current checks: 1,099 combined focused tests, 346 worker tests, 324 MCP tests, scoped lint, production compilation/TypeScript, native route traces and compiled MCP rejection checks pass. Local fixtures and source/media reviews remain distinct from hosted authenticated acceptance and paid generation quality.
 - The complete scope and every ignored path exclusion are recorded in `docs/combined-release-deployment-2026-10-23.md`. No unrelated migration, billing change, paid quality run or sibling-project retirement belongs to this release.
+
+## 2026-10-25 Full Hook recreation keeps original opening; clear later frame is an identity anchor (clarified plan)
+
+- The user clarifies that there is no fixed later timestamp such as 1.5 seconds. Analyse the complete source and choose any reviewed suitable face-clear frame when the original opening is too occluded, blurred, cropped or angled for reliable influencer identity generation.
+- That selected later frame exists for identity/clarity assistance. It does **not** authorize trimming away the viral video's original opening action. The requested recreation still begins from the source video's real first pose/action and continues through its reviewed ending.
+- Use distinct roles and names: `identity_clarity_anchor` is the clear selected source timestamp; `animation_opening_frame` is a separately generated influencer image recreating source t=0, including its original hand/object occlusion and scene geometry. The latter, not the clear later image, is the literal first-frame input to ordinary image-to-video generation.
+- The full motion prompt starts from the delivered `animation_opening_frame` and describes the timestamped source action from original t=0 through the ending. The later clarity anchor may guide identity continuity as the face becomes visible, but must not be mislabeled as generated time zero.
+- If a route can reliably use the complete source video for motion together with separately labeled identity references, it may be evaluated as an alternative. Otherwise use the two-image preparation route or an explicitly supported multisegment method. A text prompt alone cannot make a clear later image used as literal frame zero also depict the earlier occluded opening.
+- UI remains compact: after preparation, show one starting-frame preview and one Change action; no permanent duplicate Choose Photos tile. Any internal distinction between identity anchor and animation opening belongs in the Change/review flow and status copy, not as extra always-visible controls.
+- This entry records the product contract and implementation plan only. No runtime behavior, database schema, prompt, provider request, paid generation, deployment or production acceptance changed in this clarification. Detailed phased plan: `docs/hook-full-recreation-identity-anchor-plan-2026-10-25.md`.
+
+## 2026-10-25 Middle-frame prompt and Recreate-the-account audit
+
+- Current active data resolves to 104 public Hook references and 12 private Recreate-the-account references. Public has 21 nonzero clarity frames and 83 frame-zero references; private has 10 nonzero and two frame-zero references.
+- All 31 nonzero cases fail the clarified full-recreation contract in their default prompt path: the approved/generated later-frame composition is treated as literal animation frame zero and the motion text begins at or after it, so the original viral opening action is omitted or displaced.
+- Frame evidence: all 31 locally available nonzero videos were decoded and 118 of 118 native contact sheets covering all 3,110 frames were visually inspected, including exact opening/selected comparisons and transition boundaries. This is not a claim that every frame received a written semantic annotation.
+- Code evidence: curated public motion intentionally continues after the selected pose; the image prompt recreates that selected pose; the motion compiler calls it the complete opening; the worker sends it as `FIRST_FRAME`; private Recreate-the-account exposes `selectedFrameDirections` as the generation prompt for matching later frames. Current persistence has no distinct identity-anchor and animation-opening receipts.
+- Runtime identity must use stable reference ID plus source SHA. Seven historical audit numbers differ from current gallery titles, so a Hook number alone is not safe provenance.
+- Required correction remains: retain the clear later source frame only as `identity_clarity_anchor`; separately generate and approve `animation_opening_frame` from source t=0; bind a full t=0-to-ending timeline to both receipts; pass only the latter as provider frame zero. Keep one preview and one Change action in the UI.
+- Detailed counts, all 31 cases, implementation trace, source limitations and acceptance tests: `docs/middle-frame-prompt-and-recreate-account-audit-2026-10-25.md`.
+- Audit only: no runtime prompt, UI, schema, provider request, paid generation, deployment or production behavior changed.
+
+## 2026-10-26 Hook 100 full-recreation pilot (local, unpaid)
+
+- Implemented the clarified two-role contract for exactly one stable public reference, Hook 100 (`explore-paired-hook-fc44f6214b6e17413600ec13`, source SHA-256 `405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e`). This is a deliberately narrow pilot; every other public and private reference retains its prior path.
+- Hook 100's reviewed frame 70 at elapsed 2.333333 seconds / absolute PTS 2.399349 seconds remains the `identity_clarity_anchor`. Its original frame 0 at t=0 is separately resolved from the stored-source-frame path as opening composition evidence. Storage preparation scripts now include this curated pilot, but production storage was not written or verified during the local implementation.
+- Server receipt v4 freezes both exact frame roles, the original v3 browser preparation key and ordered influencer asset IDs. Input hashes, timestamps, dimensions, object bytes and provider reference order are checked independently. Existing v1-v3 receipts remain recoverable.
+- The opening-image prompt uses original t=0 for scene/camera/posture, the later clear frame only for continuity as the face becomes visible, and the user's photos as sole identity authority. It explicitly preserves the opening glasses/hand state instead of jumping to the clear anchor.
+- The Hook 100 motion plan now starts at original t=0, removes the glasses during the opening beat, transitions toward the clear anchor and continues to the reviewed ending. It no longer starts after glasses removal. The worker sends only the newly generated and approved opening-image output as video `FIRST_FRAME`; neither stored source frame is eligible for that slot.
+- No new permanent UI control was added. The existing loaded state keeps one starting-frame preview and one Change action. Targeted structural UI tests and responsive browser checks passed at desktop and phone widths without horizontal overflow.
+- Local verification proves prompt/receipt/provider chronology, recovery binding and rejection of changed roles before billing. No paid image/video call, real generated-pixel review, deployment or authenticated production acceptance occurred. Do not describe identity/pose/motion fidelity as fixed until an explicitly approved Hook 100 trial is reviewed frame by frame.
+
+## 2026-10-26 Authorized real Hook 100 image trial — rejected at visual gate
+
+- User authorized one real image-first Hook 100 test followed by video review before any wider changes. One Gemini 3 Pro 2K image completed using original frame 0, clarity frame 70 and the previously used owned portrait `495d8905-7a1b-4cbf-a38f-7a526a4dbff5`. The connected MCP supports only one reference, so this isolated diagnostic used the application's actual prompt/receipt/request builders directly; it does not prove deployed job, credit, queue or storage acceptance.
+- Retained provider input confirms exact opening/anchor/identity byte hashes, labels and full prompt with caption-removal instruction. The output preserves original t=0 glasses-on/temple-hand/side-gaze posture and source scene, but retains all three original caption lines. Identity resembles the chosen portrait under the oblique glasses pose; it is not fully qualified. Caption removal FAILED, so the image is not approved for animation.
+- One image create call, zero video requests, no automatic retries, app-credit/database/production-storage changes or deployment. Other references remain unchanged. UGC-VID-006 recurred; UGC-VID-010 remains open for full-video acceptance. Report and source/output provenance: `docs/hook100-real-trial-2026-10-26.md`. Preserve the accepted interaction and rejected image; any next paid attempt is a separate deliberate trial.
+
+## 2026-10-26 Hook 100 caption fix passes; real video fails ending continuity
+
+- User authorized a targeted caption fix and another image-first trial followed by video review. Hook 100's pilot image prompt now identifies the exact three caption lines, lower-middle region and complete outline/shadow removal, reconstructing the physical scene underneath. No other reference prompt changes. The first accepted trial retains its original frozen prompt/receipt.
+- One new Gemini 3 Pro 2K image passes visual review: caption-free, correct original glasses-on/temple-hand/side-gaze opening with selected portrait likeness and source setting. The existing output normalizer supplies a reviewed 720×1280 opening to one real four-second Google Omni request, with the same portrait as optional facial reference. Real retained interactions verify exact input hashes, full prompts and correct FIRST_FRAME/IMAGE_REF roles.
+- Reviewed all 96 output frames across four native sheets plus larger 640-pixel-wide extracted critical-frame views. Original opening and single glasses removal are present; no caption returns. Frontal gaze arrives early and becomes a smile. At frame 90 / 3.75 s, all final six frames cut to the portrait's bedroom/gray shirt/necklace. The video FAILS full recreation acceptance; other references remain unchanged.
+- All 96 raw-versus-silent decoded picture hashes match, proving the cut originated at the provider. Final video is silent; raw generated audio was removed using existing application post-processing. Provider-internal scene-cut cause UNKNOWN. Ending directions stop at source 3.733 s within requested 4 s, a hypothesis for controlled correction rather than a proven cause.
+- Initial diagnostic GCS upload was refused by storage permissions before any video submission. No IAM/config change or object write; verified local files supplied inline to the real adapter instead. One new image + one video create total for this retest, no automatic paid retry, app-credit/DB changes or deployment. New UGC-VID-011 stays OPEN; UGC-VID-006/010 remain qualified only to the evidence above. Full report: `docs/hook100-caption-retest-2026-10-26.md`.
+
+## 2026-10-26 Two dedicated prompt-writing skills
+
+- User requested separate reusable prompting techniques for ordinary first-frame
+  recreation and the later-clear-frame case, with clear concise performance
+  direction. Added project skills `ugc-opening-frame-prompt` and
+  `ugc-middle-frame-recreation-prompt`; existing video-prompt/starting-frame
+  skills and AGENTS route to them. They are agent instructions, not code loaded
+  by the application's generation runtime. Existing accepted prompts stay frozen.
+- The ordinary skill verifies original t=0 and writes the observed timed actions,
+  holds, gaze and emotion. The middle-frame skill preserves later clarity evidence
+  separately, reconstructs/approves original t=0, then applies full-source motion.
+  A literal later first image supports continuation unless the user chooses a
+  supported full reconstruction route. Do not mistake the clarity timestamp for
+  a gesture boundary or claim earlier poses can be restored by wording alone.
+- Both separate detailed analysis from compact provider prose, require explicit
+  duration remapping (including requested three-second output), and qualify real
+  image/video results independently from correct input delivery. No paid trial,
+  application prompt rollout, UI or deployment changed in this skill task.
+
+## 2026-10-26 Hook 100 revised three-second real test
+
+- User authorized rewriting from observed video with the new skills and one new
+  test. Re-inspected full 112-frame source. Compact 1326-character prompt retains
+  opening hold/removal/sideward pause/blink-turn/frontal reaction/sideward ending,
+  remapped from 3.733333 source seconds to exactly three generated seconds.
+- Same approved caption-free opening and portrait, same Omni provider/roles;
+  one new video create, zero new images. Real output 3.000 s, 720×1280, 24 fps,
+  72 frames. Retained provider record confirms exact images and full prompt.
+- All 72 frames reviewed. No caption, smile or previous final bedroom/wardrobe
+  cut; action order and sideward pause improve. Removal remains about 0.2 s late,
+  inner brows become overly worried, eyes lack source surprise, framing moves
+  closer. PARTIAL PASS only; wider rollout remains unapproved. Changing duration
+  and prompt together does not prove either independently fixed the ending cut.
+- Earlier trials preserved; no runtime prompt/default, other-reference, UI,
+  scheduling, database, cloud-storage or deployment change. Review/receipt and
+  declared source-retimed side-by-side comparison:
+  `docs/hook100-three-second-test-results-2026-10-26.md`. UGC-VID-010/011 remain open.
+
+## 2026-10-26 Reconnected slideshow target retry recovery
+
+- Production audit found one October 23 TikTok slideshow target left `action_required` after provider `invalid_grant`, while its Instagram sibling published successfully. The same TikTok connection later published other carousels and a video, proving the connection recovered.
+- The target-scoped retry RPC previously returned immediately for every historical `action_required` status and therefore never reached its existing current-connection validation. A recovered connection could not retry the stale target.
+- Migration `20261026105718_retry_reconnected_action_required_target.sql` removes that stale-status short circuit. `action_required` targets now participate in active-job deduplication and retry eligibility, then pass through the same media and live connection checks as failed targets.
+- If the account is still unavailable, the RPC preserves the `action_required` outcome and queues nothing. If healthy, it creates one durable `publish_social_post` job; repeat requests reuse the queued/processing job. Published sibling targets and their provider receipts are not modified.
+- The function remains `SECURITY DEFINER`, owner-scoped by `p_user_id`, and executable only by `postgres` and `service_role`; `PUBLIC`, `anon`, and `authenticated` are explicitly revoked. No schedule picker, timezone, initial schedule creation, slideshow generation/rendering, media-preparation or UI behavior changed.
+- Local PGlite coverage passes the recovered, unrecovered, legacy failed-target, idempotent repeat, sibling-preservation, owner-isolation and browser-role permission cases. Production migration/deployment and a real provider retry are separate acceptance steps and remain unverified here.
+
+## 2026-10-26 Talking Head reference removal and shared Hook audit
+
+- User requests removing the two marked fact-check videos. Hide only `talking-outdoor-discovery` and `talking-outdoor-reaction` in Talking Head gallery rendering, including older cached nine-item lists. Seven cards retain order. Keep archival catalogue/media/source hashes and saved-reference recovery. No deployment in this task.
+- Focused audit passes 136 tests, including actual source decoding, audio mixing and local schedule database contracts. Full Talking Head component browser passes 1366×768, 1536×864 and 390×844 journeys with local files and isolated auth/API boundaries. Shared panel still uses plain HH:mm text input: interactive 24-hour picker contract FAILS (UGC-SCH-001 recurrence). Broad Explore suite has 1,203 pass / 57 fail, largely fixture drift, and is not a green release gate.
+- Talking Head still lacks Hook's optional approved-frame animation face photos and generation-history drawer. Its source-frame cache miss decodes packaged MP4 rather than using ordinary Hook stored frames. These differences are not proof of a specific production lag or identity cause. Hosted browser redirects to sign-in; Comet access timed out. Paid generation, production performance and real publication NOT VERIFIED.
+- Full file/skill/command/screenshot receipt and remaining risks: `docs/talking-head-hook-shared-audit-2026-10-26.md`. Existing concurrent work preserved; no prompt, worker, schema, scheduling-runtime or layout changes in this patch.
+
+
+## 2026-10-26 Talking Head shared-feature fixes (local acceptance only)
+
+Follow-up restores shared interactive 24-hour selection without backend conversion/persistence changes. Talking Head approved-frame animation accepts ordered optional owned face photos via shared Omni validation; unsupported models block without losing selections. Explicit generated-video History reuses the owner-scoped asset chooser. Both clip editors receive canonical references for metadata-bound source text. All nine archival references have hash-verified exact t=0 prepared PNGs, read without on-request decoding. Two fact-check discovery cards stay hidden with old drafts recoverable.
+
+Local broad Explore regression passes 1,283/1,283, production build/types/lint pass, and desktop/mobile fixture checks pass including320px and keyboard time selection. Full receipt/files/tests: docs/talking-head-shared-fixes-2026-10-26.md. Production redirects to sign-in; no deployment/provider calls. Existing Hook recreation quality incidents remain open. Local checks do not establish output quality, hosted latency or publication.
+
+
+## 2026-10-26 Explicit Post now and complete24-hour picker coverage (local)
+
+Explore shared scheduling adds optional publishMode now/scheduled while retaining manual date/time/zone separately. Old drafts keep manual behavior. Post now submits useDefaultScheduleTime through direct/finishing/background-preparation paths; server chooses earliest supported slot under the existing configured lead (default5 minutes). It does not bypass preparation, ownership/account/default validation or claim immediate publication. Mode changes never submit. Main Scheduling supports automatic timing for new posts only and disallows targetless Post now; existing schedule edits remain exact-time.
+
+Trending Hook and the shared platform modal replace their last native time inputs with the explicit shared24-hour picker. Existing main Scheduling rail picker stays intact. Trending ASAP choice is consistently named Post now; Hook's implicit default timing now has explicit now/later controls. No new provider/queue/schema/migration.
+
+Broad Explore1,285/1,285, focused119/119, pending46/46, build/types/lint and three desktop/mobile browser suites pass (overlap). Full paths, semantics, images and local/production boundary: docs/workflow-post-now-and-time-pickers-2026-10-26.md. Hosted sign-in still prevents acceptance; no deployment or real post. UGC-SCH-001/007 remain production-open.
+
+
+## 2026-10-26 Middle-frame full-source prompt drafts; rollout held
+
+- Reconciled 21 public and ten private later-frame cases by stable ID/source SHA and selected anchor metadata. Source review evidence covers118 native contact sheets/3,110frames at contact-sheet resolution with targeted larger opening/anchor/transition checks. This is not a written semantic annotation of every frame.
+- Drafted separate reconstructed-t=0 image and concise full-source timed video prompts for all31 cases using the Hook100 structure. Later clarity frames remain preparation evidence only; source t=0 composition is reconstructed before literal FIRST_FRAME animation. Original creator text is removed at image preparation, and exact editable overlay copy remains separate.
+- The offline compiler validates full contiguous source coverage, retains exact source/generated time mapping, renders compact timecodes and accepts integer3–10-second output durations for the reviewed pilot provider. Proposed per-source whole-second durations are authoring examples, not changed application defaults. Hook12 has a separately prepared exact3-second pilot prompt.
+- Full-resolution Hook12 review revealed a thin drink trickle omitted in the thumbnail draft; corrected the draft and logged UGC-VID-012 OPEN. The source begins sipping behind the mug, lowers it, reacts and retains the mug/trickle through the ending.
+- User explicitly chose to finish prompt drafts without paid generation after automatic approval review rejected the provider preflight. No image/video create was submitted; no actual generated starting image or video exists for this pilot. Offline input hash/role validation and ten compiler/coverage tests pass.
+- All31 drafts remain NOT TESTED for generated-output quality and are not activated. No application generation routes, source manifests, user edits/frozen requests, UI, scheduling, database, storage or deployment changed in this phase. Pilot image approval then complete video-frame comparison remain prerequisites to rollout.
+- Readable prompts: docs/prompt-reviews/middle-frame-full-recreation-drafts-2026-10-26.md. Full receipt: docs/middle-frame-prompt-rewrite-receipt-2026-10-26.md.
+
+
+## 2026-10-26 User correction: one Post now action, no timing-mode sections
+
+User rejects the separate Post now/Schedule for later sections shown in the previous local screenshot. Supersedes that UI decision: remove mode groups/cards and automatic-time explanation. Default final Post now action resolves the time at confirmation. Retain original24-hour/manual controls without extra mode selection; explicit manual edits use exact scheduling, untouched empty Explore forms post automatically. Main review defaults automatic, existing edits remain manual. Server lead/idempotency/account/target policy unchanged.
+
+UGC-UI-013 records the unnecessary UI addition and correction. Focused126/126, build/types/lint and three desktop/mobile suites pass; broad rerun pending at this entry. Full files/evidence: docs/post-now-simple-ui-2026-10-26.md. No deployment or hosted publishing acceptance.
+
+- Final local gate for the simplified Post now correction: broad Explore1,285/1,285 and all focused/browser/static/build checks pass. See docs/post-now-simple-ui-2026-10-26.md. Authenticated hosted acceptance remains unavailable; no deployment.
+
+
+## 2026-10-26 Talking Head Create duplicate-heading cleanup
+
+User requests removing the redundant visible Talking head video heading beneath Create. Only this caller opts into hideHeading on WorkflowVideoSourceSection; its h2 remains screen-reader-only to preserve the section/source accessible name. Generate/Upload/Creative Assets, other workflow headings and all state logic unchanged. Six source-control tests and full desktop/mobile workflow fixture pass, TypeScript/scoped lint pass. Local Next dev started at127.0.0.1:3000; local preview path /explore/create-hook?preview=1. No deployment or production acceptance claim.
+
+
+## 2026-10-26 Assign all31 middle-frame prompts to runtime references (local implementation)
+
+- The user explicitly requests assigning the31 reviewed drafts to their respective videos for generation. This supersedes the prior draft-only activation hold; the separate choice not to run paid generation remains in force. No provider inference or deployment is authorized by this code assignment.
+- Public21 assignments live in lib/explore/hook-middle-frame-public.json, resolved by stable reference ID, exact source SHA and clarity index/hash/time. Private10 assignments use a separately read server-only creator-middle-frame-prompts.json package; plaintext is ignored and production must contain authenticated ciphertext prepared with the existing package key. No private prompt prose enters the public/browser catalogue.
+- Both still and motion stages are assigned. New preparations resolve original t=0 scene pixels separately from the stored later clarity anchor, generate an influencer t=0 image, and persist both roles in v4 receipts. Source0 remains opening authority; influencer photos remain identity authority. Hook100 accepted receipt metadata and v1-v3 history remain recoverable.
+- Motion directions retain source-specific actions/holds/endings using normalized phase boundaries; final provider assembly maps the entire sequence to the actual selected duration. Explicit user text remains selected instead of a catalogue overwrite. Empty custom text remains an explicit edit. Existing older images use their selected-pose continuation defaults. A normalized full-source timeline paired with a pre-v4 image is rejected before billing, retaining that image and edits.
+- Private opening+clarity inputs use distinct signed private URLs, freshly signed before provider submission in both durable and ordinary worker branches. Neither source image is uploaded publicly. Exact input order and stale-source rejection are tested.
+- Existing public frame-preparation scripts now include all21 assigned later-frame references through the expanded full-recreation lookup. Hosted original-t0 objects still need preparation/verification during deployment; no production storage writes occurred here. The local package key is unavailable, so new private ciphertext has not been generated; release remains incomplete until packaging is performed with the existing key. Missing new private package does not break unrelated galleries; full-recreation preparation fails closed rather than animating a later pose with t=0 directions.
+- Local coverage:84 preparation/history/source/receipt tests,69 motion/component/model tests (overlapping groups),40 video-admission tests,17 worker/role tests,10 authoring tests; all pass. Worker build, TypeScript and scoped lint pass. Actual-component browser journeys pass Hook/TalkingHead/Wall at1440,1280,390,320 widths with fixture boundaries. Generated fidelity and authenticated production acceptance remain NOT TESTED. Full receipt: docs/middle-frame-runtime-assignment-2026-10-26.md.
+
+- Final runtime-assignment build follow-up: production webpack build completed compilation, TypeScript, static generation and tracing (exit0). Initial disk/cache and test-only TypeScript failures were corrected; no source/media was removed. Local build success does not qualify generated output or deployed private-package/storage readiness.
+
+
+## 2026-10-26 Device-default clock display (explicit user approval)
+
+Supersedes forced24-hour presentation: both shared WorkflowTimePicker and main Scheduling rail picker derive12/24-hour preference from browser/device locale after hydration.12-hour UI has AM/PM; canonical values remain HH:mm. No extra preference controls or now/later sections. Quick-time labels, manual summaries and clock hints follow the same display. Existing Post now5-minute rendering lead, conversion, durable requests and targets unchanged.
+
+Unit/component/local DB and desktop/mobile en-US/en-GB picker checks pass at this entry; broad/build final rerun pending. Full receipt: docs/device-time-format-2026-10-26.md. UGC-SCH-008 tracks this user-requested preference change; no generation or social publishing submitted.
+
+- Final device-format local gate: focused119/119, broad1,285/1,285, final build/types/lint and en-US/en-GB desktop/mobile browser checks PASS. Local Next3000 and ready-video fixture3107 refreshed. Five-minute Post now policy unchanged; docs/device-time-format-2026-10-26.md is final receipt. No deployment or provider mutation.
+
+
+## 2026-10-26 Consistent quick publish-time actions (local)
+
+User reports missing In1hour/In3hours on current preview. Shared platform modal had those controls but main Scheduling, Explore shared form and Trending Hook drawer did not. Added a compact shared two-button row near date/time on missing surfaces, with no heading or now/later modes. Buttons resolve from click-time Date.now in selected IANA timezone, round up to supported minute precision and update the existing manual draft; they never submit. Existing modal quick action now also uses the click clock rather than last render time. Post now5-minute default and locale12/24-hour display unchanged.
+
+Focused56/56 (including selected-zone midnight/DST), types/lint and actual desktop/mobile quick-action browser checks pass at this entry; broad/build pending. Local ready-video fixture3107 refreshed. Details/files/tests: docs/quick-publish-actions-2026-10-26.md. UGC-SCH-009 locally implemented; no production post or deployment.
+
+
+## 2026-10-26 Quick presets clarified:5mins/1hour/3hours/Tomorrow9AM
+
+User replaces interrupted30mins proposal with5mins. Exactly four compact rounded pills shared by all publishing forms, including platform modal, in one nonwrapping row. Internal horizontal scrolling at narrow widths preserves row/page geometry. Tomorrow uses selected-zone next calendar date09:00 and device-format label. All clicks fill the draft only; Post now five-minute lead unchanged. Explicit single callback preserves both date/time in platform modal. Focused106/106, types/lint and laptop/mobile browser checks pass including1280 and320 widths; final broad/build pending. Full receipt docs/quick-publish-actions-2026-10-26.md.
+
+- Final four-pill quick-time gate PASS:106 focused,1,285 Explore, build/types/lint, responsive browser suites and live local DOM inspection. No wrapping at1536/1366/1280/390/320px; internal scroll on narrow widths. Preview3107 and app3000 remain local. No production post/deployment.
+
+
+## 2026-10-26 Quick schedule caption
+User approves small Quick schedule label above preset pills. Shared ScheduleQuickActions adds only that text-xs muted caption; all four pills remain one row and timing/click behavior unchanged. Actual local DOM confirms label above group, exact four options and nowrap. Scoped lint/types/diff checks pass. Local preview3107 refreshed; no deployment.
+
+
+## 2026-10-26 Private prompt package and hosted t=0 preparation completed; normal prompt quality audited
+
+- User requests completing private package and stored original openings, then checking ordinary frame-zero prompt quality using ugc-opening-frame-prompt. No paid generation requested.
+- Existing private package key retrieved narrowly after user restored Vercel CLI access. Prepared only creator-middle-frame-prompts.json.enc (ten entries,37,370bytes), roundtrip verified and all10 assignments resolved through the real production private-package reader. Key matched existing package; no key rotation, secret file or production setting write.
+- All104 active public source videos now have hash-verified originalt0 PNG/index objects in the existing GCS bucket:21 missing pairs created,83 existing verified,104read back matching local decoded PNG hashes. Create-only writes, pointer published last, no overwrite/private upload. The site/worker code was not deployed. Vercel sensitive GCS credential was not exportable and was not extracted; used existing active CloudCLI identity without IAM changes.
+- Added reusable local preparation/verification script scripts/prepare-reviewed-hook-t0-frames.mjs and offline normal prompt audit script. All104 local frame reads verify without decoding; source-frame-store/assignment9tests and negative/evidence/audit3tests pass. Existing secret/environment and user media files preserved.
+- Ordinary audit covers83 public+2 private current source-bound plans;85compile at3/4/8/10s, manual edits remain selected, source hashes match. None has a numeric motion timeline;78public historical static-reviewed and5needs-decision. Fresh11-source review covers46native sheets/1,148frames plus3fullresolution openings. This is not all85fresh visual review or successful generation.
+- Primary quality gap is under-specified pacing/holds plus source-specific ending/expression details. Existing Hook22/51/57/72/83 decisions retained. Private1-04/1-05 generic prompts miss lip/brow phases. No normal runtime prompt rewritten/activated here;3source-reviewed timed examples saved separately. UGC-VID-013 remains OPEN; generated fidelity and production acceptance remain NOT TESTED.
+- Full audit and completion receipt: docs/prompt-reviews/normal-opening-prompt-quality-audit-2026-10-26.md; sanitized hosted/private evidence: docs/prompt-reviews/frame-and-private-package-preparation-2026-10-26.json. These completed preparations supersede the earlier package/storage-pending notes, but not the separate deployment/fidelity gates.
+
+## 2026-10-26 Starting-frame photographic naturalness audit recurrence
+
+- User requests an audit/discussion because regenerated influencer starting frames can lose the selected source's natural photographic appearance despite a broadly matching pose. UGC-VID-014 links UGC-VID-004/006; provider-internal cause remains UNKNOWN.
+- Inspected normal v4 versus full-recreation v5 prompt routing, Gemini reference/request controls, worker normalization and provenance checks. Visually reviewed existing Hook 100 caption-v2 source, identity, raw generated and normalized stills. Broad scene/gesture retained; framing and glasses-to-face geometry approximate; fine skin rendering differs. This is qualitative saved-output evidence, not a new model trial or production check.
+- Proposed discussion contract separates source pose/scene/camera/photographic rendering from influencer identity/intrinsic skin characteristics. No runtime decision or default changed. A repeated controlled prompt comparison should precede changes; no guarantee of pixel preservation from prompt text, and no paid generation submitted.
+- Receipt: docs/starting-frame-realism-audit-2026-10-26.md. Existing worktree changes preserved; only report and append-only memory entries added.
+
+## 2026-10-26 Isolated normal Hook 02 pilot prepared
+User requests one normal-case pilot before broader rollout. Hook 02 exact source f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d reviewed across91 native frames and four contact sheets plus full-resolution boundaries. Actual ffprobe frame PTS and3.066992s source duration mapped contiguously to3s. Source/identity/stored t0 hashes verified; separate image/video prompts and staged acceptance plan prepared in docs/prompt-reviews/hook02-normal-pilot-plan-2026-10-26.md. No runtime prompt assignment, paid generation, model-default change or deployment. Earlier no-paid instruction requires a new user decision before the proposed image then conditional video test. UGC-VID-013 remains OPEN; generated fidelity NOT TESTED.
+
+## 2026-10-26 Hook 02 approved normal pilot stopped on provider rejection
+User approved one image and conditional video. Google model lookup succeeded; canonical source/t0/identity/prompt hashes verified. Exactly one Gemini3Pro2K image submission returned HTTP400 safety violations; no output or operation ID returned. No automatic paid retry and zero video submissions. Triggering input and actual billing are unknown. No normal prompt rollout, application change or deployment. UGC-VID-015 records rejection; UGC-VID-013 quality remains OPEN. Receipt:docs/prompt-reviews/hook02-normal-pilot-result-2026-10-26.md.
+
+## 2026-10-26 Hook 02 diagnostics and controlled test prepared
+Read official Gemini3ProImage/Interactions/safety docs and installedSDK2.10.0 runtime. Confirmed previous pilot logger preserved only error.message; raw rejection detail cannot be recovered from its receipt without operationID. Live modelGET version3.0 input131072 differs from docs65536; do not assume exact per-route settings from general schema. Offline transport400 check confirms structured error code/requestID capture; never log SDK httpMeta request headers. Six-case manifest freezes model/format/safety defaults and separates service control, source-only, identity-only, pair, full prompt and role labels. C5 recreates frozen request hash. No generation run; new paid decision required. No runtime/config/prompt rollout. Full report docs/prompt-reviews/hook02-diagnostics-and-controlled-test-2026-10-26.md; UGC-VID-015 remains OPEN.
+
+
+## 2026-10-26 Hook 02 controlled diagnostics, Hook 01 visual rejection, and Hook 01 identity-v2 preparation
+- Hook 02 three-condition neutral prompt diagnostic completed earlier: source-only and source+portrait rejected with HTTP 400 safety violations (unspecified reason); influencer portrait alone succeeded (`docs/prompt-reviews/hook02-controlled-diagnostic-results-2026-10-26.json`). Exact Hook 02 source trigger remains unknown.
+- Alternate normal pilot Hook 01 (`explore-paired-hook-4585ee949081c4e5cd835cd3`) completed 1 Gemini 3 Pro 2K image (`v1_ChdZaFBmYXJhVUpOUzU2OTRQeEltb29BMBIXWWhQZmFyYVVKTlM1Njk0UHhJbW9vQTA`) with verified input hashes and zero video calls. Formal visual inspection recorded in `outputs/hook01-normal-pilot-2026-10-26/image-visual-review.json`: caption removal, scene/camera, opening pose, and low hands PASS, but identity fidelity FAILS (face retains source performer's jet-black hair, arched dark brows, winged liner, dark brown eyes, blush, lip liner and necklace instead of the selected influencer).
+- Code comparison shows the first Hook 01 pilot script bypassed `buildHookKeyframeImagePrompt` (v4) and `hookKeyframeProviderImageLabels` (v4), sending a custom scene-first prompt that anchored on editing Image 1.
+- Prepared one offline-verified controlled revision (`outputs/hook01-normal-pilot-2026-10-26/identity-v2/preparation-receipt.json` and `docs/prompt-reviews/hook01-normal-pilot-image-prompt-v2-2026-10-26.txt`) keeping source t=0 bytes, influencer portrait bytes, image order, `gemini-3-pro-image`, `2K`, `9:16` and safety defaults identical, changing only the instruction strategy to the `v4` influencer-first builder/labels (`IMAGE 1 — VISUAL_REFERENCE`, `IMAGE 2 — MY_INFLUENCER`) with influencer-agnostic source-face/makeup exclusion and exact two-line caption removal. Zero paid calls submitted in this preparation; UGC-VID-013/014/015/016 remain OPEN.
+
+## 2026-10-26 Hook01 identity-v2 image and single-frame3s video real test
+One frozen identity-focused instruction package image completed on Gemini3Pro2K with exact source/identity bytes and preserved original Attempt1. Visual identity/clean-caption/scene/opening gate passes this sample, with approximate framing and explicitly excluded source necklace. One conditional GeminiOmni3s720p video uses only approved starting image, no extra portraits or ending image. Retained provider roles/hashes/full prompts verified. All72generated frames reviewed through3native+6paired sheets; source91frames previously reviewed. Long opening hold,hand-cover sequence,identity and scene continuity pass; early blink absent and timings approximate. Final camera/edge crop fails to match source; reaching hand withdraws. PARTIAL PASS, no rollout. One image+one video submission, no automatic retry, no app/worker/UI/schedule/default edit or deploy. Evidence docs/prompt-reviews/hook01-identity-v2-test-results-2026-10-26.md; local comparison video outputs/hook01-normal-pilot-2026-10-26/identity-v2/source-comparison/source-vs-generated-3s.mp4. UGC-VID-013 remainsOPEN;016 has one successful candidate sample only.
+
+## 2026-10-26 Source-to-prompt completeness audit preparation
+User requests checking written prompts against source frames across normal/middle cases after Hook01 phonehandling/shake omission. Prepared Hook01 camera-v2 draft preserving0–3s timing/earlyhold but explicitly describing maintained offscreen phonegrip,desk-to-handheld shake,physicalapproach and finaledgecrop. Inferred phonepickup labelled as such in evidence. Draft untested,no runtime assignment.116reference register(85normal31middle) with1confirmedgapdraft,10priornormalfindings to revisit,105pending this specific pass; not a claim of full visual audit. Prior middle reviews remain evidence,not automatic completeness acceptance. Protocol docs/prompt-reviews/source-to-prompt-completeness-review-2026-10-26.md. No provider calls,deploy or application edits. UGC-VID-013 remainsOPEN.
+
+## 2026-10-26 Hook01 camera-v2 prompt-only video test
+User requests exact revised prompt and1video comparison. Kept accepted image,Omni model,3s720p9:16,singleFIRST_FRAME fixed. Only motionwording changed; explicitlyinferred phonehandling,handheldshake and finaloffedgecrop. Providerretained inputverified.72frames reviewed; shake/blur/tilt and faceoutsideedge nowappear,earlier action intact. Sourcecamera timing/path/scale stilldiffer:IMPROVED PARTIAL PASS,notrollout.0newimages1video0automaticretry. Priorreceipts preserved,no applicationedit/deploy. Compare source/previous/revised in outputs/hook01-normal-pilot-2026-10-26/identity-v2/camera-v2/source-comparison/source-previous-revised-3s.mp4. Report docs/prompt-reviews/hook01-camera-v2-test-results-2026-10-26.md;UGC-VID-013OPEN.
+
+## 2026-10-26 Source prompt completeness batch01
+Freshsourceframe review387frames15sheets4fullresolution checks:Hook72,Hook99,middleHook12. Normal99draft adds source-measured hold/blink/release/cameraphases;72draft retains repetitions and finalupwardtilt/lowleftcrop,needsdecisiongateunchanged.12sourcefulltimeline alreadyadequate,no newcontentgap,clarity36/1.2s stays separatefromt0. Actual compiler tested,draftsnotassigned. Currentregister4specificreviewsincludingHook01,112remain;notfullauditcompleted. Newgeneration0,runtimechanges0. Report docs/prompt-reviews/completeness-batch-01-2026-10-26.md.
+
+## 2026-10-26 Cal.com onboarding and historical Hook compatibility hotfix
+
+URL onboarding accepts a hostname-shaped business name only when scraped visible title/body text explicitly supports that brand; URL/link-target/email/lookalike matches remain insufficient. Summary/audience requirements, saved-source ownership/revision fencing, retries, and manual entry remain unchanged. Evidence stays server-local. The historical v3 Gemini3Pro model restriction was already corrected in active worker45bf657b; the exact1.7s receipt/model regression is now explicit. Only the website hotfix is being staged from production source adbfe498; today's unrelated local UI/prompt/scheduling changes are not part of this release. Tests and production acceptance must remain distinct. Receipt: docs/onboarding-domain-brand-hotfix-2026-10-26.md; incidents UGC-OPS-007 / UGC-VID-017.
+
+
+### 26October2026 — source-to-prompt completeness audit progress
+27/116reference-specific reviews completed;89remain.19corrected or timing-specific drafts,8no-new-substantive-gap. Source-confirmed prop/gesture corrections include headphone earcup gripHook11, BOTHpalms mouth coverHook20 and still-held glasses during mouth coverHook22 (UGC-VID-018); Hook15 deliberate cut and late crop must remain explicit. Camera/gesture wording is source-specific, never copied globally from Hook01. Consolidated audit: docs/prompt-reviews/source-to-prompt-audit-progress-2026-10-26.md and reviewed-prompt-candidates-2026-10-26.json. Drafts compiled, no runtime activation or new paid generation. Generated visual acceptance remains NOT TESTED except historical Hook01 improvedpartial. Parallel next batches hit usage limits and are not counted as reviewed.
+
+
+### 26October2026 — prompt completeness continuation47/116
+Added20normalreviews,1626nativeframes/63sheets29fullreschecks. Hook102endinggazereturncorrected;Hook103cameraapproachretainedandwobble/tailmadeexplicit;other18sourceactionsalreadycovered,timingrefined. New shortsourcecandidatesholdfinalposeafteroriginalelapsedactiontofinish3s;longercasesretainfulltimelineunderdeclaredretiming. Register47reviewed/69pending. DraftcompilationPASS,no runtimeactivation/paidcall/UI/schedulingchange;generatedadherenceNOTTESTED. See docs/prompt-reviews/source-to-prompt-audit-progress-2026-10-26.md.
+
+
+### 26October2026 — prompt completeness continuation60/116
+Added13middle reviews:12public retain source-covered actions,1private has source-visible ending framing correction stored only in ignored private draft.1325native thumbnails/49sheets27fullreschecks; original hashes/framecounts/PTS endpoints and actual prompt compilation PASS. Current60reviewed56pending; not full audit or generated acceptance. Short-source final holds and Hook85duration decision gate explicit. No application edits/provider calls/runtime activation/deployment. See docs/prompt-reviews/source-to-prompt-audit-progress-2026-10-26.md; UGC-VID-013/019 remainOPEN.
+
+
+### 26October2026 — full116reference source-to-prompt audit drafts
+Remaining56reviewed:5292decoded thumbnails206sheets63targeted fullreschecks. All116source comparisons complete (85normal31middle104public12private);31correction-drafted statuses85no-new-gap,not116generated passes. New public corrections40stylus,42tailgaze,45smalltrickle,75endinglips,78openinggaze,90finalcrop/lips. Private details remain ignored. Complete source chronology, t0 animation opening and later clarity-only evidence preserved. Actual compiler/hash/frame-count checks PASS; no runtime assignment, UI/scheduling edits, encrypted-package replacement or new generation. Long-source3s candidates remain pacing decisions. Receipt docs/prompt-reviews/source-to-prompt-completion-receipt-2026-10-26.md. UGC-VID-013/019 remainOPEN.
+
+## 2026-10-26 Free tools hub and Batch 2 requests (local)
+
+- Landing nav now Free tools / Guide / Pricing; Guide keeps /guides. Public
+  /free-tools offers the unlimited110-hook PDF and the existing104-video ZIP.
+  Same100-start Batch1 counter/key/archive; no sign-in/email required to download.
+- Closed UI/API says Batch1 fully downloaded, wait for Batch2. Optional explicit
+  Batch2-only email consent saves privately through a rate-limited server endpoint;
+  no email sent. New RLS migration required before live signup. Do not reset Batch1
+  to release Batch2; use a separate approved collection/counter.
+- Local tests/fixtures are distinct from hosted acceptance. No deployment or live
+  migration/counter claim. Receipt: docs/free-tools-implementation-2026-10-26.md.
+
+
+### 26 October 2026 — reusable source/prompt audit process
+The durable runbook is docs/prompt-reviews/REPEATABLE_SOURCE_PROMPT_REVIEW.md. It records the Hook01 controlled comparison, all116source-review completion, normal versus middle-clarity/t0 roles, complete-frame contact sheets plus targeted full-resolution review, evidence-to-prompt interval mapping, timing policy, per-ID/hash draft validation, private artifact retention, controlled output testing and separate runtime/deployment acceptance. Read this guide when repeating the work. Current restart point: source review complete; revised audit candidates are not live assignments and need generated acceptance. Do not repeat the inventory or claim116generated passes. Existing incident history remains unchanged.
+
+
+### 26October2026 — Hook04 controlled pilot blocked before image review
+User replaced already-testedHook01 with another corrected case;Hook04 chosen. Source92thumbnails/4sheets and original t0 inspected. Frozen normal-v4 image prompt source+same identity, corrected3s motion draft unchanged. Exact-model read-only metadata PASS after network access; single image POST returnedHTTP402 with no usable reason. One image attempt,zero video attempts,no returned image/operation; no auto retry,live assignment or deployment. Starting-image/video/output QA NOTTESTED. Report docs/prompt-reviews/hook04-corrected-pilot-results-2026-10-26.md. Resume after provider billing/access restored and one fresh image retry authorized; never reuse source performer as approved influencer image.
+
+
+## 2026-10-27 Talking Head full-reference additions (local; not live)
+Eleven supplied videos added to separate Talking Head catalogue. Explicit user request replaces three short discovery cards with full48.500s/42.027s/43.838s originals from folders24,25/4,37, overriding fullvideo_ignore exclusion only for those files. Stable -full IDs retain old nine catalogue/source/frame bindings and saved recovery.23 archival entries/18 visible; two fact-check cards remain hidden. Same card layout, source links/platform and t0 PNG bindings; one HEVC source converted to H264 without trimming.49 focused tests/types/lint/integrity/full decode pass. Expanded browser approval and deployment unavailable; content is NOT LIVE. Receipt:docs/talking-head-reference-import-2026-10-27.md.
+
+## 2026-10-27 Five-minute shortcut resolves at final confirmation
+
+User explicitly requests that only the5mins shortcut calculate its actual time from final submission, retaining exact manual scheduling and all existing UI. Supersedes the earlier quick-pills entry that treated5mins as an absolute shortcut-click time. The shared callback now carries the chosen preset. Explore records fiveMinutesFromSubmit only in its unsent draft (round-trip validated); selecting another preset or manually editing either date/time clears it. Caption/account changes preserve it. Main Scheduling, Trending Hook and shared platform modal retain the same intent in component state. Displayed fields remain the click-time preview; final button labels, controls and styling remain unchanged.
+
+At submission, reuse existing useDefaultScheduleTime/server-owned configured lead calculation (default5minutes), including whole-minute rounding. Never bypass a configured lead, alter provider settings, or recalculate an already saved scheduling receipt on retry. Existing Post now semantics and exact manual-time validation remain intact. No API/schema/queue/worker changes.
+
+Demo picker empty wording now points to the Demo screen's existing upload flow: No ready demos yet. Upload a video on the Demo screen, then choose it here. No new upload control.
+
+Incidents UGC-SCH-010 and UGC-UI-016; local evidence and file inventory: docs/five-minute-submit-fix-2026-10-27.md. Production acceptance is separate; no deployment or live publication in this task.
+
+
+### 27October2026 — notbeen2 source review and staged Hook import
+User supplied D:/hookswithlinks/notbeen2,10sets. Applied docs/prompt-reviews/REPEATABLE_SOURCE_PROMPT_REVIEW.md; all1260decoded thumbnails47sheets plus21original-resolution checks inspected. Ten normal t0 routes drafted with actual image/motion builders. User approved default hook_audio_006forfolder8(noMP3) and opening reaction only forfolder10. Folder10original371frames preserved; separate119frame lossless/silent derivative stops before first demo frame119at3.966667s; later demo/bookend not part of retained Hook. All stagedvideo/source hashes and trim/previewdecodedpixels PASS; source D:files unchanged. Local49assetstage with fullsource links/music/storedt0/prompts. Report docs/prompt-reviews/notbeen2-2026-10-27/README.md; packageJSON beside it. NOT active catalogue,uploaded,deployed or generated-tested. No paid calls. Sets4/7long3scompression need pacing decisions; other3scandidates also untested. Prior116register stays unchanged; do not merge new10into old completeness counts.
+
+- Final local five-minute/Demo gate:124focused,63service/localDB, fullExplore1,287/1,287 zero skips, three browser suites, types/lint/diff and production webpack/native bundlesPASS. Overlapping test counts are not additive. Sandboxed Turbopack build stalled; webpack completed exit0. Three unrelated obsolete UI source assertions remain documented separately. No deployment/live publishing; docs/five-minute-submit-fix-2026-10-27.md is final receipt.
+
+
+## 2026-10-27 Talking Head reference release deployed
+Targeted source basec630c66f plus11new references/3full replacements deployed as dpl_B6HT7nNDKy5HXq6ETmk7gY48Fnno and promoted to production.18visible/23archival; old short IDs/media retained. Narrow prepared-t0 reader/hash checks and PNG route tracing included, other Hook paths preserved. All14live MP4 SHA/byte counts, posters and206range checks PASS; hosted build/native checks and isolated5tests PASS. Browser control disabled/unresponsive: signed-in gallery playback/visual acceptance NOT VERIFIED. No unrelated worktree release/worker/migration/provider calls. Receipt:docs/talking-head-live-release-2026-10-27.md; exact file hashes:docs/talking-head-live-release-manifest-2026-10-27.json.
+
+
+## 2026-10-27 Investing & Money Wall reference batch (media verified; local application only)
+
+- User supplied six MP4/MP3/source-link folders under `D:/wotwithlinks/notbeen_investing and money category` and explicitly requested a visible **Investing & Money** category. This uses the existing Wall category Filter menu in both galleries; no permanent control or layout redesign.
+- Separate additive `explore-wall-money-reference-release.json` joins the paired-reference resolver only after media publication. Stable IDs bind the original video and supplied MP3 hashes. Source links retain supplied TikTok URLs. Trending Wall backgrounds and their six-second minimum are unrelated and unchanged.
+- All 1,100 decoded thumbnails across 20 contact sheets plus 25 native-resolution frames reviewed through all endings. Original PTS retained. Six source-hash-bound timed motion suggestions use the original opening, preserve source-specific restrained acting/camera/final poses and map complete phases proportionally to the chosen duration. The existing four-second default remains: compression is explicit, not a claim of real-time fidelity. Saved user edits win; other Wall references retain their generic directions. Hook and Talking Head routes remain unchanged.
+- Captions are manually reviewed source records for Remix, with original wording/line breaks and full-video visibility. Financial source claims are not independently verified. Footage prompts remove creator-added captions while preserving physical garment print. Clip4 lower-face motion remains unknown behind its baked caption; no exact lip sequence invented. No influencer image or generated output was tested.
+- Twenty-four immutable objects uploaded using the existing gcloud CLI account after the unrelated ADC account lacked permission. Stored size/type/SHA and public-byte readback passed. All1,100 source/paired-preview decoded pictures match. No IAM/config/login change. Local catalogue now268 references; all262 pre-existing serialized records preserved.
+- New source/category/prompt/audio checks4/4 plus existing focused checks35/35 pass. TypeScript/lint and worker build pass. Production FilterMenu/cards/dialog exercised in a local fixture at1280x720 and390x844: six filtered cards,New badges,selection,preview open/close,clear and no horizontal overflow. Fixture shell/auth/private-preview isolation is disclosed; it is not production acceptance.
+- Website and worker NOT DEPLOYED. No paid generation or publishing. User-facing production category/Recreate acceptance NOT VERIFIED. Before runtime rollout review source-specific outputs with an approved caption-free original-opening image. Do not infer fidelity from storage or compiler results.
+- Evidence: `docs/prompt-reviews/wall-money-reference-review-2026-10-27.md`, source manifest and completion receipt; `.tmp/wall-money-review-2026-10-26/` retains frames,baselines,storage/pixel receipts and browser screenshots. UGC-VID-020 records preview-field propagation caught by integration testing.
+
+
+### 27October2026 — notbeen2 assets uploaded to backend
+User explicitly requested backend addition. Existing appADCfailed403serviceusage.services.use; existing authorizedgcloudCLIidentity confirmed firstasset404and uploadedmissingobjects withoutIAM/billingchanges. All51objects remotelyhash/metadata/publicHEADverified:49media inclstoredt0plus sanitizedpromptpackage/index. PublicpackageGET/SHA and10source/frame/promptjoins PASS,no localpaths. Folder8defaultmusic/folder10opening119framecopy preserved. Storageavailable,NOTactivecards/runtimepromptassignmentsorwebsite/workerdeployment; generatedadherenceNOTTESTED. Receipt docs/prompt-reviews/notbeen2-2026-10-27/backend-upload-receipt.md. Backend source links/IDs ready for integration; old116register unchanged.
+
+
+## 2026-10-27 Talking Head audited request and caption fixes
+Generation submission now bounds each auth wait and POST+body acknowledgement to30s, retaining exact paid request identity/receipt and enabling explicit recovery after timeout; background job runtime is unchanged. No automatic POST retry. Caption evidence and correction invalidation depend on speech composition (IDs/trims/audio), excluding visual overlay text/styles; final rendering still receives the complete visual composition.118focused primary/release tests PASS; broader primary Explore1289PASS/2unrelated Wall catalogue failures, both pass on isolated release. Hosted staged build and14referencehashes PASS; live/provider acceptance separately recorded in docs/talking-head-audit-fixes-2026-10-27.md. UGC-UI-017/UGC-OPS-008 remain open for fresh authenticated acceptance.
+
+
+## 2026-10-27 Centered Talking Head resume prompt
+The ambiguous-old-link ask state in WorkflowDraftEntryBoundary now uses a compact centered card with existing Resume previous work, Start new video and Back to Explore actions. No modal trapping or extra controls. Mobile layout reserves64px header; short landscape scrolls safely. Draft effects/storage/IDs/URLs, loading/error states and Saved drafts list unchanged.13lifecycle/sessiontests and five-size real-component browser fixture PASS, including existing recovery choices/keyboard order. Hosted staged build PASS. UGC-UI-019; live acceptance in docs/resume-work-prompt-ui-2026-10-27.md.
+
+Resume prompt live follow-up2026-10-27: dpl_7RCmDsbfGBjZsX8E3M78p15keGgE promoted; actual production desktop/mobile centered card and keyboard order verified. Existing old-work URL now shows new UI. No production Resume/Start click or paid action. Receipt docs/resume-work-prompt-ui-2026-10-27.md.
+
+## 2026-10-27 Proxima Nova A Semibold in workflow video editing (local)
+
+- User approved the supplied Proxima Nova A Semibold archive. New shared Hook,
+  Wall-of-Text and Talking Head/demo video overlays use that face at Semibold600.
+  Existing white color, outline8, size, position and controls remain. Saved edits
+  retain explicit or legacy typography; no draft migration or mass restyling.
+- Bundle original WOFF2/TTF bytes and measured advances; expose only the supplied
+  Semibold weight. Native export uses exact glyph outlines. Preserve the font
+  notice separately; do not mislabel this face as OFL. Existing OFL preparation
+  retains the imported face. Carousel choices and separate slideshow typography
+  remain unchanged.
+- Local verification: worker build, TypeScript, scoped lint, 11font tests and
+  53related editor/automatic Hook/Carousel tests PASS, including real MP4 glyph
+  and outline pixel checks. Actual exported frame inspected. Desktop/mobile
+  browser and hosted acceptance remain NOT VERIFIED (browser access disabled).
+  No deployment. Receipt: docs/workflow-proxima-font-2026-10-27.md.

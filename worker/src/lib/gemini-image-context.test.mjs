@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeProviderImageLabels } from "../../dist/lib/hook-keyframe-generation-contract.js";
 
 const requests = [], options = [], downloads = [], imageOverrides = new Map();
@@ -116,6 +117,37 @@ test("recreation requests bind new shot and identity labels without changing sav
   receipt.promptVersion = 2;
   await generateGeminiImageBuffer(prompt, "1:1", urls, receipt);
   assert.deepEqual(requests.at(-1).input.filter(part => part.type === "text").slice(0, -1).map(part => part.text), hookKeyframeProviderImageLabels(2, 2));
+});
+
+test("Hook 100 v4 binds original opening, later clarity anchor and influencer identity as distinct inputs", async () => {
+  const opening = Buffer.alloc(80); Buffer.from([137,80,78,71,13,10,26,10]).copy(opening); opening.write("IHDR",12); opening.writeUInt32BE(720,16); opening.writeUInt32BE(1280,20);
+  const anchorSha = "df452e82eadb2e7ed8338f34e2424e623b59ef4015d646a2a3c89d63a34d5a9c";
+  const anchor = readFileSync(new URL(`../../../public/explore/curated-hook-frames/v1/${anchorSha}.png`, import.meta.url));
+  const prompt = "Create the original t=0 opening with the selected influencer; keep the later frame as clarity evidence only.";
+  const sourceFrame = { index: 70, timeSeconds: 2.333333, width: 720, height: 1280, sha256: anchorSha };
+  const animationOpeningFrame = { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: createHash("sha256").update(opening).digest("hex") };
+  const partial = { version: 4, imageModel: "nano_banana_2", ownerId: "owner", draftId: "11111111-1111-4111-8111-111111111111",
+    referenceId: "explore-paired-hook-fc44f6214b6e17413600ec13", sourceSha256: "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+    sourceFrame, animationOpeningFrame, personImageAssetIds: ["22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"], instructions: "" };
+  partial.preparationInputKey = JSON.stringify({ version: 3, ownerId: partial.ownerId, draftId: partial.draftId, referenceId: partial.referenceId,
+    sourceSha256: partial.sourceSha256, sourceFrame, imageAssetIds: partial.personImageAssetIds, instructions: "", imageModel: partial.imageModel });
+  const receipt = { ...partial, purpose: "hook_starting_frame", promptVersion: 5,
+    inputKey: hookKeyframeGenerationInputKey(partial), promptSha256: hookKeyframePromptSha256(prompt) };
+  const urls = ["https://media.test/opening.png", "https://media.test/anchor.png", "https://media.test/main.png", "https://media.test/support.png"];
+  imageOverrides.set(urls[0], { buffer: opening, contentType: "image/png" });
+  imageOverrides.set(urls[1], { buffer: anchor, contentType: "image/png" });
+  await generateGeminiImageBuffer(prompt, "9:16", urls, receipt);
+  const input = requests.at(-1).input, labels = hookKeyframeProviderImageLabels(2, 5);
+  assert.deepEqual(input.filter(part => part.type === "text").slice(0, -1).map(part => part.text), labels);
+  assert.match(input[0].text, /ANIMATION_OPENING_FRAME_BLUEPRINT/);
+  assert.equal(input[1].data, opening.toString("base64"));
+  assert.match(input[2].text, /IDENTITY_CLARITY_ANCHOR/);
+  assert.equal(input[3].data, anchor.toString("base64"));
+  assert.match(input[4].text, /MAIN_INFLUENCER_IDENTITY/);
+  const before = requests.length;
+  imageOverrides.set(urls[1], { buffer: opening, contentType: "image/png" });
+  await assert.rejects(generateGeminiImageBuffer(prompt, "9:16", urls, receipt), /clarity anchor/);
+  assert.equal(requests.length, before);
 });
 
 test("new selected Hook Flash uses its explicit provider model while ordinary and legacy calls retain the environment override", async () => {

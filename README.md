@@ -28,12 +28,21 @@ These are the same public videos embedded on [UGC video generator examples](http
 - https://www.instagram.com/reel/DeW8kYYN_lz/
 - https://www.instagram.com/reel/DeqrNISlQ0Z/
 - https://www.instagram.com/reel/De1snSfiDeK/
+- https://www.instagram.com/reel/DeueoA-FcIT/
 
 ### TikTok
 
 - https://www.tiktok.com/@clara_iami/video/7698234106957548814
 - https://www.tiktok.com/@clara_iamm/video/7698738756915907862
 - https://www.tiktok.com/@clara_iamm/video/7699988037559700758
+- https://www.tiktok.com/@clara_iamm/video/7699923510092631318
+- https://www.tiktok.com/@clara_iamm/video/7699105939034574102
+
+### Articles & Community Posts
+
+- https://dev.to/mrcool_9faf85434dd5e509ff/create-ai-ugc-videos-with-claude-and-codex-using-mcp-58fa
+- https://medium.com/@chundusrisaiteja/how-saas-founders-are-creating-short-form-videos-without-hiring-ugc-creators-in-2026-a1985c67ec8f
+- https://www.linkedin.com/feed/update/urn:li:activity:7520386970469019648/
 
 ## Repository
 

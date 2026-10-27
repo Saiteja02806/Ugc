@@ -8,7 +8,7 @@ import {
 import type { AIStudioImageRatio } from "./image-output.js";
 import { getRequiredProviderEnv } from "./provider-env.js";
 import { downloadReferenceImageBytes, downloadReferenceImageContext } from "./reference-image-download.js";
-import { hookKeyframePromptSha256, hookKeyframeProviderImageLabels, hookKeyframeSceneBytesMatch, parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "./hook-keyframe-generation-contract.js";
+import { hookKeyframeAnchorBytesMatch, hookKeyframePromptSha256, hookKeyframeProviderImageLabels, hookKeyframeReferenceImageCount, hookKeyframeSceneBytesMatch, parseHookKeyframeGenerationReceipt, type HookKeyframeGenerationReceipt } from "./hook-keyframe-generation-contract.js";
 import { hookKeyframeReceiptImageModel } from "./hook-keyframe-image-model.js";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1";
@@ -164,16 +164,19 @@ export async function generateGemini3ProImageBuffer(params: {
 function verifiedHookImageLabels(prompt: string, images: Awaited<ReturnType<typeof downloadReferenceImageContext>> | undefined,
   receipt: HookKeyframeGenerationReceipt | undefined, model: "gemini_3_pro" | "nano_banana_2") {
   if (!receipt) return undefined;
-  if (!parseHookKeyframeGenerationReceipt(receipt) || (receipt.promptVersion !== 2 && receipt.promptVersion !== 3 && receipt.promptVersion !== 4) ||
+  if (!parseHookKeyframeGenerationReceipt(receipt) || ![2, 3, 4, 5].includes(receipt.promptVersion) ||
     hookKeyframeReceiptImageModel(receipt) !== model ||
     hookKeyframePromptSha256(prompt) !== receipt.promptSha256 || !images ||
-    images.length !== receipt.personImageAssetIds.length + 1) {
+    images.length !== hookKeyframeReferenceImageCount(receipt)) {
     throw new ProviderRequestNotSubmittedError("The starting-frame model or reference inputs could not be verified. No image generation request was sent.");
   }
   if (!hookKeyframeSceneBytesMatch(receipt, images[0])) {
     throw new ProviderRequestNotSubmittedError("The downloaded source image does not match the selected starting frame. No image generation request was sent.");
   }
-  return hookKeyframeProviderImageLabels(receipt.personImageAssetIds.length, receipt.promptVersion);
+  if (receipt.version === 4 && !hookKeyframeAnchorBytesMatch(receipt, images[1])) {
+    throw new ProviderRequestNotSubmittedError("The downloaded identity-clarity anchor does not match the reviewed source frame. No image generation request was sent.");
+  }
+  return hookKeyframeProviderImageLabels(receipt.personImageAssetIds.length, receipt.promptVersion === 1 ? 2 : receipt.promptVersion);
 }
 
 function getGoogleClient() {

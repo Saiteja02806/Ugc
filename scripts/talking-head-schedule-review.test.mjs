@@ -1,3 +1,4 @@
+import * as timeDisplay from "../lib/scheduling/time-display.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -12,6 +13,8 @@ const text = value => value == null || typeof value === "boolean" ? "" : Array.i
 const styles = new Proxy({}, { get: (_, name) => name });
 const exported = {};
 const imports = {
+    "@/components/scheduling/use-device-time-format": { useDeviceTimeFormat: () => false },
+    "@/lib/scheduling/time-display": timeDisplay,
   "react/jsx-runtime": { jsx: element, jsxs: element },
   "lucide-react": { ArrowLeft: "arrow-left", ArrowRight: "arrow-right" },
   "@/components/ui/button": { Button: "button" },
@@ -40,7 +43,7 @@ test("invalid or unfinished schedule details produce guidance instead of a misle
   for (const [date, time] of [["", ""], ["2026-02-31", "16:30"], ["2026-10-13", "25:30"]]) {
     const tree = exported.TalkingHeadScheduleSummary({ draft: { platform: "", caption: "", date, time } });
     assert.match(text(tree), /Choose where to publish/);
-    assert.match(text(tree), /Choose date and time/);
+    assert.match(text(tree), !date && !time ? /Earliest available/ : /Choose date and time/);
     assert.match(text(tree), /Your device’s time zone/);
   }
 });

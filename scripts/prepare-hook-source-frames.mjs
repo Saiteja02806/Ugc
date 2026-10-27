@@ -7,12 +7,13 @@ import { getHookReferenceGalleryItems } from "../worker/src/lib/explore-hook-ref
 import { hasCuratedHookFrame } from "../worker/src/lib/hook-curated-frames.ts";
 import { createHookSourceFrameService } from "../lib/explore/hook-source-frame.ts";
 import { createStoredHookFrames } from "../lib/explore/hook-source-frame-store.ts";
+import { getHookFullRecreationPilot } from "../worker/src/lib/hook-full-recreation-pilot.ts";
 
 const args = process.argv.slice(2);
 if (args.some(arg => arg !== "--write")) throw new Error("Only --write is supported.");
-const items = getHookReferenceGalleryItems().filter(item => !hasCuratedHookFrame(item.id));
+const items = getHookReferenceGalleryItems().filter(item => !hasCuratedHookFrame(item.id) || getHookFullRecreationPilot(item.id, item.videoSha256));
 const store = createStoredHookFrames();
-const extract = createHookSourceFrameService({ items: () => items });
+const extract = createHookSourceFrameService({ items: () => items, useCuratedFrame: false });
 let missing = 0;
 for (const item of items) {
   const frame = args.includes("--write") ? await store.prepare(item.videoSha256, () => extract(item.id)) : await store.read(item.videoSha256);

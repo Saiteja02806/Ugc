@@ -19,6 +19,7 @@ export const practicalGuides = {
     sections: [
       {
         title: "Choose a demonstration that answers one question",
+        resource: { label: "Before filming: write a SaaS demo script tied to real screen actions.", href: "/guides/saas-demo-video-script" },
         paragraphs: [
           "Write the viewer's question first. 'How do I add my app recording after an opening clip?' is more specific than 'What does our content tool do?' Choose the smallest action that answers it. A video about adding a demo does not also need to show onboarding, billing and every publishing destination.",
           "Decide what the viewer should understand at the end, then list the evidence you need to show. If the product does not support the action, choose another example rather than directing an imagined interface. A small, accurate demonstration is stronger than a sweeping promise you cannot show.",
@@ -40,6 +41,7 @@ export const practicalGuides = {
       },
       {
         title: "Record clean footage before adding an opening",
+        resource: { label: "Capture checklist: record readable app footage before you edit.", href: "/guides/screen-recording-for-app-demo" },
         paragraphs: [
           "Use a demonstration account with sample data. Remove names, emails, billing details and notifications from the recording. Set the window size so the important control and result remain visible in your intended crop. Move the pointer deliberately and pause long enough to show what changed.",
           "Record a little extra time before and after the action, then trim it in the editor. Do not speed up the meaningful step until a first-time viewer cannot follow it. If an interface label is unreadable after a vertical crop, reframe or make a focused second recording instead of shrinking the whole desktop into the frame.",

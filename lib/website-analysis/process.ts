@@ -2,7 +2,7 @@ import "server-only";
 
 import { analyzeWebsiteBusiness, recoverMissingWebsiteFacts } from "./analyze-business";
 import { scrapeWebsitePages } from "./firecrawl";
-import { getMissingUrlBusinessContext, getStoreListingName, isGenericStoreBusinessName } from "./onboarding-quality";
+import { getMissingUrlBusinessContext, getStoreListingName, getVerifiedWebsiteBusinessName, isGenericStoreBusinessName } from "./onboarding-quality";
 import {
   getWebsiteAnalysisBySourceJobId,
   insertWebsiteAnalysis,
@@ -26,7 +26,7 @@ export async function analyzeWebsiteInput(websiteUrl: unknown) {
   let analysis = listingName && (!analyzed.businessName?.trim() || isGenericStoreBusinessName(analyzed.businessName, website.url))
     ? { ...analyzed, businessName: listingName }
     : analyzed;
-  const missing = getMissingUrlBusinessContext(analysis, website.url);
+  const missing = getMissingUrlBusinessContext(analysis, website.url, getVerifiedWebsiteBusinessName(analysis.businessName, pages));
   if (Object.values(missing).some(Boolean)) {
     try {
       analysis = await recoverMissingWebsiteFacts({
@@ -46,6 +46,7 @@ export async function analyzeWebsiteInput(websiteUrl: unknown) {
 
   return {
     analysis,
+    verifiedBusinessName: getVerifiedWebsiteBusinessName(analysis.businessName, pages),
     normalizedDomain: website.normalizedDomain,
     websiteUrl: website.url,
   };

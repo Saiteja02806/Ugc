@@ -1,0 +1,34 @@
+{
+  "status": "offline-sdk-error-capture-verified",
+  "sdkVersion": "2.10.0",
+  "simulatedRoute": {
+    "method": "POST",
+    "host": "generativelanguage.googleapis.com",
+    "path": "/v1beta/interactions"
+  },
+  "interceptedCalls": 1,
+  "realNetworkCalls": 0,
+  "actualGenerationCalls": 0,
+  "observed": {
+    "name": "BadRequestError",
+    "httpStatus": 400,
+    "error": {
+      "code": "safety",
+      "message": "Synthetic diagnostic block; not a real model result."
+    },
+    "body": "{\"error\":{\"code\":\"safety\",\"message\":\"Synthetic diagnostic block; not a real model result.\"}}",
+    "requestId": "synthetic-request-id",
+    "availableOwnKeys": [
+      "status",
+      "headers",
+      "error",
+      "statusCode",
+      "body",
+      "contentType",
+      "rawResponse",
+      "cause",
+      "name"
+    ]
+  },
+  "limitation": "Synthetic SDK transport check, not model-specific safety classification or production acceptance."
+}

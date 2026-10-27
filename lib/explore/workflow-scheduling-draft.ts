@@ -6,6 +6,9 @@ export type WorkflowScheduleDraft = {
   platforms?: string[]; connectionIds?: Record<string, string>;
   /** A deliberate blank must survive returning to a saved draft. */
   captionInitialized?: boolean;
+  publishMode?: "now" | "scheduled";
+  /** Unsent five-minute intent; the server resolves its lead at final submission. */
+  fiveMinutesFromSubmit?: boolean;
 };
 
 export function workflowSelectedPlatforms(draft: WorkflowScheduleDraft): string[] {

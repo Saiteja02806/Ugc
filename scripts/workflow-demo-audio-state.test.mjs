@@ -78,6 +78,8 @@ function layout(kind) {
     removeUpload() {}, clearUploadError() {}, clearSelection() {},
   };
   const imports = {
+    "./lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "starting-frame-preparation" },
+    "./starting-frame-animation-references": { StartingFrameAnimationReferences: "animation-references" },
     "next/dynamic": { default: () => "starting-frame-preparation" },
     "next/image": { default: "image" },
     "./use-hook-composer-selection": { useHookComposerSelection: (...scope) => { frameScopes.push(scope); return frameSelection; } },
@@ -197,9 +199,29 @@ test("Talking Head Recreate approves only the current draft, preserves Demo/scri
   nodes(current.tree).find(node => node.type === "talking-head-references").props.onChoose(actual.reference.id);
   current = render(); prep = nodes(current.tree).find(node => node.type === "starting-frame-preparation");
   prep.props.onClose(); current = render(); assert.equal(current.generationDraft.startingFrame, frame);
-  const sound = nodes(current.composer.startingFrameControl).find(node => node.type === "input" && node.props.type === "checkbox");
+  const sound = nodes(nodes(current.composer.startingFrameControl).find(node => node.type === "animation-references").props.frameControl).find(node => node.type === "input" && node.props.type === "checkbox");
   sound.props.onChange({ target: { checked: true } }); current = render();
   assert.equal(current.generationDraft.startingFrame.generateAudio, true);
+  const faceControl = () => nodes(current.composer.startingFrameControl).find(node => node.type === "animation-references").props;
+  const photos = [{ asset: { id: "face-a", title: "Face A", url: "https://owned.test/a.png" } }, { asset: { id: "face-b", title: "Face B", url: "https://owned.test/b.png" } }];
+  faceControl().onPhotosChange(photos); current = render();
+  assert.deepEqual(Array.from(current.generationDraft.startingFramePhotos, photo => photo.assetId), ["face-a", "face-b"]);
+  faceControl().onPendingChange(true); current = render(); assert.equal(current.generationDraft.referencesPending, true);
+  faceControl().onPendingChange(false); faceControl().onErrorChange("Face upload failed"); current = render();
+  assert.equal(current.generationDraft.referencesError, "Face upload failed");
+  faceControl().onPhotosChange(photos); current = render(); assert.equal(current.generationDraft.referencesError, null);
+  assert.equal(current.composer.instructions, 'Say "This is my product."'); assert.equal(actual.demo.removed, 0);
+  const history = nodes(current.tree).find(node => node.type === "WorkflowVideoAssetPicker" && node.props.library === "generation_history");
+  assert.equal(history.props.open, false);
+  const buttons = nodes(current.tree).filter(node => typeof node.props?.onClick === "function");
+  const buttonText = node => nodes(node).flatMap(child => typeof child.props?.children === "string" ? [child.props.children] : []).join(" ");
+  buttons.find(node => buttonText(node).includes("History")).props.onClick(); current = render();
+  const historyPicker = nodes(current.tree).find(node => node.type === "WorkflowVideoAssetPicker" && node.props.library === "generation_history");
+  assert.equal(historyPicker.props.open, true);
+  const saved = { id: "saved-generation", title: "Saved generation", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "https://owned.test/saved.mp4" };
+  assert.equal(historyPicker.props.onSelect(saved), true); current = render();
+  assert.equal(current.composer.instructions, 'Say "This is my product."'); assert.equal(actual.demo.removed, 0);
+
 });
 
 test("both Create layouts carry failed image, video and audio selections into generation validation", () => {

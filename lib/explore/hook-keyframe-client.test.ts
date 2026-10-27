@@ -20,3 +20,45 @@ test("client admission binds the completed image to the selected image model as 
   const switched = updateHookKeyframeDraft(draft, { imageModel: "nano_banana_2" });
   assert.throws(() => verifiedHookKeyframeJob(job, createHookKeyframeCheckpoint(switched, checkpoint.requestKey)));
 });
+
+test("v4 pilot recovery stays bound to the exact browser preparation without exposing server frame roles", () => {
+  const inputKey = JSON.stringify({ version: 3, imageModel: "gemini_3_pro" });
+  const checkpoint = {
+    version: 1 as const,
+    scope,
+    inputKey,
+    requestKey: "66666666-6666-4666-8666-666666666666",
+    jobId: "77777777-7777-4777-8777-777777777777",
+  };
+  const job = {
+    id: checkpoint.jobId,
+    status: "completed",
+    isTerminal: true,
+    error: null,
+    receipt: {
+      ...scope,
+      version: 4 as const,
+      imageModel: "gemini_3_pro" as const,
+      promptVersion: 5 as const,
+      purpose: "hook_starting_frame" as const,
+      inputKey: "server-only-v4-frame-binding",
+      preparationInputKey: inputKey,
+    },
+    output: {
+      mediaAssetId: "88888888-8888-4888-8888-888888888888",
+      url: "https://media.test/generated-opening.png",
+      width: 720,
+      height: 1280,
+    },
+  };
+
+  assert.equal(verifiedHookKeyframeJob(job, checkpoint).output!.url, job.output.url);
+  assert.throws(() => verifiedHookKeyframeJob({
+    ...job,
+    receipt: { ...job.receipt, preparationInputKey: `${inputKey}changed` },
+  }, checkpoint));
+  assert.throws(() => verifiedHookKeyframeJob({
+    ...job,
+    receipt: { ...job.receipt, imageModel: "nano_banana_2" as const },
+  }, checkpoint));
+});

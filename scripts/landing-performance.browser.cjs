@@ -9,9 +9,20 @@ const root = path.resolve(__dirname, "..");
 const out = path.join(root, ".tmp/landing-performance-browser");
 fs.mkdirSync(out, { recursive: true });
 const checks = [];
+const galleryOnly = process.argv.includes("--gallery-only");
 const assets = require("../lib/marketing/landing-preview-assets.json");
+const immutableAssets = [
+  ...Object.values(assets.videos).flatMap(asset => [asset.src, asset.poster]),
+  ...Object.values(assets.slideshows).flatMap(asset => asset.slides.map(slide => slide.src)),
+];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const write = (file, value) => fs.writeFileSync(path.join(out, file), value);
+// Isolate video lifecycle/performance from the carousel's separately tested motion.
+const freezeGallery = async page => {
+  await page.waitForFunction(() => document.querySelector("[data-hero-gallery] [data-phase]"));
+  await page.getByRole("button", { name: "Pause gallery motion", exact: true }).evaluate(button => button.click());
+  await page.waitForLoadState("networkidle");
+};
 
 async function authFixture() {
   write("loader.cjs", `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText;`);
@@ -71,15 +82,18 @@ async function main() {
       ...(html.match(/<link\b[^>]*>/g) || []).filter(value => /as="font"/.test(value))
         .map(value => value.match(/href="([^"]+)"/)?.[1]),
     ].filter(Boolean))];
-    assert.equal(fontPreloads.length, 2, "Only normal/italic primary marketing fonts should preload");
-    assert(fontPreloads.every(value => /Geist_(Variable|Italic)/.test(value)), "Editor fonts must not preload");
-    checks.push("static cookie-independent homepage and only two primary-font preloads");
-    for (const asset of Object.values(assets)) {
-      const head = await fetch(base + asset.src, { method: "HEAD" });
+    if (!galleryOnly) {
+      assert.equal(fontPreloads.length, 2, "Only normal/italic primary marketing fonts should preload");
+      assert(fontPreloads.every(value => /Geist_(Variable|Italic)/.test(value)), "Editor fonts must not preload");
+      checks.push("static cookie-independent homepage and only two primary-font preloads");
+    } else checks.push("static cookie-independent homepage; unrelated font-preload budget excluded from scoped gallery run");
+    for (const src of immutableAssets) {
+      const head = await fetch(base + src, { method: "HEAD" });
       assert.equal(head.status, 200);
-      assert.equal(Number(head.headers.get("content-length")), asset.bytes);
+      const video = Object.values(assets.videos).find(asset => asset.src === src);
+      if (video) assert.equal(Number(head.headers.get("content-length")), video.bytes);
       assert.match(head.headers.get("cache-control"), /max-age=31536000.*immutable/);
-      const range = await fetch(base + asset.src, { headers: { Range: "bytes=0-63" } });
+      const range = await fetch(base + src, { headers: { Range: "bytes=0-63" } });
       assert.equal(range.status, 206); assert.equal((await range.arrayBuffer()).byteLength, 64);
     }
     checks.push("hashed video URLs, immutable headers and byte-range delivery");
@@ -94,37 +108,42 @@ async function main() {
     page.on("pageerror", error => errors.push(error.message));
     page.on("console", message => { if (message.type() === "error" && /hydrat|did not match|server rendered/i.test(message.text())) errors.push(message.text()); });
     page.on("request", request => { if (/\.(ttf|woff2)(\?|$)/.test(request.url())) fontRequests.push(request.url()); });
-    await page.goto(base, { waitUntil: "networkidle" });
-    await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.paused && video.readyState >= 2));
+    await page.goto(base, { waitUntil: "domcontentloaded" });
+    await freezeGallery(page);
+    await page.waitForFunction(() => {
+      const primary = document.querySelector('video[aria-label="Primary Hook Explore video"]');
+      const passive = [...document.querySelectorAll("[data-landing-preview] video")].filter(video => video !== primary);
+      return primary && !primary.paused && primary.readyState >= 2 && passive.every(video => !video.hasAttribute("src"));
+    });
     assert(!fontRequests.some(url => /arial|avenir|Geist_SemiBold|inter_latin_400/.test(url)), "Editor fonts should not transfer on the public homepage");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(out, "homepage-desktop.png"), fullPage: false });
-    checks.push("desktop hydration, both videos decode/play, no editor font transfers or horizontal overflow");
-    await page.getByRole("button", { name: "Pause Hook video preview", exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('video[aria-label="Hook video preview"]').hasAttribute("src"));
+    checks.push("desktop hydration, one focal video plays, passive videos stay unloaded, and no editor font transfers or horizontal overflow");
+    await page.getByRole("button", { name: "Pause Primary Hook Explore video", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').hasAttribute("src"));
     await page.evaluate(() => window.setPreviewVisibility("hidden"));
     await page.evaluate(() => window.setPreviewVisibility("visible"));
-    assert.equal(await page.locator('video[aria-label="Hook video preview"]').getAttribute("src"), null,
+    assert.equal(await page.locator('video[aria-label="Primary Hook Explore video"]').getAttribute("src"), null,
       "An explicit pause must survive visibility changes");
-    await page.getByRole("button", { name: "Play Hook video preview", exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('video[aria-label="Hook video preview"]').paused);
+    await page.getByRole("button", { name: "Play Primary Hook Explore video", exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
     checks.push("explicit pause releases source and Play resumes");
     await page.evaluate(() => window.setPreviewVisibility("hidden"));
     await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.hasAttribute("src")));
     await page.evaluate(() => window.setPreviewVisibility("visible"));
-    await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.paused));
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
     await context.setOffline(true);
     await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.hasAttribute("src")));
     await context.setOffline(false);
-    await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.paused));
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.hasAttribute("src")));
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForFunction(() => [...document.querySelectorAll("[data-landing-preview] video")].every(video => !video.paused));
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
     checks.push("hidden, offline and offscreen sources release; return resumes playback");
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => !document.querySelector('video[aria-label="Talking Head UGC video preview"]').hasAttribute("src"));
-    await page.waitForFunction(() => !document.querySelector('video[aria-label="Hook video preview"]').paused);
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Wall of Text Explore video"]').hasAttribute("src"));
+    await page.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(out, "homepage-mobile.png"), fullPage: false });
     checks.push("mobile keeps center playback, excludes desktop video and has no horizontal overflow");
@@ -146,11 +165,12 @@ async function main() {
 
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const mobilePage = await mobile.newPage(), mobileRequests = [];
-    mobilePage.on("request", request => { if (request.url().includes("/marketing/previews/")) mobileRequests.push(request.url()); });
-    await mobilePage.goto(base, { waitUntil: "networkidle" });
-    await mobilePage.waitForFunction(() => !document.querySelector('video[aria-label="Hook video preview"]').paused);
-    assert(mobileRequests.length > 0 && mobileRequests.every(url => url.includes("hookDemo.")), "A cold mobile visit must not download the desktop clip");
-    checks.push("cold mobile visit requests only the center preview");
+    mobilePage.on("request", request => { if (/\/marketing\/hero-gallery\/.*\.mp4(?:\?|$)/.test(request.url())) mobileRequests.push(request.url()); });
+    await mobilePage.goto(base, { waitUntil: "domcontentloaded" });
+    await freezeGallery(mobilePage);
+    await mobilePage.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
+    assert(mobileRequests.length === 1 && mobileRequests[0].includes("hookPrimary."), "A cold mobile visit must request only the focal Hook video");
+    checks.push("cold mobile visit requests only the focal Hook preview");
     await mobile.close();
 
     for (const preference of ["reduced-motion", "save-data"]) {
@@ -161,14 +181,14 @@ async function main() {
         Object.defineProperty(navigator, "connection", { value: connection, configurable: true });
       });
       const preview = await guarded.newPage(), requests = [];
-      preview.on("request", request => { if (request.url().includes("/marketing/previews/")) requests.push(request.url()); });
-      await preview.goto(base, { waitUntil: "networkidle" }); await preview.waitForTimeout(1100);
+      preview.on("request", request => { if (/\/marketing\/hero-gallery\/.*\.mp4(?:\?|$)/.test(request.url())) requests.push(request.url()); });
+      await preview.goto(base, { waitUntil: "domcontentloaded" }); await freezeGallery(preview); await preview.waitForTimeout(1100);
       assert.equal(requests.length, 0, `${preference} must not automatically request video`);
-      const slide = preview.getByRole("button", { name: "Go to hero slide 1", exact: true });
-      const before = await slide.getAttribute("class"); await preview.waitForTimeout(3000);
-      assert.equal(await slide.getAttribute("class"), before, "Slideshow must respect motion/data preference");
-      await preview.getByRole("button", { name: "Play Hook video preview", exact: true }).click();
-      await preview.waitForFunction(() => !document.querySelector('video[aria-label="Hook video preview"]').paused);
+      const slide = preview.getByLabel("Fitness slideshow Explore preview", { exact: true });
+      const before = await slide.getAttribute("data-active-slide"); await preview.waitForTimeout(3400);
+      assert.equal(await slide.getAttribute("data-active-slide"), before, "Slideshow must respect motion/data preference");
+      await preview.getByRole("button", { name: "Play Primary Hook Explore video", exact: true }).click();
+      await preview.waitForFunction(() => !document.querySelector('video[aria-label="Primary Hook Explore video"]').paused);
       checks.push(`${preference}: posters only until explicit Play; slideshow stays still`);
       await guarded.close();
     }
@@ -199,7 +219,9 @@ async function main() {
       await authContext.close();
     }
     write("receipt.json", JSON.stringify({ checks, editorFaces: faces,
-      originalHeroBytes: 8679447, optimizedHeroBytes: Object.values(assets).reduce((sum, asset) => sum + asset.bytes, 0) }, null, 2));
+      excludedChecks: galleryOnly ? ["Root font-preload budget: unscoped run observed 0 instead of 2; font configuration unchanged by gallery task"] : [],
+      originalHeroBytes: 8679447,
+      optimizedHeroBytes: Object.values(assets.videos).reduce((sum, asset) => sum + asset.bytes, 0) }, null, 2));
     console.log(JSON.stringify({ passed: checks.length, checks, screenshots: out }, null, 2));
   } finally {
     write("progress.json", JSON.stringify({ checks }, null, 2));

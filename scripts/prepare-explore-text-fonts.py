@@ -27,6 +27,12 @@ PUBLIC = ROOT / "public/explore-text-fonts"
 DEST.mkdir(parents=True, exist_ok=True)
 PUBLIC.mkdir(parents=True, exist_ok=True)
 metrics, manifest, css = {}, {"revision": REVISION, "files": {}}, []
+# User-supplied Proxima is imported separately, never fetched as an OFL font.
+if (DEST / "proximanovaa-600.ttf").exists():
+    existing_metrics = json.loads((ROOT / "worker/src/lib/explore-text-font-metrics.json").read_text(encoding="utf-8"))
+    metrics["proximanovaa-600"] = existing_metrics["proximanovaa-600"]
+    manifest["files"]["proximanovaa"] = json.loads((DEST / "manifest.json").read_text(encoding="utf-8"))["files"]["proximanovaa"]
+    css = [line for line in (ROOT / "components/explore/explore-text-fonts.css").read_text(encoding="utf-8").splitlines() if "/proximanovaa-" in line]
 parser = argparse.ArgumentParser()
 parser.add_argument("--only", choices=SOURCES, action="append", help="Add/rebuild selected faces without changing other bundled fonts")
 selected = parser.parse_args().only

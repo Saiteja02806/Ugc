@@ -3,6 +3,10 @@ import landingPreviews from "./lib/marketing/landing-preview-assets.json";
 import { nativeMediaTracing } from "./lib/build/native-media-tracing.ts";
 
 const nativeMedia = nativeMediaTracing();
+const landingPreviewPaths = [
+  ...Object.values(landingPreviews.videos).flatMap((asset) => [asset.src, asset.poster]),
+  ...Object.values(landingPreviews.slideshows).flatMap((asset) => asset.slides.map((slide) => slide.src)),
+];
 
 const firebaseAuthHelperDomain =
   process.env.NEXT_PUBLIC_FIREBASE_AUTH_HELPER_DOMAIN ??
@@ -17,6 +21,12 @@ const nextConfig: NextConfig = {
     extensionAlias: { ".js": [".js", ".ts"] },
   },
   outputFileTracingIncludes: {
+    // Automation uses the shared glyph renderer on the server as well as workers.
+    "/api/trending/slideshow-automation": ["./worker/src/assets/fonts/explore-text/*.ttf"],
+    "/api/trending/slideshow-automation/**": ["./worker/src/assets/fonts/explore-text/*.ttf"],
+    "/api/internal/carousels/replenish": ["./worker/src/assets/fonts/explore-text/*.ttf"],
+    "/api/internal/trending/reconcile": ["./worker/src/assets/fonts/explore-text/*.ttf"],
+    "/api/internal/jobs/recover": ["./worker/src/assets/fonts/explore-text/*.ttf"],
     "/api/explore/**": ["./lib/explore/creator-*.json.enc"],
     "/api/ai-studio/**": ["./lib/explore/creator-*.json.enc"],
     "/api/media/**": ["./lib/explore/creator-*.json.enc"],
@@ -28,8 +38,8 @@ const nextConfig: NextConfig = {
     "/api/explore/creator-media/**": ["./lib/explore/creator-account-media/*.enc"],
     "/api/explore/creator-scene/**": ["./lib/explore/creator-account-media/*.png.enc"],
     "/api/explore/emoji/**": ["./worker/src/assets/emoji/*.json.gz"],
-    "/api/explore/hook-keyframe": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png", "./lib/explore/creator-account-media/*.png.enc"],
-    "/api/explore/hook-starting-frame": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-references/v1/*.mp4", "./public/explore/curated-hook-frames/v1/*.png", "./lib/explore/creator-account-media/*.png.enc"],
+    "/api/explore/hook-keyframe": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-frames/v1/*.png", "./public/explore/curated-hook-frames/v1/*.png", "./lib/explore/creator-account-media/*.png.enc"],
+    "/api/explore/hook-starting-frame": [...nativeMedia.ffmpegFiles, "./public/explore/talking-head-frames/v1/*.png", "./public/explore/curated-hook-frames/v1/*.png", "./lib/explore/creator-account-media/*.png.enc"],
     "/api/audio/transfer": nativeMedia.mediaFiles,
     // External native packages used by /mcp are traced from their imports.
     // A /mcp include glob also matches health/discovery routes in Next.
@@ -84,7 +94,7 @@ const nextConfig: NextConfig = {
   async headers() {
     // Only these content-hashed files are immutable. Existing mutable public
     // media keeps its current policy and URLs.
-    return Object.values(landingPreviews).map(({ src }) => ({
+    return landingPreviewPaths.map((src) => ({
       source: src,
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     }));

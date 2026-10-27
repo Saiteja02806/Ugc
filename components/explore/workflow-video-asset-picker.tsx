@@ -12,11 +12,11 @@ import type { MediaAsset } from "@/lib/media/types";
 import { withReadDeadline } from "@/lib/http/read-deadline";
 
 export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selectedId, onSelect, description = "Use an existing video as your opening segment.", previewAssets, library: surface = "creative_assets" }: {
-  open: boolean; onOpenChange: (open: boolean) => void; ownerId: string | null; selectedId?: string; onSelect: (asset: MediaAsset) => boolean; description?: string; previewAssets?: MediaAsset[]; library?: "creative_assets" | "content";
+  open: boolean; onOpenChange: (open: boolean) => void; ownerId: string | null; selectedId?: string; onSelect: (asset: MediaAsset) => boolean; description?: string; previewAssets?: MediaAsset[]; library?: "creative_assets" | "content" | "generation_history";
 }) {
-  const name = surface === "content" ? "Demo" : "Creative Assets";
+  const name = surface === "content" ? "Demo" : surface === "generation_history" ? "Generation history" : "Creative Assets";
   const eligible = (asset: unknown): asset is MediaAsset => isWorkflowSourceVideo(asset) &&
-    (surface === "content" ? asset.sourceType === "demo_upload" : asset.sourceType !== "demo_upload");
+    (surface === "content" ? asset.sourceType === "demo_upload" : surface === "generation_history" ? asset.sourceType === "generated_video" : asset.sourceType !== "demo_upload");
   const library = useQuery<MediaAsset[]>({
     queryKey: ["explore-source-videos", ownerId, surface], enabled: open && !!ownerId && !previewAssets,
     staleTime: 30_000, gcTime: 5 * 60_000, retry: false, refetchOnWindowFocus: false,
@@ -24,19 +24,19 @@ export function WorkflowVideoAssetPicker({ open, onOpenChange, ownerId, selected
         const token = await getCurrentUserIdToken(ownerId ?? undefined);
         if (!token) throw new Error("Sign in to choose your video.");
         bounded.throwIfAborted();
-        const response = await fetch(surface === "content" ? "/api/demo/sources" : "/api/media?collection=video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal: bounded });
+        const response = await fetch(surface === "content" ? "/api/demo/sources" : surface === "generation_history" ? "/api/media?collection=video&sourceTypes=generated_video" : "/api/media?collection=video", { cache: "no-store", headers: { Authorization: `Bearer ${token}` }, signal: bounded });
         const value = await response.json();
         if (!response.ok || value?.ok !== true || !Array.isArray(value.assets)) throw new Error(`Could not load ${name}.`);
         return value.assets.filter(eligible);
     }, signal),
   });
   const visibleAssets = previewAssets?.filter(eligible) ?? library.data ?? [];
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[min(640px,90dvh)] overflow-y-auto overscroll-contain sm:max-w-lg">
-    <DialogHeader><DialogTitle>Choose from {name}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={surface === "generation_history" ? "inset-y-0 left-auto right-0 top-0 content-start h-dvh w-full max-w-[460px] translate-x-0 translate-y-0 overflow-y-auto overscroll-contain rounded-none sm:max-w-[460px]" : "max-h-[min(640px,90dvh)] overflow-y-auto overscroll-contain sm:max-w-lg"}>
+    <DialogHeader><DialogTitle>{surface === "generation_history" ? "Generation history" : `Choose from ${name}`}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
     {!ownerId && !previewAssets ? <p className="text-sm text-muted">Sign in to choose from {name}.</p>
       : !previewAssets && !library.data && library.isPending ? <p role="status" className="text-sm text-muted">Loading your videos…</p>
       : !previewAssets && !library.data && library.isError ? <div role="alert" className="space-y-3"><p>{library.error.message}</p><Button type="button" variant="outline" onClick={() => void library.refetch()}>Retry</Button></div>
-      : !visibleAssets.length ? <p className="text-sm text-muted">{surface === "content" ? "No ready demos yet. Upload one here or on the Demo screen to get started." : "No ready videos yet. Upload a video in Create to get started."}</p>
+      : !visibleAssets.length ? <p className="text-sm text-muted">{surface === "content" ? "No ready demos yet. Upload a video on the Demo screen, then choose it here." : surface === "generation_history" ? "No completed generations yet. Generate a video in Create to get started." : "No ready videos yet. Upload a video in Create to get started."}</p>
       : <div className="grid gap-2">{visibleAssets.map(asset => {
         const problem = workflowSourceVideoError(asset);
         return <Button key={asset.id} type="button" variant="outline" aria-pressed={asset.id === selectedId} disabled={!!problem} title={problem ?? asset.title}

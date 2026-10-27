@@ -5,6 +5,7 @@ import plansA from "./hook-keyframe-motion-plans-a.json" with { type: "json" };
 import plansB from "./hook-keyframe-motion-plans-b.json" with { type: "json" };
 import plansC from "./hook-keyframe-motion-plans-c.json" with { type: "json" };
 import { parseHookMotionRewrite, type HookMotionRewrite } from "./hook-motion-rewrite-contract.ts";
+import { retimeSourceMotionDirections } from "./hook-middle-frame-motion.ts";
 
 export const HOOK_KEYFRAME_MOTION_VERSION = 1 as const;
 
@@ -181,7 +182,7 @@ export function buildHookAnimationPrompt(input: { directions: string; durationSe
   return [
     `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
-    input.directions.trim(),
+    retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds),
     "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     sound,
   ].join("\n\n");

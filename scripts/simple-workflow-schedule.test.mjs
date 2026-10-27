@@ -63,3 +63,33 @@ test("partial platform selections, oversized captions, past times and invalid co
     await assert.rejects(fixture(["instagram"], options).prepare());
   }
 });
+
+
+test("automatic posting skips manual date/time but still enforces accounts and publishing defaults", async () => {
+  const immediate={publishMode:"now",date:"",time:""};
+  const result=await fixture(["instagram","tiktok","youtube"],{draft:immediate}).prepare();
+  assert.equal(result.useDefaultScheduleTime,true);assert.equal(result.targets.length,3);
+  assert.ok(Date.parse(result.scheduledFor)>Date.now());
+  assert.equal(result.targets.find(target=>target.platform==="youtube").settings.privacyStatus,"unlisted");
+  for (const account of [{status:"expired"},{scopes:[]}]) await assert.rejects(fixture(["instagram"],{draft:immediate,account}).prepare());
+  await assert.rejects(fixture(["instagram"],{draft:immediate,accounts:[]}).prepare(),/unavailable/);
+  await assert.rejects(fixture(["tiktok"],{draft:immediate,preferences:{tiktokPrivacyLevel:"PUBLIC_TO_EVERYONE"}}).prepare(),/visibility available/);
+});
+
+test("five-minute intent resolves when finally submitted, while exact manual times stay exact", async t => {
+  let now = Date.parse("2026-10-26T12:00:30Z");
+  t.mock.method(Date, "now", () => now);
+  const selected = { publishMode: "scheduled", fiveMinutesFromSubmit: true, date: "2026-10-26", time: "17:36" };
+  const h = fixture(["instagram"], { draft: selected });
+  now += 20 * 60_000;
+  const result = await h.prepare();
+  assert.equal(result.useDefaultScheduleTime, true, "Server must calculate the accepted slot, including after transport delay");
+  assert.equal(result.scheduledFor, "2026-10-26T12:26:00.000Z");
+  assert.equal(result.caption, "Exact caption");
+  assert.equal(result.targets[0].connectionId, "account-instagram");
+  await assert.rejects(fixture(["instagram"], { draft: { ...selected, fiveMinutesFromSubmit: undefined } }).prepare(), /at least 5 minutes/);
+  const manual = await fixture(["instagram"], { draft: { ...selected, fiveMinutesFromSubmit: undefined, time: "21:30" } }).prepare();
+  assert.equal(manual.scheduledFor, "2026-10-26T16:00:00.000Z");
+  assert.equal(manual.useDefaultScheduleTime, undefined);
+  await assert.rejects(fixture(["instagram"], { draft: selected, accounts: [] }).prepare(), /unavailable/);
+});

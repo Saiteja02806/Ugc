@@ -139,6 +139,8 @@ export function getMissingLibraryDbEnvVars() {
 }
 
 export type GeneratedCarouselLibraryInput = {
+  /** Isolated derived output; omitted for ordinary Trending/Library saves. */
+  sourceId?: string;
   edit?: {
     id: string;
     revision: number;
@@ -201,7 +203,7 @@ export function buildGeneratedCarouselLibraryPayload(input: GeneratedCarouselLib
       },
       p_project_id: input.generation.projectId,
       p_slides: slidesPayload,
-      p_source_id: input.generation.id,
+      p_source_id: input.sourceId ?? input.generation.id,
       p_thumbnail_url: coverUrl,
       p_title: input.title,
       p_user_id: input.userId,

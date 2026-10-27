@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
@@ -10,6 +9,7 @@ import ffmpeg from "ffmpeg-static";
 import ffprobe from "ffprobe-static";
 import sharp from "sharp";
 import ts from "typescript";
+import { applyReferenceUploadBatches } from "../lib/explore/reference-upload-batches.ts";
 import { mergeCatalogItems, orderedSlideFiles, prepareCatalog } from "./prepare-explore-catalog.mjs";
 
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -32,7 +32,8 @@ test("an existing ID cannot silently replace content or category", () => {
 });
 
 async function withSources(run) {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "ugc-explore-catalog-test-"));
+  mkdirSync(path.resolve(".tmp"), { recursive: true });
+  const directory = mkdtempSync(path.join(path.resolve(".tmp"), "ugc-explore-catalog-test-"));
   const slidesRoot = path.join(directory, "slides");
   const wallRoot = path.join(directory, "wall");
   const hooksRoot = path.join(directory, "hooks");
@@ -44,8 +45,8 @@ async function withSources(run) {
     }
     await run({ directory, slidesRoot, wallRoot, hooksRoot, setRoot });
   } finally {
-    // Delete only the exact, uniquely created fixture directory within the OS temp root.
-    assert.equal(path.dirname(path.resolve(directory)), path.resolve(os.tmpdir()));
+    // Delete only the exact, uniquely created fixture directory within the workspace fixture root.
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(".tmp"));
     assert.match(path.basename(directory), /^ugc-explore-catalog-test-/);
     rmSync(directory, { recursive: true, force: true });
   }
@@ -116,6 +117,9 @@ function loadHookLibrary(status) {
   catalog.mediaStatus = status;
   const loadedModule = { exports: {} };
   const require = (specifier) => {
+    if (specifier === "./slideshow-reference-oct23.json") return { mediaStatus: "staged", items: [] };
+    if (specifier === "./reference-upload-batches.json") return { batches: [] };
+    if (specifier === "./reference-upload-batches.ts") return { applyReferenceUploadBatches };
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./paired-reference-library") return { getPairedExploreVideos: () => [] };
@@ -152,6 +156,9 @@ function loadRecreateCatalog(status, environment = "development") {
   const source = readFileSync(new URL("../lib/explore/recreate-catalog.ts", import.meta.url), "utf8");
   const loadedModule = { exports: {} };
   const require = (specifier) => {
+    if (specifier === "./slideshow-reference-oct23.json") return { mediaStatus: "staged", items: [] };
+    if (specifier === "./reference-upload-batches.json") return { batches: [] };
+    if (specifier === "./reference-upload-batches.ts") return { applyReferenceUploadBatches };
     if (specifier === "server-only") return {};
     if (specifier === "./imported-catalog.json") return catalog;
     if (specifier === "./slideshow-reference-sources.json") return JSON.parse(readFileSync(new URL("../lib/explore/slideshow-reference-sources.json", import.meta.url), "utf8"));

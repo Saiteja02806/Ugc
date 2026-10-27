@@ -25,6 +25,15 @@ const UNCONFIRMED_SCHEDULE_MESSAGE = "Scheduling was interrupted. Try again to f
 // The presentational boundary receives values and event handlers, not refs.
 // Rendering the view must not execute a controller's imperative actions.
 function FinishingView({ value, children }: { value: WorkflowFinishingView; children: (value: WorkflowFinishingView) => ReactNode }) { return children(value); }
+/** Caption evidence depends on speech/timing, never painted overlay pixels. */
+export function workflowSpeechComposition(composition?: ExploreClipComposition): ExploreClipComposition | undefined {
+  if (!composition) return undefined;
+  const speechEdit = (edit: ExploreClipComposition["sourceEditing"]) => edit ? {
+    version: edit.version, format: edit.format, trimStartMs: edit.trimStartMs, trimEndMs: edit.trimEndMs,
+    originalVolume: edit.originalVolume, musicVolume: edit.musicVolume, text: null,
+  } : edit;
+  return { ...composition, sourceEditing: speechEdit(composition.sourceEditing), demoEditing: speechEdit(composition.demoEditing) };
+}
 export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource = null, playback, scheduleDraft, children, demoFraming, demoFramingError, fastStatus = false, scheduleTimezone, composition, backgroundScheduling = false, demoAudioAssetId = null, initialOptions, onOptionsChange, draftId, onScheduled }: {
   enabled: boolean; ownerId: string | null; kind: "hook" | "phone"; source: MediaAsset | null; demo: LocalWorkflowMedia | null; demoAudio: LocalWorkflowMedia | null; playback: "once" | "repeat"; scheduleDraft: WorkflowScheduleDraft;
   children: (value: WorkflowFinishingView) => ReactNode;
@@ -48,13 +57,14 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   useEffect(() => { onOptionsChange?.(options); }, [options, onOptionsChange]);
   const effectiveDemoFraming = demoFraming && composition?.demoEditing ? trimmedDemoFraming(demoFraming, composition.demoEditing) : demoFraming;
   const workflowScope = draftId ? `workflow:${draftId}` : undefined;
+  const speechComposition = workflowSpeechComposition(composition);
   // Independent durable identity for speech review. Style and word edits never
   // regenerate it; both requests share the owner's exact audio cache.
   const captionFinishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback,
     options: { subtitles: true, style: "clean", placement: "bottom", backgroundMusic: options.backgroundMusic, ...(options.backgroundAssetId !== undefined ? { backgroundAssetId: options.backgroundAssetId, backgroundPlayback: music.playback } : {}) }, backgroundSource, backgroundPlayback: music.playback, demoFraming: effectiveDemoFraming, demoFramingError: selectionError,
-    composition, demoAudioAssetId, captionPreview: true, scope: workflowScope ? `${workflowScope}:caption-preview` : "caption-preview", fastStatus: true });
+    composition: speechComposition, demoAudioAssetId, captionPreview: true, scope: workflowScope ? `${workflowScope}:caption-preview` : "caption-preview", fastStatus: true });
   const finishing = useWorkflowFinishing({ enabled, ownerId, kind, source, demo, demoSource, demoAudio, demoAudioSource, playback, options, onRestoreOptions: initialOptions ? undefined : setOptions, backgroundSource, backgroundPlayback: music.playback, demoFraming: effectiveDemoFraming, demoFramingError: selectionError, fastStatus, reuseUnchangedSource: true, captionDraft: captionFinishing.captionDraft, composition, demoAudioAssetId, scope: workflowScope });
-  const audioSelection = JSON.stringify([ownerId, source?.id, demo?.url, demoSource?.id, demoAudio?.url, demoAudioSource?.id, playback, composition, demoAudioAssetId, options.backgroundMusic, backgroundSource?.id, music.playback]);
+  const audioSelection = JSON.stringify([ownerId, source?.id, demo?.url, demoSource?.id, demoAudio?.url, demoAudioSource?.id, playback, speechComposition, demoAudioAssetId, options.backgroundMusic, backgroundSource?.id, music.playback]);
   const priorAudioSelection = useRef(audioSelection);
   const audioSelectionReady = useRef(false);
   useEffect(() => {
@@ -208,7 +218,7 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
         if (!finishing.output) throw new Error("Prepare your finished video before scheduling.");
         const submission = await prepareSimpleWorkflowSchedule({ draft: scheduleDraft, timezone, source: { kind: "media_asset", id: finishing.output.id }, title: finishing.output.title, load: authorized });
         if (!isCurrent() || currentIdentity.current !== identity) throw new Error("Your video or schedule changed. Check the current selections and click Schedule post again.");
-        const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected && prior.input.source.id === finishing.output.id ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
+        const saved: ScheduleReceipt = { version: 1, owner: ownerId, kind, input: { caption: submission.caption, source: submission.scheduledSource, targets: submission.targets, title: finishing.output.title, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, ...(submission.useDefaultScheduleTime ? { useDefaultScheduleTime: true } : {}), idempotencyKey: prior?.timeRejected && prior.input.source.id === finishing.output.id ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: "single_video", exploreWorkflow: kind } } };
         readScheduleReceipt(JSON.stringify(saved), ownerId, kind);
         if (prior?.scheduleId) archiveConfirmedSchedule(localStorage, storageKey, prior.input.idempotencyKey!, prior);
         localStorage.setItem(storageKey, JSON.stringify(saved)); setReceipt(saved);
@@ -220,6 +230,6 @@ export function WorkflowFinishingBoundary({ enabled, ownerId, kind, source, demo
   }
   const output = finishing.output;
   const resumeSaved = receipt !== null && !receipt.scheduleId;
-  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
+  const schedule: WorkflowAction = { busy, completed: Boolean(receipt?.scheduleId), label: resumeSaved && !receipt.timeRejected ? "Try again" : (scheduleDraft.publishMode === "now" || !scheduleDraft.publishMode && !scheduleDraft.date && !scheduleDraft.time) ? "Post now" : "Schedule post", disabled: !enabled || !ownerId || !restored || busy || (!resumeSaved && (!output || !selectedTargets.length)), error, message: output && !receipt ? "Choose your accounts and time, then click Schedule post." : message, onAction: () => { void start(); }, refresh: () => { void refresh(); } };
   return <><FinishingView value={{ edit: { ...finishing.action, disabled: finishing.action.disabled || captionFinishing.status?.outcome === "pending" || captionFinishing.action.busy || options.subtitles && !captions.transcript && !output }, schedule, output, options, setOptions: changeOptions, captions, music, pendingComposition: backgroundScheduling ? pendingComposition : undefined }}>{children}</FinishingView>{null}</>;
 }

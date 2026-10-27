@@ -1,0 +1,14 @@
+Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.
+
+PERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.
+
+Image 2 is the only identity photo; do not infer additional photo inputs.
+
+VISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.
+
+OUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.
+
+Apply explicit user-requested image changes below. Create a still photograph for review before video generation.
+
+USER IMAGE INSTRUCTIONS:
+ORIGINAL t=0 ONLY: Close warm indoor selfie against pale yellow seat/back panel and textured beige wall; hair pinned back, white top and earrings. Wide eyes, raised brows, tightly pursed sideways/downturned lips; no glasses on face. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: sorry but ig’s new update is crazyyyy. Location: Upper center on beige wall. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.

@@ -456,7 +456,7 @@ function OwnedPreparation({ reference, scope, onClose, onUseStartingFrame, previ
   const ready = restored && Boolean(frameQuery.data) && images.length > 0 && !tooManyImages && !busy;
   const creatorDirections = reference.creatorAccountId ? preparedDraft.sourceFrame && preparedDraft.sourceFrame.sha256 !== reference.startingFrame?.sha256
     ? reference.legacyGenerationPrompt : reference.generationPrompt : undefined;
-  const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat, creatorDirections);
+  const promptPreview = getHookKeyframePromptPreview(preparedDraft, preparationFormat, creatorDirections, reference.legacySelectedGenerationPrompt, reference.startingImagePrompt);
   const imageJob = checkpoint && imageJobQuery?.data ? imageJobQuery.data : null;
   const matchingImage = Boolean(checkpoint && checkpoint.inputKey === currentInputKey);
   const creatingImage = readableEntries.some((entry, index) => (entry.state === "submitting" || entry.state === "accepted") && !imageJobQueries[index]?.data?.isTerminal);

@@ -75,6 +75,9 @@ const instagramAccountManager = readProjectFile(
 const carouselScheduleModal = readProjectFile(
   "components/social/platform-selection-modal.tsx",
 );
+const postCaptionField = readProjectFile(
+  "components/scheduling/post-caption-field.tsx",
+);
 const hookVideoScheduleDrawer = readProjectFile(
   "components/trending/hook-video-schedule-drawer.tsx",
 );
@@ -953,8 +956,8 @@ test("the inline carousel modal implements publishing-account content and time s
   assert.doesNotMatch(carouselScheduleModal, /Select connected account/);
   assert.doesNotMatch(carouselScheduleModal, /const platformConnections = useMemo/);
   assert.match(carouselScheduleModal, /connectionId: connection\.id/);
-  assert.match(carouselScheduleModal, /<PostCaptionField/);
-  assert.match(readProjectFile("components/scheduling/post-caption-field.tsx"), /Post caption[\s\S]*?\(optional\)/);
+  assert.match(carouselScheduleModal, /<PostCaptionField[\s\S]*applyDefault=\{false\}/);
+  assert.match(postCaptionField, /Post caption <span>\(optional\)<\/span>/);
   assert.match(
     carouselScheduleModal,
     /self-start overflow-hidden rounded-card border border-border bg-card/,
@@ -972,14 +975,14 @@ test("Post Right away calculates its lead time at final submission, not when the
   const submitSchedule = getSection(
     carouselScheduleModal,
     'async function submitSchedule(mode: "asap" | "later")',
-    "function applyQuickSlot",
+    "  return (",
   );
 
   assert.match(submitSchedule, /const submittedAt = Date\.now\(\);/);
   assert.match(submitSchedule, /setCurrentTime\(submittedAt\);/);
   assert.match(
     submitSchedule,
-    /mode === "asap"\s*\? getEarliestScheduleSlot\(\s*submittedAt,\s*minimumLeadMinutes,\s*timezone,\s*\)/,
+    /mode === "asap" \|\| fiveMinutesFromSubmit\s*\? getEarliestScheduleSlot\(\s*submittedAt,\s*minimumLeadMinutes,\s*timezone,\s*\)/,
   );
   assert.doesNotMatch(submitSchedule, /mode === "asap" \? earliestSlot/);
   assert.match(submitSchedule, /useDefaultScheduleTime: mode === "asap"/);

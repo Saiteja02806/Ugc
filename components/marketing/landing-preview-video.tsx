@@ -5,11 +5,13 @@ import { useEffect, useRef, useState } from "react";
 
 type NetworkInformation = EventTarget & { saveData?: boolean };
 
-export function LandingPreviewVideo({ src, poster, title, desktopOnly = false }: {
+export function LandingPreviewVideo({ src, poster, title, desktopOnly = false, autoPlay = true, playbackAllowed = true }: {
   src: string;
   poster: string;
   title: string;
   desktopOnly?: boolean;
+  autoPlay?: boolean;
+  playbackAllowed?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
@@ -63,8 +65,9 @@ export function LandingPreviewVideo({ src, poster, title, desktopOnly = false }:
     };
   }, []);
 
-  const shouldLoad = ready && environment.visible && environment.foreground && environment.online
-    && (!desktopOnly || environment.desktop) && !paused && (environment.automatic || playRequest > 0);
+  const shouldLoad = playbackAllowed && ready && environment.visible && environment.foreground && environment.online
+    && (!desktopOnly || environment.desktop) && !paused
+    && ((autoPlay && environment.automatic) || playRequest > 0);
   // Removing a source can cancel the browser's queued pause event. The control
   // must still immediately offer Play when this preview has been released.
   const isPlaying = shouldLoad && playing;
@@ -92,12 +95,12 @@ export function LandingPreviewVideo({ src, poster, title, desktopOnly = false }:
         aria-label={title} className="size-full object-cover"
         onPlaying={() => setPlaying(true)} onPause={() => setPlaying(false)}
         onError={() => setPlaying(false)} />
-      <button type="button" aria-label={`${isPlaying ? "Pause" : "Play"} ${title}`}
+      <button type="button" disabled={!playbackAllowed} aria-label={`${isPlaying ? "Pause" : "Play"} ${title}`}
         onClick={() => {
           if (isPlaying) setPaused(true);
           else { setPaused(false); setPlayRequest(value => value + 1); }
         }}
-        className="absolute bottom-3 right-3 z-20 flex size-9 items-center justify-center rounded-full border border-white/25 bg-black/65 text-white backdrop-blur-md transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+        className="absolute bottom-3 right-3 z-20 flex size-9 items-center justify-center rounded-full border border-white/25 bg-black/65 text-white opacity-0 backdrop-blur-md transition-[background-color,opacity] hover:bg-black/85 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white group-hover:opacity-100 group-focus-within:opacity-100 disabled:hidden">
         {isPlaying ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
       </button>
     </div>

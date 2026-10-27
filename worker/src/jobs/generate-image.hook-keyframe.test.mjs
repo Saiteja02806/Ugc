@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 import { hookKeyframeGenerationInputKey, hookKeyframePromptSha256, hookKeyframeSnapshotKey } from "../../dist/lib/hook-keyframe-generation-contract.js";
 import { creatorSceneCanonicalUrl, verifyCreatorSceneDelivery } from "../../dist/lib/creator-scene-delivery.js";
+import creatorFrames from "../../dist/lib/creator-source-frames.json" with { type: "json" };
 const local = file => new URL(file, import.meta.url);
 const calls = [], storedImage = Buffer.from("generated fixture pixels"); let existingOutput;
 mock.method(globalThis, "fetch", async () => assert.fail("No paid providers, database or storage network calls"));
@@ -136,4 +137,31 @@ test("new model-aware Pro and Flash jobs route separately and bind model, role c
     assert.equal(output.model, model);
   }
   }
+});
+
+
+test("v4 private full recreation signs both opening and clarity before provider submission", async () => {
+  process.env.CREATOR_REFERENCE_SIGNING_SECRET = "a-private-test-secret-with-at-least-32-characters";
+  try {
+    for (const model of ["nano_banana_2", "gemini_3_pro"]) {
+      calls.length = 0;
+      const input = job(), body = input.input_json, frame = creatorFrames.frames.find(f => f.index > 0);
+      body.model = model;
+      const receipt = body.hookKeyframe;
+      Object.assign(receipt, { version: 4, imageModel: model, promptVersion: 5, referenceId: frame.referenceId, sourceSha256: frame.sourceSha256,
+        sourceFrame: { index: frame.index, timeSeconds: frame.timeSeconds, sha256: frame.sha256, width: frame.width, height: frame.height },
+        animationOpeningFrame: { index: 0, timeSeconds: 0, sha256: "c".repeat(64), width: frame.width, height: frame.height } });
+      receipt.preparationInputKey = JSON.stringify({version:3,ownerId:receipt.ownerId,draftId:receipt.draftId,referenceId:receipt.referenceId,sourceSha256:receipt.sourceSha256,sourceFrame:receipt.sourceFrame,imageAssetIds:receipt.personImageAssetIds,instructions:receipt.instructions,imageModel:model});
+      receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
+      body.referenceImageUrl = creatorSceneCanonicalUrl(receipt, "opening");
+      body.referenceImageUrls = [body.referenceImageUrl, creatorSceneCanonicalUrl(receipt), "https://media.test/main.png", "https://media.test/support.png"];
+      const canonical = [...body.referenceImageUrls];
+      await runGenerateImageJob(input, context);
+      const received = model === "nano_banana_2" ? calls.find(call => call.paid).paid.references : calls.find(call => call.proPaid).proPaid.referenceImageUrls;
+      assert.equal(verifyCreatorSceneDelivery(new URL(received[0])).frameSha256, receipt.animationOpeningFrame.sha256);
+      assert.equal(verifyCreatorSceneDelivery(new URL(received[1])).frameSha256, frame.sha256);
+      assert.deepEqual(received.slice(2), canonical.slice(2));
+      assert.deepEqual(body.referenceImageUrls, canonical, "Frozen job retains unsigned canonical inputs");
+    }
+  } finally { delete process.env.CREATOR_REFERENCE_SIGNING_SECRET; }
 });

@@ -73,7 +73,7 @@ export async function processBusinessProfileSetupJob(params: {
   if (params.draftId && !draft) throw new Error("The onboarding draft is unavailable.");
   const normalized = await getOrCreateAnalysis(params);
   if (params.input.intakeType === "website") {
-    requireUrlBusinessContext(normalized.analysis, normalized.websiteUrl ?? params.input.websiteUrl);
+    requireUrlBusinessContext(normalized.analysis, normalized.websiteUrl ?? params.input.websiteUrl, normalized.verifiedBusinessName);
   }
   if (draft) {
     const updated = await mutateOnboardingDraft(params.userId, "attach", {
@@ -113,6 +113,9 @@ async function getOrCreateAnalysis(params: {
     return {
       analysis: existing.analysis,
       analysisId: existing.id,
+      // Setup analyses are persisted only after the source-evidence quality
+      // gate below passes. Recovery reuses that accepted result without scraping.
+      verifiedBusinessName: existing.analysis.businessName?.trim(),
       sourceContext: existing.sourceContext,
       websiteUrl: existing.websiteUrl,
     };
@@ -136,10 +139,11 @@ async function getOrCreateAnalysis(params: {
 async function normalizeProfileInput(input: BusinessProfileSetupInput) {
   if (input.intakeType === "website") {
     const result = await analyzeWebsiteInput(input.websiteUrl);
-    requireUrlBusinessContext(result.analysis, result.websiteUrl);
+    requireUrlBusinessContext(result.analysis, result.websiteUrl, result.verifiedBusinessName);
 
     return {
       analysis: result.analysis,
+      verifiedBusinessName: result.verifiedBusinessName,
       normalizedDomain: result.normalizedDomain,
       sourceContext: null,
       websiteUrl: result.websiteUrl,
@@ -149,6 +153,7 @@ async function normalizeProfileInput(input: BusinessProfileSetupInput) {
   if (input.intakeType === "mobile_app_ai_prompt") {
     return {
       analysis: await parseAiIdeBusinessContext(input.aiIdeContext),
+      verifiedBusinessName: undefined,
       normalizedDomain: null,
       sourceContext: input.aiIdeContext,
       websiteUrl: null,
@@ -158,6 +163,7 @@ async function normalizeProfileInput(input: BusinessProfileSetupInput) {
   if ("description" in input) {
     return {
       analysis: await analyzeBusinessDescription(input.description),
+      verifiedBusinessName: undefined,
       normalizedDomain: null,
       sourceContext: input.description,
       websiteUrl: null,
@@ -166,6 +172,7 @@ async function normalizeProfileInput(input: BusinessProfileSetupInput) {
 
   return {
     analysis: buildManualBusinessAnalysis(input.manual),
+    verifiedBusinessName: undefined,
     normalizedDomain: null,
     sourceContext: null,
     websiteUrl: null,

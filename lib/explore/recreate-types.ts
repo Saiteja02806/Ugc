@@ -32,6 +32,8 @@ export type RecreateReference = {
   /** Visible, editable suggestion; never appended secretly by the server. */
   generationPrompt?: string;
   legacyGenerationPrompt?: string;
+  legacySelectedGenerationPrompt?: string;
+  startingImagePrompt?: string;
   durationSeconds?: number;
   instagramUrl?: string;
   sourceUrl?: string;

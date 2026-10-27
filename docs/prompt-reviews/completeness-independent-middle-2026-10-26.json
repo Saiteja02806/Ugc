@@ -1,0 +1,702 @@
+{
+  "date": "2026-10-26",
+  "status": "source_review_only_not_generated_acceptance",
+  "references": 4,
+  "nativeFramesReviewed": 541,
+  "contactSheetsReviewed": 20,
+  "fullResolutionChecks": 18,
+  "correctionsDrafted": 2,
+  "noNewContentGap": 2,
+  "providerCalls": 0,
+  "runtimeChanges": 0,
+  "rows": [
+    {
+      "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "title": "Hook 15",
+      "route": "middle",
+      "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0.mp4",
+      "sourceDurationSeconds": 8.6,
+      "clarityFrame": {
+        "index": 32,
+        "timeSeconds": 1.066667,
+        "sha256": "d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451"
+      },
+      "animationOpeningSourceTime": 0,
+      "nativeFramesReviewed": 258,
+      "contactSheetsReviewed": 9,
+      "evidenceDirectory": ".tmp/middle-frame-audit-20261025-native/public/explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "fullResolutionIndices": [
+        169,
+        170,
+        200,
+        230,
+        254,
+        256,
+        257
+      ],
+      "timingBasis": "Nominal zero-based frame index/30; source manifest PTS discrepancies retained. Event boundaries are approximate visual segmentation, not packet-perfect claims.",
+      "status": "source_reviewed_correction_drafted",
+      "generatedQualification": "not_tested",
+      "gaps": [
+        "Assigned final beat describes hands dropping, but source has a hard cut between indices169 and170: lifted palms and sideways expressive face jump to hands-down neutral lens-facing pose.",
+        "Assigned camera remains stationary through end, but final tail visibly moves closer into a tighter face/upper-chest crop."
+      ],
+      "decisionGates": [
+        "Preserving the visible edit versus adapting to a continuous shot requires an explicit product decision. The drafted candidate preserves the edit.",
+        "8.6s compressed to3s is2.867x equivalent pacing;3s compilation is inspection only,not visual approval."
+      ],
+      "baselineEntry": {
+        "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+        "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+        "sourceDurationSeconds": 8.6,
+        "sourceFps": 30,
+        "sourceFrameCount": 258,
+        "clarityFrame": {
+          "index": 32,
+          "timeSeconds": 1.066667,
+          "sha256": "d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451"
+        },
+        "evidence": {
+          "sheetCount": 9,
+          "reviewedFrameCount": 258,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.",
+        "camera": "Stationary vertical phone view, medium upper-body framing; pale wall, wooden door at screen-left and wall switches at screen-right.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 1,
+            "action": "Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression."
+          },
+          {
+            "startSeconds": 1,
+            "endSeconds": 2.33,
+            "action": "Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile."
+          },
+          {
+            "startSeconds": 2.33,
+            "endSeconds": 3.23,
+            "action": "Mouth opens and changes shape while palms remain lifted; expression becomes emphatic."
+          },
+          {
+            "startSeconds": 3.23,
+            "endSeconds": 4.3,
+            "action": "Bring both hands back onto upper chest and continue small head turns with expressive mouth movement."
+          },
+          {
+            "startSeconds": 4.3,
+            "endSeconds": 5.666666666666667,
+            "action": "Open palms beside shoulders again with a restrained smile and sideways glances."
+          },
+          {
+            "startSeconds": 5.666666666666667,
+            "endSeconds": 8.6,
+            "action": "Hands drop out of frame and expression settles; hold a largely still direct-to-camera look, ending with a small closed-mouth smile."
+          }
+        ],
+        "endingState": "Hands down, mostly still, looking toward camera with a restrained closed-mouth smile.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "Normal people: “I don’t have experience/I can’t do game dev”",
+          "region": "Centered over chest during first approximately5.67s; absent in final held phase."
+        },
+        "openingImageRequirement": "Reconstruct t=0 eyes-closed, hands-forward gesture using original source composition; selected1.066667s palms-up pose is only clarity evidence.",
+        "risks": [
+          "This8.6s source has several gesture phases and a final2.93s still phase; compressing to3s changes observed pacing.",
+          "Visible mouth movement is observed; no speech transcription or phoneme accuracy verified.",
+          "Manifest final PTS8.6 differs from index257/30=8.566667; beat clock uses elapsed index/30, not packet-precise timing."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "baselineDirections": "OPENING STATE: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\n\nOPENING: PHASE [0–0.116279069767]: Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression.\n\nMIDDLE: PHASE [0.116279069767–0.270930232558]: Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile.\n\nMIDDLE: PHASE [0.270930232558–0.375581395349]: Mouth opens and changes shape while palms remain lifted; expression becomes emphatic.\n\nMIDDLE: PHASE [0.375581395349–0.5]: Bring both hands back onto upper chest and continue small head turns with expressive mouth movement.\n\nMIDDLE: PHASE [0.5–0.658914728682]: Open palms beside shoulders again with a restrained smile and sideways glances.\n\nENDING: PHASE [0.658914728682–1]: Hands drop out of frame and expression settles; hold a largely still direct-to-camera look, ending with a small closed-mouth smile.\n\nCAMERA: Stationary vertical phone view, medium upper-body framing; pale wall, wooden door at screen-left and wall switches at screen-right.\n\nENDING STATE: Hands down, mostly still, looking toward camera with a restrained closed-mouth smile.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "candidateEntry": {
+        "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+        "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+        "sourceDurationSeconds": 8.6,
+        "sourceFps": 30,
+        "sourceFrameCount": 258,
+        "clarityFrame": {
+          "index": 32,
+          "timeSeconds": 1.066667,
+          "sha256": "d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451"
+        },
+        "evidence": {
+          "sheetCount": 9,
+          "reviewedFrameCount": 258,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.",
+        "camera": "Fixed vertical medium upper-body view during the gestures. At the deliberate cut change to hands-down direct-to-camera framing in the same room; during the final held look move gradually closer into the tighter ending crop.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 1,
+            "action": "Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression."
+          },
+          {
+            "startSeconds": 1,
+            "endSeconds": 2.33,
+            "action": "Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile."
+          },
+          {
+            "startSeconds": 2.33,
+            "endSeconds": 3.23,
+            "action": "Mouth opens and changes shape while palms remain lifted; expression becomes emphatic."
+          },
+          {
+            "startSeconds": 3.23,
+            "endSeconds": 4.3,
+            "action": "Bring both hands back onto upper chest and continue small head turns with expressive mouth movement."
+          },
+          {
+            "startSeconds": 4.3,
+            "endSeconds": 5.666666666666667,
+            "action": "Open palms beside shoulders again with a restrained smile and sideways glances."
+          },
+          {
+            "startSeconds": 5.666666666666667,
+            "endSeconds": 7.8,
+            "action": "At a deliberate hard cut, change directly from lifted palms and sideways expression to both hands lowered outside view and a neutral closed-mouth look toward the lens. Hold the new pose with minimal head movement; do not animate an invented continuous lowering gesture across the cut."
+          },
+          {
+            "startSeconds": 7.8,
+            "endSeconds": 8.6,
+            "action": "Keep the hands down and gaze toward the lens while a restrained closed-mouth smile develops. Move the viewpoint closer into a tighter face-and-upper-chest crop through the final frame; do not add a new hand gesture."
+          }
+        ],
+        "endingState": "Hands outside view, direct gaze and restrained closed-mouth smile, ending in a tighter face-and-upper-chest crop.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "Normal people: “I don’t have experience/I can’t do game dev”",
+          "region": "Centered over chest during first approximately5.67s; absent in final held phase."
+        },
+        "openingImageRequirement": "Reconstruct t=0 eyes-closed, hands-forward gesture using original source composition; selected1.066667s palms-up pose is only clarity evidence.",
+        "risks": [
+          "This8.6s source has several gesture phases and a final2.93s still phase; compressing to3s changes observed pacing.",
+          "Visible mouth movement is observed; no speech transcription or phoneme accuracy verified.",
+          "Manifest final PTS8.6 differs from index257/30=8.566667; beat clock uses elapsed index/30, not packet-precise timing."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "revisedDirections": "OPENING STATE: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\n\nOPENING: PHASE [0–0.116279069767]: Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression.\n\nMIDDLE: PHASE [0.116279069767–0.270930232558]: Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile.\n\nMIDDLE: PHASE [0.270930232558–0.375581395349]: Mouth opens and changes shape while palms remain lifted; expression becomes emphatic.\n\nMIDDLE: PHASE [0.375581395349–0.5]: Bring both hands back onto upper chest and continue small head turns with expressive mouth movement.\n\nMIDDLE: PHASE [0.5–0.658914728682]: Open palms beside shoulders again with a restrained smile and sideways glances.\n\nMIDDLE: PHASE [0.658914728682–0.906976744186]: At a deliberate hard cut, change directly from lifted palms and sideways expression to both hands lowered outside view and a neutral closed-mouth look toward the lens. Hold the new pose with minimal head movement; do not animate an invented continuous lowering gesture across the cut.\n\nENDING: PHASE [0.906976744186–1]: Keep the hands down and gaze toward the lens while a restrained closed-mouth smile develops. Move the viewpoint closer into a tighter face-and-upper-chest crop through the final frame; do not add a new hand gesture.\n\nCAMERA: Fixed vertical medium upper-body view during the gestures. At the deliberate cut change to hands-down direct-to-camera framing in the same room; during the final held look move gradually closer into the tighter ending crop.\n\nENDING STATE: Hands outside view, direct gaze and restrained closed-mouth smile, ending in a tighter face-and-upper-chest crop.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "compiled": [
+        {
+          "durationSeconds": 3,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\n\nOPENING: 0–0.35s: Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression.\n\nMIDDLE: 0.35–0.81s: Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile.\n\nMIDDLE: 0.81–1.13s: Mouth opens and changes shape while palms remain lifted; expression becomes emphatic.\n\nMIDDLE: 1.13–1.5s: Bring both hands back onto upper chest and continue small head turns with expressive mouth movement.\n\nMIDDLE: 1.5–1.98s: Open palms beside shoulders again with a restrained smile and sideways glances.\n\nMIDDLE: 1.98–2.72s: At a deliberate hard cut, change directly from lifted palms and sideways expression to both hands lowered outside view and a neutral closed-mouth look toward the lens. Hold the new pose with minimal head movement; do not animate an invented continuous lowering gesture across the cut.\n\nENDING: 2.72–3s: Keep the hands down and gaze toward the lens while a restrained closed-mouth smile develops. Move the viewpoint closer into a tighter face-and-upper-chest crop through the final frame; do not add a new hand gesture.\n\nCAMERA: Fixed vertical medium upper-body view during the gestures. At the deliberate cut change to hands-down direct-to-camera framing in the same room; during the final held look move gradually closer into the tighter ending crop.\n\nENDING STATE: Hands outside view, direct gaze and restrained closed-mouth smile, ending in a tighter face-and-upper-chest crop.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        },
+        {
+          "durationSeconds": 9,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 9-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\n\nOPENING: 0–1.05s: Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression.\n\nMIDDLE: 1.05–2.44s: Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile.\n\nMIDDLE: 2.44–3.38s: Mouth opens and changes shape while palms remain lifted; expression becomes emphatic.\n\nMIDDLE: 3.38–4.5s: Bring both hands back onto upper chest and continue small head turns with expressive mouth movement.\n\nMIDDLE: 4.5–5.93s: Open palms beside shoulders again with a restrained smile and sideways glances.\n\nMIDDLE: 5.93–8.16s: At a deliberate hard cut, change directly from lifted palms and sideways expression to both hands lowered outside view and a neutral closed-mouth look toward the lens. Hold the new pose with minimal head movement; do not animate an invented continuous lowering gesture across the cut.\n\nENDING: 8.16–9s: Keep the hands down and gaze toward the lens while a restrained closed-mouth smile develops. Move the viewpoint closer into a tighter face-and-upper-chest crop through the final frame; do not add a new hand gesture.\n\nCAMERA: Fixed vertical medium upper-body view during the gestures. At the deliberate cut change to hands-down direct-to-camera framing in the same room; during the final held look move gradually closer into the tighter ending crop.\n\nENDING STATE: Hands outside view, direct gaze and restrained closed-mouth smile, ending in a tighter face-and-upper-chest crop.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        }
+      ],
+      "notes": [],
+      "baselineCompiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\n\nOPENING: 0–0.35s: Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression.\n\nMIDDLE: 0.35–0.81s: Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile.\n\nMIDDLE: 0.81–1.13s: Mouth opens and changes shape while palms remain lifted; expression becomes emphatic.\n\nMIDDLE: 1.13–1.5s: Bring both hands back onto upper chest and continue small head turns with expressive mouth movement.\n\nMIDDLE: 1.5–1.98s: Open palms beside shoulders again with a restrained smile and sideways glances.\n\nENDING: 1.98–3s: Hands drop out of frame and expression settles; hold a largely still direct-to-camera look, ending with a small closed-mouth smile.\n\nCAMERA: Stationary vertical phone view, medium upper-body framing; pale wall, wooden door at screen-left and wall switches at screen-right.\n\nENDING STATE: Hands down, mostly still, looking toward camera with a restrained closed-mouth smile.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+    },
+    {
+      "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "title": "Hook 19",
+      "route": "middle",
+      "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188.mp4",
+      "sourceDurationSeconds": 2.933333333333333,
+      "clarityFrame": {
+        "index": 44,
+        "timeSeconds": 1.466667,
+        "sha256": "18ff0751a0ebbd85c868203d5c41288251231b951645b8a28222e3bb8b2909f8"
+      },
+      "animationOpeningSourceTime": 0,
+      "nativeFramesReviewed": 88,
+      "contactSheetsReviewed": 3,
+      "evidenceDirectory": ".tmp/middle-frame-audit-20261025-native/public/explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "fullResolutionIndices": [
+        0,
+        22,
+        87
+      ],
+      "timingBasis": "Nominal zero-based frame index/30; source manifest PTS discrepancies retained. Event boundaries are approximate visual segmentation, not packet-perfect claims.",
+      "status": "source_reviewed_no_new_content_gap",
+      "generatedQualification": "not_tested",
+      "gaps": [],
+      "decisionGates": [],
+      "baselineEntry": {
+        "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+        "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+        "sourceDurationSeconds": 2.933333333333333,
+        "sourceFps": 30,
+        "sourceFrameCount": 88,
+        "clarityFrame": {
+          "index": 44,
+          "timeSeconds": 1.466667,
+          "sha256": "18ff0751a0ebbd85c868203d5c41288251231b951645b8a28222e3bb8b2909f8"
+        },
+        "evidence": {
+          "sheetCount": 3,
+          "reviewedFrameCount": 88,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.",
+        "camera": "Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 0.4,
+            "action": "Move across bright airplane window, keeping cabin wall and seat-back edges visible."
+          },
+          {
+            "startSeconds": 0.4,
+            "endSeconds": 0.9,
+            "action": "Continue rotating/panning inward away from window; seated person enters at screen-right."
+          },
+          {
+            "startSeconds": 0.9,
+            "endSeconds": 1.8,
+            "action": "Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera."
+          },
+          {
+            "startSeconds": 1.8,
+            "endSeconds": 2.933333333333333,
+            "action": "Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression."
+          }
+        ],
+        "endingState": "Seated smiling person faces phone in tilted cabin selfie framing.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "I could LITERALLY KISS the flight attendant that showed me this 🤭🤭😩",
+          "region": "Upper center over window/cabin, later above person's head."
+        },
+        "openingImageRequirement": "Preserve actual window-only t=0 opening. Later clear face plus influencer portraits must condition identity revealed after pan; a face close-up is not an acceptable substituted opening image.",
+        "risks": [
+          "A literal window-only first image carries no influencer facial evidence; single-image FIRST_FRAME alone cannot guarantee identity after reveal.",
+          "May require identity-conditioned reference support or a controlled multi-stage reveal; visual qualification required before activation.",
+          "Do not invent an influencer face in original t=0 window opening.",
+          "Small manifest PTS/index discrepancies exist toward end; timing is nominal index/30."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "baselineDirections": "OPENING STATE: Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.\n\nOPENING: PHASE [0–0.136363636364]: Move across bright airplane window, keeping cabin wall and seat-back edges visible.\n\nMIDDLE: PHASE [0.136363636364–0.306818181818]: Continue rotating/panning inward away from window; seated person enters at screen-right.\n\nMIDDLE: PHASE [0.306818181818–0.613636363636]: Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera.\n\nENDING: PHASE [0.613636363636–1]: Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression.\n\nCAMERA: Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.\n\nENDING STATE: Seated smiling person faces phone in tilted cabin selfie framing.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "candidateEntry": {
+        "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+        "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+        "sourceDurationSeconds": 2.933333333333333,
+        "sourceFps": 30,
+        "sourceFrameCount": 88,
+        "clarityFrame": {
+          "index": 44,
+          "timeSeconds": 1.466667,
+          "sha256": "18ff0751a0ebbd85c868203d5c41288251231b951645b8a28222e3bb8b2909f8"
+        },
+        "evidence": {
+          "sheetCount": 3,
+          "reviewedFrameCount": 88,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.",
+        "camera": "Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 0.4,
+            "action": "Move across bright airplane window, keeping cabin wall and seat-back edges visible."
+          },
+          {
+            "startSeconds": 0.4,
+            "endSeconds": 0.9,
+            "action": "Continue rotating/panning inward away from window; seated person enters at screen-right."
+          },
+          {
+            "startSeconds": 0.9,
+            "endSeconds": 1.8,
+            "action": "Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera."
+          },
+          {
+            "startSeconds": 1.8,
+            "endSeconds": 2.933333333333333,
+            "action": "Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression."
+          }
+        ],
+        "endingState": "Seated smiling person faces phone in tilted cabin selfie framing.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "I could LITERALLY KISS the flight attendant that showed me this 🤭🤭😩",
+          "region": "Upper center over window/cabin, later above person's head."
+        },
+        "openingImageRequirement": "Preserve actual window-only t=0 opening. Later clear face plus influencer portraits must condition identity revealed after pan; a face close-up is not an acceptable substituted opening image.",
+        "risks": [
+          "A literal window-only first image carries no influencer facial evidence; single-image FIRST_FRAME alone cannot guarantee identity after reveal.",
+          "May require identity-conditioned reference support or a controlled multi-stage reveal; visual qualification required before activation.",
+          "Do not invent an influencer face in original t=0 window opening.",
+          "Small manifest PTS/index discrepancies exist toward end; timing is nominal index/30."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "revisedDirections": "OPENING STATE: Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.\n\nOPENING: PHASE [0–0.136363636364]: Move across bright airplane window, keeping cabin wall and seat-back edges visible.\n\nMIDDLE: PHASE [0.136363636364–0.306818181818]: Continue rotating/panning inward away from window; seated person enters at screen-right.\n\nMIDDLE: PHASE [0.306818181818–0.613636363636]: Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera.\n\nENDING: PHASE [0.613636363636–1]: Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression.\n\nCAMERA: Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.\n\nENDING STATE: Seated smiling person faces phone in tilted cabin selfie framing.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "compiled": [
+        {
+          "durationSeconds": 3,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.\n\nOPENING: 0–0.41s: Move across bright airplane window, keeping cabin wall and seat-back edges visible.\n\nMIDDLE: 0.41–0.92s: Continue rotating/panning inward away from window; seated person enters at screen-right.\n\nMIDDLE: 0.92–1.84s: Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera.\n\nENDING: 1.84–3s: Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression.\n\nCAMERA: Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.\n\nENDING STATE: Seated smiling person faces phone in tilted cabin selfie framing.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        }
+      ],
+      "notes": [
+        "Window-only original t0 must remain window-only. A single window-only FIRST_FRAME lacks visible influencer identity; identity-reveal capability remains a generation gate,not solved by correct motion wording."
+      ],
+      "baselineCompiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.\n\nOPENING: 0–0.41s: Move across bright airplane window, keeping cabin wall and seat-back edges visible.\n\nMIDDLE: 0.41–0.92s: Continue rotating/panning inward away from window; seated person enters at screen-right.\n\nMIDDLE: 0.92–1.84s: Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera.\n\nENDING: 1.84–3s: Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression.\n\nCAMERA: Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.\n\nENDING STATE: Seated smiling person faces phone in tilted cabin selfie framing.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+    },
+    {
+      "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "title": "Hook 20",
+      "route": "middle",
+      "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b.mp4",
+      "sourceDurationSeconds": 3.2333333333333334,
+      "clarityFrame": {
+        "index": 60,
+        "timeSeconds": 2,
+        "sha256": "f70c493971c408e0d29252fbd43857564903e578c4c11197c683dbd78b50ceec"
+      },
+      "animationOpeningSourceTime": 0,
+      "nativeFramesReviewed": 97,
+      "contactSheetsReviewed": 4,
+      "evidenceDirectory": ".tmp/middle-frame-audit-20261025-native/public/explore-paired-hook-f1afdb3229e127c8b6563087",
+      "fullResolutionIndices": [
+        0,
+        5,
+        39,
+        60,
+        96
+      ],
+      "timingBasis": "Nominal zero-based frame index/30; source manifest PTS discrepancies retained. Event boundaries are approximate visual segmentation, not packet-perfect claims.",
+      "status": "source_reviewed_correction_drafted",
+      "generatedQualification": "not_tested",
+      "gaps": [
+        "Assigned opening says the other hand lowers and then a singular hand covers the mouth. Full-resolution frames5and39 show BOTH palms pressed together across the mouth/nose through the held phase."
+      ],
+      "decisionGates": [],
+      "baselineEntry": {
+        "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+        "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+        "sourceDurationSeconds": 3.2333333333333334,
+        "sourceFps": 30,
+        "sourceFrameCount": 97,
+        "clarityFrame": {
+          "index": 60,
+          "timeSeconds": 2,
+          "sha256": "f70c493971c408e0d29252fbd43857564903e578c4c11197c683dbd78b50ceec"
+        },
+        "evidence": {
+          "sheetCount": 4,
+          "reviewedFrameCount": 97,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Person in gray sweatshirt with both hands raised close to face, one directly crossing mouth/nose and the other beside face; eyes briefly closed.",
+        "camera": "Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 0.16666666666666666,
+            "action": "Complete bringing hand over mouth; other hand lowers out of the main face area."
+          },
+          {
+            "startSeconds": 0.16666666666666666,
+            "endSeconds": 1.3333333333333333,
+            "action": "Hold hand over mouth with wide eyes looking slightly screen-left; startled stillness."
+          },
+          {
+            "startSeconds": 1.3333333333333333,
+            "endSeconds": 2,
+            "action": "Raise both hands along cheeks to sides/back of head as mouth opens widely."
+          },
+          {
+            "startSeconds": 2,
+            "endSeconds": 3.2333333333333334,
+            "action": "Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief."
+          }
+        ],
+        "endingState": "Both hands behind head, elbows spread, eyes wide and mouth open.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "I found the best AI Video Generator and it’s FREE! 🤯",
+          "region": "Centered across lower chest."
+        },
+        "openingImageRequirement": "Reconstruct original near-face hand positions and eyes-closed opening before mouth-cover hold; selected2s hands-behind-head image cannot serve as literal opening.",
+        "risks": [
+          "First frames contain motion blur and hand overlap; preserve opening gesture instead of forcing the clear2s pose at t=0.",
+          "Keep held surprise phase rather than adding a new reaction cycle."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "baselineDirections": "OPENING STATE: Person in gray sweatshirt with both hands raised close to face, one directly crossing mouth/nose and the other beside face; eyes briefly closed.\n\nOPENING: PHASE [0–0.051546391753]: Complete bringing hand over mouth; other hand lowers out of the main face area.\n\nMIDDLE: PHASE [0.051546391753–0.412371134021]: Hold hand over mouth with wide eyes looking slightly screen-left; startled stillness.\n\nMIDDLE: PHASE [0.412371134021–0.618556701031]: Raise both hands along cheeks to sides/back of head as mouth opens widely.\n\nENDING: PHASE [0.618556701031–1]: Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief.\n\nCAMERA: Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.\n\nENDING STATE: Both hands behind head, elbows spread, eyes wide and mouth open.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "candidateEntry": {
+        "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+        "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+        "sourceDurationSeconds": 3.2333333333333334,
+        "sourceFps": 30,
+        "sourceFrameCount": 97,
+        "clarityFrame": {
+          "index": 60,
+          "timeSeconds": 2,
+          "sha256": "f70c493971c408e0d29252fbd43857564903e578c4c11197c683dbd78b50ceec"
+        },
+        "evidence": {
+          "sheetCount": 4,
+          "reviewedFrameCount": 97,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Person in gray sweatshirt, eyes briefly closed, both hands raised beside/in front of the face, moving inward toward the mouth and nose.",
+        "camera": "Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 0.16666666666666666,
+            "action": "Bring both palms together across the mouth and nose as the eyes open; keep both hands visible with fingertips pointing upward."
+          },
+          {
+            "startSeconds": 0.16666666666666666,
+            "endSeconds": 1.3333333333333333,
+            "action": "Hold BOTH palms together against the mouth and nose, fingers upright along the cheeks. Keep wide eyes looking slightly screen-left and preserve the startled pause."
+          },
+          {
+            "startSeconds": 1.3333333333333333,
+            "endSeconds": 2,
+            "action": "Separate the two palms outward along the cheeks and slide both hands to the sides and back of the head; elbows spread and the mouth opens widely."
+          },
+          {
+            "startSeconds": 2,
+            "endSeconds": 3.2333333333333334,
+            "action": "Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief."
+          }
+        ],
+        "endingState": "Both hands behind head, elbows spread, eyes wide and mouth open.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "I found the best AI Video Generator and it’s FREE! 🤯",
+          "region": "Centered across lower chest."
+        },
+        "openingImageRequirement": "Reconstruct original near-face hand positions and eyes-closed opening before mouth-cover hold; selected2s hands-behind-head image cannot serve as literal opening.",
+        "risks": [
+          "First frames contain motion blur and hand overlap; preserve opening gesture instead of forcing the clear2s pose at t=0.",
+          "Keep held surprise phase rather than adding a new reaction cycle."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "revisedDirections": "OPENING STATE: Person in gray sweatshirt, eyes briefly closed, both hands raised beside/in front of the face, moving inward toward the mouth and nose.\n\nOPENING: PHASE [0–0.051546391753]: Bring both palms together across the mouth and nose as the eyes open; keep both hands visible with fingertips pointing upward.\n\nMIDDLE: PHASE [0.051546391753–0.412371134021]: Hold BOTH palms together against the mouth and nose, fingers upright along the cheeks. Keep wide eyes looking slightly screen-left and preserve the startled pause.\n\nMIDDLE: PHASE [0.412371134021–0.618556701031]: Separate the two palms outward along the cheeks and slide both hands to the sides and back of the head; elbows spread and the mouth opens widely.\n\nENDING: PHASE [0.618556701031–1]: Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief.\n\nCAMERA: Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.\n\nENDING STATE: Both hands behind head, elbows spread, eyes wide and mouth open.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "compiled": [
+        {
+          "durationSeconds": 3,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Person in gray sweatshirt, eyes briefly closed, both hands raised beside/in front of the face, moving inward toward the mouth and nose.\n\nOPENING: 0–0.15s: Bring both palms together across the mouth and nose as the eyes open; keep both hands visible with fingertips pointing upward.\n\nMIDDLE: 0.15–1.24s: Hold BOTH palms together against the mouth and nose, fingers upright along the cheeks. Keep wide eyes looking slightly screen-left and preserve the startled pause.\n\nMIDDLE: 1.24–1.86s: Separate the two palms outward along the cheeks and slide both hands to the sides and back of the head; elbows spread and the mouth opens widely.\n\nENDING: 1.86–3s: Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief.\n\nCAMERA: Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.\n\nENDING STATE: Both hands behind head, elbows spread, eyes wide and mouth open.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        }
+      ],
+      "notes": [],
+      "baselineCompiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Person in gray sweatshirt with both hands raised close to face, one directly crossing mouth/nose and the other beside face; eyes briefly closed.\n\nOPENING: 0–0.15s: Complete bringing hand over mouth; other hand lowers out of the main face area.\n\nMIDDLE: 0.15–1.24s: Hold hand over mouth with wide eyes looking slightly screen-left; startled stillness.\n\nMIDDLE: 1.24–1.86s: Raise both hands along cheeks to sides/back of head as mouth opens widely.\n\nENDING: 1.86–3s: Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief.\n\nCAMERA: Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.\n\nENDING STATE: Both hands behind head, elbows spread, eyes wide and mouth open.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+    },
+    {
+      "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "title": "Hook 26",
+      "route": "middle",
+      "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db.mp4",
+      "sourceDurationSeconds": 3.2666666666666666,
+      "clarityFrame": {
+        "index": 73,
+        "timeSeconds": 2.433333,
+        "sha256": "d40f67c77defcca9d965196d631c45e0639841c80a4f4c9951096980a68fca44"
+      },
+      "animationOpeningSourceTime": 0,
+      "nativeFramesReviewed": 98,
+      "contactSheetsReviewed": 4,
+      "evidenceDirectory": ".tmp/middle-frame-audit-20261025-native/public/explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "fullResolutionIndices": [
+        59,
+        68,
+        97
+      ],
+      "timingBasis": "Nominal zero-based frame index/30; source manifest PTS discrepancies retained. Event boundaries are approximate visual segmentation, not packet-perfect claims.",
+      "status": "source_reviewed_no_new_content_gap",
+      "generatedQualification": "not_tested",
+      "gaps": [],
+      "decisionGates": [],
+      "baselineEntry": {
+        "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+        "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+        "sourceDurationSeconds": 3.2666666666666666,
+        "sourceFps": 30,
+        "sourceFrameCount": 98,
+        "clarityFrame": {
+          "index": 73,
+          "timeSeconds": 2.433333,
+          "sha256": "d40f67c77defcca9d965196d631c45e0639841c80a4f4c9951096980a68fca44"
+        },
+        "evidence": {
+          "sheetCount": 4,
+          "reviewedFrameCount": 98,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.",
+        "camera": "Fixed close portrait phone framing against plain beige wall; only small head/phone movement.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 1.1,
+            "action": "Hold sunglasses over eyes with fingers at temple and partly open mouth."
+          },
+          {
+            "startSeconds": 1.1,
+            "endSeconds": 2,
+            "action": "Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly."
+          },
+          {
+            "startSeconds": 2,
+            "endSeconds": 2.3,
+            "action": "Lift sunglasses upward off eyes and away toward screen-left, revealing eyes."
+          },
+          {
+            "startSeconds": 2.3,
+            "endSeconds": 2.8,
+            "action": "Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise."
+          },
+          {
+            "startSeconds": 2.8,
+            "endSeconds": 3.2666666666666666,
+            "action": "Lean toward camera, hold incredulous wide-eyed look while mouth shape softens."
+          }
+        ],
+        "endingState": "Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "Broke people are gonna KISS me after seeing THIS 😭💸",
+          "region": "Upper center above forehead."
+        },
+        "openingImageRequirement": "Rebuild sunglasses-on t=0 image with influencer identity;2.433333s clear face assists identity only. Motion must include the earlier glasses-on hold then removal.",
+        "risks": [
+          "Removal begins around2s, not immediately at t=0 and not at anchor2.433333s.",
+          "Last manifest PTS3.333333 exceeds index97/30=3.233333; nominal frame-index timing requires packet review for exact alignment."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "baselineDirections": "OPENING STATE: Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.\n\nOPENING: PHASE [0–0.336734693878]: Hold sunglasses over eyes with fingers at temple and partly open mouth.\n\nMIDDLE: PHASE [0.336734693878–0.612244897959]: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly.\n\nMIDDLE: PHASE [0.612244897959–0.704081632653]: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes.\n\nMIDDLE: PHASE [0.704081632653–0.857142857143]: Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise.\n\nENDING: PHASE [0.857142857143–1]: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens.\n\nCAMERA: Fixed close portrait phone framing against plain beige wall; only small head/phone movement.\n\nENDING STATE: Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "candidateEntry": {
+        "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+        "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+        "sourceDurationSeconds": 3.2666666666666666,
+        "sourceFps": 30,
+        "sourceFrameCount": 98,
+        "clarityFrame": {
+          "index": 73,
+          "timeSeconds": 2.433333,
+          "sha256": "d40f67c77defcca9d965196d631c45e0639841c80a4f4c9951096980a68fca44"
+        },
+        "evidence": {
+          "sheetCount": 4,
+          "reviewedFrameCount": 98,
+          "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+        },
+        "openingState": "Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.",
+        "camera": "Fixed close portrait phone framing against plain beige wall; only small head/phone movement.",
+        "beats": [
+          {
+            "startSeconds": 0,
+            "endSeconds": 1.1,
+            "action": "Hold sunglasses over eyes with fingers at temple and partly open mouth."
+          },
+          {
+            "startSeconds": 1.1,
+            "endSeconds": 2,
+            "action": "Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly."
+          },
+          {
+            "startSeconds": 2,
+            "endSeconds": 2.3,
+            "action": "Lift sunglasses upward off eyes and away toward screen-left, revealing eyes."
+          },
+          {
+            "startSeconds": 2.3,
+            "endSeconds": 2.8,
+            "action": "Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise."
+          },
+          {
+            "startSeconds": 2.8,
+            "endSeconds": 3.2666666666666666,
+            "action": "Lean toward camera, hold incredulous wide-eyed look while mouth shape softens."
+          }
+        ],
+        "endingState": "Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.",
+        "constraints": [
+          "Original source controls full t=0-to-end scene, camera, composition, props and chronology.",
+          "Influencer portraits control identity; later clarity frame is preparation evidence only.",
+          "Approve reconstructed influencer t=0 opening image before FIRST_FRAME animation.",
+          "Remove baked captions at image preparation; editable overlay text is applied separately.",
+          "Preserve held phases and event order when mapping source times to requested duration; do not make the clarity timestamp an action boundary."
+        ],
+        "captionCleanup": {
+          "text": "Broke people are gonna KISS me after seeing THIS 😭💸",
+          "region": "Upper center above forehead."
+        },
+        "openingImageRequirement": "Rebuild sunglasses-on t=0 image with influencer identity;2.433333s clear face assists identity only. Motion must include the earlier glasses-on hold then removal.",
+        "risks": [
+          "Removal begins around2s, not immediately at t=0 and not at anchor2.433333s.",
+          "Last manifest PTS3.333333 exceeds index97/30=3.233333; nominal frame-index timing requires packet review for exact alignment."
+        ],
+        "visualQualification": "not_tested"
+      },
+      "revisedDirections": "OPENING STATE: Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.\n\nOPENING: PHASE [0–0.336734693878]: Hold sunglasses over eyes with fingers at temple and partly open mouth.\n\nMIDDLE: PHASE [0.336734693878–0.612244897959]: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly.\n\nMIDDLE: PHASE [0.612244897959–0.704081632653]: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes.\n\nMIDDLE: PHASE [0.704081632653–0.857142857143]: Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise.\n\nENDING: PHASE [0.857142857143–1]: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens.\n\nCAMERA: Fixed close portrait phone framing against plain beige wall; only small head/phone movement.\n\nENDING STATE: Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "compiled": [
+        {
+          "durationSeconds": 3,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.\n\nOPENING: 0–1.01s: Hold sunglasses over eyes with fingers at temple and partly open mouth.\n\nMIDDLE: 1.01–1.84s: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly.\n\nMIDDLE: 1.84–2.11s: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes.\n\nMIDDLE: 2.11–2.57s: Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise.\n\nENDING: 2.57–3s: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens.\n\nCAMERA: Fixed close portrait phone framing against plain beige wall; only small head/phone movement.\n\nENDING STATE: Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        }
+      ],
+      "notes": [
+        "Existing glasses-on hold,rounded lips,late upward removal,sideward then lens-facing reaction and closer ending are already materially covered. No new wording change justified."
+      ],
+      "baselineCompiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.\n\nOPENING: 0–1.01s: Hold sunglasses over eyes with fingers at temple and partly open mouth.\n\nMIDDLE: 1.01–1.84s: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly.\n\nMIDDLE: 1.84–2.11s: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes.\n\nMIDDLE: 2.11–2.57s: Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise.\n\nENDING: 2.57–3s: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens.\n\nCAMERA: Fixed close portrait phone framing against plain beige wall; only small head/phone movement.\n\nENDING STATE: Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+    }
+  ]
+}

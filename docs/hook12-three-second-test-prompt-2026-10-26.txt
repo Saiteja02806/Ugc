@@ -1,0 +1,8 @@
+Animate the approved opening image into one continuous 3-second portrait video. Keep the same person, low fixed tabletop camera, bright kitchen windows, hanging lights, silver laptop and white mug throughout.
+
+0.00-0.74s: Hold the mug tilted at the lips for a sip, head angled slightly screen-left. The free fingers stay hooked over the laptop edge.
+0.74-1.36s: Lower the mug below the chin with the same hand while the eyes lift sharply upward. Keep holding the handle; do not set the mug down.
+1.36-1.91s: Bring the gaze toward the mug and camera, widen the eyes and part the lips. A thin trickle of drink falls from the lower lip back toward the mug.
+1.91-3.00s: Lean slightly closer with very wide eyes looking down toward the cup and a rounded open mouth. Keep the mug beneath the chin as the thin trickle continues. Hold this surprised reaction through the final frame; do not smile.
+
+Preserve natural fingers, mug contact and the laptop geometry. One uninterrupted kitchen shot, no cut to the portrait's room or clothes. The extra portrait guides facial appearance only. No captions, music, speech or sound effects.

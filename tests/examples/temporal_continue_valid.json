@@ -1,0 +1,14 @@
+{
+  "mode": "continue_from_anchor",
+  "source_anchor_sec": 1.5,
+  "segments": [
+    {
+      "source_anchor_sec": 1.5,
+      "timeline_events": [
+        {"generated_start_sec": 0.0, "source_start_sec": 1.5, "description": "Match selected identity-clear anchor image pose"},
+        {"generated_start_sec": 0.5, "source_start_sec": 2.0, "description": "Continue observed action from the source at 2.0 seconds"},
+        {"generated_start_sec": 1.5, "source_start_sec": 3.0, "description": "End with observed 3.0-second source pose"}
+      ]
+    }
+  ]
+}

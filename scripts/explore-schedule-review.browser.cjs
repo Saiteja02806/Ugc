@@ -21,7 +21,7 @@ const final={id:'00000000-0000-4000-8000-000000000010',sourceType:'combined_vide
 const hook={...final,id:'00000000-0000-4000-8000-000000000011',sourceType:'user_video',title:'Original hook',durationLabel:'8s'};
 const accounts=['instagram','tiktok','youtube'].map((platform,index)=>({id:'account-'+platform,platform,status:'connected',platformAccountName:'Local '+platform,platformAccountUsername:'fixture',scopes:platform==='instagram'?['instagram_business_content_publish']:platform==='tiktok'?['video.publish']:['https://www.googleapis.com/auth/youtube.upload'],supportsBackgroundRefresh:true}));
 const selected=(params.get('platforms')??'instagram').split(',');
-createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor presentation={params.get('presentation')==='workflow'?'workflow':'modal'} finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?undefined:'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate={params.get('date')??'2026-12-01'} initialScheduledTime={params.get('time')??'10:30'} minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onUploadVideo={manual?async file=>({...final,id:'direct-upload',sourceType:'user_video',title:file.name}):undefined} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
+createRoot(document.getElementById('root')).render(params.get('mode')==='preferences'?<PublishingPreferencesSettings/>:<ScheduleEditor initialUseDefaultScheduleTime={params.has("automatic")} presentation={params.get('presentation')==='workflow'?'workflow':'modal'} finalVideo={manual?undefined:final} demoMediaOptions={[final,{...final,id:'unrelated',title:'Another video'}]} hookMediaOptions={manual?[hook]:[]} editingIsCombinedVideo={false} editingPlannedPlatforms={[]} editingSchedule={null} editingScheduledDate={null} editingScheduledTime={null} errorMessage={null} initialClipSelection={manual?undefined:'secondary_only'} initialDemoMediaId={final.id} initialHookMediaId={manual?hook.id:''} initialCaption='Local review: one finished video' initialPlannedTargets={accounts.filter(account=>selected.includes(account.platform)).map(account=>({platform:account.platform,connectionId:account.id,settings:{}}))} initialScheduledDate={params.get('date')??'2026-12-01'} initialScheduledTime={params.get('time')??'10:30'} minimumScheduleLeadMinutes={5} requireScheduleTarget saving={false} socialConnections={accounts} tiktokBetaEnabled youtubeBetaEnabled onClose={()=>{}} onRefreshMedia={async()=>true} onRefreshConnections={async()=>true} onUploadVideo={manual?async file=>({...final,id:'direct-upload',sourceType:'user_video',title:file.name}):undefined} onSave={value=>{window.__submission=value;document.body.dataset.fixtureSubmission=JSON.stringify(value);}}/>);`);
 
 async function main() {
   await new Promise((resolve, reject) => {
@@ -56,7 +56,7 @@ async function main() {
   let browser;
   try { browser = await playwright.chromium.launch({ headless: true, ...(process.platform === "win32" ? { channel: "msedge" } : {}) }); }
   catch (error) { await new Promise(resolve => server.close(resolve)); throw error; }
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ locale: "en-GB", viewport: { width: 1440, height: 1000 } });
   page.on("pageerror", error => errors.push(error.message));
   try {
     await page.clock.setFixedTime(new Date("2026-10-14T09:10:30Z"));
@@ -182,6 +182,63 @@ async function main() {
     await page.waitForFunction(() => document.querySelector("video")?.readyState >= 3);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({path:path.join(out,"final-video-mobile.png"),fullPage:true});
+    for(const width of [1366,390]) {
+      await page.setViewportSize({width,height:844});await page.goto(base+"/?automatic=1");
+      assert.equal(await page.getByRole("group",{name:"Publishing time",exact:true}).count(),0);
+      assert.equal(await page.getByRole("button",{name:"Post now",exact:true}).count(),1);
+      assert.equal(await page.evaluate(()=>window.__submission),undefined);
+      await page.locator('select[name="scheduleTimezone"]').scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(out,"post-now-"+width+".png"),fullPage:true,animations:"disabled"});
+      await page.getByRole("button",{name:"Post now",exact:true}).last().click();
+      assert.equal(await page.evaluate(()=>window.__submission.useDefaultScheduleTime),true);
+      assert.equal(await page.evaluate(()=>window.__submission.scheduledSource.id),"00000000-0000-4000-8000-000000000010");
+      await page.getByRole("button",{name:/^Choose publish time, currently/}).click();
+      await page.getByRole("group",{name:"Hour",exact:true}).getByRole("button",{name:"21",exact:true}).click();
+      await page.getByRole("group",{name:"Hour",exact:true}).getByRole("button",{name:"10",exact:true}).click();
+      await page.getByRole("button",{name:"Done",exact:true}).click();
+      assert.equal(await page.locator('input[name="scheduledTime"]').inputValue(),"10:30");
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    }
+    for(const width of [1366,390]) {
+      const local=await browser.newPage({locale:"en-US",viewport:{width,height:844}});
+      await local.goto(base+"/?automatic=1");
+      const trigger=local.getByRole("button",{name:/^Choose publish time, currently/});
+      await local.getByRole("button",{name:/Choose publish time, currently 10:30 AM/}).waitFor();
+      await trigger.click();
+      await local.getByRole("group",{name:"Hour",exact:true}).getByRole("button",{name:"12",exact:true}).click();
+      assert.equal(await local.locator('input[name="scheduledTime"]').inputValue(),"00:30");
+      await local.getByRole("group",{name:"AM/PM",exact:true}).getByRole("button",{name:"PM",exact:true}).click();
+      assert.equal(await local.locator('input[name="scheduledTime"]').inputValue(),"12:30");
+      await local.getByRole("group",{name:"Hour",exact:true}).getByRole("button",{name:"09",exact:true}).click();
+      assert.equal(await local.locator('input[name="scheduledTime"]').inputValue(),"21:30");
+      await local.getByRole("button",{name:"Done",exact:true}).click();
+      await local.getByRole("button",{name:"Choose publish time, currently 9:30 PM",exact:true}).waitFor();
+      assert.equal(await local.evaluate(()=>window.__submission),undefined);
+      await local.screenshot({path:path.join(out,"device-12-hour-"+width+".png"),fullPage:true,animations:"disabled"});
+      assert.ok(await local.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await local.close();
+    }
+    for(const width of [1536,1366,1280,390,320])for(const preset of [5,60,180,"tomorrow"]) {
+      await page.setViewportSize({width,height:844});await page.goto(base+"/?automatic=1");
+      const quick=page.getByRole("group",{name:"Quick publish times",exact:true});
+      await quick.getByRole("button",{name:"5 mins",exact:true}).waitFor();
+      assert.deepEqual(await quick.getByRole("button").allTextContents(),["5 mins","1 hour","3 hours","Tomorrow 09:00"]);
+      const layout=await quick.evaluate(el=>({wrap:getComputedStyle(el).flexWrap,tops:[...el.querySelectorAll('button')].map(b=>b.getBoundingClientRect().top),radius:getComputedStyle(el.querySelector('button')).borderRadius}));
+      assert.equal(layout.wrap,"nowrap");assert.ok(layout.tops.every(top=>Math.abs(top-layout.tops[0])<1));assert.ok(parseFloat(layout.radius)>=16);
+      await quick.getByRole("button",{name:preset===5?"5 mins":preset===60?"1 hour":preset===180?"3 hours":"Tomorrow 09:00",exact:true}).click();
+      assert.equal(await page.evaluate(()=>window.__submission),undefined);
+      if(preset===5) await page.clock.setFixedTime(new Date(await page.evaluate(()=>Date.now()+20*60000)));
+      const expected=await page.evaluate(preset=> {
+        if(preset!=="tomorrow")return new Date(Math.ceil((Date.now()+preset*60000)/60000)*60000).toISOString();
+        const parts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Calcutta",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+        const read=key=>Number(parts.find(part=>part.type===key).value);
+        return new Date(Date.UTC(read("year"),read("month")-1,read("day")+1,9)-330*60000).toISOString();
+      },preset);
+      if(preset===5)await page.screenshot({path:path.join(out,"quick-pills-"+width+".png"),fullPage:true,animations:"disabled"});
+      await page.getByRole("button",{name:"Schedule post",exact:true}).click();
+      assert.equal(await page.evaluate(()=>window.__submission.scheduledFor),expected);
+      assert.equal(await page.evaluate(()=>window.__submission.useDefaultScheduleTime),preset===5?true:undefined);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    }
     preferenceFailure=true; await page.goto(base + "/?platforms=tiktok");
     await page.getByText(/Your account default could not load/).waitFor();
     assert.deepEqual(errors, []);

@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { mock, test } from "node:test";
 
 import { createHookSourceFrameService, decodeHookFirstFrame } from "./hook-source-frame.ts";
+import { hookFullRecreationPilot } from "./hook-full-recreation-pilot.ts";
 
 const require = createRequire(import.meta.url);
 const hash = (value: Uint8Array) => createHash("sha256").update(value).digest("hex");
@@ -35,6 +36,22 @@ test("preparation binds frame zero to the active canonical source and never uses
   assert.equal(reads.length, 1);
   result.png.fill(0);
   assert.deepEqual(second.png, frame(), "callers cannot corrupt a cached frame");
+});
+
+test("Hook 100 full-recreation opening reads stored frame zero without replacing its curated clarity preview", async () => {
+  const pilot = hookFullRecreationPilot;
+  const item = { id: pilot.referenceId, videoSha256: pilot.sourceSha256,
+    videoStorageKey: `explore/hooks/${pilot.sourceSha256}.mp4`, width: 720, height: 1280 };
+  const png = frame(720, 1280), frameSha256 = hash(png); let storedReads = 0;
+  const readStoredFrame = async () => { storedReads++; return { sourceSha256: pilot.sourceSha256, frameSha256,
+    frameIndex: 0, frameTimeSeconds: 0, width: 720, height: 1280, png }; };
+  const opening = createHookSourceFrameService({ items: () => [item], useCuratedFrame: false, readStoredFrame,
+    download: async () => assert.fail("stored pilot opening must not download the source video"), decode: async () => assert.fail("stored pilot opening must not decode") });
+  const result = await opening(pilot.referenceId);
+  assert.equal(result.frameIndex, 0); assert.equal(result.frameTimeSeconds, 0); assert.equal(result.frameSha256, frameSha256); assert.equal(storedReads, 1);
+  const preview = createHookSourceFrameService({ items: () => [item], readStoredFrame: async () => assert.fail("curated preview must not be replaced by stored t=0") });
+  const selected = await preview(pilot.referenceId);
+  assert.equal(selected.frameIndex, pilot.identityClarityAnchor.index); assert.equal(selected.frameSha256, pilot.identityClarityAnchor.sha256);
 });
 
 test("unknown, retired, non-Hook IDs and source URLs cannot trigger downloads", async () => {

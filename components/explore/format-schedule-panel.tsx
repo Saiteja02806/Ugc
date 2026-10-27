@@ -7,6 +7,8 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { WorkflowConnectedAccounts } from "@/components/explore/workflow-connected-accounts";
 import { EMPTY_SCHEDULE_DRAFT, WorkflowSchedulingPanel } from "@/components/explore/workflow-scheduling-panel";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
+import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-format";
+import { displayScheduleTime } from "@/lib/scheduling/time-display";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { workflowScheduleTargets, workflowSelectedAccounts, workflowSelectedPlatforms, selectWorkflowAccount } from "@/lib/explore/workflow-scheduling-draft";
@@ -30,6 +32,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   onBackToEdit?: () => void;
   pendingComposition?: ExploreScheduleComposition | null;
 }) {
+  const deviceHour12 = useDeviceTimeFormat();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const accountTimezone = useAccountTimeZone();
@@ -147,7 +150,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
         }
         const submission = await prepareSimpleWorkflowSchedule({ draft, timezone, source: { kind: output.kind, id: output.id }, title: output.title, load: authorized });
         if (!alive.current || currentIdentity.current !== identity) throw new Error("Your video or schedule changed. Check the current selections and click Schedule post again.");
-        const entry: ScheduleReceipt = { version: 1, owner: user.uid, kind: "hook", input: { source: submission.scheduledSource, title: output.title, caption: submission.caption, targets: submission.targets, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, idempotencyKey: prior?.timeRejected ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: imageOnly ? "carousel" : "single_video", exploreWorkflow: "format" } } };
+        const entry: ScheduleReceipt = { version: 1, owner: user.uid, kind: "hook", input: { source: submission.scheduledSource, title: output.title, caption: submission.caption, targets: submission.targets, scheduledFor: submission.scheduledFor, scheduledDate: submission.scheduledDate, scheduledTime: submission.scheduledTime, timezone: submission.timezone, ...(submission.useDefaultScheduleTime ? { useDefaultScheduleTime: true } : {}), idempotencyKey: prior?.timeRejected ? prior.input.idempotencyKey : `explore:${crypto.randomUUID()}`, metadata: { mediaMode: imageOnly ? "carousel" : "single_video", exploreWorkflow: "format" } } };
         readScheduleReceipt(JSON.stringify(entry), user.uid, "hook", output.kind);
         localStorage.setItem(key, JSON.stringify(entry)); setReceipt(entry); await send(entry);
       });
@@ -156,8 +159,8 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
   }
   const actionHelp = localPreview ? "Preview · scheduling disabled" : pendingSource ? imageOnly ? "Your slideshow changes are still being prepared. Finish them before scheduling." : "Your selected video is uploading. You can choose your posting settings below." : !output ? preparing ? "Preparing your publishing file. Choose your accounts, caption and time while it finishes." : imageOnly ? "Save your final edits before scheduling." : "Add at least one video in Create or Demo before scheduling." : busy ? "Checking your video and scheduling settings…" : receipt?.scheduleId ? "Your previous post is saved. You can schedule this content again." : !receipt && !targets.length ? "Choose a connected account for each selected platform." : "Choose your accounts and time, then click Schedule post.";
   const date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? new Date(`${draft.date}T12:00:00Z`) : null;
-  const timing = date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.date && /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
-    ? `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)}, ${draft.time}`
+  const timing = (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Earliest available" : date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === draft.date && /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
+    ? `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)}, ${displayScheduleTime(draft.time, deviceHour12)}`
     : "Choose date and time";
   const destinations = platforms.map(platform => platform === "instagram" ? imageOnly ? "Instagram" : "Instagram Reels" : platform === "tiktok" ? "TikTok" : "YouTube").join(" + ");
   const selectedAccounts = workflowSelectedAccounts(draft);
@@ -169,7 +172,7 @@ export function FormatSchedulePanel({ output, localPreview, imageOnly, active, f
       {onBackToEdit ? <Button type="button" variant="outline" disabled={busy} className={reviewStyles.backButton} onClick={onBackToEdit}><ArrowLeft size={16} aria-hidden="true" />Back to Edit</Button> : <span />}
       <div className={reviewStyles.reviewAction}>
         <p className={reviewStyles.actionHelp} role="status">{actionHelp}</p>
-        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Try again" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
+        <Button type="button" size="lg" className={reviewStyles.reviewButton} disabled={localPreview || pendingSource || !output || busy || !receipt && !targets.length} onClick={() => void schedule()}>{busy ? "Scheduling…" : receipt && !receipt.scheduleId && !receipt.timeRejected ? "Try again" : (draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time) ? "Post now" : "Schedule post"}<ArrowRight size={16} aria-hidden="true" /></Button>
       </div>
     </div>
     {receipt?.scheduleId ? <Link href="/scheduling" className={reviewStyles.schedulingLink}>View in Scheduling<ArrowRight size={16} aria-hidden="true" /></Link> : null}

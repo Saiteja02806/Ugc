@@ -3,6 +3,7 @@ import "server-only";
 import { listBusinessProfilesForDailyReplenishment } from "@/lib/business-profiles/db";
 import { FreeTrialAccessError } from "@/lib/billing/free-trial";
 import { areTrendingHookVideosEnabled } from "@/lib/trending/hook-video-feature";
+import { sweepActiveSlideshowAutomationForUser } from "@/lib/trending/slideshow-automation-service";
 import { ensureUnifiedTrendingDailyFeed } from "@/lib/trending/unified-daily-feed";
 import { isWallTextEnabled } from "@/lib/trending/wall-text-access";
 import {
@@ -82,6 +83,15 @@ export async function replenishTrendingCarouselFeedPage(params: {
         timezone: profile.trendingTimezone,
         userId: profile.userId,
       });
+
+      try {
+        await sweepActiveSlideshowAutomationForUser({
+          timezone: profile.trendingTimezone,
+          userId: profile.userId,
+        });
+      } catch {
+        // Isolate slideshow automation sweep so daily Trending replenishment never fails.
+      }
 
       return {
         assignedCount: feed.feed.assignedCount,

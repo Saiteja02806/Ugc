@@ -1,8 +1,10 @@
+import * as readDeadline from "../lib/http/read-deadline.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
 import * as draftLifecycle from "../lib/explore/workflow-draft-lifecycle.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -11,7 +13,7 @@ const load = (file, imports = {}, globals = {}) => {
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
     exports: exported,
     Error,
-    require(name) { if (name === "@/lib/explore/format-reference-images" && !(name in imports)) return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
+    require(name) { if (name === "../http/read-deadline") return readDeadline; if (name === "@/lib/explore/format-reference-images" && !(name in imports)) return {fetchFormatReferenceImage: async () => {throw Error("Unexpected saved-image lookup")}}; if(name === "@/lib/explore/workflow-draft-lifecycle") return draftLifecycle; if(name === "@/components/explore/workflow-draft-entry") return { WorkflowDraftEntryBoundary: ({children}) => children({id:"00000000-0000-4000-8000-000000000099",createNew:true}) }; if(name === "@/lib/explore/workflow-visit-storage") return load("lib/explore/workflow-visit-storage.ts"); if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import: ${name}`); return imports[name]; },
     ...globals,
   });
   return exported;
@@ -19,6 +21,7 @@ const load = (file, imports = {}, globals = {}) => {
 const backend = load("lib/ai-studio/generation-settings.ts", {}, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const settings = load("lib/explore/workflow-generation-settings.ts", { "../ai-studio/generation-settings": backend }, { process: { env: { NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE: "true", NEXT_PUBLIC_ENABLE_OPENROUTER_WAN: "true" } } });
 const clientModule = load("lib/explore/workflow-generation-client.ts", {
+  "./starting-frame-animation-input": { startingFrameFaceReferenceError },
   "../../worker/src/lib/hook-starting-frame-video": load("worker/src/lib/hook-starting-frame-video.ts"),
   "../ai-studio/video-reference-policy": load("lib/ai-studio/video-reference-policy.ts", { "./generation-settings": backend }),
   "../ai-studio/prompt-policy": load("lib/ai-studio/prompt-policy.ts", { "../../worker/src/lib/video-prompt-policy": load("worker/src/lib/video-prompt-policy.ts") }),
@@ -838,4 +841,35 @@ test("the shared uploader verifies the expected account before any cloud write, 
   await uploader.uploadAIStudioReferenceMedia(file, "image");
   assert.equal(expectedOwners.at(-1), undefined); // Existing callers keep their original behavior.
   assert.equal(released.length, 3);
+});
+
+
+test("generation deadlines release stalled POST/body and retain the exact retry identity", async t => {
+ const alive=setInterval(()=>{},1000);t.after(()=>clearInterval(alive));
+ for(const phase of ["post","body"]){
+  let late;let first=true;const calls=[];
+  const h=harness({requestTimeoutMs:15,fetch:async(url,init)=>{
+   calls.push({url,...init});
+   if(!first)return response(queued());first=false;
+   if(phase==="post")return new Promise(resolve=>{late=resolve;});
+   return {ok:true,json:()=>new Promise(resolve=>{late=resolve;})};
+  }});
+  await assert.rejects(h.client.generate(draft()),/reply took too long.*Refresh status/);
+  assert.equal(calls.length,1);assert.equal(calls[0].signal.aborted,true);
+  await assert.rejects(h.client.generate(draft({instructions:"Changed"})),/previous request/);
+  assert.equal(calls.length,1);
+  late(phase==="post"?response(queued()):queued());await new Promise(resolve=>setImmediate(resolve));
+  await h.client.generate(draft());
+  assert.equal(calls.length,2);assert.equal(calls[1].body,calls[0].body);
+  assert.equal(calls[1].headers["Idempotency-Key"],calls[0].headers["Idempotency-Key"]);
+ }
+});
+
+test("late auth after either token deadline cannot send a generation POST",async t=>{
+ const alive=setInterval(()=>{},1000);t.after(()=>clearInterval(alive));
+ for(const stalledCall of [1,2]){
+  let count=0,late;const h=harness({requestTimeoutMs:15,getOwnerToken:async()=>++count===stalledCall?new Promise(resolve=>{late=resolve;}):"token"});
+  await assert.rejects(h.client.generate(draft()),/No generation was submitted/);
+  late("token");await new Promise(resolve=>setImmediate(resolve));assert.equal(h.calls.length,0);
+ }
 });

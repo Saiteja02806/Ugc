@@ -4331,6 +4331,7 @@ function dedupeScheduleMediaOptions(options: ScheduleMediaOption[]) {
 function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
   if (submission.scheduledSource.kind === "library_item") {
     return {
+      ...(submission.useDefaultScheduleTime ? { useDefaultScheduleTime: true } : {}),
       caption: submission.caption,
       metadata: {
         mediaMode: "carousel",
@@ -4358,6 +4359,7 @@ function buildScheduleRequestBody(submission: ScheduleFormSubmission) {
     : ("single_video" as const);
 
   return {
+    ...(submission.useDefaultScheduleTime ? { useDefaultScheduleTime: true } : {}),
     caption: submission.caption,
     metadata: {
       clipSelection: submission.clipSelection,

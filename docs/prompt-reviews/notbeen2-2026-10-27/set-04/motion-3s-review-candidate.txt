@@ -1,0 +1,29 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Low-angle close selfie in burgundy hoodie; glasses rest on crown, hair tied back, pale ceiling and wall. Lips closed in a restrained skeptical pout, brows slightly drawn, eyes toward lens.
+
+OPENING: 0–1.12s: Hold the closed-mouth questioning look, gradually lift brows without moving glasses from crown.
+
+MIDDLE: 1.12–1.24s: Begin opening mouth while keeping gaze near lens.
+
+MIDDLE: 1.24–1.46s: Raise screen-left hand across lower face and settle fingers over lips.
+
+MIDDLE: 1.46–1.78s: Hold mouth cover, eyes widening and gaze near lens.
+
+MIDDLE: 1.78–2.15s: Look up screen-right with fingers still across mouth.
+
+MIDDLE: 2.15–2.23s: Lower the same hand from lips and reopen mouth.
+
+ENDING: 2.23–3s: Move closer with a broad disbelieving open-mouth smile and raised brows, keeping glasses on crown through ending.
+
+CAMERA: Subtle handheld drift, then a closer approach after mouth is uncovered; pale ceiling stays continuous.
+
+ENDING STATE: Hand lowered, face closer, brows lifted/drawn and mouth open into a disbelieving tooth-visible smile; glasses still on crown.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

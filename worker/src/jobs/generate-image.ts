@@ -31,7 +31,7 @@ import { resolveOwnedPrivateMediaUrl } from "../lib/private-media.js";
 import { parseImageReferenceContext } from "../lib/image-reference-context.js";
 import { slideshowReferencePrompt, slideshowReferenceImagesPrompt } from "../lib/slideshow-reference-prompt.js";
 import { parseSlideshowReferenceContract, slideshowGenerationPrompt, type SlideshowReferenceContract } from "../lib/slideshow-generation-contract.js";
-import { isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, hookKeyframeSceneBytesMatch, hookKeyframeProviderImageLabels, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
+import { hookKeyframeAnchorBytesMatch, hookKeyframeReferenceImageCount, isHookKeyframeImageInput, parseHookKeyframeGenerationReceipt, hookKeyframeSceneBytesMatch, hookKeyframeProviderImageLabels, type HookKeyframeGenerationReceipt } from "../lib/hook-keyframe-generation-contract.js";
 import { downloadReferenceImageContext } from "../lib/reference-image-download.js";
 import { resolveCreatorSceneDelivery } from "../lib/creator-scene-delivery.js";
 
@@ -214,13 +214,17 @@ export async function runGenerateImageJob(
         ? input.hookKeyframe ? resolveCreatorSceneDelivery(await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? ""), input.hookKeyframe)
           : await resolveOwnedPrivateMediaUrl(input.referenceImageUrl, job.user_id ?? "") : undefined;
       const referenceImages = input.referenceImageUrls
-        ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(url => resolveOwnedPrivateMediaUrl(url, job.user_id ?? "")))]
+        ? [referenceImageUrl!, ...await Promise.all(input.referenceImageUrls.slice(1).map(async (url, index) => {
+          const resolved = await resolveOwnedPrivateMediaUrl(url, job.user_id ?? "");
+          return index === 0 && input.hookKeyframe?.version === 4 ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
+        }))]
         : referenceImageUrl;
       const plan = input.slideshowReferenceContract?.version === 4 ? input.slideshowReferenceContract.plan : undefined;
       const hook = input.hookKeyframe;
       if (hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model)) {
         const downloaded = await downloadReferenceImageContext(referenceImages as string[]);
-        if (downloaded.length !== hook.personImageAssetIds.length + 1 || !hookKeyframeSceneBytesMatch(hook, downloaded[0])) throw new ProviderRequestNotSubmittedError("The starting frame does not match its verified source. No image generation was submitted.");
+        if (downloaded.length !== hookKeyframeReferenceImageCount(hook) || !hookKeyframeSceneBytesMatch(hook, downloaded[0]) ||
+          hook.version === 4 && !hookKeyframeAnchorBytesMatch(hook, downloaded[1])) throw new ProviderRequestNotSubmittedError("The starting-frame inputs do not match their verified source roles. No image generation was submitted.");
       }
       const hookLabels = hook && !["gemini_3_pro", "nano_banana_2"].includes(input.model) ? hookKeyframeProviderImageLabels(hook.personImageAssetIds.length, hook.promptVersion === 1 ? 2 : hook.promptVersion) : undefined;
       const labelledPrompt = hookLabels ? `${providerPrompt}\n\nIMAGE INPUT ORDER:\n${hookLabels.join("\n")}` : providerPrompt;
@@ -364,7 +368,7 @@ async function generateDurableImageForJob(
     const referenceImageUrls = input.referenceImageUrls && action === "submit"
       ? await Promise.all(input.referenceImageUrls.map(async (url, index) => {
         const resolved = await resolveOwnedPrivateMediaUrl(url, job.user_id ?? "");
-        return index === 0 && input.hookKeyframe ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
+        return (index === 0 || index === 1 && input.hookKeyframe?.version === 4) && input.hookKeyframe ? resolveCreatorSceneDelivery(resolved, input.hookKeyframe) : resolved;
       })) : input.referenceImageUrls;
     const buffer = await generate({
       aspectRatio: input.aspectRatio,

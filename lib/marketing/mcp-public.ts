@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { brandOrganizationSameAs } from "./brand-videos";
 import { ogSize } from "./og-card";
+import { publicPagePaths } from "./public-pages";
 import catalog from "./mcp-tool-catalog.json";
 
 export const mcpToolCatalog = catalog;
@@ -292,11 +293,14 @@ export function buildLlmsText() {
   const groups = publicMcpToolCatalog.groups
     .map((group) => `- ${group.title} (${group.tools.length}): ${group.tools.map((tool) => tool.name).join(", ")}`)
     .join("\n");
+  const pages = publicPagePaths
+    .map((path) => `- ${publicOrigin}${path}`)
+    .join("\n");
   return `# UGC Pilot
 
-> AI UGC and video marketing studio with a hosted MCP server for Claude, Codex, and ChatGPT.
+> AI UGC video and SaaS marketing studio for founders and small product teams, with a hosted MCP server for Claude, Codex, and ChatGPT.
 
-UGC Pilot creates UGC-style images, short videos, speech, and video edits from the signed-in account. The studio is at ${publicOrigin}. The MCP server is ${mcpEndpoint}.
+UGC Pilot helps SaaS founders and small teams market their products with creator-style UGC videos, hook clips, text-led videos, speech, video edits, and Instagram carousels from the signed-in account. The studio is at ${publicOrigin}. The MCP server is ${mcpEndpoint}.
 
 ## MCP setup
 
@@ -339,15 +343,6 @@ ${groups}
 
 ## Pages
 
-- ${publicOrigin}/
-- ${publicOrigin}/mcp
-- ${publicOrigin}/mcp/claude
-- ${publicOrigin}/mcp/codex
-- ${publicOrigin}/docs/mcp-tools
-- ${publicOrigin}/connect-ai
-- ${publicOrigin}/pricing
-- ${publicOrigin}/guides
-- ${publicOrigin}/ai-ugc-video-generator
-- ${publicOrigin}/instagram-carousel-maker
+${pages}
 `;
 }

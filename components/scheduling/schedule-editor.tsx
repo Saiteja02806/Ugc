@@ -21,6 +21,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
 import styles from "./schedule-editor.module.css";
+import { useDeviceTimeFormat } from "./use-device-time-format";
+import { canonicalPickerHour, pickerHour, displayScheduleTime } from "@/lib/scheduling/time-display";
+import { ScheduleQuickActions } from "@/components/scheduling/schedule-quick-actions";
 import { Button } from "@/components/ui/button";
 import { useAccountTimeZone } from "@/components/providers/account-timezone-provider";
 import { getSchedulingTimeZoneOptions } from "@/lib/scheduling/account-timezone";
@@ -117,6 +120,7 @@ function getPublishingAccountLabel(
 }
 
 export type ScheduleFormSubmission = {
+  useDefaultScheduleTime?: boolean;
   caption: string;
   clipSelection: "hook_only" | "hook_and_secondary" | "secondary_only";
   openingMedia: ScheduleMediaOption | null;
@@ -251,6 +255,7 @@ export function ScheduleEditor({
   initialPlannedTargets,
   initialScheduledDate,
   initialScheduledTime,
+  initialUseDefaultScheduleTime = true,
   initialTimezone,
   minimumScheduleLeadMinutes,
   onClose,
@@ -287,6 +292,7 @@ export function ScheduleEditor({
   initialPlannedTargets: ScheduleCreateTargetInput[];
   initialScheduledDate: string;
   initialScheduledTime: string;
+  initialUseDefaultScheduleTime?: boolean;
   initialTimezone?: string;
   minimumScheduleLeadMinutes: number;
   onClose: () => void;
@@ -305,6 +311,7 @@ export function ScheduleEditor({
   onCloseDraft?: (draft: ScheduleEditorDraftSnapshot) => void;
   onDraftChange?: (draft: ScheduleEditorDraftSnapshot) => void;
 }) {
+  const deviceHour12 = useDeviceTimeFormat();
   const inline = presentation !== "modal";
   const workflow = presentation === "workflow";
   useLockBodyScroll(!inline);
@@ -451,6 +458,9 @@ export function ScheduleEditor({
   const scheduledTime = scheduledTimeOverride ?? initialScheduledTime;
   const [timezoneOverride, setTimezone] = useState<string | null>(editingSchedule?.timezone ?? null);
   const timezone = timezoneOverride ?? initialTimezone ?? defaultTimezone;
+  const [postNow, setPostNow] = useState(initialUseDefaultScheduleTime && !editingSchedule);
+  const [fiveMinutesFromSubmit, setFiveMinutesFromSubmit] = useState(false);
+  const useDefaultScheduleTime = (postNow && !editingSchedule) || fiveMinutesFromSubmit;
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const localHookMediaOptions = hookMediaOptions;
@@ -546,20 +556,23 @@ export function ScheduleEditor({
     connections: selectedConnections,
     settings: effectivePublishingSettings,
   });
+  const selectedTime = useDefaultScheduleTime
+    ? automaticScheduleParts(currentTime, minimumScheduleLeadMinutes, timezone, fiveMinutesFromSubmit ? 0 : 1)
+    : { date: scheduledDate, time: scheduledTime };
   const scheduleTimeValidation = useMemo(
     () =>
       getScheduleTimeValidation({
-        date: scheduledDate,
+        date: selectedTime.date,
         minimumLeadMinutes: minimumScheduleLeadMinutes,
         now: currentTime,
-        time: scheduledTime,
+        time: selectedTime.time,
         timezone,
       }),
     [
       currentTime,
       minimumScheduleLeadMinutes,
-      scheduledDate,
-      scheduledTime,
+      selectedTime.date,
+      selectedTime.time,
       timezone,
     ],
   );
@@ -607,13 +620,12 @@ export function ScheduleEditor({
   const canSaveDraft = Boolean(
     !(preferencesLoading && selectedConnections.some((connection) => connection.platform !== "instagram")) && !mediaValidationError &&
       (isCarouselSchedule ? carouselLibraryItemId : selectedPublishMedia) &&
-      scheduledDate &&
-      scheduledTime &&
+      (useDefaultScheduleTime || scheduledDate && scheduledTime) &&
       !scheduleTimeValidation.error &&
       !publishingSettingsError &&
       !captionValidationError &&
       !unavailableSavedTargetError &&
-      (!requireScheduleTarget || hasSelectedConnections) &&
+      (!(requireScheduleTarget || useDefaultScheduleTime) || hasSelectedConnections) &&
       !saving,
   );
 
@@ -893,9 +905,12 @@ export function ScheduleEditor({
     // A tab can sleep or cross the lead boundary between its last render and
     // this click. Validate the current instant before submitting any request.
     const now = Date.now();
+    const chosenTime = useDefaultScheduleTime
+      ? automaticScheduleParts(now, minimumScheduleLeadMinutes, timezone, fiveMinutesFromSubmit ? 0 : 1)
+      : { date: scheduledDate, time: scheduledTime };
     const timeValidation = getScheduleTimeValidation({
-      date: scheduledDate,
-      time: scheduledTime,
+      date: chosenTime.date,
+      time: chosenTime.time,
       timezone,
       minimumLeadMinutes: minimumScheduleLeadMinutes,
       now,
@@ -903,6 +918,7 @@ export function ScheduleEditor({
     setCurrentTime(now);
     if (
       mediaValidationError ||
+      (useDefaultScheduleTime && !hasSelectedConnections) ||
       (isCarouselSchedule ? !carouselLibraryItemId : !selectedPublishMedia) ||
       !timeValidation.scheduledFor ||
       timeValidation.error ||
@@ -914,6 +930,7 @@ export function ScheduleEditor({
     }
 
     onSave({
+      ...(useDefaultScheduleTime ? { useDefaultScheduleTime: true } : {}),
       caption,
       clipSelection: shouldCombineClips
         ? "hook_and_secondary"
@@ -921,7 +938,7 @@ export function ScheduleEditor({
           ? "hook_only"
           : "secondary_only",
       openingMedia: shouldCombineClips ? selectedHookMedia : null,
-      scheduledDate,
+      scheduledDate: chosenTime.date,
       scheduledFor: timeValidation.scheduledFor,
       scheduledSource: isCarouselSchedule
         ? { id: carouselLibraryItemId!, kind: "library_item" }
@@ -931,7 +948,7 @@ export function ScheduleEditor({
           ? editingSchedule?.title ?? "Saved slideshow"
           : selectedPublishMedia!.title,
       scheduledVideo: selectedPublishMedia,
-      scheduledTime,
+      scheduledTime: chosenTime.time,
       targets: [
         // Preserve targets outside the enabled publishing surface so edits never
         // silently delete legacy providers.
@@ -1211,6 +1228,7 @@ export function ScheduleEditor({
             >
               <div className={inline ? "grid min-w-0 gap-4" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)]"}>
                 <div className={inline ? "grid w-full max-w-[480px] content-start gap-3" : "grid content-start gap-3"}>
+                  <ScheduleQuickActions timezone={timezone} disabled={saving} onSelect={(parts, preset) => { setFiveMinutesFromSubmit(preset === 5); setPostNow(false); setCurrentTime(Date.now()); setTimezone(timezone); setScheduledDate(parts.date); setScheduledTime(parts.time); }} />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block">
                       <span className="text-sm font-bold text-foreground">
@@ -1228,7 +1246,7 @@ export function ScheduleEditor({
                         aria-invalid={Boolean(scheduleTimeValidation.error)}
                         min={minimumScheduledDate}
                         value={scheduledDate}
-                        onChange={(event) => { setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(event.target.value); }}
+                        onChange={(event) => { setFiveMinutesFromSubmit(false); setPostNow(false); setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(event.target.value); }}
                         className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-4 text-sm font-bold text-foreground outline-none transition [color-scheme:dark] hover:border-border-strong focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </label>
@@ -1244,7 +1262,7 @@ export function ScheduleEditor({
                             : undefined
                         }
                         invalid={Boolean(scheduleTimeValidation.error)}
-                        onChange={(value) => { setCurrentTime(Date.now()); setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
+                        onChange={(value) => { setFiveMinutesFromSubmit(false); setPostNow(false); setCurrentTime(Date.now()); setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
                       />
                     </div>
                   </div>
@@ -1274,9 +1292,9 @@ export function ScheduleEditor({
                     </select>
                   </label>
 
-                  {scheduleClock ? <div id="schedule-clock-help" className="text-xs font-semibold leading-5 text-muted">
-                    <p>Now: {formatScheduleClock(scheduleClock.now)} · {timezone}</p>
-                    <p>Earliest: {formatScheduleClock(scheduleClock.earliest)}. Allow {minimumScheduleLeadMinutes} full {minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"}.</p>
+                  {!postNow && scheduleClock ? <div id="schedule-clock-help" className="text-xs font-semibold leading-5 text-muted">
+                    <p>Now: {formatScheduleClock(scheduleClock.now, deviceHour12)} · {timezone}</p>
+                    <p>Earliest: {formatScheduleClock(scheduleClock.earliest, deviceHour12)}. Allow {minimumScheduleLeadMinutes} full {minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"}.</p>
                     {scheduleTimeValidation.error && scheduleTimeValidation.scheduledFor ? <button
                       type="button"
                       disabled={saving}
@@ -1284,7 +1302,8 @@ export function ScheduleEditor({
                       onClick={() => {
                         const now = Date.now();
                         // Keep a further minute for confirmation and transport.
-                        const next = getZonedDateTimeParts(getEarliestScheduleTimestamp({ minimumLeadMinutes: minimumScheduleLeadMinutes + 1, now }), timezone);
+                        const next = automaticScheduleParts(now, minimumScheduleLeadMinutes, timezone);
+                        setFiveMinutesFromSubmit(false);
                         setCurrentTime(now);
                         setTimezone(timezone);
                         setScheduledDate(next.date);
@@ -1366,7 +1385,7 @@ export function ScheduleEditor({
               className={inline ? "min-h-11 shrink-0 gap-2" : "inline-flex h-11 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_rgb(225_101_64_/_0.18)] transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-56"}
             >
               <CheckCircle2 className="size-4" aria-hidden="true" />
-              {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : requireScheduleTarget && !hasSelectedConnections ? "Choose an account" : mediaValidationError ?? (isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : "Select media to schedule")}
+              {saving ? "Scheduling…" : canSaveDraft ? editingSchedule ? "Save and schedule" : postNow ? "Post now" : "Schedule post" : unavailableSavedTargetError ? "Review saved account" : captionValidationError ? "Shorten caption" : publishingSettingsError ? "Review publishing settings" : (requireScheduleTarget || useDefaultScheduleTime) && !hasSelectedConnections ? "Choose an account" : mediaValidationError ?? (isCarouselSchedule || selectedPublishMedia ? "Choose date and time" : "Select media to schedule")}
             </Button>
           </div>
         </div>
@@ -1405,6 +1424,11 @@ function ScheduleFlowSection({
   );
 }
 
+function automaticScheduleParts(now: number, minimumLeadMinutes: number, timezone: string, bufferMinutes = 1) {
+  try { return getZonedDateTimeParts(getEarliestScheduleTimestamp({ minimumLeadMinutes: minimumLeadMinutes + bufferMinutes, now }), timezone); }
+  catch { return { date: "", time: "" }; }
+}
+
 function ScheduleTimePicker({
   errorMessageId,
   invalid,
@@ -1422,7 +1446,10 @@ function ScheduleTimePicker({
   const [rawHour = "00", rawMinute = "00"] = value.split(":");
   const hour = scheduleHourValues.includes(rawHour) ? rawHour : "00";
   const minute = scheduleMinuteValues.includes(rawMinute) ? rawMinute : "00";
-  const timeLabel = `${hour}:${minute}`;
+  const hour12 = useDeviceTimeFormat();
+  const shownHour = pickerHour(hour, hour12);
+  const period = Number(hour) >= 12 ? "PM" : "AM";
+  const timeLabel = displayScheduleTime(`${hour}:${minute}`, hour12);
 
   useEffect(() => {
     if (!open) {
@@ -1475,7 +1502,7 @@ function ScheduleTimePicker({
               Choose publish time
             </PopoverTitle>
             <PopoverDescription className="text-xs font-semibold text-muted">
-              Use 24-hour time (00:00–23:59) in the selected timezone.
+              Time in the selected timezone.
             </PopoverDescription>
           </PopoverHeader>
 
@@ -1483,9 +1510,9 @@ function ScheduleTimePicker({
             <ScheduleTimeRail
               label="Hour"
               selectedRef={selectedHourRef}
-              selectedValue={hour}
-              values={scheduleHourValues}
-              onSelect={(nextHour) => onChange(`${nextHour}:${minute}`)}
+              selectedValue={shownHour}
+              values={hour12 ? Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")) : scheduleHourValues}
+              onSelect={(nextHour) => onChange(`${canonicalPickerHour(nextHour, period, hour12)}:${minute}`)}
             />
             <ScheduleTimeRail
               label="Minute"
@@ -1494,6 +1521,7 @@ function ScheduleTimePicker({
               values={scheduleMinuteValues}
               onSelect={(nextMinute) => onChange(`${hour}:${nextMinute}`)}
             />
+            {hour12 ? <ScheduleTimeRail label="AM/PM" selectedValue={period} values={["AM", "PM"]} onSelect={next => onChange(`${canonicalPickerHour(shownHour, next, true)}:${minute}`)} /> : null}
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-border bg-card-muted/50 px-3 py-2.5">
@@ -1515,8 +1543,8 @@ function ScheduleTimePicker({
   );
 }
 
-function formatScheduleClock(parts: { date: string; time: string }) {
-  return `${parts.date} ${parts.time}`;
+function formatScheduleClock(parts: { date: string; time: string }, hour12: boolean) {
+  return `${parts.date} ${displayScheduleTime(parts.time, hour12)}`;
 }
 
 function centerScheduleTimeOption(

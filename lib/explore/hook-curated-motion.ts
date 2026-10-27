@@ -1,8 +1,10 @@
 import { getCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 import type { HookMotionPlan } from "./hook-keyframe-motion.ts";
+import { getPublicMiddleFrameMotionEntry, sourceMotionPlan } from "./hook-middle-frame-motion.ts";
 
 // Adapted preparation directions, not evidence of a successful generated video.
-// Each begins after the gesture already visible in the chosen source frame.
+// Legacy entries begin after the chosen source-frame gesture. Hook 100 is routed
+// through the full-recreation pilot before this table is read.
 const performances: Record<number, readonly [string, string, string]> = {
   12: ["Seated behind the laptop, holding the lowered cup with eyes widened.", "Set the cup down gently; lift the brows and open the mouth in surprise.", "Hold the surprised look with a small blink, keeping hands near the cup and laptop."],
   14: ["Seated with eyes open and both hands raised in a hesitant gesture.", "Make a small uncertain head movement and rotate the raised palms slightly outward.", "Lower the hands a little and settle into a questioning expression."],
@@ -27,6 +29,12 @@ const performances: Record<number, readonly [string, string, string]> = {
   104: ["Seated in the purple-lit room, holding a phone with eyes open and mouth open in surprise.", "Look from the phone toward the camera, lift the brows and raise the free hand gradually toward the mouth.", "Hold the startled reaction while keeping the phone in the same hand and position."],
 };
 export function getCuratedHookMotionPlan(referenceId: string, sourceSha256: string, index: number): HookMotionPlan | undefined {
+  const entry = getPublicMiddleFrameMotionEntry(referenceId, sourceSha256, index);
+  return entry ? sourceMotionPlan(entry) : getLegacyCuratedHookMotionPlan(referenceId, sourceSha256, index);
+}
+
+/** Frozen older generated images retain their selected-pose continuation. */
+export function getLegacyCuratedHookMotionPlan(referenceId: string, sourceSha256: string, index: number): HookMotionPlan | undefined {
   const frame = getCuratedHookFrame(referenceId, sourceSha256);
   if (!frame || frame.index !== index) return undefined;
   const p = performances[frame.number];

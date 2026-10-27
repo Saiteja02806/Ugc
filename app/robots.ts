@@ -32,7 +32,16 @@ const privatePaths = [
   "/viral",
 ];
 
-const searchAgents = ["GPTBot", "ClaudeBot", "PerplexityBot"];
+const searchAgents = [
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "ClaudeBot",
+  "Claude-SearchBot",
+  "PerplexityBot",
+  "Google-Extended",
+  "Applebot-Extended",
+];
 
 export default function robots(): MetadataRoute.Robots {
   return {

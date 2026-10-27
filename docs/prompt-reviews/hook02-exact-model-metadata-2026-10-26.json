@@ -1,0 +1,23 @@
+{
+  "name": "models/gemini-3-pro-image",
+  "version": "3.0",
+  "displayName": "Nano Banana Pro",
+  "inputTokenLimit": 131072,
+  "outputTokenLimit": 32768,
+  "supportedActions": [
+    "generateContent",
+    "countTokens",
+    "batchGenerateContent"
+  ],
+  "temperature": 1,
+  "topP": 0.95,
+  "topK": 64,
+  "routes": [
+    {
+      "method": "GET",
+      "host": "generativelanguage.googleapis.com",
+      "path": "/v1beta/models/gemini-3-pro-image"
+    }
+  ],
+  "generationCalls": 0
+}

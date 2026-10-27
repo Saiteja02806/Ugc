@@ -1,4 +1,5 @@
 import octoberRefresh from "./hook-reference-oct23-refresh-prompts.json" with { type: "json" };
+import wallMoney from "./wall-money-reference-prompts.json" with { type: "json" };
 
 /** Reviewed pilot only. Never manufacture a performance for an unreviewed clip. */
 export const REFERENCE_TEXT_REMOVAL = "Remove all existing on-screen text, captions and text-associated emojis from the reference video. Reconstruct the underlying scene naturally. Do not add new text. Preserve text naturally present on physical objects.";
@@ -11,6 +12,14 @@ export type ReferenceVideoPrompt = {
   reviewNotes?: string;
   performance: string;
 };
+
+const wallMoneyVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = Object.fromEntries(wallMoney.entries.map(entry => [entry.referenceId, {
+    version: 2 as const, sourceSha256: entry.sourceSha256, reviewMethod: "all_decoded_frames" as const,
+    reviewedFrameCount: entry.reviewedFrameCount,
+    reviewNotes: `${entry.timingConfidence} Generated output not tested.`,
+    performance: [`Preserve the complete ${entry.sourceDurationSeconds.toFixed(3)}-second source performance. ${entry.scene}`,
+      ...entry.beats.map(beat => `${beat.startSeconds.toFixed(2)}–${beat.endSeconds.toFixed(2)}s: ${beat.action}`)].join("\n"),
+  }]));
 
 export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt>> = {
   ...Object.fromEntries(octoberRefresh.entries.map(({ referenceId, ...entry }) => [referenceId, entry as ReferenceVideoPrompt])),
@@ -569,7 +578,7 @@ export const referenceVideoPrompts: Readonly<Record<string, ReferenceVideoPrompt
 };
 
 export function getReferenceVideoPrompt(id: string, videoUrl: string | undefined): string | undefined {
-  const entry = referenceVideoPrompts[id];
+  const entry = referenceVideoPrompts[id] ?? wallMoneyVideoPrompts[id];
   if (!entry || !videoUrl) return undefined;
   // References use content-addressed storage; a replacement file needs review.
   const filename = videoUrl.split("?")[0].split("/").at(-1);

@@ -42,6 +42,9 @@ test("source controls in both workflows expose the three choices and keep source
     });
     const selection = { ownerId: "owner", enabled: true, mode: "generate", preview: null, setMode: mode => modes.push(mode), chooseUpload: file => uploads.push(file) };
     let tree = rt.render(() => mod.WorkflowVideoSourceSection({ kind, selection }));
+    const labelled = rt.render(() => mod.WorkflowVideoSourceSection({ kind, selection, label: "Talking head video", hideHeading: true }));
+    assert.equal(nodes(labelled).find(n => n.type === "h2").props.className,"sr-only");
+    assert.equal(nodes(tree).find(n => n.type === "h2").props.className,"text-sm font-medium");
     const buttons = nodes(tree).filter(n => n.type === "button");
     assert.deepEqual(buttons.map(text), ["Generate", "Upload", "Creative Assets"]); assert.equal(buttons[0].props["aria-pressed"], true);
     buttons[1].props.onClick(); buttons[2].props.onClick(); assert.deepEqual(modes, ["upload", "assets"]);
@@ -97,6 +100,8 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
     const generationRun = { selected: asset, results: [], busy: false, error: null, onGenerate() {} };
     const finishing = { options: {}, setOptions() {}, output: null, pendingComposition: null, captions: { transcript: null }, music: { source: null, playback: "repeat", selectionError: null }, edit: { busy: false }, schedule: { busy: false } };
     const imports = {
+    "./lazy-hook-starting-frame-workspace": { LazyHookStartingFrameWorkspace: "starting-frame-preparation" },
+    "./starting-frame-animation-references": { StartingFrameAnimationReferences: "animation-references" },
       "next/dynamic": { default: () => "starting-frame-preparation" },
       "next/image": { default: "image" },
       "./use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, ready: true, error: null, setFrame() {}, retry() {} }) },
@@ -196,12 +201,12 @@ test("both Create layouts preserve instruction drafts when reusing a video and p
       assert.equal(sidebarDemoMenu.props.library, "content", "Sidebar and preview use the same Demo inventory");
       assert.equal(sourceMenu.props.triggerLabel, "Change");
       sourceMenu.props.onChooseAssets(); tree = render();
-      let picker = nodes(tree).find(n => n.type === "video-picker");
+      let picker = nodes(tree).find(n => n.type === "video-picker" && n.props.library !== "generation_history");
       assert.equal(picker.props.open, true); picker.props.onOpenChange(false); tree = render();
       assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
       assert.equal(nodes(tree).find(n => n.type === "edit-workspace").props.generatedVideo, asset);
       const acceptedDemos = []; recovery.acceptAsset = (role, value) => { acceptedDemos.push([role,value.id]); return true; };
-      demoMenu.props.onChooseAssets(); tree = render(); picker = nodes(tree).find(n => n.type === "video-picker");
+      demoMenu.props.onChooseAssets(); tree = render(); picker = nodes(tree).find(n => n.type === "video-picker" && n.props.library !== "generation_history");
       assert.match(picker.props.description, /Demo screen/); assert.equal(picker.props.library,"content"); assert.equal(picker.props.onSelect({...asset,id:"ordinary-video"}),false); assert.equal(picker.props.onSelect({...asset,id:"replacement-demo",sourceType:"demo_upload"}), true);
       assert.deepEqual(acceptedDemos, [["demo","replacement-demo"]]); picker.props.onOpenChange(false); tree = render();
       assert.equal(nodes(tree).find(n => n.type === "creation-panel").props.section, "edit");
@@ -251,7 +256,42 @@ test("Content Demo picker uses its own inventory and cache, excluding ordinary c
   const tree = rt.render(() => mod.WorkflowVideoAssetPicker(props));
   assert.equal(calls[0].url, "/api/demo/sources"); assert.equal(calls[0].headers.Authorization, "Bearer owned-token");
   assert.equal(nodes(tree).filter(n => n.type === "button" && "aria-pressed" in n.props).length, 1);
-  assert.match(text(tree).replace(/\s+/g, " "), /Choose from Demo/); rt.unmount();
+  assert.match(text(tree).replace(/\s+/g, " "), /Choose from Demo/);
+  data = [];
+  const empty = rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.match(text(empty), /Upload a video on the Demo screen, then choose it here/);
+  assert.doesNotMatch(text(empty), /Upload one here/);
+  assert.equal(nodes(empty).some(node => node.type === "input" || node.type === "button" && /upload/i.test(text(node))), false);
+  rt.unmount();
+});
+
+test("Generation history lists only ready generations, requires an explicit choice and separates owners", async () => {
+  const rt = runtime(), calls = [];
+  let query, data; const selected = [], closed = [];
+  const policy = load("lib/explore/workflow-source-video.ts", {});
+  const demo = { id: "00000000-0000-4000-8000-000000000001", status: "ready", sourceType: "generated_video", collection: "video", mimeType: "video/mp4", url: "/demo.mp4", title: "My demo" };
+  const mod = load("components/explore/workflow-video-asset-picker.tsx", {
+    react: rt.react, "react/jsx-runtime": jsx, "next/image": { default: "image" }, "lucide-react": { Video: "video-icon" },
+    "@tanstack/react-query": { useQuery: input => { query = input; return { data, isPending: !data }; } },
+    "@/lib/http/read-deadline": { withReadDeadline: action => action(new AbortController().signal) },
+    "@/components/ui/button": { Button: "button" }, "@/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogHeader", "DialogTitle"].map(n => [n, n])),
+    "@/lib/explore/workflow-source-video": policy, "@/lib/firebase/auth": { getCurrentUserIdToken: async owner => { assert.equal(owner, "owner"); return "owned-token"; } },
+  }, { fetch: async (url, init) => { calls.push({ url, ...init }); return Response.json({ ok: true, assets: [demo, { ...demo, status: "processing", id: "00000000-0000-4000-8000-000000000004" }, { ...demo, sourceType: "demo_upload", id: "00000000-0000-4000-8000-000000000002" }] }); } });
+  const props = { open: false, library: "generation_history", ownerId: "owner", onSelect(value) { selected.push(value); return selected.length > 1; }, onOpenChange(value) { closed.push(value); } };
+  rt.render(() => mod.WorkflowVideoAssetPicker(props)); assert.equal(query.enabled, false); assert.equal(calls.length, 0);
+  props.open = true; rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.deepEqual(Array.from(query.queryKey), ["explore-source-videos", "owner", "generation_history"]);
+  data = await query.queryFn({ signal: new AbortController().signal });
+  const tree = rt.render(() => mod.WorkflowVideoAssetPicker(props));
+  assert.equal(calls[0].url, "/api/media?collection=video&sourceTypes=generated_video"); assert.equal(calls[0].headers.Authorization, "Bearer owned-token");
+  assert.equal(nodes(tree).filter(n => n.type === "button" && "aria-pressed" in n.props).length, 1);
+  assert.match(text(tree).replace(/\s+/g, " "), /Generation history/);
+  assert.equal(selected.length, 0, "Opening history cannot replace a selected clip");
+  const row = nodes(tree).find(n => n.type === "button" && "aria-pressed" in n.props);
+  row.props.onClick(); assert.equal(closed.length, 0, "A rejected selection keeps the drawer open");
+  row.props.onClick(); assert.deepEqual(closed, [false]);
+  props.ownerId = null; rt.render(() => mod.WorkflowVideoAssetPicker(props)); assert.equal(query.enabled, false);
+  assert.equal(query.queryKey[1], null); rt.unmount();
 });
 
 test("Creative Assets fetch is owner-authenticated, excludes demos/unfinished/non-video rows, and does no work while closed", async () => {

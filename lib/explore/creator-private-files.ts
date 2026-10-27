@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 /** Plain imports are local review material. Releases contain authenticated ciphertext only. */
 export function readCreatorPrivateFile(relativePath: string): Buffer {
-  if (!/^(?:creator-(?:accounts|account-reviews|slideshows|slide-text)\.json|creator-(?:account|slideshow)-media\/[a-f0-9]{64}\.(?:png|mp4|jpg|webp))$/.test(relativePath)) throw new Error("Unknown creator package path.");
+  if (!/^(?:creator-(?:accounts|account-reviews|middle-frame-prompts|slideshows|slide-text)\.json|creator-(?:account|slideshow)-media\/[a-f0-9]{64}\.(?:png|mp4|jpg|webp))$/.test(relativePath)) throw new Error("Unknown creator package path.");
   const plain = join(process.cwd(), "lib/explore", relativePath);
   if (process.env.NODE_ENV !== "production" && existsSync(plain)) return readFileSync(plain);
   const secret = process.env.CREATOR_PRIVATE_PACKAGE_KEY?.trim();
@@ -21,6 +21,10 @@ export function readCreatorPrivateFile(relativePath: string): Buffer {
 
 export function readCreatorPrivateJson<T>(relativePath: string, empty: T): T {
   const local = process.env.NODE_ENV !== "production" && existsSync(join(process.cwd(), "lib/explore", relativePath));
+  // An older deployed package lacks only the newly assigned prompt file. Keep
+  // unrelated galleries/routes readable; full-recreation admission rejects a
+  // missing assignment before billing rather than using a later pose silently.
+  if (relativePath === "creator-middle-frame-prompts.json" && !local && !existsSync(join(process.cwd(), "lib/explore", relativePath + ".enc"))) return empty;
   // Public-clone tests and builds have no customer package key. Collections stay absent.
   if (!local && !process.env.CREATOR_PRIVATE_PACKAGE_KEY?.trim()) return empty;
   return JSON.parse(readCreatorPrivateFile(relativePath).toString("utf8")) as T;

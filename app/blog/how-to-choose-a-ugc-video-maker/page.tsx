@@ -220,6 +220,7 @@ export default function HowToChooseAUgcVideoMakerPage() {
       </ArticleBody>
       <VideoRelatedLinks
         links={[
+          { href: "/blog/ai-content-creation-tools-small-teams", title: "Best marketing tools for SaaS founders", description: "AI content creation, UGC video generators, and MCP workflows for small teams." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },
           { href: "/blog/ai-ugc-for-tiktok-ads", title: "AI UGC for TikTok ads", description: "Briefs, hooks, captions, disclosure, and how to test variants." },
           { href: "/blog/ugc-ad-script-templates", title: "UGC ad script templates", description: "Eight fill-in-the-blank formats with hooks, beats, and timings." },

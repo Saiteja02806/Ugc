@@ -152,6 +152,13 @@ const TrendingContentMixDialog = dynamic(
   { loading: TrendingContentMixDialogLoading },
 );
 
+const TrendingSlideshowAutomationWorkspace = dynamic(
+  () =>
+    import(
+      "@/components/trending/trending-slideshow-automation-workspace"
+    ).then((module) => module.TrendingSlideshowAutomationWorkspace),
+);
+
 const PlatformSelectionModal = dynamic(
   () =>
     import("@/components/social/platform-selection-modal").then(
@@ -803,6 +810,7 @@ export function TrendingWorkspace() {
   const [headerActionsRoot, setHeaderActionsRoot] =
     useState<HTMLDivElement | null>(null);
   const [contentMixOpen, setContentMixOpen] = useState(false);
+  const [automationOpen, setAutomationOpen] = useState(false);
   const [carouselHistoryError, setCarouselHistoryError] = useState<string | null>(
     null,
   );
@@ -1198,6 +1206,23 @@ export function TrendingWorkspace() {
               <span>Adjust</span>
             </Button>
             <div ref={setHeaderActionsRoot} className="flex items-center" />
+            <Button
+              data-trending-automation-control
+              type="button"
+              variant="creative-edit"
+              size="creative-edit"
+              aria-label="Configure daily slideshow automation"
+              title="Slideshow automation"
+              disabled={authLoading || !user}
+              onClick={() => setAutomationOpen(true)}
+              className="group transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary active:scale-[0.98]"
+            >
+              <Sparkles
+                data-icon="inline-start"
+                aria-hidden="true"
+              />
+              <span>Automation</span>
+            </Button>
           </div>
         </header>
 
@@ -1242,6 +1267,13 @@ export function TrendingWorkspace() {
               }
             }}
             onOpenChange={setContentMixOpen}
+          />
+        ) : null}
+        {automationOpen && user ? (
+          <TrendingSlideshowAutomationWorkspace
+            open
+            userId={user.uid}
+            onClose={() => setAutomationOpen(false)}
           />
         ) : null}
       </div>

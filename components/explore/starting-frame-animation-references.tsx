@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FormatGenerationReferences } from "./format-generation-references";
 import { fetchAIStudioMediaAsset } from "@/lib/ai-studio/media-client";
 import type { AIStudioReferenceMedia } from "@/lib/ai-studio/reference-media-upload";
@@ -14,13 +14,14 @@ import type { HookStartingFrameSelection } from "@/lib/explore/hook-keyframe-cli
 import { hookStartingFrameFaceReferenceLimit } from "@/worker/src/lib/hook-starting-frame-video";
 import styles from "./starting-frame-animation-references.module.css";
 
-export function StartingFrameAnimationReferences({ frame, model, photos, onPhotosChange, onSelectFrame, onClearFrame, previewFrames, previewInfluencers, ownerId, preview, active = true, disabled, onPendingChange, onErrorChange }: {
+export function StartingFrameAnimationReferences({ frame, model, photos, onPhotosChange, onSelectFrame, onClearFrame, previewFrames, previewInfluencers, ownerId, preview, active = true, disabled, onPendingChange, onErrorChange, frameControl }: {
   frame: HookStartingFrameSelection; model: string; photos: AIStudioReferenceMedia[];
   onPhotosChange: (photos: AIStudioReferenceMedia[]) => void;
   onSelectFrame?: (frame: HookStartingFrameSelection) => void; onClearFrame?: () => void;
   previewFrames?: HookStartingFrameSelection[]; previewInfluencers?: MediaAsset[];
   ownerId?: string; preview: boolean; active?: boolean; disabled: boolean;
   onPendingChange: (pending: boolean) => void; onErrorChange: (error: string | null) => void;
+  frameControl?: ReactNode;
 }) {
   const limit = hookStartingFrameFaceReferenceLimit(model);
   const [selectionError, setSelectionError] = useState<string | null>(null);
@@ -77,9 +78,9 @@ export function StartingFrameAnimationReferences({ frame, model, photos, onPhoto
     }
   }
   return <div className={styles.root} data-starting-frame-references>
-    <FormatGenerationReferences startingFrame={frame} startingFramesOnly onSelectStartingFrame={onSelectFrame} onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
+    {frameControl ?? <FormatGenerationReferences startingFrame={frame} startingFramesOnly onSelectStartingFrame={onSelectFrame} onClearStartingFrame={onClearFrame} previewStartingFrames={previewFrames}
       heading="Starting frame" selection={null} imageSelections={[]} imagePurpose="general" videoInputEnabled={false} audioInputEnabled={false}
-      active={active} ownerId={ownerId} preview={preview} disabled={disabled} onChange={() => {}} onPendingChange={onPendingChange} onErrorChange={onErrorChange} />
+      active={active} ownerId={ownerId} preview={preview} disabled={disabled} onChange={() => {}} onPendingChange={onPendingChange} onErrorChange={onErrorChange} />}
     <div className={styles.faces}>
       <FormatGenerationReferences heading="Your photos" inlineImagePicker imagePresentation="person-strip" imagePurpose="person" imagePickerDisabled={!limit}
         selection={photos[0] ?? null} imageSelections={photos} onImagesChange={onPhotosChange} maxImages={limit || hookStartingFrameFaceReferenceLimit("google_omni")}

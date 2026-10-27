@@ -1,0 +1,57 @@
+.screen {
+  display: grid;
+  min-height: calc(100dvh - 4rem);
+  place-items: center;
+  padding: 24px 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  text-align: center;
+}
+
+.icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 20px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+  color: var(--primary);
+}
+
+.icon svg { width: 24px; height: 24px; }
+.title { margin: 0; color: var(--foreground); font-size: 24px; font-weight: 600; line-height: 1.25; letter-spacing: -0.025em; }
+.description { margin: 12px 0 24px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.actions { display: grid; gap: 10px; }
+
+.primaryAction,
+.secondaryAction {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.primaryAction { background: var(--primary); color: var(--primary-foreground); }
+.primaryAction:hover { background: var(--primary-hover); }
+.secondaryAction { border: 1px solid var(--border-strong); background: var(--card); color: var(--foreground); }
+.secondaryAction:hover { background: var(--card-muted); }
+.backLink { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 12px; border-radius: 6px; padding: 0 8px; color: var(--muted); font-size: 13px; text-decoration: none; }
+.backLink:hover { color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; }
+.backLink:focus-visible,
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+
+@media (min-width: 768px) { .screen { min-height: 100dvh; } }
+@media (max-width: 380px) { .card { padding: 28px 20px; } .title { font-size: 22px; } }

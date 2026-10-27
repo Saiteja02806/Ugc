@@ -21,11 +21,23 @@ export type CompletedTrendingFeedReconciliation = {
  * profile/timezone is intentionally skipped: the first signed-in Trending
  * request establishes the user's local day and will prepare that feed.
  */
+async function defaultSweepSlideshowAutomation(userId: string) {
+  const { sweepActiveSlideshowAutomationForUser } = await import(
+    "@/lib/trending/slideshow-automation-service"
+  );
+  await sweepActiveSlideshowAutomationForUser({ userId });
+}
+
 export async function reconcileCompletedTrendingFeedForUser(
   userId: string,
-  dependencies = {
+  dependencies: {
+    getProfile: typeof getBusinessProfileForUser;
+    ensureFeed: typeof ensureUnifiedTrendingDailyFeed;
+    sweepSlideshowAutomation?: (userId: string) => Promise<unknown>;
+  } = {
     getProfile: getBusinessProfileForUser,
     ensureFeed: ensureUnifiedTrendingDailyFeed,
+    sweepSlideshowAutomation: defaultSweepSlideshowAutomation,
   },
 ): Promise<CompletedTrendingFeedReconciliation> {
   const profile = await dependencies.getProfile(userId);
@@ -52,6 +64,14 @@ export async function reconcileCompletedTrendingFeedForUser(
       return { feedId: null, feedState: null, pendingSlotCount: 0, skipped: true };
     }
     throw error;
+  }
+
+  if (dependencies.sweepSlideshowAutomation) {
+    try {
+      await dependencies.sweepSlideshowAutomation(userId);
+    } catch {
+      // Isolate slideshow automation sweep so worker Trending reconciliation never fails.
+    }
   }
 
   return {

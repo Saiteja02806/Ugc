@@ -64,7 +64,7 @@ export default function FreeHookLinesPage() {
           <Image src="/brand/ugc-pilot-icon-dark-theme.png" alt="" width={30} height={30} unoptimized />
           <span>UGC Pilot</span>
         </Link>
-        <span className={styles.headerLabel}>Free hook library</span>
+        <Link href="/free-tools" className={styles.headerLabel}>Free tools</Link>
       </header>
 
       <section className={styles.hero} aria-labelledby="resource-title">

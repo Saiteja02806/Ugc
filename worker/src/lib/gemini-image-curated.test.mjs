@@ -83,6 +83,30 @@ test("curated receipts still reject wrong models and changed source bytes before
   assert.equal(requests.length, 0);
 });
 
+test("incident UGC-VID-017: creator-account-1-01 v3 Gemini Pro accepts its 1.7s frame but rejects changed bytes and model", async () => {
+  const historical = creatorFrames.frames.find(item => item.referenceId === "creator-account-1-01");
+  assert.ok(historical, "Retain the exact historical creator-frame receipt");
+  assert.equal(historical.timeSeconds, 1.7);
+  // Public CI exercises the identical v3/model contract with a public frame;
+  // owner workspaces additionally replay the exact historical private pixels.
+  const hasHistoricalPixels = existsSync(privatePath(historical));
+  const frame = hasHistoricalPixels ? historical : publicFrames.frames[0];
+  const png = readFileSync(hasHistoricalPixels ? privatePath(frame) : publicPath(frame));
+  requests.length = 0;
+  await generate(frame, "gemini_3_pro", png);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].model, "gemini-3-pro-image");
+  assert.equal(requests[0].input[1].data, png.toString("base64"));
+  const changed = Buffer.from(png); changed[changed.length - 1] ^= 1;
+  await assert.rejects(generate(frame, "gemini_3_pro", changed), /downloaded source image/);
+  await assert.rejects(generate(frame, "gemini_3_pro", png, value => {
+    value.imageModel = "nano_banana_2";
+    value.inputKey = hookKeyframeGenerationInputKey(value);
+    return value;
+  }), /model or reference inputs/);
+  assert.equal(requests.length, 1, "Invalid requests must never reach the provider");
+});
+
 for (const [version, model] of [[1, "nano_banana_2"], [2, "nano_banana_2"], [2, "gemini_3_pro"]]) {
   test(`legacy v${version} ${model} keeps its existing model and reference behavior`, async () => {
     const frame = publicFrames.frames[0], png = readFileSync(publicPath(frame));

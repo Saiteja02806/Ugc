@@ -59,7 +59,7 @@ export function LandingHeroShowcase() {
 
               {/* Video preview */}
               <LandingPreviewVideo
-                src={previewAssets.talkingHead.src}
+                src={previewAssets.videos.wallLeft.src}
                 desktopOnly
                 poster={`${heroMediaPath}/left_side-v3.webp`}
                 title="Talking Head UGC video preview"
@@ -88,7 +88,7 @@ export function LandingHeroShowcase() {
 
               {/* Supplied middle video playback */}
               <LandingPreviewVideo
-                src={previewAssets.hookDemo.src}
+                src={previewAssets.videos.hookPrimary.src}
                 poster={`${heroMediaPath}/middle.webp`}
                 title="Hook video preview"
               />

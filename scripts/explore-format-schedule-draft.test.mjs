@@ -1,3 +1,4 @@
+import * as timeDisplay from "../lib/scheduling/time-display.ts";
 import * as scheduleTransport from "../lib/explore/workflow-schedule-transport.ts";
 import assert from "node:assert/strict";
 import { createScheduleCacheFixture } from "./scheduling-cache-test-helpers.mjs";
@@ -22,10 +23,14 @@ const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof
 test("the shared workflow time field preserves 24-hour values and the rest of the scheduling draft", () => {
   const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
   const imports = {
+    "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
+    "@/components/scheduling/use-device-time-format": { useDeviceTimeFormat: () => false },
+    "@/lib/scheduling/time-display": timeDisplay,
     react: { useId: () => "schedule-test" }, "react/jsx-runtime": jsx,
     "lucide-react": { Check: "Check" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "SocialPlatformIcon" },
     "@/components/ui/button": { Button: "Button" }, "@/components/ui/input": { Input: "Input" },
+    "@/components/scheduling/workflow-time-picker": { WorkflowTimePicker: "time-picker" },
     "@/components/scheduling/post-caption-field": { PostCaptionField: "PostCaptionField" },
     "@/components/explore/workflow-creation.module.css": { default: {} },
     "@/components/explore/workflow-schedule-review.module.css": { default: {} },
@@ -39,14 +44,28 @@ test("the shared workflow time field preserves 24-hour values and the rest of th
     const current = { ...draft, time, timezone: "Asia/Calcutta" };
     let next;
     const tree = exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = value; }, timezone: current.timezone });
-    const field = nodes(tree).find(node => node.props?.name === "postTime");
-    assert.equal(field.props.type, "text", "Browser locale must not introduce a 12-hour picker");
+    const field = nodes(tree).find(node => node.type === "time-picker");
     assert.equal(field.props.value, time);
-    assert.match(time, new RegExp(`^(?:${field.props.pattern})$`));
-    for (const invalid of ["24:00", "12:60", "5:30 PM", "17:3"]) assert.doesNotMatch(invalid, new RegExp(`^(?:${field.props.pattern})$`));
-    field.props.onChange({ target: { value: "17:30" } });
-    assert.deepEqual(normalize(next), { ...current, time: "17:30" });
+    field.props.onChange("17:30");
+    assert.deepEqual(normalize(next), { ...current, time: "17:30", publishMode: "scheduled" });
     assert.equal(current.time, time, "Editing must not mutate the existing draft");
+  }
+  let current = { ...draft }, next;
+  const render = () => exported.WorkflowSchedulingPanel({ draft: current, onChange: value => { next = value; }, timezone: "Asia/Calcutta" });
+  for (const preset of [5, 60, 180, "tomorrow"]) {
+    nodes(render()).find(node => node.type === "quick-actions").props.onSelect({ date: "2099-12-02", time: "09:00" }, preset);
+    current = next;
+    assert.equal(current.fiveMinutesFromSubmit === true, preset === 5);
+    assert.equal(current.publishMode, "scheduled");
+    assert.equal(current.caption, draft.caption);
+    assert.deepEqual(current.connectionIds, draft.connectionIds);
+  }
+  for (const control of ["time-picker", "Input"]) {
+    current = { ...draft, fiveMinutesFromSubmit: true };
+    const field = nodes(render()).find(node => node.type === control);
+    field.props.onChange(control === "Input" ? { target: { value: "2099-12-03" } } : "21:30");
+    assert.equal(next.fiveMinutesFromSubmit, undefined, "Either manual field clears relative intent");
+    assert.equal(next.caption, draft.caption);
   }
 });
 
@@ -65,6 +84,13 @@ test("a deliberately cleared caption survives draft reload without reapplying th
   const restored = drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key, cleared), key);
   assert.equal(restored.caption, ""); assert.equal(restored.captionInitialized, true);
   assert.equal(drafts.readFormatScheduleDraft(JSON.stringify({ version: 1, key, draft: { ...cleared, captionInitialized: "true" } }), key), null);
+});
+
+test("five-minute intent survives unsent draft reload without changing exact legacy drafts", () => {
+  const key = drafts.formatScheduleDraftKey(scope), relative = { ...draft, fiveMinutesFromSubmit: true };
+  assert.deepEqual(drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key, relative), key), relative);
+  for (const value of ["true", 5, {}]) assert.equal(drafts.readFormatScheduleDraft(JSON.stringify({ version: 1, key, draft: { ...draft, fiveMinutesFromSubmit: value } }), key), null);
+  assert.deepEqual(drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key, draft), key), draft);
 });
 
 test("saved caption defaults wait for owned draft and schedule recovery before the form becomes eligible", () => {
@@ -127,7 +153,10 @@ function harness(storage = new Map(), { allowReview = false, allowConfirm = fals
   };
   react.useLayoutEffect = react.useEffect;
   const jsx = { jsx: (type, props, key) => ({ type, props, key }), jsxs: (type, props, key) => ({ type, props, key }), Fragment: "fragment" };
-  const imports = { react, "react/jsx-runtime": jsx, "react-dom": { createPortal: children => children },
+  const imports = {
+    "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
+    "@/components/scheduling/use-device-time-format": { useDeviceTimeFormat: () => false },
+    "@/lib/scheduling/time-display": timeDisplay, react, "react/jsx-runtime": jsx, "react-dom": { createPortal: children => children },
     "@/lib/explore/schedule-repeat-intent": repeatIntent,
     "@tanstack/react-query": { useQueryClient: () => cache.queryClient },
     "@/lib/scheduling/account-data-query": cache.api,
@@ -206,11 +235,14 @@ test("rejected format requests use the corrected time without changing their ide
 });
 
 test("uncertain format requests replay exact input after visible time and caption changes", async () => {
+  for (const relative of [false, true]) {
   const account=randomUUID(); let count=0;
   const h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account,transport:async(_url,options)=>{ if(options.method === "POST" && ++count === 1) throw Error("Lost acknowledgement"); }});
-  h.render(); h.hydrate(); h.form().onChange({...draft,connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
+  h.render(); h.hydrate(); h.form().onChange({...draft,...(relative ? { date: "2000-01-01", fiveMinutesFromSubmit: true, publishMode: "scheduled" } : {}),connectionId:account,connectionIds:{instagram:account}}); h.render(); clickSchedule(h); await settle(); h.render();
   h.form().onChange({...h.form().draft,caption:"Changed",time:"19:45"}); h.render(); clickSchedule(h); await settle(); h.render();
   const posts=h.requests.filter(request=>request.options.method === "POST"); assert.equal(posts.length,2); assert.equal(posts[1].options.body,posts[0].options.body);
+  assert.equal(JSON.parse(posts[0].options.body).useDefaultScheduleTime, relative ? true : undefined);
+  }
 });
 
 test("Hook, Wall and Slideshow can schedule the same output an hour later with a fresh intent", async () => {
@@ -293,4 +325,28 @@ test("posting settings can be completed during preparation and remain intact whe
   assert.deepEqual(normalize(h.form().draft), draft);
   assert.equal(nodes(h.form().footer).find(node => node.type === "Button" && node.props?.size === "lg").props.disabled, false);
   assert.equal(h.externalCalls, 0);
+});
+
+
+test("Post now keeps manual time/zone in saved drafts and rejects unknown modes", () => {
+  const key = drafts.formatScheduleDraftKey(scope);
+  const current = { ...draft, timezone: "Asia/Calcutta", publishMode: "now" };
+  const restored = drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key,current),key);
+  assert.deepEqual(restored,current);
+  assert.equal(drafts.readFormatScheduleDraft(drafts.serializeFormatScheduleDraft(key,{...current,publishMode:"automatic-anything"}),key),null);
+});
+
+test("Post now in Hook, Wall and Slideshow needs no manual time and submits only on confirmation", async () => {
+  for (const format of ["hook","wall_text","slideshow"]) {
+    const account=randomUUID(), h=harness(new Map(),{allowReview:true,allowConfirm:true,reviewAccountId:account});
+    h.props.format=format; h.props.imageOnly=format === "slideshow";
+    if(h.props.imageOnly)h.props.output={...output,kind:"library_item"};
+    h.render();h.hydrate(); h.form().onChange({...draft,date:"",time:"",publishMode:"now",connectionId:account,connectionIds:{instagram:account}});h.render();
+    assert.equal(h.externalCalls,0); assert.match(String(nodes(h.form().footer).find(node=>node.type==="Button"&&node.props.size==="lg").props.children),/Post now/);
+    clickSchedule(h);await settle();h.render();
+    const posts=h.requests.filter(request=>request.options.method==="POST");assert.equal(posts.length,1);
+    const request=JSON.parse(posts[0].options.body);assert.equal(request.useDefaultScheduleTime,true);
+    assert.equal(request.targets[0].connectionId,account);assert.ok(Date.parse(request.scheduledFor)>Date.now());
+    assert.equal(h.cache.data().schedules.length,1);
+  }
 });

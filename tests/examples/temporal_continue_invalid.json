@@ -1,0 +1,13 @@
+{
+  "mode": "continue_from_anchor",
+  "source_anchor_sec": 1.5,
+  "segments": [
+    {
+      "source_anchor_sec": 1.5,
+      "timeline_events": [
+        {"generated_start_sec": 0.0, "source_start_sec": 0.0, "description": "INCORRECT: restarts source at opening despite midframe image"},
+        {"generated_start_sec": 0.5, "source_start_sec": 0.5, "description": "INCORRECT: pre-anchor gesture injected after selected image"}
+      ]
+    }
+  ]
+}

@@ -80,8 +80,10 @@ test("adding Hook 100 keeps old approved opening receipts recoverable and upgrad
   assert.equal(serializeHookKeyframeDraft(restored), saved, "Updating preparation never rewrites its frozen legacy approval");
   assert.ok(parseHookKeyframeGenerationReceipt(originalReceipt), "Previously accepted request still uses its original input and frame");
   const nextPrompt = getHookKeyframePromptPreview(next);
-  assert.match(nextPrompt.directions, /glasses are already off/);
-  assert.doesNotMatch(nextPrompt.directions, /remove (?:the )?glasses|adjust (?:the )?glasses/i);
+  assert.match(nextPrompt.directions, /OPENING: PHASE \[0/);
+  assert.match(nextPrompt.directions, /Pull the glasses forward/);
+  assert.match(nextPrompt.directions, /final frame/);
+  assert.doesNotMatch(nextPrompt.directions, /glasses are already off|do not repeat a gesture that has already finished/i);
   assert.ok(getHookKeyframePromptPreview(restored).animationPrompt, "Legacy frame-zero motion remains available through history");
 });
 test("hidden sources and changed approved source versions fail without decoding an opening fallback", async () => {

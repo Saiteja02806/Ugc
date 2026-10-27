@@ -30,23 +30,36 @@ async function main() {
     }
     if(req.url==="/bundle.js"){res.setHeader("Content-Type","text/javascript");return res.end(fs.readFileSync(path.join(out,"bundle.js")));}
     if(req.url==='/reference-crop.png'&&process.env.FONT_REFERENCE_CROP){res.setHeader('Content-Type','image/png');return res.end(fs.readFileSync(process.env.FONT_REFERENCE_CROP));}
-    if(req.url.startsWith("/explore-text-fonts/")&&/^\/explore-text-fonts\/[a-z]+-(400|500|700)\.woff2$/.test(req.url)){res.setHeader("Content-Type","font/woff2");return res.end(fs.readFileSync(path.join(root,"public",req.url)));}
+    if(req.url.startsWith("/explore-text-fonts/")&&/^\/explore-text-fonts\/[a-z]+-(400|500|600|700)\.woff2$/.test(req.url)){res.setHeader("Content-Type","font/woff2");return res.end(fs.readFileSync(path.join(root,"public",req.url)));}
     if(req.url==="/background.png"){res.setHeader("Content-Type","image/png");return res.end(fs.readFileSync(path.join(root,"public/ai-studio/creator-references/creator-01.png")));}
     res.setHeader("Content-Type","text/html; charset=utf-8");res.end('<html class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>');
   });
   await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));let browser;
   try {
+    // Exercise actual asset responses independently when browser access is unavailable.
+    if(process.env.FONT_FIXTURE_ASSETS_ONLY==='1') {
+      const files=[...new Set([...css.matchAll(/url\("(\/explore-text-fonts\/[a-z]+-\d+\.woff2)"\)/g)].map(match=>match[1]))];
+      assert.ok(files.includes('/explore-text-fonts/proximanovaa-600.woff2'));
+      for(const file of files) {
+        const response=await fetch(`http://127.0.0.1:${server.address().port}${file}`);
+        assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'font/woff2');
+        assert.deepEqual(Buffer.from(await response.arrayBuffer()),fs.readFileSync(path.join(root,'public',file)));
+      }
+      console.log(`PASS: compiled actual editor components; ${files.length} actual font HTTP responses match packaged bytes (including Proxima600). Browser UI NOT TESTED.`);
+      return;
+    }
     let pw;try{pw=require("playwright");}catch{pw=require(path.join(process.env.USERPROFILE,".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"));}
     browser=await pw.chromium.launch({headless:true,...(process.platform==="win32"?{channel:"msedge"}:{})});const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.on("pageerror",e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${server.address().port}`);
     const select=page.getByRole("combobox",{name:"Text font",exact:true}),weight=page.getByRole("combobox",{name:"Text weight",exact:true});
-    // Existing Medium choices remain; newly added text starts in Poppins Bold.
+    // Existing Medium choices remain; new text uses the supplied Proxima Semibold.
     assert.equal(await weight.inputValue(),"500");
-    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"poppins");assert.equal(await weight.inputValue(),"700");
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"proximanovaa");assert.equal(await weight.inputValue(),"600");
     assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
     await page.getByRole('textbox',{name:'Overlay text',exact:true}).fill('A fresh caption');
     await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
     await page.getByRole('button',{name:'Edit text block 2',exact:true}).click();
-    assert.equal(await select.inputValue(),'poppins');assert.equal(await weight.inputValue(),'700');
+    assert.equal(await select.inputValue(),'proximanovaa');assert.equal(await weight.inputValue(),'600');
+    assert.equal(await weight.locator('option').count(),1);
     assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
     await page.getByRole("button",{name:"Remove text block 2",exact:true}).click();assert.equal(await weight.inputValue(),"500");
     for(const font of ["inter","dmsans","robotocondensed","montserrat","tiktoksans","poppins"]) for(const value of ["400","500","700"]) {
@@ -160,12 +173,33 @@ async function main() {
     }
     console.log('PASS: Poppins Bold with thick black outline survives save/reopen and renders on desktop/mobile.');
 
+    await select.selectOption('proximanovaa');
+    assert.equal(await weight.inputValue(),'600');assert.equal(await weight.locator('option').count(),1);
+    await page.getByRole('button',{name:'Save edits',exact:true}).click();await page.reload();
+    assert.equal(await select.inputValue(),'proximanovaa');assert.equal(await weight.inputValue(),'600');
+    for(const viewport of [{width:1366,height:768},{width:390,height:844}]) {
+      await page.setViewportSize(viewport);
+      const loaded=await page.locator('svg[aria-label="Text preview"] > g').first().evaluate(async node=>{
+        const family=node.getAttribute('font-family');
+        const faces=await document.fonts.load('600 32px "'+family+'"');
+        return {family,loaded:faces.length>0&&faces.every(face=>face.status==='loaded')};
+      });
+      assert.equal(loaded.family,'UGCExploreProximaNovaASemiboldW600');assert.equal(loaded.loaded,true);
+      assert.equal(await page.getByRole('textbox',{name:'Overlay text',exact:true}).inputValue(),matchingCopy);
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      await select.scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(out,`proxima-${viewport.width}.png`),fullPage:true});
+      await page.locator('.portrait').screenshot({path:path.join(out,`proxima-preview-${viewport.width}.png`)});
+    }
+    // Existing preset assertions exercise their actual Regular/Bold faces.
+    await select.selectOption('poppins');await weight.selectOption('700');
+
     await page.goto(`http://127.0.0.1:${server.address().port}?wall=1`);assert.equal(await select.count(),0);await page.getByRole("button",{name:"Edit",exact:true}).click();await select.waitFor();assert.equal(await page.getByRole("spinbutton",{name:"Text start time"}).count(),0);
     await checkPresetSwitch(true);
-    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"poppins");assert.equal(await weight.inputValue(),"700");
+    await page.getByRole("button",{name:"Add text",exact:true}).click();assert.equal(await select.inputValue(),"proximanovaa");assert.equal(await weight.inputValue(),"600");
     assert.equal(await page.getByRole('slider',{name:'Text outline thickness',exact:true}).inputValue(),'8');
     if(process.env.FONT_REFERENCE_CROP){await page.setViewportSize({width:720,height:850});await page.goto(`http://127.0.0.1:${server.address().port}/compare`);await page.evaluate(()=>document.fonts.ready);await page.locator('.comparison').screenshot({path:path.join(out,'poppins-reference-comparison.png')});}
-    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to white Poppins Bold with outline 8; all 18 bundled faces loaded, preview changed, save/reopen preserved choices, Wall advanced-only controls, laptop/mobile fit. "+out);
+    assert.deepEqual(errors,[]);console.log("PASS: new Hook/Wall text defaults to Proxima Nova A Semibold600; 19 bundled faces loaded, saved choices retained, Wall advanced-only controls, laptop/mobile fit. "+out);
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

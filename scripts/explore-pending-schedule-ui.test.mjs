@@ -307,6 +307,24 @@ test("a delayed preparation poll cannot restore an archived intent or overwrite 
   assert.equal(h.values.get(key), replacement, "Old status cannot restore the previous request"); h.unmount();
 });
 
+test("pending render schedules a stale five-minute preview at confirmation and recovers a lost reply without reposting", async () => {
+  const h = fixture({ loseResponse: true });
+  h.props.draft = { ...h.props.draft, date: "2000-01-01", fiveMinutesFromSubmit: true, publishMode: "scheduled" };
+  await h.form();
+  assert.equal(h.calls.some(call => call.method === "POST"), false);
+  h.button("Schedule post").props.onClick(); await settle(); h.render();
+  const posts = h.calls.filter(call => call.method === "POST");
+  assert.equal(posts.length, 1);
+  const request = JSON.parse(posts[0].body);
+  assert.equal(request.schedule.useDefaultScheduleTime, true);
+  assert.ok(Date.parse(request.schedule.scheduledFor) > Date.now());
+  assert.deepEqual(request.draft, finishDraft);
+  assert.equal(request.schedule.targets[0].connectionId, id(3));
+  await h.tick();
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  h.unmount();
+});
+
 test("reply verification rejects wrong snapshots and allows existing provider defaults", () => {
   const saved = savedEntry(); assert.equal(client.verifyExploreScheduleReply(reply(), saved).preparation.state, "preparing");
   const defaults = reply(); const planned = JSON.parse(defaults.schedule.metadata.plannedTargetsJson); planned[0].settings.extraDefault = false; defaults.schedule.metadata.plannedTargetsJson = JSON.stringify(planned);

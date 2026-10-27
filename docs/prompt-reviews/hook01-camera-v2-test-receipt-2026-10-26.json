@@ -1,0 +1,20 @@
+{
+  "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+  "model": "gemini-omni-1.1-flash",
+  "operationId": "v1_ChdCVF9mYXBMQ0pJWDl2ZElQd1lLQWdRcxIXQlRfZmFwTENKSVg5dmRJUHdZS0FnUXM",
+  "openingSha256": "707b3aac1fa74865af7a1935f1db666cfaff6c999c17392be81a65fe10a8de9c",
+  "videoSha256": "4bcd76f23bc29727013bd4a1955610e9998a43835ea315b639f1fceea07ed4bf",
+  "duration": 3,
+  "frames": 72,
+  "imageInputs": 1,
+  "extraPortraits": 0,
+  "newImageSubmissions": 0,
+  "videoSubmissions": 1,
+  "automaticRetries": 0,
+  "providerPromptAndImageVerified": true,
+  "rawAndSilentFramesEqual": true,
+  "duplicateGuardPassed": true,
+  "status": "IMPROVED_PARTIAL_PASS_NOT_ROLLOUT",
+  "applicationChanges": 0,
+  "deployment": false
+}

@@ -3,6 +3,10 @@ import { normalizeWorkflowGenerationSettings, type WorkflowGenerationSettings } 
 import { getVideoReferencePolicy, getVideoReferenceTypeError, getVideoTimedReferenceError } from "../ai-studio/video-reference-policy";
 import type { HookStartingFrameSelection } from "./hook-keyframe-client";
 import { isHookStartingFrameVideoModel, hookStartingFrameVideoDurations } from "../../worker/src/lib/hook-starting-frame-video";
+import { startingFrameFaceReferenceError } from "./starting-frame-animation-input";
+import { ReadDeadlineError, withReadDeadline } from "../http/read-deadline";
+
+export const WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS = 30_000;
 
 export type WorkflowKind = "hook" | "phone";
 export type WorkflowImageSource = { name: string; url: string; file?: File; assetId?: string };
@@ -21,6 +25,7 @@ export type WorkflowGenerationDraft = {
   referencesPending?: boolean;
   referencesError?: string | null;
   startingFrame?: HookStartingFrameSelection | null;
+  startingFramePhotos?: WorkflowImageSource[];
 };
 export type WorkflowGenerationBatch = {
   jobs: { jobId: string; videoId: string }[];
@@ -65,6 +70,10 @@ export function getWorkflowGenerationDraftError(draft: WorkflowGenerationDraft) 
     if (!frameRatio || draft.settings.aspectRatio !== frameRatio) return "Starting-frame animation keeps your approved image's shape. Choose a matching frame.";
     if (draft.audioReference) return "Starting-frame animation cannot use an audio reference. Remove it and use Sound for generated speech, or remove the starting frame to keep audio guidance.";
     if (draft.videoReference || draft.creator || draft.referenceImages?.length || draft.appScreen) return "Remove other generation references before animating your approved starting frame.";
+    const photos = draft.startingFramePhotos ?? [];
+    if (photos.some(photo => !photo.assetId || !photo.url.startsWith("https://"))) return "Choose owned ready face photos before generating.";
+    const faceError = startingFrameFaceReferenceError(draft.settings.model, draft.startingFrame, photos.map(photo => ({ asset: { id: photo.assetId!, url: photo.url } })));
+    if (faceError) return faceError;
     return null;
   }
   // Reject before uploading or spending. Never quietly discard an attached input.
@@ -124,6 +133,7 @@ export function createWorkflowGenerationClient(dependencies: {
   createIdempotencyKey: () => string;
   assertActive: () => void;
   recovery?: WorkflowGenerationRecovery;
+  requestTimeoutMs?: number;
 }) {
   const { fetch: sendRequest } = dependencies;
   const uploaded = new Map<string, { url: string }>();
@@ -165,7 +175,7 @@ export function createWorkflowGenerationClient(dependencies: {
       // Snapshot the click, so later edits cannot change an in-flight request.
       const settings = { ...draft.settings };
       const prompt = workflowGenerationPrompt(draft);
-      const images = selectedWorkflowImages(draft).map(image => ({ ...image }));
+      const images = (draft.startingFrame ? draft.startingFramePhotos ?? [] : selectedWorkflowImages(draft)).map(image => ({ ...image }));
       const video = draft.videoReference ? { ...draft.videoReference } : draft.appScreen?.kind === "video" ? { ...draft.appScreen } : null;
       const audio = draft.audioReference ? { ...draft.audioReference } : null;
       const startingFrame = draft.startingFrame ? { ...draft.startingFrame } : null;
@@ -177,7 +187,7 @@ export function createWorkflowGenerationClient(dependencies: {
       const submission = pending;
       submitting = true;
       try {
-        if (!await dependencies.getOwnerToken()) throw new Error("Sign in before generating a video.");
+        if (!await withReadDeadline(() => dependencies.getOwnerToken(), undefined, dependencies.requestTimeoutMs ?? WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS)) throw new Error("Sign in before generating a video.");
         dependencies.assertActive();
         if (!submission.body) {
           const references = await Promise.all(images.map(prepareImage));
@@ -203,14 +213,14 @@ export function createWorkflowGenerationClient(dependencies: {
             quantity: settings.quantity,
             resolution: settings.resolution,
             aspectRatio: settings.aspectRatio,
-            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId, referenceId: startingFrame.referenceId, exploreFormat: "hook", generateAudio: startingFrame.generateAudio } : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
+            ...(startingFrame ? { startingFrameAssetId: startingFrame.assetId, startingFrameJobId: startingFrame.jobId, referenceId: startingFrame.referenceId, exploreFormat: "hook", generateAudio: startingFrame.generateAudio, ...(referenceImageUrls.length ? { referenceImageUrls, imageReferencePurpose: "person" } : {}) } : { avatarImageUrl: referenceImageUrls[0] ?? null, referenceImageUrls }),
             ...(videoReference ? { referenceVideoUrl: videoReference.url, referenceVideoAssetId: videoReference.assetId, referenceVideoDurationSeconds: videoReference.duration } : {}),
             ...(audioReference ? { referenceAudioUrls: [audioReference.url], referenceAudioAssetIds: [audioReference.assetId] } : {}),
             idempotencyKey: submission.key,
             ...(dependencies.recovery ? { workflowKind: draft.kind } : {}),
           });
         }
-        const token = await dependencies.getOwnerToken();
+        const token = await withReadDeadline(() => dependencies.getOwnerToken(), undefined, dependencies.requestTimeoutMs ?? WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS);
         if (!token) throw new Error("Sign in before generating a video.");
         dependencies.assertActive();
         if (dependencies.recovery) {
@@ -219,12 +229,18 @@ export function createWorkflowGenerationClient(dependencies: {
           recovery.onChange();
         }
         submission.attempted = true;
-        const response = await sendRequest(dependencies.recovery ? "/api/ai-studio/videos/workflow-start" : "/api/ai-studio/videos/generate", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": submission.key },
-          body: submission.body,
-        });
-        const value: unknown = await response.json().catch(() => null);
+        const { response, value } = await withReadDeadline(async signal => {
+          const response = await sendRequest(dependencies.recovery ? "/api/ai-studio/videos/workflow-start" : "/api/ai-studio/videos/generate", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": submission.key },
+            body: submission.body,
+            signal,
+          });
+          signal.throwIfAborted();
+          const value: unknown = await response.json().catch(() => null);
+          signal.throwIfAborted();
+          return { response, value };
+        }, undefined, dependencies.requestTimeoutMs ?? WORKFLOW_GENERATION_REQUEST_TIMEOUT_MS);
         dependencies.assertActive();
         if (!response.ok) throw new Error(isRecord(value) && typeof value.error === "string" ? value.error : "Video generation could not start. Retry the same request to check its saved status.");
         if (dependencies.recovery) assertAtomicReceiptResponse(value, {
@@ -238,6 +254,11 @@ export function createWorkflowGenerationClient(dependencies: {
         }
         pending = null;
         return batch;
+      } catch (error) {
+        if (error instanceof ReadDeadlineError) throw new Error(submission.attempted
+          ? "The generation reply took too long. Refresh status to recover the saved request before generating again."
+          : "Preparing generation took too long. No generation was submitted. Try again.");
+        throw error;
       } finally {
         // Keep the same key/body after a network error or an uncertain response.
         submitting = false;

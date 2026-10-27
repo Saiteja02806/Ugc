@@ -1,17 +1,17 @@
 import { estimateEditOverlayLineWidth } from "./edit-overlay-render-spec.ts";
-import { exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, isExploreTextWeight, type ExploreTextFont, type ExploreTextWeight } from "./explore-text-fonts.ts";
+import { exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, isExploreTextWeight, resolveExploreTextWeight, type ExploreTextFont, type ExploreTextWeight } from "./explore-text-fonts.ts";
 import { formatInlineRuns, formatInlineSymbolSvg, formatTextGraphemes, measureFormatInlineText } from "./explore-inline-symbols.ts";
 export { formatInlineSymbolPaths } from "./explore-inline-symbols.ts";
 export { formatTextEmojiError } from "./explore-inline-symbols.ts";
 
-export { EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily } from "./explore-text-fonts.ts";
+export { EXPLORE_TEXT_FONTS, EXPLORE_TEXT_WEIGHTS, exploreTextFontFamily, exploreTextWeights, resolveExploreTextWeight } from "./explore-text-fonts.ts";
 export type { ExploreTextFont, ExploreTextWeight } from "./explore-text-fonts.ts";
 
 export type FormatTextPreset = "bold" | "snapchat-classic";
 export type ExploreFormatText = { value: string; width: number; x?: number; y: number; fontSize: number; color: string; startMs: number; endMs: number; preset?: FormatTextPreset; backgroundOpacity?: number; font?: ExploreTextFont; fontWeight?: ExploreTextWeight; outlineWidth?: number };
 export type ExploreFormatEdit = { version: 1; format: "hook" | "wall_text"; trimStartMs: number; trimEndMs: number; originalVolume: number; musicVolume: number; text: ExploreFormatText | null; textOverlays?: ExploreFormatText[] };
 /** Initial style only; saved edits keep their explicit or legacy typography. */
-export const DEFAULT_FORMAT_TEXT_STYLE = { font: "poppins", fontWeight: 700, color: "#ffffff", outlineWidth: 8 } as const;
+export const DEFAULT_FORMAT_TEXT_STYLE = { font: "proximanovaa", fontWeight: 600, color: "#ffffff", outlineWidth: 8 } as const;
 export const MAX_FORMAT_TEXT_OVERLAYS = 20;
 export const FORMAT_TEXT_SEQUENCE_RENDER_VERSION = "explore-format-edit-text-v2";
 export function formatTextOverlays(edit: ExploreFormatEdit): ExploreFormatText[] {
@@ -32,7 +32,7 @@ export function parseExploreFormatEdit(value: unknown): ExploreFormatEdit {
         typeof t.color !== "string" || !/^#[0-9a-f]{6}$/i.test(t.color) || !finite(t.startMs) || !finite(t.endMs) || !Number.isInteger(t.startMs) || !Number.isInteger(t.endMs) || t.startMs < 0 || t.endMs <= t.startMs || t.endMs > trimmedDurationMs) throw new Error("Choose valid text, position, and timing within your trimmed video.");
     if (t.x !== undefined && (!finite(t.x) || t.x < .03 || t.x > .97)) throw new Error("Choose a valid horizontal text position.");
     if (t.preset !== undefined && t.preset !== "bold" && t.preset !== "snapchat-classic" || t.backgroundOpacity !== undefined && (t.preset !== "snapchat-classic" || !finite(t.backgroundOpacity) || t.backgroundOpacity < 0 || t.backgroundOpacity > 1)) throw new Error("Choose a supported text preset and background opacity.");
-    if (t.font !== undefined && !isExploreTextFont(t.font) || t.fontWeight !== undefined && (!isExploreTextWeight(t.fontWeight) || t.font === undefined && t.fontWeight === 500)) throw new Error("Choose a supported font and weight.");
+    if (t.font !== undefined && !isExploreTextFont(t.font) || t.fontWeight !== undefined && (!(isExploreTextWeight(t.fontWeight) || t.fontWeight === 600 && t.font === "proximanovaa") || t.font === undefined && t.fontWeight === 500)) throw new Error("Choose a supported font and weight.");
     if (t.outlineWidth !== undefined && (!finite(t.outlineWidth) || t.outlineWidth < 0 || t.outlineWidth > 16)) throw new Error("Choose an outline thickness from 0 to 16.");
     return { value: t.value.replaceAll("\r\n", "\n"), width: t.width, y: t.y, fontSize: t.fontSize, color: t.color.toLowerCase(), startMs: t.startMs, endMs: t.endMs,
       ...(t.x === undefined ? {} : { x: t.x }), ...(t.preset === undefined ? {} : { preset: t.preset as FormatTextPreset }), ...(t.backgroundOpacity === undefined ? {} : { backgroundOpacity: t.backgroundOpacity as number }),
@@ -54,7 +54,7 @@ export function parseExploreFormatEdit(value: unknown): ExploreFormatEdit {
 export function formatTextLayout(text: ExploreFormatText, width: number, height: number) {
   const fontSize = text.fontSize * width / 1080;
   const maxWidth = width * text.width;
-  const fontWeight = text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700);
+  const fontWeight = resolveExploreTextWeight(text.font, text.fontWeight ?? (text.preset === "snapchat-classic" ? 400 : 700));
   const measure = (value: string) => measureFormatInlineText(value, fontSize, part => text.font ? exploreTextLineWidth(part, text.font, fontWeight, fontSize, estimateEditOverlayLineWidth) : estimateEditOverlayLineWidth(part, fontSize));
 
   const lines: string[] = [];
@@ -97,7 +97,7 @@ export function positionFormatText(text: ExploreFormatText, x: number, y: number
 /** Selecting a preset changes typography, never authored copy or timing. */
 export function applyFormatTextPreset(text: ExploreFormatText, preset: FormatTextPreset): ExploreFormatText {
   const plain = { ...text }; delete plain.preset; delete plain.backgroundOpacity;
-  if (plain.fontWeight !== undefined) plain.fontWeight = preset === "snapchat-classic" ? 400 : 700;
+  if (plain.fontWeight !== undefined) plain.fontWeight = resolveExploreTextWeight(plain.font, preset === "snapchat-classic" ? 400 : 700);
   return preset === "snapchat-classic" ? { ...plain, preset, backgroundOpacity: .58, fontSize: 56, color: "#ffffff", width: .94, y: .075 }
     : { ...plain, fontSize: 48, width: .8, y: .18, color: "#ffffff" };
 }

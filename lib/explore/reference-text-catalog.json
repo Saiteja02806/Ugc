@@ -9950,6 +9950,108 @@
       "extractedAt": "2026-10-23T10:40:46.983Z",
       "model": "manual-visual-review",
       "notes": "Caption visually checked across all 28 decoded frames of the supplied reaction-only clip. Full download's later content is excluded. Timing covers the retained clip; source claims are not fact-checked."
+    },
+    {
+      "referenceId": "explore-paired-wall_text-a2095596d4455693771d474d",
+      "slideId": null,
+      "sourceSha256": "e30ea03f49f7d25330399791b0ed0ee43e0909e498e359a01110a36585c3ebfa",
+      "format": "wall_text",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I saw a girl say her best savings tip\nis to move ALL your money from\nyour checking to your savings the\nday before you get paid whether is\n$5 or $500 and I couldn’t agree\nmore",
+          "startMs": 0,
+          "endMs": 6267
+        }
+      ],
+      "extractedAt": "2026-10-27T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "All 188 decoded thumbnails reviewed through final picture; caption checked on native opening. Source wording retained as reference copy, not verified financial claims. No generated-output acceptance."
+    },
+    {
+      "referenceId": "explore-paired-wall_text-8bcb0bf4213f07cc7c8449dc",
+      "slideId": null,
+      "sourceSha256": "d9d236dfa78a672ee8e9082e7c2322b3c68f73ed6865530958454a8f5782bfa6",
+      "format": "wall_text",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "Having money in your\naccount, but still telling\nyourself, no I'm not buying\nthis, I'm still broke, is a\ndifferent level of self\ndiscipline.",
+          "startMs": 0,
+          "endMs": 5167
+        }
+      ],
+      "extractedAt": "2026-10-27T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "All 155 decoded thumbnails reviewed through final picture; caption checked on native opening. Source wording retained as reference copy, not verified financial claims. No generated-output acceptance."
+    },
+    {
+      "referenceId": "explore-paired-wall_text-6862d30ad45084699b168503",
+      "slideId": null,
+      "sourceSha256": "deb508cce17aa541fd5ff11651b51ec90c9c196196855d2ccd3ddd5a6716cdc8",
+      "format": "wall_text",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "i feel so behind,\nrealistically how much\nshould a 21 year old have\nsaved up",
+          "startMs": 0,
+          "endMs": 6900
+        }
+      ],
+      "extractedAt": "2026-10-27T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "All 207 decoded thumbnails reviewed through final picture; caption checked on native opening. Source wording retained as reference copy, not verified financial claims. No generated-output acceptance."
+    },
+    {
+      "referenceId": "explore-paired-wall_text-cad94a858b67a9f021e1f1d5",
+      "slideId": null,
+      "sourceSha256": "acda71502ad946ce218c80066651796137344d1f134527131c813a748df9e619",
+      "format": "wall_text",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "baddie to baddie, what’s\nsomething that changed your\nfinances from ”i’m broke”\nto ”i actually have money”??\ni don’t mean cutting out matcha.\nsomething actually UNHINGED.\nmine is bloom to invest,\nur welcome <3",
+          "startMs": 0,
+          "endMs": 5933
+        }
+      ],
+      "extractedAt": "2026-10-27T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "All 178 decoded thumbnails reviewed through final picture; caption checked on native opening. Source wording retained as reference copy, not verified financial claims. No generated-output acceptance."
+    },
+    {
+      "referenceId": "explore-paired-wall_text-7a8441666cf28f6b5bcc37e8",
+      "slideId": null,
+      "sourceSha256": "c6ac0d48fca614f01bb880ad160bb59717e23911bc54d5e64da6f84024bc7604",
+      "format": "wall_text",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "i feel so behind,\nrealistically how much\nshould a 20 year old\nhave saved up",
+          "startMs": 0,
+          "endMs": 7067
+        }
+      ],
+      "extractedAt": "2026-10-27T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "All 212 decoded thumbnails reviewed through final picture; caption checked on native opening. Source wording retained as reference copy, not verified financial claims. No generated-output acceptance."
+    },
+    {
+      "referenceId": "explore-paired-wall_text-c2db42671f78f22cc195fbb3",
+      "slideId": null,
+      "sourceSha256": "835815bffe1e8a4aa879ff24f8f0e62606304f72dd513dbefef6b4512a656d9b",
+      "format": "wall_text",
+      "status": "ready",
+      "blocks": [
+        {
+          "text": "I called my credit card\ncompany yesterday and\nasked for a lower interest\nrate. He said yes. It took 4\nminutes. I've been overpaying\nfor 3 YEARS. My exact words\nwere 'I'd like to request a\nlower APR' and they dropped\nit by 6%. I learned this from\nthe Bon app and I could cry",
+          "startMs": 0,
+          "endMs": 5333
+        }
+      ],
+      "extractedAt": "2026-10-27T00:00:00.000Z",
+      "model": "manual-visual-review",
+      "notes": "All 160 decoded thumbnails reviewed through final picture; caption checked on native opening. Source wording retained as reference copy, not verified financial claims. No generated-output acceptance."
     }
   ]
 }

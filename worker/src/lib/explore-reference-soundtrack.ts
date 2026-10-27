@@ -1,4 +1,5 @@
 import catalog from "./explore-paired-reference-catalog.json" with { type: "json" };
+import wallMoney from "./explore-wall-money-reference-release.json" with { type: "json" };
 import { getHookReferenceReleaseItems } from "./explore-hook-reference-release.ts";
 
 export type ExploreReferenceSoundtrack = {
@@ -11,7 +12,7 @@ export type ExploreReferenceSoundtrack = {
 };
 
 export function getExplorePairedReferences(format?: "hook" | "wall_text") {
-  const items = [...(catalog.mediaStatus === "published" ? catalog.items : []), ...getHookReferenceReleaseItems()];
+  const items = [...(catalog.mediaStatus === "published" ? catalog.items : []), ...getHookReferenceReleaseItems(), ...(wallMoney.mediaStatus === "published" ? wallMoney.items : [])];
   // A new release may reuse a previously published video/audio identity.
   return [...new Map(items.map(item => [item.id, item])).values()].filter(item => !format || item.format === format);
 }

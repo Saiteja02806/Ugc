@@ -63,6 +63,104 @@
       "file": "/explore/talking-head-references/v1/talking-mug-story.mp4",
       "width": 720,
       "height": 1280
+    },
+    {
+      "id": "talking-sophia-designsthings",
+      "sourceSha256": "cb8b08f63bd15c4ef512e83741893dd5ab856e017b27b8b7adb2dbc7aa68bdba",
+      "file": "/explore/talking-head-references/v1/talking-sophia-designsthings.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-emmgr4c3",
+      "sourceSha256": "ed5d74058f3cb9539b8812a42be3c37b69dd6e28201d4e5ba4016ba89372f0fe",
+      "file": "/explore/talking-head-references/v1/talking-emmgr4c3.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-tessam-bible",
+      "sourceSha256": "cd70ead6e92ea81cf2d9adcc94c98d8d12ae8bb500e6e290d778b6a2eb1993aa",
+      "file": "/explore/talking-head-references/v1/talking-tessam-bible.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-websites-explainer",
+      "sourceSha256": "35cae40f926025ec664d9d0a30efa846f5e48bfdb8ec6970cd9cc95fb9bda2c5",
+      "file": "/explore/talking-head-references/v1/talking-websites-explainer.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-katiemeidt8",
+      "sourceSha256": "7e618e5837d714716d606720d5c8a43dcbe57086725af49c059c2be672583d37",
+      "file": "/explore/talking-head-references/v1/talking-katiemeidt8.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-studyfetchlauren",
+      "sourceSha256": "1f79a8e9fff58383be7683f30dec32481e923c37fe8e1dada9749d28ff4b1703",
+      "file": "/explore/talking-head-references/v1/talking-studyfetchlauren.mp4",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "id": "talking-sidghst",
+      "sourceSha256": "3adc2abfaf7b9f9e0ac8cd46966134dae52a50ae87c28f01d306844543ab657b",
+      "file": "/explore/talking-head-references/v1/talking-sidghst.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-studywithsab",
+      "sourceSha256": "4214382ffaf941e75b0e4aafb2509864097c913e0fe3da219a85b54fc77921c4",
+      "file": "/explore/talking-head-references/v1/talking-studywithsab.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-bittenbyaturtle",
+      "sourceSha256": "3b948b9c011b6d80696b90e3b55e13deecb77b45925e04575e7669949b69b352",
+      "file": "/explore/talking-head-references/v1/talking-bittenbyaturtle.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-studywithsawyer",
+      "sourceSha256": "26d8506af4ed2a495f9f52b8e12e855126d34e715b043fe3cfda1971efa89177",
+      "file": "/explore/talking-head-references/v1/talking-studywithsawyer.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-mumtipswithginny",
+      "sourceSha256": "44959584161e80cf3468c5514d517d00523577188538b9e32666d03b154a3ccd",
+      "file": "/explore/talking-head-references/v1/talking-mumtipswithginny.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-car-story-full",
+      "sourceSha256": "5ab551835c6b43f809349f263318057dc10894cc75b68ca066cbd2c3708933a8",
+      "file": "/explore/talking-head-references/v1/talking-car-story-full.mp4",
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "talking-room-explainer-full",
+      "sourceSha256": "cac6f530242841fc7bc6b1ed805fb0a8edd2ead4fd9d0dbe271ee0014e504afe",
+      "file": "/explore/talking-head-references/v1/talking-room-explainer-full.mp4",
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "id": "talking-discovery-full",
+      "sourceSha256": "02d20ab91be3e3375f7ab78b29e7dfb6d268866d70488bd39d4af263df250207",
+      "file": "/explore/talking-head-references/v1/talking-discovery-full.mp4",
+      "width": 720,
+      "height": 1280
     }
   ]
 }

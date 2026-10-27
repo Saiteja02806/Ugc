@@ -1,0 +1,1903 @@
+{
+  "version": 1,
+  "status": "drafts_only_not_activated",
+  "providerCalls": 0,
+  "drafts": [
+    {
+      "referenceId": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
+      "sourceDurationSeconds": 2.433333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 73,
+      "clarityFrame": {
+        "index": 36,
+        "timeSeconds": 1.2,
+        "sha256": "b15db17d5ef51954dd2094e9b323c3f157a14346325cb7fabcc183b786885ab4"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.6,
+          "startSeconds": 0,
+          "endSeconds": 0.7397260273972603,
+          "action": "Keep the white mug tilted at the lips for a sip; free fingers stay hooked over the laptop edge."
+        },
+        {
+          "sourceStartSeconds": 0.6,
+          "sourceEndSeconds": 1.1,
+          "startSeconds": 0.7397260273972603,
+          "endSeconds": 1.3561643835616441,
+          "action": "Lower the mug beneath the chin while lifting the eyes sharply upward; keep holding the handle."
+        },
+        {
+          "sourceStartSeconds": 1.1,
+          "sourceEndSeconds": 1.55,
+          "startSeconds": 1.3561643835616441,
+          "endSeconds": 1.9109589041095894,
+          "action": "Bring the gaze toward the mug and camera; eyes widen and lips part. A thin trickle of drink falls from the lower lip back toward the mug."
+        },
+        {
+          "sourceStartSeconds": 1.55,
+          "sourceEndSeconds": 2.433333333333333,
+          "startSeconds": 1.9109589041095894,
+          "endSeconds": 3,
+          "action": "Lean slightly closer with very wide eyes angled down toward the cup and a rounded open mouth. Keep the mug under the chin as the thin trickle continues; free fingers remain on the laptop."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated behind a silver laptop, the person holds a large white mug to the mouth with the screen-left hand; free fingers rest on the laptop top at screen-right. Head angled slightly screen-left.\nScene and camera: Fixed low tabletop portrait view, laptop filling lower half; bright kitchen windows, greenery and hanging lights behind.\nReconstruct original t=0 mug-at-mouth posture and laptop geometry with requested influencer identity; later clear face is identity preparation evidence, not the opening pose.\nRemove the source caption/graphic overlay: Gaming website that makes you money while you sleep 😴💸 Region: Centered on laptop lid, approximately middle-to-lower image. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated behind a silver laptop, the person holds a large white mug to the mouth with the screen-left hand; free fingers rest on the laptop top at screen-right. Head angled slightly screen-left.\nScene and camera: Fixed low tabletop portrait view, laptop filling lower half; bright kitchen windows, greenery and hanging lights behind.\n0–0.74s: Keep the white mug tilted at the lips for a sip; free fingers stay hooked over the laptop edge.\n0.74–1.36s: Lower the mug beneath the chin while lifting the eyes sharply upward; keep holding the handle.\n1.36–1.91s: Bring the gaze toward the mug and camera; eyes widen and lips part. A thin trickle of drink falls from the lower lip back toward the mug.\n1.91–3s: Lean slightly closer with very wide eyes angled down toward the cup and a rounded open mouth. Keep the mug under the chin as the thin trickle continues; free fingers remain on the laptop.\nFinal state: Closer wide-eyed reaction with rounded open mouth, mug still held under chin, thin drink trickle toward mug and free fingers on laptop.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 73,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed. Root additionally inspected full-resolution frames0,30,45,72 and observed the thin drink trickle; corrected earlier thumbnail-only omission before test."
+      },
+      "risks": [
+        "Mug occludes lower face at t=0; preserve mug/hand contact without copying source identity.",
+        "Do not invent a cup placement or extra action."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-43cc1dae0a6cfcb03e0a9333",
+      "sourceSha256": "928ee9942d157b5e22797ca819bf01e8087b9e3f6285f0f27ad26d64a6484df0",
+      "sourceDurationSeconds": 8.6,
+      "sourceFps": 30,
+      "sourceFrameCount": 258,
+      "clarityFrame": {
+        "index": 32,
+        "timeSeconds": 1.066667,
+        "sha256": "d5dfcbb4e9bcf3eedcdc1dec6766825498892aea82fe338f5922dc6e41253451"
+      },
+      "outputDurationSeconds": 9,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1,
+          "startSeconds": 0,
+          "endSeconds": 1.0465116279069768,
+          "action": "Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression."
+        },
+        {
+          "sourceStartSeconds": 1,
+          "sourceEndSeconds": 2.33,
+          "startSeconds": 1.0465116279069768,
+          "endSeconds": 2.438372093023256,
+          "action": "Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile."
+        },
+        {
+          "sourceStartSeconds": 2.33,
+          "sourceEndSeconds": 3.23,
+          "startSeconds": 2.438372093023256,
+          "endSeconds": 3.380232558139535,
+          "action": "Mouth opens and changes shape while palms remain lifted; expression becomes emphatic."
+        },
+        {
+          "sourceStartSeconds": 3.23,
+          "sourceEndSeconds": 4.3,
+          "startSeconds": 3.380232558139535,
+          "endSeconds": 4.5,
+          "action": "Bring both hands back onto upper chest and continue small head turns with expressive mouth movement."
+        },
+        {
+          "sourceStartSeconds": 4.3,
+          "sourceEndSeconds": 5.666666666666667,
+          "startSeconds": 4.5,
+          "endSeconds": 5.930232558139536,
+          "action": "Open palms beside shoulders again with a restrained smile and sideways glances."
+        },
+        {
+          "sourceStartSeconds": 5.666666666666667,
+          "sourceEndSeconds": 8.6,
+          "startSeconds": 5.930232558139536,
+          "endSeconds": 9,
+          "action": "Hands drop out of frame and expression settles; hold a largely still direct-to-camera look, ending with a small closed-mouth smile."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\nScene and camera: Stationary vertical phone view, medium upper-body framing; pale wall, wooden door at screen-left and wall switches at screen-right.\nReconstruct t=0 eyes-closed, hands-forward gesture using original source composition; selected1.066667s palms-up pose is only clarity evidence.\nRemove the source caption/graphic overlay: Normal people: “I don’t have experience/I can’t do game dev” Region: Centered over chest during first approximately5.67s; absent in final held phase. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 9-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated person in a light striped shirt, eyes closed, both hands raised in front of the chest, palms/fingers facing outward in a dismissive gesture.\nScene and camera: Stationary vertical phone view, medium upper-body framing; pale wall, wooden door at screen-left and wall switches at screen-right.\n0–1.05s: Open eyes, glance upward and screen-right, draw hands toward upper chest with a skeptical expression.\n1.05–2.44s: Raise open palms beside the shoulders, lightly move hands and turn the head between camera and screen-right; faint disbelieving smile.\n2.44–3.38s: Mouth opens and changes shape while palms remain lifted; expression becomes emphatic.\n3.38–4.5s: Bring both hands back onto upper chest and continue small head turns with expressive mouth movement.\n4.5–5.93s: Open palms beside shoulders again with a restrained smile and sideways glances.\n5.93–9s: Hands drop out of frame and expression settles; hold a largely still direct-to-camera look, ending with a small closed-mouth smile.\nFinal state: Hands down, mostly still, looking toward camera with a restrained closed-mouth smile.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 9,
+        "reviewedFrameCount": 258,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "This8.6s source has several gesture phases and a final2.93s still phase; compressing to3s changes observed pacing.",
+        "Visible mouth movement is observed; no speech transcription or phoneme accuracy verified.",
+        "Manifest final PTS8.6 differs from index257/30=8.566667; beat clock uses elapsed index/30, not packet-precise timing."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-e683292d4cd22b2a8b5a9cd8",
+      "sourceSha256": "af3bb92d7f32e5a1fd07c02dcd890f5e4ee07126e9c233cdd095fb1dcffe9188",
+      "sourceDurationSeconds": 2.933333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 88,
+      "clarityFrame": {
+        "index": 44,
+        "timeSeconds": 1.466667,
+        "sha256": "18ff0751a0ebbd85c868203d5c41288251231b951645b8a28222e3bb8b2909f8"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.4,
+          "startSeconds": 0,
+          "endSeconds": 0.40909090909090917,
+          "action": "Move across bright airplane window, keeping cabin wall and seat-back edges visible."
+        },
+        {
+          "sourceStartSeconds": 0.4,
+          "sourceEndSeconds": 0.9,
+          "startSeconds": 0.40909090909090917,
+          "endSeconds": 0.9204545454545454,
+          "action": "Continue rotating/panning inward away from window; seated person enters at screen-right."
+        },
+        {
+          "sourceStartSeconds": 0.9,
+          "sourceEndSeconds": 1.8,
+          "startSeconds": 0.9204545454545454,
+          "endSeconds": 1.8409090909090908,
+          "action": "Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera."
+        },
+        {
+          "sourceStartSeconds": 1.8,
+          "sourceEndSeconds": 2.933333333333333,
+          "startSeconds": 1.8409090909090908,
+          "endSeconds": 3,
+          "action": "Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.\nScene and camera: Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.\nPreserve actual window-only t=0 opening. Later clear face plus influencer portraits must condition identity revealed after pan; a face close-up is not an acceptable substituted opening image.\nRemove the source caption/graphic overlay: I could LITERALLY KISS the flight attendant that showed me this 🤭🤭😩 Region: Upper center over window/cabin, later above person's head. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Airplane cabin window and seat-back edge fill frame; no face is visible at t=0.\nScene and camera: Handheld portrait phone shot pans/rotates away from bright airplane window into cabin, revealing seated person; slight tilted view and arm extending toward camera.\n0–0.41s: Move across bright airplane window, keeping cabin wall and seat-back edges visible.\n0.41–0.92s: Continue rotating/panning inward away from window; seated person enters at screen-right.\n0.92–1.84s: Settle on seated smiling person in dark top with headphones around neck; arm extends toward camera.\n1.84–3s: Hold cabin selfie framing with slight natural wobble; person smiles, subtly tilts head and changes mouth expression.\nFinal state: Seated smiling person faces phone in tilted cabin selfie framing.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 88,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "A literal window-only first image carries no influencer facial evidence; single-image FIRST_FRAME alone cannot guarantee identity after reveal.",
+        "May require identity-conditioned reference support or a controlled multi-stage reveal; visual qualification required before activation.",
+        "Do not invent an influencer face in original t=0 window opening.",
+        "Small manifest PTS/index discrepancies exist toward end; timing is nominal index/30."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-f1afdb3229e127c8b6563087",
+      "sourceSha256": "5d01151b64e00fe6a0d331583f41aae0689fd5f85098ee2e2d9f7ba366b1ea0b",
+      "sourceDurationSeconds": 3.2333333333333334,
+      "sourceFps": 30,
+      "sourceFrameCount": 97,
+      "clarityFrame": {
+        "index": 60,
+        "timeSeconds": 2,
+        "sha256": "f70c493971c408e0d29252fbd43857564903e578c4c11197c683dbd78b50ceec"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.16666666666666666,
+          "startSeconds": 0,
+          "endSeconds": 0.20618556701030927,
+          "action": "Complete bringing hand over mouth; other hand lowers out of the main face area."
+        },
+        {
+          "sourceStartSeconds": 0.16666666666666666,
+          "sourceEndSeconds": 1.3333333333333333,
+          "startSeconds": 0.20618556701030927,
+          "endSeconds": 1.6494845360824741,
+          "action": "Hold hand over mouth with wide eyes looking slightly screen-left; startled stillness."
+        },
+        {
+          "sourceStartSeconds": 1.3333333333333333,
+          "sourceEndSeconds": 2,
+          "startSeconds": 1.6494845360824741,
+          "endSeconds": 2.4742268041237114,
+          "action": "Raise both hands along cheeks to sides/back of head as mouth opens widely."
+        },
+        {
+          "sourceStartSeconds": 2,
+          "sourceEndSeconds": 3.2333333333333334,
+          "startSeconds": 2.4742268041237114,
+          "endSeconds": 4,
+          "action": "Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Person in gray sweatshirt with both hands raised close to face, one directly crossing mouth/nose and the other beside face; eyes briefly closed.\nScene and camera: Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.\nReconstruct original near-face hand positions and eyes-closed opening before mouth-cover hold; selected2s hands-behind-head image cannot serve as literal opening.\nRemove the source caption/graphic overlay: I found the best AI Video Generator and it’s FREE! 🤯 Region: Centered across lower chest. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Person in gray sweatshirt with both hands raised close to face, one directly crossing mouth/nose and the other beside face; eyes briefly closed.\nScene and camera: Fixed upper-body portrait phone shot, pale room and doorway behind; camera slightly below eye level.\n0–0.21s: Complete bringing hand over mouth; other hand lowers out of the main face area.\n0.21–1.65s: Hold hand over mouth with wide eyes looking slightly screen-left; startled stillness.\n1.65–2.47s: Raise both hands along cheeks to sides/back of head as mouth opens widely.\n2.47–4s: Hold both hands behind head with elbows out, wide eyes and open mouth in strong disbelief.\nFinal state: Both hands behind head, elbows spread, eyes wide and mouth open.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 97,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "First frames contain motion blur and hand overlap; preserve opening gesture instead of forcing the clear2s pose at t=0.",
+        "Keep held surprise phase rather than adding a new reaction cycle."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-09c4e9b5de6a85f0f4c371da",
+      "sourceSha256": "ab824925cd70a90651af99761d99fd9876a0b3897db1e68e770aa7b5a1acf4db",
+      "sourceDurationSeconds": 3.2666666666666666,
+      "sourceFps": 30,
+      "sourceFrameCount": 98,
+      "clarityFrame": {
+        "index": 73,
+        "timeSeconds": 2.433333,
+        "sha256": "d40f67c77defcca9d965196d631c45e0639841c80a4f4c9951096980a68fca44"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.1,
+          "startSeconds": 0,
+          "endSeconds": 1.3469387755102042,
+          "action": "Hold sunglasses over eyes with fingers at temple and partly open mouth."
+        },
+        {
+          "sourceStartSeconds": 1.1,
+          "sourceEndSeconds": 2,
+          "startSeconds": 1.3469387755102042,
+          "endSeconds": 2.4489795918367347,
+          "action": "Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly."
+        },
+        {
+          "sourceStartSeconds": 2,
+          "sourceEndSeconds": 2.3,
+          "startSeconds": 2.4489795918367347,
+          "endSeconds": 2.816326530612245,
+          "action": "Lift sunglasses upward off eyes and away toward screen-left, revealing eyes."
+        },
+        {
+          "sourceStartSeconds": 2.3,
+          "sourceEndSeconds": 2.8,
+          "startSeconds": 2.816326530612245,
+          "endSeconds": 3.4285714285714284,
+          "action": "Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise."
+        },
+        {
+          "sourceStartSeconds": 2.8,
+          "sourceEndSeconds": 3.2666666666666666,
+          "startSeconds": 3.4285714285714284,
+          "endSeconds": 4,
+          "action": "Lean toward camera, hold incredulous wide-eyed look while mouth shape softens."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.\nScene and camera: Fixed close portrait phone framing against plain beige wall; only small head/phone movement.\nRebuild sunglasses-on t=0 image with influencer identity;2.433333s clear face assists identity only. Motion must include the earlier glasses-on hold then removal.\nRemove the source caption/graphic overlay: Broke people are gonna KISS me after seeing THIS 😭💸 Region: Upper center above forehead. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Close-up, sunglasses fully over eyes, screen-left hand pinching glasses temple, mouth partly open; striped dark/light shirt.\nScene and camera: Fixed close portrait phone framing against plain beige wall; only small head/phone movement.\n0–1.35s: Hold sunglasses over eyes with fingers at temple and partly open mouth.\n1.35–2.45s: Keep glasses on while lips purse into a rounded surprised shape and head lifts slightly.\n2.45–2.82s: Lift sunglasses upward off eyes and away toward screen-left, revealing eyes.\n2.82–3.43s: Look slightly screen-right then toward camera; eyes widen and mouth opens in surprise.\n3.43–4s: Lean toward camera, hold incredulous wide-eyed look while mouth shape softens.\nFinal state: Glasses removed from eyes; face leans closer with raised eyebrows and surprised expression.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 98,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "Removal begins around2s, not immediately at t=0 and not at anchor2.433333s.",
+        "Last manifest PTS3.333333 exceeds index97/30=3.233333; nominal frame-index timing requires packet review for exact alignment."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-9309a041061ae5abc6970d52",
+      "sourceSha256": "5274157ba66683e03c31de91fff5395fe7eabee7ea4780789e87f7275719d451",
+      "sourceDurationSeconds": 2.1,
+      "sourceFps": 30,
+      "sourceFrameCount": 63,
+      "clarityFrame": {
+        "index": 40,
+        "timeSeconds": 1.333333,
+        "sha256": "1b7b340e895a543cc146a509a97ffa2a99aac0628f2df27d5879629861cc24d5"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.9,
+          "startSeconds": 0,
+          "endSeconds": 1.2857142857142856,
+          "action": "Keep hand over mouth, gaze lowered and mildly furrowed; small eye movements."
+        },
+        {
+          "sourceStartSeconds": 0.9,
+          "sourceEndSeconds": 1.1666666666666667,
+          "startSeconds": 1.2857142857142856,
+          "endSeconds": 1.6666666666666667,
+          "action": "Look up, widen eyes and begin opening mouth behind hand."
+        },
+        {
+          "sourceStartSeconds": 1.1666666666666667,
+          "sourceEndSeconds": 1.7,
+          "startSeconds": 1.6666666666666667,
+          "endSeconds": 2.4285714285714284,
+          "action": "Lower hand from mouth to chin as jaw drops; eyebrows lift."
+        },
+        {
+          "sourceStartSeconds": 1.7,
+          "sourceEndSeconds": 2.1,
+          "startSeconds": 2.4285714285714284,
+          "endSeconds": 3,
+          "action": "Hold open-mouth disbelief with hand at chin and eyes fixed slightly off-camera."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Close portrait of seated person, hand diagonally covers mouth, brows slightly furrowed, gaze lowered toward screen-left.\nScene and camera: Mostly stationary portrait phone shot against pale textured wall; slight handheld wobble.\nReconstruct original hand-over-mouth t=0; clarity1.333333s frame already shows emerging chin/open-mouth action and must not replace opening.\nRemove the source caption/graphic overlay: new obsession unlocked: playing a game where I have access to a missing k-pop idol’s phone and I have to figure out what happened to her Region: Centered over lower face/chest. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Close portrait of seated person, hand diagonally covers mouth, brows slightly furrowed, gaze lowered toward screen-left.\nScene and camera: Mostly stationary portrait phone shot against pale textured wall; slight handheld wobble.\n0–1.29s: Keep hand over mouth, gaze lowered and mildly furrowed; small eye movements.\n1.29–1.67s: Look up, widen eyes and begin opening mouth behind hand.\n1.67–2.43s: Lower hand from mouth to chin as jaw drops; eyebrows lift.\n2.43–3s: Hold open-mouth disbelief with hand at chin and eyes fixed slightly off-camera.\nFinal state: Hand at chin, mouth open, eyes wide in disbelief.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 63,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "Hand and caption overlap lower face; cleanup must preserve hand and anatomy.",
+        "Final manifest PTS2.133333 differs from nominal index62/30=2.066667; boundaries use nominal elapsed frame time."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-bdc5af5aedfac3ddb93b4348",
+      "sourceSha256": "00b67eb61f3a37d548987ad205f5973bb8b30452e10895d229cb8db4672244cb",
+      "sourceDurationSeconds": 3.5,
+      "sourceFps": 30,
+      "sourceFrameCount": 105,
+      "clarityFrame": {
+        "index": 78,
+        "timeSeconds": 2.6,
+        "sha256": "3b87d035729e1054f3b51b0d7ae852b43d0db3751afd6e625094311136833869"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.4,
+          "startSeconds": 0,
+          "endSeconds": 1.5999999999999999,
+          "action": "Keep hand across mouth, tearful eyes blink and glance upward; restrained distressed half-smile."
+        },
+        {
+          "sourceStartSeconds": 1.4,
+          "sourceEndSeconds": 2.3,
+          "startSeconds": 1.5999999999999999,
+          "endSeconds": 2.6285714285714286,
+          "action": "Turn eyes farther upward/sideways as hand slides down from mouth toward cheek and chin."
+        },
+        {
+          "sourceStartSeconds": 2.3,
+          "sourceEndSeconds": 2.9,
+          "startSeconds": 2.6285714285714286,
+          "endSeconds": 3.314285714285714,
+          "action": "Lower hand enough to reveal lips, then lift fingers toward the eye/upper cheek."
+        },
+        {
+          "sourceStartSeconds": 2.9,
+          "sourceEndSeconds": 3.5,
+          "startSeconds": 3.314285714285714,
+          "endSeconds": 4,
+          "action": "Touch/wipe just beneath eye with fingers and hold upward tearful gaze."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Very close face view, tearful/reddened eyes looking upward, hand laid across mouth with long pale pink nails; pale background.\nScene and camera: Tight largely stationary handheld portrait close-up with slight natural drift.\nReconstruct original hand-across-mouth t=0 with requested identity and tearful expression;2.6s clarity image is later hand-lowered state.\nRemove the source caption/graphic overlay: just thinking about all the selfies I deleted before I knew about this Region: Centered across mouth/hand. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Very close face view, tearful/reddened eyes looking upward, hand laid across mouth with long pale pink nails; pale background.\nScene and camera: Tight largely stationary handheld portrait close-up with slight natural drift.\n0–1.6s: Keep hand across mouth, tearful eyes blink and glance upward; restrained distressed half-smile.\n1.6–2.63s: Turn eyes farther upward/sideways as hand slides down from mouth toward cheek and chin.\n2.63–3.31s: Lower hand enough to reveal lips, then lift fingers toward the eye/upper cheek.\n3.31–4s: Touch/wipe just beneath eye with fingers and hold upward tearful gaze.\nFinal state: Fingers under eye/upper cheek, lips revealed, tearful upward gaze.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 105,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "Subtle tearful expression, tear sheen and finger/eye contact require visual qualification.",
+        "Do not replace restrained distress with exaggerated screaming or generic shock."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-99ff813ebc24c61f1c92828e",
+      "sourceSha256": "46d5140062a68f659df57511a721b5871b969dd73ec3ed4cea972f0bb8b10de7",
+      "sourceDurationSeconds": 3.8666666666666667,
+      "sourceFps": 30,
+      "sourceFrameCount": 116,
+      "clarityFrame": {
+        "index": 43,
+        "timeSeconds": 1.433333,
+        "sha256": "550cf6ef15e99970947f9c5642fdd32bcf1e147e85548310d0aa483fa65844c8"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.43333333333333335,
+          "startSeconds": 0,
+          "endSeconds": 0.4482758620689655,
+          "action": "Hold sunglasses over eyes, mouth open, fingers on temple."
+        },
+        {
+          "sourceStartSeconds": 0.43333333333333335,
+          "sourceEndSeconds": 1.1666666666666667,
+          "startSeconds": 0.4482758620689655,
+          "endSeconds": 1.206896551724138,
+          "action": "Pull sunglasses down past eyes toward mouth/chin; reveal very wide eyes while jaw stays dropped."
+        },
+        {
+          "sourceStartSeconds": 1.1666666666666667,
+          "sourceEndSeconds": 2.2333333333333334,
+          "startSeconds": 1.206896551724138,
+          "endSeconds": 2.310344827586207,
+          "action": "Hold glasses low at chin/upper chest with fixed wide-eyed open-mouth surprise."
+        },
+        {
+          "sourceStartSeconds": 2.2333333333333334,
+          "sourceEndSeconds": 3.3333333333333335,
+          "startSeconds": 2.310344827586207,
+          "endSeconds": 3.4482758620689657,
+          "action": "Drop glasses out of frame, turn head slightly sideways and back, maintaining surprised expression."
+        },
+        {
+          "sourceStartSeconds": 3.3333333333333335,
+          "sourceEndSeconds": 3.8666666666666667,
+          "startSeconds": 3.4482758620689657,
+          "endSeconds": 4,
+          "action": "Bring hand to forehead/hairline and lean slightly closer; lips purse while eyes remain wide."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Close-up person in purple shirt wearing oversized sunglasses, screen-left hand gripping temple, mouth wide open.\nScene and camera: Close portrait phone view, largely fixed with small natural head movement; plain indoor background.\nReconstruct sunglasses-over-eyes opening, not1.433333s glasses-low clarity pose; maintain purple-shirt/source composition with influencer identity.\nRemove the source caption/graphic overlay: I could literally kiss the game dev that showed me this 🤯😭 Region: Upper center above forehead. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Close-up person in purple shirt wearing oversized sunglasses, screen-left hand gripping temple, mouth wide open.\nScene and camera: Close portrait phone view, largely fixed with small natural head movement; plain indoor background.\n0–0.45s: Hold sunglasses over eyes, mouth open, fingers on temple.\n0.45–1.21s: Pull sunglasses down past eyes toward mouth/chin; reveal very wide eyes while jaw stays dropped.\n1.21–2.31s: Hold glasses low at chin/upper chest with fixed wide-eyed open-mouth surprise.\n2.31–3.45s: Drop glasses out of frame, turn head slightly sideways and back, maintaining surprised expression.\n3.45–4s: Bring hand to forehead/hairline and lean slightly closer; lips purse while eyes remain wide.\nFinal state: Hand at forehead/hairline, wide eyes and rounded/pursed lips; glasses no longer over eyes.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 116,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "Removal and forehead gesture are separate phases; do not omit long glasses-low surprise hold.",
+        "Small manifest PTS/index discrepancy near end; timings nominal index/30."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-4aa27111a23b04a6dd27717b",
+      "sourceSha256": "4c2f67e160870bca0672a43d533922d50eaedb7f1f53f043dc6fb34fbceef878",
+      "sourceDurationSeconds": 2.4,
+      "sourceFps": 30,
+      "sourceFrameCount": 72,
+      "clarityFrame": {
+        "index": 62,
+        "timeSeconds": 2.066667,
+        "sha256": "c4f75feb52ab573bd666355460d6a283207899644aaf46b0045ebdff80d04195"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.9333333333333333,
+          "startSeconds": 0,
+          "endSeconds": 1.1666666666666667,
+          "action": "Hold hand across mouth, looking toward camera; slight downward gaze and blink."
+        },
+        {
+          "sourceStartSeconds": 0.9333333333333333,
+          "sourceEndSeconds": 1.5,
+          "startSeconds": 1.1666666666666667,
+          "endSeconds": 1.875,
+          "action": "Lower hand away from mouth and lift it out toward upper screen-right as eyes briefly close and a restrained smile emerges."
+        },
+        {
+          "sourceStartSeconds": 1.5,
+          "sourceEndSeconds": 1.8666666666666667,
+          "startSeconds": 1.875,
+          "endSeconds": 2.3333333333333335,
+          "action": "Hand leaves face area; face becomes unobstructed, head and phone shift slightly."
+        },
+        {
+          "sourceStartSeconds": 1.8666666666666667,
+          "sourceEndSeconds": 2.4,
+          "startSeconds": 2.3333333333333335,
+          "endSeconds": 3,
+          "action": "Hold direct camera look with a faint closed-mouth smile."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Person in black shirt and clear eyeglasses, hand across mouth/chin, head tilted, gaze toward camera.\nScene and camera: Handheld close portrait; purple wall at screen-left, bright window/curtain screen-right; slight wobble.\nRestore original hand-covering-mouth posture using later2.066667s clear face only as identity clarity; preserve eyeglasses throughout.\nRemove the source caption/graphic overlay: “bro rate my startup idea 💀🥀” Region: Upper center above hairline. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Person in black shirt and clear eyeglasses, hand across mouth/chin, head tilted, gaze toward camera.\nScene and camera: Handheld close portrait; purple wall at screen-left, bright window/curtain screen-right; slight wobble.\n0–1.17s: Hold hand across mouth, looking toward camera; slight downward gaze and blink.\n1.17–1.88s: Lower hand away from mouth and lift it out toward upper screen-right as eyes briefly close and a restrained smile emerges.\n1.88–2.33s: Hand leaves face area; face becomes unobstructed, head and phone shift slightly.\n2.33–3s: Hold direct camera look with a faint closed-mouth smile.\nFinal state: Unobstructed face, eyeglasses remain on, small closed-mouth smile.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 72,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "This is restrained amusement, not a large jaw-drop; do not import generic shocked performance.",
+        "Eyeglasses are not removed in source."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-892b0f65083c8cf03270a7c9",
+      "sourceSha256": "03fbedda9e51efe9f318241f16aaed14cbb5f150c516e6e3c14ef4d0ea9c451f",
+      "sourceDurationSeconds": 2.7666666666666666,
+      "sourceFps": 30,
+      "sourceFrameCount": 83,
+      "clarityFrame": {
+        "index": 51,
+        "timeSeconds": 1.7,
+        "sha256": "9cd8be661501d42556ca385f851083ccba8bdce4e16b832b92ff39f66d1fed17"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.43333333333333335,
+          "startSeconds": 0,
+          "endSeconds": 0.46987951807228917,
+          "action": "Bring eyeglasses toward face from screen-right; eyes open while mouth stays open."
+        },
+        {
+          "sourceStartSeconds": 0.43333333333333335,
+          "sourceEndSeconds": 0.8333333333333334,
+          "startSeconds": 0.46987951807228917,
+          "endSeconds": 0.9036144578313254,
+          "action": "Set glasses onto nose and over eyes, fingers at screen-right temple."
+        },
+        {
+          "sourceStartSeconds": 0.8333333333333334,
+          "sourceEndSeconds": 1.5,
+          "startSeconds": 0.9036144578313254,
+          "endSeconds": 1.6265060240963853,
+          "action": "Keep fingers at temple, peer through glasses with raised brows, open mouth and small head tilt."
+        },
+        {
+          "sourceStartSeconds": 1.5,
+          "sourceEndSeconds": 2.7666666666666666,
+          "startSeconds": 1.6265060240963853,
+          "endSeconds": 3,
+          "action": "Hold glasses-on pose with small head/eye movements and sustained incredulous open-mouth look."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Person in dark camisole holds clear eyeglasses away from face at screen-right, lenses near mouth/nose level; eyes partly closed, mouth open.\nScene and camera: Portrait close/upper-body phone framing; gray angled wall behind, strong warm side light, mostly fixed.\nReconstruct glasses-off t=0 with glasses held away from face;1.7s clarity image already has glasses on. Animate putting glasses ON, never removing them.\nRemove the source caption/graphic overlay: Part time job ❌ Coloring Books ✅ Region: Upper center above forehead. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Person in dark camisole holds clear eyeglasses away from face at screen-right, lenses near mouth/nose level; eyes partly closed, mouth open.\nScene and camera: Portrait close/upper-body phone framing; gray angled wall behind, strong warm side light, mostly fixed.\n0–0.47s: Bring eyeglasses toward face from screen-right; eyes open while mouth stays open.\n0.47–0.9s: Set glasses onto nose and over eyes, fingers at screen-right temple.\n0.9–1.63s: Keep fingers at temple, peer through glasses with raised brows, open mouth and small head tilt.\n1.63–3s: Hold glasses-on pose with small head/eye movements and sustained incredulous open-mouth look.\nFinal state: Eyeglasses on eyes, fingers still touching temple, mouth open.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 83,
+        "notes": "Every native contact sheet thumbnail reviewed, plus original t=0 full-resolution frame. Metadata and first/anchor/last manifest entries checked. Beat times use nominal elapsed frame index /30, not packet-accurate timestamps. No generated candidate reviewed."
+      },
+      "risks": [
+        "Opposite action to sunglasses-removal references; generic removal template would reverse source choreography.",
+        "Avoid rigid overdescription of fingers; preserve observed contact and glasses direction."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-c8b971f4cea086703e106c92",
+      "sourceSha256": "483e11b3aba9bee6b50d202836be545df6374dceab472c07233fec38bb189da8",
+      "sourceDurationSeconds": 2.8,
+      "sourceFps": 30,
+      "sourceFrameCount": 84,
+      "clarityFrame": {
+        "index": 30,
+        "timeSeconds": 1,
+        "sha256": "306b9ffa943ecd5f42a5c9146f95d81672e8d8a405680701d379a8f79f280395"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.2,
+          "startSeconds": 0,
+          "endSeconds": 0.2142857142857143,
+          "action": "Keep the open-mouthed sideward stare and fingertips at the lower lip."
+        },
+        {
+          "sourceStartSeconds": 0.2,
+          "sourceEndSeconds": 1,
+          "startSeconds": 0.2142857142857143,
+          "endSeconds": 1.0714285714285714,
+          "action": "Turn the head and gaze gradually toward the lens, keeping raised brows and the rounded open mouth."
+        },
+        {
+          "sourceStartSeconds": 1,
+          "sourceEndSeconds": 2.8,
+          "startSeconds": 1.0714285714285714,
+          "endSeconds": 3,
+          "action": "Hold the direct-camera surprised stare with slight natural head movement and fingertips still below the lip."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Close indoor selfie, head turned toward screen-left, eyes wide, mouth rounded open; fingertips rest just below the lower lip.\nScene and camera: Portrait close-up with slight handheld drift, dim pale wall and dark doorway behind; no cut.\nReconstruct source frame0 side-facing mouth-open pose with fingertips below lip; the frontal clarity frame30 is supporting evidence only.\nRemove the source caption/graphic overlay: SAY BYE BYE TO CLAUDEMAX... (small trailing emoji; exact punctuation not verified) Region: Lower-middle over upper chest, approximately y=70–82%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Close indoor selfie, head turned toward screen-left, eyes wide, mouth rounded open; fingertips rest just below the lower lip.\nScene and camera: Portrait close-up with slight handheld drift, dim pale wall and dark doorway behind; no cut.\n0–0.21s: Keep the open-mouthed sideward stare and fingertips at the lower lip.\n0.21–1.07s: Turn the head and gaze gradually toward the lens, keeping raised brows and the rounded open mouth.\n1.07–3s: Hold the direct-camera surprised stare with slight natural head movement and fingertips still below the lip.\nFinal state: Front-facing wide-eyed, open-mouthed stare; hand remains near chin/lower lip.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 84,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Do not begin already facing camera from the clarity anchor.",
+        "Caption transcription is partial; remove the complete source overlay rather than regenerate it."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-114b58d5c22018e273a346de",
+      "sourceSha256": "7f1f0691b38810a29da2a5bf3efdfcb63d1125f85246a4dd8500bd382360da43",
+      "sourceDurationSeconds": 3.466666666666667,
+      "sourceFps": 30,
+      "sourceFrameCount": 104,
+      "clarityFrame": {
+        "index": 13,
+        "timeSeconds": 0.433333,
+        "sha256": "bcbcdb626f01e5560069fd17a94fbc63140f6b5ca1922ddc509b3652fe0f5522"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.2,
+          "startSeconds": 0,
+          "endSeconds": 0.23076923076923078,
+          "action": "Open the eyes and close the mouth into a small tense smile while keeping both hands against temples."
+        },
+        {
+          "sourceStartSeconds": 0.2,
+          "sourceEndSeconds": 1.1,
+          "startSeconds": 0.23076923076923078,
+          "endSeconds": 1.2692307692307694,
+          "action": "Hold hands at temples, make a small sideward glance and brief blink, then face forward with a restrained smile."
+        },
+        {
+          "sourceStartSeconds": 1.1,
+          "sourceEndSeconds": 1.53,
+          "startSeconds": 1.2692307692307694,
+          "endSeconds": 1.7653846153846153,
+          "action": "Lift fingers away from temples and bring both hands inward across cheeks to cover mouth and nose."
+        },
+        {
+          "sourceStartSeconds": 1.53,
+          "sourceEndSeconds": 3.466666666666667,
+          "startSeconds": 1.7653846153846153,
+          "endSeconds": 4,
+          "action": "Hold both palms over the lower face, brows pinched and eyelids narrowing; make small sideward eye shifts without lowering hands."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated at a table in a bright room, both palms/fingertips braced at temples, elbows out, eyes squeezed shut and mouth open.\nScene and camera: Fixed portrait medium shot from table height; ceiling fan and dark cabinet remain in background.\nMatch frame0 hands-at-temples and eyes-closed/open-mouth state, not the later eyes-open clarity frame13.\nRemove the source caption/graphic overlay: Small top 'pov...' sentence; exact copy not confidently legible in reviewed sheets. Region: Near top center, approximately y=20–29%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated at a table in a bright room, both palms/fingertips braced at temples, elbows out, eyes squeezed shut and mouth open.\nScene and camera: Fixed portrait medium shot from table height; ceiling fan and dark cabinet remain in background.\n0–0.23s: Open the eyes and close the mouth into a small tense smile while keeping both hands against temples.\n0.23–1.27s: Hold hands at temples, make a small sideward glance and brief blink, then face forward with a restrained smile.\n1.27–1.77s: Lift fingers away from temples and bring both hands inward across cheeks to cover mouth and nose.\n1.77–4s: Hold both palms over the lower face, brows pinched and eyelids narrowing; make small sideward eye shifts without lowering hands.\nFinal state: Both hands still cover mouth/nose; eyes narrowed above them, seated posture unchanged.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 104,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Do not replace the final covered-mouth hold with a generic smile.",
+        "Top caption exact wording unverified."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-775bf4f0fc41f253d04663e2",
+      "sourceSha256": "3719f83d331d9c166af6eb3816a2c0b1ebd961f03700db2c250e9a2033ae8288",
+      "sourceDurationSeconds": 3.033333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 91,
+      "clarityFrame": {
+        "index": 23,
+        "timeSeconds": 0.766667,
+        "sha256": "b3fcc0eff8bfc5c5c10fec3967d55c02c336223fc341c83c0f71d94500759bcf"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.87,
+          "startSeconds": 0,
+          "endSeconds": 1.1472527472527474,
+          "action": "Keep wide eyes and a sustained open mouth while the extended arm/phone movement widens the framing to reveal the laptop at lower-left."
+        },
+        {
+          "sourceStartSeconds": 0.87,
+          "sourceEndSeconds": 1.63,
+          "startSeconds": 1.1472527472527474,
+          "endSeconds": 2.1494505494505494,
+          "action": "Hold the astonished gaze over the laptop with the arm still reaching toward the foreground."
+        },
+        {
+          "sourceStartSeconds": 1.63,
+          "sourceEndSeconds": 2.2,
+          "startSeconds": 2.1494505494505494,
+          "endSeconds": 2.9010989010989015,
+          "action": "Withdraw the extended forearm from the lens toward the tabletop while keeping the open-mouth reaction."
+        },
+        {
+          "sourceStartSeconds": 2.2,
+          "sourceEndSeconds": 3.033333333333333,
+          "startSeconds": 2.9010989010989015,
+          "endSeconds": 4,
+          "action": "Settle hand near laptop/table and hold the same forward, open-mouthed stare with a small head dip near the end."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated in an industrial-ceiling café, eyes wide and mouth broadly open, one arm extended toward the phone; laptop not yet prominent at the bottom.\nScene and camera: Portrait phone view pulls back/reframes in the opening to reveal tabletop and open laptop, then steadies; source ceiling pipes/greenery remain.\nRebuild the tight opening composition and extended arm from frame0; frame23 later wider view cannot substitute for opening camera distance.\nRemove the source caption/graphic overlay: Travel Agents... are we cooked??; small secondary line appears later and is not confidently transcribed. Region: Center over chest, approximately y=48–70%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated in an industrial-ceiling café, eyes wide and mouth broadly open, one arm extended toward the phone; laptop not yet prominent at the bottom.\nScene and camera: Portrait phone view pulls back/reframes in the opening to reveal tabletop and open laptop, then steadies; source ceiling pipes/greenery remain.\n0–1.15s: Keep wide eyes and a sustained open mouth while the extended arm/phone movement widens the framing to reveal the laptop at lower-left.\n1.15–2.15s: Hold the astonished gaze over the laptop with the arm still reaching toward the foreground.\n2.15–2.9s: Withdraw the extended forearm from the lens toward the tabletop while keeping the open-mouth reaction.\n2.9–4s: Settle hand near laptop/table and hold the same forward, open-mouthed stare with a small head dip near the end.\nFinal state: Seated behind laptop, hand on/near table, mouth remains open and eyes directed forward/down toward screen.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 91,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "The camera reframe is part of source action; do not lock the entire clip to clarity-anchor framing.",
+        "Fine hand placement near laptop should receive full-resolution generation QA."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-8d49391ade6ddf5261d43d2a",
+      "sourceSha256": "1787004bc660b5d0c55cc1b0e3cf1cfb3bbba390205cb410a794e1dadeff337d",
+      "sourceDurationSeconds": 3.1,
+      "sourceFps": 29.032258064516128,
+      "sourceFrameCount": 90,
+      "clarityFrame": {
+        "index": 45,
+        "timeSeconds": 1.5,
+        "sha256": "fe423eef490d997f85dedb5b465e09a62a77a4f0c82f48b29cc10caa0ec0fbf5"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.07,
+          "startSeconds": 0,
+          "endSeconds": 1.3806451612903226,
+          "action": "Maintain the hand over mouth and distressed brow/eyelid expression while the handheld framing wobbles."
+        },
+        {
+          "sourceStartSeconds": 1.07,
+          "sourceEndSeconds": 1.38,
+          "startSeconds": 1.3806451612903226,
+          "endSeconds": 1.7806451612903225,
+          "action": "Lower the covering hand below the chin, revealing a tense open mouth and tearful-looking expression."
+        },
+        {
+          "sourceStartSeconds": 1.38,
+          "sourceEndSeconds": 2.07,
+          "startSeconds": 1.7806451612903225,
+          "endSeconds": 2.670967741935484,
+          "action": "Continue the uncovered distressed reaction with pinched brows and small mouth movement as the phone moves closer and upward."
+        },
+        {
+          "sourceStartSeconds": 2.07,
+          "sourceEndSeconds": 3.1,
+          "startSeconds": 2.670967741935484,
+          "endSeconds": 4,
+          "action": "Keep reacting with eyes narrowing and mouth opening/closing slightly; handheld view rises and tilts, ending closer to frontal with hand off mouth."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Reclining close selfie on patterned bedding, brows drawn up/in, eyes narrowed in a crying expression, one hand covers mouth and lower nose.\nScene and camera: Handheld portrait selfie shakes and changes distance/angle as the person moves; patterned fabric/pillow background remains continuous.\nRestore source0 hand-over-mouth pose using frame45 only for visible face continuity; keep the opening occlusion.\nRemove the source caption/graphic overlay: My boyfriend changed my alarm so now I have to fly to turn it off😭😭💔 Region: Dark caption strip across forehead/top quarter, approximately y=19–28%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Reclining close selfie on patterned bedding, brows drawn up/in, eyes narrowed in a crying expression, one hand covers mouth and lower nose.\nScene and camera: Handheld portrait selfie shakes and changes distance/angle as the person moves; patterned fabric/pillow background remains continuous.\n0–1.38s: Maintain the hand over mouth and distressed brow/eyelid expression while the handheld framing wobbles.\n1.38–1.78s: Lower the covering hand below the chin, revealing a tense open mouth and tearful-looking expression.\n1.78–2.67s: Continue the uncovered distressed reaction with pinched brows and small mouth movement as the phone moves closer and upward.\n2.67–4s: Keep reacting with eyes narrowing and mouth opening/closing slightly; handheld view rises and tilts, ending closer to frontal with hand off mouth.\nFinal state: Uncovered face with distressed brows and parted mouth; close handheld framing, hand remains lowered.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 90,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "TIMING DISCREPANCY: curated index45/time1.5s and extracted outputPTS1.5s differ from manifest nominal index45=1.55s at approximate fps29.032258. Beat clock here uses metadata duration3.1s and nominal frame clock; confirm original input PTS before frame-exact production use.",
+        "Do not reinterpret distressed expression as laughter just because mouth opens."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-bee95bd7a34b5d2a72775282",
+      "sourceSha256": "cf993840bc2066e17957e9251f423c75b8645f6b9ddb4520cbae03028f200d6e",
+      "sourceDurationSeconds": 6.033333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 181,
+      "clarityFrame": {
+        "index": 180,
+        "timeSeconds": 6,
+        "sha256": "b6375e7b662d59f0e16689f063ce3a6772f91d4de38769a3e9d4f7194e6ef775"
+      },
+      "outputDurationSeconds": 7,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.3,
+          "startSeconds": 0,
+          "endSeconds": 1.5082872928176796,
+          "action": "Hold hand over mouth/nose and stare toward the lens; keep the restrained wide-eyed expression."
+        },
+        {
+          "sourceStartSeconds": 1.3,
+          "sourceEndSeconds": 2.13,
+          "startSeconds": 1.5082872928176796,
+          "endSeconds": 2.471270718232044,
+          "action": "Blink and roll the gaze upward toward screen-left while keeping the hand in place."
+        },
+        {
+          "sourceStartSeconds": 2.13,
+          "sourceEndSeconds": 4.77,
+          "startSeconds": 2.471270718232044,
+          "endSeconds": 5.534254143646409,
+          "action": "Return gaze toward the lens and hold wide eyes with the hand still covering mouth and nose."
+        },
+        {
+          "sourceStartSeconds": 4.77,
+          "sourceEndSeconds": 5.4,
+          "startSeconds": 5.534254143646409,
+          "endSeconds": 6.265193370165746,
+          "action": "Close eyelids briefly, then slide the covering hand outward onto the screen-left cheek, revealing parted lips."
+        },
+        {
+          "sourceStartSeconds": 5.4,
+          "sourceEndSeconds": 6.033333333333333,
+          "startSeconds": 6.265193370165746,
+          "endSeconds": 7,
+          "action": "Hold palm against cheek, reopen eyes wide and stare into lens with slightly parted lips and raised brows."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Close upright indoor selfie, hand covers mouth and nose, eyes directed toward camera, eyebrows gently raised; black top and pale tiled/paneled background.\nScene and camera: Mostly steady portrait close-up; framing creeps closer during the clip with small handheld drift.\nGenerate the actual covered-mouth frame0 pose; anchor180 at6s is effectively the final frame and must never become the literal opening of full recreation.\nRemove the source caption/graphic overlay: Wtf did I just find in my LAST YEAR OF UNI (trailing emoji not confidently transcribed) Region: Top center above forehead, approximately y=15–27%; source overlay disappears at very end. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 7-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Close upright indoor selfie, hand covers mouth and nose, eyes directed toward camera, eyebrows gently raised; black top and pale tiled/paneled background.\nScene and camera: Mostly steady portrait close-up; framing creeps closer during the clip with small handheld drift.\n0–1.51s: Hold hand over mouth/nose and stare toward the lens; keep the restrained wide-eyed expression.\n1.51–2.47s: Blink and roll the gaze upward toward screen-left while keeping the hand in place.\n2.47–5.53s: Return gaze toward the lens and hold wide eyes with the hand still covering mouth and nose.\n5.53–6.27s: Close eyelids briefly, then slide the covering hand outward onto the screen-left cheek, revealing parted lips.\n6.27–7s: Hold palm against cheek, reopen eyes wide and stare into lens with slightly parted lips and raised brows.\nFinal state: Palm against cheek, mouth uncovered and slightly open, eyes widened toward lens.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 7,
+        "reviewedFrameCount": 181,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Final-frame clarity anchor would omit virtually all source performance if used as animation frame zero.",
+        "Long covered-mouth hold is deliberate; do not accelerate uncovering to the anchor time or force all clips to three seconds."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-61eb29067f56267684b7cfe6",
+      "sourceSha256": "58d47b1374e44a4c83ad4d34a72ac424b4f476ab028d4992f33b805ca212e361",
+      "sourceDurationSeconds": 2.7333333333333334,
+      "sourceFps": 30,
+      "sourceFrameCount": 82,
+      "clarityFrame": {
+        "index": 41,
+        "timeSeconds": 1.366666,
+        "sha256": "44eb7a339ce0ac2069c993b3743a13042dfb8f11d7f48a9d1a9e92a684c95a3c"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.13,
+          "startSeconds": 0,
+          "endSeconds": 1.2402439024390244,
+          "action": "Hold fingertips at lips and look screen-right with lifted brows and a growing smile."
+        },
+        {
+          "sourceStartSeconds": 1.13,
+          "sourceEndSeconds": 1.43,
+          "startSeconds": 1.2402439024390244,
+          "endSeconds": 1.5695121951219513,
+          "action": "Lower the hand away from lips to chest while opening into a broad smile, gaze still screen-right."
+        },
+        {
+          "sourceStartSeconds": 1.43,
+          "sourceEndSeconds": 1.93,
+          "startSeconds": 1.5695121951219513,
+          "endSeconds": 2.118292682926829,
+          "action": "Hold the open smiling reaction, briefly narrowing/closing eyes with small head movement."
+        },
+        {
+          "sourceStartSeconds": 1.93,
+          "sourceEndSeconds": 2.733333333333333,
+          "startSeconds": 2.118292682926829,
+          "endSeconds": 3,
+          "action": "Lift the hand upward and place it across the forehead while leaning/tilting head slightly, smiling through the final frame."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated bright-room portrait, fingertips touch lower lip/chin, gaze toward screen-right, eyebrows raised and mouth partly open in a suppressed smile.\nScene and camera: Steady portrait medium close-up; light wall and red wall section/cabinets behind.\nReconstruct frame0 fingertips-to-lips pose, not frame41 hand already lowering/away from mouth.\nRemove the source caption/graphic overlay: Small multiline top caption; exact copy not confidently legible in sheets. Region: Top center, approximately y=15–28%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated bright-room portrait, fingertips touch lower lip/chin, gaze toward screen-right, eyebrows raised and mouth partly open in a suppressed smile.\nScene and camera: Steady portrait medium close-up; light wall and red wall section/cabinets behind.\n0–1.24s: Hold fingertips at lips and look screen-right with lifted brows and a growing smile.\n1.24–1.57s: Lower the hand away from lips to chest while opening into a broad smile, gaze still screen-right.\n1.57–2.12s: Hold the open smiling reaction, briefly narrowing/closing eyes with small head movement.\n2.12–3s: Lift the hand upward and place it across the forehead while leaning/tilting head slightly, smiling through the final frame.\nFinal state: Hand rests across forehead, eyes narrowed with broad open smile and head tilted.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 82,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Do not stop after uncovering; preserve final hand-to-forehead gesture.",
+        "Caption exact wording unverified."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-f12c90a72871c0cdaf3503db",
+      "sourceSha256": "42e1d5861cd1238f8f8bf4fada49c92ebdd7552de9dc061e9455abcd48de2c6c",
+      "sourceDurationSeconds": 3.933333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 118,
+      "clarityFrame": {
+        "index": 29,
+        "timeSeconds": 0.966666,
+        "sha256": "0c190388a0b7266f3e7090ede4812fe2d0f0a9b2812dbbd368ef59bf361cae32"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.57,
+          "startSeconds": 0,
+          "endSeconds": 0.5796610169491525,
+          "action": "Hold glasses at temple and stare slightly upward with closed/pursed lips."
+        },
+        {
+          "sourceStartSeconds": 0.57,
+          "sourceEndSeconds": 1.17,
+          "startSeconds": 0.5796610169491525,
+          "endSeconds": 1.1898305084745762,
+          "action": "Lift glasses up and away from face in one continuous motion, carrying them out through upper-right of frame."
+        },
+        {
+          "sourceStartSeconds": 1.17,
+          "sourceEndSeconds": 2.47,
+          "startSeconds": 1.1898305084745762,
+          "endSeconds": 2.511864406779661,
+          "action": "Lower arm out of view and hold an uncovered upward/forward stare with slightly parted lips and a small head movement."
+        },
+        {
+          "sourceStartSeconds": 2.47,
+          "sourceEndSeconds": 3.933333333333333,
+          "startSeconds": 2.511864406779661,
+          "endSeconds": 4,
+          "action": "Blink, lower gaze slightly toward the desk, then settle with lips closed and head subtly angled to screen-left."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated at desk behind pale keyboard, glasses on, screen-right hand gripping frame at temple, gaze slightly upward with lips closed/pursed.\nScene and camera: Fixed portrait medium desk shot, warm overhead light, wall decor and chair remain unchanged.\nRestore glasses-on frame0 with hand gripping temple. Clarity frame29 already has glasses above/off eyes and is not opening-pose authority.\nRemove the source caption/graphic overlay: Graphic symbols including red starburst, LinkedIn 'in' square and flame. Region: Upper center above head, approximately y=10–26%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated at desk behind pale keyboard, glasses on, screen-right hand gripping frame at temple, gaze slightly upward with lips closed/pursed.\nScene and camera: Fixed portrait medium desk shot, warm overhead light, wall decor and chair remain unchanged.\n0–0.58s: Hold glasses at temple and stare slightly upward with closed/pursed lips.\n0.58–1.19s: Lift glasses up and away from face in one continuous motion, carrying them out through upper-right of frame.\n1.19–2.51s: Lower arm out of view and hold an uncovered upward/forward stare with slightly parted lips and a small head movement.\n2.51–4s: Blink, lower gaze slightly toward the desk, then settle with lips closed and head subtly angled to screen-left.\nFinal state: Glasses remain off; hands below frame, lips closed, slight sideward head angle behind keyboard.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 118,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Remove glasses once; do not start glasses-off then invent a second removal.",
+        "Decorative overlay symbols should be removed; keep real wall decorations."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-50dd086ef9d1c758d5ae3bb5",
+      "sourceSha256": "fd68174881fb1e29456a56b5360ff1d4f6052ed31da4e91796dfbe8bbccac4e1",
+      "sourceDurationSeconds": 2.8666666666666667,
+      "sourceFps": 30,
+      "sourceFrameCount": 86,
+      "clarityFrame": {
+        "index": 43,
+        "timeSeconds": 1.433333,
+        "sha256": "f4dd3794412fba430a2850d6d603223ec2c18a1adf1bdd7bdfd2f1fe12e1a0e8"
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.83,
+          "startSeconds": 0,
+          "endSeconds": 0.8686046511627907,
+          "action": "Hold both hands over mouth and nose, eyes looking upward/forward in surprise."
+        },
+        {
+          "sourceStartSeconds": 0.83,
+          "sourceEndSeconds": 1.23,
+          "startSeconds": 0.8686046511627907,
+          "endSeconds": 1.2872093023255813,
+          "action": "Lower both hands together from mouth toward chin/chest, revealing an open rounded mouth."
+        },
+        {
+          "sourceStartSeconds": 1.23,
+          "sourceEndSeconds": 1.7,
+          "startSeconds": 1.2872093023255813,
+          "endSeconds": 1.7790697674418603,
+          "action": "Keep palms together at upper chest and hold the open-mouth, raised-gaze reaction."
+        },
+        {
+          "sourceStartSeconds": 1.7,
+          "sourceEndSeconds": 2.8666666666666667,
+          "startSeconds": 1.7790697674418603,
+          "endSeconds": 3,
+          "action": "Remain seated with palms together and small natural finger/head movement; keep eyes lifted and mouth partly open through the ending."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated at desk in red top, both palms cover mouth and nose, gaze lifted with brows raised; keyboard and desk mat in foreground.\nScene and camera: Fixed portrait medium desk view with warm ceiling light and wall decor.\nRebuild both-hands-covering-mouth frame0, not clear frame43 with hands already at chest.\nRemove the source caption/graphic overlay: Red starburst and LinkedIn logo above GOATED LEADS (small lettering). Region: Upper center above forehead, approximately y=9–27%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated at desk in red top, both palms cover mouth and nose, gaze lifted with brows raised; keyboard and desk mat in foreground.\nScene and camera: Fixed portrait medium desk view with warm ceiling light and wall decor.\n0–0.87s: Hold both hands over mouth and nose, eyes looking upward/forward in surprise.\n0.87–1.29s: Lower both hands together from mouth toward chin/chest, revealing an open rounded mouth.\n1.29–1.78s: Keep palms together at upper chest and hold the open-mouth, raised-gaze reaction.\n1.78–3s: Remain seated with palms together and small natural finger/head movement; keep eyes lifted and mouth partly open through the ending.\nFinal state: Palms together at chest, mouth open, gaze slightly upward.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 86,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Do not replay hands-to-mouth before lowering; source begins already covered.",
+        "Avoid interpreting joined hands as repeated clapping."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-fc44f6214b6e17413600ec13",
+      "sourceSha256": "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+      "sourceDurationSeconds": 3.7333333333333334,
+      "sourceFps": 30,
+      "sourceFrameCount": 112,
+      "clarityFrame": {
+        "index": 70,
+        "timeSeconds": 2.333333,
+        "sha256": "df452e82eadb2e7ed8338f34e2424e623b59ef4015d646a2a3c89d63a34d5a9c"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.5,
+          "startSeconds": 0,
+          "endSeconds": 0.5357142857142857,
+          "action": "Hold the glasses at temple and the sideward wide-eyed stare with parted lips."
+        },
+        {
+          "sourceStartSeconds": 0.5,
+          "sourceEndSeconds": 0.9,
+          "startSeconds": 0.5357142857142857,
+          "endSeconds": 0.9642857142857143,
+          "action": "Pull the glasses forward and down once, clearing the eyes and carrying them below the chin while looking screen-right."
+        },
+        {
+          "sourceStartSeconds": 0.9,
+          "sourceEndSeconds": 1.6,
+          "startSeconds": 0.9642857142857143,
+          "endSeconds": 1.7142857142857144,
+          "action": "Hold the glasses-off sideward stare, lips parted, eyebrows lifted; hand and glasses stay low."
+        },
+        {
+          "sourceStartSeconds": 1.6,
+          "sourceEndSeconds": 1.93,
+          "startSeconds": 1.7142857142857144,
+          "endSeconds": 2.0678571428571426,
+          "action": "Blink and turn the head/gaze toward the camera."
+        },
+        {
+          "sourceStartSeconds": 1.93,
+          "sourceEndSeconds": 2.9,
+          "startSeconds": 2.0678571428571426,
+          "endSeconds": 3.107142857142857,
+          "action": "Hold the direct-camera wide-eyed surprise with parted lips, without smiling or continuously turning."
+        },
+        {
+          "sourceStartSeconds": 2.9,
+          "sourceEndSeconds": 3.7333333333333334,
+          "startSeconds": 3.107142857142857,
+          "endSeconds": 4,
+          "action": "Turn gaze/head back toward screen-right and hold the sideward surprised expression to the final frame."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Low tilted close selfie under pale window beams, round glasses on, white earbuds, black ribbed sweater; screen-right hand at glasses temple, gaze screen-right and lips parted.\nScene and camera: Portrait low-angle close-up with slight phone drift; tilted beams and bright window remain fixed scene authority.\nUse an approved reconstructed t0 glasses-on influencer opening. Clear frame70 at2.333333s is glasses-off direct-camera evidence only.\nRemove the source caption/graphic overlay: POV: you finally understand how to use Claude for marketing Region: Lower-middle over sweater, approximately y=63–81%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Low tilted close selfie under pale window beams, round glasses on, white earbuds, black ribbed sweater; screen-right hand at glasses temple, gaze screen-right and lips parted.\nScene and camera: Portrait low-angle close-up with slight phone drift; tilted beams and bright window remain fixed scene authority.\n0–0.54s: Hold the glasses at temple and the sideward wide-eyed stare with parted lips.\n0.54–0.96s: Pull the glasses forward and down once, clearing the eyes and carrying them below the chin while looking screen-right.\n0.96–1.71s: Hold the glasses-off sideward stare, lips parted, eyebrows lifted; hand and glasses stay low.\n1.71–2.07s: Blink and turn the head/gaze toward the camera.\n2.07–3.11s: Hold the direct-camera wide-eyed surprise with parted lips, without smiling or continuously turning.\n3.11–4s: Turn gaze/head back toward screen-right and hold the sideward surprised expression to the final frame.\nFinal state: Glasses off, eyes screen-right, mouth parted, same tilted window-beam scene.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 112,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Prior improved real three-second Hook100 trial was reported better but had only partial source fidelity: glasses removal timing, brow expression and camera drift still need qualification. This source plan is not a new generated-output acceptance.",
+        "Keep sideward hold, blink-turn, frontal hold and final sideward tail distinct.",
+        "Do not carry optional portrait identity-reference background into the ending."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-ddcfb2950d40f37771058b73",
+      "sourceSha256": "cd230e98db5d44712ca1541712b3ccc34c241af65c1142a3bb4c5136c581df22",
+      "sourceDurationSeconds": 3.7666666666666666,
+      "sourceFps": 30,
+      "sourceFrameCount": 113,
+      "clarityFrame": {
+        "index": 28,
+        "timeSeconds": 0.933333,
+        "sha256": "64b827eabdc4a93d951f7b1810760314d4504d0524e9909c26f55ac30440af54"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.3,
+          "startSeconds": 0,
+          "endSeconds": 0.3185840707964602,
+          "action": "Keep chin high in low upward view while the phone begins to lift/reorient, face emerging from lower frame."
+        },
+        {
+          "sourceStartSeconds": 0.3,
+          "sourceEndSeconds": 0.73,
+          "startSeconds": 0.3185840707964602,
+          "endSeconds": 0.7752212389380531,
+          "action": "Reframe continuously to a centered more level face view, revealing bright street signs/buildings; settle into a slight closed-mouth smile."
+        },
+        {
+          "sourceStartSeconds": 0.73,
+          "sourceEndSeconds": 2.1,
+          "startSeconds": 0.7752212389380531,
+          "endSeconds": 2.230088495575221,
+          "action": "Continue the moving street selfie with a small smile and gaze near lens as buildings drift behind."
+        },
+        {
+          "sourceStartSeconds": 2.1,
+          "sourceEndSeconds": 2.63,
+          "startSeconds": 2.230088495575221,
+          "endSeconds": 2.792920353982301,
+          "action": "Raise a hand to cover/touch the lower mouth and chin while smiling; keep walking-camera drift."
+        },
+        {
+          "sourceStartSeconds": 2.63,
+          "sourceEndSeconds": 3.2,
+          "startSeconds": 2.792920353982301,
+          "endSeconds": 3.3982300884955756,
+          "action": "Turn head and gaze toward screen-right, keeping hand against lower mouth/chin."
+        },
+        {
+          "sourceStartSeconds": 3.2,
+          "sourceEndSeconds": 3.7666666666666666,
+          "startSeconds": 3.3982300884955756,
+          "endSeconds": 4,
+          "action": "Turn back toward lens with hand still near mouth and a restrained smile, maintaining continuous night-street background."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Nighttime outdoor selfie aimed steeply upward from chest/below chin, face foreshortened near lower edge against mostly black sky, mouth slightly open.\nScene and camera: Handheld portrait camera rapidly reorients from very low skyward angle to a face-centered street selfie, revealing bright magenta sign and illuminated buildings; continued walking/turning causes background parallax.\nReconstruct the extreme low-angle source0 chin/sky composition. Frame28 clear centered face is later scene evidence; do not begin in its leveled framing.\nRemove the source caption/graphic overlay: I could literally KISS the business owner who showed me this Region: Middle over upper chest, approximately y=63–81%. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Nighttime outdoor selfie aimed steeply upward from chest/below chin, face foreshortened near lower edge against mostly black sky, mouth slightly open.\nScene and camera: Handheld portrait camera rapidly reorients from very low skyward angle to a face-centered street selfie, revealing bright magenta sign and illuminated buildings; continued walking/turning causes background parallax.\n0–0.32s: Keep chin high in low upward view while the phone begins to lift/reorient, face emerging from lower frame.\n0.32–0.78s: Reframe continuously to a centered more level face view, revealing bright street signs/buildings; settle into a slight closed-mouth smile.\n0.78–2.23s: Continue the moving street selfie with a small smile and gaze near lens as buildings drift behind.\n2.23–2.79s: Raise a hand to cover/touch the lower mouth and chin while smiling; keep walking-camera drift.\n2.79–3.4s: Turn head and gaze toward screen-right, keeping hand against lower mouth/chin.\n3.4–4s: Turn back toward lens with hand still near mouth and a restrained smile, maintaining continuous night-street background.\nFinal state: Face closer to frontal, hand at lower mouth/chin, small smile, illuminated street behind.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 113,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Camera reframe must precede the centered selfie; a static frontal opening loses defining source action.",
+        "Background signage is real scene content; remove caption overlay without erasing the actual street signs.",
+        "Hand rises only after the centered smiling phase."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "explore-paired-hook-185ed6ac17073e3bc1b8f6b5",
+      "sourceSha256": "7e43f6ca3c30d32d362c8370e7e1d82dd722604f4146db11ad1f4fbb0bdceb22",
+      "sourceDurationSeconds": 3.3333333333333335,
+      "sourceFps": 30,
+      "sourceFrameCount": 100,
+      "clarityFrame": {
+        "index": 37,
+        "timeSeconds": 1.233333,
+        "sha256": "82520d58dfb044387e85086923645edef93c11c11cfb086c338933a9249eb45a"
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.63,
+          "startSeconds": 0,
+          "endSeconds": 0.756,
+          "action": "Read the phone with lowered gaze and slight lip movement, maintaining the initially restrained expression."
+        },
+        {
+          "sourceStartSeconds": 0.63,
+          "sourceEndSeconds": 1.13,
+          "startSeconds": 0.756,
+          "endSeconds": 1.3559999999999999,
+          "action": "Widen eyes and open mouth into a rounded shocked expression as phone lowers out of the lower-left foreground."
+        },
+        {
+          "sourceStartSeconds": 1.13,
+          "sourceEndSeconds": 2.1,
+          "startSeconds": 1.3559999999999999,
+          "endSeconds": 2.52,
+          "action": "Hold the open-mouth wide-eyed reaction and lift free hand beside lower face, beginning to lean closer to camera."
+        },
+        {
+          "sourceStartSeconds": 2.1,
+          "sourceEndSeconds": 2.6,
+          "startSeconds": 2.52,
+          "endSeconds": 3.12,
+          "action": "Bring hand across mouth, covering the open lips while moving into a closer face view."
+        },
+        {
+          "sourceStartSeconds": 2.6,
+          "sourceEndSeconds": 3.3333333333333335,
+          "startSeconds": 3.12,
+          "endSeconds": 4,
+          "action": "Hold hand over mouth with wide eyes and raised brows, continuing slight lean-in through final close-up."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Purple-lit room, glasses on, phone held screen-left at face/chest height, eyes down toward phone, lips slightly parted and fairly neutral; blue patterned outer layer over light top.\nScene and camera: Portrait medium close-up initially stable, then a gradual closer lean/reframe as reaction builds; purple room and chair stay continuous.\nRebuild source0 phone-reading neutral state. Frame37 already shows phone lowered and shocked open mouth; do not begin in that later reaction.\nRemove the source caption/graphic overlay: I love Gen Z because WDYM we made a Bible buddy that will literally text you and remind you to spend time with God Region: Center/lower-middle over chest, approximately y=61–80%; crosses lower face later as framing closes. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Purple-lit room, glasses on, phone held screen-left at face/chest height, eyes down toward phone, lips slightly parted and fairly neutral; blue patterned outer layer over light top.\nScene and camera: Portrait medium close-up initially stable, then a gradual closer lean/reframe as reaction builds; purple room and chair stay continuous.\n0–0.76s: Read the phone with lowered gaze and slight lip movement, maintaining the initially restrained expression.\n0.76–1.36s: Widen eyes and open mouth into a rounded shocked expression as phone lowers out of the lower-left foreground.\n1.36–2.52s: Hold the open-mouth wide-eyed reaction and lift free hand beside lower face, beginning to lean closer to camera.\n2.52–3.12s: Bring hand across mouth, covering the open lips while moving into a closer face view.\n3.12–4s: Hold hand over mouth with wide eyes and raised brows, continuing slight lean-in through final close-up.\nFinal state: Close wide-eyed face with hand over mouth; glasses stay on and purple room persists.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 100,
+        "notes": "Reviewed every frame at contact-sheet resolution in all native contact_sheet_*.jpg files; metadata and manifest count/endpoints checked. Source-clock boundaries are visually estimated action phases, not millisecond measurements. Full-resolution additional checks: Hook71 frame45, Hook85 finalframe180, Hook104 frame0. No generated image/video was produced for these candidate entries."
+      },
+      "risks": [
+        "Preserve the neutral-reading to surprise transition rather than directing shock from frame zero.",
+        "Keep glasses on throughout; blue reflections on lenses are source lighting, not a removal cue.",
+        "Foreground phone and covering hand need continuity QA."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-1-01",
+      "sourceSha256": "bfc2d3454cbe921df063341bc05bc80846fdeab12f9f8f7b82b6e06d46e3c3d6",
+      "sourceDurationSeconds": 2.7,
+      "sourceFps": 30,
+      "sourceFrameCount": 81,
+      "clarityFrame": {
+        "index": 51,
+        "timeSeconds": 1.7,
+        "sha256": "525f9678af9b4be7c271f1ecbb44d996038072581c4cf4ae89e3916a9653bed8",
+        "presentationTimeSeconds": 1.766016
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.23333333333333334,
+          "startSeconds": 0,
+          "endSeconds": 0.25925925925925924,
+          "action": "Hold the forward/side arm stretch, eyes closed and chin slightly raised."
+        },
+        {
+          "sourceStartSeconds": 0.23333333333333334,
+          "sourceEndSeconds": 0.6666666666666666,
+          "startSeconds": 0.25925925925925924,
+          "endSeconds": 0.7407407407407406,
+          "action": "Release stretch, sweep one arm up over head and settle hand on hair while turning face sideways."
+        },
+        {
+          "sourceStartSeconds": 0.6666666666666666,
+          "sourceEndSeconds": 1.2,
+          "startSeconds": 0.7407407407407406,
+          "endSeconds": 1.3333333333333333,
+          "action": "Hold hand on head and sideways, slightly upward gaze; other arm rests lower."
+        },
+        {
+          "sourceStartSeconds": 1.2,
+          "sourceEndSeconds": 1.5666666666666667,
+          "startSeconds": 1.3333333333333333,
+          "endSeconds": 1.7407407407407405,
+          "action": "Switch the raised-hand gesture across the crown, tilt head and draw free hand downward."
+        },
+        {
+          "sourceStartSeconds": 1.5666666666666667,
+          "sourceEndSeconds": 2.2,
+          "startSeconds": 1.7407407407407405,
+          "endSeconds": 2.4444444444444446,
+          "action": "Hold hand on head with head tilted, then start lowering it toward laptop."
+        },
+        {
+          "sourceStartSeconds": 2.2,
+          "sourceEndSeconds": 2.7,
+          "startSeconds": 2.4444444444444446,
+          "endSeconds": 3,
+          "action": "Bring hands forward to laptop; lift lid more upright until it occupies more foreground, face settling toward screen."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Arms extend together toward screen-left/front across foreground; eyes closed, chin raised. Seated behind half-open silver laptop in brown sleeveless knit top.\nScene and camera: Fixed low tabletop portrait, laptop lower-left; pale bedroom, shelf and ceiling light.\nReconstruct original extended-arm stretch, closed eyes and chin-up posture, not1.7s hand-on-head clarity pose.\nRemove the source caption/graphic overlay: AI Coloring Books + Pinterest = 💰💰💰/day Region: Upper center above head. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Arms extend together toward screen-left/front across foreground; eyes closed, chin raised. Seated behind half-open silver laptop in brown sleeveless knit top.\nScene and camera: Fixed low tabletop portrait, laptop lower-left; pale bedroom, shelf and ceiling light.\n0–0.26s: Hold the forward/side arm stretch, eyes closed and chin slightly raised.\n0.26–0.74s: Release stretch, sweep one arm up over head and settle hand on hair while turning face sideways.\n0.74–1.33s: Hold hand on head and sideways, slightly upward gaze; other arm rests lower.\n1.33–1.74s: Switch the raised-hand gesture across the crown, tilt head and draw free hand downward.\n1.74–2.44s: Hold hand on head with head tilted, then start lowering it toward laptop.\n2.44–3s: Bring hands forward to laptop; lift lid more upright until it occupies more foreground, face settling toward screen.\nFinal state: Hands forward at laptop, lid more upright and foreground larger; face looks toward it.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 81,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Exact arm crossing/hand switching requires continuity review; do not replace stretch with generic shock.",
+        "Preserve final laptop-lid movement and increased foreground occlusion.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-1-02",
+      "sourceSha256": "5036d4fe9b4e274ee6a22596b175abdabc95c389ae28b0e66ce3bf1330cf4f1c",
+      "sourceDurationSeconds": 2.7333333333333334,
+      "sourceFps": 30,
+      "sourceFrameCount": 82,
+      "clarityFrame": {
+        "index": 44,
+        "timeSeconds": 1.466666,
+        "sha256": "3752f1e9df9dcd77a2d1e4669f36942ae204b53fe264f389afe23a202f539a45",
+        "presentationTimeSeconds": 1.532682
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.8,
+          "startSeconds": 0,
+          "endSeconds": 0.8780487804878048,
+          "action": "Hold hand behind head and upward gaze with small eye movement."
+        },
+        {
+          "sourceStartSeconds": 0.8,
+          "sourceEndSeconds": 1.3333333333333333,
+          "startSeconds": 0.8780487804878048,
+          "endSeconds": 1.4634146341463414,
+          "action": "Turn attention toward laptop and lean forward; eyes widen, brows lift and jaw drops."
+        },
+        {
+          "sourceStartSeconds": 1.3333333333333333,
+          "sourceEndSeconds": 1.6666666666666667,
+          "startSeconds": 1.4634146341463414,
+          "endSeconds": 1.8292682926829267,
+          "action": "Hold forward lean and open-mouth stare at laptop."
+        },
+        {
+          "sourceStartSeconds": 1.6666666666666667,
+          "sourceEndSeconds": 2.2,
+          "startSeconds": 1.8292682926829267,
+          "endSeconds": 2.414634146341464,
+          "action": "Bring both hands to cover mouth and hold wide-eyed shock."
+        },
+        {
+          "sourceStartSeconds": 2.2,
+          "sourceEndSeconds": 2.7333333333333334,
+          "startSeconds": 2.414634146341464,
+          "endSeconds": 3,
+          "action": "Lower hands, then reach toward phone/camera while leaning closer, mouth still parted."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Hand rests behind screen-left side of head, chin raised, neutral lips, eyes looking upward. Seated in white short-sleeve shirt beside open laptop.\nScene and camera: Fixed medium portrait phone view; laptop left foreground and bedroom background.\nReconstruct original chin-up, hand-behind-head opening;1.466666s wide-eyed forward lean is later performance.\nRemove the source caption/graphic overlay: Why did I find this AFTER being broke?!😭 Region: Upper center; caption absent on final frame. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Hand rests behind screen-left side of head, chin raised, neutral lips, eyes looking upward. Seated in white short-sleeve shirt beside open laptop.\nScene and camera: Fixed medium portrait phone view; laptop left foreground and bedroom background.\n0–0.88s: Hold hand behind head and upward gaze with small eye movement.\n0.88–1.46s: Turn attention toward laptop and lean forward; eyes widen, brows lift and jaw drops.\n1.46–1.83s: Hold forward lean and open-mouth stare at laptop.\n1.83–2.41s: Bring both hands to cover mouth and hold wide-eyed shock.\n2.41–3s: Lower hands, then reach toward phone/camera while leaning closer, mouth still parted.\nFinal state: Arm extended toward camera, face closer and wide-eyed, lips parted.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 82,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Do not skip original calm gaze or final reach.",
+        "Reaching hand enters foreground; preserve anatomy and avoid cut to another scene.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-1-03",
+      "sourceSha256": "af038650c2c703a2c7df8778429473676fff1a0e6bd21c40a689cdea5acc0c33",
+      "sourceDurationSeconds": 2.033333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 61,
+      "clarityFrame": {
+        "index": 55,
+        "timeSeconds": 1.833333,
+        "sha256": "fb633ca4b440ca22b4dc4e55d2be5e27cc578fb3bdef669ec97661386cc97dd8",
+        "presentationTimeSeconds": 1.899349
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.9666666666666667,
+          "startSeconds": 0,
+          "endSeconds": 1.4262295081967213,
+          "action": "Hold glasses on with fingers at temple, wide-eyed open-mouth attention toward laptop; free hand lowers."
+        },
+        {
+          "sourceStartSeconds": 0.9666666666666667,
+          "sourceEndSeconds": 1.5333333333333334,
+          "startSeconds": 1.4262295081967213,
+          "endSeconds": 2.2622950819672134,
+          "action": "Lift glasses upward off eyes and carry them toward screen-right; lips round as eyes remain wide."
+        },
+        {
+          "sourceStartSeconds": 1.5333333333333334,
+          "sourceEndSeconds": 1.8333333333333333,
+          "startSeconds": 2.2622950819672134,
+          "endSeconds": 2.7049180327868854,
+          "action": "Hand and glasses move aside, leaving face unobstructed; lean slightly forward with rounded lips."
+        },
+        {
+          "sourceStartSeconds": 1.8333333333333333,
+          "sourceEndSeconds": 2.033333333333333,
+          "startSeconds": 2.7049180327868854,
+          "endSeconds": 3,
+          "action": "Maintain forward gaze and reopen jaw in surprise, glasses off to side."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Clear eyeglasses on eyes, one hand grips screen-right temple, eyes wide and mouth open while seated at laptop in brown knit top.\nScene and camera: Fixed medium-close portrait with laptop lower-left, pale bedroom behind.\nRebuild glasses-on original opening.1.833333s clarity already has glasses removed and cannot be literal first image.\nRemove the source caption/graphic overlay: AI Coloring Book + Amazon = 💰💰💰/week Region: Upper center. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Clear eyeglasses on eyes, one hand grips screen-right temple, eyes wide and mouth open while seated at laptop in brown knit top.\nScene and camera: Fixed medium-close portrait with laptop lower-left, pale bedroom behind.\n0–1.43s: Hold glasses on with fingers at temple, wide-eyed open-mouth attention toward laptop; free hand lowers.\n1.43–2.26s: Lift glasses upward off eyes and carry them toward screen-right; lips round as eyes remain wide.\n2.26–2.7s: Hand and glasses move aside, leaving face unobstructed; lean slightly forward with rounded lips.\n2.7–3s: Maintain forward gaze and reopen jaw in surprise, glasses off to side.\nFinal state: Unobstructed face without glasses, open-mouth surprised look toward laptop.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 61,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Animate one removal, not putting glasses on or repeating removal.",
+        "Keep laptop/background and outfit continuous while glasses move offscreen.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-1-06",
+      "sourceSha256": "ad8f9f9c8f9e43a366ed0392cf32ed31c2014ea04714716450976cad61903006",
+      "sourceDurationSeconds": 2.533333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 76,
+      "clarityFrame": {
+        "index": 20,
+        "timeSeconds": 0.666666,
+        "sha256": "d0e18fcc194e310ccc42b0de31961ad8659003a7fea11665d7c46a9209f0bba1",
+        "presentationTimeSeconds": 0.732682
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.43333333333333335,
+          "startSeconds": 0,
+          "endSeconds": 0.5131578947368421,
+          "action": "Hold pencil eraser at lower lip, round eyes fixed toward camera and lips slightly pursed."
+        },
+        {
+          "sourceStartSeconds": 0.43333333333333335,
+          "sourceEndSeconds": 1,
+          "startSeconds": 0.5131578947368421,
+          "endSeconds": 1.1842105263157894,
+          "action": "Move pencil away toward screen-right and raise hand beside outer eye/temple."
+        },
+        {
+          "sourceStartSeconds": 1,
+          "sourceEndSeconds": 1.9,
+          "startSeconds": 1.1842105263157894,
+          "endSeconds": 2.25,
+          "action": "Rest fingertip beside temple while holding pencil upright; maintain wide-eyed attentive stare with small mouth movement."
+        },
+        {
+          "sourceStartSeconds": 1.9,
+          "sourceEndSeconds": 2.3666666666666667,
+          "startSeconds": 2.25,
+          "endSeconds": 2.8026315789473686,
+          "action": "Mouth opens into round surprise while fingertip stays beside temple."
+        },
+        {
+          "sourceStartSeconds": 2.3666666666666667,
+          "sourceEndSeconds": 2.533333333333333,
+          "startSeconds": 2.8026315789473686,
+          "endSeconds": 3,
+          "action": "Round/purse lips and lean closer toward phone; preserve hand beside temple."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Tight face view, yellow pencil held upright with eraser touching lower lip, eyes very wide and gaze toward camera; black top.\nScene and camera: Mostly fixed close phone shot with slight natural movement, pale wall and chair behind.\nReconstruct t=0 pencil-eraser contact at lower lip;0.666667s clarity shows pencil already moved aside.\nRemove the source caption/graphic overlay: So this is why everyone’s deleting CANVA😱🤯 Region: Upper center above forehead. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Tight face view, yellow pencil held upright with eraser touching lower lip, eyes very wide and gaze toward camera; black top.\nScene and camera: Mostly fixed close phone shot with slight natural movement, pale wall and chair behind.\n0–0.51s: Hold pencil eraser at lower lip, round eyes fixed toward camera and lips slightly pursed.\n0.51–1.18s: Move pencil away toward screen-right and raise hand beside outer eye/temple.\n1.18–2.25s: Rest fingertip beside temple while holding pencil upright; maintain wide-eyed attentive stare with small mouth movement.\n2.25–2.8s: Mouth opens into round surprise while fingertip stays beside temple.\n2.8–3s: Round/purse lips and lean closer toward phone; preserve hand beside temple.\nFinal state: Face closer, rounded lips and wide eyes; hand/pencil remain beside temple.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 76,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Prop is a pencil, not a drinking straw; do not generate sipping.",
+        "Maintain pencil length, hand contact and natural facial proportions during final lean.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-2-01",
+      "sourceSha256": "32c0c720329a3292f7ec7b0b8d38f3aca7d230dce7a8678040e0c4ac2236f795",
+      "sourceDurationSeconds": 4.166666666666667,
+      "sourceFps": 30,
+      "sourceFrameCount": 125,
+      "clarityFrame": {
+        "index": 68,
+        "timeSeconds": 2.266666,
+        "sha256": "5a331e017f7a55349d4a6deef6503d212c1c612b13e1a2dd122b16cfc32540fe",
+        "presentationTimeSeconds": 2.332682
+      },
+      "outputDurationSeconds": 5,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.6,
+          "startSeconds": 0,
+          "endSeconds": 0.72,
+          "action": "Look down at yellow object while cheek rests on fist; lightly turn object in other hand."
+        },
+        {
+          "sourceStartSeconds": 0.6,
+          "sourceEndSeconds": 1.5333333333333334,
+          "startSeconds": 0.72,
+          "endSeconds": 1.8399999999999999,
+          "action": "Shift gaze toward laptop/camera, lift brows and peer forward while maintaining cheek support and object hold."
+        },
+        {
+          "sourceStartSeconds": 1.5333333333333334,
+          "sourceEndSeconds": 2.2666666666666666,
+          "startSeconds": 1.8399999999999999,
+          "endSeconds": 2.7199999999999998,
+          "action": "Jaw drops, eyes widen; release yellow object onto table where it falls/settles upright."
+        },
+        {
+          "sourceStartSeconds": 2.2666666666666666,
+          "sourceEndSeconds": 3,
+          "startSeconds": 2.7199999999999998,
+          "endSeconds": 3.5999999999999996,
+          "action": "Lift supporting hand from cheek to cover mouth; hold startled wide-eyed look."
+        },
+        {
+          "sourceStartSeconds": 3,
+          "sourceEndSeconds": 3.6666666666666665,
+          "startSeconds": 3.5999999999999996,
+          "endSeconds": 4.3999999999999995,
+          "action": "Keep mouth covered and reach free hand toward phone/camera across foreground."
+        },
+        {
+          "sourceStartSeconds": 3.6666666666666665,
+          "sourceEndSeconds": 4.166666666666667,
+          "startSeconds": 4.3999999999999995,
+          "endSeconds": 5,
+          "action": "Camera tilts/moves closer with blur; maintain mouth-covered expression as face becomes larger."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Seated at wooden table with laptop lower-left; screen-left fist supports cheek, other hand holds yellow translucent soft object near chest, gaze lowered to it.\nScene and camera: Initially fixed medium portrait with pale wall; final phone/camera moves closer and tilts, creating blur.\nReconstruct original cheek-on-fist, gaze-down, yellow-object-in-hand opening.2.266667s anchor is a later dropped-object reaction.\nRemove the source caption/graphic overlay: My sister is actually nuts why is this her wedding invitation 😭😭 Region: Centered across chest/table edge. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 5-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Seated at wooden table with laptop lower-left; screen-left fist supports cheek, other hand holds yellow translucent soft object near chest, gaze lowered to it.\nScene and camera: Initially fixed medium portrait with pale wall; final phone/camera moves closer and tilts, creating blur.\n0–0.72s: Look down at yellow object while cheek rests on fist; lightly turn object in other hand.\n0.72–1.84s: Shift gaze toward laptop/camera, lift brows and peer forward while maintaining cheek support and object hold.\n1.84–2.72s: Jaw drops, eyes widen; release yellow object onto table where it falls/settles upright.\n2.72–3.6s: Lift supporting hand from cheek to cover mouth; hold startled wide-eyed look.\n3.6–4.4s: Keep mouth covered and reach free hand toward phone/camera across foreground.\n4.4–5s: Camera tilts/moves closer with blur; maintain mouth-covered expression as face becomes larger.\nFinal state: Closer tilted/blurred face view, hand still over mouth; table/object largely leave composition.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 5,
+        "reviewedFrameCount": 125,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Yellow object is visually soft/translucent; do not assert exact physical product identity.",
+        "Object release and final camera motion require review; do not invent a camera cut.",
+        "Compression to3s accelerates original4.166667s sequence; retain all phases and declare retiming.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-2-02",
+      "sourceSha256": "00c6c3f9454fd7f7750890793846e096cee9a8e97bb9c8a36f6c228119378660",
+      "sourceDurationSeconds": 2.533333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 76,
+      "clarityFrame": {
+        "index": 61,
+        "timeSeconds": 2.033333,
+        "sha256": "a58bd65aa45e04643b9d7a43a61fc5d76ed8a5cc3b32363aa2ef1582f417f3b0",
+        "presentationTimeSeconds": 2.099349
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.8,
+          "startSeconds": 0,
+          "endSeconds": 0.9473684210526316,
+          "action": "Peer downward through glasses toward laptop, hands at both temples, brows furrowed."
+        },
+        {
+          "sourceStartSeconds": 0.8,
+          "sourceEndSeconds": 1.3333333333333333,
+          "startSeconds": 0.9473684210526316,
+          "endSeconds": 1.5789473684210527,
+          "action": "Lift glasses upward from nose onto top of head with both hands; eyes remain focused on laptop."
+        },
+        {
+          "sourceStartSeconds": 1.3333333333333333,
+          "sourceEndSeconds": 1.8,
+          "startSeconds": 1.5789473684210527,
+          "endSeconds": 2.1315789473684212,
+          "action": "Release glasses at crown and lower hands beside ears, look up with mouth opening in disbelief."
+        },
+        {
+          "sourceStartSeconds": 1.8,
+          "sourceEndSeconds": 2.1666666666666665,
+          "startSeconds": 2.1315789473684212,
+          "endSeconds": 2.5657894736842106,
+          "action": "Continue lowering hands toward table, briefly close eyes then look forward again."
+        },
+        {
+          "sourceStartSeconds": 2.1666666666666665,
+          "sourceEndSeconds": 2.533333333333333,
+          "startSeconds": 2.5657894736842106,
+          "endSeconds": 3,
+          "action": "Hold hands low near table, glasses remain on head, open-mouth puzzled stare forward."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Leaning forward toward laptop, clear glasses on eyes, both hands gripping temples; eyebrows drawn and mouth slightly parted, gray sleeveless top.\nScene and camera: Fixed medium-close portrait across wooden table; laptop lower-left and angled pale wall behind.\nReconstruct original glasses-over-eyes and both-hands-at-temples pose;2.033333s anchor already has glasses on crown.\nRemove the source caption/graphic overlay: Part time job ❌ Coloring Books ✅ Region: Centered across upper chest. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Leaning forward toward laptop, clear glasses on eyes, both hands gripping temples; eyebrows drawn and mouth slightly parted, gray sleeveless top.\nScene and camera: Fixed medium-close portrait across wooden table; laptop lower-left and angled pale wall behind.\n0–0.95s: Peer downward through glasses toward laptop, hands at both temples, brows furrowed.\n0.95–1.58s: Lift glasses upward from nose onto top of head with both hands; eyes remain focused on laptop.\n1.58–2.13s: Release glasses at crown and lower hands beside ears, look up with mouth opening in disbelief.\n2.13–2.57s: Continue lowering hands toward table, briefly close eyes then look forward again.\n2.57–3s: Hold hands low near table, glasses remain on head, open-mouth puzzled stare forward.\nFinal state: Glasses on crown, hands lowered, mouth open and puzzled gaze.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 76,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Glasses remain on head after lifting; do not remove them fully or place them on table.",
+        "Preserve furrowed/puzzled expression rather than generic joy.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-2-03",
+      "sourceSha256": "5f99b4c60603015fcf0a95c1a00c414cf4ea3e0cbd6b5f252de708d59423209c",
+      "sourceDurationSeconds": 2.9,
+      "sourceFps": 30,
+      "sourceFrameCount": 87,
+      "clarityFrame": {
+        "index": 31,
+        "timeSeconds": 1.033333,
+        "sha256": "c0bc9097241de86e77570f65cd64bddbee88298e56a13a334d7922b4d49586a5",
+        "presentationTimeSeconds": 1.099349
+      },
+      "outputDurationSeconds": 3,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 0.7666666666666667,
+          "startSeconds": 0,
+          "endSeconds": 0.7931034482758621,
+          "action": "Hold hand across forehead/eyes while looking downward, mouth open and shoulders still."
+        },
+        {
+          "sourceStartSeconds": 0.7666666666666667,
+          "sourceEndSeconds": 1.1666666666666667,
+          "startSeconds": 0.7931034482758621,
+          "endSeconds": 1.2068965517241381,
+          "action": "Slide hand down past eyes to hover across mouth/chin, lift gaze toward camera."
+        },
+        {
+          "sourceStartSeconds": 1.1666666666666667,
+          "sourceEndSeconds": 2,
+          "startSeconds": 1.2068965517241381,
+          "endSeconds": 2.0689655172413794,
+          "action": "Rest hand at mouth/chin, alternate small sideways gaze and brief eye close, restrained amused expression."
+        },
+        {
+          "sourceStartSeconds": 2,
+          "sourceEndSeconds": 2.4,
+          "startSeconds": 2.0689655172413794,
+          "endSeconds": 2.4827586206896552,
+          "action": "Keep hand near mouth and extend free hand toward camera across foreground."
+        },
+        {
+          "sourceStartSeconds": 2.4,
+          "sourceEndSeconds": 2.9,
+          "startSeconds": 2.4827586206896552,
+          "endSeconds": 3,
+          "action": "Lean/reach closer and hold subtle smile with hand remaining near lips."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Head angled down, screen-right hand spread horizontally across forehead/eyes; mouth open. Dark sleeveless top at wooden table, laptop left.\nScene and camera: Largely fixed upper-body portrait, pale angled wall; final reach shifts framing slightly closer.\nReconstruct original hand-across-eyes t=0 occlusion;1.033333s anchor has already uncovered eyes.\nRemove the source caption/graphic overlay: Part time job ❌ Coloring Books ✅ Region: Centered across chest. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 3-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Head angled down, screen-right hand spread horizontally across forehead/eyes; mouth open. Dark sleeveless top at wooden table, laptop left.\nScene and camera: Largely fixed upper-body portrait, pale angled wall; final reach shifts framing slightly closer.\n0–0.79s: Hold hand across forehead/eyes while looking downward, mouth open and shoulders still.\n0.79–1.21s: Slide hand down past eyes to hover across mouth/chin, lift gaze toward camera.\n1.21–2.07s: Rest hand at mouth/chin, alternate small sideways gaze and brief eye close, restrained amused expression.\n2.07–2.48s: Keep hand near mouth and extend free hand toward camera across foreground.\n2.48–3s: Lean/reach closer and hold subtle smile with hand remaining near lips.\nFinal state: Closer face view, hand at mouth/chin and restrained smile, free arm extended.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 87,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Preserve forehead-to-mouth direction; do not reverse to raising hand over eyes.",
+        "No claim of speech from visible mouth shapes.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-2-04",
+      "sourceSha256": "38ba7184e67c72fc54bdb4c18d70f102afcdeeffbcca66260918308063ba64d3",
+      "sourceDurationSeconds": 3.9,
+      "sourceFps": 30,
+      "sourceFrameCount": 117,
+      "clarityFrame": {
+        "index": 32,
+        "timeSeconds": 1.066666,
+        "sha256": "09981373570de35fde8407fa8a97c812472b11d024a96754b2cdd508fd87186c",
+        "presentationTimeSeconds": 1.132682
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.4666666666666666,
+          "startSeconds": 0,
+          "endSeconds": 1.5042735042735043,
+          "action": "Hold fingers at brow with open mouth; open eyes and look toward laptop, intermittent blinks."
+        },
+        {
+          "sourceStartSeconds": 1.4666666666666666,
+          "sourceEndSeconds": 1.8333333333333333,
+          "startSeconds": 1.5042735042735043,
+          "endSeconds": 1.8803418803418803,
+          "action": "Slide hand downward from brow over nose/mouth, beginning mouth-cover reaction."
+        },
+        {
+          "sourceStartSeconds": 1.8333333333333333,
+          "sourceEndSeconds": 3.033333333333333,
+          "startSeconds": 1.8803418803418803,
+          "endSeconds": 3.111111111111111,
+          "action": "Keep mouth covered, gaze toward laptop; eyes briefly close during held reaction."
+        },
+        {
+          "sourceStartSeconds": 3.033333333333333,
+          "sourceEndSeconds": 3.5,
+          "startSeconds": 3.111111111111111,
+          "endSeconds": 3.58974358974359,
+          "action": "Slide hand back up from mouth along face to forehead while expression softens into a small smile."
+        },
+        {
+          "sourceStartSeconds": 3.5,
+          "sourceEndSeconds": 3.9,
+          "startSeconds": 3.58974358974359,
+          "endSeconds": 4,
+          "action": "Tilt head against hand at brow and hold faint smile looking toward laptop."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Hand touches forehead/brow, eyes briefly closed, mouth open in disbelief; seated behind upright silver laptop at screen-right in dark sleeveless top.\nScene and camera: Fixed close portrait at desk; laptop hides screen-right torso, pale room and ceiling fan behind.\nReconstruct eyes-closed forehead-touch original opening;1.066667s clarity remains forehead pose but differs in gaze/expression.\nRemove the source caption/graphic overlay: pov: you’re dating an IT guy Region: Upper center above head. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Hand touches forehead/brow, eyes briefly closed, mouth open in disbelief; seated behind upright silver laptop at screen-right in dark sleeveless top.\nScene and camera: Fixed close portrait at desk; laptop hides screen-right torso, pale room and ceiling fan behind.\n0–1.5s: Hold fingers at brow with open mouth; open eyes and look toward laptop, intermittent blinks.\n1.5–1.88s: Slide hand downward from brow over nose/mouth, beginning mouth-cover reaction.\n1.88–3.11s: Keep mouth covered, gaze toward laptop; eyes briefly close during held reaction.\n3.11–3.59s: Slide hand back up from mouth along face to forehead while expression softens into a small smile.\n3.59–4s: Tilt head against hand at brow and hold faint smile looking toward laptop.\nFinal state: Head tilted toward hand at forehead, restrained smile and laptop-directed gaze.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 117,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "This source has two hand transitions, forehead→mouth→forehead; preserve both.",
+        "Laptop must stay fixed at screen-right and not disappear during hand movement.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-2-05",
+      "sourceSha256": "e0fbf98facb97dedc808b17bcc8637264c9fdd8f151db0b2c0dd14c38dc80555",
+      "sourceDurationSeconds": 3.2,
+      "sourceFps": 30,
+      "sourceFrameCount": 96,
+      "clarityFrame": {
+        "index": 43,
+        "timeSeconds": 1.433333,
+        "sha256": "8b76f0ba0348719888165b0457a917dec8c138fe4eb4f5aae631c268db3f7eb9",
+        "presentationTimeSeconds": 1.499349
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.1,
+          "startSeconds": 0,
+          "endSeconds": 1.375,
+          "action": "Hold yellow object near chin/chest and stare slightly screen-left with closed lips, small object/eye movements."
+        },
+        {
+          "sourceStartSeconds": 1.1,
+          "sourceEndSeconds": 1.5,
+          "startSeconds": 1.375,
+          "endSeconds": 1.875,
+          "action": "Eyes widen and brows rise, jaw drops into a round open mouth while object stays raised."
+        },
+        {
+          "sourceStartSeconds": 1.5,
+          "sourceEndSeconds": 2.2333333333333334,
+          "startSeconds": 1.875,
+          "endSeconds": 2.7916666666666665,
+          "action": "Hold open-mouth surprise, glance sideways then forward, object still in hand."
+        },
+        {
+          "sourceStartSeconds": 2.2333333333333334,
+          "sourceEndSeconds": 2.566666666666667,
+          "startSeconds": 2.7916666666666665,
+          "endSeconds": 3.2083333333333335,
+          "action": "Move yellow object out of face area and bring hand over mouth."
+        },
+        {
+          "sourceStartSeconds": 2.566666666666667,
+          "sourceEndSeconds": 3.2,
+          "startSeconds": 3.2083333333333335,
+          "endSeconds": 4,
+          "action": "Lean/move closer for tight face view, keep mouth covered and eyes wide, then glance slightly sideways."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Close seated portrait in dark top, holding yellow translucent soft object beside screen-right cheek/chest, lips closed and brow slightly furrowed, gaze off screen-left.\nScene and camera: Initially steady close portrait against angled pale wall; final approach creates tighter face framing.\nReconstruct original closed-mouth sideways gaze and object-in-hand opening;1.433333s anchor already has jaw dropped.\nRemove the source caption/graphic overlay: My sister is actually nuts why is this her wedding invitation 😭😭 Region: Upper center above head. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Close seated portrait in dark top, holding yellow translucent soft object beside screen-right cheek/chest, lips closed and brow slightly furrowed, gaze off screen-left.\nScene and camera: Initially steady close portrait against angled pale wall; final approach creates tighter face framing.\n0–1.38s: Hold yellow object near chin/chest and stare slightly screen-left with closed lips, small object/eye movements.\n1.38–1.88s: Eyes widen and brows rise, jaw drops into a round open mouth while object stays raised.\n1.88–2.79s: Hold open-mouth surprise, glance sideways then forward, object still in hand.\n2.79–3.21s: Move yellow object out of face area and bring hand over mouth.\n3.21–4s: Lean/move closer for tight face view, keep mouth covered and eyes wide, then glance slightly sideways.\nFinal state: Very close face, hand covers mouth, eyes wide and gaze slightly sideways; object mostly outside frame.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 96,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Soft yellow object exact identity unknown; preserve visible shape rather than invent brand/product.",
+        "Do not omit calm beginning or final mouth cover when compressing duration.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    },
+    {
+      "referenceId": "creator-account-2-06",
+      "sourceSha256": "1e7ad1eecf1df4a4d265c4ccba13c4a7cbb5900742d3f845bc78968e9be5901f",
+      "sourceDurationSeconds": 3.1666666666666665,
+      "sourceFps": 30,
+      "sourceFrameCount": 95,
+      "clarityFrame": {
+        "index": 85,
+        "timeSeconds": 2.833333,
+        "sha256": "5be38c3aa839c0b9a095011de65e0cab4f5052b6d4c52ad3d3bca5961683f908",
+        "presentationTimeSeconds": 2.899349
+      },
+      "outputDurationSeconds": 4,
+      "timing": [
+        {
+          "sourceStartSeconds": 0,
+          "sourceEndSeconds": 1.4,
+          "startSeconds": 0,
+          "endSeconds": 1.768421052631579,
+          "action": "Keep mouth covered, alternate laptop-directed and slight sideways glances, with small blinks and restrained amused eyes."
+        },
+        {
+          "sourceStartSeconds": 1.4,
+          "sourceEndSeconds": 2.4,
+          "startSeconds": 1.768421052631579,
+          "endSeconds": 3.031578947368421,
+          "action": "Maintain mouth-cover hold, briefly close eyes then reopen, shoulders largely still."
+        },
+        {
+          "sourceStartSeconds": 2.4,
+          "sourceEndSeconds": 2.6666666666666665,
+          "startSeconds": 3.031578947368421,
+          "endSeconds": 3.3684210526315788,
+          "action": "Lower hand from mouth toward chest as jaw opens into rounded surprise and eyebrows rise."
+        },
+        {
+          "sourceStartSeconds": 2.6666666666666665,
+          "sourceEndSeconds": 3.1666666666666665,
+          "startSeconds": 3.3684210526315788,
+          "endSeconds": 4,
+          "action": "Hold mouth open with hand lowered out of face area, gaze toward laptop/camera; no new gesture."
+        }
+      ],
+      "openingPrompt": "Create one photorealistic portrait opening image, reconstructing the original video at t=0.\nImage 1 is the original source t=0 image: it controls opening pose, hands/props, composition and scene. Image 2 is a later clear frame from the same source, used only as supporting visibility/continuity evidence, not the opening pose or identity authority. Image 3 and every subsequent image are the selected influencer identity references; use their identity without their background or clothing.\nOpening: Person in mauve sleeveless top seated behind silver laptop screen-right, hand covers mouth, brows lifted and gaze toward laptop/camera.\nScene and camera: Fixed medium-close portrait with warm pale room and window/curtain behind; small natural movement.\nReconstruct original mouth-cover opening;2.833333s clarity is the final uncovered open-mouth pose.\nRemove the source caption/graphic overlay: pov: you’re dating an IT guy Region: Upper center above head. Restore the underlying scene naturally without erasing physical props or real scene signage.\nPreserve the original opening hand/prop occlusion while transferring the selected influencer identity. No added text. This still must be visually approved against the original opening before animation.",
+      "motionPrompt": "Create a 4-second continuous portrait video from the approved reconstructed opening image, matching the original opening pose: Person in mauve sleeveless top seated behind silver laptop screen-right, hand covers mouth, brows lifted and gaze toward laptop/camera.\nScene and camera: Fixed medium-close portrait with warm pale room and window/curtain behind; small natural movement.\n0–1.77s: Keep mouth covered, alternate laptop-directed and slight sideways glances, with small blinks and restrained amused eyes.\n1.77–3.03s: Maintain mouth-cover hold, briefly close eyes then reopen, shoulders largely still.\n3.03–3.37s: Lower hand from mouth toward chest as jaw opens into rounded surprise and eyebrows rise.\n3.37–4s: Hold mouth open with hand lowered out of face area, gaze toward laptop/camera; no new gesture.\nFinal state: Face unobstructed, mouth open, hand lowered, same seated framing.\nKeep the approved influencer identity, source clothing, scene and hand/prop continuity through the final frame; any appearance reference affects identity only, never its portrait background. No added captions, text or generated audio.",
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 95,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "risks": [
+        "Long mouth-cover hold defines pacing; do not uncover immediately at t=0.",
+        "Ending is surprised open mouth, not a broad closed-mouth smile.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested",
+      "requiredGate": "Approve the reconstructed source-t0 image, then review every generated video frame against the retimed source before activation. One pilot must pass before applying other references."
+    }
+  ]
+}

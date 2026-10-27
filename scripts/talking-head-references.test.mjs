@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
-import { talkingHeadReferenceSettings } from "../lib/explore/talking-head-reference.ts";
+import { talkingHeadReferenceSettings, visibleTalkingHeadReferences } from "../lib/explore/talking-head-reference.ts";
 import { getVideoReferencePolicy } from "../lib/ai-studio/video-reference-policy.ts";
 import * as sessions from "../lib/explore/workflow-session.ts";
 
@@ -39,14 +39,46 @@ function harness({ saved = {}, loadFile = async reference => ({ name: reference.
 }
 const tick = () => new Promise(setImmediate);
 
-test("catalogue preserves all nine nonignored clips and their source links, including long previews", () => {
-  assert.equal(catalogue.items.length, 9);
-  assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 2);
+test("retired Talking Head cards are hidden in both modes while archived saved references restore", async () => {
+  const retired = ["talking-outdoor-discovery", "talking-outdoor-reaction"];
+  const expected = ["talking-car-story-full", "talking-warm-story", "talking-room-explainer-full", "talking-car-explainer", "talking-discovery-full", "talking-surprised-story", "talking-mug-story", "talking-sophia-designsthings", "talking-emmgr4c3", "talking-tessam-bible", "talking-websites-explainer", "talking-katiemeidt8", "talking-studyfetchlauren", "talking-sidghst", "talking-studywithsab", "talking-bittenbyaturtle", "talking-studywithsawyer", "talking-mumtipswithginny"];
+  const jsx = (type, props) => ({ type, props });
+  const { TalkingHeadReferences } = load("components/explore/talking-head-references.tsx", {
+    react: { useState: () => [null, () => {}] },
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "@/components/ui/button": { Button: "button" },
+    "@/components/generation/use-ai-studio-access": { useAIStudioAccess: () => "pro" },
+    "./recreate-workspace": { ReferenceCard: "reference", ReferencePreviewDialog: "preview", ReferenceGridSkeleton: "loading", LoadError: "error" },
+    "@/lib/explore/talking-head-reference": { visibleTalkingHeadReferences },
+    "./talking-head-references.module.css": { default: {} },
+  });
+  function nodes(value) {
+    if (!value || typeof value !== "object") return [];
+    if (Array.isArray(value)) return value.flatMap(nodes);
+    return [value, ...nodes(value.props?.children)];
+  }
+  for (const startingFrameEnabled of [false, true]) {
+    const tree = TalkingHeadReferences({ items: catalogue.items, startingFrameEnabled, loading: false, failed: false, disabled: false, selectedId: retired[0], onChoose() {}, onRetry() {} });
+    assert.deepEqual(nodes(tree).filter(node => node.type === "reference").map(node => node.props.reference.id), expected);
+  }
+  for (const id of retired) {
+    const h = harness({ saved: { talkingReferenceId: id, referenceInstructions: "Keep saved direction" } });
+    h.render(); await tick();
+    assert.equal(h.render().selectedId, id);
+    assert.equal(h.render().videoReference.asset.name, id);
+    assert.equal(h.render().instructions, "Keep saved direction");
+    assert.equal(h.render().videoReference.loading, false);
+  }
+});
+
+test("catalogue preserves nine archival clips and all eleven supplied additions, including full-length previews", () => {
+  assert.equal(catalogue.items.length, 23);
+  assert.equal(catalogue.items.filter(item => item.durationSeconds > 30).length, 12);
   assert.equal(new Set(catalogue.items.map(item => item.id)).size, catalogue.items.length);
   for (const item of catalogue.items) {
     assert.match(item.id, /^talking-[a-z0-9-]+$/);
-    assert.ok(item.durationSeconds > 0 && item.durationSeconds < 60);
-    assert.match(item.sourceUrl, /^https:\/\/www\.tiktok\.com\/@[^/]+\/video\/\d+$/);
+    assert.ok(item.durationSeconds > 0 && item.durationSeconds < 120);
+    assert.match(item.sourceUrl, /^https:\/\/www\.(?:tiktok\.com\/@[^/]+\/video\/\d+|instagram\.com\/reel\/[A-Za-z0-9_-]+\/)$/);
     assert.ok(existsSync("public"+item.videoUrl)); assert.ok(existsSync("public"+item.posterUrl));
     assert.match(item.generationPrompt, /user's own spoken message/);
     assert.doesNotMatch(JSON.stringify(item), /fullvideo_ignore|[A-Z]:\\/);
@@ -114,7 +146,7 @@ test("failed reference replacement preserves the previous attachment/directions 
   const h = harness({ loadFile: async reference => { if (fail) throw Error("Offline"); return { name: reference.id }; } });
   await h.render().choose(catalogue.items[0].id);
   const previous = h.render().videoReference.asset;
-  fail = true; assert.equal(await h.render().choose(catalogue.items[2].id), false);
+  fail = true; assert.equal(await h.render().choose("talking-outdoor-discovery"), false);
   assert.equal(h.render().videoReference.asset, previous);
   assert.equal(h.render().selectedId, catalogue.items[0].id);
   assert.ok(h.render().videoReference.error);
@@ -124,10 +156,10 @@ test("late downloads cannot replace a newer choice and cancelled choices cannot 
   let finish;
   const h = harness({ loadFile: reference => reference.id === catalogue.items[0].id ? new Promise(resolve => { finish = resolve; }) : Promise.resolve({ name: reference.id }) });
   const first = h.render().choose(catalogue.items[0].id);
-  await h.render().choose(catalogue.items[2].id);
+  await h.render().choose("talking-outdoor-discovery");
   finish({ name: catalogue.items[0].id }); await first;
-  assert.equal(h.render().selectedId, catalogue.items[2].id);
-  assert.equal(h.render().videoReference.asset.name, catalogue.items[2].id);
+  assert.equal(h.render().selectedId, "talking-outdoor-discovery");
+  assert.equal(h.render().videoReference.asset.name, "talking-outdoor-discovery");
   const pending = h.render().choose(catalogue.items[0].id);
   h.render().videoReference.remove(); finish({ name: catalogue.items[0].id }); await pending;
   assert.equal(h.render().selectedId, null); assert.equal(h.render().videoReference.asset, null);

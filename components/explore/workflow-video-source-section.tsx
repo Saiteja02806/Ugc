@@ -8,13 +8,13 @@ import type { WorkflowVideoSelection } from "@/components/explore/use-workflow-s
 import type { MediaAsset } from "@/lib/media/types";
 import creation from "@/components/explore/workflow-creation.module.css";
 
-export function WorkflowVideoSourceSection({ kind, selection, disabled = false, label: customLabel, description, previewAssets, uploadHint = "MP4, MOV or WebM · Up to 250 MB", presentation = "classic" }: { kind: "hook" | "phone"; selection: WorkflowVideoSelection; disabled?: boolean; label?: string; description?: string; previewAssets?: MediaAsset[]; uploadHint?: string; presentation?: "classic" | "focused" }) {
+export function WorkflowVideoSourceSection({ kind, selection, disabled = false, label: customLabel, hideHeading = false, description, previewAssets, uploadHint = "MP4, MOV or WebM · Up to 250 MB", presentation = "classic" }: { kind: "hook" | "phone"; selection: WorkflowVideoSelection; disabled?: boolean; label?: string; hideHeading?: boolean; description?: string; previewAssets?: MediaAsset[]; uploadHint?: string; presentation?: "classic" | "focused" }) {
   const heading = useId(), input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const label = customLabel ?? (kind === "hook" ? "Hook video" : "Creator / phone video");
   const video = selection.preview;
   return <section className={creation.sourceSection} aria-labelledby={heading} data-source-presentation={presentation}>
-    <h2 id={heading} className="text-sm font-medium">{label}</h2>
+    <h2 id={heading} className={hideHeading ? "sr-only" : "text-sm font-medium"}>{label}</h2>
     <div className={creation.sourceModes} role="group" aria-label={`${label} source`}>
       {presentation === "focused" ? <>
         <Button type="button" variant="ghost" disabled={disabled || selection.busy} aria-pressed={selection.mode === "generate"} onClick={() => selection.setMode("generate")}>Generate</Button>

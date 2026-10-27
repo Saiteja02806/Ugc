@@ -36,6 +36,10 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
   };
   let dynamicIndex = 0;
   const imports = {
+    "react-dom": { createPortal: value => value },
+    "@/lib/explore/local-hook-starting-frame-preview": { createLocalHookStartingFramePreviewRuntime: () => ({}), LOCAL_HOOK_PREVIEW_OWNER_ID: "local-preview" },
+    "@/components/explore/use-creator-accounts": { useCreatorAccounts: () => ({ accounts: [], selectedId: null, references: [], allowed: false, loading: false }) },
+    "@/components/explore/use-hook-composer-selection": { useHookComposerSelection: () => ({ frame: null, ready: true, error: null, setFrame() {}, retry() {} }) },
     react, "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "Fragment" },
     "next/dynamic": { __esModule: true, default: loader => loader.toString().match(/module\.(FormatVideoEditor|FormatSlideshowEditor|WallSchedulePreview)/)?.[1] ?? (dynamicIndex++ === 0 ? "ImagePanel" : "VideoPanel") },
     "next/link": { __esModule: true, default: "Link" }, "next/navigation": { useSearchParams: () => staleSearchParams ? initialParams : new URLSearchParams(location.search) },
@@ -59,7 +63,7 @@ function fixture(format, { mode = "generate", preview = false, busy = false, gen
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../components/explore/format-workspace.tsx", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
-  }).outputText, { exports, require: name => {
+  }).outputText, { exports, process: { env: { NODE_ENV: "test" } }, require: name => {
     if (name in imports) return imports[name];
     if (name.endsWith(".module.css")) return { __esModule: true, default: styles };
     if (name.startsWith("@/components/") || name === "lucide-react") return new Proxy({}, { get: (_, key) => key });

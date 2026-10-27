@@ -250,7 +250,7 @@ test("cover motion does not download on visibility, cancels fast clicks and resp
   const handlers = new Map(), videoHandlers = new Map(), timers = new Map();
   let effect, observe, cleanup, paused = 0, released = 0;
   const preference = { matches: false, addEventListener() {}, removeEventListener() {} };
-  const link = { addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const link = { matches: () => false, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
   const video = { src: null, closest: () => link, hasAttribute: () => video.src !== null,
     removeAttribute() { video.src = null; }, load() { released++; }, pause() { paused++; }, play: async () => {},
     addEventListener: (name, fn) => videoHandlers.set(name, fn), removeEventListener: name => videoHandlers.delete(name) };
@@ -284,7 +284,7 @@ test("cover motion does not download on visibility, cancels fast clicks and resp
 test("gallery button hover releases video on hidden tab, offscreen scroll, dialog click and unmount", () => {
   const handlers = new Map(), videoHandlers = new Map(), pageHandlers = new Map(), timers = new Map();
   let effect, observe, paused = 0, released = 0, disconnected = false, target;
-  const button = { addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
+  const button = { matches: () => false, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: name => handlers.delete(name) };
   const page = { visibilityState: "visible", addEventListener: (name, fn) => pageHandlers.set(name, fn), removeEventListener: name => pageHandlers.delete(name) };
   const video = { src: null, closest: selector => { target = selector; return button; }, hasAttribute: () => video.src !== null,
     removeAttribute() { video.src = null; }, load() { released++; }, pause() { paused++; }, play: async () => {},

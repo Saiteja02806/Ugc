@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+  "originalSourceTime": 0,
+  "settings": {
+    "model": "gemini-3-pro-image",
+    "aspectRatio": "9:16",
+    "imageSize": "2K",
+    "apiPath": "/v1beta/interactions",
+    "safetySettings": "unchanged provider defaults",
+    "sampling": "unchanged defaults",
+    "retries": 0
+  },
+  "cases": [
+    {
+      "id": "C0",
+      "status": "not_run",
+      "requiresNewPaidApproval": true,
+      "comparisonAxis": "service control; not causal comparator",
+      "inputs": [],
+      "prompt": "Create one natural photograph of a silver laptop on a desk in a softly lit cream room, with no people or text.",
+      "promptSha256": "89df8f483d27961ca258ab06359f90d77190b7c17159228c2cd87fd9dc6ec633",
+      "referenceLabels": [],
+      "requestSha256": "1affb2858af35a963a94fbd0b580b23a33fa9dc11bb0678bd35b3849e18aa2d4"
+    },
+    {
+      "id": "C1",
+      "status": "not_run",
+      "requiresNewPaidApproval": true,
+      "comparisonAxis": "source-only",
+      "inputs": [
+        {
+          "role": "source",
+          "sha256": "f6db3ac5430dded9a9a8e8969a7cda803137ca9e63816a93a2f87b1af873fb7d",
+          "mimeType": "image/png"
+        }
+      ],
+      "prompt": "Create one natural photograph based on the supplied reference imagery.",
+      "promptSha256": "dfef5b353cc384b76d5a3ef4edf4db2d49f63334e3a0316a4ba73cf32cf6467c",
+      "referenceLabels": [],
+      "requestSha256": "409ffbad4b31e668a2d0ed23c435738f264319539a2ff49fd80c9cda9688593f"
+    },
+    {
+      "id": "C2",
+      "status": "not_run",
+      "requiresNewPaidApproval": true,
+      "comparisonAxis": "identity-only",
+      "inputs": [
+        {
+          "role": "identity",
+          "sha256": "640669439c0ec80020bcaaf03dc76ccbc51c39d0fc1be42d6c0133f1899b920a",
+          "mimeType": "image/png"
+        }
+      ],
+      "prompt": "Create one natural photograph based on the supplied reference imagery.",
+      "promptSha256": "dfef5b353cc384b76d5a3ef4edf4db2d49f63334e3a0316a4ba73cf32cf6467c",
+      "referenceLabels": [],
+      "requestSha256": "b95cd132118157d5b4144b4bc8440f8bb20fa9b6efcb0ce633b4471c32533db9"
+    },
+    {
+      "id": "C3",
+      "status": "not_run",
+      "requiresNewPaidApproval": true,
+      "comparisonAxis": "pair versus single inputs",
+      "inputs": [
+        {
+          "role": "source",
+          "sha256": "f6db3ac5430dded9a9a8e8969a7cda803137ca9e63816a93a2f87b1af873fb7d",
+          "mimeType": "image/png"
+        },
+        {
+          "role": "identity",
+          "sha256": "640669439c0ec80020bcaaf03dc76ccbc51c39d0fc1be42d6c0133f1899b920a",
+          "mimeType": "image/png"
+        }
+      ],
+      "prompt": "Create one natural photograph based on the supplied reference imagery.",
+      "promptSha256": "dfef5b353cc384b76d5a3ef4edf4db2d49f63334e3a0316a4ba73cf32cf6467c",
+      "referenceLabels": [],
+      "requestSha256": "07546e49350d839d1eb2557a6fe7c096eed7c7db1c68be5ddd574dec8493c845"
+    },
+    {
+      "id": "C4",
+      "status": "not_run",
+      "requiresNewPaidApproval": true,
+      "comparisonAxis": "prompt only versus C3",
+      "inputs": [
+        {
+          "role": "source",
+          "sha256": "f6db3ac5430dded9a9a8e8969a7cda803137ca9e63816a93a2f87b1af873fb7d",
+          "mimeType": "image/png"
+        },
+        {
+          "role": "identity",
+          "sha256": "640669439c0ec80020bcaaf03dc76ccbc51c39d0fc1be42d6c0133f1899b920a",
+          "mimeType": "image/png"
+        }
+      ],
+      "prompt": "Create one photorealistic 9:16 animation-opening photograph using these two images.\n\nImage 1 is the original video opening. Match its camera viewpoint, crop, seated body position, cream room and bench, black lace top, necklace, eyeglasses, laptop and visible hands. The person looks toward the laptop at screen-right with closed, neutral lips. One hand rests low at the desk; the screen-right hand touches the upper edge of the silver laptop lid. Preserve this exact moment before the surprised reaction or glasses removal.\n\nImage 2 supplies only the influencer's identity: recognizable facial structure, eyes, brows, nose, lips, skin characteristics and natural hair. Adapt that person to Image 1's pose, expression, light and scene. Keep the glasses on the face. Do not import Image 2's grey top, room, frontal gaze or pose, or retain the source performer's facial identity.\n\nRemove the entire added caption across the upper image, approximately y=15%–23%, including white lettering, black outlines and both emojis. Reconstruct the photographic wall/hair underneath without cropping, blurring or covering that region. Add no replacement text.\n\nKeep the source's ordinary phone-photograph appearance, lighting and perspective, with the influencer's natural skin detail. Preserve plausible fingers, hand-to-laptop contact and glasses geometry. Return one clean complete photograph, without a beauty filter, extra person, watermark or changed framing.",
+      "promptSha256": "6badf9804b6fff415deb2076a9c8e95374e14e168e82e8b82b41a47164ccd0c1",
+      "referenceLabels": [],
+      "requestSha256": "34dc0bf162db44274a14dcabbd6a36d0e4bc25de14353a20f62c8c93cacb023a"
+    },
+    {
+      "id": "C5",
+      "status": "not_run",
+      "requiresNewPaidApproval": true,
+      "comparisonAxis": "role-label text only versus C4",
+      "inputs": [
+        {
+          "role": "source",
+          "sha256": "f6db3ac5430dded9a9a8e8969a7cda803137ca9e63816a93a2f87b1af873fb7d",
+          "mimeType": "image/png"
+        },
+        {
+          "role": "identity",
+          "sha256": "640669439c0ec80020bcaaf03dc76ccbc51c39d0fc1be42d6c0133f1899b920a",
+          "mimeType": "image/png"
+        }
+      ],
+      "prompt": "Create one photorealistic 9:16 animation-opening photograph using these two images.\n\nImage 1 is the original video opening. Match its camera viewpoint, crop, seated body position, cream room and bench, black lace top, necklace, eyeglasses, laptop and visible hands. The person looks toward the laptop at screen-right with closed, neutral lips. One hand rests low at the desk; the screen-right hand touches the upper edge of the silver laptop lid. Preserve this exact moment before the surprised reaction or glasses removal.\n\nImage 2 supplies only the influencer's identity: recognizable facial structure, eyes, brows, nose, lips, skin characteristics and natural hair. Adapt that person to Image 1's pose, expression, light and scene. Keep the glasses on the face. Do not import Image 2's grey top, room, frontal gaze or pose, or retain the source performer's facial identity.\n\nRemove the entire added caption across the upper image, approximately y=15%–23%, including white lettering, black outlines and both emojis. Reconstruct the photographic wall/hair underneath without cropping, blurring or covering that region. Add no replacement text.\n\nKeep the source's ordinary phone-photograph appearance, lighting and perspective, with the influencer's natural skin detail. Preserve plausible fingers, hand-to-laptop contact and glasses geometry. Return one clean complete photograph, without a beauty filter, extra person, watermark or changed framing.",
+      "promptSha256": "6badf9804b6fff415deb2076a9c8e95374e14e168e82e8b82b41a47164ccd0c1",
+      "referenceLabels": [
+        "Image 1: original source t=0 scene and pose reference; not identity.",
+        "Image 2: selected influencer identity only; not scene or pose."
+      ],
+      "requestSha256": "aa38c397bb6f7dbb524e63c126b593c6a6665540cd9dcbf5e12a9b087c57bc04"
+    }
+  ],
+  "originalRequestReconstructed": true,
+  "automaticExecution": false,
+  "newGenerationCalls": 0,
+  "createdFor": "diagnostic preparation only"
+}

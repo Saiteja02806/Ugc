@@ -1,6 +1,7 @@
-import { EXPLORE_TEXT_FONTS, exploreTextFontFamily, exploreTextLineWidth, isExploreTextFont, isExploreTextWeight, type ExploreTextFont } from "./explore-text-fonts.ts";
+import { EXPLORE_TEXT_FONTS, exploreTextFontFamily, exploreTextLineWidth, isExploreTextWeight, type ExploreTextFont } from "./explore-text-fonts.ts";
 
-export { EXPLORE_TEXT_FONTS as CAROUSEL_EDIT_FONTS };
+// Workflow video font addition does not alter Carousel's established choices.
+export const CAROUSEL_EDIT_FONTS = EXPLORE_TEXT_FONTS.filter(font => font.id !== "proximanovaa");
 export const CAROUSEL_MANUAL_TEXT_VERSION = "carousel-manual-typography-v4-canvas-edges";
 type Background = "none" | "line" | "box";
 export type CarouselManualTextStyle = {
@@ -34,7 +35,7 @@ export function parseCarouselManualTextStyle(value: unknown): CarouselManualText
       [v.headingBackground, v.bodyBackground].some(b => b !== undefined && !["none", "line", "box"].includes(b)) ||
       v.backgroundColor !== undefined && (typeof v.backgroundColor !== "string" || !/^#[0-9a-f]{6}$/i.test(v.backgroundColor)) ||
       v.backgroundOpacity !== undefined && !validRange(v.backgroundOpacity, 0, 1) || v.outline !== undefined && typeof v.outline !== "boolean" || v.canvasEdgePlacement !== undefined && typeof v.canvasEdgePlacement !== "boolean") throw new Error("Invalid slideshow text style.");
-  if (!isExploreTextFont(v.font) || ![v.fontSize, v.headingSize].every(n => Number.isInteger(n) && n >= 24 && n <= 120) ||
+  if (!CAROUSEL_EDIT_FONTS.some(font => font.id === v.font) || ![v.fontSize, v.headingSize].every(n => Number.isInteger(n) && n >= 24 && n <= 120) ||
       ![v.color, v.headingColor].every(c => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c))) throw new Error("Invalid slideshow text style.");
   return { font: v.font, fontSize: v.fontSize, headingSize: v.headingSize, color: v.color.toLowerCase(), headingColor: v.headingColor.toLowerCase(),
     ...Object.fromEntries((["textWidth", "align", "lineHeight", "fontWeight", "headingWeight", "headingBackground", "bodyBackground", "backgroundColor", "backgroundOpacity", "outline", "canvasEdgePlacement", "bodyStyleMode"] as const).flatMap(key => v[key] === undefined ? [] : [[key, v[key]]])) };

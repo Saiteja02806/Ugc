@@ -1,0 +1,669 @@
+{
+  "version": 1,
+  "status": "source_reviewed_candidate_only",
+  "reviewDate": "2026-10-26",
+  "scope": "Ten private later-frame cases. Draft evidence only; no runtime activation or paid provider requests. Real pilot acceptance must precede rollout.",
+  "items": [
+    {
+      "referenceId": "creator-account-1-01",
+      "sourceSha256": "bfc2d3454cbe921df063341bc05bc80846fdeab12f9f8f7b82b6e06d46e3c3d6",
+      "sourceDurationSeconds": 2.7,
+      "sourceFps": 30,
+      "sourceFrameCount": 81,
+      "clarityFrame": {
+        "index": 51,
+        "timeSeconds": 1.7,
+        "sha256": "525f9678af9b4be7c271f1ecbb44d996038072581c4cf4ae89e3916a9653bed8",
+        "presentationTimeSeconds": 1.766016
+      },
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 81,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Arms extend together toward screen-left/front across foreground; eyes closed, chin raised. Seated behind half-open silver laptop in brown sleeveless knit top.",
+      "camera": "Fixed low tabletop portrait, laptop lower-left; pale bedroom, shelf and ceiling light.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.23333333333333334,
+          "action": "Hold the forward/side arm stretch, eyes closed and chin slightly raised."
+        },
+        {
+          "startSeconds": 0.23333333333333334,
+          "endSeconds": 0.6666666666666666,
+          "action": "Release stretch, sweep one arm up over head and settle hand on hair while turning face sideways."
+        },
+        {
+          "startSeconds": 0.6666666666666666,
+          "endSeconds": 1.2,
+          "action": "Hold hand on head and sideways, slightly upward gaze; other arm rests lower."
+        },
+        {
+          "startSeconds": 1.2,
+          "endSeconds": 1.5666666666666667,
+          "action": "Switch the raised-hand gesture across the crown, tilt head and draw free hand downward."
+        },
+        {
+          "startSeconds": 1.5666666666666667,
+          "endSeconds": 2.2,
+          "action": "Hold hand on head with head tilted, then start lowering it toward laptop."
+        },
+        {
+          "startSeconds": 2.2,
+          "endSeconds": 2.7,
+          "action": "Bring hands forward to laptop; lift lid more upright until it occupies more foreground, face settling toward screen."
+        }
+      ],
+      "endingState": "Hands forward at laptop, lid more upright and foreground larger; face looks toward it.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "AI Coloring Books + Pinterest = 💰💰💰/day",
+        "region": "Upper center above head."
+      },
+      "openingImageRequirement": "Reconstruct original extended-arm stretch, closed eyes and chin-up posture, not1.7s hand-on-head clarity pose.",
+      "risks": [
+        "Exact arm crossing/hand switching requires continuity review; do not replace stretch with generic shock.",
+        "Preserve final laptop-lid movement and increased foreground occlusion.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-1-02",
+      "sourceSha256": "5036d4fe9b4e274ee6a22596b175abdabc95c389ae28b0e66ce3bf1330cf4f1c",
+      "sourceDurationSeconds": 2.7333333333333334,
+      "sourceFps": 30,
+      "sourceFrameCount": 82,
+      "clarityFrame": {
+        "index": 44,
+        "timeSeconds": 1.466666,
+        "sha256": "3752f1e9df9dcd77a2d1e4669f36942ae204b53fe264f389afe23a202f539a45",
+        "presentationTimeSeconds": 1.532682
+      },
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 82,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Hand rests behind screen-left side of head, chin raised, neutral lips, eyes looking upward. Seated in white short-sleeve shirt beside open laptop.",
+      "camera": "Fixed medium portrait phone view; laptop left foreground and bedroom background.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.8,
+          "action": "Hold hand behind head and upward gaze with small eye movement."
+        },
+        {
+          "startSeconds": 0.8,
+          "endSeconds": 1.3333333333333333,
+          "action": "Turn attention toward laptop and lean forward; eyes widen, brows lift and jaw drops."
+        },
+        {
+          "startSeconds": 1.3333333333333333,
+          "endSeconds": 1.6666666666666667,
+          "action": "Hold forward lean and open-mouth stare at laptop."
+        },
+        {
+          "startSeconds": 1.6666666666666667,
+          "endSeconds": 2.2,
+          "action": "Bring both hands to cover mouth and hold wide-eyed shock."
+        },
+        {
+          "startSeconds": 2.2,
+          "endSeconds": 2.7333333333333334,
+          "action": "Lower hands, then reach toward phone/camera while leaning closer, mouth still parted."
+        }
+      ],
+      "endingState": "Arm extended toward camera, face closer and wide-eyed, lips parted.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "Why did I find this AFTER being broke?!😭",
+        "region": "Upper center; caption absent on final frame."
+      },
+      "openingImageRequirement": "Reconstruct original chin-up, hand-behind-head opening;1.466666s wide-eyed forward lean is later performance.",
+      "risks": [
+        "Do not skip original calm gaze or final reach.",
+        "Reaching hand enters foreground; preserve anatomy and avoid cut to another scene.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-1-03",
+      "sourceSha256": "af038650c2c703a2c7df8778429473676fff1a0e6bd21c40a689cdea5acc0c33",
+      "sourceDurationSeconds": 2.033333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 61,
+      "clarityFrame": {
+        "index": 55,
+        "timeSeconds": 1.833333,
+        "sha256": "fb633ca4b440ca22b4dc4e55d2be5e27cc578fb3bdef669ec97661386cc97dd8",
+        "presentationTimeSeconds": 1.899349
+      },
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 61,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Clear eyeglasses on eyes, one hand grips screen-right temple, eyes wide and mouth open while seated at laptop in brown knit top.",
+      "camera": "Fixed medium-close portrait with laptop lower-left, pale bedroom behind.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.9666666666666667,
+          "action": "Hold glasses on with fingers at temple, wide-eyed open-mouth attention toward laptop; free hand lowers."
+        },
+        {
+          "startSeconds": 0.9666666666666667,
+          "endSeconds": 1.5333333333333334,
+          "action": "Lift glasses upward off eyes and carry them toward screen-right; lips round as eyes remain wide."
+        },
+        {
+          "startSeconds": 1.5333333333333334,
+          "endSeconds": 1.8333333333333333,
+          "action": "Hand and glasses move aside, leaving face unobstructed; lean slightly forward with rounded lips."
+        },
+        {
+          "startSeconds": 1.8333333333333333,
+          "endSeconds": 2.033333333333333,
+          "action": "Maintain forward gaze and reopen jaw in surprise, glasses off to side."
+        }
+      ],
+      "endingState": "Unobstructed face without glasses, open-mouth surprised look toward laptop.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "AI Coloring Book + Amazon = 💰💰💰/week",
+        "region": "Upper center."
+      },
+      "openingImageRequirement": "Rebuild glasses-on original opening.1.833333s clarity already has glasses removed and cannot be literal first image.",
+      "risks": [
+        "Animate one removal, not putting glasses on or repeating removal.",
+        "Keep laptop/background and outfit continuous while glasses move offscreen.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-1-06",
+      "sourceSha256": "ad8f9f9c8f9e43a366ed0392cf32ed31c2014ea04714716450976cad61903006",
+      "sourceDurationSeconds": 2.533333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 76,
+      "clarityFrame": {
+        "index": 20,
+        "timeSeconds": 0.666666,
+        "sha256": "d0e18fcc194e310ccc42b0de31961ad8659003a7fea11665d7c46a9209f0bba1",
+        "presentationTimeSeconds": 0.732682
+      },
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 76,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Tight face view, yellow pencil held upright with eraser touching lower lip, eyes very wide and gaze toward camera; black top.",
+      "camera": "Mostly fixed close phone shot with slight natural movement, pale wall and chair behind.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.43333333333333335,
+          "action": "Hold pencil eraser at lower lip, round eyes fixed toward camera and lips slightly pursed."
+        },
+        {
+          "startSeconds": 0.43333333333333335,
+          "endSeconds": 1,
+          "action": "Move pencil away toward screen-right and raise hand beside outer eye/temple."
+        },
+        {
+          "startSeconds": 1,
+          "endSeconds": 1.9,
+          "action": "Rest fingertip beside temple while holding pencil upright; maintain wide-eyed attentive stare with small mouth movement."
+        },
+        {
+          "startSeconds": 1.9,
+          "endSeconds": 2.3666666666666667,
+          "action": "Mouth opens into round surprise while fingertip stays beside temple."
+        },
+        {
+          "startSeconds": 2.3666666666666667,
+          "endSeconds": 2.533333333333333,
+          "action": "Round/purse lips and lean closer toward phone; preserve hand beside temple."
+        }
+      ],
+      "endingState": "Face closer, rounded lips and wide eyes; hand/pencil remain beside temple.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "So this is why everyone’s deleting CANVA😱🤯",
+        "region": "Upper center above forehead."
+      },
+      "openingImageRequirement": "Reconstruct t=0 pencil-eraser contact at lower lip;0.666667s clarity shows pencil already moved aside.",
+      "risks": [
+        "Prop is a pencil, not a drinking straw; do not generate sipping.",
+        "Maintain pencil length, hand contact and natural facial proportions during final lean.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-2-01",
+      "sourceSha256": "32c0c720329a3292f7ec7b0b8d38f3aca7d230dce7a8678040e0c4ac2236f795",
+      "sourceDurationSeconds": 4.166666666666667,
+      "sourceFps": 30,
+      "sourceFrameCount": 125,
+      "clarityFrame": {
+        "index": 68,
+        "timeSeconds": 2.266666,
+        "sha256": "5a331e017f7a55349d4a6deef6503d212c1c612b13e1a2dd122b16cfc32540fe",
+        "presentationTimeSeconds": 2.332682
+      },
+      "evidence": {
+        "sheetCount": 5,
+        "reviewedFrameCount": 125,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Seated at wooden table with laptop lower-left; screen-left fist supports cheek, other hand holds yellow translucent soft object near chest, gaze lowered to it.",
+      "camera": "Initially fixed medium portrait with pale wall; final phone/camera moves closer and tilts, creating blur.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.6,
+          "action": "Look down at yellow object while cheek rests on fist; lightly turn object in other hand."
+        },
+        {
+          "startSeconds": 0.6,
+          "endSeconds": 1.5333333333333334,
+          "action": "Shift gaze toward laptop/camera, lift brows and peer forward while maintaining cheek support and object hold."
+        },
+        {
+          "startSeconds": 1.5333333333333334,
+          "endSeconds": 2.2666666666666666,
+          "action": "Jaw drops, eyes widen; release yellow object onto table where it falls/settles upright."
+        },
+        {
+          "startSeconds": 2.2666666666666666,
+          "endSeconds": 3,
+          "action": "Lift supporting hand from cheek to cover mouth; hold startled wide-eyed look."
+        },
+        {
+          "startSeconds": 3,
+          "endSeconds": 3.6666666666666665,
+          "action": "Keep mouth covered and reach free hand toward phone/camera across foreground."
+        },
+        {
+          "startSeconds": 3.6666666666666665,
+          "endSeconds": 4.166666666666667,
+          "action": "Camera tilts/moves closer with blur; maintain mouth-covered expression as face becomes larger."
+        }
+      ],
+      "endingState": "Closer tilted/blurred face view, hand still over mouth; table/object largely leave composition.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "My sister is actually nuts why is this her wedding invitation 😭😭",
+        "region": "Centered across chest/table edge."
+      },
+      "openingImageRequirement": "Reconstruct original cheek-on-fist, gaze-down, yellow-object-in-hand opening.2.266667s anchor is a later dropped-object reaction.",
+      "risks": [
+        "Yellow object is visually soft/translucent; do not assert exact physical product identity.",
+        "Object release and final camera motion require review; do not invent a camera cut.",
+        "Compression to3s accelerates original4.166667s sequence; retain all phases and declare retiming.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-2-02",
+      "sourceSha256": "00c6c3f9454fd7f7750890793846e096cee9a8e97bb9c8a36f6c228119378660",
+      "sourceDurationSeconds": 2.533333333333333,
+      "sourceFps": 30,
+      "sourceFrameCount": 76,
+      "clarityFrame": {
+        "index": 61,
+        "timeSeconds": 2.033333,
+        "sha256": "a58bd65aa45e04643b9d7a43a61fc5d76ed8a5cc3b32363aa2ef1582f417f3b0",
+        "presentationTimeSeconds": 2.099349
+      },
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 76,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Leaning forward toward laptop, clear glasses on eyes, both hands gripping temples; eyebrows drawn and mouth slightly parted, gray sleeveless top.",
+      "camera": "Fixed medium-close portrait across wooden table; laptop lower-left and angled pale wall behind.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.8,
+          "action": "Peer downward through glasses toward laptop, hands at both temples, brows furrowed."
+        },
+        {
+          "startSeconds": 0.8,
+          "endSeconds": 1.3333333333333333,
+          "action": "Lift glasses upward from nose onto top of head with both hands; eyes remain focused on laptop."
+        },
+        {
+          "startSeconds": 1.3333333333333333,
+          "endSeconds": 1.8,
+          "action": "Release glasses at crown and lower hands beside ears, look up with mouth opening in disbelief."
+        },
+        {
+          "startSeconds": 1.8,
+          "endSeconds": 2.1666666666666665,
+          "action": "Continue lowering hands toward table, briefly close eyes then look forward again."
+        },
+        {
+          "startSeconds": 2.1666666666666665,
+          "endSeconds": 2.533333333333333,
+          "action": "Hold hands low near table, glasses remain on head, open-mouth puzzled stare forward."
+        }
+      ],
+      "endingState": "Glasses on crown, hands lowered, mouth open and puzzled gaze.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "Part time job ❌ Coloring Books ✅",
+        "region": "Centered across upper chest."
+      },
+      "openingImageRequirement": "Reconstruct original glasses-over-eyes and both-hands-at-temples pose;2.033333s anchor already has glasses on crown.",
+      "risks": [
+        "Glasses remain on head after lifting; do not remove them fully or place them on table.",
+        "Preserve furrowed/puzzled expression rather than generic joy.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-2-03",
+      "sourceSha256": "5f99b4c60603015fcf0a95c1a00c414cf4ea3e0cbd6b5f252de708d59423209c",
+      "sourceDurationSeconds": 2.9,
+      "sourceFps": 30,
+      "sourceFrameCount": 87,
+      "clarityFrame": {
+        "index": 31,
+        "timeSeconds": 1.033333,
+        "sha256": "c0bc9097241de86e77570f65cd64bddbee88298e56a13a334d7922b4d49586a5",
+        "presentationTimeSeconds": 1.099349
+      },
+      "evidence": {
+        "sheetCount": 3,
+        "reviewedFrameCount": 87,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Head angled down, screen-right hand spread horizontally across forehead/eyes; mouth open. Dark sleeveless top at wooden table, laptop left.",
+      "camera": "Largely fixed upper-body portrait, pale angled wall; final reach shifts framing slightly closer.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.7666666666666667,
+          "action": "Hold hand across forehead/eyes while looking downward, mouth open and shoulders still."
+        },
+        {
+          "startSeconds": 0.7666666666666667,
+          "endSeconds": 1.1666666666666667,
+          "action": "Slide hand down past eyes to hover across mouth/chin, lift gaze toward camera."
+        },
+        {
+          "startSeconds": 1.1666666666666667,
+          "endSeconds": 2,
+          "action": "Rest hand at mouth/chin, alternate small sideways gaze and brief eye close, restrained amused expression."
+        },
+        {
+          "startSeconds": 2,
+          "endSeconds": 2.4,
+          "action": "Keep hand near mouth and extend free hand toward camera across foreground."
+        },
+        {
+          "startSeconds": 2.4,
+          "endSeconds": 2.9,
+          "action": "Lean/reach closer and hold subtle smile with hand remaining near lips."
+        }
+      ],
+      "endingState": "Closer face view, hand at mouth/chin and restrained smile, free arm extended.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "Part time job ❌ Coloring Books ✅",
+        "region": "Centered across chest."
+      },
+      "openingImageRequirement": "Reconstruct original hand-across-eyes t=0 occlusion;1.033333s anchor has already uncovered eyes.",
+      "risks": [
+        "Preserve forehead-to-mouth direction; do not reverse to raising hand over eyes.",
+        "No claim of speech from visible mouth shapes.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-2-04",
+      "sourceSha256": "38ba7184e67c72fc54bdb4c18d70f102afcdeeffbcca66260918308063ba64d3",
+      "sourceDurationSeconds": 3.9,
+      "sourceFps": 30,
+      "sourceFrameCount": 117,
+      "clarityFrame": {
+        "index": 32,
+        "timeSeconds": 1.066666,
+        "sha256": "09981373570de35fde8407fa8a97c812472b11d024a96754b2cdd508fd87186c",
+        "presentationTimeSeconds": 1.132682
+      },
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 117,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Hand touches forehead/brow, eyes briefly closed, mouth open in disbelief; seated behind upright silver laptop at screen-right in dark sleeveless top.",
+      "camera": "Fixed close portrait at desk; laptop hides screen-right torso, pale room and ceiling fan behind.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.4666666666666666,
+          "action": "Hold fingers at brow with open mouth; open eyes and look toward laptop, intermittent blinks."
+        },
+        {
+          "startSeconds": 1.4666666666666666,
+          "endSeconds": 1.8333333333333333,
+          "action": "Slide hand downward from brow over nose/mouth, beginning mouth-cover reaction."
+        },
+        {
+          "startSeconds": 1.8333333333333333,
+          "endSeconds": 3.033333333333333,
+          "action": "Keep mouth covered, gaze toward laptop; eyes briefly close during held reaction."
+        },
+        {
+          "startSeconds": 3.033333333333333,
+          "endSeconds": 3.5,
+          "action": "Slide hand back up from mouth along face to forehead while expression softens into a small smile."
+        },
+        {
+          "startSeconds": 3.5,
+          "endSeconds": 3.9,
+          "action": "Tilt head against hand at brow and hold faint smile looking toward laptop."
+        }
+      ],
+      "endingState": "Head tilted toward hand at forehead, restrained smile and laptop-directed gaze.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "pov: you’re dating an IT guy",
+        "region": "Upper center above head."
+      },
+      "openingImageRequirement": "Reconstruct eyes-closed forehead-touch original opening;1.066667s clarity remains forehead pose but differs in gaze/expression.",
+      "risks": [
+        "This source has two hand transitions, forehead→mouth→forehead; preserve both.",
+        "Laptop must stay fixed at screen-right and not disappear during hand movement.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-2-05",
+      "sourceSha256": "e0fbf98facb97dedc808b17bcc8637264c9fdd8f151db0b2c0dd14c38dc80555",
+      "sourceDurationSeconds": 3.2,
+      "sourceFps": 30,
+      "sourceFrameCount": 96,
+      "clarityFrame": {
+        "index": 43,
+        "timeSeconds": 1.433333,
+        "sha256": "8b76f0ba0348719888165b0457a917dec8c138fe4eb4f5aae631c268db3f7eb9",
+        "presentationTimeSeconds": 1.499349
+      },
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 96,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Close seated portrait in dark top, holding yellow translucent soft object beside screen-right cheek/chest, lips closed and brow slightly furrowed, gaze off screen-left.",
+      "camera": "Initially steady close portrait against angled pale wall; final approach creates tighter face framing.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.1,
+          "action": "Hold yellow object near chin/chest and stare slightly screen-left with closed lips, small object/eye movements."
+        },
+        {
+          "startSeconds": 1.1,
+          "endSeconds": 1.5,
+          "action": "Eyes widen and brows rise, jaw drops into a round open mouth while object stays raised."
+        },
+        {
+          "startSeconds": 1.5,
+          "endSeconds": 2.2333333333333334,
+          "action": "Hold open-mouth surprise, glance sideways then forward, object still in hand."
+        },
+        {
+          "startSeconds": 2.2333333333333334,
+          "endSeconds": 2.566666666666667,
+          "action": "Move yellow object out of face area and bring hand over mouth."
+        },
+        {
+          "startSeconds": 2.566666666666667,
+          "endSeconds": 3.2,
+          "action": "Lean/move closer for tight face view, keep mouth covered and eyes wide, then glance slightly sideways."
+        }
+      ],
+      "endingState": "Very close face, hand covers mouth, eyes wide and gaze slightly sideways; object mostly outside frame.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "My sister is actually nuts why is this her wedding invitation 😭😭",
+        "region": "Upper center above head."
+      },
+      "openingImageRequirement": "Reconstruct original closed-mouth sideways gaze and object-in-hand opening;1.433333s anchor already has jaw dropped.",
+      "risks": [
+        "Soft yellow object exact identity unknown; preserve visible shape rather than invent brand/product.",
+        "Do not omit calm beginning or final mouth cover when compressing duration.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "referenceId": "creator-account-2-06",
+      "sourceSha256": "1e7ad1eecf1df4a4d265c4ccba13c4a7cbb5900742d3f845bc78968e9be5901f",
+      "sourceDurationSeconds": 3.1666666666666665,
+      "sourceFps": 30,
+      "sourceFrameCount": 95,
+      "clarityFrame": {
+        "index": 85,
+        "timeSeconds": 2.833333,
+        "sha256": "5be38c3aa839c0b9a095011de65e0cab4f5052b6d4c52ad3d3bca5961683f908",
+        "presentationTimeSeconds": 2.899349
+      },
+      "evidence": {
+        "sheetCount": 4,
+        "reviewedFrameCount": 95,
+        "notes": "Every native contact-sheet thumbnail plus full-resolution t=0 and selected-anchor frame reviewed. Source metadata and first/anchor/last manifest entries checked. Source-time beats use elapsed nominal index/30; original container presentation offset remains provenance, not motion start. No generated candidate reviewed."
+      },
+      "openingState": "Person in mauve sleeveless top seated behind silver laptop screen-right, hand covers mouth, brows lifted and gaze toward laptop/camera.",
+      "camera": "Fixed medium-close portrait with warm pale room and window/curtain behind; small natural movement.",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.4,
+          "action": "Keep mouth covered, alternate laptop-directed and slight sideways glances, with small blinks and restrained amused eyes."
+        },
+        {
+          "startSeconds": 1.4,
+          "endSeconds": 2.4,
+          "action": "Maintain mouth-cover hold, briefly close eyes then reopen, shoulders largely still."
+        },
+        {
+          "startSeconds": 2.4,
+          "endSeconds": 2.6666666666666665,
+          "action": "Lower hand from mouth toward chest as jaw opens into rounded surprise and eyebrows rise."
+        },
+        {
+          "startSeconds": 2.6666666666666665,
+          "endSeconds": 3.1666666666666665,
+          "action": "Hold mouth open with hand lowered out of face area, gaze toward laptop/camera; no new gesture."
+        }
+      ],
+      "endingState": "Face unobstructed, mouth open, hand lowered, same seated framing.",
+      "constraints": [
+        "Source video controls original t=0 pose, scene, props, camera and full action chronology.",
+        "Influencer portraits control identity; selected later frame supplies clarity evidence only.",
+        "Approve reconstructed influencer t=0 image before FIRST_FRAME animation; do not use later-pose image as literal opening.",
+        "Remove baked source captions during image preparation and add exact editable text separately.",
+        "Retiming must map complete source sequence to requested output duration while preserving event order and held phases."
+      ],
+      "captionCleanup": {
+        "text": "pov: you’re dating an IT guy",
+        "region": "Upper center above head."
+      },
+      "openingImageRequirement": "Reconstruct original mouth-cover opening;2.833333s clarity is the final uncovered open-mouth pose.",
+      "risks": [
+        "Long mouth-cover hold defines pacing; do not uncover immediately at t=0.",
+        "Ending is surprised open mouth, not a broad closed-mouth smile.",
+        "Times are nominal elapsed source-frame times, not verified packet-level transition boundaries; creator manifest container PTS can include an approximately0.066016s initial offset."
+      ],
+      "visualQualification": "not_tested"
+    }
+  ]
+}

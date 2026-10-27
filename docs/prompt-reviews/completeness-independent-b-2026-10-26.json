@@ -1,0 +1,403 @@
+{
+  "date": "2026-10-26",
+  "status": "source_reviewed_drafts_not_runtime_activated",
+  "references": 4,
+  "nativeFramesReviewed": 391,
+  "contactSheetsReviewed": 15,
+  "fullResolutionFramesReviewed": 15,
+  "providerCalls": 0,
+  "runtimeChanges": 0,
+  "sourceTimestampConvention": "zero-based native decoded frame indices; original input best_effort_timestamp_time probed; intervals are source seconds; generated clock uses g=s*3/sourceDuration",
+  "rows": [
+    {
+      "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "title": "Hook 09",
+      "route": "normal",
+      "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55.mp4",
+      "sourceDurationSeconds": 2.833984,
+      "evidenceDirectory": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\completeness-b-evidence\\explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "nativeFramesReviewed": 85,
+      "contactSheetsReviewed": 3,
+      "fullResolutionIndices": [
+        0,
+        41,
+        62,
+        84
+      ],
+      "sourceFirstPts": 0,
+      "sourceLastPts": 2.8,
+      "sourcePtsVerified": true,
+      "reviewStatus": "source_reviewed_correction_drafted",
+      "correctionType": "timing_specificity",
+      "finding": "Assigned actions are substantively correct, but omit the almost one-second initial still reaction and measured glasses/mouth transition and ending hold.",
+      "originalAssignedDirections": "OPENING STATE: The tight front-facing close-up shows translucent eyeglasses on the face, raised brows, an open mouth and hands initially below the face.\n\nOPENING: Bring the hand from screen-right to the outer eyeglass corner, briefly close the eyes and lift the frame past the eyes.\n\nMIDDLE: Slide the glasses over the forehead onto the top of the head and reopen the eyes toward the lens while gradually closing the mouth.\n\nENDING: Release the frame and bring the same hand down until the painted fingertips rest vertically across the lips. Hold the covered-mouth look with lifted brows.\n\nCAMERA: Keep the close handheld viewpoint with only a gentle natural bob.\n\nENDING STATE: The eyeglasses remain on the head and the fingertips cover the lips.\n\nCONSTRAINT: Keep the glasses on the head after lifting them.\n\nCONSTRAINT: Keep the rings and fingers continuous as the hand moves from frame to mouth.",
+      "candidatePlan": {
+        "openingState": "The tight front-facing close-up shows translucent eyeglasses on the face, raised brows, an open mouth and hands initially below the face.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.3410982560240284]: Hold the wide-eyed open-mouth reaction toward the lens with glasses on and hands below the face; do not begin the glasses gesture yet."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3410982560240284–0.48224231329464107]: Raise the hand from screen-right and grip the outer corner of the eyeglasses, keeping the mouth open."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.48224231329464107–0.7174821735055666]: Briefly close the eyes as the hand lifts the glasses up past the eyes and forehead onto the top of the head. Reopen the eyes toward the lens; gradually close the mouth as the glasses settle."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7174821735055666–0.8115783293060228]: Release the glasses on the head and bring the same hand down to place the painted fingertips vertically across the lips."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.8115783293060228–1]: Hold the fingertips against the lips and keep the glasses resting on the head, brows lifted and gaze toward the lens through the final frame."
+          }
+        ],
+        "camera": "Keep the close handheld viewpoint with only a gentle natural bob.",
+        "endingState": "The eyeglasses remain on the head and the fingertips cover the lips.",
+        "constraints": [
+          "Keep the glasses on the head after lifting them.",
+          "Keep the rings and fingers continuous as the hand moves from frame to mouth."
+        ]
+      },
+      "sourceIntervals": [
+        {
+          "start": 0,
+          "end": 0.966667,
+          "action": "Hold the wide-eyed open-mouth reaction toward the lens with glasses on and hands below the face; do not begin the glasses gesture yet."
+        },
+        {
+          "start": 0.966667,
+          "end": 1.366667,
+          "action": "Raise the hand from screen-right and grip the outer corner of the eyeglasses, keeping the mouth open."
+        },
+        {
+          "start": 1.366667,
+          "end": 2.033333,
+          "action": "Briefly close the eyes as the hand lifts the glasses up past the eyes and forehead onto the top of the head. Reopen the eyes toward the lens; gradually close the mouth as the glasses settle."
+        },
+        {
+          "start": 2.033333,
+          "end": 2.3,
+          "action": "Release the glasses on the head and bring the same hand down to place the painted fingertips vertically across the lips."
+        },
+        {
+          "start": 2.3,
+          "end": 2.833984,
+          "action": "Hold the fingertips against the lips and keep the glasses resting on the head, brows lifted and gaze toward the lens through the final frame."
+        }
+      ],
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The tight front-facing close-up shows translucent eyeglasses on the face, raised brows, an open mouth and hands initially below the face.\n\nOPENING: 0–1.02s: Hold the wide-eyed open-mouth reaction toward the lens with glasses on and hands below the face; do not begin the glasses gesture yet.\n\nMIDDLE: 1.02–1.45s: Raise the hand from screen-right and grip the outer corner of the eyeglasses, keeping the mouth open.\n\nMIDDLE: 1.45–2.15s: Briefly close the eyes as the hand lifts the glasses up past the eyes and forehead onto the top of the head. Reopen the eyes toward the lens; gradually close the mouth as the glasses settle.\n\nMIDDLE: 2.15–2.43s: Release the glasses on the head and bring the same hand down to place the painted fingertips vertically across the lips.\n\nENDING: 2.43–3s: Hold the fingertips against the lips and keep the glasses resting on the head, brows lifted and gaze toward the lens through the final frame.\n\nCAMERA: Keep the close handheld viewpoint with only a gentle natural bob.\n\nENDING STATE: The eyeglasses remain on the head and the fingertips cover the lips.\n\nCONSTRAINT: Keep the glasses on the head after lifting them.\n\nCONSTRAINT: Keep the rings and fingers continuous as the hand moves from frame to mouth.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "generatedQualification": "not_tested",
+      "uncertainties": [
+        "No generated candidate was submitted; prose/source coverage does not establish model adherence.",
+        "Native frames were reviewed on 1100px contact sheets, with the listed full-resolution checks; fine facial details outside those checks remain limited by thumbnail resolution."
+      ],
+      "runtimeChanges": 0
+    },
+    {
+      "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "title": "Hook 10",
+      "route": "normal",
+      "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4.mp4",
+      "sourceDurationSeconds": 3.1,
+      "evidenceDirectory": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\completeness-b-evidence\\explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "nativeFramesReviewed": 93,
+      "contactSheetsReviewed": 4,
+      "fullResolutionIndices": [
+        39,
+        48,
+        84,
+        92
+      ],
+      "sourceFirstPts": 0,
+      "sourceLastPts": 3.066667,
+      "sourcePtsVerified": true,
+      "reviewStatus": "source_reviewed_correction_drafted",
+      "correctionType": "ending_expression_sequence_and_timing",
+      "finding": "Assigned lip-to-chest movement is correct; ending reduces two separated late eye closures to one small blink and does not state that eyes are open again at the final frame.",
+      "originalAssignedDirections": "OPENING STATE: The seated performer looks to screen-left with widened eyes and slightly parted lips, with hands below the face.\n\nOPENING: Open the mouth further and raise the hand from screen-left until the fingertips touch beside the lower lip.\n\nMIDDLE: Hold the astonished sideways look and blink briefly, then slide the hand down from the mouth to the upper chest.\n\nENDING: Turn the eyes toward the lens while keeping the mouth open and the hand resting across the chest; finish with a small blink.\n\nCAMERA: Keep the seated portrait composition steady.\n\nENDING STATE: The performer faces nearer the lens with mouth open and the hand across the upper chest.\n\nCONSTRAINT: Move the hand from lip to chest once; do not keep covering the mouth.",
+      "candidatePlan": {
+        "openingState": "The seated performer looks to screen-left with widened eyes and slightly parted lips, with hands below the face.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.12903225806451613]: Look up toward screen-left with wide eyes and open the mouth further; hands stay below the face initially."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.12903225806451613–0.21505387096774192]: Raise the hand from screen-left until its fingertips touch beside the lower lip."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.21505387096774192–0.4086022580645161]: Hold the hand beside the lower lip and the wide-eyed sideways open-mouth reaction."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4086022580645161–0.4623654838709677]: Briefly close the eyes while the fingertips remain near the lip, then reopen them."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4623654838709677–0.5268816129032258]: Slide that hand down from the mouth to rest flat across the upper chest while turning the eyes toward the lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5268816129032258–0.7956990322580646]: Hold the direct wide-eyed open-mouth expression, with the hand resting across the chest."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7956990322580646–0.8387096774193549]: Briefly close and reopen the eyes without moving the chest hand or closing the mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.8387096774193549–0.8817203225806451]: Hold the wide-eyed direct gaze again with the mouth open."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.8817203225806451–0.9247312903225806]: Close and reopen the eyes once more, keeping the chest hand in place."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9247312903225806–1]: Finish looking toward the lens with eyes open, mouth still open and the same hand across the chest."
+          }
+        ],
+        "camera": "Keep the seated portrait composition steady.",
+        "endingState": "The performer faces nearer the lens with mouth open and the hand across the upper chest.",
+        "constraints": [
+          "Move the hand from lip to chest once; do not keep covering the mouth."
+        ]
+      },
+      "sourceIntervals": [
+        {
+          "start": 0,
+          "end": 0.4,
+          "action": "Look up toward screen-left with wide eyes and open the mouth further; hands stay below the face initially."
+        },
+        {
+          "start": 0.4,
+          "end": 0.666667,
+          "action": "Raise the hand from screen-left until its fingertips touch beside the lower lip."
+        },
+        {
+          "start": 0.666667,
+          "end": 1.266667,
+          "action": "Hold the hand beside the lower lip and the wide-eyed sideways open-mouth reaction."
+        },
+        {
+          "start": 1.266667,
+          "end": 1.433333,
+          "action": "Briefly close the eyes while the fingertips remain near the lip, then reopen them."
+        },
+        {
+          "start": 1.433333,
+          "end": 1.633333,
+          "action": "Slide that hand down from the mouth to rest flat across the upper chest while turning the eyes toward the lens."
+        },
+        {
+          "start": 1.633333,
+          "end": 2.466667,
+          "action": "Hold the direct wide-eyed open-mouth expression, with the hand resting across the chest."
+        },
+        {
+          "start": 2.466667,
+          "end": 2.6,
+          "action": "Briefly close and reopen the eyes without moving the chest hand or closing the mouth."
+        },
+        {
+          "start": 2.6,
+          "end": 2.733333,
+          "action": "Hold the wide-eyed direct gaze again with the mouth open."
+        },
+        {
+          "start": 2.733333,
+          "end": 2.866667,
+          "action": "Close and reopen the eyes once more, keeping the chest hand in place."
+        },
+        {
+          "start": 2.866667,
+          "end": 3.1,
+          "action": "Finish looking toward the lens with eyes open, mouth still open and the same hand across the chest."
+        }
+      ],
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The seated performer looks to screen-left with widened eyes and slightly parted lips, with hands below the face.\n\nOPENING: 0–0.39s: Look up toward screen-left with wide eyes and open the mouth further; hands stay below the face initially.\n\nMIDDLE: 0.39–0.65s: Raise the hand from screen-left until its fingertips touch beside the lower lip.\n\nMIDDLE: 0.65–1.23s: Hold the hand beside the lower lip and the wide-eyed sideways open-mouth reaction.\n\nMIDDLE: 1.23–1.39s: Briefly close the eyes while the fingertips remain near the lip, then reopen them.\n\nMIDDLE: 1.39–1.58s: Slide that hand down from the mouth to rest flat across the upper chest while turning the eyes toward the lens.\n\nMIDDLE: 1.58–2.39s: Hold the direct wide-eyed open-mouth expression, with the hand resting across the chest.\n\nMIDDLE: 2.39–2.52s: Briefly close and reopen the eyes without moving the chest hand or closing the mouth.\n\nMIDDLE: 2.52–2.65s: Hold the wide-eyed direct gaze again with the mouth open.\n\nMIDDLE: 2.65–2.77s: Close and reopen the eyes once more, keeping the chest hand in place.\n\nENDING: 2.77–3s: Finish looking toward the lens with eyes open, mouth still open and the same hand across the chest.\n\nCAMERA: Keep the seated portrait composition steady.\n\nENDING STATE: The performer faces nearer the lens with mouth open and the hand across the upper chest.\n\nCONSTRAINT: Move the hand from lip to chest once; do not keep covering the mouth.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "generatedQualification": "not_tested",
+      "uncertainties": [
+        "No generated candidate was submitted; prose/source coverage does not establish model adherence.",
+        "Native frames were reviewed on 1100px contact sheets, with the listed full-resolution checks; fine facial details outside those checks remain limited by thumbnail resolution."
+      ],
+      "runtimeChanges": 0
+    },
+    {
+      "referenceId": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "title": "Hook 11",
+      "route": "normal",
+      "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37.mp4",
+      "sourceDurationSeconds": 3.766992,
+      "evidenceDirectory": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\completeness-b-evidence\\explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "nativeFramesReviewed": 112,
+      "contactSheetsReviewed": 4,
+      "fullResolutionIndices": [
+        43,
+        60,
+        111
+      ],
+      "sourceFirstPts": 0,
+      "sourceLastPts": 3.733333,
+      "sourcePtsVerified": true,
+      "reviewStatus": "source_reviewed_correction_drafted",
+      "correctionType": "missing_visible_prop_and_timing",
+      "finding": "Material prop omission: full-resolution frames establish black over-ear headphones and both hands gripping the earcups; assigned opening says ears and hair and never identifies headphones. Numeric laptop hold/blink/turn/direct-hold also absent.",
+      "originalAssignedDirections": "OPENING STATE: The performer sits behind the laptop on screen-right with both hands already beside the ears and hair, elbows bent, mouth open and raised brows drawn together.\n\nOPENING: Look down toward the laptop while keeping both hands beside the head and the sleeves partly over the hands.\n\nMIDDLE: Blink briefly and shift the eyes and face gradually toward the camera, holding the incredulous open-mouth expression.\n\nENDING: Maintain the direct startled gaze with both hands still beside the ears and only small head adjustments.\n\nCAMERA: Hold the fixed portrait composition with the laptop low on screen-right.\n\nENDING STATE: Both hands remain at the sides of the head while the performer looks toward the lens.\n\nCONSTRAINT: Do not add a hand-to-mouth gesture.\n\nCONSTRAINT: Do not lower and re-raise hands that are already beside the head.",
+      "candidatePlan": {
+        "openingState": "The seated performer already wears black over-ear headphones, with both hands gripping the earcups, sleeves partly covering the hands, mouth open and brows raised/drawn together; the laptop is low on screen-right.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.38049802070192873]: Hold both black over-ear headphone earcups with the hands already beside the head, sleeves partly covering the hands. Keep the mouth open and brows raised/drawn together while looking down toward the laptop on screen-right."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.38049802070192873–0.4335907801237698]: Briefly blink with the mouth still open, keeping both hands gripping the headphone earcups."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4335907801237698–0.5486252691802902]: Shift the eyes and turn the face gradually from the laptop toward the lens without releasing or moving the headphones off the ears."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.5486252691802902–1]: Hold the direct startled open-mouth gaze through the ending, making only small head adjustments while maintaining both earcup grips."
+          }
+        ],
+        "camera": "Hold the fixed portrait composition with the laptop low on screen-right.",
+        "endingState": "Direct startled open-mouth gaze with black headphones still on and both hands gripping the same earcups.",
+        "constraints": [
+          "Do not add a hand-to-mouth gesture.",
+          "Do not lower and re-raise hands that are already beside the head."
+        ]
+      },
+      "sourceIntervals": [
+        {
+          "start": 0,
+          "end": 1.433333,
+          "action": "Hold both black over-ear headphone earcups with the hands already beside the head, sleeves partly covering the hands. Keep the mouth open and brows raised/drawn together while looking down toward the laptop on screen-right."
+        },
+        {
+          "start": 1.433333,
+          "end": 1.633333,
+          "action": "Briefly blink with the mouth still open, keeping both hands gripping the headphone earcups."
+        },
+        {
+          "start": 1.633333,
+          "end": 2.066667,
+          "action": "Shift the eyes and turn the face gradually from the laptop toward the lens without releasing or moving the headphones off the ears."
+        },
+        {
+          "start": 2.066667,
+          "end": 3.766992,
+          "action": "Hold the direct startled open-mouth gaze through the ending, making only small head adjustments while maintaining both earcup grips."
+        }
+      ],
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The seated performer already wears black over-ear headphones, with both hands gripping the earcups, sleeves partly covering the hands, mouth open and brows raised/drawn together; the laptop is low on screen-right.\n\nOPENING: 0–1.14s: Hold both black over-ear headphone earcups with the hands already beside the head, sleeves partly covering the hands. Keep the mouth open and brows raised/drawn together while looking down toward the laptop on screen-right.\n\nMIDDLE: 1.14–1.3s: Briefly blink with the mouth still open, keeping both hands gripping the headphone earcups.\n\nMIDDLE: 1.3–1.65s: Shift the eyes and turn the face gradually from the laptop toward the lens without releasing or moving the headphones off the ears.\n\nENDING: 1.65–3s: Hold the direct startled open-mouth gaze through the ending, making only small head adjustments while maintaining both earcup grips.\n\nCAMERA: Hold the fixed portrait composition with the laptop low on screen-right.\n\nENDING STATE: Direct startled open-mouth gaze with black headphones still on and both hands gripping the same earcups.\n\nCONSTRAINT: Do not add a hand-to-mouth gesture.\n\nCONSTRAINT: Do not lower and re-raise hands that are already beside the head.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "generatedQualification": "not_tested",
+      "uncertainties": [
+        "No generated candidate was submitted; prose/source coverage does not establish model adherence.",
+        "Native frames were reviewed on 1100px contact sheets, with the listed full-resolution checks; fine facial details outside those checks remain limited by thumbnail resolution."
+      ],
+      "runtimeChanges": 0
+    },
+    {
+      "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "title": "Hook 14",
+      "route": "normal",
+      "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
+      "sourceFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\explore-paired-references\\media\\bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4.mp4",
+      "sourceDurationSeconds": 3.366992,
+      "evidenceDirectory": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\.tmp\\completeness-b-evidence\\explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "nativeFramesReviewed": 101,
+      "contactSheetsReviewed": 4,
+      "fullResolutionIndices": [
+        28,
+        35,
+        82,
+        100
+      ],
+      "sourceFirstPts": 0,
+      "sourceLastPts": 3.333333,
+      "sourcePtsVerified": true,
+      "reviewStatus": "source_reviewed_correction_drafted",
+      "correctionType": "timing_specificity",
+      "finding": "Assigned action order is correct; opening pause, long covered-mouth hold, late release and final forward bob are untimed. The source does not have the Hook01 pickup/shake and that movement must not be copied here.",
+      "originalAssignedDirections": "OPENING STATE: The performer sits at a tabletop looking toward the laptop on screen-right, brows lifted and mouth open, with one hand loosely curled beside the cheek.\n\nOPENING: Bring the hand beside the cheek across the mouth, keeping the watch and bracelets at the wrist.\n\nMIDDLE: Hold the palm over the lips as the eyes widen, then move the gaze toward the camera.\n\nENDING: Lower the hand back beside the cheek and change the startled expression into a warm closed-mouth smile, then a toothy smile.\n\nCAMERA: Maintain the close seated angle with a slight handheld bob.\n\nENDING STATE: The hand is beside the cheek again and the performer smiles toward the lens.\n\nCONSTRAINT: Keep the wrist jewelry attached and continuous as the hand moves.\n\nCONSTRAINT: Do not hold the mouth covered through the ending.",
+      "candidatePlan": {
+        "openingState": "The performer sits at a tabletop looking toward the laptop on screen-right, brows lifted and mouth open, with one hand loosely curled beside the cheek.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.2871010682532064]: Hold the open-mouth reaction toward the laptop on screen-right, with the jewelry-wearing hand loosely curled beside the cheek. Keep this opening pause before covering the mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.2871010682532064–0.356401203210462]: Bring that same hand from beside the cheek across the mouth, retaining the wristwatch and bracelets."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.356401203210462–0.8118026416457181]: Hold the palm over the lips as the eyes widen, then bring the gaze toward the lens; keep the hand in contact rather than releasing early."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.8118026416457181–0.9009029424483336]: Lower the hand back beside the cheek and let the startled expression soften into a closed-mouth smile toward the lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9009029424483336–1]: Open into a toothy smile and lean slightly toward the camera with a small natural viewpoint bob; finish smiling with the hand beside the cheek."
+          }
+        ],
+        "camera": "Maintain the close seated angle with a slight handheld bob.",
+        "endingState": "The hand is beside the cheek again and the performer smiles toward the lens.",
+        "constraints": [
+          "Keep the wrist jewelry attached and continuous as the hand moves.",
+          "Do not hold the mouth covered through the ending."
+        ]
+      },
+      "sourceIntervals": [
+        {
+          "start": 0,
+          "end": 0.966667,
+          "action": "Hold the open-mouth reaction toward the laptop on screen-right, with the jewelry-wearing hand loosely curled beside the cheek. Keep this opening pause before covering the mouth."
+        },
+        {
+          "start": 0.966667,
+          "end": 1.2,
+          "action": "Bring that same hand from beside the cheek across the mouth, retaining the wristwatch and bracelets."
+        },
+        {
+          "start": 1.2,
+          "end": 2.733333,
+          "action": "Hold the palm over the lips as the eyes widen, then bring the gaze toward the lens; keep the hand in contact rather than releasing early."
+        },
+        {
+          "start": 2.733333,
+          "end": 3.033333,
+          "action": "Lower the hand back beside the cheek and let the startled expression soften into a closed-mouth smile toward the lens."
+        },
+        {
+          "start": 3.033333,
+          "end": 3.366992,
+          "action": "Open into a toothy smile and lean slightly toward the camera with a small natural viewpoint bob; finish smiling with the hand beside the cheek."
+        }
+      ],
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The performer sits at a tabletop looking toward the laptop on screen-right, brows lifted and mouth open, with one hand loosely curled beside the cheek.\n\nOPENING: 0–0.86s: Hold the open-mouth reaction toward the laptop on screen-right, with the jewelry-wearing hand loosely curled beside the cheek. Keep this opening pause before covering the mouth.\n\nMIDDLE: 0.86–1.07s: Bring that same hand from beside the cheek across the mouth, retaining the wristwatch and bracelets.\n\nMIDDLE: 1.07–2.44s: Hold the palm over the lips as the eyes widen, then bring the gaze toward the lens; keep the hand in contact rather than releasing early.\n\nMIDDLE: 2.44–2.7s: Lower the hand back beside the cheek and let the startled expression soften into a closed-mouth smile toward the lens.\n\nENDING: 2.7–3s: Open into a toothy smile and lean slightly toward the camera with a small natural viewpoint bob; finish smiling with the hand beside the cheek.\n\nCAMERA: Maintain the close seated angle with a slight handheld bob.\n\nENDING STATE: The hand is beside the cheek again and the performer smiles toward the lens.\n\nCONSTRAINT: Keep the wrist jewelry attached and continuous as the hand moves.\n\nCONSTRAINT: Do not hold the mouth covered through the ending.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "generatedQualification": "not_tested",
+      "uncertainties": [
+        "No generated candidate was submitted; prose/source coverage does not establish model adherence.",
+        "Native frames were reviewed on 1100px contact sheets, with the listed full-resolution checks; fine facial details outside those checks remain limited by thumbnail resolution."
+      ],
+      "runtimeChanges": 0
+    }
+  ]
+}

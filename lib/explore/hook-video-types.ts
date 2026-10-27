@@ -3,6 +3,9 @@ export type ExploreVideoReference = {
   posterUrl: string;
   videoUrl: string;
   durationSeconds?: number;
+  title?: string;
+  category?: string;
+  categoryLabel?: string;
   instagramUrl?: string;
   sourceUrl?: string;
   sourcePlatform?: "instagram" | "tiktok";

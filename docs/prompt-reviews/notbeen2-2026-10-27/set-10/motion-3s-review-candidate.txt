@@ -1,0 +1,27 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Desk-height portrait, black long-sleeve top, long dark hair, puzzled drawn brows and open mouth toward laptop screen-left. Hands low over desk, bright pink pen held near notebook with pink scribbles; pale room, sliding doors and ceiling pendant.
+
+OPENING: 0–1.66s: Hold open-mouth puzzled stare toward laptop, with hands low at desk and pink pen gripped; preserve the long opening pause.
+
+MIDDLE: 1.66–1.97s: Lift the pen-holding hand slightly while the other hand begins leaving desk toward camera.
+
+MIDDLE: 1.97–2.19s: Draw hands farther from keyboard/notebook and start the camera-reaching transition; pen remains associated with its same hand until out of view.
+
+MIDDLE: 2.19–2.29s: Begin irregular handheld movement, blurring and shifting view sideways/upward; body slides partly off screen-right.
+
+MIDDLE: 2.29–2.65s: Tilt farther upward across ceiling/pendant, then bring the view back toward the performer; preserve the brief blurred off-center framing.
+
+ENDING: 2.65–3s: Settle nearer into low-angle frontal face with mouth parted and drawn brows; finish in this close reaction without a scene cut.
+
+CAMERA: Opening desk view mostly still; hands lift away, then strong irregular handheld reframe tilts up across ceiling and returns toward a closer low-angle face.
+
+ENDING STATE: Close front face below ceiling pendant, mouth parted, brows drawn and hands out of the tight crop.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

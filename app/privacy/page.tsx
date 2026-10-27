@@ -93,6 +93,10 @@ export default function PrivacyPolicyPage() {
           </LegalList>
         </LegalSection>
 
+        <LegalSection title="Optional resource notifications">
+          <p>If you request the Hook Video Library Batch 2 announcement, we store your email address, consent version and request date privately for that announcement only. Downloading a resource does not subscribe you or create an account. We do not use this list for unrelated marketing. Requests are deleted after the announcement or when you ask us to cancel at <a className="font-bold text-primary" href="mailto:privacy@getugcpilot.com">privacy@getugcpilot.com</a>.</p>
+        </LegalSection>
+
         <LegalSection title="Website analytics">
           <p>
             Google Analytics is currently disabled on public pages. We do not

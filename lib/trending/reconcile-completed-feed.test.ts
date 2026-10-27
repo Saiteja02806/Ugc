@@ -23,13 +23,29 @@ test("temporary database failures still reach the durable reconciliation retry",
   }), (error) => error === failure);
 });
 
-test("paid reconciliation returns the actual feed result", async () => {
+test("paid reconciliation returns the actual feed result and safely runs slideshow automation sweep", async () => {
+  const sweptUsers: string[] = [];
   const result = await reconcileCompletedTrendingFeedForUser("user", {
     getProfile: async () => ({ trendingTimezone: "UTC" } as never),
     ensureFeed: async () => ({ feed: { id: "feed", state: "ready", pendingSlotCount: 0 } } as never),
+    sweepSlideshowAutomation: async (uid) => {
+      sweptUsers.push(uid);
+    },
   });
   assert.equal(result.skipped, false);
   assert.equal(result.feedId, "feed");
+  assert.deepEqual(sweptUsers, ["user"]);
+
+  // Verify that an error inside sweepSlideshowAutomation never fails feed reconciliation
+  const isolatedResult = await reconcileCompletedTrendingFeedForUser("user", {
+    getProfile: async () => ({ trendingTimezone: "UTC" } as never),
+    ensureFeed: async () => ({ feed: { id: "feed", state: "ready", pendingSlotCount: 0 } } as never),
+    sweepSlideshowAutomation: async () => {
+      throw new Error("automation sweep error");
+    },
+  });
+  assert.equal(isolatedResult.skipped, false);
+  assert.equal(isolatedResult.feedId, "feed");
 });
 
 test("every terminal format gets a public failure object for the retained review shell", () => {

@@ -328,6 +328,9 @@ export async function handleAIStudioVideoGeneration(request: Request, options?: 
         (body?.referenceType !== undefined && body.referenceType !== startingFrame.exploreFormat)) {
         return NextResponse.json({ ok: false, error: "The starting image belongs to a different Hook reference. Choose it again." }, { status: 400 });
       }
+      if (prompt.includes("PHASE [") && startingFrame.receipt?.version !== 4) {
+        return NextResponse.json({ ok: false, error: "These full-video directions need a newly prepared original-opening image. Your saved image and edits are kept; prepare a new starting image before using this timeline." }, { status: 409 });
+      }
       if (referenceImageUrls.includes(startingFrame.imageUrl)) {
         return NextResponse.json({ ok: false, error: "Keep the starting frame separate. Choose clear photos of the same person as optional face references." }, { status: 400 });
       }

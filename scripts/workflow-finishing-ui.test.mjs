@@ -572,7 +572,7 @@ test("a lost upload completion response is recovered through GET and never delet
 function schedulingHarness({ kind = "hook", saved = null, lost = false, storageFails = false, locks = true, finished = output, multiple = false, transport, draftId, onScheduled } = {}) {
   const cache = createScheduleCacheFixture("owner");
   let cursor = 0, pendingFailure = lost;
-  const slots = [], effects = [], calls = [], store = new Map();
+  const slots = [], effects = [], calls = [], store = new Map(), finishingInputs = [];
   const storageKey = `ugc-explore:schedule:v1:owner:${kind}${draftId ? `:${draftId}` : ""}`;
   if (saved) store.set(storageKey, JSON.stringify(saved));
   const connectionId = saved?.input.targets[0].connectionId ?? randomUUID();
@@ -593,7 +593,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
     "@tanstack/react-query": { useQueryClient: () => cache.queryClient },
     "@/lib/scheduling/account-data-query": cache.api,
     "next/dynamic": { default: (_loader, options) => { assert.equal(options.ssr, false); return Editor; } },
-    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: () => ({ action: {}, output: finished }) },
+    "@/components/explore/use-workflow-finishing": { DEFAULT_FINISHING_OPTIONS: { subtitles: false, style: "clean" }, useWorkflowFinishing: input => { finishingInputs.push(input); return { action: {}, output: finished }; } },
     "@/lib/explore/workflow-schedule-client": scheduleClient,
     "./talking-head-pending-composition": { useTalkingHeadPendingComposition: () => ({}) },
     "./use-workflow-background-music": { useWorkflowBackgroundMusic: () => ({ source: null, playback: "repeat", selectionError: null }) },
@@ -626,7 +626,7 @@ function schedulingHarness({ kind = "hook", saved = null, lost = false, storageF
   });
   const submission = { caption: "My caption", scheduledSource: { kind: "media_asset", id: finished?.id ?? output.id }, targets: [{ connectionId, platform: "instagram", settings: { shareToFeed: true } }], scheduledFor: "2099-12-01T10:00:00.000Z", scheduledDate: "2099-12-01", scheduledTime: "15:30", timezone: "Asia/Calcutta" };
   if (multiple) submission.targets.push({ connectionId: youtubeId, platform: "youtube", settings: { containsSyntheticMedia:true,madeForKids:false,notifySubscribers:false,privacyStatus: "private" } });
-  return { calls, props, store, storageKey, submission, cache, setFinished(value) { finished = value; }, render() {
+  return { calls, props, store, storageKey, submission, cache, finishingInputs, setFinished(value) { finished = value; }, render() {
     cursor = 0; const tree = testModule.WorkflowFinishingBoundary(props); while (effects.length) effects.shift()();
     return { view: tree.props.children[0].props.value, editor: tree.props.children[1]?.props ?? null };
   }, unmount() { for (const slot of slots) slot?.cleanup?.(); } };
@@ -859,4 +859,28 @@ test("changing video or schedule during account validation blocks stale submissi
     h.render(); complete(Response.json({ok:true,minimumScheduleLeadMinutes:5})); await tick();
     assert.equal(h.calls.some(call=>call.method === "POST"),false); assert.match(h.render().view.schedule.error,/video or schedule changed/); h.unmount();
   }
+});
+
+
+test("visual clip edits preserve corrected captions while trim/audio changes invalidate them",async()=>{
+ const h=schedulingHarness();
+ const edit={version:1,format:"hook",trimStartMs:0,trimEndMs:5000,originalVolume:1,musicVolume:0,text:{value:"Overlay",color:"#ffffff",width:.8,y:.4,fontSize:40,startMs:0,endMs:5000}};
+ h.props.composition={version:1,sourceEditing:edit,demoEditing:null,sourceAudioAssetId:null,sourceAudioPlayback:"once"};
+ h.render();await tick();h.render();
+ h.render().view.setOptions({subtitles:true,style:"clean",backgroundMusic:false,placement:"bottom"});h.render();h.render();
+ const corrected=[{index:0,text:"UGCPilot"}];
+ h.render().view.captions.onCorrectionsChange(corrected);h.render();
+ for(const patch of [{color:"#ffff00"},{value:"New overlay"},{y:.7},{fontSize:60}]){
+  h.props.composition={...h.props.composition,sourceEditing:{...edit,text:{...edit.text,...patch}}};h.render();
+  assert.deepEqual(h.render().view.options.corrections,corrected);
+  const caption=h.finishingInputs.at(-2),final=h.finishingInputs.at(-1);
+  assert.equal(caption.composition.sourceEditing.text,null);
+  assert.equal(final.composition.sourceEditing.text.value,h.props.composition.sourceEditing.text.value);
+ }
+ for(const patch of [{trimStartMs:100},{originalVolume:.5},{musicVolume:.4}]){
+  h.render().view.captions.onCorrectionsChange(corrected);h.render();
+  h.props.composition={...h.props.composition,sourceEditing:{...edit,...patch}};h.render();
+  assert.equal(h.render().view.options.corrections.length,0);
+ }
+ h.unmount();
 });

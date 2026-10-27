@@ -1,0 +1,29 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Close indoor portrait in blue sleeveless athletic top, hair tied up, warm wood ceiling beams and green hanging lamp behind screen-right. Face angled slightly down, eyes looking screen-right and lips just parted.
+
+OPENING: 0–0.38s: Hold upward screen-right side glance with slightly parted lips.
+
+MIDDLE: 0.38–0.53s: Lower eyes toward something below frame, briefly narrowing eyelids.
+
+MIDDLE: 0.53–1.24s: Look nearer lens and hold the restrained questioning expression.
+
+MIDDLE: 1.24–1.39s: Lower eyes again through a brief blink.
+
+MIDDLE: 1.39–2.12s: Return gaze up screen-right and hold while keeping head almost still.
+
+MIDDLE: 2.12–2.29s: Glance downward once more with small eyelid movement.
+
+ENDING: 2.29–3s: Return attention nearer lens/downward and finish quietly, mouth still slightly parted and hands out of frame.
+
+CAMERA: Almost static handheld selfie, tiny drift only; no late zoom, reach or cut.
+
+ENDING STATE: Eyes back toward lens/downward with lips gently parted; hands remain below frame and background fixed.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

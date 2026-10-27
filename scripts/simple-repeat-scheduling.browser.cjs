@@ -21,7 +21,7 @@ file('entry.tsx', `import {createRoot} from 'react-dom/client';import {useState}
 import {PendingExploreSchedulePanel} from '@/components/explore/pending-schedule-panel';import {FormatSchedulePanel} from '@/components/explore/format-schedule-panel';import {TalkingHeadScheduleActions} from '@/components/explore/talking-head-schedule-review';
 const mode=new URLSearchParams(location.search).get('mode');const finishDraft={version:1,kind:'hook',sourceAssetId:'${id(1)}',demoAssetId:'${id(2)}',demoAudioAssetId:null,demoAudioPlayback:'once',backgroundAssetId:null,backgroundPlayback:'once',subtitles:null,composition:{version:1,sourceEditing:null,demoEditing:null,sourceAudioAssetId:null,sourceAudioPlayback:'once'}};
 const composition={signature:'exact-clips',sourceId:'${id(1)}',title:'My video',draft:finishDraft,error:null,resolve:async()=>finishDraft};
-function Fixture(){const [draft,onChange]=useState({platform:'instagram',connectionId:'${id(3)}',caption:'Repeat this same content',date:'2099-12-01',time:'16:30'});return <main>{mode==='talking'?<TalkingHeadScheduleActions action={{completed:true,busy:false,disabled:false,message:'Post scheduled',onAction(){},refresh(){}}} enabled onBackToEdit={()=>{}}/>:mode==='pending'?<PendingExploreSchedulePanel owner='owner' scope='hook' composition={composition} draft={draft} onChange={onChange} timezone='Asia/Calcutta' active onBackToEdit={()=>{}}/>:<FormatSchedulePanel format={mode==='slideshow'?'slideshow':mode==='wall'?'wall_text':'hook'} output={{id:'${id(1)}',kind:mode==='slideshow'?'library_item':'media_asset',url:'/fixture.mp4',title:'My content'}} localPreview={false} imageOnly={mode==='slideshow'} active onBackToEdit={()=>{}}/>}</main>}
+function Fixture(){const [draft,onChange]=useState({platform:'instagram',connectionId:'${id(3)}',caption:'Repeat this same content',date:'',time:''});return <main>{mode==='talking'?<TalkingHeadScheduleActions action={{completed:true,busy:false,disabled:false,message:'Post scheduled',onAction(){},refresh(){}}} enabled onBackToEdit={()=>{}}/>:mode==='pending'?<PendingExploreSchedulePanel owner='owner' scope='hook' composition={composition} draft={draft} onChange={onChange} timezone='Asia/Calcutta' active onBackToEdit={()=>{}}/>:<FormatSchedulePanel format={mode==='slideshow'?'slideshow':mode==='wall'?'wall_text':'hook'} output={{id:'${id(1)}',kind:mode==='slideshow'?'library_item':'media_asset',url:'/fixture.mp4',title:'My content'}} localPreview={false} imageOnly={mode==='slideshow'} active onBackToEdit={()=>{}}/>}</main>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Fixture/></QueryClientProvider>);`);
 const connections=[{id:id(3),platform:'instagram',platformAccountName:'Fixture',platformAccountUsername:'fixture',status:'connected',scopes:['instagram_business_content_publish'],supportsBackgroundRefresh:true}];
 const direct = new Map(), pending = new Map(), posts=[];
@@ -29,6 +29,7 @@ let loseNext=false;
 function json(res, value) { res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value)); }
 const css = ['workflow-creation.module.css','workflow-schedule-review.module.css'].map(name=>fs.readFileSync(path.join(root,'components/explore',name),'utf8')).join('\n') + `
 :root{--background:#202020;--card:#282828;--border:#414141;--foreground:#eee;--foreground-strong:#fff;--muted:#aaa}*{box-sizing:border-box}body{margin:0;background:var(--background);color:var(--foreground);font:14px Arial}main{max-width:760px;margin:24px auto;padding:12px}button,input,textarea{font:inherit;color:inherit}button{cursor:pointer;padding:10px;border:1px solid var(--border);border-radius:8px;background:#303030;display:inline-flex;align-items:center;justify-content:center}button:disabled{opacity:.5}button[aria-pressed=true]{border-color:#ff7043}.reviewButton{background:#ff7043;color:#111}input,textarea{width:100%;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:10px}p{margin:0}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}[hidden]{display:none!important}svg{width:18px;height:18px}.text-xs{font-size:12px}.text-muted{color:var(--muted)}`;
+async function pickTime(page,time){await page.getByRole('button',{name:/^Choose publish time, currently/}).click();await page.getByLabel('Hour',{exact:true}).selectOption(time.slice(0,2));await page.getByLabel('Minute',{exact:true}).selectOption(time.slice(3));await page.getByRole('button',{name:'Done',exact:true}).click();}
 async function main(){
   const globalCss = (await require('postcss')([require('@tailwindcss/postcss')()]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);')+'\n@source "../components";', {from:path.join(root,'app/globals.css')})).css;
   await new Promise((resolve,reject)=>{const compiler=webpack({mode:'development',devtool:false,context:root,plugins:[new webpack.NormalModuleReplacementPlugin(/(?:^|[\\/])firebase[\\/]auth$/,resource=>{resource.request=path.join(out,'auth.ts');})],entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},resolve:{extensions:['.tsx','.ts','.js'],alias:{'@/contexts/auth-context':path.join(out,'auth.ts'),'@/lib/firebase/auth':path.join(out,'auth.ts'),'@/components/providers/account-timezone-provider':path.join(out,'timezone.ts'),'next/link':path.join(out,'link.tsx'),'@':root}},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.css$/,use:path.join(out,'css.cjs')}]}});compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||new Error(stats.toString({all:false,errors:true}))):resolve()));});
@@ -57,18 +58,19 @@ async function main(){
   try{
     browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
     for(const mode of ['pending','video','wall','slideshow'])for(const mobile of [false,true]){
-      const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:1000}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+      const context=await browser.newContext({locale:"en-GB",viewport:mobile?{width:390,height:844}:{width:1440,height:1000}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
       console.log(`Checking ${mode} ${mobile?'mobile':'desktop'}`);
       await page.goto(`http://127.0.0.1:${server.address().port}/fixture?mode=${mode}`);
       await page.waitForFunction(()=>document.querySelector('button')!==null).catch(async error=>{throw new Error(`${error.message}\nRuntime errors: ${errors.join('; ')}\n${await page.locator('body').innerText()}`);});
       if(mode!=='pending'){
         await page.getByRole('button',{name:'Instagram',exact:true}).click();
         await page.waitForFunction(()=>document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed')==='true');
-        await page.getByLabel('Post caption',{exact:true}).fill('Repeat this same content');await page.getByLabel('Date',{exact:true}).fill('2099-12-01');await page.getByLabel('Time',{exact:true}).fill('16:30');
+        await page.getByRole('textbox',{name:/^Post caption/}).fill('Repeat this same content');
       }
+      assert.equal(await page.getByRole('group',{name:'Publishing time',exact:true}).count(),0);
       const start=posts.length;loseNext=mobile;
       // A lost acknowledgement is resolved with a read, without another POST.
-      await page.getByRole('button',{name:'Schedule post',exact:true}).click();
+      await page.getByRole('button',{name:'Post now',exact:true}).last().click();
       await page.getByRole('link',{name:'View in Scheduling',exact:true}).waitFor();
       assert.match(await page.locator('body').innerText(),/Post scheduled/);
       assert.equal(await page.getByRole('link',{name:'View in Scheduling',exact:true}).getAttribute('href'),'/scheduling');
@@ -80,21 +82,22 @@ async function main(){
       await page.getByRole('link',{name:'View in Scheduling',exact:true}).focus();
       assert.equal(await page.getByRole('link',{name:'View in Scheduling',exact:true}).evaluate(link=>getComputedStyle(link).outlineStyle),'solid');
       assert.doesNotMatch(await page.locator('body').innerText(),/Confirm the same saved request|Check saved|Resume saved|not confirmed/);
-      assert.equal(posts.length,start+1);
+      assert.equal(posts.length,start+1);assert.equal((mode==='pending'?posts[start].input.schedule:posts[start].input).useDefaultScheduleTime,true);
       await page.reload();
       await page.getByRole('link',{name:'View in Scheduling',exact:true}).waitFor();
       assert.equal(posts.length,start+1,'Restoring a confirmed schedule never submits another post');
       await page.screenshot({path:path.join(out,`${mode}-${mobile?'mobile':'desktop'}.png`),fullPage:true});
-      await page.getByRole('button',{name:'Schedule post',exact:true}).click();
+      await page.getByRole('button',{name:/^(Post now|Schedule post)$/}).last().click();
       // Successful direct schedules clear the unsent form cache. After reload,
       // the confirmed receipt remains; supply the new post's details explicitly.
       if(mode!=='pending'){
         await page.getByRole('button',{name:'Instagram',exact:true}).click();
         await page.waitForFunction(()=>document.querySelector('[aria-label="Post to @fixture on Instagram"]')?.getAttribute('aria-pressed')==='true');
-        await page.getByLabel('Post caption',{exact:true}).fill('Repeat this same content');
+        await page.getByRole('textbox',{name:/^Post caption/}).fill('Repeat this same content');
         await page.getByLabel('Date',{exact:true}).fill('2099-12-01');
       }
-      await page.getByLabel('Time',{exact:true}).fill('17:30');
+      if(mode==='pending')await page.getByLabel('Date',{exact:true}).fill('2099-12-01');
+      await pickTime(page,'17:30');
       await page.getByRole('button',{name:'Schedule post',exact:true}).evaluate(button=>{button.click();button.click();});
       await page.getByRole('link',{name:'View in Scheduling',exact:true}).waitFor();assert.equal(posts.length,start+2);
       const [first,second]=posts.slice(start).map(p=>p.input);
@@ -103,7 +106,7 @@ async function main(){
       assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await context.close();
     }
     for(const mobile of [false,true]){
-      const page=await browser.newPage({viewport:mobile?{width:390,height:844}:{width:1440,height:1000}});
+      const page=await browser.newPage({locale:"en-GB",viewport:mobile?{width:390,height:844}:{width:1440,height:1000}});
       await page.goto(`http://127.0.0.1:${server.address().port}/fixture?mode=talking`);
       const link=page.getByRole('link',{name:'View in Scheduling',exact:true});await link.waitFor();
       assert.equal(await link.evaluate(node=>getComputedStyle(node).color),'rgb(255, 112, 69)');

@@ -1,0 +1,29 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Extreme close selfie, wide eyes toward lens and small closed-lip disbelieving smile; screen-left palm presses the temple and cheek. Black top, pale room and framed picture.
+
+OPENING: 0–0.57s: Hold wide eyes and the small closed-lip smile with palm pressed at temple/cheek.
+
+MIDDLE: 0.57–0.73s: Narrow the eyelids briefly as the viewpoint starts easing back, palm remaining at the side of face.
+
+MIDDLE: 0.73–0.9s: Slide the same palm down and inward from cheek across lips and lower nose.
+
+MIDDLE: 0.9–1.57s: Hold the covered-mouth amused reaction in the wider selfie view.
+
+MIDDLE: 1.57–1.83s: Tip the handheld view upward with brief movement softness so ceiling expands and face drops toward bottom.
+
+ENDING: 1.83–2.13s: Bring the covered face somewhat closer again, hand still over lips and eyes relaxed toward lens.
+
+ENDING: 2.13–3s: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action.
+
+CAMERA: Start very close; ease back as the same hand crosses the mouth. Late handheld upward reframe/brief blur reveals more ceiling and leaves the face low, then returns nearer. Do not replace with a steady digital zoom.
+
+ENDING STATE: Same hand over mouth, eyes softened and looking toward lens, face closer again after low framing.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

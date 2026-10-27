@@ -85,7 +85,7 @@ async function main() {
   let browser;
   try { browser = await playwright.chromium.launch({ headless: true, ...(process.platform === "win32" ? { channel: "msedge" } : {}) }); }
   catch (error) { await new Promise(resolve => server.close(resolve)); throw error; }
-  const page = await browser.newPage({ viewport: { width: 1366, height: 680 } });
+  const page = await browser.newPage({ locale: "en-GB", viewport: { width: 1366, height: 680 } });
   page.on("pageerror", error => { errors.push(error.message); console.error("BROWSER_ERROR", error.message); });
   const disclosure = () => page.getByRole("checkbox", { name: "Contains AI-generated content", exact: true });
   async function selectTikTok(mode) {
@@ -103,10 +103,10 @@ async function main() {
   async function submit(mode) {
     if (mode === "modal") {
       await next(mode).click();
-      await page.getByRole("button", { name: /^Post Right away/ }).click();
+      await page.getByRole("button", { name: /^Post now/ }).click();
     } else {
       await next(mode).click();
-      await page.getByRole("button", { name: "Confirm schedule", exact: true }).click();
+      await page.getByRole("button", { name: "Post now", exact: true }).click();
     }
     await page.waitForFunction(() => window.__submission);
     return page.evaluate(() => window.__submission.targets[0].settings);
@@ -177,7 +177,7 @@ async function main() {
       await page.getByRole("button", { name: /Saved captions/ }).click();
       await page.getByRole("button", { name: "Use caption", exact: true }).first().click();
       assert.equal(await caption.inputValue(), defaultCaption);
-      await page.getByRole("button", { name: /Saved captions/ }).click();
+      await page.getByRole("heading", { name: "Saved captions", exact: true }).waitFor({state:"hidden"});
       await page.screenshot({ path: path.join(out, mode + "-1366x680.png"), fullPage: true });
       const settings = await submit(mode);
       assert.equal(await page.evaluate(() => window.__submission.caption), defaultCaption);
@@ -323,6 +323,74 @@ async function main() {
       assert.equal((await submit(mode)).privacyLevel, "SELF_ONLY");
       console.log("PASS " + mode + " blocks a failed default read and recovers through Retry");
     }
+    for (const mode of ["modal","drawer"]) for (const width of [1366,390]) {
+      await page.setViewportSize({width,height:844}); await page.goto(base+"/?mode="+mode);
+      await selectTikTok(mode);await ready();
+      if(mode==="modal") await next(mode).click();
+      assert.equal(await page.getByRole("group",{name:"Publishing time",exact:true}).count(),0);
+      assert.equal(await page.getByRole("button",{name:"Schedule for later",exact:true}).count(),0);
+      const quick=page.getByRole("group",{name:"Quick publish times",exact:true});
+      assert.deepEqual(await quick.getByRole("button").allTextContents(),["5 mins","1 hour","3 hours","Tomorrow 09:00"]);
+      const tops=await quick.getByRole("button").evaluateAll(buttons=>buttons.map(b=>b.getBoundingClientRect().top));assert.ok(tops.every(top=>Math.abs(top-tops[0])<1));
+      await page.getByRole("button",{name:/^Choose publish time, currently/}).click();
+      assert.equal(await page.getByLabel("Hour",{exact:true}).locator("option").count(),24);
+      assert.equal(await page.getByLabel("Minute",{exact:true}).locator("option").count(),60);
+      for(const time of ["00:00","09:30","21:30","23:59"]) {
+        await page.getByLabel("Hour",{exact:true}).selectOption(time.slice(0,2));await page.getByLabel("Minute",{exact:true}).selectOption(time.slice(3));
+        assert.equal(await page.locator('input[name="postTime"]').inputValue(),time);
+      }
+      await page.getByLabel("Minute",{exact:true}).focus();await page.keyboard.press("ArrowUp");
+      assert.equal(await page.locator('input[name="postTime"]').inputValue(),"23:58");
+      await page.screenshot({path:path.join(out,mode+"-24-hour-"+width+".png"),fullPage:true});
+      await page.getByRole("button",{name:"Done",exact:true}).click();
+      assert.equal(await page.evaluate(()=>window.__submission),undefined);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+
+    }
+    for(const mode of ["modal","drawer"])for(const width of [1366,390]) {
+      const local=await browser.newPage({locale:"en-US",viewport:{width,height:844}});
+      await local.goto(base+"/?mode="+mode);
+      await local.getByRole("checkbox",{name:mode==="modal"?/TikTok creator account/:/Local tiktok/}).check();
+      const forward=local.getByRole("button",{name:mode==="modal"?"Next":"Review",exact:true});
+      await forward.waitFor();await local.waitForFunction(()=>![...document.querySelectorAll('button')].find(b=>['Next','Review'].includes(b.textContent.trim()))?.disabled);
+      if(mode==="modal"){await forward.click();await forward.click();}
+      await local.getByRole("button",{name:/^Choose publish time, currently/}).click();
+      await local.getByLabel("AM/PM",{exact:true}).waitFor();
+      assert.equal(await local.getByLabel("Hour",{exact:true}).locator('option').count(),12);
+      await local.getByLabel("Hour",{exact:true}).selectOption("12");await local.getByLabel("Minute",{exact:true}).selectOption("00");
+      await local.getByLabel("AM/PM",{exact:true}).selectOption("AM");assert.equal(await local.locator('input[name="postTime"]').inputValue(),"00:00");
+      await local.getByLabel("AM/PM",{exact:true}).selectOption("PM");assert.equal(await local.locator('input[name="postTime"]').inputValue(),"12:00");
+      await local.getByLabel("Hour",{exact:true}).selectOption("09");await local.getByLabel("Minute",{exact:true}).selectOption("30");assert.equal(await local.locator('input[name="postTime"]').inputValue(),"21:30");
+      await local.screenshot({path:path.join(out,mode+"-device-12-hour-"+width+".png"),fullPage:true,animations:"disabled"});
+      await local.getByRole("button",{name:"Done",exact:true}).click();await local.getByRole("button",{name:"Choose publish time, currently 9:30 PM",exact:true}).waitFor();
+      assert.equal(await local.evaluate(()=>window.__submission),undefined);assert.ok(await local.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await local.close();
+    }
+    for (const mode of ["modal", "drawer"]) for (const width of [1366, 390]) for (const manual of [false, true]) {
+      await page.clock.setFixedTime(new Date("2026-12-01T12:00:30Z"));
+      await page.setViewportSize({ width, height: 844 }); await page.goto(base + "/?mode=" + mode);
+      await selectTikTok(mode); await ready();
+      await page.getByRole("textbox", { name: /Caption/i }).fill("Caption completed after choosing five minutes");
+      if (mode === "modal") await next(mode).click();
+      await page.getByRole("button", { name: "5 mins", exact: true }).click();
+      if (manual) {
+        await page.getByRole("button", { name: /^Choose publish time, currently/ }).click();
+        await page.getByLabel("Hour", { exact: true }).selectOption("21");
+        await page.getByLabel("Minute", { exact: true }).selectOption("30");
+        await page.getByRole("button", { name: "Done", exact: true }).click();
+      }
+      await page.clock.setFixedTime(new Date("2026-12-01T12:20:30Z"));
+      assert.equal(await page.evaluate(() => window.__submission), undefined);
+      if (mode === "drawer") await next(mode).click();
+      await page.getByRole("button", { name: mode === "modal" ? "Schedule post" : "Confirm schedule", exact: true }).click();
+      await page.waitForFunction(() => window.__submission);
+      const saved = await page.evaluate(() => window.__submission);
+      assert.equal(saved.useDefaultScheduleTime, !manual);
+      assert.equal(saved.scheduledTime, manual ? "21:30" : "17:56");
+      assert.equal(saved.caption, "Caption completed after choosing five minutes");
+      assert.equal(saved.targets[0].connectionId, "account-tiktok");
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    }
+    console.log("PASS delayed five-minute final confirmation and exact manual override in both publishing surfaces on desktop/mobile");
     assert.deepEqual(errors, []);
   } catch (error) {
     console.error("ORIGINAL_BROWSER_FAILURE", error);

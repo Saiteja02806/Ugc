@@ -1,0 +1,1419 @@
+[
+  {
+    "slug": "app-demo-storyboard",
+    "title": "App Demo Storyboard Template: Plan the Screens Before You Edit",
+    "description": "Plan a demo shot by shot with a six-frame example, a recording handoff worksheet and continuity checks.",
+    "lede": "Plan a demo shot by shot with a six-frame example, a recording handoff worksheet and continuity checks.",
+    "intent": "Visual shot planning; the existing script guide owns spoken copy.",
+    "sections": [
+      {
+        "heading": "Start with one visible answer",
+        "paragraphs": [
+          "Write the viewer’s question above the storyboard. “Where is the next step from Monday’s call?” tells the recorder which screen proves the answer. “Show our productivity platform” leaves that decision unresolved.",
+          "NorthStar below is a fictional notes app, not a customer or an integration. Its project Atlas contains a Monday call note with a next-step section. Replace these labels with real controls in your product."
+        ]
+      },
+      {
+        "heading": "Draw the frames that carry the task",
+        "paragraphs": [
+          "A box with the selected object, control and annotation is enough. Number each frame and identify its start state, the action between frames and end state. Separate the click on Call notes from the readable list that appears.",
+          "The schematic below is an original planning diagram, not an app screenshot. Expand its three major states into the six recording instructions in the table. A storyboard is useful when it resolves what to capture, rather than merely repeating narration."
+        ]
+      },
+      {
+        "heading": "Preserve continuity across cuts",
+        "paragraphs": [
+          "Carry one recognizable object through the sequence: Atlas, Monday’s call and its next step. Switching sample projects makes an accurate demonstration hard to follow. Mark crop boundaries so the selected control and result remain connected.",
+          "When moving to a close-up, retain an orientation cue. Do not cut directly from an overview to a finished note if viewers need to learn how to open it."
+        ]
+      },
+      {
+        "heading": "Hand the plan to the recorder",
+        "paragraphs": [
+          "Give each frame a filename and retake condition. “03-open-monday; retake if a notification covers the title” is actionable. Record with approved sample data and compare the footage with the strip before editing.",
+          "If a control is unavailable, revise storyboard and narration together. Do not manufacture a screen to preserve a sentence. Ask a fresh reviewer which note was opened and where the next step appeared; incorrect answers identify missing evidence."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "1 — Context",
+          "Atlas project and call notes",
+          "Hold the project title."
+        ],
+        [
+          "2 — Selection",
+          "Call notes selected",
+          "Keep the control visible."
+        ],
+        [
+          "3 — Choice",
+          "Monday call in the list",
+          "Show the list before opening."
+        ],
+        [
+          "4 — Action",
+          "Monday note opens",
+          "Retain the transition."
+        ],
+        [
+          "5 — Result",
+          "Next-step section",
+          "Allow a phone reviewer to read."
+        ],
+        [
+          "6 — Ending",
+          "Real help or product destination",
+          "Verify the destination exists."
+        ]
+      ]
+    },
+    "worksheet": "Viewer question:\nFrame / purpose:\nStarting screen and sample object:\nControl -> action -> result:\nCrop boundary and continuity cue:\nSource filename:\nRetake condition:\nEnding destination:",
+    "links": [
+      {
+        "href": "/guides/saas-demo-video-script",
+        "title": "Write the accompanying script",
+        "description": "Pair words with planned shots."
+      },
+      {
+        "href": "/guides/screen-recording-for-app-demo",
+        "title": "Record the footage",
+        "description": "Set up a readable recording."
+      },
+      {
+        "href": "/guides/vertical-saas-demo",
+        "title": "Plan vertical framing",
+        "description": "Preserve the action in a portrait crop."
+      }
+    ],
+    "sources": [],
+    "panels": [
+      {
+        "title": "Context",
+        "text": "ATLAS PROJECT\nCall notes →"
+      },
+      {
+        "title": "Selection",
+        "text": "MONDAY CALL\nOpen this note →"
+      },
+      {
+        "title": "Result",
+        "text": "NEXT STEPS\nSend the sample agenda"
+      }
+    ]
+  },
+  {
+    "slug": "vertical-saas-demo",
+    "title": "Turn a Widescreen SaaS Demo into a Readable Vertical Video",
+    "description": "Compare fit, crop and sequential close-ups with pixel arithmetic, a framing decision table and an export-review worksheet.",
+    "lede": "Compare fit, crop and sequential close-ups with pixel arithmetic, a framing decision table and an export-review worksheet.",
+    "intent": "Spatial reframing; separate from capture setup and the editing sequence.",
+    "sections": [
+      {
+        "heading": "Find the smallest useful proof region",
+        "paragraphs": [
+          "Mark the control viewers must recognize and the result they must read. If they sit on opposite sides of a dashboard, one portrait crop may not contain both. In this fictional reporting-app example, select This week and read the resulting date range. Decorative charts are unnecessary evidence.",
+          "Removing clutter from composition is different from changing a product result. Preserve qualifications and validation messages that affect its meaning."
+        ]
+      },
+      {
+        "heading": "Calculate what a phone preview does to the source",
+        "paragraphs": [
+          "Consider an illustrative 1280 × 720 recording. A 9:16 crop at full source height is 405 pixels wide. Fitting the entire width into a 360-pixel preview produces about 360 × 203 pixels. A 16-pixel source label appears about 4.5 pixels high.",
+          "These are example calculations, not upload requirements or universal readability thresholds. Use your actual source and destination preview. They explain why a technically complete desktop view can fail a phone reading test."
+        ]
+      },
+      {
+        "heading": "Choose fit, crop or a sequence",
+        "paragraphs": [
+          "Fit the entire screen when overall arrangement matters and small labels are unimportant. Crop when action and result share a compact region. Use sequential close-ups when the workflow crosses distant regions.",
+          "Show the date selection before moving to its result. Keep an orientation cue through the move. A finished result alone does not establish which action produced it."
+        ]
+      },
+      {
+        "heading": "Review causality and the actual export",
+        "paragraphs": [
+          "Let a selection complete before moving the frame. A sudden pan during a click can hide the chosen option. If a menu extends beyond the crop, widen it or record another pass. Enlargement cannot recover absent source detail.",
+          "Open the export at normal phone viewing size. Ask someone to name the option and changed result without zooming. Record their answer and revise the failing interval. This is a comprehension check, not evidence of improved campaign performance."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Fit",
+          "Overall layout is the subject",
+          "Reject if critical labels become unreadable."
+        ],
+        [
+          "Static crop",
+          "Action and result share a region",
+          "Reject clipped menus or qualifications."
+        ],
+        [
+          "Sequential close-ups",
+          "Evidence spans distant areas",
+          "Preserve the cause of the change."
+        ],
+        [
+          "New recording",
+          "Source text is soft",
+          "Re-record rather than invent detail."
+        ]
+      ]
+    },
+    "worksheet": "Source dimensions:\nDestination preview size:\nControl and result regions:\nFit / crop / sequence choice:\nOrientation cue:\nReviewer named option / result:\nRetake needed:",
+    "links": [
+      {
+        "href": "/guides/screen-recording-for-app-demo",
+        "title": "Capture a readable source",
+        "description": "Fix the recording before reframing."
+      },
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Plan the sequence",
+        "description": "Map distant controls to separate frames."
+      },
+      {
+        "href": "/guides/readable-video-text",
+        "title": "Review overlay readability",
+        "description": "Keep added words clear."
+      }
+    ],
+    "sources": [],
+    "panels": [
+      {
+        "title": "Fit",
+        "text": "[ Full desktop view ]\nLabels may shrink"
+      },
+      {
+        "title": "Crop",
+        "text": "[ This week ▾ ]\nPreserve the selection"
+      },
+      {
+        "title": "Sequence",
+        "text": "[ Choose range ] →\n[ Read result ]"
+      }
+    ]
+  },
+  {
+    "slug": "app-launch-video-checklist",
+    "title": "App Launch Video Checklist: Assets, Review and Release Readiness",
+    "description": "Build a launch-video manifest covering destination, product version, eligibility, approval, fallback and link checks.",
+    "lede": "Build a launch-video manifest covering destination, product version, eligibility, approval, fallback and link checks.",
+    "intent": "Launch asset readiness; separate from acquisition strategy.",
+    "sections": [
+      {
+        "heading": "Create one manifest row per destination",
+        "paragraphs": [
+          "A store listing, social post and landing-page embed can need different footage or endings. Give each row an owner, export revision and acceptance condition before editing.",
+          "This example uses a fictional habit app launching a weekly summary. Suppose iOS is ready while Android support is pending. Preserve that distinction; a development screen is not proof of universal availability."
+        ]
+      },
+      {
+        "heading": "Confirm the release and audience",
+        "paragraphs": [
+          "Record the capture build and plans, roles, devices or regions that can access the feature. Ask the release owner to confirm rollout details. If availability is unresolved, hold the asset or obtain approval for precisely scoped wording.",
+          "Do not invent an Android interface to simplify the message. Keep a truthful fallback: an approved general demonstration, an availability page or a decision to wait."
+        ]
+      },
+      {
+        "heading": "Review footage, rights and destination rules",
+        "paragraphs": [
+          "Check sample data, notifications, music, faces and third-party assets. Attach approval to the exact export, not a vaguely named folder. Review store destinations against their current official guidance.",
+          "Apple and Google Play publish separate preview-asset requirements. A social edit with reaction footage should not automatically become a store asset. Use the linked sources for the specific destination and file."
+        ]
+      },
+      {
+        "heading": "Rehearse the handoff and hosted review",
+        "paragraphs": [
+          "Have someone identify approved and held rows without help. Open every next-step link in its intended device context. Confirm what an unsupported visitor encounters and who can replace an incorrect export.",
+          "This is a proposed tabletop exercise, not a tested customer launch. After release, record the date and verify hosted files separately. Local source review, creative approval and public release are distinct states."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "iOS preview",
+          "Released weekly-summary build",
+          "Review current store guidance."
+        ],
+        [
+          "Android listing",
+          "Feature still pending",
+          "Hold the feature-specific claim."
+        ],
+        [
+          "Social clip",
+          "Confirmed iOS availability",
+          "Verify next step and eligibility."
+        ],
+        [
+          "Landing embed",
+          "Matches released app",
+          "Attach revision-specific approval."
+        ]
+      ]
+    },
+    "worksheet": "Asset / destination:\nBuild and capture date:\nEligible devices / plans / regions:\nRights review:\nExport revision and approval owner:\nNext-step link / fallback:\nHeld or approved:\nRelease date / hosted verification:",
+    "links": [
+      {
+        "href": "/guides/app-store-preview-vs-social-video",
+        "title": "Separate store and social assets",
+        "description": "Review destination needs."
+      },
+      {
+        "href": "/guides/mobile-app-marketing",
+        "title": "Plan the wider launch",
+        "description": "Connect assets to acquisition."
+      },
+      {
+        "href": "/guides/screen-recording-demo-privacy-checklist",
+        "title": "Review recording exposure",
+        "description": "Check the source before release."
+      }
+    ],
+    "sources": [
+      {
+        "href": "https://developer.apple.com/app-store/app-previews/",
+        "label": "Apple: app previews"
+      },
+      {
+        "href": "https://support.google.com/googleplay/android-developer/answer/9866151?hl=en",
+        "label": "Google Play: preview assets"
+      }
+    ],
+    "panels": []
+  },
+  {
+    "slug": "saas-feature-announcement-video",
+    "title": "SaaS Feature Announcement Video: Turn a Release Note into a Demo",
+    "description": "Translate a release note into a focused demonstration with a change-to-screen matrix, rollout checks and a handoff worksheet.",
+    "lede": "Translate a release note into a focused demonstration with a change-to-screen matrix, rollout checks and a handoff worksheet.",
+    "intent": "Existing-user change communication, not a product introduction.",
+    "sections": [
+      {
+        "heading": "Translate the release note into a task",
+        "paragraphs": [
+          "“Assignee filter added” describes a feature. “Find the tasks assigned to you in this project” gives an existing user an action. Write the old difficulty and new action before planning scenes.",
+          "This example uses a fictional project app with a new assignee filter. It is an editorial exercise, not evidence of a UGC Pilot feature or a customer result."
+        ]
+      },
+      {
+        "heading": "Prove the exact change",
+        "paragraphs": [
+          "Record the list before filtering, select the current-user option and show the resulting rows. Keep the selection visible as the result changes. If the filter affects only the current project, do not describe workspace-wide search.",
+          "Check words such as all, automatic and instant against the release. A narrow statement supported by the screen is better than an expansive promise. If no honest before recording exists, demonstrate the current method without fabricating a slow old experience."
+        ]
+      },
+      {
+        "heading": "Make eligibility part of the message",
+        "paragraphs": [
+          "Ask the release owner which plans, roles and rollout groups see the control. A signed-in user can still be ineligible. Check whether mobile or another workspace role has a different interface.",
+          "For staged availability, use an owner-confirmed statement and a relevant information path. Do not invite everyone to a control that many cannot see. A help page may be a better next step than a universal “try it now.”"
+        ]
+      },
+      {
+        "heading": "Review versions and adoption",
+        "paragraphs": [
+          "Name the export after the feature and revision. Have an eligible reviewer follow its steps. Ask an ineligible reviewer to check whether the access explanation makes sense. Record actual feedback rather than assuming comprehension.",
+          "End with the smallest useful adoption action: open the task list and choose the assignee filter. General signup messaging serves a different audience. Keep the release note and help path available for people who need detail."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "New control",
+          "Assignee menu in task list",
+          "Show its actual location."
+        ],
+        [
+          "Selection",
+          "Current-user option remains visible",
+          "Do not imply automatic filtering."
+        ],
+        [
+          "Result scope",
+          "Same project, changed rows",
+          "Avoid workspace-wide claims."
+        ],
+        [
+          "Rollout",
+          "Confirmed eligible roles",
+          "Hold universal availability wording."
+        ]
+      ]
+    },
+    "worksheet": "Release revision:\nExisting-user task:\nBefore -> action -> result:\nClaim limits:\nEligible plans / roles / devices:\nAvailability confirmation:\nAdoption destination:\nExport review / replacement owner:",
+    "links": [
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Plan the release scenes",
+        "description": "Make the changed control easy to find."
+      },
+      {
+        "href": "/guides/saas-video-cta-examples",
+        "title": "Choose an adoption step",
+        "description": "Match the invitation to existing users."
+      },
+      {
+        "href": "/guides/saas-content-marketing",
+        "title": "Plan ongoing content",
+        "description": "Place updates within a sustainable routine."
+      }
+    ],
+    "sources": [],
+    "panels": []
+  },
+  {
+    "slug": "app-store-preview-vs-social-video",
+    "title": "App Store Preview vs Social Promo Video: Plan Separate Assets",
+    "description": "Compare store-preview and social-video decisions with a destination matrix, shared-footage worksheet and official platform references.",
+    "lede": "Compare store-preview and social-video decisions with a destination matrix, shared-footage worksheet and official platform references.",
+    "intent": "Destination-specific asset selection, not a software-vendor comparison.",
+    "sections": [
+      {
+        "heading": "Write the question at each destination",
+        "paragraphs": [
+          "Someone on a store listing may be evaluating an install. A social viewer may not yet recognize the problem. A landing-page visitor may need evidence for one feature claim. Treat these as audience hypotheses to check, not guaranteed behavior.",
+          "Write the question for each placement. This explains why the same opening, ending and footage might not suit every location, even when all versions describe the same truthful task."
+        ]
+      },
+      {
+        "heading": "Check current official requirements",
+        "paragraphs": [
+          "Apple’s app-preview guidance emphasizes demonstrating the app experience using device-captured footage. Its specifications and submission guidance govern the file you prepare. Google Play provides separate preview-asset and video guidance.",
+          "Read the linked official pages for the destination, device and locale. A remembered export size is not a compliance check. This guide neither certifies acceptance nor uploads a store video on your behalf."
+        ]
+      },
+      {
+        "heading": "Share source recordings, not assumptions",
+        "paragraphs": [
+          "For a fictional timer app, capture the real action of grouping work sessions and the resulting grouped view. Keep that source apart from destination exports. Reuse it only where permissions and destination rules allow.",
+          "A social version might introduce the viewer’s problem. A store version needs its own review as an app experience. A landing version could focus on the grouped result. None should add behavior the source cannot establish."
+        ]
+      },
+      {
+        "heading": "Version exports and recheck at upload",
+        "paragraphs": [
+          "Label each export by placement and obtain separate approval. Check opening, overlays, narration, device presentation, rights and ending. When requirements conflict, make separate assets or hold the destination rather than dropping a necessary qualification.",
+          "Save capture date, build, guidance links and export revision together. Revisit them after an interface change. After publication, inspect the real listing or page: a successful local export only proves that a file exists."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Apple preview",
+          "Show the app experience",
+          "Use current Apple capture/content/file guidance."
+        ],
+        [
+          "Google Play video",
+          "Explain the app’s use",
+          "Check current preview-asset setup."
+        ],
+        [
+          "Social promo",
+          "Introduce a relevant task",
+          "Review placement and truthful next step."
+        ],
+        [
+          "Landing demo",
+          "Support the page’s claim",
+          "Verify claim-to-screen match."
+        ]
+      ]
+    },
+    "worksheet": "Destination / locale:\nViewer question:\nSource filename and app build:\nSpecific opening / ending:\nOfficial guidance and review date:\nRights / qualifications:\nApproved revision:\nHosted check:",
+    "links": [
+      {
+        "href": "/guides/app-launch-video-checklist",
+        "title": "Prepare the release manifest",
+        "description": "Track approvals and held assets."
+      },
+      {
+        "href": "/guides/screen-recording-for-app-demo",
+        "title": "Capture app footage",
+        "description": "Create a clean source recording."
+      },
+      {
+        "href": "/guides/mobile-app-marketing",
+        "title": "Choose the wider context",
+        "description": "Connect the asset to a useful journey."
+      }
+    ],
+    "sources": [
+      {
+        "href": "https://developer.apple.com/app-store/app-previews/",
+        "label": "Apple: app preview overview"
+      },
+      {
+        "href": "https://developer.apple.com/help/app-store-connect/reference/app-information/app-preview-specifications",
+        "label": "Apple: app preview specifications"
+      },
+      {
+        "href": "https://support.google.com/googleplay/android-developer/answer/9866151?hl=en",
+        "label": "Google Play: preview assets"
+      }
+    ],
+    "panels": []
+  },
+  {
+    "slug": "screen-recording-demo-privacy-checklist",
+    "title": "Screen Recording Privacy Checklist for Software Demos",
+    "description": "Audit accounts, tabs, notifications, exports and sample data with a practical exposure and retake decision table.",
+    "lede": "Audit accounts, tabs, notifications, exports and sample data with a practical exposure and retake decision table.",
+    "intent": "Recording exposure review; not legal certification or the general capture tutorial.",
+    "sections": [
+      {
+        "heading": "Prepare a demonstration path",
+        "paragraphs": [
+          "List every screen you will visit. Use an approved demonstration account with deliberately fictional data where possible. A clean opening dashboard does not guarantee that menus, suggestions or downloads are safe.",
+          "Use an invented workspace and a reserved example address such as alex@example.com for planning. Do not substitute real customer details in a public example. Confirm organizational rules with the responsible owner."
+        ]
+      },
+      {
+        "heading": "Inspect surrounding surfaces",
+        "paragraphs": [
+          "Review browser profiles, tabs, bookmarks, desktop, file pickers and recent items. Check notification settings. Record a short rehearsal and inspect the complete interval before a full take.",
+          "Exposure can happen during a transition. Do not assume an editor’s final crop covers every frame. Check the moments before and after the central task, including windows opened temporarily to locate a file."
+        ]
+      },
+      {
+        "heading": "Decide whether to replace, redact or retake",
+        "paragraphs": [
+          "Replacing data before capture is easier to review than chasing it through moving footage. If exposure is found, stop distribution of that revision and identify the affected intervals.",
+          "Retake when sensitive content moves, appears in several places or cannot be reliably removed. If redaction is used, inspect the actual export around every affected frame. One still with an aligned blur is not proof of continuous coverage."
+        ]
+      },
+      {
+        "heading": "Audit the handoff and response path",
+        "paragraphs": [
+          "Review audio, captions, thumbnails, filenames and attached originals as well as the video. An internal-review folder and a public download can have different requirements. Attach approval to the exact shared revision.",
+          "Know who can remove or replace hosted copies. Follow the owner’s incident procedure if an exposure is discovered later; replacing a source does not remove every distributed copy. This checklist supports editorial review, not a legal determination that disclosure is permitted."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Browser chrome",
+          "Account names or unrelated tabs",
+          "Use an approved clean profile."
+        ],
+        [
+          "Notifications",
+          "Messages during transitions",
+          "Review the entire interval."
+        ],
+        [
+          "Search or menus",
+          "Customer suggestions / recent files",
+          "Prepare sample content first."
+        ],
+        [
+          "File dialogs",
+          "Personal paths and filenames",
+          "Use an approved demo folder."
+        ],
+        [
+          "Moving redaction",
+          "Uncovered transition frames",
+          "Retake if masking cannot be verified."
+        ]
+      ]
+    },
+    "worksheet": "Recording path / audience:\nSample account and data approval:\nSurrounding surfaces checked:\nAffected interval:\nReplace / redact / retake:\nReviewed export revision:\nApproval / hosted destinations:\nRemoval or replacement owner:",
+    "links": [
+      {
+        "href": "/guides/screen-recording-for-app-demo",
+        "title": "Prepare the capture",
+        "description": "Use a repeatable recording workflow."
+      },
+      {
+        "href": "/guides/app-launch-video-checklist",
+        "title": "Track launch approval",
+        "description": "Review a specific export revision."
+      },
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Plan the safe path",
+        "description": "Choose screens before recording."
+      }
+    ],
+    "sources": [],
+    "panels": [
+      {
+        "title": "Avoid",
+        "text": "REAL CUSTOMER DATA\nDo not capture this state"
+      },
+      {
+        "title": "Prepare",
+        "text": "FICTIONAL WORKSPACE\nalex@example.com"
+      },
+      {
+        "title": "Verify",
+        "text": "EXPORTED REVISION\nInspect the whole path"
+      }
+    ]
+  },
+  {
+    "slug": "silent-app-demo-video",
+    "title": "Make a Silent App Demo Understandable Without Sound",
+    "description": "Plan a sound-off demonstration with visible actions, result states, a comprehension check and an accessibility review worksheet.",
+    "lede": "Plan a sound-off demonstration with visible actions, result states, a comprehension check and an accessibility review worksheet.",
+    "intent": "Visual task comprehension; text styling belongs to the readable-text guide.",
+    "sections": [
+      {
+        "heading": "Choose a task with a visible ending",
+        "paragraphs": [
+          "“Save an article to Weekend reads” has an observable ending. “Organize your life” does not. Choose an action the interface can prove without narration.",
+          "This fictional reading-app sequence contains an article, a collection chooser and a saved confirmation. It is a planning model, not an existing product recording or a promise that UGC Pilot performs these app actions."
+        ]
+      },
+      {
+        "heading": "Separate instruction from result",
+        "paragraphs": [
+          "“Choose a collection” tells viewers what to watch; it does not prove a save occurred. Hold on the actual saved state and keep the collection name consistent.",
+          "Do not substitute an animated check mark for product confirmation. If the interface lacks a clear confirmation, show the item in its actual destination or choose another task. Added graphics must not manufacture evidence."
+        ]
+      },
+      {
+        "heading": "Reduce simultaneous reading demands",
+        "paragraphs": [
+          "Avoid dense overlays while viewers search a menu. Put the instruction before the action or hold the state long enough for both to be understood. Keep the cursor away from critical words.",
+          "A silent edit is not simply a narrated edit with its volume removed. Replace essential spoken context with visible context, then remove redundant labels. Review placement and contrast in the separate readable-text guide."
+        ]
+      },
+      {
+        "heading": "Test understanding and accessible alternatives",
+        "paragraphs": [
+          "Play the export without sound for someone who has not read the script. Ask what was saved, where it went and how they know. Record their actual answers before explaining the intended story. Wrong answers reveal missing orientation or result evidence.",
+          "Sound-off clarity does not satisfy every accessibility need. Consider captions for meaningful audio in narrated versions and an accessible text explanation of important visuals. Use W3C guidance for the context; do not claim that a silent export alone makes the complete experience accessible."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Object",
+          "Article with Save action",
+          "Identify what is being acted on."
+        ],
+        [
+          "Chooser",
+          "Weekend reads selected",
+          "Show the intended destination."
+        ],
+        [
+          "Confirmation",
+          "Saved to Weekend reads",
+          "Establish completion in this example."
+        ],
+        [
+          "Ending",
+          "Open collection, if supported",
+          "Use an actual next step."
+        ]
+      ]
+    },
+    "worksheet": "One task / visible result:\nContext normally spoken:\nLabel before each action:\nActual confirmation:\nReviewer answers: what / where / evidence:\nConfusing interval and revision:\nText alternative / caption review:\nSound-off export check:",
+    "links": [
+      {
+        "href": "/guides/readable-video-text",
+        "title": "Make overlay words readable",
+        "description": "Review placement and reading load."
+      },
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Plan visual states",
+        "description": "Build a clear sequence."
+      },
+      {
+        "href": "/guides/screen-recording-for-app-demo",
+        "title": "Record the action",
+        "description": "Keep source states legible."
+      }
+    ],
+    "sources": [
+      {
+        "href": "https://www.w3.org/WAI/media/av/",
+        "label": "W3C: making audio and video media accessible"
+      }
+    ],
+    "panels": [
+      {
+        "title": "Object",
+        "text": "ARTICLE\nSave to collection →"
+      },
+      {
+        "title": "Action",
+        "text": "COLLECTION\nWeekend reads selected"
+      },
+      {
+        "title": "Result",
+        "text": "CONFIRMATION\nSaved to Weekend reads"
+      }
+    ]
+  },
+  {
+    "slug": "saas-video-cta-examples",
+    "title": "SaaS Video CTA Examples: Choose the Next Step by Viewer Intent",
+    "description": "Choose a demo-video next step using original CTA examples, destination checks and a viewer-stage decision matrix.",
+    "lede": "Choose a demo-video next step using original CTA examples, destination checks and a viewer-stage decision matrix.",
+    "intent": "Stage-matched destination selection; not the script template or generic persuasion.",
+    "sections": [
+      {
+        "heading": "Choose the destination before the words",
+        "paragraphs": [
+          "A call to action should identify a useful next step that the viewer can actually complete. Decide the destination first: a worked example, a relevant feature page, a trial setup flow or an existing-user control. Then write the invitation.",
+          "The examples below are original illustrative copy, not tested winners. Use a row only when its destination and product conditions are true. “Try the sample project” is misleading if the product has no sample project."
+        ]
+      },
+      {
+        "heading": "Match the request to what the viewer knows",
+        "paragraphs": [
+          "An unfamiliar viewer may need to understand one task before signing up. Someone comparing options may want the full workflow or relevant plan details. An existing user watching a feature update may only need to find the new control.",
+          "Do not make every clip end with the same signup demand. Conversely, do not send a ready user through several unrelated articles. Choose one primary action and make the destination continue the exact task the video introduced."
+        ]
+      },
+      {
+        "heading": "Make the promise concrete and qualified",
+        "paragraphs": [
+          "“Open the setup checklist” explains the destination better than “Unlock your potential.” If a trial requires payment details, a feature needs a particular plan or a workflow needs an existing account, review the wording accordingly.",
+          "Avoid invented urgency and unsupported free, instant or unlimited claims. A clear invitation can be compelling without promising a result the app cannot guarantee. Keep the final frame, spoken ending, caption and clickable link consistent."
+        ]
+      },
+      {
+        "heading": "Verify the route as a visitor",
+        "paragraphs": [
+          "Open the destination signed out, on a phone and, when relevant, in an eligible existing account. Check redirects, login requirements and whether the referenced item is present. Record what happens for someone who cannot access the feature.",
+          "Measure the action only if reliable tracking exists. A click is not proof that setup finished, and a signup is not proof that the viewer achieved the demonstrated result. Keep those stages separate when judging whether the ending helped."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "New to the problem",
+          "See the example workflow",
+          "Link to the exact worked example."
+        ],
+        [
+          "Understands the task",
+          "Watch the full walkthrough",
+          "Provide a real complete walkthrough."
+        ],
+        [
+          "Wants to try",
+          "Create your first sample project",
+          "Use only if that flow exists."
+        ],
+        [
+          "Comparing plans",
+          "Check which plan includes this",
+          "Land on accurate feature eligibility."
+        ],
+        [
+          "Existing user",
+          "Open Tasks and choose Assigned to me",
+          "Confirm the role can see the control."
+        ],
+        [
+          "Needs instructions",
+          "Follow the setup checklist",
+          "Link to the matching steps."
+        ],
+        [
+          "Mobile install intent",
+          "View the app in your device’s store",
+          "Check supported platform routing."
+        ],
+        [
+          "Not yet eligible",
+          "Check current availability",
+          "Use a truthful status page."
+        ]
+      ]
+    },
+    "worksheet": "Viewer knows / needs:\nPrimary next action:\nExact destination:\nCTA words:\nAccount / plan / device requirements:\nSigned-out and phone route checks:\nIneligible visitor path:\nMeasured stage and tracking limitations:",
+    "links": [
+      {
+        "href": "/guides/saas-demo-video-script",
+        "title": "Write the surrounding script",
+        "description": "Connect the ending to the demonstrated task."
+      },
+      {
+        "href": "/guides/saas-feature-announcement-video",
+        "title": "Announce an existing-user change",
+        "description": "Choose an adoption action."
+      },
+      {
+        "href": "/guides/product-demo-hook-testing",
+        "title": "Test one creative change",
+        "description": "Keep the ending fixed when comparing openings."
+      }
+    ],
+    "sources": [],
+    "panels": []
+  },
+  {
+    "slug": "product-demo-vs-explainer-video",
+    "title": "Product Demo vs Explainer Video: Choose by the Viewer’s Question",
+    "description": "Use a decision tree and paired fictional briefs to choose between a product demo, explainer, tutorial and feature announcement.",
+    "lede": "Use a decision tree and paired fictional briefs to choose between a product demo, explainer, tutorial and feature announcement.",
+    "intent": "Choose the appropriate communication format; not compare video software vendors.",
+    "sections": [
+      {
+        "heading": "Start with the unresolved question",
+        "paragraphs": [
+          "If viewers ask what a problem is and why a product category matters, an explainer may help. If they ask whether your product can perform a task, a demo needs visible product evidence. If they ask how to complete that task themselves, a tutorial should preserve the necessary steps.",
+          "These are useful editorial distinctions, not rigid industry definitions. Real assets can combine formats. Choose a primary job so the opening and ending do not compete."
+        ]
+      },
+      {
+        "heading": "Compare two briefs for the same fictional product",
+        "paragraphs": [
+          "Imagine a fictional booking app for independent tutors. An explainer brief asks: why do missed scheduling details cause confusion? Its outline introduces the problem, describes a shared booking process and gives a qualified next step. It must not invent customer losses to make the problem dramatic.",
+          "A demo brief asks: can a tutor change a sample appointment and see the updated booking? Its outline shows the current slot, the real rescheduling control and the confirmed new time. That visible change is evidence an abstract explainer cannot supply."
+        ]
+      },
+      {
+        "heading": "Choose the evidence before the production style",
+        "paragraphs": [
+          "The same camera style, animation or presenter could appear in either format. An AI presenter does not turn a generic explanation into a product demonstration. Likewise, a screen recording without a clear task may fail to demonstrate anything useful.",
+          "Write the claim and the evidence needed to support it. For a tutorial, add prerequisites and recovery steps. For an announcement, add release eligibility. If the necessary evidence does not exist, narrow the brief rather than decorating an unsupported claim."
+        ]
+      },
+      {
+        "heading": "Avoid building two pages or videos that answer the same thing",
+        "paragraphs": [
+          "If an existing demo already explains the booking task, do not make a second asset with a different label but identical substance. Add the missing prerequisite or context to the existing asset unless the audience’s question truly differs.",
+          "Ask a reviewer which question the proposed video answers and what they can do next. If the answer shifts between category education, feature proof and setup instructions, choose one primary purpose and link to the appropriate follow-up."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Explainer",
+          "Why is a shared booking process useful?",
+          "Explain the mechanism without fabricated outcomes."
+        ],
+        [
+          "Demo",
+          "Can this app move an appointment?",
+          "Show the action and confirmed time."
+        ],
+        [
+          "Tutorial",
+          "How do I reschedule my appointment?",
+          "Include prerequisites and necessary steps."
+        ],
+        [
+          "Announcement",
+          "What changed in the reschedule feature?",
+          "Show the released difference and eligibility."
+        ]
+      ]
+    },
+    "worksheet": "Viewer question:\nPrimary format and reason:\nSpecific claim:\nEvidence required:\nWhat the video deliberately leaves to a follow-up:\nPrerequisites or eligibility:\nExisting asset to improve instead:\nNext-step destination:",
+    "links": [
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Plan a proof-led demo",
+        "description": "Map claims to visible states."
+      },
+      {
+        "href": "/guides/mobile-app-onboarding-video",
+        "title": "Plan a first-use tutorial",
+        "description": "Support a user after signup."
+      },
+      {
+        "href": "/guides/saas-feature-announcement-video",
+        "title": "Explain a release change",
+        "description": "Focus on what existing users need."
+      }
+    ],
+    "sources": [],
+    "panels": []
+  },
+  {
+    "slug": "customer-question-to-demo-video",
+    "title": "Turn a Customer Question into a Useful Demo Video",
+    "description": "Triage support questions into video, text, documentation fixes or merged topics with an original decision log and demo brief.",
+    "lede": "Triage support questions into video, text, documentation fixes or merged topics with an original decision log and demo brief.",
+    "intent": "Question selection and triage; separate from weekly content strategy.",
+    "sections": [
+      {
+        "heading": "Collect questions with permission and context",
+        "paragraphs": [
+          "Use approved support notes, interviews or your own review of the product. Keep the question’s task and user state while removing identifying details. Do not publish private tickets or imply that a fictional example came from a real customer.",
+          "Every row below is invented to demonstrate triage. It is not a claim about question frequency. Add actual counts only when a reliable, permissioned record supports them."
+        ]
+      },
+      {
+        "heading": "Decide whether video is the right answer",
+        "paragraphs": [
+          "Video is useful when a visible sequence, state change or hard-to-find control answers the question. A billing date, access rule or changing policy is often better handled by maintained text and a direct help link.",
+          "A recurring question can also reveal a product or documentation defect. Sending more people to a clip is not always the best fix. Record whether the underlying label, empty state or help page needs an owner before selecting a content task."
+        ]
+      },
+      {
+        "heading": "Merge questions by their underlying task",
+        "paragraphs": [
+          "“Where are my call notes?” and “How do I open Monday’s note?” may belong to one find-a-note demonstration. “Can I export my notes?” needs different evidence. Merge based on the action and result, not shared keywords.",
+          "Keep the original questions in a private, appropriately sanitized planning log and give the public asset a clear task title. Avoid creating separate near-identical pages for every wording variant."
+        ]
+      },
+      {
+        "heading": "Write a brief and close the loop",
+        "paragraphs": [
+          "For the selected task, specify starting state, necessary steps, visible result and a relevant help destination. Have a reviewer who resembles the intended user attempt the task from the video. Record where they still need clarification.",
+          "When the answer changes, update the source help page and video together. A dated demo of an old interface can create new support work. Track an owner and review trigger, such as a navigation change, instead of assuming publication completes the job."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Where are call notes?",
+          "Video candidate: locate a note",
+          "Show the real navigation path."
+        ],
+        [
+          "How do I open Monday’s note?",
+          "Merge with locate-a-note task",
+          "Same start state and result."
+        ],
+        [
+          "Can I export notes?",
+          "Separate capability answer",
+          "Verify export exists before promising it."
+        ],
+        [
+          "When is my invoice due?",
+          "Maintained billing text",
+          "Do not expose a customer invoice."
+        ],
+        [
+          "Why is this control missing?",
+          "Eligibility/help investigation",
+          "Resolve role or rollout uncertainty."
+        ],
+        [
+          "The empty screen is confusing",
+          "Product/help improvement",
+          "Do not substitute content for a defect fix."
+        ]
+      ]
+    },
+    "worksheet": "Sanitized question and source permission:\nUser state / task:\nVideo / text / product fix / merge:\nReason and existing answer:\nStarting state -> action -> result:\nHelp destination:\nReviewer outcome:\nOwner and update trigger:",
+    "links": [
+      {
+        "href": "/guides/saas-content-marketing",
+        "title": "Plan a sustainable routine",
+        "description": "Choose where this answer fits."
+      },
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Turn the selected task into shots",
+        "description": "Plan visible evidence."
+      },
+      {
+        "href": "/guides/screen-recording-demo-privacy-checklist",
+        "title": "Protect recording data",
+        "description": "Use approved fictional samples."
+      }
+    ],
+    "sources": [],
+    "panels": []
+  },
+  {
+    "slug": "saas-tutorial-carousel",
+    "title": "SaaS Tutorial Carousel: A Seven-Slide Worked Example",
+    "description": "Build a saveable software tutorial with original slide copy, screenshot instructions, accessibility notes and a review worksheet.",
+    "lede": "Build a saveable software tutorial with original slide copy, screenshot instructions, accessibility notes and a review worksheet.",
+    "intent": "Step-by-step instructional carousel, not the commercial carousel-maker page.",
+    "sections": [
+      {
+        "heading": "Choose one task with a stable result",
+        "paragraphs": [
+          "A useful tutorial carousel lets someone repeat a real workflow. Use one task and a consistent sample object. This fictional notes-app example teaches how to locate a call note and identify its next step; it is not an actual product screenshot or customer result.",
+          "Keep the prerequisite close to the beginning: the viewer needs a workspace containing the sample note. If your app has another starting state, rewrite the sequence instead of assuming the same navigation."
+        ]
+      },
+      {
+        "heading": "Pair each slide with one visible instruction",
+        "paragraphs": [
+          "The seven-slide table provides original copy and evidence directions. Capture the real interface for your product. Highlight one relevant control without covering its label, and retain enough context to orient the viewer.",
+          "Do not use a generated dashboard as proof that a feature works. If a screenshot needs annotations, distinguish the annotation from actual UI. A drawn arrow should help locate the control; it should not impersonate a product confirmation."
+        ]
+      },
+      {
+        "heading": "Review the sequence as instructions",
+        "paragraphs": [
+          "Check the slide order against the live workflow. A missing prerequisite can make a beautiful carousel unusable. Include a truthful recovery instruction for a missing note or unavailable control rather than promising identical results for every account.",
+          "Use consistent labels and make the resulting next step readable at normal phone size. Avoid adding a second teaching task merely to fill a slide count. Seven is the length of this example, not a required format."
+        ]
+      },
+      {
+        "heading": "Provide context outside the image",
+        "paragraphs": [
+          "Write accompanying text that explains the task and links to maintained instructions. Add meaningful text alternatives where the publishing surface supports them. Do not rely only on arrows, color or screenshots to communicate the action.",
+          "Before sharing, ask a fresh reviewer to follow the carousel in an eligible account. Record the point where they hesitate. Revise that instruction or image, then check the actual export and destination rather than only the design canvas."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "1 — Goal",
+          "Find the next step from your last call",
+          "Show the destination, not an unsupported outcome."
+        ],
+        [
+          "2 — Prerequisite",
+          "Open the project with your call note",
+          "Use safe sample data."
+        ],
+        [
+          "3 — Navigate",
+          "Choose Call notes",
+          "Show the actual navigation label."
+        ],
+        [
+          "4 — Select",
+          "Open Monday’s call",
+          "Keep the project consistent."
+        ],
+        [
+          "5 — Locate",
+          "Find the Next steps section",
+          "Make its text readable."
+        ],
+        [
+          "6 — Recover",
+          "Missing note? Check the project and access",
+          "Use your real recovery guidance."
+        ],
+        [
+          "7 — Continue",
+          "Use the next step before your follow-up",
+          "Link to matching task instructions."
+        ]
+      ]
+    },
+    "worksheet": "One task and prerequisite:\nSlide words -> exact screenshot:\nAnnotation purpose:\nReal labels / safe data check:\nRecovery instruction:\nText alternative / accompanying explanation:\nFresh reviewer hesitation:\nExport and destination review:",
+    "links": [
+      {
+        "href": "/guides/app-demo-storyboard",
+        "title": "Plan the visual states",
+        "description": "Map the same task before capture."
+      },
+      {
+        "href": "/guides/screen-recording-demo-privacy-checklist",
+        "title": "Prepare safe sample content",
+        "description": "Review data in screenshots too."
+      },
+      {
+        "href": "/guides/saas-content-marketing",
+        "title": "Place the tutorial in your routine",
+        "description": "Answer a real task question."
+      }
+    ],
+    "sources": [],
+    "panels": [
+      {
+        "title": "Start",
+        "text": "PROJECT ATLAS\nChoose Call notes"
+      },
+      {
+        "title": "Middle",
+        "text": "MONDAY CALL\nOpen the note"
+      },
+      {
+        "title": "Finish",
+        "text": "NEXT STEPS\nRead the actual task"
+      }
+    ]
+  },
+  {
+    "slug": "mobile-app-onboarding-video",
+    "title": "Mobile App Onboarding Video: Teach the First Meaningful Action",
+    "description": "Plan a post-signup tutorial with prerequisites, permission alternatives, empty states, recovery paths and a visible completion check.",
+    "lede": "Plan a post-signup tutorial with prerequisites, permission alternatives, empty states, recovery paths and a visible completion check.",
+    "intent": "Post-signup first-use assistance, not acquisition or a store preview.",
+    "sections": [
+      {
+        "heading": "Define completion from the user’s perspective",
+        "paragraphs": [
+          "Pick a first action that makes the app useful: save a first reading item, create a first project or complete a sample session. Opening the home screen is not necessarily meaningful completion. Choose one action and confirm how the app visibly records it.",
+          "This example uses a fictional reading app. The user creates a collection and saves a first article. It does not describe a UGC Pilot feature or evidence of improved activation."
+        ]
+      },
+      {
+        "heading": "Show the real starting state",
+        "paragraphs": [
+          "State whether the viewer must already have an account, a verified email or a workspace invitation. Capture the actual first-use screen rather than an established account full of content. A populated account can conceal the decisions that make onboarding difficult.",
+          "If the app offers a sample item, identify it as sample content. Do not imply that every new account already contains imported personal data. Use a setup path that the intended role can access."
+        ]
+      },
+      {
+        "heading": "Handle permissions, waiting and recovery",
+        "paragraphs": [
+          "A permission request needs an honest explanation and, where the product supports one, a useful alternative. Do not imply a person must grant an optional permission to continue. For this fictional reading task, pasting an article link might be a supported alternative to browser integration. Verify that alternative in your actual app.",
+          "Show loading as loading and failure as failure. A cut that removes every wait can imply a speed guarantee. When a request fails, link to the real retry or help path rather than creating an invented success screen."
+        ]
+      },
+      {
+        "heading": "Confirm success and keep the tutorial current",
+        "paragraphs": [
+          "End on the saved article inside the chosen collection, not on a decorative celebration. Ask a new reviewer to repeat the task and explain how they know it completed. Check the path for both empty and already-populated accounts if both are relevant.",
+          "Keep the tutorial version tied to the app build and starting state. Update it when labels, permissions or prerequisites change. Track completion separately from video views when reliable measurement exists; watching does not prove the user finished setup."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Prerequisite",
+          "Signed-in eligible account",
+          "State any verification requirement."
+        ],
+        [
+          "Empty state",
+          "No collection yet",
+          "Show the real create action."
+        ],
+        [
+          "Permission",
+          "Optional integration request",
+          "Explain a supported alternative."
+        ],
+        [
+          "Waiting",
+          "Article is being saved",
+          "Do not present waiting as completion."
+        ],
+        [
+          "Failure",
+          "Save did not complete",
+          "Show actual retry/help guidance."
+        ],
+        [
+          "Success",
+          "Article visible in collection",
+          "Use the real product result."
+        ]
+      ]
+    },
+    "worksheet": "First meaningful action:\nPrerequisites and role:\nEmpty-state starting screen:\nPermission / supported alternative:\nLoading and failure path:\nVisible completion evidence:\nNew reviewer outcome:\nBuild version and update owner:",
+    "links": [
+      {
+        "href": "/guides/product-demo-vs-explainer-video",
+        "title": "Choose the right format",
+        "description": "Distinguish onboarding from acquisition."
+      },
+      {
+        "href": "/guides/silent-app-demo-video",
+        "title": "Make actions clear without sound",
+        "description": "Show instructions and result states."
+      },
+      {
+        "href": "/guides/app-launch-video-checklist",
+        "title": "Review released assets",
+        "description": "Track the supported app version."
+      }
+    ],
+    "sources": [],
+    "panels": []
+  },
+  {
+    "slug": "product-demo-hook-testing",
+    "title": "Product Demo Hook Testing: Compare Openings Without Changing Everything",
+    "description": "Use a controlled creative brief, observation log and interpretation checklist to compare demo openings without inventing winners.",
+    "lede": "Use a controlled creative brief, observation log and interpretation checklist to compare demo openings without inventing winners.",
+    "intent": "A measurement protocol for openings, not a list of hooks or guaranteed viral advice.",
+    "sections": [
+      {
+        "heading": "Write a narrow question before making variants",
+        "paragraphs": [
+          "Ask whether a task-specific opening helps your intended viewers recognize the demo. For a fictional notes app, compare A: “Where did Monday’s next step go?” with B: “Find your next step before the follow-up.” Both must lead to the same real find-a-note demonstration.",
+          "These are original creative candidates, not proven hooks. Do not label either a winner before collecting observations. If you want to test a facial reaction, keep the words fixed in that separate comparison."
+        ]
+      },
+      {
+        "heading": "Hold the rest of the creative stable",
+        "paragraphs": [
+          "Use the same demo, result, ending, captions, aspect ratio and destination. Record which opening words, image or timing changed. Changing several elements makes it difficult to identify a useful next revision.",
+          "Keep a copy of each actual export. Similar filenames are not proof that the body stayed unchanged. Review both side by side before release and write down any unavoidable difference."
+        ]
+      },
+      {
+        "heading": "Choose available metrics and a review window",
+        "paragraphs": [
+          "Use the reporting actually available for the destination. YouTube provides audience-retention reporting, but availability and processing can affect what you see. Consult the official report guidance and note which fields are present.",
+          "Record the exact metric definition. YouTube Shorts distinguishes views and engaged views; counts using different definitions should not be treated as the same measurement. Do not combine platform metrics into a single invented retention score. Choose a review window in advance and allow reporting to settle."
+        ]
+      },
+      {
+        "heading": "Interpret observations with their limits",
+        "paragraphs": [
+          "Organic posts are rarely randomized. Different viewers, timing, distribution and sample sizes can explain differences. Record reach and audience context beside retention observations. A larger view count alone does not demonstrate that the opening caused improvement.",
+          "Use the log to choose another careful test, not to claim universal superiority. If information is sparse or definitions differ, mark the result inconclusive. Keep a truthful description such as “variant B had a different observed pattern in this window” and avoid causal claims the setup cannot support."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Question",
+          "Task question versus direct instruction",
+          "Keep the demonstrated task identical."
+        ],
+        [
+          "Changed variable",
+          "Opening wording only",
+          "Log image or timing differences."
+        ],
+        [
+          "Fixed material",
+          "Same demo, result and ending",
+          "Compare actual exports."
+        ],
+        [
+          "Observation",
+          "Available retention and distribution data",
+          "Record definition and window."
+        ],
+        [
+          "Interpretation",
+          "Difference or inconclusive",
+          "Organic differences are not causal proof."
+        ]
+      ]
+    },
+    "worksheet": "Test question:\nA / B opening:\nChanged variable:\nFixed body and export revisions:\nDestination and dates:\nMetric definition / available fields:\nReach and audience context:\nObserved pattern and limitations:\nInconclusive or next revision:",
+    "links": [
+      {
+        "href": "/guides/saas-demo-video-script",
+        "title": "Build the stable demo body",
+        "description": "Keep the task and result consistent."
+      },
+      {
+        "href": "/guides/saas-video-cta-examples",
+        "title": "Choose the ending",
+        "description": "Hold this constant during an opening test."
+      },
+      {
+        "href": "/guides/customer-question-to-demo-video",
+        "title": "Find a real task question",
+        "description": "Use actual needs instead of invented demand."
+      }
+    ],
+    "sources": [
+      {
+        "href": "https://support.google.com/youtube/answer/9314415?hl=en",
+        "label": "YouTube: audience retention reporting"
+      },
+      {
+        "href": "https://support.google.com/youtube/answer/10059070?hl=en",
+        "label": "YouTube: Shorts and view metrics"
+      }
+    ],
+    "panels": []
+  },
+  {
+    "slug": "review-ai-ugc-for-software",
+    "title": "Review AI UGC Footage Before Adding a Software Demo",
+    "description": "Apply an acceptance and rejection rubric for presenter footage, software evidence, exact text, continuity and export review.",
+    "lede": "Apply an acceptance and rejection rubric for presenter footage, software evidence, exact text, continuity and export review.",
+    "intent": "Detailed output inspection and rejection actions; not the broad AI generator explanation.",
+    "sections": [
+      {
+        "heading": "Separate presenter footage from software proof",
+        "paragraphs": [
+          "An AI presenter or reaction can introduce a task. It cannot establish that a software feature exists. Use genuine approved app recordings for product evidence and keep generated interface pixels out of the proof sequence.",
+          "The failure cases below are original illustrative review scenarios. They are not results from generated clips, provider evaluations or proof that a particular model passes or fails. Actual footage still needs a real review."
+        ]
+      },
+      {
+        "heading": "Inspect identity, motion and contact points",
+        "paragraphs": [
+          "Watch at normal speed, then inspect suspicious intervals frame by frame. Compare the presenter against the approved identity reference where one is used. Look for changes in facial structure, clothing, hands, object contact, background geometry and motion continuity.",
+          "Pause at the beginning, end and transitions. A convincing still does not establish that the complete clip is usable. Record timestamps and the specific observed problem rather than writing “looks off.” Keep source scene instructions and identity references distinct in the review record."
+        ]
+      },
+      {
+        "heading": "Treat text and claims as separate gates",
+        "paragraphs": [
+          "Check every visible and spoken claim against the real product and eligibility. Exact captions should be reviewed as editable text and again in the export; do not assume generated lettering is accurate. Avoid simulated testimonials, invented customers and unsupported outcome claims.",
+          "When a face or gesture is acceptable but a claim is wrong, changing the music does not fix it. Correct the script or edit the problematic interval. When the footage itself fails, reject that segment rather than hiding a defect behind fast cuts."
+        ]
+      },
+      {
+        "heading": "Record the decision on the actual revision",
+        "paragraphs": [
+          "Use accept, revise or reject with a reason and timestamp. Accept only the use case actually reviewed: an approved reaction shot does not approve a longer narration or a new product claim. Keep source, edit and export revisions linked.",
+          "Finally watch the joined presenter-and-demo export on desktop and phone, with and without sound. Check the transition into genuine software footage and the next-step destination. This rubric helps organize review; it does not certify production quality or replace permissions and applicable disclosure review."
+        ]
+      }
+    ],
+    "table": {
+      "caption": "Original illustrative planning example",
+      "columns": [
+        "Decision or state",
+        "Example",
+        "Review"
+      ],
+      "rows": [
+        [
+          "Identity drift",
+          "Face changes after the turn",
+          "Reject the affected interval; inspect a replacement."
+        ],
+        [
+          "Hand contact",
+          "Fingers merge with an object",
+          "Reject or replace the shot; do not imply clean output."
+        ],
+        [
+          "Invented interface",
+          "Generated dashboard shows a result",
+          "Replace proof with a genuine app recording."
+        ],
+        [
+          "Wrong lettering",
+          "Caption changes a feature name",
+          "Correct exact text and inspect the export."
+        ],
+        [
+          "Unsupported claim",
+          "Narration promises unverified savings",
+          "Revise claim; seek evidence or remove it."
+        ],
+        [
+          "Broken handoff",
+          "Presenter points at an unrelated screen",
+          "Revise timing/composition; preserve the real task."
+        ]
+      ]
+    },
+    "worksheet": "Use case / approved identity reference:\nSource and export revisions:\nTimestamp / observed issue:\nIdentity, motion or contact check:\nReal app evidence for each claim:\nExact text and eligibility review:\nAccept / revise / reject with reason:\nJoined export desktop / phone / sound-off review:\nReviewer and approved scope:",
+    "links": [
+      {
+        "href": "/guides/screen-recording-for-app-demo",
+        "title": "Record genuine software evidence",
+        "description": "Keep product proof grounded in the app."
+      },
+      {
+        "href": "/guides/screen-recording-demo-privacy-checklist",
+        "title": "Review demonstration data",
+        "description": "Protect the actual recording."
+      },
+      {
+        "href": "/guides/silent-app-demo-video",
+        "title": "Check sound-off clarity",
+        "description": "Ensure the joined sequence still makes sense."
+      }
+    ],
+    "sources": [],
+    "panels": [
+      {
+        "title": "Presenter",
+        "text": "GENERATED REACTION\nReview identity and motion"
+      },
+      {
+        "title": "Evidence",
+        "text": "GENUINE APP RECORDING\nShow the real task"
+      },
+      {
+        "title": "Decision",
+        "text": "ACTUAL EXPORT\nAccept / revise / reject"
+      }
+    ]
+  }
+]

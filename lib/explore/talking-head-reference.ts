@@ -5,6 +5,11 @@ import type { RecreateReference } from "./recreate-types";
 
 export type TalkingHeadReference = RecreateReference & { durationSeconds: number; generationPrompt: string; sourceSha256?: string };
 
+/** Discovery only: keep the packaged sources and saved-reference recovery intact. */
+export function visibleTalkingHeadReferences<T extends { id: string }>(items: T[]): T[] {
+  return items.filter(item => item.id !== "talking-outdoor-discovery" && item.id !== "talking-outdoor-reaction" && item.id !== "talking-car-story" && item.id !== "talking-room-explainer" && item.id !== "talking-discovery");
+}
+
 export function talkingHeadReferenceSettings(model: AIStudioVideoModel, duration: number, availableModels = getWorkflowVideoModels().map(item => item.value)) {
   if (!Number.isFinite(duration) || duration <= 0) throw new Error("This reference has no readable duration. Choose another example.");
   if (duration > 30) throw new Error("Preview only: video references support up to 30 seconds. This original is kept at its full length.");

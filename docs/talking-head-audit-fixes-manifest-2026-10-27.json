@@ -1,0 +1,24 @@
+{
+  "deploymentId": "dpl_8BRwiJK2Kanr75D6CGPLEgqqADX2",
+  "url": "https://ugc-i4jx4x4pa-ugcpilot.vercel.app",
+  "liveDomain": "https://getugcpilot.com",
+  "previousDeploymentId": "dpl_B6HT7nNDKy5HXq6ETmk7gY48Fnno",
+  "runtimeFiles": [
+    {
+      "path": "lib/explore/workflow-generation-client.ts",
+      "baselineSha256": "8cf075cdb9dd41caed8ac0f613911156928e15b29c5315d8d9c110a3a9002423",
+      "deployedSha256": "fc09314211d9792f9b01f227cbc5a8d845840264db01ddc8190b8478c4858d32",
+      "bytes": 27968
+    },
+    {
+      "path": "components/explore/workflow-finishing-boundary.tsx",
+      "baselineSha256": "e4110bdad8eb04f9cbf973be1fb0e0ca01c812126ffc89215976c999bd53d199",
+      "deployedSha256": "3086ea145b06f9938b73fb39179774befefa6d7f4db0d96e369c4386e56ca7e9",
+      "bytes": 19366
+    }
+  ],
+  "previousReferenceManifest": "docs/talking-head-live-release-manifest-2026-10-27.json",
+  "previousReferenceFilesUnchanged": 62,
+  "focusedTestsPassed": 118,
+  "productionEndToEnd": "NOT VERIFIED"
+}

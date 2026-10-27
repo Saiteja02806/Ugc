@@ -15,7 +15,6 @@ import {
   ExternalLink,
   LoaderCircle,
   Plus,
-  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -27,6 +26,9 @@ import { useSocialOAuthPopup } from "@/components/social/use-social-oauth-popup"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ScheduleQuickActions } from "@/components/scheduling/schedule-quick-actions";
+import type { QuickTimePreset } from "@/lib/scheduling/quick-time";
+import { WorkflowTimePicker } from "@/components/scheduling/workflow-time-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -62,7 +64,6 @@ import {
   getEarliestScheduleTimestamp,
   getZonedDateTimeParts,
   resolveZonedDateTime,
-  SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import { getConnectionPublishingBlockMessage } from "@/lib/scheduling/social-connection-policy";
@@ -251,6 +252,7 @@ export function PlatformSelectionModal({
   const timezone = timezoneOverride ?? defaultTimezone;
   const [scheduledDateOverride, setScheduledDate] = useState<string | null>(null);
   const [scheduledTimeOverride, setScheduledTime] = useState<string | null>(null);
+  const [fiveMinutesFromSubmit, setFiveMinutesFromSubmit] = useState(false);
   const [minimumLeadMinutes, setMinimumLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
@@ -530,23 +532,20 @@ export function PlatformSelectionModal({
   const laterValidation = useMemo(
     () =>
       validateLaterSchedule({
-        date: scheduledDate,
+        date: fiveMinutesFromSubmit ? getEarliestScheduleSlot(currentTime, minimumLeadMinutes, timezone).date : scheduledDate,
         minimumLeadMinutes,
         now: currentTime,
-        time: scheduledTime,
+        time: fiveMinutesFromSubmit ? getEarliestScheduleSlot(currentTime, minimumLeadMinutes, timezone).time : scheduledTime,
         timezone,
       }),
     [
       currentTime,
+      fiveMinutesFromSubmit,
       minimumLeadMinutes,
       scheduledDate,
       scheduledTime,
       timezone,
     ],
-  );
-  const earliestSlot = useMemo(
-    () => getEarliestScheduleSlot(currentTime, minimumLeadMinutes, timezone),
-    [currentTime, minimumLeadMinutes, timezone],
   );
   const minimumScheduledDate = useMemo(
     () => getFutureSlot(currentTime, timezone).date,
@@ -575,6 +574,7 @@ export function PlatformSelectionModal({
     setTimezone(null);
     setScheduledDate(null);
     setScheduledTime(null);
+    setFiveMinutesFromSubmit(false);
     setCurrentTime(now);
     setConfirmError(null);
     setRecoveryDraftId(null);
@@ -756,7 +756,7 @@ export function PlatformSelectionModal({
     const submittedAt = Date.now();
     setCurrentTime(submittedAt);
     const scheduleTime =
-      mode === "asap"
+      mode === "asap" || fiveMinutesFromSubmit
         ? getEarliestScheduleSlot(
             submittedAt,
             minimumLeadMinutes,
@@ -796,7 +796,7 @@ export function PlatformSelectionModal({
           ),
         })),
         timezone,
-        useDefaultScheduleTime: mode === "asap",
+        useDefaultScheduleTime: mode === "asap" || fiveMinutesFromSubmit,
       });
       void invalidateAccountSchedules(queryClient, accountId);
       resetModal();
@@ -817,18 +817,6 @@ export function PlatformSelectionModal({
     }
   }
 
-  function applyQuickSlot(hoursFromNow: number) {
-    setTimezone(timezone);
-    const next = getFutureSlot(currentTime + hoursFromNow * 60 * 60_000, timezone);
-    setScheduledDate(next.date);
-    setScheduledTime(next.time);
-  }
-
-  function applyTomorrowSlot(time: string) {
-    setTimezone(timezone);
-    setScheduledDate(addDaysToDateKey(minimumScheduledDate, 1));
-    setScheduledTime(time);
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1045,30 +1033,17 @@ export function PlatformSelectionModal({
                   {tiktokPublishingAgreement}
                 </p>
               ) : null}
-              {scheduleMode === "choose" ? (
-                <ScheduleChoiceStep
-                  earliestLabel={formatScheduleInstant(
-                    earliestSlot.scheduledFor,
-                    timezone,
-                  )}
-                  minimumLeadMinutes={minimumLeadMinutes}
-                  onPostAsap={() => void submitSchedule("asap")}
-                  onScheduleLater={() => setScheduleMode("later")}
-                />
-              ) : (
                 <LaterScheduleStep
                   date={scheduledDate}
-                  error={laterValidation.error}
+                  error={scheduleMode === "later" ? laterValidation.error : null}
                   minimumDate={minimumScheduledDate}
                   time={scheduledTime}
                   timezone={timezone}
-                  onDateChange={(value) => { setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(value); }}
-                  onQuickHours={applyQuickSlot}
-                  onQuickTomorrow={applyTomorrowSlot}
-                  onTimeChange={(value) => { setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
+                  onDateChange={(value) => { setFiveMinutesFromSubmit(false); setScheduleMode("later"); setTimezone(timezone); setScheduledTime(scheduledTime); setScheduledDate(value); }}
+                  onTimeChange={(value) => { setFiveMinutesFromSubmit(false); setScheduleMode("later"); setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value); }}
+                  onQuickTime={(parts, preset) => { setFiveMinutesFromSubmit(preset === 5); setScheduleMode("later"); setTimezone(timezone); setScheduledDate(parts.date); setScheduledTime(parts.time); }}
                   onTimezoneChange={setTimezone}
                 />
-              )}
             </div>
           )}
         </div>
@@ -1110,17 +1085,17 @@ export function PlatformSelectionModal({
                 Next
                 <ChevronRight data-icon="inline-end" />
               </Button>
-              ) : scheduleMode === "later" ? (
+              ) : (
                 <Button
                   size="lg"
                   className="px-4"
-                  onClick={() => void submitSchedule("later")}
-                  disabled={Boolean(laterValidation.error)}
+                  onClick={() => void submitSchedule(scheduleMode === "later" ? "later" : "asap")}
+                  disabled={scheduleMode === "later" && Boolean(laterValidation.error)}
                 >
                   <Check data-icon="inline-start" />
-                  Schedule post
+                  {scheduleMode === "later" ? "Schedule post" : "Post now"}
                 </Button>
-            ) : null}
+            )}
           </DialogFooter>
         ) : null}
       </DialogContent>
@@ -1552,88 +1527,12 @@ function TikTokCarouselSettings({ capabilitiesState, onRetry }: {
   return null;
 }
 
-function ScheduleChoiceStep({
-  earliestLabel,
-  minimumLeadMinutes,
-  onPostAsap,
-  onScheduleLater,
-}: {
-  earliestLabel: string;
-  minimumLeadMinutes: number;
-  onPostAsap: () => void;
-  onScheduleLater: () => void;
-}) {
-  return (
-    <div className="mx-auto w-full max-w-3xl">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">
-          Choose a publishing time
-        </h3>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Publish at the earliest safe time, or choose an exact date and time.
-        </p>
-      </div>
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <ScheduleChoice
-          description={`Earliest available: ${earliestLabel}. Uses the configured ${minimumLeadMinutes}-minute lead time.`}
-          icon={<Zap className="size-5" aria-hidden="true" />}
-          label="Post Right away"
-          onClick={onPostAsap}
-        />
-        <ScheduleChoice
-          description="Pick a specific date, time, and timezone"
-          icon={<CalendarClock className="size-5" aria-hidden="true" />}
-          label="Schedule for later"
-          onClick={onScheduleLater}
-        />
-      </div>
-    </div>
-  );
-}
-
-function ScheduleChoice({
-  description,
-  icon,
-  label,
-  onClick,
-}: {
-  description: string;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex min-h-36 items-start gap-4 rounded-card border border-border bg-card px-4 py-5 text-left transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card-muted hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:hover:translate-y-0 sm:px-5"
-    >
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-primary/12 text-primary ring-1 ring-primary/20">
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-base font-semibold text-foreground">
-          {label}
-        </span>
-        <span className="mt-1 block text-sm leading-5 text-muted-foreground">
-          {description}
-        </span>
-      </span>
-      <ChevronRight
-        className="mt-2 size-5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
-        aria-hidden="true"
-      />
-    </button>
-  );
-}
-
 function LaterScheduleStep({
   date,
   error,
   minimumDate,
   onDateChange,
-  onQuickHours,
-  onQuickTomorrow,
+  onQuickTime,
   onTimeChange,
   onTimezoneChange,
   time,
@@ -1643,8 +1542,7 @@ function LaterScheduleStep({
   error: string | null;
   minimumDate: string;
   onDateChange: (value: string) => void;
-  onQuickHours: (hours: number) => void;
-  onQuickTomorrow: (time: string) => void;
+  onQuickTime: (parts: { date: string; time: string }, preset: QuickTimePreset) => void;
   onTimeChange: (value: string) => void;
   onTimezoneChange: (value: string) => void;
   time: string;
@@ -1652,31 +1550,7 @@ function LaterScheduleStep({
 }) {
   return (
     <div className="grid gap-5">
-      <section aria-labelledby="quick-schedule-heading">
-        <h3
-          id="quick-schedule-heading"
-          className="flex items-center gap-2 text-sm font-semibold text-foreground"
-        >
-          <Zap className="size-4 text-primary" aria-hidden="true" />
-          Quick select
-        </h3>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <QuickSlot label="In 1 hour" onClick={() => onQuickHours(1)} />
-          <QuickSlot label="In 3 hours" onClick={() => onQuickHours(3)} />
-          <QuickSlot
-            label="Tomorrow 9 AM"
-            onClick={() => onQuickTomorrow("09:00")}
-          />
-          <QuickSlot
-            label="Tomorrow 12 PM"
-            onClick={() => onQuickTomorrow("12:00")}
-          />
-          <QuickSlot
-            label="Tomorrow 6 PM"
-            onClick={() => onQuickTomorrow("18:00")}
-          />
-        </div>
-      </section>
+      <ScheduleQuickActions timezone={timezone} onSelect={onQuickTime} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
@@ -1697,13 +1571,7 @@ function LaterScheduleStep({
             <Clock3 className="size-4 text-primary" aria-hidden="true" />
             Time
           </span>
-          <input
-            type="time"
-            step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
-            value={time}
-            onChange={(event) => onTimeChange(event.target.value)}
-            className="mt-2 h-11 w-full rounded-control border border-border bg-card-muted px-3 text-sm text-foreground outline-none hover:border-border-strong focus:border-focus focus:ring-2 focus:ring-focus/20"
-          />
+          <div className="mt-2"><WorkflowTimePicker id="platform-publish-time" value={time} onChange={onTimeChange} /></div>
         </label>
       </div>
 
@@ -1734,19 +1602,6 @@ function LaterScheduleStep({
     </div>
   );
 }
-
-function QuickSlot({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-control border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-card-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {label}
-    </button>
-  );
-}
-
 
 
 function getDefaultPublishingSettings(
@@ -1836,28 +1691,7 @@ function getFutureSlot(timestamp: number, timezone: string) {
   }
 }
 
-function formatScheduleInstant(value: string | null, timezone: string) {
-  if (!value) {
-    return "the next available slot";
-  }
 
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: timezone,
-    }).format(new Date(value));
-  } catch {
-    return new Date(value).toLocaleString();
-  }
-}
-
-function addDaysToDateKey(dateKey: string, days: number) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day + days));
-
-  return date.toISOString().slice(0, 10);
-}
 
 function getTimezoneOptions(currentTimezone: string) {
   return getSchedulingTimeZoneOptions(currentTimezone);

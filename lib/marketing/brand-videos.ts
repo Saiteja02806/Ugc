@@ -54,12 +54,15 @@ export const instagramReels = [
   "DeW8kYYN_lz",
   "DeqrNISlQ0Z",
   "De1snSfiDeK",
+  "DeueoA-FcIT",
 ] as const;
 
 export const tiktokVideos = [
   { id: "7698234106957548814", handle: "@clara_iami" },
   { id: "7698738756915907862", handle: "@clara_iamm" },
   { id: "7699988037559700758", handle: "@clara_iamm" },
+  { id: "7699923510092631318", handle: "@clara_iamm" },
+  { id: "7699105939034574102", handle: "@clara_iamm" },
 ] as const;
 
 export function instagramReelUrl(code: string) {
@@ -72,6 +75,14 @@ export function tiktokVideoUrl(video: (typeof tiktokVideos)[number]) {
 
 /** Founder profile linked from the homepage. */
 export const brandXProfileUrl = "https://x.com/Teja_chundu";
+export const brandMediumProfileUrl = "https://medium.com/@chundusrisaiteja";
+export const brandDevToProfileUrl = "https://dev.to/mrcool_9faf85434dd5e509ff";
+
+export const brandExternalArticles = {
+  devToMcpGuide: "https://dev.to/mrcool_9faf85434dd5e509ff/create-ai-ugc-videos-with-claude-and-codex-using-mcp-58fa",
+  mediumSaasPlaybook: "https://medium.com/@chundusrisaiteja/how-saas-founders-are-creating-short-form-videos-without-hiring-ugc-creators-in-2026-a1985c67ec8f",
+  linkedInUpdate: "https://www.linkedin.com/feed/update/urn:li:activity:7520386970469019648/",
+} as const;
 
 export const brandInstagramProfileUrls = [
   "https://www.instagram.com/mira_handles/",
@@ -82,6 +93,11 @@ export const brandInstagramProfileUrls = [
 /** Profiles linked from the homepage Organization node and the README. */
 export const brandOrganizationSameAs = [
   brandXProfileUrl,
+  brandMediumProfileUrl,
+  brandDevToProfileUrl,
+  brandExternalArticles.devToMcpGuide,
+  brandExternalArticles.mediumSaasPlaybook,
+  brandExternalArticles.linkedInUpdate,
   ...new Set(Object.values(brandYouTubeVideos).map((video) => video.authorUrl)),
   ...brandInstagramProfileUrls,
   ...new Set(tiktokVideos.map((video) => `https://www.tiktok.com/${video.handle}`)),

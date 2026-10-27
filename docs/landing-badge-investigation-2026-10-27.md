@@ -1,0 +1,11 @@
+# Landing badge screenshot investigation — 27 October 2026
+
+No application code changed. Local landing-platforms.tsx contains Post right away and retains all existing pill classes/SVG renderers/#workflow link. Git diff is exactly one text replacement. Large hero heading is unchanged, matching original approved scope.
+
+Fresh production apex/www HTTP200 returns Made for social, pill classes and threeSVGs. Actual production Chrome at1440/390 verifies1pxsolid border, rounded charcoal surface and three visible16x16SVGs. No CSS/font/brand HTTP errors captured. Production copy change remains undeployed. Screenshot's missing pill/icons/brand cannot be reproduced on that public URL; exact originating URL unknown. Do not assert cache/CSS bundling as proven cause.
+
+Isolated current component preview http://localhost:3155/badge-check uses actual platform SVGs and copied existing theme/font, not icon stubs. Chrome1440/390/320 PASS approved words,1pxborder, three visible16pxSVGs, no page overflow and #workflow click destination. Updated screenshots badge-updated-{1440,390,320}.png; production baseline badge-production-{1440,390}.png in task visualization root. Desktop/mobile screenshot review confirms retained pill/icons. This is badge-only preview, not a complete current application or deployed acceptance of new words.
+
+Files written: docs/ai-context/clear.md append UGC-UI-020 OPEN; this receipt; task-only badge-check preview and CSS source discovery outside repository. No global application styling or backend changed. Sources read: actual badge/header/icon/visibility/Home source, prior copy receipt, nonnegotiables, context-memory/immutable-contracts/UI-clarity/regression-gate skills and relevant Explore/ledger entries. No full historic reread claim. Application lint/build/tests not rerun because no app edits. Earlier broad stale test failures remain documented in prior receipt.
+
+VERIFIED: public pill/icon presence; local approved copy and actual SVG rendering/responsive anchor behavior. NOT VERIFIED: source of supplied unstyled screenshot, exact-page recovery and deployment of approved new text. Incident remainsOPEN. Requested exact screenshot origin from owner; no deployment performed. Next release should include the existing approved one-line copy patch, then verify real-domain words and visible assets.

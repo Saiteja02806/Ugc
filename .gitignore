@@ -29,7 +29,9 @@ __pycache__/
 .DS_Store
 *.pem
 *.log
-/.agents/
+/.agents/*
+!/.agents/skills/
+!/.agents/skills/**
 /.codex/
 /.chrome-carousel-upgrade-check/
 /.playwright-mcp/
@@ -124,3 +126,6 @@ next-env.d.ts
 /docs/creator-profile-frame-review-2026-10-24.json
 /docs/creator-profile-browser-simulation-2026-10-24.json
 /docs/creator-profile-legacy-simulation-2026-10-24.json
+
+# Private source-bound recreation prompt package (ciphertext is releasable).
+/lib/explore/creator-middle-frame-prompts.json

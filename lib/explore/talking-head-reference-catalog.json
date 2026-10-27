@@ -11,6 +11,15 @@
       "sourceUrl": "https://www.tiktok.com/@gab.hustles/video/7693705162321366302"
     },
     {
+      "id": "talking-car-story-full",
+      "title": "Car story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-car-story-full.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-car-story-full.jpg",
+      "durationSeconds": 48.5,
+      "generationPrompt": "A close conversational shot inside a parked car. Use relaxed hand gestures and natural daylight. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@gab.hustles/video/7693705162321366302"
+    },
+    {
       "id": "talking-warm-story",
       "title": "Warm indoor story",
       "videoUrl": "/explore/talking-head-references/v1/talking-warm-story.mp4",
@@ -47,6 +56,15 @@
       "sourceUrl": "https://www.tiktok.com/@eric.duan95/video/7693328260175858958"
     },
     {
+      "id": "talking-room-explainer-full",
+      "title": "Room explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-room-explainer-full.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-room-explainer-full.jpg",
+      "durationSeconds": 42.027,
+      "generationPrompt": "A close indoor talking-head shot with a casual delivery and small explanatory hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@eric.duan95/video/7693328260175858958"
+    },
+    {
       "id": "talking-car-explainer",
       "title": "Car explainer",
       "videoUrl": "/explore/talking-head-references/v1/talking-car-explainer.mp4",
@@ -61,6 +79,15 @@
       "videoUrl": "/explore/talking-head-references/v1/talking-discovery.mp4",
       "posterUrl": "/explore/talking-head-references/v1/talking-discovery.jpg",
       "durationSeconds": 2.207,
+      "generationPrompt": "An expressive close selfie, with a raised hand and an animated opening reaction. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@taliameals/video/7681203672956603662"
+    },
+    {
+      "id": "talking-discovery-full",
+      "title": "Expressive discovery",
+      "videoUrl": "/explore/talking-head-references/v1/talking-discovery-full.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-discovery-full.jpg",
+      "durationSeconds": 43.838,
       "generationPrompt": "An expressive close selfie, with a raised hand and an animated opening reaction. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
       "sourceUrl": "https://www.tiktok.com/@taliameals/video/7681203672956603662"
     },
@@ -81,6 +108,105 @@
       "durationSeconds": 27.867,
       "generationPrompt": "A close indoor talking-head shot, holding a mug naturally while delivering the opening message. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
       "sourceUrl": "https://www.tiktok.com/@studyingwithliz/video/7605588749921029390"
+    },
+    {
+      "id": "talking-sophia-designsthings",
+      "title": "Indoor side-hustle story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-sophia-designsthings.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-sophia-designsthings.jpg",
+      "durationSeconds": 40.434,
+      "generationPrompt": "A close indoor conversational selfie with expressive eyebrows and pointing hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@sophia.designsthings/video/7616575240436469023"
+    },
+    {
+      "id": "talking-emmgr4c3",
+      "title": "Seated travel explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-emmgr4c3.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-emmgr4c3.jpg",
+      "durationSeconds": 33.877,
+      "generationPrompt": "A seated indoor talking-head shot in daylight, with direct eye contact and two-handed explanatory gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@emmgr4c3/video/7686594668280237343"
+    },
+    {
+      "id": "talking-tessam-bible",
+      "title": "Story with a tumbler",
+      "videoUrl": "/explore/talking-head-references/v1/talking-tessam-bible.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-tessam-bible.jpg",
+      "durationSeconds": 15.834,
+      "generationPrompt": "An angled indoor talking-head selfie holding a large handled tumbler, with animated delivery. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@tessam.bible/video/7606118432748326158"
+    },
+    {
+      "id": "talking-websites-explainer",
+      "title": "Three-websites explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-websites-explainer.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-websites-explainer.jpg",
+      "durationSeconds": 26.956,
+      "generationPrompt": "A close indoor talking-head shot beside curtains, with a raised index finger and small explanatory hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.instagram.com/reel/Dd5tncyj0yC/"
+    },
+    {
+      "id": "talking-katiemeidt8",
+      "title": "Desk study explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-katiemeidt8.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-katiemeidt8.jpg",
+      "durationSeconds": 65.534,
+      "generationPrompt": "A seated talking-head shot at a desk with a clear glass, holding a small packet and gesturing while speaking. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@katiemeidt8/video/7625742200697097503"
+    },
+    {
+      "id": "talking-studyfetchlauren",
+      "title": "Warm desk story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-studyfetchlauren.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-studyfetchlauren.jpg",
+      "durationSeconds": 61.867,
+      "generationPrompt": "A seated talking-head shot at a desk in warm lamplight, holding a tablet and using natural explanatory gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@studyfetchlauren/video/7400684900120022314"
+    },
+    {
+      "id": "talking-sidghst",
+      "title": "Kitchen story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-sidghst.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-sidghst.jpg",
+      "durationSeconds": 9.821,
+      "generationPrompt": "A close seated talking-head shot in a bright kitchen, with direct conversational delivery and small head movements. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@sidghst/video/7517806902789836063"
+    },
+    {
+      "id": "talking-studywithsab",
+      "title": "Kitchen study explainer",
+      "videoUrl": "/explore/talking-head-references/v1/talking-studywithsab.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-studywithsab.jpg",
+      "durationSeconds": 60.767,
+      "generationPrompt": "A seated talking-head shot at a kitchen counter with an apple and knife on a cutting board, speaking directly to the camera. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@studywithsab/video/7561981970574626068"
+    },
+    {
+      "id": "talking-bittenbyaturtle",
+      "title": "Close glasses selfie",
+      "videoUrl": "/explore/talking-head-references/v1/talking-bittenbyaturtle.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-bittenbyaturtle.jpg",
+      "durationSeconds": 14.4,
+      "generationPrompt": "A very close indoor selfie with glasses, expressive eyebrows and small conversational hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@bittenbyaturtle/video/7686629549106547971"
+    },
+    {
+      "id": "talking-studywithsawyer",
+      "title": "Casual study story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-studywithsawyer.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-studywithsawyer.jpg",
+      "durationSeconds": 47.0,
+      "generationPrompt": "A close indoor talking-head shot against a light wall with framed art, with expressive brows and direct conversational delivery. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@studywithsawyer/video/7534197843867782414"
+    },
+    {
+      "id": "talking-mumtipswithginny",
+      "title": "Seated parenting story",
+      "videoUrl": "/explore/talking-head-references/v1/talking-mumtipswithginny.mp4",
+      "posterUrl": "/explore/talking-head-references/v1/talking-mumtipswithginny.jpg",
+      "durationSeconds": 33.867,
+      "generationPrompt": "A close seated talking-head shot against an upholstered chair, with direct eye contact and small pinching and pointing hand gestures. Use the reference for framing, scene and delivery. Follow the user's own spoken message and product instructions; do not copy the original script or claims. If appearance images are attached, use them for the person's appearance. Keep this clip talking-head only: do not add the source's phone demonstration, app screens, captions, logos or watermarks.",
+      "sourceUrl": "https://www.tiktok.com/@mumtipswithginny/video/7589025547875880215"
     }
   ]
 }

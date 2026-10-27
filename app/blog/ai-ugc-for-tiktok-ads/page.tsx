@@ -218,10 +218,10 @@ export default function AiUgcForTikTokAdsPage() {
         <p>These are videos made with UGC Pilot, posted on its own accounts:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            TikTok: <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7698738756915907862">example 1</ArticleExternalLink> and <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699988037559700758">example 2</ArticleExternalLink> on <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm">@clara_iamm</ArticleExternalLink>, plus <ArticleExternalLink href="https://www.tiktok.com/@clara_iami/video/7698234106957548814">this clip</ArticleExternalLink> on @clara_iami.
+            TikTok: <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7698738756915907862">example 1</ArticleExternalLink>, <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699988037559700758">example 2</ArticleExternalLink>, <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699923510092631318">example 3</ArticleExternalLink> and <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm/video/7699105939034574102">example 4</ArticleExternalLink> on <ArticleExternalLink href="https://www.tiktok.com/@clara_iamm">@clara_iamm</ArticleExternalLink>, plus <ArticleExternalLink href="https://www.tiktok.com/@clara_iami/video/7698234106957548814">this clip</ArticleExternalLink> on @clara_iami.
           </li>
           <li>
-            Instagram Reels: <ArticleExternalLink href="https://www.instagram.com/clara_iamm">@clara_iamm</ArticleExternalLink> and <ArticleExternalLink href="https://www.instagram.com/mira_handles">@mira_handles</ArticleExternalLink>, for example <ArticleExternalLink href="https://www.instagram.com/reel/De1snSfiDeK/">this reel</ArticleExternalLink>.
+            Instagram Reels: <ArticleExternalLink href="https://www.instagram.com/clara_iamm">@clara_iamm</ArticleExternalLink> and <ArticleExternalLink href="https://www.instagram.com/mira_handles">@mira_handles</ArticleExternalLink>, for example <ArticleExternalLink href="https://www.instagram.com/reel/De1snSfiDeK/">reel 1</ArticleExternalLink> and <ArticleExternalLink href="https://www.instagram.com/reel/DeueoA-FcIT/">reel 2</ArticleExternalLink>.
           </li>
           <li>
             YouTube Shorts: <ArticleExternalLink href="https://www.youtube.com/shorts/2P1whMHDqi8">this Short</ArticleExternalLink> on <ArticleExternalLink href="https://www.youtube.com/@Teja.Chundu">@Teja.Chundu</ArticleExternalLink>.

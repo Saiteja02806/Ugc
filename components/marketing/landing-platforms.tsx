@@ -62,7 +62,7 @@ export function LandingPlatformBadge() {
       href="#workflow"
       className="mb-6 inline-flex max-w-full flex-col items-center gap-2 rounded-[20px] border border-border bg-card px-4 py-2.5 text-xs font-medium shadow-sm transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-row sm:gap-4 sm:rounded-full sm:py-2"
     >
-      <span className="font-semibold text-primary">Made for social</span>
+      <span className="font-semibold text-primary">Post right away</span>
       <span className="hidden h-4 w-px bg-border-strong sm:block" aria-hidden="true" />
       <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4">
         {landingPlatforms.map(({ platform, label }) => (

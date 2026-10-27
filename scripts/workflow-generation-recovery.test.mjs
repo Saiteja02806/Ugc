@@ -1,15 +1,17 @@
+import * as readDeadline from "../lib/http/read-deadline.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { startingFrameFaceReferenceError } from "../lib/explore/starting-frame-animation-input.ts";
 import * as startingFrameVideo from "../worker/src/lib/hook-starting-frame-video.ts";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const load = (file, imports = {}, globals = {}) => {
   const exported = {};
   vm.runInNewContext(ts.transpileModule(read(file), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports: exported, require(name) { if(name === "../../worker/src/lib/hook-starting-frame-video") return startingFrameVideo; if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals,
+    exports: exported, require(name) { if (name === "../http/read-deadline") return readDeadline; if(name === "./starting-frame-animation-input") return { startingFrameFaceReferenceError }; if(name === "../../worker/src/lib/hook-starting-frame-video") return startingFrameVideo; if(name === "../../worker/src/lib/video-prompt-policy") return load("worker/src/lib/video-prompt-policy.ts"); if(name === "./generation-session.ts") return load("lib/ai-studio/generation-session.ts"); assert.ok(name in imports, `Unexpected import ${name}`); return imports[name]; }, ...globals,
   });
   return exported;
 };
@@ -63,6 +65,37 @@ test("lost acknowledgement survives a recreated client; a changed draft cannot s
   assert.equal(result.resolved, true); assert.equal(gets, 1); assert.equal(posts, 1);
   assert.equal(client.readWorkflowGenerationRequest(store, "owner-a", "hook"), null);
   assert.deepEqual(Array.from(client.readWorkflowGenerationJobs(store, "owner-a", "hook")), [jobId]);
+});
+
+test("a deadline retains the durable receipt and read-only recovery ignores a late acknowledgement", async t => {
+  const alive = setInterval(() => {}, 1000);
+  t.after(() => clearInterval(alive));
+  for (const phase of ["post", "body"]) {
+    const store = storage();
+    let late, signal, posts = 0;
+    const generator = create(store, async (_url, init) => {
+      posts++;
+      signal = init.signal;
+      if (phase === "post") return new Promise(resolve => { late = resolve; });
+      return { ok: true, json: () => new Promise(resolve => { late = resolve; }) };
+    }, { requestTimeoutMs: 15 });
+    await assert.rejects(generator.generate(draft()), /reply took too long/);
+    assert.equal(signal.aborted, true);
+    assert.equal(client.readWorkflowGenerationRequest(store, "owner-a", "hook").requestKey, key);
+    await assert.rejects(generator.generate(draft()), /previous request is not confirmed/);
+    late(phase === "post" ? response(batch) : batch);
+    await new Promise(setImmediate);
+    assert.equal(client.readWorkflowGenerationRequest(store, "owner-a", "hook").requestKey, key);
+    assert.deepEqual(Array.from(client.readWorkflowGenerationJobs(store, "owner-a", "hook")), []);
+    const recovered = await recover(store, async (_url, init) => {
+      assert.equal(init.method, "GET");
+      return response({ ...batch, resolved: true });
+    });
+    assert.equal(recovered.resolved, true);
+    assert.equal(posts, 1);
+    assert.equal(client.readWorkflowGenerationRequest(store, "owner-a", "hook"), null);
+    assert.deepEqual(Array.from(client.readWorkflowGenerationJobs(store, "owner-a", "hook")), [jobId]);
+  }
 });
 
 test("missing and partial jobs retain the marker and never invoke a POST", async () => {

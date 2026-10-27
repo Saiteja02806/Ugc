@@ -1,0 +1,1952 @@
+{
+  "date": "2026-10-27",
+  "batch": "notbeen2",
+  "status": "staged_review_package_not_active",
+  "providerCalls": 0,
+  "runtimeChanges": 0,
+  "sourceFramesReviewed": 1260,
+  "contactSheetsReviewed": 47,
+  "fullResolutionChecks": 21,
+  "rows": [
+    {
+      "set": 1,
+      "folder": "New folder",
+      "referenceId": "explore-paired-hook-58afc36bd5ed01471dacbde8",
+      "title": "notbeen2 set 1",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder\\muted_9c9d3379.mp4",
+        "sha256": "0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642",
+        "duration": 2.133333,
+        "decodedFrames": 64,
+        "sourceUrl": "https://www.tiktok.com/@detective.demi/video/7697326489888378144",
+        "sourceFirstPts": 0.066016,
+        "sourceLastPts": 2.166016
+      },
+      "retainedVideo": {
+        "sha256": "0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642",
+        "file": "0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642.mp4",
+        "key": "explore/paired-references/v1/0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642.mp4",
+        "contentType": "video/mp4",
+        "bytes": 340590,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642.mp4",
+        "durationSeconds": 2.133333,
+        "frames": 64,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 64,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "95845d48d7cb5a3de13190d880f2f1722134c039c2fe30b04e7478692cbd2600",
+        "file": "95845d48d7cb5a3de13190d880f2f1722134c039c2fe30b04e7478692cbd2600.mp3",
+        "key": "explore/paired-references/v1/95845d48d7cb5a3de13190d880f2f1722134c039c2fe30b04e7478692cbd2600.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 689259,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\95845d48d7cb5a3de13190d880f2f1722134c039c2fe30b04e7478692cbd2600.mp3",
+        "durationSeconds": 43.075875,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "89932223e5d2f90f6345ea1e79d5725f19ea2fee315eeab0543cfc3d9eb4fa39",
+        "file": "89932223e5d2f90f6345ea1e79d5725f19ea2fee315eeab0543cfc3d9eb4fa39.png",
+        "key": "explore/paired-references/v1/89932223e5d2f90f6345ea1e79d5725f19ea2fee315eeab0543cfc3d9eb4fa39.png",
+        "contentType": "image/png",
+        "bytes": 339087,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\89932223e5d2f90f6345ea1e79d5725f19ea2fee315eeab0543cfc3d9eb4fa39.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0.066016,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "395807c42c0ca80bdb671124279860158f93c36d2cc2b1b52be24a0477585882",
+        "file": "395807c42c0ca80bdb671124279860158f93c36d2cc2b1b52be24a0477585882.jpg",
+        "key": "explore/paired-references/v1/395807c42c0ca80bdb671124279860158f93c36d2cc2b1b52be24a0477585882.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 22237,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\395807c42c0ca80bdb671124279860158f93c36d2cc2b1b52be24a0477585882.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.566666,
+          "startFrame": 0,
+          "endFrameExclusive": 17,
+          "action": "Hold wide eyes and the small closed-lip smile with palm pressed at temple/cheek."
+        },
+        {
+          "startSeconds": 0.566666,
+          "endSeconds": 0.733333,
+          "startFrame": 17,
+          "endFrameExclusive": 22,
+          "action": "Narrow the eyelids briefly as the viewpoint starts easing back, palm remaining at the side of face."
+        },
+        {
+          "startSeconds": 0.733333,
+          "endSeconds": 0.9,
+          "startFrame": 22,
+          "endFrameExclusive": 27,
+          "action": "Slide the same palm down and inward from cheek across lips and lower nose."
+        },
+        {
+          "startSeconds": 0.9,
+          "endSeconds": 1.566666,
+          "startFrame": 27,
+          "endFrameExclusive": 47,
+          "action": "Hold the covered-mouth amused reaction in the wider selfie view."
+        },
+        {
+          "startSeconds": 1.566666,
+          "endSeconds": 1.8333329999999999,
+          "startFrame": 47,
+          "endFrameExclusive": 55,
+          "action": "Tip the handheld view upward with brief movement softness so ceiling expands and face drops toward bottom."
+        },
+        {
+          "startSeconds": 1.8333329999999999,
+          "endSeconds": 2.133333,
+          "startFrame": 55,
+          "endFrameExclusive": 64,
+          "action": "Bring the covered face somewhat closer again, hand still over lips and eyes relaxed toward lens."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Extreme close selfie, wide eyes toward lens and small closed-lip disbelieving smile; screen-left palm presses the temple and cheek. Black top, pale room and framed picture.",
+        "camera": "Start very close; ease back as the same hand crosses the mouth. Late handheld upward reframe/brief blur reveals more ceiling and leaves the face low, then returns nearer. Do not replace with a steady digital zoom.",
+        "endingState": "Same hand over mouth, eyes softened and looking toward lens, face closer again after low framing.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.18888866666666668]: Hold wide eyes and the small closed-lip smile with palm pressed at temple/cheek."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.18888866666666668–0.24444433333333335]: Narrow the eyelids briefly as the viewpoint starts easing back, palm remaining at the side of face."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.24444433333333335–0.3]: Slide the same palm down and inward from cheek across lips and lower nose."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3–0.522222]: Hold the covered-mouth amused reaction in the wider selfie view."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.522222–0.611111]: Tip the handheld view upward with brief movement softness so ceiling expands and face drops toward bottom."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.611111–0.7111109999999999]: Bring the covered face somewhat closer again, hand still over lips and eyes relaxed toward lens."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.7111109999999999–1]: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Extreme close selfie, wide eyes toward lens and small closed-lip disbelieving smile; screen-left palm presses the temple and cheek. Black top, pale room and framed picture. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: I found a game where you have to go through a missing girls phone and find out what happened to her. Location: Upper-center over forehead, moving relative to face during reframe. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Extreme close selfie, wide eyes toward lens and small closed-lip disbelieving smile; screen-left palm presses the temple and cheek. Black top, pale room and framed picture.\n\nOPENING: 0–0.57s: Hold wide eyes and the small closed-lip smile with palm pressed at temple/cheek.\n\nMIDDLE: 0.57–0.73s: Narrow the eyelids briefly as the viewpoint starts easing back, palm remaining at the side of face.\n\nMIDDLE: 0.73–0.9s: Slide the same palm down and inward from cheek across lips and lower nose.\n\nMIDDLE: 0.9–1.57s: Hold the covered-mouth amused reaction in the wider selfie view.\n\nMIDDLE: 1.57–1.83s: Tip the handheld view upward with brief movement softness so ceiling expands and face drops toward bottom.\n\nENDING: 1.83–2.13s: Bring the covered face somewhat closer again, hand still over lips and eyes relaxed toward lens.\n\nENDING: 2.13–3s: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action.\n\nCAMERA: Start very close; ease back as the same hand crosses the mouth. Late handheld upward reframe/brief blur reveals more ceiling and leaves the face low, then returns nearer. Do not replace with a steady digital zoom.\n\nENDING STATE: Same hand over mouth, eyes softened and looking toward lens, face closer again after low framing.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-01/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-01/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "I found a game where you have to go through a missing girls phone and find out what happened to her",
+        "region": "Upper-center over forehead, moving relative to face during reframe.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 64,
+        "contactSheets": 3,
+        "fullResolutionIndices": [
+          0,
+          63
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-01"
+      },
+      "risks": [
+        "Preserve palm contact from temple to mouth; no new hand rising from below.",
+        "Opening face is very close and cheek slightly compressed; identity gate required."
+      ],
+      "durationPolicy": "Keep source elapsed timing and extend final pose to3s.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "442d110b8ee9d92cd95292f7c97803cb1aa252eb6ed298e1558bde7c47f4c102",
+        "file": "442d110b8ee9d92cd95292f7c97803cb1aa252eb6ed298e1558bde7c47f4c102.mp4",
+        "key": "explore/paired-references/v1/442d110b8ee9d92cd95292f7c97803cb1aa252eb6ed298e1558bde7c47f4c102.mp4",
+        "contentType": "video/mp4",
+        "bytes": 379233,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\442d110b8ee9d92cd95292f7c97803cb1aa252eb6ed298e1558bde7c47f4c102.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 64,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 2,
+      "folder": "New folder (2)",
+      "referenceId": "explore-paired-hook-c2fcbca934c26f8784f7ae51",
+      "title": "notbeen2 set 2",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (2)\\muted_cfeaa2e8.mp4",
+        "sha256": "8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281",
+        "duration": 2.933333,
+        "decodedFrames": 88,
+        "sourceUrl": "https://www.tiktok.com/@catherineemilo/video/7572614871099968799",
+        "sourceFirstPts": 0.066016,
+        "sourceLastPts": 2.966016
+      },
+      "retainedVideo": {
+        "sha256": "8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281",
+        "file": "8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281.mp4",
+        "key": "explore/paired-references/v1/8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281.mp4",
+        "contentType": "video/mp4",
+        "bytes": 524860,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281.mp4",
+        "durationSeconds": 2.933333,
+        "frames": 88,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 88,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "b4dd8d443bdbc9d47302ca8451620b2f7948618852025e2ceda9c43af0c768c5",
+        "file": "b4dd8d443bdbc9d47302ca8451620b2f7948618852025e2ceda9c43af0c768c5.mp3",
+        "key": "explore/paired-references/v1/b4dd8d443bdbc9d47302ca8451620b2f7948618852025e2ceda9c43af0c768c5.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 122506,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\b4dd8d443bdbc9d47302ca8451620b2f7948618852025e2ceda9c43af0c768c5.mp3",
+        "durationSeconds": 7.601633,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "d1ad66b757647bf834814eec4bf1965b1bd711469191faf3188345a5be6d8baf",
+        "file": "d1ad66b757647bf834814eec4bf1965b1bd711469191faf3188345a5be6d8baf.png",
+        "key": "explore/paired-references/v1/d1ad66b757647bf834814eec4bf1965b1bd711469191faf3188345a5be6d8baf.png",
+        "contentType": "image/png",
+        "bytes": 311607,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\d1ad66b757647bf834814eec4bf1965b1bd711469191faf3188345a5be6d8baf.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0.066016,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 3,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "d4b8b5a3dcc3eb2daf3ed687b5e2f0510d0580e81585167936993fd0a9e4a962",
+        "file": "d4b8b5a3dcc3eb2daf3ed687b5e2f0510d0580e81585167936993fd0a9e4a962.jpg",
+        "key": "explore/paired-references/v1/d4b8b5a3dcc3eb2daf3ed687b5e2f0510d0580e81585167936993fd0a9e4a962.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 19074,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\d4b8b5a3dcc3eb2daf3ed687b5e2f0510d0580e81585167936993fd0a9e4a962.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.8,
+          "startFrame": 0,
+          "endFrameExclusive": 24,
+          "action": "Hold the open-mouth smile with lifted brows and hands low, allowing slight handheld drift."
+        },
+        {
+          "startSeconds": 0.8,
+          "endSeconds": 1,
+          "startFrame": 24,
+          "endFrameExclusive": 30,
+          "action": "Lift sleeve-covered hand from screen-left toward lips."
+        },
+        {
+          "startSeconds": 1,
+          "endSeconds": 1.633333,
+          "startFrame": 30,
+          "endFrameExclusive": 49,
+          "action": "Lay fingers over the smiling mouth, eyes bright toward lens."
+        },
+        {
+          "startSeconds": 1.633333,
+          "endSeconds": 2.333333,
+          "startFrame": 49,
+          "endFrameExclusive": 70,
+          "action": "Keep the mouth covered, glance screen-right with an amused squint then turn attention back."
+        },
+        {
+          "startSeconds": 2.333333,
+          "endSeconds": 2.933333,
+          "startFrame": 70,
+          "endFrameExclusive": 88,
+          "action": "Ease closer to lens as the cover loosens to fingers at lips and side of nose, exposing part of the smile without fully dropping hand."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Seated medium-close selfie in gray knitted sweater, long hair over screen-left shoulder, gold earrings, pale wall and exposed metal duct. Open-mouth delighted surprise toward lens, both hands low.",
+        "camera": "Gentle handheld drift; early view backs off slightly, ending approaches face. Retain room and duct; no cut.",
+        "endingState": "Closer smiling face with fingers still across mouth and beside nose, teeth partly visible through loosened contact.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.26666666666666666]: Hold the open-mouth smile with lifted brows and hands low, allowing slight handheld drift."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.26666666666666666–0.3333333333333333]: Lift sleeve-covered hand from screen-left toward lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3333333333333333–0.5444443333333333]: Lay fingers over the smiling mouth, eyes bright toward lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5444443333333333–0.7777776666666667]: Keep the mouth covered, glance screen-right with an amused squint then turn attention back."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.7777776666666667–0.9777776666666668]: Ease closer to lens as the cover loosens to fingers at lips and side of nose, exposing part of the smile without fully dropping hand."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9777776666666668–1]: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Seated medium-close selfie in gray knitted sweater, long hair over screen-left shoulder, gold earrings, pale wall and exposed metal duct. Open-mouth delighted surprise toward lens, both hands low. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: only people in their 20s will understand this one... keeping your budget on your home screen. Location: Center over sweater. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Seated medium-close selfie in gray knitted sweater, long hair over screen-left shoulder, gold earrings, pale wall and exposed metal duct. Open-mouth delighted surprise toward lens, both hands low.\n\nOPENING: 0–0.8s: Hold the open-mouth smile with lifted brows and hands low, allowing slight handheld drift.\n\nMIDDLE: 0.8–1s: Lift sleeve-covered hand from screen-left toward lips.\n\nMIDDLE: 1–1.63s: Lay fingers over the smiling mouth, eyes bright toward lens.\n\nMIDDLE: 1.63–2.33s: Keep the mouth covered, glance screen-right with an amused squint then turn attention back.\n\nENDING: 2.33–2.93s: Ease closer to lens as the cover loosens to fingers at lips and side of nose, exposing part of the smile without fully dropping hand.\n\nENDING: 2.93–3s: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action.\n\nCAMERA: Gentle handheld drift; early view backs off slightly, ending approaches face. Retain room and duct; no cut.\n\nENDING STATE: Closer smiling face with fingers still across mouth and beside nose, teeth partly visible through loosened contact.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-02/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-02/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "only people in their 20s will understand this one... keeping your budget on your home screen",
+        "region": "Center over sweater.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 88,
+        "contactSheets": 3,
+        "fullResolutionIndices": [
+          0,
+          87
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-02"
+      },
+      "risks": [
+        "Do not replace the late partly visible smile with full uncovered hand-drop."
+      ],
+      "durationPolicy": "Keep source elapsed timing and extend final pose to3s.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "4b5db39be956b7ed659f25e9530807e0df7809295730355d124cfc231a3ff91c",
+        "file": "4b5db39be956b7ed659f25e9530807e0df7809295730355d124cfc231a3ff91c.mp4",
+        "key": "explore/paired-references/v1/4b5db39be956b7ed659f25e9530807e0df7809295730355d124cfc231a3ff91c.mp4",
+        "contentType": "video/mp4",
+        "bytes": 576530,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\4b5db39be956b7ed659f25e9530807e0df7809295730355d124cfc231a3ff91c.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 88,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 3,
+      "folder": "New folder (3)",
+      "referenceId": "explore-paired-hook-a9835169c265dda2a517d905",
+      "title": "notbeen2 set 3",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (3)\\muted_cdab739a.mp4",
+        "sha256": "d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082",
+        "duration": 1.962963,
+        "decodedFrames": 53,
+        "sourceUrl": "https://www.tiktok.com/@paiige.memories/video/7657758692326100238",
+        "sourceFirstPts": 0.074002,
+        "sourceLastPts": 1.999928
+      },
+      "retainedVideo": {
+        "sha256": "d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082",
+        "file": "d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082.mp4",
+        "key": "explore/paired-references/v1/d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082.mp4",
+        "contentType": "video/mp4",
+        "bytes": 737420,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082.mp4",
+        "durationSeconds": 1.962963,
+        "frames": 53,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 53,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "474cae5adf1869bcfc3160c81016e85a5ea6cce3b4e4f33ad06b15bf669e468d",
+        "file": "474cae5adf1869bcfc3160c81016e85a5ea6cce3b4e4f33ad06b15bf669e468d.mp3",
+        "key": "explore/paired-references/v1/474cae5adf1869bcfc3160c81016e85a5ea6cce3b4e4f33ad06b15bf669e468d.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 289374,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\474cae5adf1869bcfc3160c81016e85a5ea6cce3b4e4f33ad06b15bf669e468d.mp3",
+        "durationSeconds": 18.050563,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "ddc383ab6e1afad88e5f03079c1522fcb256b5dbce2de01715c9dfb630600197",
+        "file": "ddc383ab6e1afad88e5f03079c1522fcb256b5dbce2de01715c9dfb630600197.png",
+        "key": "explore/paired-references/v1/ddc383ab6e1afad88e5f03079c1522fcb256b5dbce2de01715c9dfb630600197.png",
+        "contentType": "image/png",
+        "bytes": 941892,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\ddc383ab6e1afad88e5f03079c1522fcb256b5dbce2de01715c9dfb630600197.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0.074002,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "6c5b42bb22c0de0dbcc5d771602808ccfee7ac43e0fd547d1b9f58dcc8eeba73",
+        "file": "6c5b42bb22c0de0dbcc5d771602808ccfee7ac43e0fd547d1b9f58dcc8eeba73.jpg",
+        "key": "explore/paired-references/v1/6c5b42bb22c0de0dbcc5d771602808ccfee7ac43e0fd547d1b9f58dcc8eeba73.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 32395,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\6c5b42bb22c0de0dbcc5d771602808ccfee7ac43e0fd547d1b9f58dcc8eeba73.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.296296,
+          "startFrame": 0,
+          "endFrameExclusive": 8,
+          "action": "Hold jaw open and upward screen-left stare, with slight eyelid movement."
+        },
+        {
+          "startSeconds": 0.296296,
+          "endSeconds": 0.703703,
+          "startFrame": 8,
+          "endFrameExclusive": 19,
+          "action": "Let gaze drift a little nearer center while keeping head almost still and mouth open."
+        },
+        {
+          "startSeconds": 0.703703,
+          "endSeconds": 1.1111110000000002,
+          "startFrame": 19,
+          "endFrameExclusive": 30,
+          "action": "Continue holding the wide-eyed open-mouth reaction as framing approaches."
+        },
+        {
+          "startSeconds": 1.1111110000000002,
+          "endSeconds": 1.962963,
+          "startFrame": 30,
+          "endFrameExclusive": 53,
+          "action": "Finish closer and more frontal with the same open jaw, eyes slightly upward; hands remain out of view."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Close seated portrait in light-blue top with wired white earbuds, gold hoop earring and cross necklace; pale wall, dark blue chair at screen-left and framed art screen-right. Mouth open, eyes looking up screen-left.",
+        "camera": "Slow continuous approach into a tighter centered face view; no shake event or cut.",
+        "endingState": "Tighter nearly frontal face with jaw still open and wide eyes looking slightly upward; earbuds retained.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.09876533333333333]: Hold jaw open and upward screen-left stare, with slight eyelid movement."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.09876533333333333–0.23456766666666665]: Let gaze drift a little nearer center while keeping head almost still and mouth open."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.23456766666666665–0.3703703333333334]: Continue holding the wide-eyed open-mouth reaction as framing approaches."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.3703703333333334–0.654321]: Finish closer and more frontal with the same open jaw, eyes slightly upward; hands remain out of view."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.654321–1]: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Close seated portrait in light-blue top with wired white earbuds, gold hoop earring and cross necklace; pale wall, dark blue chair at screen-left and framed art screen-right. Mouth open, eyes looking up screen-left. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: POV you found the most cuteeeee way to do your photo dump on your insta story. Location: Lower middle over chest/hair. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Close seated portrait in light-blue top with wired white earbuds, gold hoop earring and cross necklace; pale wall, dark blue chair at screen-left and framed art screen-right. Mouth open, eyes looking up screen-left.\n\nOPENING: 0–0.3s: Hold jaw open and upward screen-left stare, with slight eyelid movement.\n\nMIDDLE: 0.3–0.7s: Let gaze drift a little nearer center while keeping head almost still and mouth open.\n\nMIDDLE: 0.7–1.11s: Continue holding the wide-eyed open-mouth reaction as framing approaches.\n\nENDING: 1.11–1.96s: Finish closer and more frontal with the same open jaw, eyes slightly upward; hands remain out of view.\n\nENDING: 1.96–3s: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action.\n\nCAMERA: Slow continuous approach into a tighter centered face view; no shake event or cut.\n\nENDING STATE: Tighter nearly frontal face with jaw still open and wide eyes looking slightly upward; earbuds retained.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-03/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-03/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "POV you found the most cuteeeee way to do your photo dump on your insta story",
+        "region": "Lower middle over chest/hair.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 53,
+        "contactSheets": 2,
+        "fullResolutionIndices": [
+          0,
+          52
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-03"
+      },
+      "risks": [
+        "Preserve wired earbuds and their cable; no hand gesture is present."
+      ],
+      "durationPolicy": "Keep source elapsed timing and extend final pose to3s.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "060aa93427708ae78d1d71f3a3f74f5982d11b85a4f3d84d77ec5d4599554b61",
+        "file": "060aa93427708ae78d1d71f3a3f74f5982d11b85a4f3d84d77ec5d4599554b61.mp4",
+        "key": "explore/paired-references/v1/060aa93427708ae78d1d71f3a3f74f5982d11b85a4f3d84d77ec5d4599554b61.mp4",
+        "contentType": "video/mp4",
+        "bytes": 772732,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\060aa93427708ae78d1d71f3a3f74f5982d11b85a4f3d84d77ec5d4599554b61.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 53,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 4,
+      "folder": "New folder (4)",
+      "referenceId": "explore-paired-hook-b6546c94d061472815cb5b47",
+      "title": "notbeen2 set 4",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (4)\\muted_65112499.mp4",
+        "sha256": "9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634",
+        "duration": 5.066667,
+        "decodedFrames": 146,
+        "sourceUrl": "https://www.tiktok.com/@katieworktips/video/7694103551483661576",
+        "sourceFirstPts": 0.066016,
+        "sourceLastPts": 5.099349
+      },
+      "retainedVideo": {
+        "sha256": "9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634",
+        "file": "9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634.mp4",
+        "key": "explore/paired-references/v1/9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634.mp4",
+        "contentType": "video/mp4",
+        "bytes": 458104,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634.mp4",
+        "durationSeconds": 5.066667,
+        "frames": 146,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 146,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "0ffb2d81b1d005fb08c8a4bbe5c3c801dc094f609fd8632ebc950aee8b296e06",
+        "file": "0ffb2d81b1d005fb08c8a4bbe5c3c801dc094f609fd8632ebc950aee8b296e06.mp3",
+        "key": "explore/paired-references/v1/0ffb2d81b1d005fb08c8a4bbe5c3c801dc094f609fd8632ebc950aee8b296e06.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 975561,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\0ffb2d81b1d005fb08c8a4bbe5c3c801dc094f609fd8632ebc950aee8b296e06.mp3",
+        "durationSeconds": 60.96975,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "a7d58265b5ff04b0e8d3efadd379336c0d67b96130928da742c2dc56d9119686",
+        "file": "a7d58265b5ff04b0e8d3efadd379336c0d67b96130928da742c2dc56d9119686.png",
+        "key": "explore/paired-references/v1/a7d58265b5ff04b0e8d3efadd379336c0d67b96130928da742c2dc56d9119686.png",
+        "contentType": "image/png",
+        "bytes": 260101,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\a7d58265b5ff04b0e8d3efadd379336c0d67b96130928da742c2dc56d9119686.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0.066016,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "3975c560b2c7591ad79fff0515ff0e730f20f0af360576a3d90ff954043a0fda",
+        "file": "3975c560b2c7591ad79fff0515ff0e730f20f0af360576a3d90ff954043a0fda.jpg",
+        "key": "explore/paired-references/v1/3975c560b2c7591ad79fff0515ff0e730f20f0af360576a3d90ff954043a0fda.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 16295,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\3975c560b2c7591ad79fff0515ff0e730f20f0af360576a3d90ff954043a0fda.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.9,
+          "startFrame": 0,
+          "endFrameExclusive": 57,
+          "action": "Hold the closed-mouth questioning look, gradually lift brows without moving glasses from crown."
+        },
+        {
+          "startSeconds": 1.9,
+          "endSeconds": 2.1,
+          "startFrame": 57,
+          "endFrameExclusive": 63,
+          "action": "Begin opening mouth while keeping gaze near lens."
+        },
+        {
+          "startSeconds": 2.1,
+          "endSeconds": 2.466666,
+          "startFrame": 63,
+          "endFrameExclusive": 74,
+          "action": "Raise screen-left hand across lower face and settle fingers over lips."
+        },
+        {
+          "startSeconds": 2.466666,
+          "endSeconds": 3,
+          "startFrame": 74,
+          "endFrameExclusive": 90,
+          "action": "Hold mouth cover, eyes widening and gaze near lens."
+        },
+        {
+          "startSeconds": 3,
+          "endSeconds": 3.6333330000000004,
+          "startFrame": 90,
+          "endFrameExclusive": 109,
+          "action": "Look up screen-right with fingers still across mouth."
+        },
+        {
+          "startSeconds": 3.6333330000000004,
+          "endSeconds": 3.7666660000000003,
+          "startFrame": 109,
+          "endFrameExclusive": 113,
+          "action": "Lower the same hand from lips and reopen mouth."
+        },
+        {
+          "startSeconds": 3.7666660000000003,
+          "endSeconds": 5.066667,
+          "startFrame": 113,
+          "endFrameExclusive": 146,
+          "action": "Move closer with a broad disbelieving open-mouth smile and raised brows, keeping glasses on crown through ending."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Low-angle close selfie in burgundy hoodie; glasses rest on crown, hair tied back, pale ceiling and wall. Lips closed in a restrained skeptical pout, brows slightly drawn, eyes toward lens.",
+        "camera": "Subtle handheld drift, then a closer approach after mouth is uncovered; pale ceiling stays continuous.",
+        "endingState": "Hand lowered, face closer, brows lifted/drawn and mouth open into a disbelieving tooth-visible smile; glasses still on crown.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.37499997532894896]: Hold the closed-mouth questioning look, gradually lift brows without moving glasses from crown."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.37499997532894896–0.4144736569425226]: Begin opening mouth while keeping gaze near lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4144736569425226–0.48684194165513545]: Raise screen-left hand across lower face and settle fingers over lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.48684194165513545–0.5921052242036037]: Hold mouth cover, eyes widening and gaze near lens."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5921052242036037–0.7171051501904507]: Look up screen-right with fingers still across mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7171051501904507–0.7434208721433637]: Lower the same hand from lips and reopen mouth."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.7434208721433637–1]: Move closer with a broad disbelieving open-mouth smile and raised brows, keeping glasses on crown through ending."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Low-angle close selfie in burgundy hoodie; glasses rest on crown, hair tied back, pale ceiling and wall. Lips closed in a restrained skeptical pout, brows slightly drawn, eyes toward lens. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: i’m sorry since WHEN was this ai created for spreadsheets????. Location: Upper black translucent banner. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Low-angle close selfie in burgundy hoodie; glasses rest on crown, hair tied back, pale ceiling and wall. Lips closed in a restrained skeptical pout, brows slightly drawn, eyes toward lens.\n\nOPENING: 0–1.12s: Hold the closed-mouth questioning look, gradually lift brows without moving glasses from crown.\n\nMIDDLE: 1.12–1.24s: Begin opening mouth while keeping gaze near lens.\n\nMIDDLE: 1.24–1.46s: Raise screen-left hand across lower face and settle fingers over lips.\n\nMIDDLE: 1.46–1.78s: Hold mouth cover, eyes widening and gaze near lens.\n\nMIDDLE: 1.78–2.15s: Look up screen-right with fingers still across mouth.\n\nMIDDLE: 2.15–2.23s: Lower the same hand from lips and reopen mouth.\n\nENDING: 2.23–3s: Move closer with a broad disbelieving open-mouth smile and raised brows, keeping glasses on crown through ending.\n\nCAMERA: Subtle handheld drift, then a closer approach after mouth is uncovered; pale ceiling stays continuous.\n\nENDING STATE: Hand lowered, face closer, brows lifted/drawn and mouth open into a disbelieving tooth-visible smile; glasses still on crown.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-04/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-04/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "i’m sorry since WHEN was this ai created for spreadsheets????",
+        "region": "Upper black translucent banner.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 146,
+        "contactSheets": 5,
+        "fullResolutionIndices": [
+          0,
+          145
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-04"
+      },
+      "risks": [
+        "Keep glasses on crown throughout, not an eyeglass removal.",
+        "Full five-second performance needs a declared pacing policy before generation."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": "Confirm pacing before compressing this longer retained source to3s.",
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "1e815c49509ea71e6c9a3039df14cebb609165d576b0b0b7ef7efe5e6a10de72",
+        "file": "1e815c49509ea71e6c9a3039df14cebb609165d576b0b0b7ef7efe5e6a10de72.mp4",
+        "key": "explore/paired-references/v1/1e815c49509ea71e6c9a3039df14cebb609165d576b0b0b7ef7efe5e6a10de72.mp4",
+        "contentType": "video/mp4",
+        "bytes": 545826,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\1e815c49509ea71e6c9a3039df14cebb609165d576b0b0b7ef7efe5e6a10de72.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 146,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 5,
+      "folder": "New folder (5)",
+      "referenceId": "explore-paired-hook-cff843c327d6574b6c402937",
+      "title": "notbeen2 set 5",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (5)\\0be8-9fe6-4b7f-96c0-c33181c14166.mp4",
+        "sha256": "d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7",
+        "duration": 3.1,
+        "decodedFrames": 93,
+        "sourceUrl": "https://www.tiktok.com/@gigissidehustle/video/7684154352117894414",
+        "sourceFirstPts": 0,
+        "sourceLastPts": 3.066667
+      },
+      "retainedVideo": {
+        "sha256": "d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7",
+        "file": "d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7.mp4",
+        "key": "explore/paired-references/v1/d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7.mp4",
+        "contentType": "video/mp4",
+        "bytes": 731283,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7.mp4",
+        "durationSeconds": 3.1,
+        "frames": 93,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 93,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "0f1b009cfbc9a6608aeedb679506f1cc693ae7d09c436052d2073cf019746382",
+        "file": "0f1b009cfbc9a6608aeedb679506f1cc693ae7d09c436052d2073cf019746382.mp3",
+        "key": "explore/paired-references/v1/0f1b009cfbc9a6608aeedb679506f1cc693ae7d09c436052d2073cf019746382.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 720187,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\0f1b009cfbc9a6608aeedb679506f1cc693ae7d09c436052d2073cf019746382.mp3",
+        "durationSeconds": 44.956735,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "f3569e7ed459953ad0cf676b1e130fd15cf7aa9deacdc6d31c68be09ed36e958",
+        "file": "f3569e7ed459953ad0cf676b1e130fd15cf7aa9deacdc6d31c68be09ed36e958.png",
+        "key": "explore/paired-references/v1/f3569e7ed459953ad0cf676b1e130fd15cf7aa9deacdc6d31c68be09ed36e958.png",
+        "contentType": "image/png",
+        "bytes": 476795,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\f3569e7ed459953ad0cf676b1e130fd15cf7aa9deacdc6d31c68be09ed36e958.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "f8b7ea67ab499e7d25205bc85466ff5f33df06dcaf5fb0eeb735f0fca5964e4f",
+        "file": "f8b7ea67ab499e7d25205bc85466ff5f33df06dcaf5fb0eeb735f0fca5964e4f.jpg",
+        "key": "explore/paired-references/v1/f8b7ea67ab499e7d25205bc85466ff5f33df06dcaf5fb0eeb735f0fca5964e4f.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 18415,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\f8b7ea67ab499e7d25205bc85466ff5f33df06dcaf5fb0eeb735f0fca5964e4f.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.466667,
+          "startFrame": 0,
+          "endFrameExclusive": 14,
+          "action": "Hold extended index finger near forehead, with relaxed closed lips."
+        },
+        {
+          "startSeconds": 0.466667,
+          "endSeconds": 0.866667,
+          "startFrame": 14,
+          "endFrameExclusive": 26,
+          "action": "Move the upright index slightly outward toward screen-right and keep it vertical."
+        },
+        {
+          "startSeconds": 0.866667,
+          "endSeconds": 1.366667,
+          "startFrame": 26,
+          "endFrameExclusive": 41,
+          "action": "Bring the still-raised index back nearer brow, maintaining the same curled-hand shape."
+        },
+        {
+          "startSeconds": 1.366667,
+          "endSeconds": 1.666667,
+          "startFrame": 41,
+          "endFrameExclusive": 50,
+          "action": "Briefly close eyes and lower the pointing finger, curling it as hand drops beside cheek/shoulder."
+        },
+        {
+          "startSeconds": 1.666667,
+          "endSeconds": 3.1,
+          "startFrame": 50,
+          "endFrameExclusive": 93,
+          "action": "Reopen eyes and hold the relaxed curled hand beside shoulder with a quiet closed-mouth look to the end."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Reclined close portrait against gray cushion and cream wall in pale beige collared top, warm/purple light. Index finger from screen-right held upright close to forehead, other fingers curled with a ring; neutral direct look.",
+        "camera": "Almost fixed close reclining selfie with small natural drift; no invented approach.",
+        "endingState": "Index lowered and hand relaxed in a loose curl beside screen-right shoulder, head resting on cushion, lips closed and neutral gaze.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.15053774193548386]: Hold extended index finger near forehead, with relaxed closed lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.15053774193548386–0.27957]: Move the upright index slightly outward toward screen-right and keep it vertical."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.27957–0.44086032258064517]: Bring the still-raised index back nearer brow, maintaining the same curled-hand shape."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.44086032258064517–0.5376345161290322]: Briefly close eyes and lower the pointing finger, curling it as hand drops beside cheek/shoulder."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.5376345161290322–1]: Reopen eyes and hold the relaxed curled hand beside shoulder with a quiet closed-mouth look to the end."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Reclined close portrait against gray cushion and cream wall in pale beige collared top, warm/purple light. Index finger from screen-right held upright close to forehead, other fingers curled with a ring; neutral direct look. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: youtube + ai = 💰💰💰. Location: Upper center on cream wall. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Reclined close portrait against gray cushion and cream wall in pale beige collared top, warm/purple light. Index finger from screen-right held upright close to forehead, other fingers curled with a ring; neutral direct look.\n\nOPENING: 0–0.45s: Hold extended index finger near forehead, with relaxed closed lips.\n\nMIDDLE: 0.45–0.84s: Move the upright index slightly outward toward screen-right and keep it vertical.\n\nMIDDLE: 0.84–1.32s: Bring the still-raised index back nearer brow, maintaining the same curled-hand shape.\n\nMIDDLE: 1.32–1.61s: Briefly close eyes and lower the pointing finger, curling it as hand drops beside cheek/shoulder.\n\nENDING: 1.61–3s: Reopen eyes and hold the relaxed curled hand beside shoulder with a quiet closed-mouth look to the end.\n\nCAMERA: Almost fixed close reclining selfie with small natural drift; no invented approach.\n\nENDING STATE: Index lowered and hand relaxed in a loose curl beside screen-right shoulder, head resting on cushion, lips closed and neutral gaze.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-05/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-05/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "youtube + ai = 💰💰💰",
+        "region": "Upper center on cream wall.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 93,
+        "contactSheets": 4,
+        "fullResolutionIndices": [
+          0,
+          92
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-05"
+      },
+      "risks": [
+        "This is a pointing finger, not a stylus or glasses.",
+        "Do not add an exaggerated smiling ending."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "00668599a9f4611a013ec756bc5d5c412bd3c1bf1bfadbca8f270076632fb142",
+        "file": "00668599a9f4611a013ec756bc5d5c412bd3c1bf1bfadbca8f270076632fb142.mp4",
+        "key": "explore/paired-references/v1/00668599a9f4611a013ec756bc5d5c412bd3c1bf1bfadbca8f270076632fb142.mp4",
+        "contentType": "video/mp4",
+        "bytes": 787688,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\00668599a9f4611a013ec756bc5d5c412bd3c1bf1bfadbca8f270076632fb142.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 93,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 6,
+      "folder": "New folder (6)",
+      "referenceId": "explore-paired-hook-5ff13d95c5d500d082396654",
+      "title": "notbeen2 set 6",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (6)\\e464-8179-4dbc-90da-6a21775634dc.mp4",
+        "sha256": "76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0",
+        "duration": 3.866667,
+        "decodedFrames": 116,
+        "sourceUrl": "https://www.tiktok.com/@kay444tldl/video/7478818137685708054",
+        "sourceFirstPts": 0,
+        "sourceLastPts": 3.833333
+      },
+      "retainedVideo": {
+        "sha256": "76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0",
+        "file": "76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0.mp4",
+        "key": "explore/paired-references/v1/76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0.mp4",
+        "contentType": "video/mp4",
+        "bytes": 593999,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0.mp4",
+        "durationSeconds": 3.866667,
+        "frames": 116,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 116,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4",
+        "file": "6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4.mp3",
+        "key": "explore/paired-references/v1/6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 208606,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4.mp3",
+        "durationSeconds": 13.035063,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "a3cc21a458e0685c5d6ccb02360029c5b01461a358bc33384c3b668f34b567d7",
+        "file": "a3cc21a458e0685c5d6ccb02360029c5b01461a358bc33384c3b668f34b567d7.png",
+        "key": "explore/paired-references/v1/a3cc21a458e0685c5d6ccb02360029c5b01461a358bc33384c3b668f34b567d7.png",
+        "contentType": "image/png",
+        "bytes": 308739,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\a3cc21a458e0685c5d6ccb02360029c5b01461a358bc33384c3b668f34b567d7.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "84a0ac53fa7dc505600021e642d33cbfa036970d8d499093e59ed04482d9d14a",
+        "file": "84a0ac53fa7dc505600021e642d33cbfa036970d8d499093e59ed04482d9d14a.jpg",
+        "key": "explore/paired-references/v1/84a0ac53fa7dc505600021e642d33cbfa036970d8d499093e59ed04482d9d14a.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 18012,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\84a0ac53fa7dc505600021e642d33cbfa036970d8d499093e59ed04482d9d14a.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.1,
+          "startFrame": 0,
+          "endFrameExclusive": 3,
+          "action": "Hold the skeptical parted-lip sideward stare."
+        },
+        {
+          "startSeconds": 0.1,
+          "endSeconds": 0.4,
+          "startFrame": 3,
+          "endFrameExclusive": 12,
+          "action": "Raise sleeve-covered hand from screen-left and curl knuckles/fingers against mouth."
+        },
+        {
+          "startSeconds": 0.4,
+          "endSeconds": 1.6,
+          "startFrame": 12,
+          "endFrameExclusive": 48,
+          "action": "Hold knuckles at lips, maintaining sideward gaze and small eye changes."
+        },
+        {
+          "startSeconds": 1.6,
+          "endSeconds": 2.466667,
+          "startFrame": 48,
+          "endFrameExclusive": 74,
+          "action": "Bring gaze nearer lens with wide eyes and hand still at lips."
+        },
+        {
+          "startSeconds": 2.466667,
+          "endSeconds": 2.9,
+          "startFrame": 74,
+          "endFrameExclusive": 87,
+          "action": "Lower hand away from mouth and toward lower foreground."
+        },
+        {
+          "startSeconds": 2.9,
+          "endSeconds": 3.5,
+          "startFrame": 87,
+          "endFrameExclusive": 105,
+          "action": "Keep hand out of view and edge nearer lens with lips parted and brows knitted."
+        },
+        {
+          "startSeconds": 3.5,
+          "endSeconds": 3.866667,
+          "startFrame": 105,
+          "endFrameExclusive": 116,
+          "action": "Finish very close, glance slightly down with the same puzzled parted mouth; no second cover gesture."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Close indoor selfie, black zip hoodie with white zipper, long dark hair, gold hoop earrings; cream ceiling and light behind head. Lips parted, brows drawn, gaze screen-left, hand initially below frame.",
+        "camera": "Small handheld bob; move closer after hand lowers, finishing tight face view.",
+        "endingState": "Uncovered close face, mouth parted with furrowed brows and gaze toward lens/slightly downward; hand out of view.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.02586206673602873]: Hold the skeptical parted-lip sideward stare."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.02586206673602873–0.10344826694411492]: Raise sleeve-covered hand from screen-left and curl knuckles/fingers against mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.10344826694411492–0.4137930677764597]: Hold knuckles at lips, maintaining sideward gaze and small eye changes."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4137930677764597–0.6379310656955978]: Bring gaze nearer lens with wide eyes and hand still at lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6379310656955978–0.7499999353448331]: Lower hand away from mouth and toward lower foreground."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7499999353448331–0.9051723357610055]: Keep hand out of view and edge nearer lens with lips parted and brows knitted."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.9051723357610055–1]: Finish very close, glance slightly down with the same puzzled parted mouth; no second cover gesture."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Close indoor selfie, black zip hoodie with white zipper, long dark hair, gold hoop earrings; cream ceiling and light behind head. Lips parted, brows drawn, gaze screen-left, hand initially below frame. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: ive been studying for 4YEARS and i just found this now... like wtf 😭. Location: Center/lower face and chest; absent in final source frames. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Close indoor selfie, black zip hoodie with white zipper, long dark hair, gold hoop earrings; cream ceiling and light behind head. Lips parted, brows drawn, gaze screen-left, hand initially below frame.\n\nOPENING: 0–0.08s: Hold the skeptical parted-lip sideward stare.\n\nMIDDLE: 0.08–0.31s: Raise sleeve-covered hand from screen-left and curl knuckles/fingers against mouth.\n\nMIDDLE: 0.31–1.24s: Hold knuckles at lips, maintaining sideward gaze and small eye changes.\n\nMIDDLE: 1.24–1.91s: Bring gaze nearer lens with wide eyes and hand still at lips.\n\nMIDDLE: 1.91–2.25s: Lower hand away from mouth and toward lower foreground.\n\nMIDDLE: 2.25–2.72s: Keep hand out of view and edge nearer lens with lips parted and brows knitted.\n\nENDING: 2.72–3s: Finish very close, glance slightly down with the same puzzled parted mouth; no second cover gesture.\n\nCAMERA: Small handheld bob; move closer after hand lowers, finishing tight face view.\n\nENDING STATE: Uncovered close face, mouth parted with furrowed brows and gaze toward lens/slightly downward; hand out of view.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-06/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-06/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "ive been studying for 4YEARS and i just found this now... like wtf 😭",
+        "region": "Center/lower face and chest; absent in final source frames.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 116,
+        "contactSheets": 4,
+        "fullResolutionIndices": [
+          0,
+          115
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-06"
+      },
+      "risks": [
+        "Do not turn the curled knuckle cover into a spread palm or invent a held object."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "9eb6bb4dfda56885b362f95d1d5af2b0d835895748336a11948a41bac8f7a0d2",
+        "file": "9eb6bb4dfda56885b362f95d1d5af2b0d835895748336a11948a41bac8f7a0d2.mp4",
+        "key": "explore/paired-references/v1/9eb6bb4dfda56885b362f95d1d5af2b0d835895748336a11948a41bac8f7a0d2.mp4",
+        "contentType": "video/mp4",
+        "bytes": 660229,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\9eb6bb4dfda56885b362f95d1d5af2b0d835895748336a11948a41bac8f7a0d2.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 116,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 7,
+      "folder": "New folder (7)",
+      "referenceId": "explore-paired-hook-67a4dfa083841f0ed47aa672",
+      "title": "notbeen2 set 7",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (7)\\e941-4534-45cf-8bab-0d104dd3bebd.mp4",
+        "sha256": "db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4",
+        "duration": 4.533333,
+        "decodedFrames": 136,
+        "sourceUrl": "https://www.tiktok.com/@emmie.solo.travel/video/7555133613725977870",
+        "sourceFirstPts": 0,
+        "sourceLastPts": 4.5
+      },
+      "retainedVideo": {
+        "sha256": "db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4",
+        "file": "db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4.mp4",
+        "key": "explore/paired-references/v1/db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4.mp4",
+        "contentType": "video/mp4",
+        "bytes": 822540,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4.mp4",
+        "durationSeconds": 4.533333,
+        "frames": 136,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 136,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "a4bc9b030c5aad50f56456a96eb1552c6eecd9db6925e02bb647f466ee03acee",
+        "file": "a4bc9b030c5aad50f56456a96eb1552c6eecd9db6925e02bb647f466ee03acee.mp3",
+        "key": "explore/paired-references/v1/a4bc9b030c5aad50f56456a96eb1552c6eecd9db6925e02bb647f466ee03acee.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 491697,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\a4bc9b030c5aad50f56456a96eb1552c6eecd9db6925e02bb647f466ee03acee.mp3",
+        "durationSeconds": 59.953991,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "da493115b7d87be988d2a67c400cc54b0f766e1df5ccecfe5afb8e1d6cfe0a7a",
+        "file": "da493115b7d87be988d2a67c400cc54b0f766e1df5ccecfe5afb8e1d6cfe0a7a.png",
+        "key": "explore/paired-references/v1/da493115b7d87be988d2a67c400cc54b0f766e1df5ccecfe5afb8e1d6cfe0a7a.png",
+        "contentType": "image/png",
+        "bytes": 398479,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\da493115b7d87be988d2a67c400cc54b0f766e1df5ccecfe5afb8e1d6cfe0a7a.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "28d518aeb27f59e3055850f31e3e7a78223d5fc64afd7e53779991dcceaa5b91",
+        "file": "28d518aeb27f59e3055850f31e3e7a78223d5fc64afd7e53779991dcceaa5b91.jpg",
+        "key": "explore/paired-references/v1/28d518aeb27f59e3055850f31e3e7a78223d5fc64afd7e53779991dcceaa5b91.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 23178,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\28d518aeb27f59e3055850f31e3e7a78223d5fc64afd7e53779991dcceaa5b91.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.566667,
+          "startFrame": 0,
+          "endFrameExclusive": 17,
+          "action": "Hold upward screen-right side glance with slightly parted lips."
+        },
+        {
+          "startSeconds": 0.566667,
+          "endSeconds": 0.8,
+          "startFrame": 17,
+          "endFrameExclusive": 24,
+          "action": "Lower eyes toward something below frame, briefly narrowing eyelids."
+        },
+        {
+          "startSeconds": 0.8,
+          "endSeconds": 1.866667,
+          "startFrame": 24,
+          "endFrameExclusive": 56,
+          "action": "Look nearer lens and hold the restrained questioning expression."
+        },
+        {
+          "startSeconds": 1.866667,
+          "endSeconds": 2.1,
+          "startFrame": 56,
+          "endFrameExclusive": 63,
+          "action": "Lower eyes again through a brief blink."
+        },
+        {
+          "startSeconds": 2.1,
+          "endSeconds": 3.2,
+          "startFrame": 63,
+          "endFrameExclusive": 96,
+          "action": "Return gaze up screen-right and hold while keeping head almost still."
+        },
+        {
+          "startSeconds": 3.2,
+          "endSeconds": 3.466667,
+          "startFrame": 96,
+          "endFrameExclusive": 104,
+          "action": "Glance downward once more with small eyelid movement."
+        },
+        {
+          "startSeconds": 3.466667,
+          "endSeconds": 4.533333,
+          "startFrame": 104,
+          "endFrameExclusive": 136,
+          "action": "Return attention nearer lens/downward and finish quietly, mouth still slightly parted and hands out of frame."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Close indoor portrait in blue sleeveless athletic top, hair tied up, warm wood ceiling beams and green hanging lamp behind screen-right. Face angled slightly down, eyes looking screen-right and lips just parted.",
+        "camera": "Almost static handheld selfie, tiny drift only; no late zoom, reach or cut.",
+        "endingState": "Eyes back toward lens/downward with lips gently parted; hands remain below frame and background fixed.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.12500008272059432]: Hold upward screen-right side glance with slightly parted lips."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.12500008272059432–0.17647060121107364]: Lower eyes toward something below frame, briefly narrowing eyelids."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.17647060121107364–0.411764809688589]: Look nearer lens and hold the restrained questioning expression."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.411764809688589–0.46323532817906826]: Lower eyes again through a brief blink."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.46323532817906826–0.7058824048442945]: Return gaze up screen-right and hold while keeping head almost still."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7058824048442945–0.7647060121107363]: Glance downward once more with small eyelid movement."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.7647060121107363–1]: Return attention nearer lens/downward and finish quietly, mouth still slightly parted and hands out of frame."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Close indoor portrait in blue sleeveless athletic top, hair tied up, warm wood ceiling beams and green hanging lamp behind screen-right. Face angled slightly down, eyes looking screen-right and lips just parted. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: not to be dramatic but this random boy in my hostel just showed me this and.. i’m never staying in a hostel again lol. Location: Upper translucent black banner. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Close indoor portrait in blue sleeveless athletic top, hair tied up, warm wood ceiling beams and green hanging lamp behind screen-right. Face angled slightly down, eyes looking screen-right and lips just parted.\n\nOPENING: 0–0.38s: Hold upward screen-right side glance with slightly parted lips.\n\nMIDDLE: 0.38–0.53s: Lower eyes toward something below frame, briefly narrowing eyelids.\n\nMIDDLE: 0.53–1.24s: Look nearer lens and hold the restrained questioning expression.\n\nMIDDLE: 1.24–1.39s: Lower eyes again through a brief blink.\n\nMIDDLE: 1.39–2.12s: Return gaze up screen-right and hold while keeping head almost still.\n\nMIDDLE: 2.12–2.29s: Glance downward once more with small eyelid movement.\n\nENDING: 2.29–3s: Return attention nearer lens/downward and finish quietly, mouth still slightly parted and hands out of frame.\n\nCAMERA: Almost static handheld selfie, tiny drift only; no late zoom, reach or cut.\n\nENDING STATE: Eyes back toward lens/downward with lips gently parted; hands remain below frame and background fixed.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-07/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-07/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "not to be dramatic but this random boy in my hostel just showed me this and.. i’m never staying in a hostel again lol",
+        "region": "Upper translucent black banner.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 136,
+        "contactSheets": 5,
+        "fullResolutionIndices": [
+          0,
+          135
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-07"
+      },
+      "risks": [
+        "No phone or prop is visible: do not invent the object being looked at."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": "Confirm pacing before compressing this longer retained source to3s.",
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "1d4ef4ae27797cdb7382641bcfe040e9faee81decd78478d84c5e68e60d91ec8",
+        "file": "1d4ef4ae27797cdb7382641bcfe040e9faee81decd78478d84c5e68e60d91ec8.mp4",
+        "key": "explore/paired-references/v1/1d4ef4ae27797cdb7382641bcfe040e9faee81decd78478d84c5e68e60d91ec8.mp4",
+        "contentType": "video/mp4",
+        "bytes": 899187,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\1d4ef4ae27797cdb7382641bcfe040e9faee81decd78478d84c5e68e60d91ec8.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 136,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 8,
+      "folder": "New folder (8)",
+      "referenceId": "explore-paired-hook-1ab171e057013facbab6f1d0",
+      "title": "notbeen2 set 8",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (8)\\muted_5d7b9418.mp4",
+        "sha256": "f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef",
+        "duration": 3.033333,
+        "decodedFrames": 91,
+        "sourceUrl": "https://www.tiktok.com/@yashsolotravel/video/7564146034193042710",
+        "sourceFirstPts": 0.066016,
+        "sourceLastPts": 3.066016
+      },
+      "retainedVideo": {
+        "sha256": "f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef",
+        "file": "f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef.mp4",
+        "key": "explore/paired-references/v1/f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef.mp4",
+        "contentType": "video/mp4",
+        "bytes": 604435,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef.mp4",
+        "durationSeconds": 3.033333,
+        "frames": 91,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 91,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "486d51877209ee7c3f8347fe0da2891135a7aa9ea220d37ddd4107c18464bb56",
+        "file": "486d51877209ee7c3f8347fe0da2891135a7aa9ea220d37ddd4107c18464bb56.mp3",
+        "key": "explore/paired-references/v1/486d51877209ee7c3f8347fe0da2891135a7aa9ea220d37ddd4107c18464bb56.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 669089,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\486d51877209ee7c3f8347fe0da2891135a7aa9ea220d37ddd4107c18464bb56.mp3",
+        "durationSeconds": 27.795692,
+        "origin": "user_approved_existing_default_hook_audio_006",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "162a9bf45c2b651e5268aafdb3cad4d66b812f2e4adccd8a1e5f1809f98b9685",
+        "file": "162a9bf45c2b651e5268aafdb3cad4d66b812f2e4adccd8a1e5f1809f98b9685.png",
+        "key": "explore/paired-references/v1/162a9bf45c2b651e5268aafdb3cad4d66b812f2e4adccd8a1e5f1809f98b9685.png",
+        "contentType": "image/png",
+        "bytes": 364949,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\162a9bf45c2b651e5268aafdb3cad4d66b812f2e4adccd8a1e5f1809f98b9685.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0.066016,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "22eb38dbb1dc851a821d8e572a4450ba0414110653ae93e00ed875bd69ef6541",
+        "file": "22eb38dbb1dc851a821d8e572a4450ba0414110653ae93e00ed875bd69ef6541.jpg",
+        "key": "explore/paired-references/v1/22eb38dbb1dc851a821d8e572a4450ba0414110653ae93e00ed875bd69ef6541.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 23269,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\22eb38dbb1dc851a821d8e572a4450ba0414110653ae93e00ed875bd69ef6541.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.2999999999999998,
+          "startFrame": 0,
+          "endFrameExclusive": 39,
+          "action": "Continue walking, looking toward lens with relaxed parted lips as view bobs with footsteps."
+        },
+        {
+          "startSeconds": 1.2999999999999998,
+          "endSeconds": 1.666666,
+          "startFrame": 39,
+          "endFrameExclusive": 50,
+          "action": "Tilt head a little and glance sideways briefly, keeping restrained skeptical mouth."
+        },
+        {
+          "startSeconds": 1.666666,
+          "endSeconds": 2.1333330000000004,
+          "startFrame": 50,
+          "endFrameExclusive": 64,
+          "action": "Return gaze toward lens with brows slightly lifted."
+        },
+        {
+          "startSeconds": 2.1333330000000004,
+          "endSeconds": 2.566666,
+          "startFrame": 64,
+          "endFrameExclusive": 77,
+          "action": "Open mouth a little wider, then begin forming an amused smile while walking."
+        },
+        {
+          "startSeconds": 2.566666,
+          "endSeconds": 3.033333,
+          "startFrame": 77,
+          "endFrameExclusive": 91,
+          "action": "Finish with small tooth-visible smile and narrowed pleased eyes as low handheld view continues bobbing."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Low handheld outdoor walking selfie in black jacket over dark hoodie, backpack straps and diagonal colorful pin-covered strap, white earbuds. Neutral/puzzled parted lips toward lens; pale sky and brick facades.",
+        "camera": "Continuous walking bob and gentle tilt with passing street facades; retain physical street perspective, no desk or cut.",
+        "endingState": "Closer walking selfie with small tooth-visible amused smile, dark jacket, straps and earbuds retained.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.4285714756671951]: Continue walking, looking toward lens with relaxed parted lips as view bobs with footsteps."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.4285714756671951–0.5494503900494935]: Tilt head a little and glance sideways briefly, keeping restrained skeptical mouth."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5494503900494935–0.703296670691942]: Return gaze toward lens with brows slightly lifted."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.703296670691942–0.8461537193575517]: Open mouth a little wider, then begin forming an amused smile while walking."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.8461537193575517–1]: Finish with small tooth-visible smile and narrowed pleased eyes as low handheld view continues bobbing."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Low handheld outdoor walking selfie in black jacket over dark hoodie, backpack straps and diagonal colorful pin-covered strap, white earbuds. Neutral/puzzled parted lips toward lens; pale sky and brick facades. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: 3 years solo traveling and NOW i find this? 💀. Location: Upper black translucent banner. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Low handheld outdoor walking selfie in black jacket over dark hoodie, backpack straps and diagonal colorful pin-covered strap, white earbuds. Neutral/puzzled parted lips toward lens; pale sky and brick facades.\n\nOPENING: 0–1.29s: Continue walking, looking toward lens with relaxed parted lips as view bobs with footsteps.\n\nMIDDLE: 1.29–1.65s: Tilt head a little and glance sideways briefly, keeping restrained skeptical mouth.\n\nMIDDLE: 1.65–2.11s: Return gaze toward lens with brows slightly lifted.\n\nMIDDLE: 2.11–2.54s: Open mouth a little wider, then begin forming an amused smile while walking.\n\nENDING: 2.54–3s: Finish with small tooth-visible smile and narrowed pleased eyes as low handheld view continues bobbing.\n\nCAMERA: Continuous walking bob and gentle tilt with passing street facades; retain physical street perspective, no desk or cut.\n\nENDING STATE: Closer walking selfie with small tooth-visible amused smile, dark jacket, straps and earbuds retained.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-08/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-08/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "3 years solo traveling and NOW i find this? 💀",
+        "region": "Upper black translucent banner.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 91,
+        "contactSheets": 4,
+        "fullResolutionIndices": [
+          0,
+          90
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-08"
+      },
+      "risks": [
+        "Preserve strap and backpack continuity, avoid generating new pins that mutate.",
+        "Default background music specifically approved by user; generation itself silent."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "22bd98a2982be7bfa66c8f8db7fd732fcc7be02c771dd64f4b232fc255db8bb8",
+        "file": "22bd98a2982be7bfa66c8f8db7fd732fcc7be02c771dd64f4b232fc255db8bb8.mp4",
+        "key": "explore/paired-references/v1/22bd98a2982be7bfa66c8f8db7fd732fcc7be02c771dd64f4b232fc255db8bb8.mp4",
+        "contentType": "video/mp4",
+        "bytes": 656790,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\22bd98a2982be7bfa66c8f8db7fd732fcc7be02c771dd64f4b232fc255db8bb8.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 91,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 9,
+      "folder": "New folder (9)",
+      "referenceId": "explore-paired-hook-463165a281dab247a37fd485",
+      "title": "notbeen2 set 9",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (9)\\muted_ad0fe48e.mp4",
+        "sha256": "12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3",
+        "duration": 3.4,
+        "decodedFrames": 102,
+        "sourceUrl": "https://www.tiktok.com/@internet.hoarder/video/7660139137521011990",
+        "sourceFirstPts": 0.066016,
+        "sourceLastPts": 3.432682
+      },
+      "retainedVideo": {
+        "sha256": "12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3",
+        "file": "12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3.mp4",
+        "key": "explore/paired-references/v1/12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3.mp4",
+        "contentType": "video/mp4",
+        "bytes": 597393,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3.mp4",
+        "durationSeconds": 3.4,
+        "frames": 102,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 102,
+        "derivative": false,
+        "derivativePolicy": "Original bytes retained."
+      },
+      "audio": {
+        "sha256": "fb6f83281cb9b09982cb33cca5cab46265c7150eebc82ff492d1f5e6253b3d2d",
+        "file": "fb6f83281cb9b09982cb33cca5cab46265c7150eebc82ff492d1f5e6253b3d2d.mp3",
+        "key": "explore/paired-references/v1/fb6f83281cb9b09982cb33cca5cab46265c7150eebc82ff492d1f5e6253b3d2d.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 280913,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\fb6f83281cb9b09982cb33cca5cab46265c7150eebc82ff492d1f5e6253b3d2d.mp3",
+        "durationSeconds": 17.55425,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "62ed1ca89bf9dbe6304605c754f1cc52443acd1f47e7dfc6b939f2ae58792f6f",
+        "file": "62ed1ca89bf9dbe6304605c754f1cc52443acd1f47e7dfc6b939f2ae58792f6f.png",
+        "key": "explore/paired-references/v1/62ed1ca89bf9dbe6304605c754f1cc52443acd1f47e7dfc6b939f2ae58792f6f.png",
+        "contentType": "image/png",
+        "bytes": 383543,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\62ed1ca89bf9dbe6304605c754f1cc52443acd1f47e7dfc6b939f2ae58792f6f.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0.066016,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "d4565a4e34bec5ad4467434a67536f335c2239aaee88c57bb34f62215f24ba14",
+        "file": "d4565a4e34bec5ad4467434a67536f335c2239aaee88c57bb34f62215f24ba14.jpg",
+        "key": "explore/paired-references/v1/d4565a4e34bec5ad4467434a67536f335c2239aaee88c57bb34f62215f24ba14.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 19299,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\d4565a4e34bec5ad4467434a67536f335c2239aaee88c57bb34f62215f24ba14.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.6666660000000001,
+          "startFrame": 0,
+          "endFrameExclusive": 20,
+          "action": "Hold wide eyes and pursed skeptical lips with no glasses on face."
+        },
+        {
+          "startSeconds": 0.6666660000000001,
+          "endSeconds": 1.2666659999999998,
+          "startFrame": 20,
+          "endFrameExclusive": 38,
+          "action": "Let lips soften into small amused smile as view edges closer."
+        },
+        {
+          "startSeconds": 1.2666659999999998,
+          "endSeconds": 1.7666659999999998,
+          "startFrame": 38,
+          "endFrameExclusive": 53,
+          "action": "Raise black eyeglasses from below frame, holding outer corner with screen-right hand, and guide them toward nose."
+        },
+        {
+          "startSeconds": 1.7666659999999998,
+          "endSeconds": 2.2666660000000003,
+          "startFrame": 53,
+          "endFrameExclusive": 68,
+          "action": "Seat glasses over nose and ears; fingertips stay at screen-right temple corner while smile continues."
+        },
+        {
+          "startSeconds": 2.2666660000000003,
+          "endSeconds": 2.566666,
+          "startFrame": 68,
+          "endFrameExclusive": 77,
+          "action": "Release glasses and lower hand, leaving them on."
+        },
+        {
+          "startSeconds": 2.566666,
+          "endSeconds": 3,
+          "startFrame": 77,
+          "endFrameExclusive": 90,
+          "action": "Tilt view briefly upward with small bob, expanding visible ceiling and moving face lower."
+        },
+        {
+          "startSeconds": 3,
+          "endSeconds": 3.4,
+          "startFrame": 90,
+          "endFrameExclusive": 102,
+          "action": "Approach rapidly into extreme off-center face/glasses close-up, preserving glasses and ending with substantial edge crop."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Close warm indoor selfie against pale yellow seat/back panel and textured beige wall; hair pinned back, white top and earrings. Wide eyes, raised brows, tightly pursed sideways/downturned lips; no glasses on face.",
+        "camera": "Gradually move closer; after glasses are fitted, brief upward tilt reveals ceiling, followed by an extreme face/glasses approach and edge crop.",
+        "endingState": "Extreme cropped face with glasses on, bridge and lens filling much of image, faint amused smile only partly visible.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.1960782352941177]: Hold wide eyes and pursed skeptical lips with no glasses on face."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.1960782352941177–0.3725488235294117]: Let lips soften into small amused smile as view edges closer."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.3725488235294117–0.5196076470588235]: Raise black eyeglasses from below frame, holding outer corner with screen-right hand, and guide them toward nose."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5196076470588235–0.6666664705882354]: Seat glasses over nose and ears; fingertips stay at screen-right temple corner while smile continues."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6666664705882354–0.7549017647058824]: Release glasses and lower hand, leaving them on."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7549017647058824–0.8823529411764706]: Tilt view briefly upward with small bob, expanding visible ceiling and moving face lower."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.8823529411764706–1]: Approach rapidly into extreme off-center face/glasses close-up, preserving glasses and ending with substantial edge crop."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Close warm indoor selfie against pale yellow seat/back panel and textured beige wall; hair pinned back, white top and earrings. Wide eyes, raised brows, tightly pursed sideways/downturned lips; no glasses on face. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: sorry but ig’s new update is crazyyyy. Location: Upper center on beige wall. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Close warm indoor selfie against pale yellow seat/back panel and textured beige wall; hair pinned back, white top and earrings. Wide eyes, raised brows, tightly pursed sideways/downturned lips; no glasses on face.\n\nOPENING: 0–0.59s: Hold wide eyes and pursed skeptical lips with no glasses on face.\n\nMIDDLE: 0.59–1.12s: Let lips soften into small amused smile as view edges closer.\n\nMIDDLE: 1.12–1.56s: Raise black eyeglasses from below frame, holding outer corner with screen-right hand, and guide them toward nose.\n\nMIDDLE: 1.56–2s: Seat glasses over nose and ears; fingertips stay at screen-right temple corner while smile continues.\n\nMIDDLE: 2–2.26s: Release glasses and lower hand, leaving them on.\n\nMIDDLE: 2.26–2.65s: Tilt view briefly upward with small bob, expanding visible ceiling and moving face lower.\n\nENDING: 2.65–3s: Approach rapidly into extreme off-center face/glasses close-up, preserving glasses and ending with substantial edge crop.\n\nCAMERA: Gradually move closer; after glasses are fitted, brief upward tilt reveals ceiling, followed by an extreme face/glasses approach and edge crop.\n\nENDING STATE: Extreme cropped face with glasses on, bridge and lens filling much of image, faint amused smile only partly visible.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-09/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-09/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "sorry but ig’s new update is crazyyyy",
+        "region": "Upper center on beige wall.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 102,
+        "contactSheets": 4,
+        "fullResolutionIndices": [
+          0,
+          101
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-09"
+      },
+      "risks": [
+        "Glasses are put ON, not removed. Preserve grip/contact while fitting.",
+        "Do not end in centered medium shot after the close approach."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "8e685706670535228b205cd5627d47d44a2964ef7137d4c98ba78cfaf741206e",
+        "file": "8e685706670535228b205cd5627d47d44a2964ef7137d4c98ba78cfaf741206e.mp4",
+        "key": "explore/paired-references/v1/8e685706670535228b205cd5627d47d44a2964ef7137d4c98ba78cfaf741206e.mp4",
+        "contentType": "video/mp4",
+        "bytes": 658329,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\8e685706670535228b205cd5627d47d44a2964ef7137d4c98ba78cfaf741206e.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 102,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    },
+    {
+      "set": 10,
+      "folder": "New folder (10)",
+      "referenceId": "explore-paired-hook-f7b3d556cfc17d49f0ebab57",
+      "title": "notbeen2 set 10",
+      "route": "normal",
+      "originalSource": {
+        "file": "D:\\hookswithlinks\\notbeen2\\New folder (10)\\muted_snaptik_7480087749635149078_v3.mp4",
+        "sha256": "f17ace30f623ad536c7fd54d54724c9f81223a1d059085d6037b93f836998c39",
+        "duration": 12.366667,
+        "decodedFrames": 371,
+        "sourceUrl": "https://www.tiktok.com/@kay444tldl/video/7480087749635149078",
+        "sourceFirstPts": 0,
+        "sourceLastPts": 12.333333
+      },
+      "retainedVideo": {
+        "sha256": "aa0c2831ceb52b95c7804e8e1465101ffad9dd77bd784c146485a8c82bf0a0ae",
+        "file": "aa0c2831ceb52b95c7804e8e1465101ffad9dd77bd784c146485a8c82bf0a0ae.mp4",
+        "key": "explore/paired-references/v1/aa0c2831ceb52b95c7804e8e1465101ffad9dd77bd784c146485a8c82bf0a0ae.mp4",
+        "contentType": "video/mp4",
+        "bytes": 7919493,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\aa0c2831ceb52b95c7804e8e1465101ffad9dd77bd784c146485a8c82bf0a0ae.mp4",
+        "durationSeconds": 3.966667,
+        "frames": 119,
+        "originalSourceStartFrame": 0,
+        "originalSourceEndExclusive": 119,
+        "derivative": true,
+        "derivativePolicy": "User approved opening reaction only; lossless decoded-frame trim before frame119 demo cut; no original modification."
+      },
+      "audio": {
+        "sha256": "6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4",
+        "file": "6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4.mp3",
+        "key": "explore/paired-references/v1/6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4.mp3",
+        "contentType": "audio/mpeg",
+        "bytes": 208606,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\6279762bd80f91712b49592ec12ebdfbd32d352824cb143cd032c28967dc60e4.mp3",
+        "durationSeconds": 13.035063,
+        "origin": "supplied_mp3",
+        "embeddedOriginalAudioUsed": false
+      },
+      "startingFrame": {
+        "sha256": "ef63fffc5524ba75e8de79c6a5fa1282a144cd0701c5f63b95c0dffeebbd6dbe",
+        "file": "ef63fffc5524ba75e8de79c6a5fa1282a144cd0701c5f63b95c0dffeebbd6dbe.png",
+        "key": "explore/paired-references/v1/ef63fffc5524ba75e8de79c6a5fa1282a144cd0701c5f63b95c0dffeebbd6dbe.png",
+        "contentType": "image/png",
+        "bytes": 373444,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\ef63fffc5524ba75e8de79c6a5fa1282a144cd0701c5f63b95c0dffeebbd6dbe.png",
+        "sourceFrameIndex": 0,
+        "sourceElapsedSeconds": 0,
+        "sourcePresentationSeconds": 0,
+        "role": "source_scene_pose",
+        "sourceQuality": {
+          "faceVisibility": 4,
+          "sharpness": 4,
+          "scenePose": 5,
+          "continuity": 5,
+          "scale": "0–5 subjective review",
+          "reason": "Opening face landmarks sufficiently visible for a source-matched starting-image test; preserve existing hand/pose. No later clarity frame selected."
+        }
+      },
+      "poster": {
+        "sha256": "659622df3596a77c5e8ff2646da1fc91c810a04bc8e16bd20839146f8a6bc655",
+        "file": "659622df3596a77c5e8ff2646da1fc91c810a04bc8e16bd20839146f8a6bc655.jpg",
+        "key": "explore/paired-references/v1/659622df3596a77c5e8ff2646da1fc91c810a04bc8e16bd20839146f8a6bc655.jpg",
+        "contentType": "image/jpeg",
+        "bytes": 21056,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\659622df3596a77c5e8ff2646da1fc91c810a04bc8e16bd20839146f8a6bc655.jpg"
+      },
+      "sourceIntervals": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 2.2,
+          "startFrame": 0,
+          "endFrameExclusive": 66,
+          "action": "Hold open-mouth puzzled stare toward laptop, with hands low at desk and pink pen gripped; preserve the long opening pause."
+        },
+        {
+          "startSeconds": 2.2,
+          "endSeconds": 2.6,
+          "startFrame": 66,
+          "endFrameExclusive": 78,
+          "action": "Lift the pen-holding hand slightly while the other hand begins leaving desk toward camera."
+        },
+        {
+          "startSeconds": 2.6,
+          "endSeconds": 2.9,
+          "startFrame": 78,
+          "endFrameExclusive": 87,
+          "action": "Draw hands farther from keyboard/notebook and start the camera-reaching transition; pen remains associated with its same hand until out of view."
+        },
+        {
+          "startSeconds": 2.9,
+          "endSeconds": 3.033333,
+          "startFrame": 87,
+          "endFrameExclusive": 91,
+          "action": "Begin irregular handheld movement, blurring and shifting view sideways/upward; body slides partly off screen-right."
+        },
+        {
+          "startSeconds": 3.033333,
+          "endSeconds": 3.5,
+          "startFrame": 91,
+          "endFrameExclusive": 105,
+          "action": "Tilt farther upward across ceiling/pendant, then bring the view back toward the performer; preserve the brief blurred off-center framing."
+        },
+        {
+          "startSeconds": 3.5,
+          "endSeconds": 3.966667,
+          "startFrame": 105,
+          "endFrameExclusive": 119,
+          "action": "Settle nearer into low-angle frontal face with mouth parted and drawn brows; finish in this close reaction without a scene cut."
+        }
+      ],
+      "candidatePlan": {
+        "openingState": "Desk-height portrait, black long-sleeve top, long dark hair, puzzled drawn brows and open mouth toward laptop screen-left. Hands low over desk, bright pink pen held near notebook with pink scribbles; pale room, sliding doors and ceiling pendant.",
+        "camera": "Opening desk view mostly still; hands lift away, then strong irregular handheld reframe tilts up across ceiling and returns toward a closer low-angle face.",
+        "endingState": "Close front face below ceiling pendant, mouth parted, brows drawn and hands out of the tight crop.",
+        "constraints": [
+          "Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts."
+        ],
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.5546218021326217]: Hold open-mouth puzzled stare toward laptop, with hands low at desk and pink pen gripped; preserve the long opening pause."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5546218021326217–0.6554621297930984]: Lift the pen-holding hand slightly while the other hand begins leaving desk toward camera."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.6554621297930984–0.7310923755384557]: Draw hands farther from keyboard/notebook and start the camera-reaching transition; pen remains associated with its same hand until out of view."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7310923755384557–0.7647057340583416]: Begin irregular handheld movement, blurring and shifting view sideways/upward; body slides partly off screen-right."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7647057340583416–0.8823528670291708]: Tilt farther upward across ceiling/pendant, then bring the view back toward the performer; preserve the brief blurred off-center framing."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.8823528670291708–1]: Settle nearer into low-angle frontal face with mouth parted and drawn brows; finish in this close reaction without a scene cut."
+          }
+        ]
+      },
+      "startingImagePrompt": "Generate a new photograph of my influencer shown in Image 2 (MY_INFLUENCER). Use Image 1 (VISUAL_REFERENCE) to understand how I want my influencer to be photographed: the setting, composition, pose and expression. Show my influencer in that situation, with their own recognizable face and natural appearance.\n\nPERSON — Image 2 is the main face photo of my influencer. Use their facial features and proportions: face shape, eye shape and spacing, brows, nose, lips, jawline and natural skin detail. Keep their recognizable appearance as you depict the reference pose and expression.\n\nImage 2 is the only identity photo; do not infer additional photo inputs.\n\nVISUAL DIRECTION — Use Image 1 as a guide for the environment, camera angle, framing, subject placement, clothing, lighting, body pose, head angle, gaze and expression. Depict my influencer performing the visible gesture, including any held objects and any parts of the face covered by hands or objects. Compose the scene naturally around my influencer; recognizable likeness takes priority over copying the reference person's facial appearance or exact facial geometry.\n\nOUTPUT — Return one complete photograph with the same aspect ratio as Image 1. Omit creator-added captions, hook text, subtitles, emojis and graphic overlays. Preserve text physically belonging to objects in the scene unless the user's image instructions ask otherwise. Use realistic skin texture without beauty filters or artificial smoothing. No added borders or watermarks.\n\nApply explicit user-requested image changes below. Create a still photograph for review before video generation.\n\nUSER IMAGE INSTRUCTIONS:\nORIGINAL t=0 ONLY: Desk-height portrait, black long-sleeve top, long dark hair, puzzled drawn brows and open mouth toward laptop screen-left. Hands low over desk, bright pink pen held near notebook with pink scribbles; pale room, sliding doors and ceiling pendant. Preserve this opening viewpoint, crop, pose, hands, props and occlusion; do not depict the later action or import the influencer portrait room/clothes. REQUIRED OVERLAY REMOVAL: erase the entire creator-added caption, symbols, outlines, shadows and banner: POV: you have an exam TOMORROW and JUST found this now 💀. Location: Center/lower over hands and torso in opening reaction. Reconstruct the photographic detail underneath, not a blur or crop. The quoted words identify text to erase, never text to generate. Use Image2 only for the selected influencer identity. Keep the physical scene unchanged; one still for visual review before animation.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Desk-height portrait, black long-sleeve top, long dark hair, puzzled drawn brows and open mouth toward laptop screen-left. Hands low over desk, bright pink pen held near notebook with pink scribbles; pale room, sliding doors and ceiling pendant.\n\nOPENING: 0–1.66s: Hold open-mouth puzzled stare toward laptop, with hands low at desk and pink pen gripped; preserve the long opening pause.\n\nMIDDLE: 1.66–1.97s: Lift the pen-holding hand slightly while the other hand begins leaving desk toward camera.\n\nMIDDLE: 1.97–2.19s: Draw hands farther from keyboard/notebook and start the camera-reaching transition; pen remains associated with its same hand until out of view.\n\nMIDDLE: 2.19–2.29s: Begin irregular handheld movement, blurring and shifting view sideways/upward; body slides partly off screen-right.\n\nMIDDLE: 2.29–2.65s: Tilt farther upward across ceiling/pendant, then bring the view back toward the performer; preserve the brief blurred off-center framing.\n\nENDING: 2.65–3s: Settle nearer into low-angle frontal face with mouth parted and drawn brows; finish in this close reaction without a scene cut.\n\nCAMERA: Opening desk view mostly still; hands lift away, then strong irregular handheld reframe tilts up across ceiling and returns toward a closer low-angle face.\n\nENDING STATE: Close front face below ceiling pendant, mouth parted, brows drawn and hands out of the tight crop.\n\nCONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "promptFiles": {
+        "image": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-10/starting-image-prompt.txt",
+        "video": "docs\\prompt-reviews\\notbeen2-2026-10-27\\set-10/motion-3s-review-candidate.txt"
+      },
+      "captionCleanup": {
+        "text": "POV: you have an exam TOMORROW and JUST found this now 💀",
+        "region": "Center/lower over hands and torso in opening reaction.",
+        "transcription": "Manually read source overlays; typography/repeated letters not a verified editable-copy transcription."
+      },
+      "coverage": {
+        "allOriginalDecodedThumbnailsReviewed": 371,
+        "contactSheets": 13,
+        "fullResolutionIndices": [
+          0,
+          118,
+          119
+        ],
+        "evidenceDirectory": ".tmp\\notbeen2-review-20261027\\set-10"
+      },
+      "risks": [
+        "Original371-frame source includes separate laptop demo119–317 and second reaction318–370; single-image motion prompt must not silently recreate demo.",
+        "Opening-only119-frame candidate pending user trim choice.",
+        "Pen grip/camera physical mechanism partly occluded; do not invent second visible phone."
+      ],
+      "durationPolicy": "Three-second review candidate proportionally retimes complete retained sequence; runtime duration unchanged.",
+      "decisionGate": null,
+      "reviewStatus": "source_reviewed_draft_compiled",
+      "generatedImageStatus": "not_tested",
+      "generatedVideoStatus": "not_tested",
+      "runtimeAssignment": "not_activated",
+      "preview": {
+        "sha256": "b40519fa3c31b7fa6c2de5398407d3696e12811496d0d1ed2d8b50b8e52c5840",
+        "file": "b40519fa3c31b7fa6c2de5398407d3696e12811496d0d1ed2d8b50b8e52c5840.mp4",
+        "key": "explore/paired-references/v1/b40519fa3c31b7fa6c2de5398407d3696e12811496d0d1ed2d8b50b8e52c5840.mp4",
+        "contentType": "video/mp4",
+        "bytes": 7987442,
+        "localFile": "C:\\Users\\chund\\OneDrive\\Desktop\\UGC\\outputs\\notbeen2-library-staged-2026-10-27\\media\\b40519fa3c31b7fa6c2de5398407d3696e12811496d0d1ed2d8b50b8e52c5840.mp4"
+      },
+      "validation": {
+        "sourceHashVerified": true,
+        "retainedDecodedPixelsExact": true,
+        "previewDecodedPixelsExact": true,
+        "retainedFrameCount": 119,
+        "completeTimeline": true,
+        "startingFrameIsOriginalT0": true,
+        "outputGeneration": "not_tested"
+      }
+    }
+  ],
+  "retainedHookFrames": 1008
+}

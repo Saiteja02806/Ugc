@@ -3,8 +3,9 @@ export async function preparePublishedHookFrames(items) {
   const { hasCuratedHookFrame } = await import("../worker/src/lib/hook-curated-frames.ts");
   const { createHookSourceFrameService } = await import("../lib/explore/hook-source-frame.ts");
   const { createStoredHookFrames } = await import("../lib/explore/hook-source-frame-store.ts");
-  const ordinary = items.filter(item => !hasCuratedHookFrame(item.id));
-  const extract = createHookSourceFrameService({ items: () => ordinary });
+  const { getHookFullRecreationPilot } = await import("../worker/src/lib/hook-full-recreation-pilot.ts");
+  const ordinary = items.filter(item => !hasCuratedHookFrame(item.id) || getHookFullRecreationPilot(item.id, item.videoSha256));
+  const extract = createHookSourceFrameService({ items: () => ordinary, useCuratedFrame: false });
   const store = createStoredHookFrames();
   for (const item of ordinary) {
     const frame = await store.prepare(item.videoSha256, () => extract(item.id));

@@ -4,9 +4,11 @@ import { useId, type ReactNode } from "react";
 import { Check } from "lucide-react";
 
 import { SocialPlatformIcon } from "@/components/social/platform-icon";
+import { ScheduleQuickActions } from "@/components/scheduling/schedule-quick-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PostCaptionField } from "@/components/scheduling/post-caption-field";
+import { WorkflowTimePicker } from "@/components/scheduling/workflow-time-picker";
 import creation from "@/components/explore/workflow-creation.module.css";
 import reviewStyles from "@/components/explore/workflow-schedule-review.module.css";
 import { isSocialPlatformVisible } from "@/lib/social/platform-visibility";
@@ -54,15 +56,15 @@ export function WorkflowSchedulingPanel({ draft, onChange, accountsControl, imag
     <div className={`${creation.scheduleField} ${presentation === "review" ? reviewStyles.contentField : ""}`}>
       <PostCaptionField key={`${ownerId}:${captionScope}`} ownerId={ownerId} enabled={captionEnabled} name="postCaption" value={draft.caption} initialized={draft.captionInitialized} onChange={caption => onChange({ ...draft, caption, captionInitialized: true })} />
     </div>
+    <ScheduleQuickActions timezone={timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone} onSelect={(parts, preset) => onChange({ ...draft, ...parts, publishMode: "scheduled", fiveMinutesFromSubmit: preset === 5 || undefined })} />
     <div className={creation.scheduleDateTime} data-schedule-date-time>
       <div className={creation.scheduleField}>
         <label htmlFor={`${id}-date`} className="text-sm font-medium">Date</label>
-        <Input id={`${id}-date`} name="postDate" type="date" value={draft.date} onChange={(event) => onChange({ ...draft, date: event.target.value })} aria-describedby={`${id}-timezone`} />
+        <Input id={`${id}-date`} name="postDate" type="date" value={draft.date} onChange={(event) => onChange({ ...draft, date: event.target.value, publishMode: event.target.value || draft.time ? "scheduled" : "now", fiveMinutesFromSubmit: undefined })} aria-describedby={`${id}-timezone`} />
       </div>
       <div className={creation.scheduleField}>
-        <div className="flex items-center justify-between gap-2"><label htmlFor={`${id}-time`} className="text-sm font-medium">Time</label><span className="text-xs text-muted">24-hour</span></div>
-        <Input id={`${id}-time`} name="postTime" type="text" placeholder="HH:mm" autoComplete="off" maxLength={5} pattern="([01][0-9]|2[0-3]):[0-5][0-9]" value={draft.time} onChange={(event) => onChange({ ...draft, time: event.target.value })} aria-describedby={`${id}-time-format ${id}-timezone`} />
-        <p id={`${id}-time-format`} className="text-xs text-muted">00:00–23:59</p>
+        <div className="flex items-center justify-between gap-2"><label htmlFor={`${id}-time`} className="text-sm font-medium">Time</label></div>
+        <WorkflowTimePicker id={`${id}-time`} value={draft.time} onChange={time => onChange({ ...draft, time, publishMode: "scheduled", fiveMinutesFromSubmit: undefined })} describedBy={`${id}-timezone`} />
       </div>
     </div>
     <p id={`${id}-timezone`} className="text-xs text-muted">Time zone: {timezone ?? "your device’s time zone"}</p>

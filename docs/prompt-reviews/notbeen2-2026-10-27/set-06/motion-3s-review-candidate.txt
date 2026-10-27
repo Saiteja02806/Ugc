@@ -1,0 +1,29 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Close indoor selfie, black zip hoodie with white zipper, long dark hair, gold hoop earrings; cream ceiling and light behind head. Lips parted, brows drawn, gaze screen-left, hand initially below frame.
+
+OPENING: 0–0.08s: Hold the skeptical parted-lip sideward stare.
+
+MIDDLE: 0.08–0.31s: Raise sleeve-covered hand from screen-left and curl knuckles/fingers against mouth.
+
+MIDDLE: 0.31–1.24s: Hold knuckles at lips, maintaining sideward gaze and small eye changes.
+
+MIDDLE: 1.24–1.91s: Bring gaze nearer lens with wide eyes and hand still at lips.
+
+MIDDLE: 1.91–2.25s: Lower hand away from mouth and toward lower foreground.
+
+MIDDLE: 2.25–2.72s: Keep hand out of view and edge nearer lens with lips parted and brows knitted.
+
+ENDING: 2.72–3s: Finish very close, glance slightly down with the same puzzled parted mouth; no second cover gesture.
+
+CAMERA: Small handheld bob; move closer after hand lowers, finishing tight face view.
+
+ENDING STATE: Uncovered close face, mouth parted with furrowed brows and gaze toward lens/slightly downward; hand out of view.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

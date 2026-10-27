@@ -3,7 +3,20 @@ import { createHash } from "node:crypto";
 import { readCreatorPrivateFile, readCreatorPrivateJson, type CreatorCatalog, type CreatorReviews } from "./creator-private-files.ts";
 import { canAccessCreatorAccounts } from "./creator-account-access.ts";
 import type { RecreateReference } from "./recreate-types.ts";
+import { buildHookFullRecreationOpeningImagePrompt } from "./hook-keyframe-image-prompt.ts";
 import type { ReferenceText } from "./reference-text.ts";
+
+import { buildSourceMotionDirections, validateMiddleFrameMotionEntry, type MiddleFrameMotionEntry } from "./hook-middle-frame-motion.ts";
+
+const middleFramePrompts = readCreatorPrivateJson<{ entries: MiddleFrameMotionEntry[] }>("creator-middle-frame-prompts.json", { entries: [] });
+
+export function getCreatorMiddleFramePrompt(referenceId: string, sourceSha256: string) {
+  const source = getCreatorAccountSource(referenceId);
+  const entry = middleFramePrompts.entries.find(row => row.referenceId === referenceId && row.sourceSha256 === sourceSha256);
+  return source?.sourceSha256 === sourceSha256 && entry && entry.clarityFrame.index === source.startingFrame.index &&
+    entry.clarityFrame.timeSeconds === source.startingFrame.timeSeconds && entry.clarityFrame.sha256 === source.startingFrame.sha256 &&
+    validateMiddleFrameMotionEntry(entry) ? entry : undefined;
+}
 
 export type CreatorAccount = { id: string; label: string; items: RecreateReference[] };
 const catalog = readCreatorPrivateJson<CreatorCatalog>("creator-accounts.json", {version: 1, accounts: []});
@@ -18,11 +31,17 @@ function reviewFor(item: NonNullable<ReturnType<typeof getCreatorAccountSource>>
 }
 
 /** Internal history resolver; the caller must first verify the owned image job. */
-export function creatorAccountDirections(referenceId: string, sourceSha256: string, frameIndex = 0, frameSha256?: string) {
+export function creatorAccountLegacySelectedDirections(referenceId: string, sourceSha256: string, frameIndex = 0, frameSha256?: string) {
   const source = getCreatorAccountSource(referenceId);
   if (source?.sourceSha256 !== sourceSha256) return undefined;
   const review = reviewFor(source);
   return review && source.startingFrame.index === frameIndex && review.selectedFrameSha256 === frameSha256 ? review.selectedFrameDirections : review?.directions;
+}
+
+export function creatorAccountDirections(referenceId: string, sourceSha256: string, frameIndex = 0, frameSha256?: string) {
+  const entry = getCreatorMiddleFramePrompt(referenceId, sourceSha256);
+  return entry && entry.clarityFrame.index === frameIndex && entry.clarityFrame.sha256 === frameSha256
+    ? buildSourceMotionDirections(entry) : creatorAccountLegacySelectedDirections(referenceId, sourceSha256, frameIndex, frameSha256);
 }
 
 export function getCreatorAccounts(user: Parameters<typeof canAccessCreatorAccounts>[0]): CreatorAccount[] {
@@ -30,7 +49,9 @@ export function getCreatorAccounts(user: Parameters<typeof canAccessCreatorAccou
   return catalog.accounts.map(account => ({ id: account.id, label: account.label, items: account.items.map(item => ({
     id: item.id, format: "hook", title: "Hook", category: null, categoryLabel: null, slides: [],
     creatorAccountId: account.id, sourceSha256: item.sourceSha256, durationSeconds: item.durationSeconds,
-    generationPrompt: reviewFor(item)?.selectedFrameDirections ?? reviewFor(item)?.directions,
+    generationPrompt: creatorAccountDirections(item.id, item.sourceSha256, item.startingFrame.index, item.startingFrame.sha256),
+    startingImagePrompt: getCreatorMiddleFramePrompt(item.id, item.sourceSha256) ? buildHookFullRecreationOpeningImagePrompt({ personImageCount: 1, referenceId: item.id, sourceSha256: item.sourceSha256, assignedEntry: getCreatorMiddleFramePrompt(item.id, item.sourceSha256) }).prompt : undefined,
+    legacySelectedGenerationPrompt: reviewFor(item)?.selectedFrameDirections,
     legacyGenerationPrompt: reviewFor(item)?.directions,
     startingFrame: item.startingFrame,
     posterUrl: `/api/explore/creator-media/${item.id}?variant=poster`,

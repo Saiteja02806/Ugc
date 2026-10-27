@@ -1,4 +1,5 @@
 import "server-only";
+import talkingFrames from "./talking-head-frames.json" with { type: "json" };
 import { getCuratedHookFrame, hasCuratedHookFrame } from "../../worker/src/lib/hook-curated-frames.ts";
 
 import { spawn } from "node:child_process";
@@ -173,6 +174,9 @@ export function createHookSourceFrameService(options: {
   /** A stored-only read never falls through to MP4 decoding on a cache miss. */
   readStoredFrame?: (sourceSha256: string) => Promise<Frame | null>;
   storedOnly?: boolean;
+  /** Internal full-recreation preparation can require canonical frame zero even
+   * when the ordinary UI preview uses a reviewed later clarity frame. */
+  useCuratedFrame?: boolean;
 } = {}) {
   const now = options.now ?? Date.now;
   const cache = new Map<string, { frame: Frame; expires: number }>();
@@ -201,15 +205,23 @@ export function createHookSourceFrameService(options: {
     if (!options.items && referenceId.startsWith("creator-account-")) {
       // The HTTP boundary verifies the allowlisted identity on every request.
       // This local read never publishes a source frame or calls a provider.
-      const { readCreatorStartingFrame } = await import("./creator-accounts.ts");
-      const object = await readCreatorStartingFrame(referenceId,retainedSha256);
+      const { readCreatorStartingFrame, getCreatorAccountSource } = await import("./creator-accounts.ts");
+      const requested = options.useCuratedFrame === false ? getCreatorAccountSource(referenceId)?.posterSha256 : retainedSha256;
+      const object = await readCreatorStartingFrame(referenceId,requested);
       if (!object) throw new HookSourceFrameError("This reference is unavailable.", 404);
       const source = { id: referenceId, videoSha256: object.source.sourceSha256, videoStorageKey: "", width: object.source.width, height: object.source.height };
       return { ...checkedFrame(object.bytes, source), referenceId, workflow: "hook", frameIndex: object.frame.index, frameTimeSeconds: object.frame.timeSeconds };
     }
     const source = options.items ? checkedSource(referenceId, options.items()) : await resolveStartingFrameSource(referenceId);
-    const selected = getCuratedHookFrame(referenceId, source.videoSha256);
-    if (!selected && hasCuratedHookFrame(referenceId)) throw new HookSourceFrameError("This video changed. Its selected frame needs review.", 409);
+    if (!options.items && source.workflow === "talking_head") {
+      const prepared = talkingFrames.items.find(item => item.id === referenceId && item.sourceSha256 === source.videoSha256);
+      if (!prepared || prepared.frameIndex !== 0 || prepared.frameTimeSeconds !== 0 || prepared.path !== `/explore/talking-head-frames/v1/${referenceId}.png`) throw new HookSourceFrameError("This reference's starting frame needs preparation.", 503);
+      const frame = checkedFrame(await readFile(join(process.cwd(), "public", prepared.path)), source);
+      if (frame.frameSha256 !== prepared.frameSha256 || frame.width !== prepared.width || frame.height !== prepared.height) throw new HookSourceFrameError("The prepared starting frame changed. It needs review.", 409);
+      return { ...frame, referenceId, workflow: "talking_head" };
+    }
+    const selected = options.useCuratedFrame === false ? undefined : getCuratedHookFrame(referenceId, source.videoSha256);
+    if (options.useCuratedFrame !== false && !selected && hasCuratedHookFrame(referenceId)) throw new HookSourceFrameError("This video changed. Its selected frame needs review.", 409);
     if (selected) {
       const png = await readFile(join(process.cwd(), "public", selected.publicPath));
       const frame = checkedFrame(png, source);
@@ -262,3 +274,5 @@ export function createHookSourceFrameService(options: {
 }
 
 export const getHookSourceFrame = createHookSourceFrameService();
+/** Server-only t=0 resolver. It never changes the existing curated preview path. */
+export const getHookOpeningSourceFrame = createHookSourceFrameService({ useCuratedFrame: false });

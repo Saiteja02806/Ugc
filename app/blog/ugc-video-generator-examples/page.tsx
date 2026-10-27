@@ -64,7 +64,7 @@ export default function UgcVideoExamplesPage() {
       <section className="border-t border-border bg-card-muted/40 px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
           <h2 className="text-3xl font-semibold tracking-[-0.035em] text-foreground-strong">Instagram reels</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Four reels from the owner. The embed loads only after you ask for it. The link opens the reel on Instagram if you would rather leave this page.</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">Reels from the owner. The embed loads only after you ask for it. The link opens the reel on Instagram if you would rather leave this page.</p>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
             <BrandInstagramExampleAccounts />
           </p>
@@ -83,7 +83,7 @@ export default function UgcVideoExamplesPage() {
       <section className="border-t border-border px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1100px]">
           <h2 className="text-3xl font-semibold tracking-[-0.035em] text-foreground-strong">TikTok videos on Clara accounts</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">These three files are on @clara_iami and @clara_iamm. The handle is taken from the video URL. TikTok&apos;s oEmbed response did not include a title or thumbnail, so those fields are left off the page.</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">These files are on @clara_iami and @clara_iamm. The handle is taken from the video URL. TikTok&apos;s oEmbed response did not include a title or thumbnail, so those fields are left off the page.</p>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {tiktokVideos.map((video) => (
               <article key={video.id} className="space-y-3">
@@ -98,6 +98,7 @@ export default function UgcVideoExamplesPage() {
       </section>
       <VideoRelatedLinks
         links={[
+          { href: "/blog/ai-content-creation-tools-small-teams", title: "Best marketing tools for SaaS founders", description: "AI content creation, UGC video generators, and MCP workflows for small teams." },
           { href: "/case-studies/ai-ugc-video-generator-saas-founders", title: "Founder video case study", description: "The two YouTube videos featured for the AI UGC video generator query." },
           { href: "/guides/how-to-create-ugc-videos-with-ai", title: "Create a UGC video", description: "Steps from a brief to a downloaded file, with one example embed." },
           { href: "/blog/ai-ugc-video-generator-how-it-works", title: "How an AI UGC video generator works", description: "When a generated clip fits, and where you still need real footage." },

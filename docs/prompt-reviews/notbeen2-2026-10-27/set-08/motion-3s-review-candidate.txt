@@ -1,0 +1,25 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Low handheld outdoor walking selfie in black jacket over dark hoodie, backpack straps and diagonal colorful pin-covered strap, white earbuds. Neutral/puzzled parted lips toward lens; pale sky and brick facades.
+
+OPENING: 0–1.29s: Continue walking, looking toward lens with relaxed parted lips as view bobs with footsteps.
+
+MIDDLE: 1.29–1.65s: Tilt head a little and glance sideways briefly, keeping restrained skeptical mouth.
+
+MIDDLE: 1.65–2.11s: Return gaze toward lens with brows slightly lifted.
+
+MIDDLE: 2.11–2.54s: Open mouth a little wider, then begin forming an amused smile while walking.
+
+ENDING: 2.54–3s: Finish with small tooth-visible smile and narrowed pleased eyes as low handheld view continues bobbing.
+
+CAMERA: Continuous walking bob and gentle tilt with passing street facades; retain physical street perspective, no desk or cut.
+
+ENDING STATE: Closer walking selfie with small tooth-visible amused smile, dark jacket, straps and earbuds retained.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

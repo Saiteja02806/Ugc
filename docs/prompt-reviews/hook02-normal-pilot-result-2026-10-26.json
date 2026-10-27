@@ -1,0 +1,25 @@
+{
+  "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+  "sourceSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+  "imageModel": "gemini-3-pro-image",
+  "imageSize": "2K",
+  "imagePromptSha256": "6badf9804b6fff415deb2076a9c8e95374e14e168e82e8b82b41a47164ccd0c1",
+  "imageSubmissionAttempts": 1,
+  "videoSubmissionAttempts": 0,
+  "imageStatus": "provider-rejected",
+  "providerRejection": {
+    "httpStatus": 400,
+    "message": "400 Image generation blocked due to safety violations. Please modify your input and retry.",
+    "triggeringInput": "not disclosed by provider",
+    "operationIdReturned": false
+  },
+  "providerChargeStatus": "unknown; submission-attempt counter is not proof of a charge",
+  "automaticRetries": 0,
+  "applicationCreditChanges": 0,
+  "databaseWrites": 0,
+  "runtimeAssignmentsChanged": 0,
+  "deployment": false,
+  "generatedImage": "not produced",
+  "generatedVideo": "not requested",
+  "sourceQualityConclusion": "not established by provider rejection"
+}

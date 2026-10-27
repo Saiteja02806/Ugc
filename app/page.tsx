@@ -13,7 +13,7 @@ import { LandingBottomCta } from "@/components/marketing/landing-bottom-cta";
 import { LandingComparisonSection } from "@/components/marketing/landing-comparison-section";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { LandingLogo } from "@/components/marketing/landing-logo";
-import { LandingHeroShowcase } from "@/components/marketing/landing-hero-showcase";
+import { LandingHeroGallery } from "@/components/marketing/landing-hero-gallery";
 import { LandingMultiPlatformSection } from "@/components/marketing/landing-multi-platform-section";
 import { LandingPlatformBadge } from "@/components/marketing/landing-platforms";
 import { LandingContentShowcase } from "@/components/marketing/landing-content-showcase";
@@ -119,8 +119,8 @@ export default function Home() {
       </a>
       <LandingHeader initialHasSession={initialHasSession} />
 
-      <section className="relative isolate z-0 overflow-hidden [clip-path:inset(0)] px-4 pb-0 pt-24 sm:px-6 sm:pb-0 sm:pt-32 lg:px-8 lg:pb-0 lg:pt-36">
-        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-8 sm:gap-12 lg:gap-16">
+      <section className="relative isolate z-0 overflow-hidden px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-32 lg:px-8 lg:pb-14 lg:pt-36">
+        <div className="relative mx-auto flex max-w-[1200px] flex-col items-center gap-8 sm:gap-10 lg:gap-12">
           <div className="w-full max-w-[1200px] text-center">
             <LandingPlatformBadge />
 
@@ -150,10 +150,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Clip the card bottoms at the hero boundary, including tilt and hover overflow. */}
-          <div className="-mb-6 w-full sm:-mb-8 lg:-mb-10">
-            <LandingHeroShowcase />
-          </div>
+          <LandingHeroGallery />
         </div>
       </section>
 

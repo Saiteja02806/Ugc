@@ -1,10 +1,145 @@
 {
-  "talkingHead": {
-    "src": "/marketing/previews/talkingHead.dbcf090f61baea01.mp4",
-    "bytes": 1511275
+  "videos": {
+    "outerLeft": {
+      "sourceId": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "src": "/marketing/hero-gallery/outerLeft.84e11c1546a1c27c.mp4",
+      "poster": "/marketing/hero-gallery/outerLeft-poster.dd38e399cca93324.webp",
+      "bytes": 144949
+    },
+    "wallLeft": {
+      "sourceId": "explore-wall-text-05",
+      "src": "/marketing/hero-gallery/wallLeft.a166c3d696c876a4.mp4",
+      "poster": "/marketing/hero-gallery/wallLeft-poster.91259bc1a4e36fed.webp",
+      "bytes": 344333
+    },
+    "hookPrimary": {
+      "sourceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "src": "/marketing/hero-gallery/hookPrimary.5855bea1e19c7ed6.mp4",
+      "poster": "/marketing/hero-gallery/hookPrimary-poster.e40d85c6a1030d0b.webp",
+      "bytes": 195963
+    },
+    "wallRight": {
+      "sourceId": "explore-wall-text-61",
+      "src": "/marketing/hero-gallery/wallRight.d48fe82ce3e4e215.mp4",
+      "poster": "/marketing/hero-gallery/wallRight-poster.b4f2e15e6867ec06.webp",
+      "bytes": 578976
+    },
+    "outerRight": {
+      "sourceId": "explore-paired-hook-44d165d51084f977f5146f69",
+      "src": "/marketing/hero-gallery/outerRight.79e160c098b0d900.mp4",
+      "poster": "/marketing/hero-gallery/outerRight-poster.61ecd5694175ac4a.webp",
+      "bytes": 240178
+    },
+    "talkingDemo": {
+      "sourceId": "talking-room-explainer-full",
+      "src": "/marketing/hero-gallery/talkingDemo.6b86d8d03ce7f7be.mp4",
+      "poster": "/marketing/hero-gallery/talkingDemo-poster.3b0775f5767f1742.webp",
+      "bytes": 3814478,
+      "sourceUrl": "https://www.tiktok.com/@eric.duan95/video/7693328260175858958",
+      "sourceSha256": "cac6f530242841fc7bc6b1ed805fb0a8edd2ead4fd9d0dbe271ee0014e504afe",
+      "durationSeconds": 42.027
+    },
+    "hookExtra": {
+      "sourceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "src": "/marketing/hero-gallery/hookExtra.9d94329380e65fcc.mp4",
+      "poster": "/marketing/hero-gallery/hookExtra-poster.8d95a96dd5af7740.webp",
+      "bytes": 221799,
+      "sourceUrl": "https://www.instagram.com/reel/Dd4oo1qy_Dc/",
+      "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+      "durationSeconds": 3.066667
+    },
+    "wallExtra": {
+      "sourceId": "explore-paired-wall_text-d3259c1239762b2daa319893",
+      "src": "/marketing/hero-gallery/wallExtra.b1a621e5f2610066.mp4",
+      "poster": "/marketing/hero-gallery/wallExtra-poster.b9c2974f1dc7d494.webp",
+      "bytes": 307648,
+      "sourceUrl": "https://storage.googleapis.com/ugcsaas-media/explore/paired-references/v1/0acefbc240ce818d77f3f931ca0e926c30adf5e312351af3eee37308fc1a7e1f.mp4",
+      "sourceSha256": "0acefbc240ce818d77f3f931ca0e926c30adf5e312351af3eee37308fc1a7e1f",
+      "durationSeconds": 6.066992
+    },
+    "demoExample": {
+      "sourceId": "talking-room-explainer-full:demo-0-19",
+      "src": "/marketing/hero-gallery/demoExample.850bad2edb14a778.mp4",
+      "poster": "/marketing/hero-gallery/demoExample-poster.3b0775f5767f1742.webp",
+      "bytes": 1456507,
+      "sourceUrl": "https://www.tiktok.com/@eric.duan95/video/7693328260175858958",
+      "sourceSha256": "cac6f530242841fc7bc6b1ed805fb0a8edd2ead4fd9d0dbe271ee0014e504afe",
+      "durationSeconds": 19,
+      "parentSourceId": "talking-room-explainer-full",
+      "sourceStartSeconds": 0,
+      "sourceEndSeconds": 19
+    }
   },
-  "hookDemo": {
-    "src": "/marketing/previews/hookDemo.3624566c2f89f78a.mp4",
-    "bytes": 168920
+  "slideshows": {
+    "slideshowLeft": {
+      "sourceId": "explore-slideshow-fitness-1e937e8be4486b45",
+      "slides": [
+        {
+          "src": "/marketing/hero-gallery/slideshowLeft-1.bdc30f6bd420e0ab.webp",
+          "width": 540,
+          "height": 720
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowLeft-2.11c46aaad188495f.webp",
+          "width": 540,
+          "height": 1021
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowLeft-3.85110035a424ccbd.webp",
+          "width": 540,
+          "height": 834
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowLeft-4.6b7e6b37d3acbf51.webp",
+          "width": 540,
+          "height": 1021
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowLeft-5.3c6148840693009a.webp",
+          "width": 540,
+          "height": 1019
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowLeft-6.48de8b94d689d218.webp",
+          "width": 540,
+          "height": 1021
+        }
+      ]
+    },
+    "slideshowRight": {
+      "sourceId": "explore-slideshow-fitness-6762e151a53d2f5c",
+      "slides": [
+        {
+          "src": "/marketing/hero-gallery/slideshowRight-1.854c3154f7a4f8fa.webp",
+          "width": 540,
+          "height": 540
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowRight-2.233239a42ecb7cd3.webp",
+          "width": 540,
+          "height": 960
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowRight-3.381049e88be950d5.webp",
+          "width": 540,
+          "height": 810
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowRight-4.5d56aa1d8d3c05f5.webp",
+          "width": 540,
+          "height": 960
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowRight-5.87d3c3d3453d60ec.webp",
+          "width": 540,
+          "height": 720
+        },
+        {
+          "src": "/marketing/hero-gallery/slideshowRight-6.5d2435b5fd0ba5ea.webp",
+          "width": 540,
+          "height": 960
+        }
+      ]
+    }
   }
 }

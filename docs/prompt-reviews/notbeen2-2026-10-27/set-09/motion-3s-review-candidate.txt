@@ -1,0 +1,29 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Close warm indoor selfie against pale yellow seat/back panel and textured beige wall; hair pinned back, white top and earrings. Wide eyes, raised brows, tightly pursed sideways/downturned lips; no glasses on face.
+
+OPENING: 0–0.59s: Hold wide eyes and pursed skeptical lips with no glasses on face.
+
+MIDDLE: 0.59–1.12s: Let lips soften into small amused smile as view edges closer.
+
+MIDDLE: 1.12–1.56s: Raise black eyeglasses from below frame, holding outer corner with screen-right hand, and guide them toward nose.
+
+MIDDLE: 1.56–2s: Seat glasses over nose and ears; fingertips stay at screen-right temple corner while smile continues.
+
+MIDDLE: 2–2.26s: Release glasses and lower hand, leaving them on.
+
+MIDDLE: 2.26–2.65s: Tilt view briefly upward with small bob, expanding visible ceiling and moving face lower.
+
+ENDING: 2.65–3s: Approach rapidly into extreme off-center face/glasses close-up, preserving glasses and ending with substantial edge crop.
+
+CAMERA: Gradually move closer; after glasses are fitted, brief upward tilt reveals ceiling, followed by an extreme face/glasses approach and edge crop.
+
+ENDING STATE: Extreme cropped face with glasses on, bridge and lens filling much of image, faint amused smile only partly visible.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

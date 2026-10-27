@@ -1,0 +1,338 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "referenceId": "explore-paired-wall_text-a2095596d4455693771d474d",
+      "sourceSha256": "e30ea03f49f7d25330399791b0ed0ee43e0909e498e359a01110a36585c3ebfa",
+      "sourcePath": "D:\\wotwithlinks\\notbeen_investing and money category\\New folder\\oYYdjI9RxUPExdDi0sN7CR4DBOEagijMyBXAI.mp4",
+      "sourceUrl": "https://www.tiktok.com/@financebestielindsay/video/7628267187232410893",
+      "sourceFrameCount": 188,
+      "sourceFps": 30,
+      "sourceDurationSeconds": 6.266666666666667,
+      "containerDurationSeconds": 6.267937,
+      "reviewMethod": "all_decoded_frames",
+      "reviewedFrameCount": 188,
+      "reviewedAt": "2026-10-27",
+      "visualQualification": "not_tested",
+      "animationOpeningSourceTime": 0,
+      "scene": "Vertical chest-up selfie inside a gray car in daylight, long hair over the shoulder on screen-left, black narrow-strap top and small stud earrings; window and pillar on screen-left, rear seat and headrest behind. The opening is a close view with eyelids closed mid-blink and relaxed closed lips.",
+      "openingFrameRisk": "closed eyelids at t=0; preserve original blink, verify identity separately",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.27,
+          "action": "Open the eyes from the initial blink and look calmly toward the lens; keep the lips closed."
+        },
+        {
+          "startSeconds": 0.27,
+          "endSeconds": 1.1,
+          "action": "Let the handheld view move backward and tilt slightly upward, revealing more of the torso and car roof; the head becomes smaller and lower in the frame."
+        },
+        {
+          "startSeconds": 1.1,
+          "endSeconds": 2.1,
+          "action": "Briefly glance upward toward screen-right, blink and return toward the lens. A pale ringed hand briefly passes across the bottom foreground near the end of this interval, then drops out; it never rises to the mouth."
+        },
+        {
+          "startSeconds": 2.1,
+          "endSeconds": 3.4,
+          "action": "Hold the settled chest-up framing and a restrained closed-lip expression, then start shifting the eyes upward toward screen-right."
+        },
+        {
+          "startSeconds": 3.4,
+          "endSeconds": 5.4,
+          "action": "Maintain the upward screen-right glance and gently purse the lips into a small pout, with brief blinks and very little head movement."
+        },
+        {
+          "startSeconds": 5.4,
+          "endSeconds": 6.266666666666667,
+          "action": "Relax the pout, bring the eyes back toward the lens and finish in the same settled car composition."
+        }
+      ],
+      "exactText": "I saw a girl say her best savings tip\nis to move ALL your money from\nyour checking to your savings the\nday before you get paid whether is\n$5 or $500 and I couldn’t agree\nmore",
+      "textStartMs": 0,
+      "textEndMs": 6267,
+      "timingConfidence": "Transition boundaries visually estimated from all decoded thumbnails and targeted native frames. Input PTS preserved separately.",
+      "uncertainties": [
+        "No audio listening or dialogue transcription performed. Supplied MP3 retained byte for byte.",
+        "No influencer chosen and no generated opening/video has been tested."
+      ]
+    },
+    {
+      "referenceId": "explore-paired-wall_text-8bcb0bf4213f07cc7c8449dc",
+      "sourceSha256": "d9d236dfa78a672ee8e9082e7c2322b3c68f73ed6865530958454a8f5782bfa6",
+      "sourcePath": "D:\\wotwithlinks\\notbeen_investing and money category\\New folder (2)\\o8yXnRVDpBClpeaFEbU4oAQlEE8XfquACRI9ti.mp4",
+      "sourceUrl": "https://www.tiktok.com/@naysa_finance/video/7614326758376082718",
+      "sourceFrameCount": 155,
+      "sourceFps": 30,
+      "sourceDurationSeconds": 5.166666666666667,
+      "containerDurationSeconds": 5.176009,
+      "reviewMethod": "all_decoded_frames",
+      "reviewedFrameCount": 155,
+      "reviewedAt": "2026-10-27",
+      "visualQualification": "not_tested",
+      "animationOpeningSourceTime": 0,
+      "scene": "Vertical selfie seated on a beige sofa against a cream wall, cabinet and dark shelving edge on screen-right. Black long-sleeve off-shoulder top over visible white straps, small earrings and fine necklace. One sleeve-covered forearm crosses the chest; the pale-nailed hand rests on the opposite shoulder at screen-right. The very first picture is slightly motion-soft.",
+      "openingFrameRisk": "initial motion softness and caption over face; prepare original t=0 composition, not a later literal pose",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 0.73,
+          "action": "Let the initial handheld wobble settle while looking at the lens. Keep the sleeve-covered forearm across the chest and its hand resting on the opposite shoulder at screen-right."
+        },
+        {
+          "startSeconds": 0.73,
+          "endSeconds": 1.33,
+          "action": "Tilt the head slightly toward screen-right and press the lips into a skeptical pout as the view drifts a little closer and off-center."
+        },
+        {
+          "startSeconds": 1.33,
+          "endSeconds": 2.57,
+          "action": "Keep the pout and direct gaze. Slide the fingertips a little upward along the shoulder toward the side of the neck, preserving contact and the visible white strap."
+        },
+        {
+          "startSeconds": 2.57,
+          "endSeconds": 3.17,
+          "action": "Briefly lower the eyelids and shift the hand back flatter across the shoulder while the framing eases wider."
+        },
+        {
+          "startSeconds": 3.17,
+          "endSeconds": 4.23,
+          "action": "Turn the face and eyes toward screen-left and hold that restrained sideways look with closed lips, hand still on the shoulder."
+        },
+        {
+          "startSeconds": 4.23,
+          "endSeconds": 5.166666666666667,
+          "action": "Return toward the camera and hold the composed closed-mouth expression through the final picture, preserving the crossed forearm and shoulder contact."
+        }
+      ],
+      "exactText": "Having money in your\naccount, but still telling\nyourself, no I'm not buying\nthis, I'm still broke, is a\ndifferent level of self\ndiscipline.",
+      "textStartMs": 0,
+      "textEndMs": 5167,
+      "timingConfidence": "Transition boundaries visually estimated from all decoded thumbnails and targeted native frames. Input PTS preserved separately.",
+      "uncertainties": [
+        "No audio listening or dialogue transcription performed. Supplied MP3 retained byte for byte.",
+        "No influencer chosen and no generated opening/video has been tested."
+      ]
+    },
+    {
+      "referenceId": "explore-paired-wall_text-6862d30ad45084699b168503",
+      "sourceSha256": "deb508cce17aa541fd5ff11651b51ec90c9c196196855d2ccd3ddd5a6716cdc8",
+      "sourcePath": "D:\\wotwithlinks\\notbeen_investing and money category\\New folder (3)\\o0P0nA7a0BsM5swBnXExIWmKVvansdRiMEVAi.mp4",
+      "sourceUrl": "https://www.tiktok.com/@shan_invests/video/7626478212079504670",
+      "sourceFrameCount": 207,
+      "sourceFps": 30,
+      "sourceDurationSeconds": 6.9,
+      "containerDurationSeconds": 6.918005,
+      "reviewMethod": "all_decoded_frames",
+      "reviewedFrameCount": 207,
+      "reviewedAt": "2026-10-27",
+      "visualQualification": "not_tested",
+      "animationOpeningSourceTime": 0,
+      "scene": "Vertical chest-up selfie in a pale doorway, a broad pale door edge on screen-left, white jamb and black hinge on screen-right, warm light behind. Dark oversized printed T-shirt, pendant necklace and small earrings, high tied-back ponytail. Head tipped slightly toward screen-left, direct gaze and a small closed-lip smile.",
+      "openingFrameRisk": "clear face; door edge must remain in ending",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.23,
+          "action": "Hold a small closed-lip smile toward the lens with the head tipped toward screen-left and shoulders relaxed."
+        },
+        {
+          "startSeconds": 1.23,
+          "endSeconds": 2.83,
+          "action": "Blink, turn the eyes toward screen-left and gently purse the lips. Keep the doorway edge in the foreground and hands outside the crop."
+        },
+        {
+          "startSeconds": 2.83,
+          "endSeconds": 3.97,
+          "action": "Let the handheld viewpoint drift slightly closer and sideways as the face angles down toward screen-left, keeping the lips pursed; do not turn this continuous movement into a cut."
+        },
+        {
+          "startSeconds": 3.97,
+          "endSeconds": 4.77,
+          "action": "Lift the eyes upward toward screen-left, hold the questioning glance and keep the mouth closed."
+        },
+        {
+          "startSeconds": 4.77,
+          "endSeconds": 5.73,
+          "action": "Return the gaze toward the lens, release the pout into a small pressed-lip smile and let the head straighten."
+        },
+        {
+          "startSeconds": 5.73,
+          "endSeconds": 6.9,
+          "action": "Tip the head back toward the pale door edge on screen-left as the handheld view shifts. Finish with the edge partly cropping the screen-left side of the head and a small closed-mouth smile toward the lens."
+        }
+      ],
+      "exactText": "i feel so behind,\nrealistically how much\nshould a 21 year old have\nsaved up",
+      "textStartMs": 0,
+      "textEndMs": 6900,
+      "timingConfidence": "Transition boundaries visually estimated from all decoded thumbnails and targeted native frames. Input PTS preserved separately.",
+      "uncertainties": [
+        "No audio listening or dialogue transcription performed. Supplied MP3 retained byte for byte.",
+        "No influencer chosen and no generated opening/video has been tested."
+      ]
+    },
+    {
+      "referenceId": "explore-paired-wall_text-cad94a858b67a9f021e1f1d5",
+      "sourceSha256": "acda71502ad946ce218c80066651796137344d1f134527131c813a748df9e619",
+      "sourcePath": "D:\\wotwithlinks\\notbeen_investing and money category\\New folder (4)\\oIRb3miicAiVaBR9ZtE3mlAXIR1l5EE5ABPiu.mp4",
+      "sourceUrl": "https://www.tiktok.com/@investingwithaijie/video/7618324189874900254",
+      "sourceFrameCount": 178,
+      "sourceFps": 30,
+      "sourceDurationSeconds": 5.933333333333334,
+      "containerDurationSeconds": 5.941995,
+      "reviewMethod": "all_decoded_frames",
+      "reviewedFrameCount": 178,
+      "reviewedAt": "2026-10-27",
+      "visualQualification": "not_tested",
+      "animationOpeningSourceTime": 0,
+      "scene": "Vertical low-light car selfie with the face centered below a large dark roof area, dark seat behind and a pale window on screen-right. Long dark hair over dark clothing and a light outer layer at the shoulder. Bent arm remains behind the head on screen-left, pale watchband visible. The dense original caption obscures the mouth area; underlying mouth details are not directly verified.",
+      "openingFrameRisk": "low exposure and caption conceal lower face; mouth motion remains unknown",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.4,
+          "action": "Hold the reclined car pose with one bent arm behind the head on screen-left. Look toward the lens with subtle eyelid and eyebrow movement; retain the very dim exposure."
+        },
+        {
+          "startSeconds": 1.4,
+          "endSeconds": 2.8,
+          "action": "Make small head and gaze adjustments with a natural blink while keeping the arm behind the head and the window and roof stable."
+        },
+        {
+          "startSeconds": 2.8,
+          "endSeconds": 3.77,
+          "action": "Let the head tip a little toward screen-left and the eyelids lower briefly, then reopen toward the lens. Keep the expression restrained; do not add exaggerated mouth acting."
+        },
+        {
+          "startSeconds": 3.77,
+          "endSeconds": 4.97,
+          "action": "Ease the head back toward upright with small handheld bob and a steady camera-facing gaze."
+        },
+        {
+          "startSeconds": 4.97,
+          "endSeconds": 5.933333333333334,
+          "action": "Allow a small final downward dip of the head and viewpoint, ending in the same dark car with the arm still behind the head. Do not introduce a cut, a new light source or a hand-to-mouth gesture."
+        }
+      ],
+      "exactText": "baddie to baddie, what’s\nsomething that changed your\nfinances from ”i’m broke”\nto ”i actually have money”??\ni don’t mean cutting out matcha.\nsomething actually UNHINGED.\nmine is bloom to invest,\nur welcome <3",
+      "textStartMs": 0,
+      "textEndMs": 5933,
+      "timingConfidence": "Transition boundaries visually estimated from all decoded thumbnails and targeted native frames. Input PTS preserved separately.",
+      "uncertainties": [
+        "No audio listening or dialogue transcription performed. Supplied MP3 retained byte for byte.",
+        "No influencer chosen and no generated opening/video has been tested.",
+        "Lower-face performance hidden by baked caption; no exact lip sequence inferred."
+      ]
+    },
+    {
+      "referenceId": "explore-paired-wall_text-7a8441666cf28f6b5bcc37e8",
+      "sourceSha256": "c6ac0d48fca614f01bb880ad160bb59717e23911bc54d5e64da6f84024bc7604",
+      "sourcePath": "D:\\wotwithlinks\\notbeen_investing and money category\\New folder (5)\\oIwDqgnRGgoLQCD9AIeeAeAlGLEzEUIIUSAjQa.mp4",
+      "sourceUrl": "https://www.tiktok.com/@studentliving12/video/7639938810431786271",
+      "sourceFrameCount": 212,
+      "sourceFps": 30,
+      "sourceDurationSeconds": 7.066666666666666,
+      "containerDurationSeconds": 7.08,
+      "reviewMethod": "all_decoded_frames",
+      "reviewedFrameCount": 212,
+      "reviewedAt": "2026-10-27",
+      "visualQualification": "not_tested",
+      "animationOpeningSourceTime": 0,
+      "scene": "Vertical daylight selfie in a car, chest-up with a pale yellow-green sleeveless knitted button-front top, small hoop and stud earrings, fine necklace and diagonal dark seatbelt from screen-right shoulder toward screen-left waist. Dark seat, roof and side window behind. Face is angled slightly toward screen-left while the eyes look toward the lens; lips gently pressed.",
+      "openingFrameRisk": "clear opening; preserve seatbelt and passing exterior",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.3,
+          "action": "Keep the seated pose and direct lens gaze with lightly pressed lips; the seatbelt stays taut diagonally across the torso."
+        },
+        {
+          "startSeconds": 1.3,
+          "endSeconds": 2.87,
+          "action": "Tilt the head gently toward screen-left and lift the eyes upward in the same direction, maintaining a quiet questioning expression."
+        },
+        {
+          "startSeconds": 2.87,
+          "endSeconds": 4.83,
+          "action": "Let the handheld camera move gradually closer from chest-up toward a face-dominant selfie while holding the upward screen-left gaze. Preserve the car interior and continuous passing scenery outside the side window."
+        },
+        {
+          "startSeconds": 4.83,
+          "endSeconds": 5.87,
+          "action": "Hold the closer framing with a restrained closed-lip half-smile and a brief blink; keep the head slightly tilted."
+        },
+        {
+          "startSeconds": 5.87,
+          "endSeconds": 7.066666666666666,
+          "action": "Return the eyes nearer the lens while retaining the small smile. Preserve the slight camera bob and closer final crop, seatbelt and daylight through the end."
+        }
+      ],
+      "exactText": "i feel so behind,\nrealistically how much\nshould a 20 year old\nhave saved up",
+      "textStartMs": 0,
+      "textEndMs": 7067,
+      "timingConfidence": "Transition boundaries visually estimated from all decoded thumbnails and targeted native frames. Input PTS preserved separately.",
+      "uncertainties": [
+        "No audio listening or dialogue transcription performed. Supplied MP3 retained byte for byte.",
+        "No influencer chosen and no generated opening/video has been tested."
+      ]
+    },
+    {
+      "referenceId": "explore-paired-wall_text-c2db42671f78f22cc195fbb3",
+      "sourceSha256": "835815bffe1e8a4aa879ff24f8f0e62606304f72dd513dbefef6b4512a656d9b",
+      "sourcePath": "D:\\wotwithlinks\\notbeen_investing and money category\\New folder (6)\\osVBkAZAUWHDM59eXHKRzHf2E4EFi2EpAQSIcF.mp4",
+      "sourceUrl": "https://www.tiktok.com/@katie.finance/video/7606981571186314526",
+      "sourceFrameCount": 160,
+      "sourceFps": 30,
+      "sourceDurationSeconds": 5.333333333333333,
+      "containerDurationSeconds": 5.333333,
+      "reviewMethod": "all_decoded_frames",
+      "reviewedFrameCount": 160,
+      "reviewedAt": "2026-10-27",
+      "visualQualification": "not_tested",
+      "animationOpeningSourceTime": 0,
+      "scene": "Vertical close selfie against a cream wall and white panel seam on screen-right, light gray open knitted cardigan over white top, pendant necklace, long hair and small white earbud. Pale manicured ringed fingers rest diagonally across the forehead from screen-right. Eyes face the lens with slightly knitted brows and pressed lips.",
+      "openingFrameRisk": "forehead hand leaves most face visible; retain opening contact",
+      "beats": [
+        {
+          "startSeconds": 0,
+          "endSeconds": 1.13,
+          "action": "Hold the pale-nailed fingers diagonally against the forehead from screen-right and look toward the lens with pressed lips and mildly knitted brows."
+        },
+        {
+          "startSeconds": 1.13,
+          "endSeconds": 1.8,
+          "action": "Slide the fingertips outward toward the temple and lift the hand completely away off screen-right while blinking and turning the eyes toward screen-right."
+        },
+        {
+          "startSeconds": 1.8,
+          "endSeconds": 2.53,
+          "action": "Hold the screen-right gaze with the hand outside the frame, lips firmly closed and expression quietly resigned."
+        },
+        {
+          "startSeconds": 2.53,
+          "endSeconds": 2.93,
+          "action": "Blink and turn back toward the lens, beginning a small head tilt toward screen-left."
+        },
+        {
+          "startSeconds": 2.93,
+          "endSeconds": 4.47,
+          "action": "Hold the tipped-head, pressed-lip half-smile toward the lens as the handheld view moves slightly closer. Keep the earbud, cardigan and necklace continuous."
+        },
+        {
+          "startSeconds": 4.47,
+          "endSeconds": 5.333333333333333,
+          "action": "Make a slow blink with the head still tipped, reopen the eyes and ease back into the wider ending view with the same restrained closed-mouth look. The hand stays lowered."
+        }
+      ],
+      "exactText": "I called my credit card\ncompany yesterday and\nasked for a lower interest\nrate. He said yes. It took 4\nminutes. I've been overpaying\nfor 3 YEARS. My exact words\nwere 'I'd like to request a\nlower APR' and they dropped\nit by 6%. I learned this from\nthe Bon app and I could cry",
+      "textStartMs": 0,
+      "textEndMs": 5333,
+      "timingConfidence": "Transition boundaries visually estimated from all decoded thumbnails and targeted native frames. Input PTS preserved separately.",
+      "uncertainties": [
+        "No audio listening or dialogue transcription performed. Supplied MP3 retained byte for byte.",
+        "No influencer chosen and no generated opening/video has been tested."
+      ]
+    }
+  ]
+}

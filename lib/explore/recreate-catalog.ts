@@ -58,14 +58,15 @@ export function getRecreateReferences(includeArchivedHooks = false): RecreateRef
     ...(item.pairedAudio ? { pairedAudio: item.pairedAudio } : {}),
   }));
   const existingWallText = getExploreWallTextVideos().map((item, index): RecreateReference => ({
-    category: item.pairedAudio ? null : "productivity",
-    categoryLabel: item.pairedAudio ? null : "Productivity",
+    category: item.category ?? (item.pairedAudio ? null : "productivity"),
+    categoryLabel: item.categoryLabel ?? (item.pairedAudio ? null : "Productivity"),
     format: "wall_text",
     id: item.id,
     posterUrl: item.posterUrl,
     slides: [],
-    title: `${item.pairedAudio ? "Wall of text" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
+    title: item.title ?? `${item.pairedAudio ? "Wall of text" : "Productivity"} ${String(index + 1).padStart(2, "0")}`,
     videoUrl: item.videoUrl,
+    ...(item.previewVideoUrl ? { previewVideoUrl: item.previewVideoUrl } : {}),
     ...(item.instagramUrl ? { instagramUrl: item.instagramUrl } : {}),
     ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
     ...(item.sourcePlatform ? { sourcePlatform: item.sourcePlatform } : {}),

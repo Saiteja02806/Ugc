@@ -1,0 +1,269 @@
+{
+  "date": "2026-10-26",
+  "status": "source_review_only_not_generated_acceptance",
+  "references": 3,
+  "nativeFramesReviewed": 387,
+  "contactSheetsReviewed": 15,
+  "providerCalls": 0,
+  "runtimeChanges": 0,
+  "runtimeHashes": [
+    [
+      "lib/explore/hook-middle-frame-public.json",
+      "55c08ca182f7acd16ba9e3d9a2b10544c0c038d5ed84e3b4e98f4e625c8ace30"
+    ],
+    [
+      "lib/explore/hook-keyframe-motion.ts",
+      "13d2ff8ec81c2f1038626f32ed8ca315f04e2d39af1fc109e91ba7c1ecf5b947"
+    ]
+  ],
+  "rows": [
+    {
+      "referenceId": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "title": "Hook 99",
+      "route": "normal",
+      "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "sourceDurationSeconds": 4.1,
+      "sourceIntervals": [
+        {
+          "start": 0,
+          "end": 0.8,
+          "action": "Hold the open-mouth surprised look with the already raised hand beside the cheek. Bring the screen-left gaze toward the lens without covering the mouth yet."
+        },
+        {
+          "start": 0.8,
+          "end": 1,
+          "action": "Move that same raised hand across the mouth, maintaining a surprised gaze."
+        },
+        {
+          "start": 1,
+          "end": 2.133333,
+          "action": "Hold the hand against the mouth continuously. Glance briefly screen-left then back toward the lens; keep the eyes open and alert."
+        },
+        {
+          "start": 2.133333,
+          "end": 3.266667,
+          "action": "Keep the mouth covered while the handheld selfie camera moves closer and its viewpoint tilts upward. The face grows larger and ceiling becomes prominent. Do not substitute only a body lean for camera movement."
+        },
+        {
+          "start": 3.266667,
+          "end": 3.466667,
+          "action": "Briefly close the eyes while the same hand still covers the mouth; retain the closer crop."
+        },
+        {
+          "start": 3.466667,
+          "end": 3.566667,
+          "action": "Reopen the eyes and lower that same hand away from the mouth as the mouth opens again."
+        },
+        {
+          "start": 3.566667,
+          "end": 4.1,
+          "action": "Keep the open-mouth reaction toward the lens through the final frame in the closer selfie view; no new gesture or scene transition."
+        }
+      ],
+      "nativeFramesReviewed": 123,
+      "sheetsReviewed": 5,
+      "fullResolutionIndices": [
+        99,
+        105
+      ],
+      "existingDecisionGate": false,
+      "status": "source_reviewed_correction_drafted",
+      "generatedQualification": "not_tested",
+      "originalAssignedDirections": "OPENING STATE: The performer is in a close selfie with an open mouth, looking off screen-left, with one hand already raised beside the cheek.\n\nOPENING: Turn the surprised gaze toward the lens while keeping the raised hand beside the face.\n\nMIDDLE: Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face.\n\nENDING: Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view.\n\nCAMERA: Maintain one continuous handheld selfie; move closer through the middle and keep the room in the background.\n\nENDING STATE: The hand has lowered, the mouth is open again, and the performer looks toward the camera in a closer crop.\n\nCONSTRAINT: Keep the same hand throughout the mouth-covering gesture.\n\nCONSTRAINT: No product-screen insert, scene cut or additional person.\n\nCONSTRAINT: Keep clothing, necklace and room consistent throughout the movement.",
+      "originalCompiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The performer is in a close selfie with an open mouth, looking off screen-left, with one hand already raised beside the cheek.\n\nOPENING: Turn the surprised gaze toward the lens while keeping the raised hand beside the face.\n\nMIDDLE: Bring the raised hand across the mouth, widen the eyes, and move the handheld camera closer to the face.\n\nENDING: Lower that hand from the mouth and reopen the mouth in surprise, ending in the closer selfie view.\n\nCAMERA: Maintain one continuous handheld selfie; move closer through the middle and keep the room in the background.\n\nENDING STATE: The hand has lowered, the mouth is open again, and the performer looks toward the camera in a closer crop.\n\nCONSTRAINT: Keep the same hand throughout the mouth-covering gesture.\n\nCONSTRAINT: No product-screen insert, scene cut or additional person.\n\nCONSTRAINT: Keep clothing, necklace and room consistent throughout the movement.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "candidatePlan": {
+        "openingState": "The performer is in a close selfie with an open mouth, looking off screen-left, with one hand already raised beside the cheek.",
+        "camera": "One continuous handheld selfie, moving closer with an upward viewpoint change during the covered-mouth hold.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.19512195121951223]: Hold the open-mouth surprised look with the already raised hand beside the cheek. Bring the screen-left gaze toward the lens without covering the mouth yet."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.19512195121951223–0.24390243902439027]: Move that same raised hand across the mouth, maintaining a surprised gaze."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.24390243902439027–0.5203251219512195]: Hold the hand against the mouth continuously. Glance briefly screen-left then back toward the lens; keep the eyes open and alert."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.5203251219512195–0.7967480487804879]: Keep the mouth covered while the handheld selfie camera moves closer and its viewpoint tilts upward. The face grows larger and ceiling becomes prominent. Do not substitute only a body lean for camera movement."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7967480487804879–0.845528536585366]: Briefly close the eyes while the same hand still covers the mouth; retain the closer crop."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.845528536585366–0.8699187804878049]: Reopen the eyes and lower that same hand away from the mouth as the mouth opens again."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.8699187804878049–1]: Keep the open-mouth reaction toward the lens through the final frame in the closer selfie view; no new gesture or scene transition."
+          }
+        ],
+        "endingState": "Same person in closer selfie, hand lowered after the brief eye closure, mouth open and gaze toward the lens.",
+        "constraints": [
+          "Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts."
+        ]
+      },
+      "compiled": [
+        {
+          "durationSeconds": 3,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The performer is in a close selfie with an open mouth, looking off screen-left, with one hand already raised beside the cheek.\n\nOPENING: 0–0.59s: Hold the open-mouth surprised look with the already raised hand beside the cheek. Bring the screen-left gaze toward the lens without covering the mouth yet.\n\nMIDDLE: 0.59–0.73s: Move that same raised hand across the mouth, maintaining a surprised gaze.\n\nMIDDLE: 0.73–1.56s: Hold the hand against the mouth continuously. Glance briefly screen-left then back toward the lens; keep the eyes open and alert.\n\nMIDDLE: 1.56–2.39s: Keep the mouth covered while the handheld selfie camera moves closer and its viewpoint tilts upward. The face grows larger and ceiling becomes prominent. Do not substitute only a body lean for camera movement.\n\nMIDDLE: 2.39–2.54s: Briefly close the eyes while the same hand still covers the mouth; retain the closer crop.\n\nMIDDLE: 2.54–2.61s: Reopen the eyes and lower that same hand away from the mouth as the mouth opens again.\n\nENDING: 2.61–3s: Keep the open-mouth reaction toward the lens through the final frame in the closer selfie view; no new gesture or scene transition.\n\nCAMERA: One continuous handheld selfie, moving closer with an upward viewpoint change during the covered-mouth hold.\n\nENDING STATE: Same person in closer selfie, hand lowered after the brief eye closure, mouth open and gaze toward the lens.\n\nCONSTRAINT: Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        },
+        {
+          "durationSeconds": 4,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 4-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The performer is in a close selfie with an open mouth, looking off screen-left, with one hand already raised beside the cheek.\n\nOPENING: 0–0.78s: Hold the open-mouth surprised look with the already raised hand beside the cheek. Bring the screen-left gaze toward the lens without covering the mouth yet.\n\nMIDDLE: 0.78–0.98s: Move that same raised hand across the mouth, maintaining a surprised gaze.\n\nMIDDLE: 0.98–2.08s: Hold the hand against the mouth continuously. Glance briefly screen-left then back toward the lens; keep the eyes open and alert.\n\nMIDDLE: 2.08–3.19s: Keep the mouth covered while the handheld selfie camera moves closer and its viewpoint tilts upward. The face grows larger and ceiling becomes prominent. Do not substitute only a body lean for camera movement.\n\nMIDDLE: 3.19–3.38s: Briefly close the eyes while the same hand still covers the mouth; retain the closer crop.\n\nMIDDLE: 3.38–3.48s: Reopen the eyes and lower that same hand away from the mouth as the mouth opens again.\n\nENDING: 3.48–4s: Keep the open-mouth reaction toward the lens through the final frame in the closer selfie view; no new gesture or scene transition.\n\nCAMERA: One continuous handheld selfie, moving closer with an upward viewpoint change during the covered-mouth hold.\n\nENDING STATE: Same person in closer selfie, hand lowered after the brief eye closure, mouth open and gaze toward the lens.\n\nCONSTRAINT: Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        }
+      ]
+    },
+    {
+      "referenceId": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "title": "Hook 72",
+      "route": "normal",
+      "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
+      "sourceDurationSeconds": 6.366666666666666,
+      "sourceIntervals": [
+        {
+          "start": 0,
+          "end": 1,
+          "action": "Keep the purple handled bottle upright against the chest at screen-left, with the holding fingers near the lower lip. Preserve the initial open-mouth tongue/finger movement without lifting the bottle to drink."
+        },
+        {
+          "start": 1,
+          "end": 1.6,
+          "action": "Blink or briefly close the eyes and turn the head slightly screen-left, drawing the tongue back and pursing the lips. Keep the same bottle grip."
+        },
+        {
+          "start": 1.6,
+          "end": 2.433333,
+          "action": "Turn toward the lens and settle briefly into a small closed-lip smile; hand and upright bottle stay near the chin and chest."
+        },
+        {
+          "start": 2.433333,
+          "end": 4.833333,
+          "action": "Repeat the visible small tongue/finger/lip movements with brief pauses, keeping the bottle upright. Preserve this repeated period rather than replacing it with a sip or a single new gesture."
+        },
+        {
+          "start": 4.833333,
+          "end": 5.6,
+          "action": "Turn the head slightly screen-left, purse the lips briefly, then resume the open-mouth finger/lip action while maintaining the bottle grip."
+        },
+        {
+          "start": 5.6,
+          "end": 6.366666666666666,
+          "action": "Continue the mouth/hand action while the camera tilts upward toward the wall and ceiling. Let the performer move into the lower-left of the picture, with part of the head cut by the bottom edge in the final view. Do not recenter the person or add a bottle-to-mouth sip."
+        }
+      ],
+      "nativeFramesReviewed": 191,
+      "sheetsReviewed": 7,
+      "fullResolutionIndices": [
+        190
+      ],
+      "existingDecisionGate": true,
+      "status": "source_reviewed_correction_drafted",
+      "generatedQualification": "not_tested",
+      "originalAssignedDirections": "OPENING STATE: The seated performer holds a large purple handled bottle upright against the chest on screen-left; the holding hand is beside the lower lip and the mouth is open with the tongue briefly visible.\n\nOPENING: Blink and turn the head slightly toward screen-left, pursing the lips while keeping the bottle upright against the chest.\n\nMIDDLE: Turn back toward the lens and soften into a small smile, leaving the same hand near the lower lip.\n\nENDING: Open the mouth again and make a small sideways head turn as the camera tilts upward.\n\nCAMERA: Use a slightly tilted handheld seated portrait view with an upward drift near the ending.\n\nENDING STATE: The head is turned slightly sideways with the bottle upright and the holding hand beside the lower lip.\n\nCONSTRAINT: Keep bottle and hand contact continuous. Do not raise the bottle to drink or invent a drinking action.",
+      "originalCompiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The seated performer holds a large purple handled bottle upright against the chest on screen-left; the holding hand is beside the lower lip and the mouth is open with the tongue briefly visible.\n\nOPENING: Blink and turn the head slightly toward screen-left, pursing the lips while keeping the bottle upright against the chest.\n\nMIDDLE: Turn back toward the lens and soften into a small smile, leaving the same hand near the lower lip.\n\nENDING: Open the mouth again and make a small sideways head turn as the camera tilts upward.\n\nCAMERA: Use a slightly tilted handheld seated portrait view with an upward drift near the ending.\n\nENDING STATE: The head is turned slightly sideways with the bottle upright and the holding hand beside the lower lip.\n\nCONSTRAINT: Keep bottle and hand contact continuous. Do not raise the bottle to drink or invent a drinking action.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.",
+      "candidatePlan": {
+        "openingState": "The seated performer holds a large purple handled bottle upright against the chest on screen-left; the holding hand is beside the lower lip and the mouth is open with the tongue briefly visible.",
+        "camera": "Seated portrait with slight tilt; camera tilts upward in the final phase, ending with wall/ceiling dominant and face low/left.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.15706806282722513]: Keep the purple handled bottle upright against the chest at screen-left, with the holding fingers near the lower lip. Preserve the initial open-mouth tongue/finger movement without lifting the bottle to drink."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.15706806282722513–0.25130890052356025]: Blink or briefly close the eyes and turn the head slightly screen-left, drawing the tongue back and pursing the lips. Keep the same bottle grip."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.25130890052356025–0.38219890052356026]: Turn toward the lens and settle briefly into a small closed-lip smile; hand and upright bottle stay near the chin and chest."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.38219890052356026–0.7591622513089005]: Repeat the visible small tongue/finger/lip movements with brief pauses, keeping the bottle upright. Preserve this repeated period rather than replacing it with a sip or a single new gesture."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.7591622513089005–0.8795811518324608]: Turn the head slightly screen-left, purse the lips briefly, then resume the open-mouth finger/lip action while maintaining the bottle grip."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.8795811518324608–1]: Continue the mouth/hand action while the camera tilts upward toward the wall and ceiling. Let the performer move into the lower-left of the picture, with part of the head cut by the bottom edge in the final view. Do not recenter the person or add a bottle-to-mouth sip."
+          }
+        ],
+        "endingState": "Person low/left with head partly outside bottom edge, bottle still held upright and mouth/hand action ongoing; wall and ceiling dominate.",
+        "constraints": [
+          "Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts."
+        ]
+      },
+      "compiled": [
+        {
+          "durationSeconds": 3,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The seated performer holds a large purple handled bottle upright against the chest on screen-left; the holding hand is beside the lower lip and the mouth is open with the tongue briefly visible.\n\nOPENING: 0–0.47s: Keep the purple handled bottle upright against the chest at screen-left, with the holding fingers near the lower lip. Preserve the initial open-mouth tongue/finger movement without lifting the bottle to drink.\n\nMIDDLE: 0.47–0.75s: Blink or briefly close the eyes and turn the head slightly screen-left, drawing the tongue back and pursing the lips. Keep the same bottle grip.\n\nMIDDLE: 0.75–1.15s: Turn toward the lens and settle briefly into a small closed-lip smile; hand and upright bottle stay near the chin and chest.\n\nMIDDLE: 1.15–2.28s: Repeat the visible small tongue/finger/lip movements with brief pauses, keeping the bottle upright. Preserve this repeated period rather than replacing it with a sip or a single new gesture.\n\nMIDDLE: 2.28–2.64s: Turn the head slightly screen-left, purse the lips briefly, then resume the open-mouth finger/lip action while maintaining the bottle grip.\n\nENDING: 2.64–3s: Continue the mouth/hand action while the camera tilts upward toward the wall and ceiling. Let the performer move into the lower-left of the picture, with part of the head cut by the bottom edge in the final view. Do not recenter the person or add a bottle-to-mouth sip.\n\nCAMERA: Seated portrait with slight tilt; camera tilts upward in the final phase, ending with wall/ceiling dominant and face low/left.\n\nENDING STATE: Person low/left with head partly outside bottom edge, bottle still held upright and mouth/hand action ongoing; wall and ceiling dominate.\n\nCONSTRAINT: Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        },
+        {
+          "durationSeconds": 7,
+          "approved": false,
+          "prompt": "Animate the approved starting image into a 7-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: The seated performer holds a large purple handled bottle upright against the chest on screen-left; the holding hand is beside the lower lip and the mouth is open with the tongue briefly visible.\n\nOPENING: 0–1.1s: Keep the purple handled bottle upright against the chest at screen-left, with the holding fingers near the lower lip. Preserve the initial open-mouth tongue/finger movement without lifting the bottle to drink.\n\nMIDDLE: 1.1–1.76s: Blink or briefly close the eyes and turn the head slightly screen-left, drawing the tongue back and pursing the lips. Keep the same bottle grip.\n\nMIDDLE: 1.76–2.68s: Turn toward the lens and settle briefly into a small closed-lip smile; hand and upright bottle stay near the chin and chest.\n\nMIDDLE: 2.68–5.31s: Repeat the visible small tongue/finger/lip movements with brief pauses, keeping the bottle upright. Preserve this repeated period rather than replacing it with a sip or a single new gesture.\n\nMIDDLE: 5.31–6.16s: Turn the head slightly screen-left, purse the lips briefly, then resume the open-mouth finger/lip action while maintaining the bottle grip.\n\nENDING: 6.16–7s: Continue the mouth/hand action while the camera tilts upward toward the wall and ceiling. Let the performer move into the lower-left of the picture, with part of the head cut by the bottom edge in the final view. Do not recenter the person or add a bottle-to-mouth sip.\n\nCAMERA: Seated portrait with slight tilt; camera tilts upward in the final phase, ending with wall/ceiling dominant and face low/left.\n\nENDING STATE: Person low/left with head partly outside bottom edge, bottle still held upright and mouth/hand action ongoing; wall and ceiling dominate.\n\nCONSTRAINT: Preserve the approved person, outfit and room. Keep hand/prop contact continuous. No scene cuts.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+        }
+      ]
+    },
+    {
+      "referenceId": "explore-paired-hook-03d314d5268b8c31ec390bf1",
+      "title": "Hook 12",
+      "route": "middle",
+      "sourceSha256": "0e261c745ea8a9957168683b5d7e5271a8f5e83884a58d53011149ea4ca03f57",
+      "status": "source_reviewed_no_new_content_gap",
+      "generatedQualification": "not_tested",
+      "nativeFramesReviewed": 73,
+      "sheetsReviewed": 3,
+      "fullResolutionIndices": [
+        45
+      ],
+      "clarityFrame": {
+        "index": 36,
+        "timeSeconds": 1.2,
+        "sha256": "b15db17d5ef51954dd2094e9b323c3f157a14346325cb7fabcc183b786885ab4"
+      },
+      "openingTime": 0,
+      "sourceDurationSeconds": 2.433333333333333,
+      "assignedPlan": {
+        "openingState": "Seated behind a silver laptop, the person holds a large white mug to the mouth with the screen-left hand; free fingers rest on the laptop top at screen-right. Head angled slightly screen-left.",
+        "beats": [
+          {
+            "phase": "opening",
+            "action": "PHASE [0–0.246575342466]: Keep the white mug tilted at the lips for a sip; free fingers stay hooked over the laptop edge."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.246575342466–0.452054794521]: Lower the mug beneath the chin while lifting the eyes sharply upward; keep holding the handle."
+          },
+          {
+            "phase": "middle",
+            "action": "PHASE [0.452054794521–0.63698630137]: Bring the gaze toward the mug and camera; eyes widen and lips part. A thin trickle of drink falls from the lower lip back toward the mug."
+          },
+          {
+            "phase": "ending",
+            "action": "PHASE [0.63698630137–1]: Lean slightly closer with very wide eyes angled down toward the cup and a rounded open mouth. Keep the mug under the chin as the thin trickle continues; free fingers remain on the laptop."
+          }
+        ],
+        "camera": "Fixed low tabletop portrait view, laptop filling lower half; bright kitchen windows, greenery and hanging lights behind.",
+        "endingState": "Closer wide-eyed reaction with rounded open mouth, mug still held under chin, thin drink trickle toward mug and free fingers on laptop.",
+        "constraints": [
+          "Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose."
+        ]
+      },
+      "directions": "OPENING STATE: Seated behind a silver laptop, the person holds a large white mug to the mouth with the screen-left hand; free fingers rest on the laptop top at screen-right. Head angled slightly screen-left.\n\nOPENING: PHASE [0–0.246575342466]: Keep the white mug tilted at the lips for a sip; free fingers stay hooked over the laptop edge.\n\nMIDDLE: PHASE [0.246575342466–0.452054794521]: Lower the mug beneath the chin while lifting the eyes sharply upward; keep holding the handle.\n\nMIDDLE: PHASE [0.452054794521–0.63698630137]: Bring the gaze toward the mug and camera; eyes widen and lips part. A thin trickle of drink falls from the lower lip back toward the mug.\n\nENDING: PHASE [0.63698630137–1]: Lean slightly closer with very wide eyes angled down toward the cup and a rounded open mouth. Keep the mug under the chin as the thin trickle continues; free fingers remain on the laptop.\n\nCAMERA: Fixed low tabletop portrait view, laptop filling lower half; bright kitchen windows, greenery and hanging lights behind.\n\nENDING STATE: Closer wide-eyed reaction with rounded open mouth, mug still held under chin, thin drink trickle toward mug and free fingers on laptop.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.",
+      "compiled3s": "Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.\n\nKeep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.\n\nOPENING STATE: Seated behind a silver laptop, the person holds a large white mug to the mouth with the screen-left hand; free fingers rest on the laptop top at screen-right. Head angled slightly screen-left.\n\nOPENING: 0–0.74s: Keep the white mug tilted at the lips for a sip; free fingers stay hooked over the laptop edge.\n\nMIDDLE: 0.74–1.36s: Lower the mug beneath the chin while lifting the eyes sharply upward; keep holding the handle.\n\nMIDDLE: 1.36–1.91s: Bring the gaze toward the mug and camera; eyes widen and lips part. A thin trickle of drink falls from the lower lip back toward the mug.\n\nENDING: 1.91–3s: Lean slightly closer with very wide eyes angled down toward the cup and a rounded open mouth. Keep the mug under the chin as the thin trickle continues; free fingers remain on the laptop.\n\nCAMERA: Fixed low tabletop portrait view, laptop filling lower half; bright kitchen windows, greenery and hanging lights behind.\n\nENDING STATE: Closer wide-eyed reaction with rounded open mouth, mug still held under chin, thin drink trickle toward mug and free fingers on laptop.\n\nCONSTRAINT: Keep the approved identity, clothing and setting continuous through the final frame. Maintain hand and held-object contact; preserve every held reaction and the final pose.\n\nDo not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.\n\nSOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound."
+    }
+  ]
+}

@@ -14,11 +14,13 @@ const workspace = read("workflow-edit-workspace.tsx");
 const element = (type, props = {}) => typeof type === "function" ? type(props) : ({ type, props });
 function load(source) {
   const imports = {
+    "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
     react: { useId: () => "schedule-test" },
     "@base-ui/react/tabs": { Tabs: { List: "tablist", Tab: "tab" } },
     "lucide-react": { Sparkles: "sparkles", Check: "check", Eye: "eye", EyeOff: "eye-off" },
     "@/components/social/platform-icon": { SocialPlatformIcon: "platform-icon" },
     "@/components/ui/button": { Button: "button" },
+    "@/components/scheduling/workflow-time-picker": { WorkflowTimePicker: "time-picker" },
     "@/components/ui/input": { Input: "input" },
     "@/components/scheduling/post-caption-field": { PostCaptionField: "post-caption-field" },
     "@/lib/social/platform-visibility": { isSocialPlatformVisible: (platform) => platform !== "tiktok" },
@@ -153,16 +155,16 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   const original = { platform: "", caption: "", date: "", time: "" };
   const changes = [];
   const tree = WorkflowSchedulingPanel({ draft: original, onChange: (draft) => changes.push(draft) });
-  const platforms = nodes(tree).filter((node) => node.type === "button");
+  const platforms = nodes(tree).filter((node) => node.type === "button" && node.props["data-platform"]);
   assert.deepEqual(platforms.map((node) => [node.props["aria-label"], node.props["aria-pressed"]]), [["Instagram", false], ["YouTube", false]]);
   assert.equal(nodes(tree).find((node) => node.props.role === "group").props["aria-label"], "Posting platforms");
   assert.deepEqual(nodes(tree).filter((node) => node.type === "platform-icon").map((node) => node.props.platform), ["instagram", "youtube"]);
   platforms[0].props.onClick();
   nodes(tree).find((node) => node.type === "post-caption-field").props.onChange("  My caption\nunchanged  ");
   nodes(tree).find((node) => node.props.type === "date").props.onChange({ target: { value: "2026-10-20" } });
-  nodes(tree).find((node) => node.props.type === "time").props.onChange({ target: { value: "14:30" } });
+  nodes(tree).find((node) => node.type === "time-picker").props.onChange("14:30");
   assert.deepEqual(changes.map((draft) => [draft.platform, draft.caption, draft.date, draft.time]), [["instagram", "", "", ""], ["", "  My caption\nunchanged  ", "", ""], ["", "", "2026-10-20", ""], ["", "", "", "14:30"]]);
-  assert.equal(nodes(tree).filter((node) => node.type === "input").length, 2);
+  assert.equal(nodes(tree).filter((node) => node.type === "input").length, 1);
   assert.doesNotMatch(visibleText(tree), /Account|Select platform|Local draft only|no post will be scheduled/);
   assert.equal(nodes(tree).find(node => node.type === "post-caption-field").props.value, "");
   assert.equal(changes[1].captionInitialized, true);
@@ -171,7 +173,7 @@ test("Schedule uses enabled named platform icons and forwards draft fields verba
   assert.equal(original.caption, "");
   for (const platform of ["instagram", "youtube"]) {
     const selected = WorkflowSchedulingPanel({ draft: { ...original, platform }, onChange() {} });
-    const pressed = nodes(selected).filter((node) => node.props["aria-pressed"] === true);
+    const pressed = nodes(selected).filter((node) => node.props["aria-pressed"] === true && node.props["data-platform"]);
     assert.equal(pressed.length, 1);
     assert.equal(pressed[0].props["data-platform"], platform);
   }

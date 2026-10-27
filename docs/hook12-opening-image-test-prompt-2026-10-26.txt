@@ -1,0 +1,9 @@
+Create one photorealistic, caption-free 9:16 starting image. Recreate the exact original opening in Image 1 with my influencer from Image 3.
+
+Image 1 controls the opening: low tabletop camera, the silver laptop filling the lower half, kitchen windows with green leaves outside, hanging lights and countertop behind. The person is behind the laptop, head angled slightly screen-left, holding the large white mug tilted against the mouth with the screen-left hand. The other fingers hook over the laptop's top edge at screen-right. Keep the mug covering the mouth and lower nose exactly as shown. Preserve the crop, lighting, wardrobe and physical hand/prop contact.
+
+Image 2 is a later clear frame from the same source, for scene and continuity evidence only. Do not copy its lowered mug, wide-eyed expression, head angle or later pose into the opening. Image 3 is the sole facial-identity reference: use that influencer's facial features, skin tone and hair identity; never import the portrait's gray shirt, necklace, bedroom or frontal pose.
+
+Completely erase the creator-added caption on the middle of the laptop lid (roughly y=55-68%): "Gaming website that makes you money while you sleep" plus sleeping-face and money emojis. Remove every caption glyph, outline and shadow, restoring the plain physical laptop beneath. Preserve the physical laptop logo and mug markings. Do not replace the caption with other words.
+
+Return only one natural photograph matching Image 1's opening posture. No extra hands, altered objects, beauty filter, captions or watermarks. This is the original sip opening, not the later face-clear reaction.

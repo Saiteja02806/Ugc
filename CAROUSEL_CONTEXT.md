@@ -1,5 +1,15 @@
 # Carousel System Context
 
+## 2026-10-26 Trending Slideshow Automation workspace and contract (local)
+
+- Adds an `Automation` pill beside the existing `Edit (E)` action in the Trending header (`components/trending/trending-workspace.tsx`) while keeping `Edit (E)` unchanged for editing the currently viewed slideshow.
+- Opens a full-screen Slideshow Automation workspace (`components/trending/trending-slideshow-automation-workspace.tsx`) with a 4-step guided setup (`1. Content`, `2. Appearance`, `3. Posting`, `4. Review`) plus an Active / Paused / Needs-attention management overview.
+- Uses user-approved frontend naming in the Automation UI: **Educational Tips** (*Value-first · No product pitch*, mapped to `helpful_tips` / `structure_1`) and **Product Stories** (*Story-led · Ends with a CTA*, mapped to `product_stories_cta` / `structure_2`), with exact daily slideshow counts (`1..4/day`) and `[-]` `[+]` steppers that stay synchronized with Step 3 daily posting slots (`WorkflowTimePicker`).
+- Enforces strict collection-only background sourcing (`allocateCollectionOnlySlideBackgrounds`): when `Use my collection only` is enabled, backgrounds rotate deterministically from the selected Media library collection (all images or selected subset) and never substitute stock, catalogue, or AI-generated images. An empty collection halts preparation with `held_collection_empty` and surfaces recovery actions.
+- Supports reusable saved visual styles (`trending_carousel_visual_styles`, `CarouselManualTextStyle` presets) with a live `Example preview` showing both Cover (`Slide 1`) and Body (`Slide 2+`) slides (`CarouselManualText` / `CarouselTextControls`).
+- Snapshot isolation (`trending_slideshow_automation_slots`, idempotency key `automation:{uid}:{localDate}:{slotTime}`) ensures later configuration edits never rewrite already-scheduled slots and pausing respects `user_modified` slots.
+- Local unit, schema, and UI contract tests pass; this is local implementation and is not deployed to production.
+
 ## 2026-10-25 Explore named-source planner handoff
 
 - Manual Explore named-source planning includes the server-owned business
@@ -8382,3 +8392,45 @@ The records below are retained from the deployed branch during release reconcili
 
 - The user authorized deployment of all intentional current changes. The private slideshow execution-plan migration `20261022092140` is already present with RLS and service-only access verified. Do not bulk-apply historical migration drift or unrelated deferred migrations.
 - Ship the matching generation worker before website/MCP so named slideshow inputs and versioned per-output contracts are supported before new requests can be accepted. Runtime release identity and production acceptance are recorded separately from the passing local suites in `docs/combined-release-deployment-2026-10-23.md`.
+
+## Reconnected action-required target retry — 26 October 2026
+
+- A production slideshow partial failure established that TikTok provider `invalid_grant` can leave one target `action_required` while an Instagram sibling is already published. The connection later recovered and successfully published unrelated content, but the old target remained blocked because the retry RPC returned before checking present connection health.
+- Migration `20261026105718_retry_reconnected_action_required_target.sql` makes `action_required` a target-scoped retry candidate. It reuses any queued/processing job, otherwise validates the existing ready carousel slides and current platform connection before creating one durable social-publish job.
+- An unrecovered connection still returns `action_required` and creates no job. Published siblings and receipts remain immutable, repeat clicks are idempotent, owner checks remain inside the service-only security-definer function, and the initial scheduling/generation flows are unchanged.
+- Focused local database tests cover healthy reconnection, unhealthy blocking, legacy failed-target semantics, duplicate prevention, sibling preservation, owner isolation and browser-role denial. This entry is code/test evidence only; production application of the migration and a real provider retry are not yet accepted.
+
+
+## 2026-10-26 Shared publishing24-hour picker/Post now (local)
+
+Shared platform-selection modal now uses the explicit24-hour picker; existing ASAP action is named Post now. Quick-time labels use24-hour notation. Explore slideshow's shared form adds explicit now/later timing, retaining manual values and sending existing useDefaultScheduleTime to server-owned earliest-slot scheduling. Main Scheduling new-post UI also exposes that flag; existing edits retain manual time. No Carousel sourcing/generation/rendering/schema or provider/queue changes.
+
+Local broad/focused/browser/build checks pass; full evidence and protected behavior: docs/workflow-post-now-and-time-pickers-2026-10-26.md. Default lead is5 minutes (actual hosted configuration unverified). No deployment, real publication or authenticated production acceptance.
+
+
+## 2026-10-26 Publishing UI correction: remove separate timing choice sections
+
+User rejects the separate Post now/Schedule for later selector sections. Shared platform modal removes choice cards and uses one final Post now action by default; original24-hour date/time inputs remain available for an explicit schedule. Explore slideshow uses the same simplified shared form. No Carousel generation/rendering/schema/provider changes. Evidence and local-vs-production boundary: docs/post-now-simple-ui-2026-10-26.md; no deployment/publication.
+
+
+## 2026-10-26 Device-default publishing clock presentation (local)
+
+User explicitly approves device/browser locale default12/24-hour display. Shared publishing modal/Explore slideshow picker support AM/PM when appropriate, preserving canonical HH:mm and exact timezone conversion. Quick-slot labels localize too. No Carousel sourcing/render/schema/provider changes; Post now5-minute preparation lead retained. Local receipt: docs/device-time-format-2026-10-26.md; no deployment/publication.
+
+
+## 2026-10-26 Consistent shared quick publish times (local)
+
+Explore slideshow receives compact In1hour/In3hours buttons through shared scheduling form. Existing Trending Carousel platform modal keeps its quick actions; they now compute from click time. Source/render/schema/provider/queue unchanged. Locale display, canonical HH:mm and Post now5-minute lead preserved. Local evidence: docs/quick-publish-actions-2026-10-26.md. No deployment/publication.
+
+- Quick preset clarification2026-10-26: shared platform modal and Explore slideshow now reuse exact5mins/1hour/3hours/Tomorrow9AM pills in one nonwrapping row, scrolling internally on narrow screens. Other tomorrow slots removed per user exact list. Selected-zone tomorrow09:00, device display, explicit submit and prior backend policy retained. See docs/quick-publish-actions-2026-10-26.md.
+
+
+## 2026-10-27 Slideshow automation gap repairs (local; not deployed)
+
+- Automation now renders collection-only backgrounds and saved manual typography/position into separate Library outputs, keyed by the daily automation slot. Ordinary generated Carousel Library saves retain their existing source identity; original Trending cards and saved manual edits are unchanged. Default background/default style keeps existing rendered pixels. Missing raw backgrounds block customization rather than double-overlay text onto flattened slides.
+- Rotation uses the actual slideshow length. Empty selected subsets stay empty. Educational Tips/Product Stories require the requested structure with no cross-format fallback.
+- Pause persists before cancellation; cancel/skip require a confirmed cancelled schedule. Failures surface without falsely marking the slot cancelled; partial successes remain recorded. A fresh activation/revision check after rendering blocks a sweep paused during preparation. This is not a transactional distributed pause fence.
+- Reuses the existing glyph renderer, with compatible Node/CommonJS and Next/ESM font parsing and explicit server font tracing. No UI component, migration, dependency, platform mapping or shared scheduler implementation changed.
+- Local verification:91 focused/database tests,41 worker renderer/edit tests, existing desktop/mobile Trending Adjust/editor browser fixtures, types, scoped lint and Webpack production build PASS. Actual Library/cancellation SQL and automation schema exercised in local PGlite. Five relevant server routes each trace18font files.
+- Three broader scheduling UI source-contract assertions fail in unrelated, already-modified UI files; not changed by this patch. Hosted migration, actual storage upload/publishing/scheduler execution and signed-in production acceptance remain NOT VERIFIED. Production database previously lacked automation tables; no deployment/apply/activation in this task.
+- Receipt:docs/trending-automation-gap-fixes-2026-10-27.md. Incident UGC-SCH-011 remains OPEN for hosted acceptance.

@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "extractor": "frame0-png-v1",
+  "items": [
+    {
+      "id": "talking-car-story",
+      "sourceSha256": "1c46b8fd23de99bf7bb5b21af96ad4d15fd17a1ff628662bbc24381560d216e1",
+      "frameSha256": "0ccf784665319028633e2e84a118ca686b6944517c797d4088f8befa9ffb5c0b",
+      "path": "/explore/talking-head-frames/v1/talking-car-story.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-warm-story",
+      "sourceSha256": "3886962301192b9fb45106d3817a2268a20714176e51dd759eef985ea80857f0",
+      "frameSha256": "1f181a2ef7563feb54b24fb503f6c510019ba3990350ef2d97b3a6ae077dd3c2",
+      "path": "/explore/talking-head-frames/v1/talking-warm-story.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-outdoor-discovery",
+      "sourceSha256": "7a7d511452ae50b99d82d6b6bfbc06d6eaa308d7d7c6b4118401d50e45b55956",
+      "frameSha256": "ccdafc66e4214b7bbeb6e86cc0e09cbf7340702eac12111ef877945f69756bfb",
+      "path": "/explore/talking-head-frames/v1/talking-outdoor-discovery.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-outdoor-reaction",
+      "sourceSha256": "5e06af86ed7c05fd5016747f5a4cacac93b6693cdc6b8329600a025058aa0758",
+      "frameSha256": "2c15686a1d6d5f975be1f7f326352071558e5b10a886812b86d9be0443d9eecf",
+      "path": "/explore/talking-head-frames/v1/talking-outdoor-reaction.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-room-explainer",
+      "sourceSha256": "56279887d29bf626568bee9625c91de14c7f9fad5d22ddcac4181097d3948e39",
+      "frameSha256": "09266510e7cf64850aa5d5a119353d44754d773b8ac409335fa009dfcb57f826",
+      "path": "/explore/talking-head-frames/v1/talking-room-explainer.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-car-explainer",
+      "sourceSha256": "dca547f20d9ea453cbd99f5e0cde2a475016da41633396e353c93723becd67b9",
+      "frameSha256": "ba1512103b8092800301db96b18023c1b9916850ae603db686e350aad6074a2d",
+      "path": "/explore/talking-head-frames/v1/talking-car-explainer.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-discovery",
+      "sourceSha256": "44b3755fb54b4748618a5f445d0d57c52b658dd492d2438869649892dfa51999",
+      "frameSha256": "7d82647f70079b5d91a233fe57d9cc9503eac29219a1c8d898664a11b4dd5e02",
+      "path": "/explore/talking-head-frames/v1/talking-discovery.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-surprised-story",
+      "sourceSha256": "19004ffd28c04c4cc1239da185e7b254a804a0584d83ed6d1839f1e4da837894",
+      "frameSha256": "23160b6c94c977ccec15044c52f843a338c3ba09f29c71e4fead381bb06f8ea4",
+      "path": "/explore/talking-head-frames/v1/talking-surprised-story.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-mug-story",
+      "sourceSha256": "1d143078e4496d1d4045f1f2ca8798be8c94bb4d4b07328a442f6633a63dc6a5",
+      "frameSha256": "5635670dab16f26f6cc43296cdf9805ab9099a967b705d1690f88b1d03c8d702",
+      "path": "/explore/talking-head-frames/v1/talking-mug-story.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-sophia-designsthings",
+      "sourceSha256": "cb8b08f63bd15c4ef512e83741893dd5ab856e017b27b8b7adb2dbc7aa68bdba",
+      "frameSha256": "2a86b15c9d31ab167ac00e9a3a0301a9d662eb98f42408b6ab448f8c60dc799d",
+      "path": "/explore/talking-head-frames/v1/talking-sophia-designsthings.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-emmgr4c3",
+      "sourceSha256": "ed5d74058f3cb9539b8812a42be3c37b69dd6e28201d4e5ba4016ba89372f0fe",
+      "frameSha256": "34b798f39243f0c3e9367baecf353b50729f5119a9a6dcb16c422c6fec20a65b",
+      "path": "/explore/talking-head-frames/v1/talking-emmgr4c3.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-tessam-bible",
+      "sourceSha256": "cd70ead6e92ea81cf2d9adcc94c98d8d12ae8bb500e6e290d778b6a2eb1993aa",
+      "frameSha256": "9539e493eb7c59a6299aa5431b01b27187439073516af23cec838a5527db976f",
+      "path": "/explore/talking-head-frames/v1/talking-tessam-bible.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-websites-explainer",
+      "sourceSha256": "35cae40f926025ec664d9d0a30efa846f5e48bfdb8ec6970cd9cc95fb9bda2c5",
+      "frameSha256": "1fee750eb2db8462cbe7592b0de7dddf85695421aa6a514ccc8209939c477f4d",
+      "path": "/explore/talking-head-frames/v1/talking-websites-explainer.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-katiemeidt8",
+      "sourceSha256": "7e618e5837d714716d606720d5c8a43dcbe57086725af49c059c2be672583d37",
+      "frameSha256": "f6da872c1f6dfec414f515e335d87daa8b890354224d9a5d22dc5fa5602e827b",
+      "path": "/explore/talking-head-frames/v1/talking-katiemeidt8.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-studyfetchlauren",
+      "sourceSha256": "1f79a8e9fff58383be7683f30dec32481e923c37fe8e1dada9749d28ff4b1703",
+      "frameSha256": "3c9015fd4c2ac928b46513875b021daa463b79414ecd5a8bae3cee233eedb518",
+      "path": "/explore/talking-head-frames/v1/talking-studyfetchlauren.png",
+      "width": 1080,
+      "height": 1920,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-sidghst",
+      "sourceSha256": "3adc2abfaf7b9f9e0ac8cd46966134dae52a50ae87c28f01d306844543ab657b",
+      "frameSha256": "aa1ae6202fbc135b4541abde4ef33c6bafe41a75de0feaa6afe5fa594d345390",
+      "path": "/explore/talking-head-frames/v1/talking-sidghst.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-studywithsab",
+      "sourceSha256": "4214382ffaf941e75b0e4aafb2509864097c913e0fe3da219a85b54fc77921c4",
+      "frameSha256": "bf930fb9c2e141cb75283367a01abcd636e282ec3518c749e77b630ccc5c3292",
+      "path": "/explore/talking-head-frames/v1/talking-studywithsab.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-bittenbyaturtle",
+      "sourceSha256": "3b948b9c011b6d80696b90e3b55e13deecb77b45925e04575e7669949b69b352",
+      "frameSha256": "4d38b7314bdf0dfb2a4c5f646bca5b4f7c4e53eaf25434cde65dbab9667c023e",
+      "path": "/explore/talking-head-frames/v1/talking-bittenbyaturtle.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-studywithsawyer",
+      "sourceSha256": "26d8506af4ed2a495f9f52b8e12e855126d34e715b043fe3cfda1971efa89177",
+      "frameSha256": "74988644e6ce819ada813e95bcc62073022587375f755a0fb20cce31133350bd",
+      "path": "/explore/talking-head-frames/v1/talking-studywithsawyer.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-mumtipswithginny",
+      "sourceSha256": "44959584161e80cf3468c5514d517d00523577188538b9e32666d03b154a3ccd",
+      "frameSha256": "3d2e4242885988404e8320c29cddee9fdc4b230b7ecf4c4ac3aea913d891e6b3",
+      "path": "/explore/talking-head-frames/v1/talking-mumtipswithginny.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-car-story-full",
+      "sourceSha256": "5ab551835c6b43f809349f263318057dc10894cc75b68ca066cbd2c3708933a8",
+      "frameSha256": "228316d435db437cfa9c70b6daeb1355abe597aa045a8e586d3f946800ff15e9",
+      "path": "/explore/talking-head-frames/v1/talking-car-story-full.png",
+      "width": 576,
+      "height": 1024,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-room-explainer-full",
+      "sourceSha256": "cac6f530242841fc7bc6b1ed805fb0a8edd2ead4fd9d0dbe271ee0014e504afe",
+      "frameSha256": "e611355c0e7c90ac63ab3c0b7db4ae80bd0abbf738eb0cf3a51e194c2f033d7d",
+      "path": "/explore/talking-head-frames/v1/talking-room-explainer-full.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    },
+    {
+      "id": "talking-discovery-full",
+      "sourceSha256": "02d20ab91be3e3375f7ab78b29e7dfb6d268866d70488bd39d4af263df250207",
+      "frameSha256": "ff19052e3e1ffb99b03bb737de7665d1542b0b126e63117dd696d842ab64d36f",
+      "path": "/explore/talking-head-frames/v1/talking-discovery-full.png",
+      "width": 720,
+      "height": 1280,
+      "frameIndex": 0,
+      "frameTimeSeconds": 0
+    }
+  ]
+}

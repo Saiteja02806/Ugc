@@ -1,0 +1,27 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Seated medium-close selfie in gray knitted sweater, long hair over screen-left shoulder, gold earrings, pale wall and exposed metal duct. Open-mouth delighted surprise toward lens, both hands low.
+
+OPENING: 0–0.8s: Hold the open-mouth smile with lifted brows and hands low, allowing slight handheld drift.
+
+MIDDLE: 0.8–1s: Lift sleeve-covered hand from screen-left toward lips.
+
+MIDDLE: 1–1.63s: Lay fingers over the smiling mouth, eyes bright toward lens.
+
+MIDDLE: 1.63–2.33s: Keep the mouth covered, glance screen-right with an amused squint then turn attention back.
+
+ENDING: 2.33–2.93s: Ease closer to lens as the cover loosens to fingers at lips and side of nose, exposing part of the smile without fully dropping hand.
+
+ENDING: 2.93–3s: Sustain the same final pose, gaze, hand contact and framing with tiny natural motion; no new action.
+
+CAMERA: Gentle handheld drift; early view backs off slightly, ending approaches face. Retain room and duct; no cut.
+
+ENDING STATE: Closer smiling face with fingers still across mouth and beside nose, teeth partly visible through loosened contact.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

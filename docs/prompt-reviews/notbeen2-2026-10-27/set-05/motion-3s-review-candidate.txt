@@ -1,0 +1,25 @@
+Animate the approved starting image into a 3-second video. The image supplies the person's appearance and the complete opening composition.
+
+Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.
+
+OPENING STATE: Reclined close portrait against gray cushion and cream wall in pale beige collared top, warm/purple light. Index finger from screen-right held upright close to forehead, other fingers curled with a ring; neutral direct look.
+
+OPENING: 0–0.45s: Hold extended index finger near forehead, with relaxed closed lips.
+
+MIDDLE: 0.45–0.84s: Move the upright index slightly outward toward screen-right and keep it vertical.
+
+MIDDLE: 0.84–1.32s: Bring the still-raised index back nearer brow, maintaining the same curled-hand shape.
+
+MIDDLE: 1.32–1.61s: Briefly close eyes and lower the pointing finger, curling it as hand drops beside cheek/shoulder.
+
+ENDING: 1.61–3s: Reopen eyes and hold the relaxed curled hand beside shoulder with a quiet closed-mouth look to the end.
+
+CAMERA: Almost fixed close reclining selfie with small natural drift; no invented approach.
+
+ENDING STATE: Index lowered and hand relaxed in a loose curl beside screen-right shoulder, head resting on cushion, lips closed and neutral gaze.
+
+CONSTRAINT: Keep approved influencer identity, outfit, background, hands and visible prop contact continuous. Do not introduce new gestures or scene cuts.
+
+Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.
+
+SOUND SETTING: OFF. Return a completely silent video, with no music, speech or sound effects. Natural expressive mouth movements may occur without sound.

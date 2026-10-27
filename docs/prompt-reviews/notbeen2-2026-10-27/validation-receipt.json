@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-27",
+  "references": 10,
+  "sourceFrames": 1260,
+  "contactSheets": 47,
+  "fullResolutionChecks": 21,
+  "retainedHookFrames": 1008,
+  "sourceHashesUnique": true,
+  "referenceIdsUnique": true,
+  "sourceInputMutation": false,
+  "providerCalls": 0,
+  "runtimeChanges": 0,
+  "checks": [
+    {
+      "set": 1,
+      "referenceId": "explore-paired-hook-58afc36bd5ed01471dacbde8",
+      "frameCount": 64,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "0823430230f343ff81675263eebe9c7528a8ad899cd8b69f591ac07ca8ddf642"
+    },
+    {
+      "set": 2,
+      "referenceId": "explore-paired-hook-c2fcbca934c26f8784f7ae51",
+      "frameCount": 88,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "8b6895c573455e6831a94de6f96e8dc9d43e585b78f3d57b1436428e3c9a3281"
+    },
+    {
+      "set": 3,
+      "referenceId": "explore-paired-hook-a9835169c265dda2a517d905",
+      "frameCount": 53,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "d99379754b8775e8e5daebb97fd5120efff1df34b0470ca263c20f368b0c3082"
+    },
+    {
+      "set": 4,
+      "referenceId": "explore-paired-hook-b6546c94d061472815cb5b47",
+      "frameCount": 146,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "9435a5390181eeaeece428a4ab5047dc47c153551dc0307ee1ed380157194634"
+    },
+    {
+      "set": 5,
+      "referenceId": "explore-paired-hook-cff843c327d6574b6c402937",
+      "frameCount": 93,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "d2c503735b24e45c7e5fa45e537bbc4445926fd7aa3358e567c577a5c78a4ec7"
+    },
+    {
+      "set": 6,
+      "referenceId": "explore-paired-hook-5ff13d95c5d500d082396654",
+      "frameCount": 116,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "76b78e0f6a6bcf1e04d6e41d155b7c046577632a938cbbb397c0aa4249cc0ac0"
+    },
+    {
+      "set": 7,
+      "referenceId": "explore-paired-hook-67a4dfa083841f0ed47aa672",
+      "frameCount": 136,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "db3eb1caa70281d2e736588dd3573444072c025f880b20a7d9f7b2d418f589d4"
+    },
+    {
+      "set": 8,
+      "referenceId": "explore-paired-hook-1ab171e057013facbab6f1d0",
+      "frameCount": 91,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "f40c157643f38a00ae307bc3bb2d2a5aa7e6fc1142d097eab28ab773619b94ef"
+    },
+    {
+      "set": 9,
+      "referenceId": "explore-paired-hook-463165a281dab247a37fd485",
+      "frameCount": 102,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "12d99a76a2a6d6202eabf0fbd68364c0fa1b12f235edd623f3eaee0d932bffc3"
+    },
+    {
+      "set": 10,
+      "referenceId": "explore-paired-hook-f7b3d556cfc17d49f0ebab57",
+      "frameCount": 119,
+      "pixelsExact": true,
+      "previewPixelsExact": true,
+      "sourceSha": "f17ace30f623ad536c7fd54d54724c9f81223a1d059085d6037b93f836998c39"
+    }
+  ]
+}

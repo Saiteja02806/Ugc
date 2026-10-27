@@ -131,6 +131,17 @@
           "sourceSha256": "983676516167748b74de6f4771fb384c664fd913acb8b471122ecacf5da5ea6c"
         }
       }
+    },
+    "proximanovaa": {
+      "source": "User-supplied Proxima Nova A Semibold archive",
+      "notice": "proximanovaa-notice.txt",
+      "weights": {
+        "600": {
+          "family": "UGCExploreProximaNovaASemiboldW600",
+          "ttfSha256": "ada6952fa92c444ca3344b0566a285944a7a020feaf12d7f116c2e440d1b12f9",
+          "woff2Sha256": "01074bb33901b22ad156b57a992d68932808729065ab1de11598e0350fb1d102"
+        }
+      }
     }
   }
 }

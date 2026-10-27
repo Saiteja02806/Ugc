@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const TTL_SECONDS = 10 * 60;
 const PATH = /^\/api\/explore\/creator-scene\/(creator-account-[12]-0[1-6])\/explore\/hook-starting-frames\/v1\/([a-f0-9]{64})\/([a-f0-9]{64})\.png$/;
-type Source = { referenceId: string; sourceSha256: string; sourceFrame: { sha256: string } };
+type Source = { version?: number; referenceId: string; sourceSha256: string; sourceFrame: { sha256: string }; animationOpeningFrame?: { sha256: string } };
+export type CreatorSceneRole = "source" | "opening";
 
 export function creatorSceneOrigin() {
   const url = new URL(process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://www.getugcpilot.com");
@@ -22,21 +23,32 @@ function sign(path: string, expires: number) {
   return createHmac("sha256", signingKey()).update(`ugc-private-creator-scene:v1:${path}:${expires}`).digest("hex");
 }
 
-export function creatorSceneCanonicalUrl(source: Source) {
-  const path = `/api/explore/creator-scene/${source.referenceId}/explore/hook-starting-frames/v1/${source.sourceSha256}/${source.sourceFrame.sha256}.png`;
+export function creatorSceneCanonicalUrl(source: Source, role: CreatorSceneRole = "source") {
+  const frame = role === "opening" ? source.version === 4 ? source.animationOpeningFrame : undefined : source.sourceFrame;
+  if (!frame) throw new Error("Creator opening frame requires a v4 receipt.");
+  const path = `/api/explore/creator-scene/${source.referenceId}/explore/hook-starting-frames/v1/${source.sourceSha256}/${frame.sha256}.png`;
   if (!PATH.test(path)) throw new Error("Invalid creator scene identity.");
   return `${creatorSceneOrigin()}${path}`;
+}
+
+/** Role-specific canonical validation; both source frames remain private.
+ * Legacy receipts can authorize only their original source still. */
+export function isCreatorSceneCanonicalUrl(url: string, receipt: Source, role: CreatorSceneRole = "source") {
+  try {
+    const candidate = new URL(url), canonical = new URL(creatorSceneCanonicalUrl(receipt, role));
+    return [creatorSceneOrigin(), "https://www.getugcpilot.com", "https://getugcpilot.com"].includes(candidate.origin)
+      && candidate.pathname === canonical.pathname && !candidate.search && !candidate.hash && !candidate.username && !candidate.password;
+  } catch { return false; }
 }
 
 /** Called only after validating the owned generation receipt. Persist the
  * canonical URL; sign immediately before provider submission on each attempt. */
 export function resolveCreatorSceneDelivery(url: string, receipt: Source, now = Date.now()) {
   if (!receipt.referenceId.startsWith("creator-account-")) return url;
-  const signed = new URL(url), canonical = new URL(creatorSceneCanonicalUrl(receipt));
+  const signed = new URL(url);
   // Website and worker can use the two canonical production host aliases.
   // The frozen origin stays intact; arbitrary provider/third-party hosts fail.
-  if (![creatorSceneOrigin(), "https://www.getugcpilot.com", "https://getugcpilot.com"].includes(signed.origin)
-    || signed.pathname !== canonical.pathname || signed.search || signed.hash || signed.username || signed.password) throw new Error("Creator scene identity changed.");
+  if (!isCreatorSceneCanonicalUrl(url, receipt) && !(receipt.version === 4 && isCreatorSceneCanonicalUrl(url, receipt, "opening"))) throw new Error("Creator scene identity changed.");
   const expires = Math.floor(now / 1000) + TTL_SECONDS;
   signed.searchParams.set("expires", String(expires));
   signed.searchParams.set("signature", sign(signed.pathname, expires));

@@ -51,7 +51,7 @@ test("optional image references reach Google Omni video generation", () => {
 });
 
 test("prompt-only generation remains valid", () => {
-  assert.match(imageApi, /referenceImageUrl = cleanTrustedHttpsUrl/);
+  assert.match(imageApi, /referenceImageUrl = await requestImageUrl/);
   assert.match(videoApi, /referenceVideoUrl = cleanHttpsUrl/);
   assert.doesNotMatch(imageApi, /Add a reference image before generating/);
   assert.doesNotMatch(videoApi, /Add a reference video before generating/);

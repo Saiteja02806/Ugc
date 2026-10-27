@@ -37,6 +37,20 @@
         "explore-paired-hook-44d165d51084f977f5146f69",
         "explore-paired-hook-c15a0f9f2a7c4a28d5330825"
       ]
+    },
+    {
+      "id": "explore-20261027-wall-money",
+      "format": "wall_text",
+      "sequence": 1,
+      "status": "published",
+      "referenceIds": [
+        "explore-paired-wall_text-a2095596d4455693771d474d",
+        "explore-paired-wall_text-8bcb0bf4213f07cc7c8449dc",
+        "explore-paired-wall_text-6862d30ad45084699b168503",
+        "explore-paired-wall_text-cad94a858b67a9f021e1f1d5",
+        "explore-paired-wall_text-7a8441666cf28f6b5bcc37e8",
+        "explore-paired-wall_text-c2db42671f78f22cc195fbb3"
+      ]
     }
   ]
 }

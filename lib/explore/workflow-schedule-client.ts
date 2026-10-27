@@ -29,6 +29,7 @@ export function readScheduleReceipt(raw: string | null, owner: string, kind: "ho
       input.source?.kind !== sourceKind || !isExploreUuid(input.source.id) ||
       !Array.isArray(input.targets) || input.targets.length < 1 || input.targets.length > 3 || input.targets.some(target => !isExploreUuid(target?.connectionId) || !["instagram", "tiktok", "youtube"].includes(target?.platform ?? "")) ||
       new Set(input.targets.map(target => target.connectionId)).size !== input.targets.length || new Set(input.targets.map(target => target.platform)).size !== input.targets.length ||
+      (input.useDefaultScheduleTime !== undefined && typeof input.useDefaultScheduleTime !== "boolean") ||
       typeof input.scheduledFor !== "string" || !Number.isFinite(Date.parse(input.scheduledFor)) ||
       typeof input.timezone !== "string" || input.timezone.length > 100 ||
       typeof input.caption !== "string" || input.caption.length > 10000 ||

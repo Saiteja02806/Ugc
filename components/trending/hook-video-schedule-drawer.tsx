@@ -11,7 +11,11 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { ScheduleQuickActions } from "@/components/scheduling/schedule-quick-actions";
 import { Button } from "@/components/ui/button";
+import { useDeviceTimeFormat } from "@/components/scheduling/use-device-time-format";
+import { displayScheduleTime } from "@/lib/scheduling/time-display";
+import { WorkflowTimePicker } from "@/components/scheduling/workflow-time-picker";
 import { HookInlineSymbols } from "@/components/trending/hook-inline-symbols";
 import {
   Dialog,
@@ -47,7 +51,6 @@ import {
   getZonedDateTimeParts,
   resolveZonedDateTime,
   ScheduleTimeError,
-  SOCIAL_SCHEDULING_TIME_STEP_SECONDS,
   validateScheduleLeadTime,
 } from "@/lib/scheduling/schedule-time";
 import {
@@ -135,6 +138,7 @@ export function HookVideoScheduleDrawer({
   function setCaption(text: string) { setCaptionState(previous => ({ owner: accountId, text, initialized: previous.owner === accountId && previous.initialized })); }
   function setCaptionInitialized(initialized: boolean) { setCaptionState(previous => ({ owner: accountId, text: previous.owner === accountId ? previous.text : "", initialized })); }
   const [hasManualScheduleTime, setHasManualScheduleTime] = useState(false);
+  const [fiveMinutesFromSubmit, setFiveMinutesFromSubmit] = useState(false);
   const [minimumScheduleLeadMinutes, setMinimumScheduleLeadMinutes] = useState(
     DEFAULT_SOCIAL_SCHEDULING_MIN_LEAD_MINUTES,
   );
@@ -253,6 +257,7 @@ export function HookVideoScheduleDrawer({
   // confirmation. The displayed preview can become stale while a Wall-of-text
   // Reel renders or while the user reviews either type of video.
   const useDefaultScheduleTime = !hasManualScheduleTime;
+  const resolveOnSubmit = useDefaultScheduleTime || fiveMinutesFromSubmit;
   const preparationPending = preparation?.status === "preparing";
   const preparationFailed = preparation?.status === "failed";
   const canConfirmPreparation = !preparation || preparation.status === "ready";
@@ -346,7 +351,7 @@ export function HookVideoScheduleDrawer({
       tiktokCapabilities,
       minimumScheduleLeadMinutes,
       timezone,
-      useDefaultScheduleTime,
+      useDefaultScheduleTime: resolveOnSubmit,
       requireTikTokMusicConfirmation: false,
     });
 
@@ -385,7 +390,7 @@ export function HookVideoScheduleDrawer({
       tiktokCapabilities,
       minimumScheduleLeadMinutes,
       timezone,
-      useDefaultScheduleTime,
+      useDefaultScheduleTime: resolveOnSubmit,
       requireTikTokMusicConfirmation: true,
     });
 
@@ -394,17 +399,18 @@ export function HookVideoScheduleDrawer({
       return;
     }
 
+    const submitTime = fiveMinutesFromSubmit ? getInitialDateTime(minimumScheduleLeadMinutes, timezone) : { date: scheduledDate, time: scheduledTime };
     const selection: HookVideoScheduleSelection = {
       caption,
-      scheduledDate,
-      scheduledTime,
+      scheduledDate: submitTime.date,
+      scheduledTime: submitTime.time,
       targets: selectedConnections.map((connection) => ({
         connectionId: connection.id,
         platform: connection.platform,
         settings: confirmedSettings[connection.id],
       })),
       timezone,
-      useDefaultScheduleTime,
+      useDefaultScheduleTime: resolveOnSubmit,
     };
 
     setSubmitting(true);
@@ -550,6 +556,7 @@ export function HookVideoScheduleDrawer({
                     <h4 id="schedule-time-heading" className="text-xs font-semibold text-foreground-strong">
                       Publish time
                     </h4>
+                    <div className="mt-3"><ScheduleQuickActions timezone={timezone} disabled={submitting} onSelect={(parts, preset) => { setFiveMinutesFromSubmit(preset === 5); setHasManualScheduleTime(true); setTimezone(timezone); setScheduledDate(parts.date); setScheduledTime(parts.time); }} /></div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <label className="text-xs font-semibold text-muted">
                         Date
@@ -561,6 +568,7 @@ export function HookVideoScheduleDrawer({
                           value={scheduledDate}
                           onChange={(event) => {
                             setHasManualScheduleTime(true);
+                            setFiveMinutesFromSubmit(false);
                             setTimezone(timezone);
                             setScheduledTime(scheduledTime);
                             setScheduledDate(event.target.value);
@@ -570,20 +578,9 @@ export function HookVideoScheduleDrawer({
                       </label>
                       <label className="text-xs font-semibold text-muted">
                         Time
-                        <input
-                          name="scheduled-time"
-                          type="time"
-                          autoComplete="off"
-                          step={SOCIAL_SCHEDULING_TIME_STEP_SECONDS}
-                          value={scheduledTime}
-                          onChange={(event) => {
-                            setHasManualScheduleTime(true);
-                            setTimezone(timezone);
-                            setScheduledDate(scheduledDate);
-                            setScheduledTime(event.target.value);
-                          }}
-                          className="mt-1.5 h-10 w-full rounded-control border border-border bg-card px-3 text-sm font-semibold text-foreground-strong outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                        />
+                        <div className="mt-1.5"><WorkflowTimePicker id="hook-publish-time" value={scheduledTime} onChange={value => {
+                          setFiveMinutesFromSubmit(false); setHasManualScheduleTime(true); setTimezone(timezone); setScheduledDate(scheduledDate); setScheduledTime(value);
+                        }} /></div>
                       </label>
                     </div>
                     <label className="mt-3 block text-xs font-semibold text-muted">
@@ -599,9 +596,9 @@ export function HookVideoScheduleDrawer({
                     </label>
                     <p className="mt-2 text-[11px] font-medium leading-4 text-muted">
                       {useDefaultScheduleTime
-                        ? `Leave these unchanged to schedule ${minimumScheduleLeadMinutes} ${
+                        ? `Post now queues your post ${minimumScheduleLeadMinutes} ${
                             minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
-                          } after you confirm. Edit either value to choose a specific time.`
+                          } after you confirm, once media preparation finishes.`
                         : `${timezone}. Schedule at least ${minimumScheduleLeadMinutes} ${
                             minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
                           } ahead.`}
@@ -737,7 +734,7 @@ export function HookVideoScheduleDrawer({
                 ? "Preparing video…"
                 : preparationFailed
                   ? "Video preparation failed"
-                  : "Confirm schedule"
+                  : useDefaultScheduleTime ? "Post now" : "Confirm schedule"
               : "Review"}
           </Button>
         </footer>
@@ -832,6 +829,7 @@ function ScheduleReview({
   timezone: string;
   useDefaultScheduleTime: boolean;
 }) {
+  const deviceHour12 = useDeviceTimeFormat();
   return (
     <div>
       <div className="border-b border-border pb-4">
@@ -841,7 +839,7 @@ function ScheduleReview({
             ? `${minimumScheduleLeadMinutes} ${
                 minimumScheduleLeadMinutes === 1 ? "minute" : "minutes"
               } after confirmation`
-            : `${formatScheduleDate(scheduledDate)} at ${scheduledTime}`}
+            : `${formatScheduleDate(scheduledDate)} at ${displayScheduleTime(scheduledTime, deviceHour12)}`}
         </p>
         <p className="mt-1 text-xs font-medium text-muted">
           {timezone}

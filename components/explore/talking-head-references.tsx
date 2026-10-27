@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAIStudioAccess } from "@/components/generation/use-ai-studio-access";
 import { ReferenceCard, ReferencePreviewDialog, ReferenceGridSkeleton, LoadError } from "./recreate-workspace";
-import { type TalkingHeadReference } from "@/lib/explore/talking-head-reference";
+import { visibleTalkingHeadReferences, type TalkingHeadReference } from "@/lib/explore/talking-head-reference";
 import type { AIStudioVideoModel } from "@/lib/ai-studio/generation-settings";
 import styles from "./talking-head-references.module.css";
 
@@ -16,8 +16,9 @@ export function TalkingHeadReferences({ items, loading, failed, disabled, select
 }) {
   const access = useAIStudioAccess();
   const [preview, setPreview] = useState<TalkingHeadReference | null>(null);
+  const visibleItems = visibleTalkingHeadReferences(items);
   return <section className={styles.gallery} aria-label="Talking-head references">
-    {loading ? <ReferenceGridSkeleton /> : failed ? <LoadError onRetry={onRetry} /> : items.length ? <div className={styles.grid}>{items.map(item => {
+    {loading ? <ReferenceGridSkeleton /> : failed ? <LoadError onRetry={onRetry} /> : visibleItems.length ? <div className={styles.grid}>{visibleItems.map(item => {
       let unavailable: string | null = null;
       if (startingFrameEnabled && !item.sourceSha256) unavailable = "This reference is awaiting source-frame verification.";
       if (!startingFrameEnabled && item.durationSeconds > 30) unavailable = "Video references support up to 30 seconds. This original is available for preview.";

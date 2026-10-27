@@ -10,7 +10,7 @@ function fixture(backgroundScheduling = false) {
   const react = { useRef(value) { return slots[cursor++] ??= { current: value }; },
     useState(value) { const index = cursor++; if (!(index in slots)) slots[index] = value; return [slots[index], next => { slots[index] = typeof next === "function" ? next(slots[index]) : next; }]; },
     useCallback(value) { cursor++; return value; }, useEffect(fn) { cursor++; effects.push(fn); } };
-  const imports = { react, "react/jsx-runtime": jsx, "@/components/explore/format-video-editor": { FormatVideoEditor: "editor" },
+  const imports = { "@tanstack/react-query": { useQuery: () => ({ data: props.catalogue ?? [] }) }, "./recreate-workspace": { fetchRecreateReferences: async () => [] }, react, "react/jsx-runtime": jsx, "@/components/explore/format-video-editor": { FormatVideoEditor: "editor" },
     "@/lib/trending/hook-video-client-upload": { uploadHookVideoDemo() { throw new Error("Recovery must not upload"); } },
     "@/lib/explore/format-video-source": { formatVideoFromAsset: source => ({ ...source, mediaAssetId: source.id }) },
     "@/components/explore/workflow-section-layout.module.css": { default: {} } };
@@ -115,4 +115,19 @@ test("opening or switching the clip editor resets the shared control and preview
   assert.deepEqual(resets.slice(-2), [["controls", "[data-workflow-section-content]", 0], ["preview", "#hook-workflow-preview", 0]]);
   view.openDemo(); assert.equal(h.view().editing, true);
   assert.deepEqual(resets.slice(-2), [["controls", "[data-workflow-section-content]", 0], ["preview", "#hook-workflow-preview", 0]]);
+});
+
+
+test("Talking Head supplies canonical reference lookup to each clip without borrowing the current selection", () => {
+  const h = fixture();
+  const canonical = { id: "hook-original", format: "hook", videoUrl: "https://owned.test/original.mp4", slides: [] };
+  h.props.catalogue = [canonical];
+  h.props.remixReferences = [{ id: "talking-current", format: "hook", slides: [] }];
+  const [opening, demo] = h.editors();
+  assert.deepEqual(Array.from(opening.props.remixReferences, reference => reference.id), ["hook-original", "talking-current"]);
+  assert.deepEqual(Array.from(demo.props.remixReferences, reference => reference.id), ["hook-original", "talking-current"]);
+  assert.equal(opening.props.remixReference, undefined);
+  assert.equal(demo.props.remixReference, undefined);
+  assert.equal(opening.props.fullDurationHookText, undefined);
+  assert.equal(demo.props.fullDurationHookText, undefined);
 });

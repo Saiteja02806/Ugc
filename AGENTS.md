@@ -48,6 +48,104 @@ Localhost checks are acceptable for quick compile, layout, or isolated preview
 sanity checks, but final acceptance must be checked against the deployed site
 such as `https://www.getugcpilot.com`.
 
+## UGCPilot mandatory skill system
+
+These requirements apply to every Codex task in this repository. The files under
+`.agents/skills/` are mandatory engineering procedures when their triggers match;
+they are not optional suggestions. Never claim to have read a file, inspected a
+video, run a test, or verified a backend call unless that work actually occurred.
+
+### Required preflight before code changes
+
+1. Read this `AGENTS.md` and the applicable project context. Always read
+   `EXPLORE_CONTEXT.md` for Explore workflows and `CAROUSEL_CONTEXT.md` for
+   Carousel behavior. Read any other feature-specific context named by this file.
+2. Read `docs/ai-context/clear.md` and
+   `docs/ai-context/nonnegotiables.md` in full. Extract the relevant historical
+   incidents and protected contracts; do not treat ledger entries as proven root
+   causes unless code or runtime evidence establishes them.
+3. Read `.agents/skills/ugc-context-memory/SKILL.md` and
+   `.agents/skills/ugc-immutable-contracts/SKILL.md` before every code task.
+4. Load every applicable task-specific skill in full:
+   - UI, interaction, layout, loading, modal, picker, or responsive work:
+     `ugc-ui-clarity`.
+   - Reference-video or frame-by-frame analysis: `ugc-frame-analysis`.
+   - Source/identity starting-frame selection or generation:
+     `ugc-starting-frame`.
+   - Prompt, recreation, motion, or generation-pipeline work:
+     `ugc-video-prompt`.
+     For prompt writing, follow its mode routing: `ugc-opening-frame-prompt`
+     for an original-t=0 animation opening, or
+     `ugc-middle-frame-recreation-prompt` when later clarity evidence assists
+     reconstructing the original opening for full-video recreation.
+   - Scheduling, timezone, targets, queues, workers, or publishing:
+     `ugc-scheduling`.
+5. Inspect `git status`, existing behavior, source, tests, architecture, callers,
+   persistence, and backend effects before editing. Run
+   `python tools/preflight.py --repo . --task "<actual request>"` when available.
+6. State a minimal scope contract: exact requested behavior, what must remain
+   unchanged, implementation files/functions identified from repository evidence,
+   acceptance tests, risks, and rollback boundary.
+
+If a required context file is missing or unreadable, stop application-code edits
+and report the gap unless the user explicitly approves proceeding without it.
+Preserve all uncommitted user work.
+
+### Historical incident memory
+
+`docs/ai-context/clear.md` is append-only. When the user reports a new defect or
+recurrence, add an OPEN incident before implementing its fix. Record observed or
+reported behavior separately from verified cause, keep root cause UNKNOWN until
+evidence exists, and name a regression test. Link recurrences rather than erasing
+or rewriting history. Mark an incident fixed only with concrete verification.
+
+### Protected product behavior
+
+- Make the smallest scoped change. Do not add dependencies, migrations, permanent
+  UI, global styling, refactors, IAM/config changes, or architecture rewrites
+  unless explicitly required and approved by the task.
+- Preserve unrelated working functionality, neighboring tabs, routes, responsive
+  layout, navigation, scrolling, loading/error states, and existing controls.
+- A loaded Hook starting frame has one preview with a `Change` action. Do not add
+  an always-visible duplicate photo chooser. Keep restoration geometry stable and
+  make failure recoverable.
+- Source video controls scene, camera, action, pacing, and composition. Influencer
+  images control identity. Keep roles and the exact source timestamp linked across
+  frame selection, prompts, jobs, and results.
+- Preserve an interactive 24-hour scheduling picker and the user's local wall-clock
+  time. Convert the selected IANA-zone time exactly once. Scheduling success requires
+  durable server-side schedule and target records; publication requires provider
+  evidence. Browser-only state or a successful button click is not proof.
+- A successful build is not proof that the application works. Local fixtures and
+  mocked provider tests are not production acceptance.
+
+### Mandatory regression verification
+
+After every code change, read and apply
+`.agents/skills/ugc-regression-gate/SKILL.md`. Run repository-appropriate static,
+behavioral, negative, loading/error, persistence, responsive, cross-feature, and
+backend checks. For UI work, compare approved before/after baselines at relevant
+desktop and mobile sizes. For generation work, verify source/identity separation,
+timestamp mapping, and prompt chronology. For scheduling, verify durable jobs,
+targets, retries, idempotency, browser-independent execution, and status evidence.
+
+Report each protected behavior as `VERIFIED`, `NOT TESTED`, or `FAILED`. If a
+required environment, credential, baseline, or production integration is missing,
+report the result as partial or unverified; do not declare the task done from a
+build alone.
+
+### Completion receipt
+
+Every implementation report must list:
+
+1. Scope implemented and every file changed.
+2. Preflight sources and skill files actually read.
+3. Protected behaviors confirmed unchanged.
+4. Commands/tests run and their outcomes, plus visual artifacts when relevant.
+5. Prompt/model or schedule/backend evidence when relevant.
+6. Incident IDs added or updated with supporting evidence.
+7. Remaining risks, skipped checks, and explicit `NOT VERIFIED` details.
+
 
 <!-- TRIGGER.DEV advanced-tasks START -->
 # Trigger.dev Advanced Tasks (v4)

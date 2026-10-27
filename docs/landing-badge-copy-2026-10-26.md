@@ -1,0 +1,5 @@
+# Landing badge copy — 26 October 2026
+Changed only components/marketing/landing-platforms.tsx: Made for social -> Post right away.
+VERIFIED: exact Git baseline/source and rendered React HTML comparison show only requested text replacement. Classes, platform icons/labels/visibility and #workflow href identical. Scoped ESLint and git diff --check PASS. No backend/auth/data/scheduling changes.
+Preflight: context-memory, immutable-contracts, UI-clarity and regression-gate skill files read; protected contracts and relevant Explore/ledger UGC-UI-003 and UGC-OPS-003 entries inspected. No new reported defect/incident marked fixed. Earlier full-context inspection limits still apply.
+Existing platform-visibility suite:3 pass/7 fail; badge test expects obsolete MCP server wording and six adjacent tests have missing scheduling fixtures. Not repaired in this one-line copy task. Initial runs required repository resolver and transform-types. Exact actual-render comparison PASS independently. Browser screenshots and production deployment NOT VERIFIED; no build/full suite green claim. Rollback only this one string. Unrelated work preserved.

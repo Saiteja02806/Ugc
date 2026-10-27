@@ -1,5 +1,5 @@
 import type { ScheduleFormSubmission } from "../../components/scheduling/schedule-editor";
-import { resolveZonedDateTime, validateScheduleLeadTime } from "../scheduling/schedule-time.ts";
+import { getEarliestScheduleTimestamp, getZonedDateTimeParts, resolveZonedDateTime, validateScheduleLeadTime } from "../scheduling/schedule-time.ts";
 import { getDefaultScheduleTargetSettings, getConfirmedScheduleTargetSettings, getScheduleTargetSettingsError, type ScheduleTargetSettings, type TikTokScheduleCapabilityState } from "../scheduling/platform-settings.ts";
 import { parsePublishingPreferences } from "../scheduling/publishing-preferences.ts";
 import { parseWorkflowConnectedAccounts, workflowAccountBlock } from "./workflow-connected-accounts";
@@ -17,7 +17,8 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
   const targets = workflowScheduleTargets(draft);
   if (!targets.length) throw new Error("Choose an account for each selected platform.");
   if (draft.caption.length > 5000) throw new Error("Keep your post caption within 5,000 characters.");
-  const scheduledFor = resolveZonedDateTime({ date: draft.date, time: draft.time, timeZone: timezone });
+  const automatic = (draft.fiveMinutesFromSubmit === true || draft.publishMode === "now" || !draft.publishMode && !draft.date && !draft.time);
+  let scheduledFor = automatic ? "" : resolveZonedDateTime({ date: draft.date, time: draft.time, timeZone: timezone });
   const needsPreferences = targets.some(target => target.platform !== "instagram");
   async function readSetting(url: string, label: string) {
     try { return await load(url); }
@@ -34,7 +35,8 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
   ]);
   const config = rawConfig as { minimumScheduleLeadMinutes?: number };
   if (typeof config?.minimumScheduleLeadMinutes !== "number" || !Number.isFinite(config.minimumScheduleLeadMinutes) || config.minimumScheduleLeadMinutes < 0) throw new Error("Could not load scheduling limits. Try again.");
-  if (!validateScheduleLeadTime({ scheduledFor, minimumLeadMinutes: config.minimumScheduleLeadMinutes }).valid) throw new Error(`Choose a time at least ${config.minimumScheduleLeadMinutes} minutes from now.`);
+  if (automatic) scheduledFor = new Date(getEarliestScheduleTimestamp({ minimumLeadMinutes: config.minimumScheduleLeadMinutes })).toISOString();
+  if (!automatic && !validateScheduleLeadTime({ scheduledFor, minimumLeadMinutes: config.minimumScheduleLeadMinutes }).valid) throw new Error(`Choose a time at least ${config.minimumScheduleLeadMinutes} minutes from now.`);
   const accounts = parseWorkflowConnectedAccounts(rawAccounts);
   const selected = targets.map(target => {
     const account = accounts.find(account => account.id === target.connectionId && account.platform === target.platform);
@@ -59,8 +61,9 @@ export async function prepareSimpleWorkflowSchedule({ draft, timezone, source, t
   }));
   const settingsError = getScheduleTargetSettingsError({ connections: selected, settings, tiktokCapabilities: capabilities, requireTikTokMusicConfirmation: false });
   if (settingsError) throw new Error(`${settingsError} Update your publishing defaults in Settings.`);
-  return { caption: draft.caption, clipSelection: "secondary_only", openingMedia: null, useOpeningClip: false,
+  const parts = automatic ? getZonedDateTimeParts(scheduledFor, timezone) : { date: draft.date, time: draft.time };
+  return { ...(automatic ? { useDefaultScheduleTime: true } : {}), caption: draft.caption, clipSelection: "secondary_only", openingMedia: null, useOpeningClip: false,
     scheduledSource: source, scheduledSourceTitle: title, scheduledVideo: null,
-    scheduledDate: draft.date, scheduledTime: draft.time, scheduledFor, timezone,
+    scheduledDate: parts.date, scheduledTime: parts.time, scheduledFor, timezone,
     targets: targets.map(target => ({ ...target, settings: getConfirmedScheduleTargetSettings(target.platform!, settings[target.connectionId]) })) };
 }

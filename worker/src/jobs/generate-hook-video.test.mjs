@@ -125,6 +125,33 @@ test("first-frame worker dispatch preserves one owned frame, fixed duration and 
   assert.equal(f.events.find(event => event.name === "reserve").operationKey, "primary-reapi");
 });
 
+test("Hook 100 v4 sends only the generated opening image as the provider first frame", async () => {
+  const input = startingFrameInput({ model: "google_omni", provider: "gemini", durationSeconds: 4,
+    referenceId: "explore-paired-hook-fc44f6214b6e17413600ec13" });
+  const selected = { index: 70, timeSeconds: 2.333333, width: 720, height: 1280,
+    sha256: "df452e82eadb2e7ed8338f34e2424e623b59ef4015d646a2a3c89d63a34d5a9c" };
+  const opening = { index: 0, timeSeconds: 0, width: 720, height: 1280, sha256: "d".repeat(64) };
+  const receipt = { ...input.startingFrameReceipt, version: 4, imageModel: "nano_banana_2", promptVersion: 5,
+    referenceId: input.referenceId, sourceSha256: "405670a27856c31e698a0ef13b178ece82c18cc379c0cec7489b0c1c1414fa1e",
+    sourceFrame: selected, animationOpeningFrame: opening };
+  receipt.preparationInputKey = JSON.stringify({ version: 3, ownerId: receipt.ownerId, draftId: receipt.draftId,
+    referenceId: receipt.referenceId, sourceSha256: receipt.sourceSha256, sourceFrame: selected,
+    imageAssetIds: receipt.personImageAssetIds, instructions: receipt.instructions, imageModel: receipt.imageModel });
+  receipt.inputKey = hookKeyframeGenerationInputKey(receipt);
+  input.startingFrameReceipt = receipt;
+  input.hookIdea = "Animate the approved starting image into a 4-second video. Begin with glasses on, remove them once, turn toward the lens, then look aside.";
+  const beforeReads = privateReads.length;
+  const f = fixture(input);
+  await runGenerateHookVideoJob(f.job, f.context);
+  const request = received.at(-1);
+  assert.equal(request.provider, "gemini");
+  assert.match(request.startingFrameImageUrl, /approved-start\.png\?signed-read=/);
+  assert.deepEqual(privateReads.slice(beforeReads), [{ url: input.startingFrameImageUrl, owner: "fixture-user" }]);
+  assert.equal(request.referenceImageUrl, undefined); assert.deepEqual(request.referenceImageUrls, []);
+  assert.equal(request.referenceVideoUrl, undefined);
+  assert.match(request.prompt, /Begin with glasses on, remove them once/);
+});
+
 test("Omni and WAN starting-frame jobs dispatch only to their frozen provider and recover without another paid submission", async () => {
   for (const [model, provider] of [["google_omni", "gemini"], ["wan_3_0", "reapi"]]) {
     const input = startingFrameInput({ model, provider, generateAudio: false });

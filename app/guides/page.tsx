@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { LandingAuthCta } from "@/components/marketing/landing-auth-actions";
 import { founderGuides } from "@/components/marketing/founder-guide-page";
+import { founderWorkflowGuides } from "@/components/marketing/founder-workflow-guide";
 import { LandingHeader } from "@/components/marketing/landing-header";
 
 export const metadata: Metadata = {
@@ -28,6 +29,18 @@ export const metadata: Metadata = {
 
 const extraGuides = [
   {
+    slug: "saas-demo-video-script",
+    keyword: "SaaS demo script",
+    title: "Write a SaaS demo script the screen can prove",
+    description: "Copy a script worksheet, adapt an illustrative 30-second example and check every line against a real software action.",
+  },
+  {
+    slug: "screen-recording-for-app-demo",
+    keyword: "App demo recording",
+    title: "Record readable app footage for vertical video",
+    description: "Choose a capture route, test framing on a phone and review the result before adding an opening or effects.",
+  },
+  {
     slug: "how-to-create-ugc-videos-with-ai",
     keyword: "UGC video creator",
     title: "How to create UGC videos with an AI video creator",
@@ -36,7 +49,7 @@ const extraGuides = [
 ];
 
 export default function GuidesPage() {
-  const guides = [...Object.values(founderGuides), ...extraGuides];
+  const guides = [...Object.values(founderGuides), ...extraGuides, ...founderWorkflowGuides.map((guide) => ({ ...guide, keyword: "Founder workflow" }))];
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",

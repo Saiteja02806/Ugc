@@ -13,7 +13,8 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Guides", href: "/guides" },
+  { label: "Free tools", href: "/free-tools" },
+  { label: "Guide", href: "/guides" },
   { label: "Pricing", href: "/pricing" },
 ];
 
@@ -49,7 +50,7 @@ export function LandingHeader({
       <div
         className={`pointer-events-auto mx-auto flex w-full items-center justify-between border transition-[max-width,height,padding,gap,background-color,border-color,border-radius,box-shadow] duration-300 ease-out motion-reduce:transition-none ${
           isScrolled
-            ? "h-13 max-w-[540px] gap-3 rounded-full border-border bg-card/90 px-3.5 shadow-floating backdrop-blur-xl"
+            ? "h-13 max-w-[620px] gap-3 rounded-full border-border bg-card/90 px-3.5 shadow-floating backdrop-blur-xl"
             : "h-16 max-w-[1200px] gap-5 rounded-none border-transparent bg-transparent px-0 shadow-none"
         }`}
       >

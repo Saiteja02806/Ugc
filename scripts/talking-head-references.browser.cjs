@@ -22,6 +22,8 @@ async function main() {
   await new Promise((resolve,reject)=>{const c=webpack({mode:'development',devtool:false,context:root,entry:path.join(out,'entry.tsx'),output:{path:out,filename:'bundle.js'},plugins:[new webpack.DefinePlugin({'process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_SEEDANCE':JSON.stringify('true'),'process.env.NEXT_PUBLIC_ENABLE_OPENROUTER_WAN':JSON.stringify('true')})],resolve:{extensions:['.tsx','.ts','.js'],alias:aliases},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'loader.cjs')},{test:/\.css$/,use:path.join(out,'css.cjs')}]}});c.run((e,s)=>c.close(()=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));});
   const css=(await require('postcss')([require('@tailwindcss/postcss')({base:root})]).process(fs.readFileSync(path.join(root,'app/globals.css'),'utf8').replace('@import "tailwindcss";','@import "tailwindcss" source(none);\n@source "../components/explore";\n@source "../components/ui";'),{from:path.join(root,'app/globals.css')})).css;
   const items=JSON.parse(fs.readFileSync(path.join(root,'lib/explore/talking-head-reference-catalog.json'))).items.map(item=>({...item,format:'hook',slides:[]}));
+  const visibleItems=items.filter(item=>!['talking-outdoor-discovery','talking-outdoor-reaction','talking-car-story','talking-room-explainer','talking-discovery'].includes(item.id));
+  const attachment=visibleItems.find(item=>item.durationSeconds<=30);
   let failDownload=false;const reads=[];
   const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://fixture');
     if(url.pathname==='/bundle.js'){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(out,'bundle.js')));}
@@ -34,7 +36,8 @@ async function main() {
     browser=await playwright.chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});page.on('console',m=>{if(m.type()==='error')console.error(m.text());});const base='http://127.0.0.1:'+server.address().port;
     for(const size of [{width:1366,height:768},{width:1536,height:864},{width:390,height:844}]){
       await page.setViewportSize(size);await page.goto(base);await page.getByRole('button',{name:'Use as reference',exact:true}).first().waitFor().catch(async e=>{console.error((await page.locator('body').innerText()).slice(0,2000));throw e;});
-      assert.equal(await page.getByRole('button',{name:'Use as reference',exact:true}).count(),items.filter(item=>item.durationSeconds<=30).length);assert.equal(await page.getByRole('button',{name:'Preview only',exact:true}).count(),2);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+      assert.deepEqual(await page.locator('[data-reference-id]').evaluateAll(cards=>cards.map(card=>card.dataset.referenceId)),visibleItems.map(item=>item.id));
+      assert.equal(await page.getByRole('button',{name:'Use as reference',exact:true}).count(),visibleItems.filter(item=>item.durationSeconds<=30).length);assert.equal(await page.getByRole('button',{name:'Preview only',exact:true}).count(),visibleItems.filter(item=>item.durationSeconds>30).length);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       const first=page.locator('[data-reference-id]').first(), cardVideo=first.locator('video');
       await cardVideo.evaluate(async video=>{video.muted=true;await video.play();});
       await page.waitForFunction(()=>document.querySelector('[data-reference-id] video')?.readyState>=2);
@@ -44,10 +47,10 @@ async function main() {
     }
     await page.setViewportSize({width:1536,height:2600});await page.goto(base);
     await page.getByRole('button',{name:'Use as reference',exact:true}).first().waitFor();
-    await page.screenshot({path:path.join(out,'all-nine-references-1536.png'),fullPage:true});
+    await page.screenshot({path:path.join(out,'all-references-1536.png'),fullPage:true});
     await page.setViewportSize({width:1536,height:864});
     const playback=[];
-    for(const item of items){
+    for(const item of visibleItems){
       await page.getByRole('button',{name:'Preview '+item.title,exact:true}).click();
       const video=page.getByRole('dialog').locator('video');
       await video.waitFor();
@@ -58,21 +61,21 @@ async function main() {
       assert.ok(decoded.width>0&&decoded.height>0&&decoded.range>20,item.id+' decodes actual footage');
       assert.equal(decoded.nativeControls,false);
       playback.push({id:item.id,...decoded});
-      if(item.id===items[0].id)await page.screenshot({path:path.join(out,'reference-playback-1536.png')});
+      if(item.id===attachment.id)await page.screenshot({path:path.join(out,'reference-playback-1536.png')});
       await page.keyboard.press('Escape');
     }
     fs.writeFileSync(path.join(out,'playback-report.json'),JSON.stringify(playback,null,2));
     await page.getByRole('button',{name:/Upgrade to Pro/}).first().click();await page.getByRole('heading',{name:'Upgrade to Pro',exact:true}).waitFor();await page.keyboard.press('Escape');
-    await page.getByRole('button',{name:'Toggle account',exact:true}).click();assert.equal(await page.locator('a[href^="https://www.tiktok.com/"]').count(),items.length);
-    await page.getByRole('button',{name:'Preview '+items[0].title,exact:true}).click();await page.getByRole('dialog').waitFor();assert.equal(await page.getByRole('dialog').locator('video[controls]').count(),0);assert.equal(await page.getByRole('menuitem',{name:/Download/}).count(),0);await page.keyboard.press('Escape');
-    await page.getByRole('button',{name:'Use as reference',exact:true}).first().click();await page.getByTestId('selected').filter({hasText:items[0].id}).waitFor();
+    await page.getByRole('button',{name:'Toggle account',exact:true}).click();assert.equal(await page.locator('a[href^="https://www.tiktok.com/"],a[href^="https://www.instagram.com/"]').count(),visibleItems.length);
+    await page.getByRole('button',{name:'Preview '+attachment.title,exact:true}).click();await page.getByRole('dialog').waitFor();assert.equal(await page.getByRole('dialog').locator('video[controls]').count(),0);assert.equal(await page.getByRole('menuitem',{name:/Download/}).count(),0);await page.keyboard.press('Escape');
+    await page.getByRole('button',{name:'Use as reference',exact:true}).first().click();await page.getByTestId('selected').filter({hasText:attachment.id}).waitFor();
     assert.equal(await page.getByRole('textbox',{name:'Your instructions',exact:true}).inputValue(),'Keep my own product message');
     const instructions=page.getByRole('textbox',{name:'Reference instructions',exact:true});await instructions.fill('Use my edited reference directions');
-    await page.getByRole('button',{name:'Generate fixture',exact:true}).click();const payload=await page.evaluate(()=>window.fixturePayload);assert.match(payload.prompt,/Use my edited reference directions/);assert.match(payload.prompt,/Keep my own product message/);assert.equal(payload.file,items[0].id+'.mp4');
-    await page.reload();await page.getByTestId('selected').filter({hasText:items[0].id}).waitFor();await page.waitForFunction(()=>Array.from(document.querySelectorAll('button')).some(button=>button.textContent==='Generate fixture'&&!button.disabled));
+    await page.getByRole('button',{name:'Generate fixture',exact:true}).click();const payload=await page.evaluate(()=>window.fixturePayload);assert.match(payload.prompt,/Use my edited reference directions/);assert.match(payload.prompt,/Keep my own product message/);assert.equal(payload.file,attachment.id+'.mp4');
+    await page.reload();await page.getByTestId('selected').filter({hasText:attachment.id}).waitFor();await page.waitForFunction(()=>Array.from(document.querySelectorAll('button')).some(button=>button.textContent==='Generate fixture'&&!button.disabled));
     assert.equal(await instructions.inputValue(),'Use my edited reference directions');
     await page.screenshot({path:path.join(out,'selected-reference-1536.png')});
-    failDownload=true;await page.getByRole('button',{name:'Use as reference',exact:true}).first().click();await page.getByRole('alert').first().waitFor();assert.equal(await page.getByTestId('selected').textContent(),items[0].id);assert.equal(await page.getByRole('button',{name:'Generate fixture',exact:true}).isDisabled(),true);
+    failDownload=true;await page.getByRole('button',{name:'Use as reference',exact:true}).first().click();await page.getByRole('alert').first().waitFor();assert.equal(await page.getByTestId('selected').textContent(),attachment.id);assert.equal(await page.getByRole('button',{name:'Generate fixture',exact:true}).isDisabled(),true);
     assert.deepEqual(errors,[]);assert.ok(reads.length);console.log('PASS laptop/mobile gallery, free/Pro source access, custom playback, exact reference attachment, combined prompt, reload recovery and failed replacement; no paid generation');
   } finally { await browser?.close();await new Promise(r=>server.close(r)); }
 }

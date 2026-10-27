@@ -9,7 +9,7 @@ import { prepareSlideshowReferenceUpdate } from "./prepare-slideshow-reference-u
 import { canonicalSlideshowSource } from "../lib/explore/reference-source-link.ts";
 
 const read = name => JSON.parse(readFileSync(new URL(`../lib/explore/${name}.json`, import.meta.url), "utf8"));
-const catalog = read("imported-catalog"), additions = read("slideshow-reference-additions"), sources = read("slideshow-reference-sources");
+const catalog = read("imported-catalog"), additions = read("slideshow-reference-additions"), octoberSlideshows = read("slideshow-reference-oct23"), sources = read("slideshow-reference-sources");
 
 test("the approved release preserves all historical items and stages 13 complete ordered additions", () => {
   assert.equal(createHash("sha256").update(JSON.stringify(catalog.items)).digest("hex").slice(0, 20), "ec1d17715e95dba5519a");
@@ -43,13 +43,15 @@ test("staged media stays out of authenticated references while local previews re
   process.env.GCP_STORAGE_BUCKET = "slideshow-fixture"; process.env.GCP_STORAGE_PUBLIC_BASE_URL = "https://media.fixture.test";
   const { getRecreateReferences, getRecreateReference, getLocalRecreateReferences } = await import("../lib/explore/recreate-catalog.ts");
   const live = getRecreateReferences().filter(item => item.format === "slideshow");
-  assert.equal(live.length, 59); assert.equal(live.filter(item => item.sourceUrl).length, 25);
+  const published = [catalog, additions, octoberSlideshows].flatMap(manifest => manifest.mediaStatus === "published" ? manifest.items : []).filter(item => item.format === "slideshow");
+  assert.equal(live.length, published.length); assert.equal(live.filter(item => item.sourceUrl).length, 25);
   for (const item of additions.items) assert.equal(getRecreateReference(item.id), undefined);
   const previous = process.env.NODE_ENV;
   try {
     process.env.NODE_ENV = "development";
     const local = getLocalRecreateReferences().filter(item => item.format === "slideshow");
-    assert.equal(local.length, 72); assert.equal(local.filter(item => item.sourceUrl).length, 38);
+    const staged = [catalog, additions, octoberSlideshows].flatMap(manifest => manifest.items).filter(item => item.format === "slideshow");
+    assert.equal(local.length, staged.length); assert.equal(local.filter(item => item.sourceUrl).length, 38);
     for (const item of additions.items) assert.match(local.find(ref => ref.id === item.id).posterUrl, /^\/api\/explore\/local-media\//);
     process.env.NODE_ENV = "production"; assert.deepEqual(getLocalRecreateReferences(), []);
   } finally { if (previous === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous; }

@@ -12,6 +12,7 @@ const jobs = new Map(), reservations = new Map(), uploads = [];
 const audioId = "11111111-1111-4111-8111-111111111111", videoId = "22222222-2222-4222-8222-222222222222";
 const ownedAssets = new Map();
 let failChild = null;
+let approvedFrame = null;
 mock.module("@/lib/firebase/server-auth", { namedExports: { FirebaseAuthRequestError } });
 mock.module("@/lib/ai-studio/server-access", { namedExports: { requireAIStudioProUser: async (request) => {
   if (request.headers.get("Authorization") !== "Bearer fake-owner-token") throw new FirebaseAuthRequestError("Sign in first.");
@@ -38,7 +39,7 @@ mock.module("@/lib/billing/subscription-db", { namedExports: {
   releaseBillingCredits: async (input) => { reservations.delete(`${input.userId}:${input.idempotencyKey}`); },
 } });
 mock.module(new URL("../lib/explore/hook-keyframe-result.ts", import.meta.url), { namedExports: {
-  resolveApprovedHookStartingFrame: async () => assert.fail("This legacy-request fixture does not submit starting-frame assets"),
+  resolveApprovedHookStartingFrame: async () => approvedFrame ?? assert.fail("Unexpected starting-frame asset"),
 } });
 const { handleAIStudioVideoGeneration } = await import("../lib/ai-studio/video-generation-api.ts");
 const { createWorkflowGenerationClient } = await import("../lib/explore/workflow-generation-client.ts");
@@ -206,4 +207,29 @@ test("the real API rejects unauthenticated or untrusted references before any bi
   await assert.rejects(client({ uploadImage: async () => ({ url: "https://untrusted.example.com/image.png" }) }).generate(draft({ creator: { name: "creator.png", url: "blob:creator" } })), /reference/i);
   assert.equal(jobs.size, 0);
   assert.equal(reservations.size, 0);
+});
+
+
+test("Talking Head sends approved opening and optional face photos through real admission with its script and sound", async () => {
+  const previous = process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION;
+  process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = "true";
+  const frame = { assetId: "00000000-0000-4000-8000-000000000001", jobId: "00000000-0000-4000-8000-000000000002", referenceId: "talking-car-story", url: "https://storage.example.com/opening.png", width: 720, height: 1280, durationSeconds: 4, motionInstructions: "Natural talking-head performance", generateAudio: true };
+  approvedFrame = { imageUrl: frame.url, assetId: frame.assetId, imageJobId: frame.jobId, referenceId: frame.referenceId, workflow: "talking_head", exploreFormat: "hook", sourceSha256: "a".repeat(64), startingFrameIndex: 0, output: { width: 720, height: 1280, ratio: "9:16" } };
+  try {
+    const photos = [1, 2].map(i => ({ assetId: `face-${i}`, name: `Face ${i}`, url: `https://storage.example.com/face-${i}.png` }));
+    await client().generate(draft({ instructions: 'Say "This is my own script."', referenceInstructions: frame.motionInstructions, startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model: "google_omni", duration: 4}, true) }));
+    const job = [...jobs.values()][0];
+    assert.match(job.input.hookIdea, /own script/);
+    assert.match(job.input.hookIdea, /natural talking-head performance/i);
+    assert.match(job.input.hookIdea, /SOUND SETTING: ON/);
+    assert.equal(job.input.referenceId, "talking-car-story");
+    assert.equal(job.input.startingFrameImageUrl, frame.url);
+    assert.equal(job.input.referenceImageUrls.length, 2);
+    assert.deepEqual(job.input.referenceImageUrls, ["https://storage.example.com/1.png", "https://storage.example.com/2.png"]);
+    assert.equal(job.input.personReference.mainImageUrl, job.input.referenceImageUrls[0]);
+    assert.deepEqual(job.input.personReference.supportingImageUrls, job.input.referenceImageUrls.slice(1));
+    const count = jobs.size;
+    await assert.rejects(client().generate(draft({ startingFrame: frame, startingFramePhotos: photos, settings: normalizeWorkflowGenerationSettings({model:"wan_3_0",duration:4},true) })), /Omni/);
+    assert.equal(jobs.size,count);
+  } finally { approvedFrame = null; if(previous === undefined) delete process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION; else process.env.ENABLE_HOOK_STARTING_FRAME_PREPARATION = previous; }
 });

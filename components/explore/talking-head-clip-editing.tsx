@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchRecreateReferences } from "./recreate-workspace";
 import { FormatVideoEditor, type FormatOpeningPreview, type WorkflowClipEditState } from "@/components/explore/format-video-editor";
 import type { WorkflowAttachment } from "@/components/explore/hook-workflow-media-controls";
 import type { LocalWorkflowMedia } from "@/components/explore/use-local-workflow-media";
 import { uploadHookVideoDemo } from "@/lib/trending/hook-video-client-upload";
 import { formatVideoFromAsset, type FormatVideoSource } from "@/lib/explore/format-video-source";
+import type { RecreateReference } from "@/lib/explore/recreate-types";
 import type { MediaAsset } from "@/lib/media/types";
 import type { DemoFraming } from "@/worker/src/lib/explore-finishing-contract";
 import sections from "@/components/explore/workflow-section-layout.module.css";
@@ -30,13 +33,18 @@ function ClipEditingView({ value, children }: { value: ClipEditingView; children
 
 /** Save independent clip drafts; final preparation consumes their exact raw
  * composition. Saving does not require a separate per-clip render. */
-export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview, demo, demoSource = null, onDemoSourceReady, demoFraming, active, onDirty, children, draftId }: {
+export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview, demo, demoSource = null, onDemoSourceReady, demoFraming, active, onDirty, children, draftId, remixReferences }: {
   enabled: boolean; ownerId: string | null; source: MediaAsset | null; sourcePreview: LocalWorkflowMedia | null;
   demo: WorkflowAttachment; demoFraming: DemoFraming | null; active: boolean; onDirty: () => void;
   demoSource?: MediaAsset | null; onDemoSourceReady?: (asset: MediaAsset) => void;
   children: (view: ClipEditingView) => ReactNode; backgroundScheduling?: boolean;
   draftId?: string;
+  remixReferences?: readonly RecreateReference[];
 }) {
+  const references = useQuery({ queryKey: ["recreate-references", 4, ownerId ?? "signed-out"],
+    enabled: enabled && Boolean(ownerId) && active, staleTime: 30 * 60_000, retry: 1,
+    queryFn: ({ signal }) => fetchRecreateReferences(signal) });
+  const availableReferences = [...(references.data ?? []), ...(remixReferences ?? [])];
   const [requested, setRequested] = useState<{ target: "opening" | "demo"; key: string } | null>(null);
   const [openingState, setOpeningState] = useState<WorkflowClipEditState | null>(null);
   const [demoState, setDemoState] = useState<WorkflowClipEditState | null>(null);
@@ -119,8 +127,8 @@ export function TalkingHeadClipEditing({ enabled, ownerId, source, sourcePreview
       demoPreview: demoPreview?.segment.id === (demoVideo?.mediaAssetId ?? demoVideo?.id) ? demoPreview : null,
     }}>{children}</ClipEditingView>
     {opening ? <FormatVideoEditor key={`opening:${openingKey}`} format="hook" video={opening} active={editing && target === "opening"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
-      prepareInSequence showSoundControls={false} draftScope={draftId ? `talking-head-opening:${draftId}` : "talking-head-opening"} videoLabel="Hook video" continueLabel="Back to videos" onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportOpening} onPreviewChange={reportOpeningPreview} /> : null}
+      prepareInSequence showSoundControls={false} remixReferences={availableReferences} draftScope={draftId ? `talking-head-opening:${draftId}` : "talking-head-opening"} videoLabel="Hook video" continueLabel="Back to videos" onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportOpening} onPreviewChange={reportOpeningPreview} /> : null}
     {demoVideo ? <FormatVideoEditor key={`demo:${demoVideo.mediaAssetId ?? demoVideo.id}`} format="hook" video={demoVideo} active={editing && target === "demo"} controlsTarget={controlsTarget} resultsTarget={resultsTarget} actionsTarget={actionsTarget} enabled={enabled}
-      prepareInSequence showSoundControls={false} originalSoundTarget={demoSoundTarget} draftScope={draftId ? `talking-head-demo:${draftId}` : "talking-head-demo"} videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
+      prepareInSequence showSoundControls={false} remixReferences={availableReferences} originalSoundTarget={demoSoundTarget} draftScope={draftId ? `talking-head-demo:${draftId}` : "talking-head-demo"} videoLabel="Demo video" continueLabel="Back to videos" remixScopeLabel="Only this demo clip. The hook stays unchanged." onDirty={onDirty} onSaved={ignoreSaved} onContinue={close} onBackToPreview={close} onClipStateChange={reportDemo} onPreviewChange={reportDemoPreview} /> : null}
   </>;
 }

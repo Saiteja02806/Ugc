@@ -81,6 +81,7 @@ test("Explore origin filtering happens in the owner-scoped database query; other
   }
   const storage = load("lib/media/media-storage.ts", {
     "server-only": {},
+    "@/worker/src/lib/creator-slide-delivery": { parseCreatorSlideUrl: () => null },
     "@supabase/supabase-js": { createClient: () => ({ from: name => { assert.equal(name, "media_assets"); return query; } }) },
     "@/lib/media/types": { mediaCollections: ["image"] },
     "@/lib/media/media-delivery": {},
@@ -142,10 +143,11 @@ test("the existing media API authenticates list and single-image requests and ig
     "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) },
     "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) },
     "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
+    "@/lib/explore/creator-account-access": { canAccessCreatorAccounts: () => false },
     "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media, "@/lib/media/types": types,
     "@/lib/media/media-library-visibility": load("lib/media/media-library-visibility.ts", {}),
   }, { Response, URL, console });
-  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) }, "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
+  const get = load("app/api/media/[assetId]/route.ts", { "@/lib/explore/creator-account-access": { canAccessCreatorAccounts: () => false }, "@/lib/ai-studio/generated-video-history-metadata": { getGeneratedVideoHistoryMetadata: () => ({}) }, "@/lib/ai-studio/generated-image-history-metadata": { getGeneratedImageHistoryMetadata: () => ({}) }, "@/lib/firebase/server-auth": auth, "@/lib/media/media-storage": media,
     "@/lib/jobs/background-jobs": { getBackgroundJobsByIds: async () => [] },
     "@/lib/explore/remix-source": load("lib/explore/remix-source.ts", {}) }, { Response, URL, console });
   const url = "https://www.getugcpilot.com/api/media?collection=image&sourceTypes=upload&projectId=explore-reference&userId=owner-b";

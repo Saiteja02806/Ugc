@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import { History } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { draftEntryIntent, isWorkflowDraftId, listWorkflowDrafts, type WorkflowDraftEntry } from "@/lib/explore/workflow-draft-lifecycle";
+import styles from "./workflow-draft-entry.module.css";
 
 const ACTIVE = "ugc-explore:active-talking-head-draft:v1";
 type EntryView = { mode: "active"; entry: WorkflowDraftEntry } | { mode: "ask"; id: string } | { mode: "list" } | null;
@@ -72,17 +74,28 @@ export function WorkflowDraftEntryBoundary({ children }: { children: (entry: Wor
   if (error) return <section className="space-y-3 p-6"><p role="alert">{error}</p><a href="/explore">Back to Explore</a></section>;
   if (!view) return <section className="p-6" role="status">Opening your workflow…</section>;
   if (view.mode === "active") return children(view.entry);
-  return <section className="space-y-4 p-6" aria-label={view.mode === "list" ? "Saved Talking Head drafts" : "Resume previous work"}>
-    <h1 className="text-lg font-semibold">{view.mode === "list" ? "Saved Talking Head drafts" : "Resume previous work?"}</h1>
-    <p className="text-sm text-muted">{view.mode === "list" ? "Drafts saved on this browser. Videos and confirmed schedules remain in Creative Assets and Scheduling." : "This link belongs to an earlier task. Choose whether to continue it or start a new video."}</p>
+  if (view.mode === "ask") return <section className={styles.screen} aria-labelledby="resume-work-title" aria-describedby="resume-work-description">
+    <div className={styles.card}>
+      <div className={styles.icon}><History aria-hidden="true" /></div>
+      <h1 id="resume-work-title" className={styles.title}>Resume previous work?</h1>
+      <p id="resume-work-description" className={styles.description}>This link opens an earlier Talking Head video. Continue where you left off, or start a new video.</p>
+      <div className={styles.actions}>
+        <Button type="button" className={styles.primaryAction} onClick={() => openWorkflow(`/explore/create-hook?work=${view.id}&resume=1`)}>Resume previous work</Button>
+        <Button type="button" variant="outline" className={styles.secondaryAction} onClick={() => openWorkflow("/explore/create-hook")}>Start new video</Button>
+      </div>
+      <a className={styles.backLink} href="/explore">Back to Explore</a>
+    </div>
+  </section>;
+  return <section className="space-y-4 p-6" aria-label="Saved Talking Head drafts">
+    <h1 className="text-lg font-semibold">Saved Talking Head drafts</h1>
+    <p className="text-sm text-muted">Drafts saved on this browser. Videos and confirmed schedules remain in Creative Assets and Scheduling.</p>
     <div className="flex flex-wrap gap-3">
-      {view.mode === "ask" ? <Button type="button" onClick={() => openWorkflow(`/explore/create-hook?work=${view.id}&resume=1`)}>Resume previous work</Button> : null}
       <Button type="button" variant="outline" onClick={() => openWorkflow("/explore/create-hook")}>Start new video</Button>
       <a href="/explore">Back to Explore</a>
     </div>
-    {view.mode === "list" ? loading ? <p role="status">Checking your account…</p> : !user ? <p>Sign in to view your drafts.</p> : drafts.length ? <ul className="space-y-3">{drafts.map(draft => <li key={draft.id}>
+    {loading ? <p role="status">Checking your account…</p> : !user ? <p>Sign in to view your drafts.</p> : drafts.length ? <ul className="space-y-3">{drafts.map(draft => <li key={draft.id}>
       <a className="text-primary underline" href={`/explore/create-hook?work=${draft.id}&resume=1`}>{draft.session.instructions.trim().slice(0, 80) || "Talking Head + Demo"}</a>
       <p className="text-xs text-muted">{draft.state === "scheduled" ? "Scheduled" : "Draft"} · {new Date(draft.updatedAt).toLocaleString()}</p>
-    </li>)}</ul> : <p>No saved drafts on this browser yet.</p> : null}
+    </li>)}</ul> : <p>No saved drafts on this browser yet.</p>}
   </section>;
 }

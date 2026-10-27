@@ -1,4 +1,5 @@
 import { buildHookAnimationPrompt } from "./hook-keyframe-motion.ts";
+import { retimeSourceMotionDirections } from "./hook-middle-frame-motion.ts";
 
 export type StartingFrameWorkflow = "hook" | "wall_text" | "talking_head";
 
@@ -22,7 +23,7 @@ export function buildStartingFrameAnimationPrompt(input: {
     `Animate the approved starting image into a ${input.durationSeconds}-second video. The image supplies the person's appearance and the complete opening composition.`,
     "Keep the approved facial features and proportions, hairstyle, clothing, lighting and scene consistent throughout the movement. Do not replace the person's identity or introduce a different person.",
     input.workflow === "talking_head" ? "Create a natural talking-head performance. Use only the user's own script below. Do not invent product claims or add a demo segment." : "Create clean moving background footage. Overlay text is added separately in the editor; do not render the requested overlay words into the video.",
-    input.directions.trim(),
+    input.workflow === "wall_text" ? retimeSourceMotionDirections(input.directions.trim(), input.durationSeconds) : input.directions.trim(),
     "Do not add captions, floating logos or creator-added graphics. Preserve text physically present on objects in the approved image.",
     input.generateAudio
       ? input.workflow === "talking_head" ? "SOUND SETTING: ON. Generate the user's requested speech with natural delivery and lip-sync. Do not invent extra spoken words." : "SOUND SETTING: ON. Natural ambient sound is allowed. Do not add speech, narration, singing or music."

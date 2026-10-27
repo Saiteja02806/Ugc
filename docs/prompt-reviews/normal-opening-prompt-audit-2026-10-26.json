@@ -1,0 +1,4404 @@
+{
+  "date": "2026-10-26",
+  "method": "Current source/hash-bound plan and actual prompt compiler audit. Fresh visual inspection is separately recorded; structural compilation is not visual fidelity.",
+  "publicCount": 83,
+  "privateCount": 2,
+  "publicReviewed": 78,
+  "publicNeedsDecision": 5,
+  "numericActionTimelines": 0,
+  "providerCalls": 0,
+  "rows": [
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-4585ee949081c4e5cd835cd3",
+      "currentTitle": "Hook 01",
+      "sourceSha256": "ba0fbb042edc19951270e602dbad9ebb413ebecda1069092bf6d63b2066c1e49",
+      "sourceDurationSeconds": 3.066667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1848,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1551,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1551,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1551,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1552,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-7c53cba88343579e7e15c8b0",
+      "currentTitle": "Hook 02",
+      "sourceSha256": "f1f7b5ed3d54066e857a354ea2ae735d67c8066b7fc7ff0406831b8418e03a7d",
+      "sourceDurationSeconds": 3.066667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1860,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1492,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1492,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1492,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1493,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-ef59f4b5e69bc9e125f8ada7",
+      "currentTitle": "Hook 03",
+      "sourceSha256": "8e8b9d7b7d781ab4dbe72abd95399468710b70c94e544e981bfc9b239bb1d647",
+      "sourceDurationSeconds": 3.733333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1839,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1351,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1351,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1351,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1352,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-b43622d1486957644f3317e6",
+      "currentTitle": "Hook 04",
+      "sourceSha256": "aad28dc09ced6ec5d053dfd12e9fb8329ed2b9725202e9328b62204c162649b1",
+      "sourceDurationSeconds": 3.066667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1867,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1453,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1453,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1453,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1454,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-510f7a66546d25863c268477",
+      "currentTitle": "Hook 05",
+      "sourceSha256": "4a9bff0825e4e12a1fe5bdd1258537e89de5e2a18863e52e2de806f8b41f334d",
+      "sourceDurationSeconds": 3.233984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1901,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1578,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1578,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1578,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1579,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-55cb1594a04550147e829d7f",
+      "currentTitle": "Hook 06",
+      "sourceSha256": "583255803018d3b0a2473992c23445401e32a8574d923dd7765b6d56cbd44d9c",
+      "sourceDurationSeconds": 3.733333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1883,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1589,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1589,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1589,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1590,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-2a74d53ba481fd0f99b84179",
+      "currentTitle": "Hook 07",
+      "sourceSha256": "a3a64307af499bec14f676df3a5eb8d63194d5ad7bae6b4d8b93d7c0503b0069",
+      "sourceDurationSeconds": 2.666667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1918,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1547,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1547,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1547,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1548,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-d1d14b08f6dd4711ad166ded",
+      "currentTitle": "Hook 08",
+      "sourceSha256": "9b8b330230ef1b0247d6a5727fbaec5694c47415e6316be7e03ab57f75b1eb66",
+      "sourceDurationSeconds": 2.7,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1893,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1614,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1614,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1614,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1615,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-aa0caa002b6a92ad9226b26c",
+      "currentTitle": "Hook 09",
+      "sourceSha256": "92c675ad270474bd03584adb05ebbb2646777642cc4e40cbcb0c2f8a12d74a55",
+      "sourceDurationSeconds": 2.833984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1871,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1524,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1524,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1524,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1525,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-9ee299bb7c8ab66ad9387bbf",
+      "currentTitle": "Hook 10",
+      "sourceSha256": "801d78b9013476c9938c7945a1cae44c1867d929ad5b8c85f4e9e138aa8dd0e4",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1846,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1367,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1367,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1367,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1368,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-3a6a3f1380bf0260ec43bd78",
+      "currentTitle": "Hook 11",
+      "sourceSha256": "e5d1641fe9a90a3a632967d3705fe2c339da6d19afc3694de2d597ee8c801f37",
+      "sourceDurationSeconds": 3.766992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1893,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1469,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1469,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1469,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1470,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-4f4ca22ed141ee115d1eb913",
+      "currentTitle": "Hook 14",
+      "sourceSha256": "bdf4ddaa91519e8529c8240b7986badb791ce9ef6f00a45e84cf18fc1c2545f4",
+      "sourceDurationSeconds": 3.366992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1885,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1429,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-be7df3868a7b06024c0a90d1",
+      "currentTitle": "Hook 16",
+      "sourceSha256": "453a142b7c2790276f60b5d16cb98ecf599f13cd2efd3ec9e8900ce68f0974a4",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1856,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1393,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1393,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1393,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1394,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-b0aead788c4930565401371b",
+      "currentTitle": "Hook 17",
+      "sourceSha256": "d56e8d158067e5f2b12261609327fcd3f0ce16e526ca56c00c54b2b2d800d16c",
+      "sourceDurationSeconds": 2.433984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1840,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1350,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1350,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1350,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1351,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-9ba74d76f7f3a3e0b55f3ebc",
+      "currentTitle": "Hook 18",
+      "sourceSha256": "8539f7dc763542ea7b7bcf6d771e424723373a38f421a71ca11854d27315aea2",
+      "sourceDurationSeconds": 2.166992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1879,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1417,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1417,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1417,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1418,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-17d1208ac2c327913bb321ab",
+      "currentTitle": "Hook 21",
+      "sourceSha256": "d2215baade9dfa7c187cb938d00fa4fa8cc80cbd12d315773873b167b6cfee0e",
+      "sourceDurationSeconds": 2.933333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1881,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1455,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1455,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1455,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1456,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-11f2baa840d10b65bc4c4dee",
+      "currentTitle": "Hook 22",
+      "sourceSha256": "25123361708e80844633e60b52681aea72693ce85f681b8823ae0c8ba9ee5e4e",
+      "sourceDurationSeconds": 3.233984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "needs_decision",
+      "issues": [
+        "The glasses-removing hand lowers offscreen before returning empty across the lips while the other hand takes the camera. Decide how to handle that hidden glasses placement before animation; do not make the glasses vanish or require a continuous offscreen grip."
+      ],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1620,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": true,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1637,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1637,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1637,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1638,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-59dee735a7c5d1643bc57127",
+      "currentTitle": "Hook 23",
+      "sourceSha256": "11e506548c8986478f10319a0a91b68f4dd635aca4828a6585d3e067bdad0b78",
+      "sourceDurationSeconds": 2.3,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1838,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1450,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1450,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1450,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1451,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-43f2c2d266d23e3af05875d8",
+      "currentTitle": "Hook 24",
+      "sourceSha256": "bad5b386ca548a1929d64519e732bf61a02fcafc5ecb722c0078fccd7f21eae1",
+      "sourceDurationSeconds": 2.566992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1878,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1483,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1483,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1483,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1484,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-62f80506cbbedab0d340f863",
+      "currentTitle": "Hook 25",
+      "sourceSha256": "01e8872faa7d86be54cb4684e882d713574bd7e9cb5603bb6952531623e80b6a",
+      "sourceDurationSeconds": 1.633984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1886,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1375,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1375,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1375,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1376,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-4ddf4d0f6dc4493f7eb6572f",
+      "currentTitle": "Hook 27",
+      "sourceSha256": "fa7ac755ff00e0971cc8d6eb4cb7469d9b0892b0c6de2cf0cd289822e66357c8",
+      "sourceDurationSeconds": 2.566992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1881,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1414,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1414,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1414,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1415,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-761c394a83c7b4c06e35e262",
+      "currentTitle": "Hook 29",
+      "sourceSha256": "a3820faae0a2aa09fdd6ddc583672d9593af9400a9965668708d290960ab979b",
+      "sourceDurationSeconds": 3.766992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1878,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1458,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1458,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1458,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1459,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-14b3c195d4648bd1793f8d50",
+      "currentTitle": "Hook 31",
+      "sourceSha256": "c90562a9f21d0e923c3c0c2c3335792561718e66ca406bc43f028662da76ae41",
+      "sourceDurationSeconds": 2.4,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1910,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1478,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1478,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1478,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1479,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-df58806df2ea040df347f267",
+      "currentTitle": "Hook 32",
+      "sourceSha256": "34bed1ecf3fa822e29a5765f9de89d1a3bcb6b07a18256669f4b04b660e206a7",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1880,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1554,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1554,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1554,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1555,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-f24aeb3d18886faf62ca3b8c",
+      "currentTitle": "Hook 33",
+      "sourceSha256": "b90adfc11f1e10ca9904d1a69ebd50a8fd729c7599f1751ce619c1777b5fd93c",
+      "sourceDurationSeconds": 2.166992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1904,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1429,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-d4e7dafbab7e65e9a2505ce0",
+      "currentTitle": "Hook 34",
+      "sourceSha256": "a368c58de606ad0a9076608fdd195c58ce85c4358ff350b511aa94b75ac21cc3",
+      "sourceDurationSeconds": 3.766992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1872,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1600,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1600,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1600,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1601,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-f1b5421be14d24803539be89",
+      "currentTitle": "Hook 36",
+      "sourceSha256": "054c09a7e8cf98a169a72df0de8b9f033c44f28dc288b81c486131f89e59383e",
+      "sourceDurationSeconds": 1.633984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1832,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1340,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1340,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1340,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1341,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-1280571372ff2cd67af995f3",
+      "currentTitle": "Hook 37",
+      "sourceSha256": "f015ff6f4f1c35fb1633f86912aa31f9124078f297a63dd8a07c26d22ced6417",
+      "sourceDurationSeconds": 3.233984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1855,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1307,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1307,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1307,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1308,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-21d7d65d41c97e6ebbb5a13e",
+      "currentTitle": "Hook 38",
+      "sourceSha256": "13dec8d9a94e0df8611da53eecd3f442d43c4bde122ef26ec3f6f3b063aab2cc",
+      "sourceDurationSeconds": 2.166992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1864,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1303,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1303,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1303,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1304,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-ccc00a7b185156ed25e1af37",
+      "currentTitle": "Hook 40",
+      "sourceSha256": "84e12d5a6d30659ae19dcd197bd582b556b0d869ed79d3e346168aeb681e5461",
+      "sourceDurationSeconds": 4.533333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1849,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1461,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1461,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1461,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1462,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-5947060ace44a6f7366de20c",
+      "currentTitle": "Hook 41",
+      "sourceSha256": "fea7e6c4245713027ca09d213ed3d6f8bf3c7623fe917a01159b69961d6e2e57",
+      "sourceDurationSeconds": 3.2,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1869,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1470,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1470,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1470,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1471,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-2575e61e1f8151761d13e032",
+      "currentTitle": "Hook 42",
+      "sourceSha256": "c4470a957a0586e7e512c2f1e54219a60d6798b18cf39810ffc2229dd2c1968f",
+      "sourceDurationSeconds": 4.833984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1861,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1464,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1464,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1464,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1465,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-7715be59e01c9ee80a3bb018",
+      "currentTitle": "Hook 43",
+      "sourceSha256": "48cc78fb6cc846d862188fc7977d2a090d4d138ef9f455ac9c24e7f5d3d05b6d",
+      "sourceDurationSeconds": 3.733333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1840,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1405,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1405,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1405,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1406,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-643978050b8b91c838ce4985",
+      "currentTitle": "Hook 44",
+      "sourceSha256": "9ab621f9e17c177a3202c1c5e7ae59889be0039a26f0e29ffdd7289f910293e3",
+      "sourceDurationSeconds": 3.166667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1854,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1505,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1505,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1505,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1506,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-322af5b0d5778b474cfcfdf4",
+      "currentTitle": "Hook 45",
+      "sourceSha256": "581e41b10deaea33c424ad2f0a2c5291970a23651c034d3872a6e6a3335cc339",
+      "sourceDurationSeconds": 5.7,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1882,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1520,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1520,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1520,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1521,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-318267dcb393c3e701c8c944",
+      "currentTitle": "Hook 46",
+      "sourceSha256": "da4bfa3ccddec7302c231484339dfdc43108f8171379a06341355998b8e17eb5",
+      "sourceDurationSeconds": 2.433984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1851,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1373,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1373,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1373,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1374,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-6070b6ecbe246d879ce0bdcb",
+      "currentTitle": "Hook 48",
+      "sourceSha256": "9759bd67019e24c89de5b8e7320e442fea007b12a6ca448268639d8daa8105cd",
+      "sourceDurationSeconds": 3.766667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1858,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1578,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1578,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1578,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1579,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-ac9df55efb6be6e2fefbcf0e",
+      "currentTitle": "Hook 49",
+      "sourceSha256": "ddc8c2d933ee9c61900cee97b46de4b5a2f9219e7d4deb2774f23fd317b7977f",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1858,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1438,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1438,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1438,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1439,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-d7a0b28cd22cc29d618a5a6d",
+      "currentTitle": "Hook 51",
+      "sourceSha256": "68780f81d4c6d04cd38ea28cedbb0cf101ad51c77a11bb69da23171adee0b8f5",
+      "sourceDurationSeconds": 3.2,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "needs_decision",
+      "issues": [
+        "Choose whether to retain the visible jump cut between arm stretch and neck stretch or deliberately adapt it to a continuous movement; do not silently change the take structure."
+      ],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1620,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": true,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1552,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1552,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1552,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1553,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-f216fd8e9397a7747a445ab7",
+      "currentTitle": "Hook 53",
+      "sourceSha256": "dfe8041f9e9ecd561fbdffd3eb3100ef1cfed6b6cdc464a03b5d42b5f8c9cd92",
+      "sourceDurationSeconds": 2.8,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1867,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1390,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1390,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1390,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1391,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-cdddd09fdd3b5a23d9949205",
+      "currentTitle": "Hook 54",
+      "sourceSha256": "dbc2365fe8dc4553b04a616600e441250eb7c647c0cb6266b3e816b821a877f8",
+      "sourceDurationSeconds": 1.766667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1866,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1359,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1359,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1359,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1360,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-1b24d9e1a56bfadeb9c62a6b",
+      "currentTitle": "Hook 55",
+      "sourceSha256": "a27cd8311269d876f450306125a00dc9e90f8fce9326f7451756073d3def53d9",
+      "sourceDurationSeconds": 4.7,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1889,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1544,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1544,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1544,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1545,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-725d926d66f44993f3556ee1",
+      "currentTitle": "Hook 56",
+      "sourceSha256": "6a9be79f7624a114da80874e58d8723e8d924f4be885abe8f00a158ab4945d14",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1814,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1323,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1323,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1323,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1324,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-743919c25a4f61942184a81b",
+      "currentTitle": "Hook 57",
+      "sourceSha256": "feb86314330316c3bf63321fed73ce74125357ede251f886b241f9d30c77ac62",
+      "sourceDurationSeconds": 2.566667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "needs_decision",
+      "issues": [
+        "The can leaves below view before the same empty hand returns. Hidden placement is not visible; resolve continuity before approval rather than inventing a handoff."
+      ],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1620,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": true,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1574,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1574,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1574,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1575,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-8641b91f883cb5b6c66efd3c",
+      "currentTitle": "Hook 58",
+      "sourceSha256": "7e2a2dff06f063e146e7228ead847bb3051cacf9c315837dfa5b120f471466a2",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1862,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1489,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1489,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1489,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1490,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-bfd6368d9fc52f44c6422a2b",
+      "currentTitle": "Hook 59",
+      "sourceSha256": "c11a98980ec419b9173d7641f3b2f505f661e4423f42d28e64072df5e9115b8b",
+      "sourceDurationSeconds": 1.9,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1838,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1394,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1394,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1394,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1395,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-3c414e30a7405a8c57cb01de",
+      "currentTitle": "Hook 60",
+      "sourceSha256": "6efab330b87f60918b8085640381ed248dc8cf1787f5cad997633185f4211bd1",
+      "sourceDurationSeconds": 2.733333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1817,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1490,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1490,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1490,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1491,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-cfa08753a0ca05384e797ad2",
+      "currentTitle": "Hook 61",
+      "sourceSha256": "b67733a9549d094db34b0a8d3415b87f17c3b2b8fc6d4bca028386570e47567c",
+      "sourceDurationSeconds": 2.666667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1898,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1514,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1514,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1514,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1515,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-283fc73921d127b977edd5cd",
+      "currentTitle": "Hook 62",
+      "sourceSha256": "8dddf4972f39f105029a7f76a0e442327ed70d22115980019df4ac64257ea368",
+      "sourceDurationSeconds": 3,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1864,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1422,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1422,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1422,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1423,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-20446a41b05ed3e9fdb6af95",
+      "currentTitle": "Hook 63",
+      "sourceSha256": "179d60aeb4ca1c00d86733b9401adfd2ca2618156d054d0c959d8608dc4bb38a",
+      "sourceDurationSeconds": 2.433333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1911,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1508,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1508,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1508,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1509,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-75b1b07ece3bdd13302c96c0",
+      "currentTitle": "Hook 65",
+      "sourceSha256": "e7b03e08f5b65fc299c567e31fcaec60c99c99717f6f71239a49b236669443ca",
+      "sourceDurationSeconds": 4.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1852,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1489,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1489,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1489,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1490,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-f0917e5ac7271343ebe3cded",
+      "currentTitle": "Hook 66",
+      "sourceSha256": "c99eb8c79bbe255a07e42158c98e6a6e7b20ddca24187755589e064c89bf5c50",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1877,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1354,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1354,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1354,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1355,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-caceb6cb43d6e62137cf9892",
+      "currentTitle": "Hook 67",
+      "sourceSha256": "923b786dd67b219c34d29e4011429fb56a3c1bdfdb9039480423beb595df4631",
+      "sourceDurationSeconds": 3.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1881,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1410,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1410,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1410,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1411,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-ac9ab2b1ecf8c6ab095fcc82",
+      "currentTitle": "Hook 68",
+      "sourceSha256": "d864c622b2a8534724d126def5d50c02369e1dc4641b86bdcc3adcaa30ac26ad",
+      "sourceDurationSeconds": 3.833333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1898,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1401,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1401,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1401,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1402,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-c7ffd19dc027af1ff4034aeb",
+      "currentTitle": "Hook 69",
+      "sourceSha256": "759fb407fb2cb8fb19a62fa7aeccd19b2065fe82f73c842fb087937450148f63",
+      "sourceDurationSeconds": 2.135969,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1836,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1319,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1319,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1319,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1320,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-c709e563045b8e9e473929a9",
+      "currentTitle": "Hook 70",
+      "sourceSha256": "5f05f8e35fac3de5dd1b15687e8b296ddfaa5896cbfc78bb229eae570083d5a6",
+      "sourceDurationSeconds": 4.066667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1837,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1302,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1302,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1302,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1303,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-b7c86d6729a69666ddf46ed5",
+      "currentTitle": "Hook 72",
+      "sourceSha256": "30fe05d7389f57619b22fb30fd2137f2f7e4bd9cd9e01a9add9771ae5a8b37bd",
+      "sourceDurationSeconds": 6.366667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "needs_decision",
+      "issues": [
+        "The long held tongue/finger/bottle sequence is clear, but choosing how much of its repeated motion to retain in a shorter adaptation requires an explicit timing decision. No drinking action is present."
+      ],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1620,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": true,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1502,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1502,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1502,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1503,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-e7147ac8b75176755e120150",
+      "currentTitle": "Hook 73",
+      "sourceSha256": "2435b7e644d5677dac8392a674090c26368b1870b4a796fad11cc8719f7e016a",
+      "sourceDurationSeconds": 3.633984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1889,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1450,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1450,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1450,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1451,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-4463cc3d85f44ad6829ceb12",
+      "currentTitle": "Hook 74",
+      "sourceSha256": "a2348d4501bba0c87969569e7f5aae8b3e3b63933ed80834a60f5c90b0d3bacf",
+      "sourceDurationSeconds": 3.8,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1877,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1379,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1379,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1379,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1380,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-7a81a25a6fb874013b14dbf1",
+      "currentTitle": "Hook 75",
+      "sourceSha256": "17c7306fd6dc9d0def83620bb1757cdd906e9e9e0845559bce9a6930089b2628",
+      "sourceDurationSeconds": 2.966992,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1856,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1309,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1309,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1309,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1310,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-def19968a4a8c55c52679591",
+      "currentTitle": "Hook 76",
+      "sourceSha256": "6c627bb27ec546ec86da3021a9769d75b6b6a720003f48a8f907a8990dd4f908",
+      "sourceDurationSeconds": 3.233008,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1878,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1336,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1336,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1336,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1337,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-0c14ee9d885466ad13cf9e52",
+      "currentTitle": "Hook 77",
+      "sourceSha256": "365f323663661caafdff955f6ad72ce30e44fc6cb17acb9a4932dc9d463f65d5",
+      "sourceDurationSeconds": 2.133984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1947,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1454,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1454,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1454,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1455,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-3bd70516e94e1dfa9ed6797a",
+      "currentTitle": "Hook 78",
+      "sourceSha256": "8908e49f4fe23dbf349300b10cc47aec3230d3a283cb8628d85758bf6b3a66ce",
+      "sourceDurationSeconds": 1.966667,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1860,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1359,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1359,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1359,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1360,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-7351dd660bc41910b9f25453",
+      "currentTitle": "Hook 79",
+      "sourceSha256": "b3d94f4ce96c9170c6f1e46a86fbe45fb8f0a9e81ba329b96333b5e3d9658680",
+      "sourceDurationSeconds": 2.933008,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1849,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1411,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1411,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1411,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1412,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-2e28e18f894e3ba7de367ced",
+      "currentTitle": "Hook 80",
+      "sourceSha256": "3f51eb6ef5a2506e1fe142f86461ddf64b1d5330dba23fca3b939f144f4052e8",
+      "sourceDurationSeconds": 5.633008,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1870,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1451,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1451,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1451,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1452,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-5be30f0749eec90b5a70bd18",
+      "currentTitle": "Hook 81",
+      "sourceSha256": "7d3eee8c771389c88bf94ef30f97930558fad323b3328d32cd61838becf4af33",
+      "sourceDurationSeconds": 4.266016,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1874,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1395,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1395,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1395,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1396,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-d3a67b533f083d26dd5d46f0",
+      "currentTitle": "Hook 82",
+      "sourceSha256": "0097678ec0a78858157af61162d0283aabd851dd439f772267a939853ccf4471",
+      "sourceDurationSeconds": 4,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1876,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1438,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1438,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1438,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1439,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-607bfccda5e91e0d8731fa94",
+      "currentTitle": "Hook 83",
+      "sourceSha256": "3205ad7a9a13b1f49e411498ec8a8a028ec6d649d3fcb374381981ec019315ba",
+      "sourceDurationSeconds": 4.466016,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "needs_decision",
+      "issues": [
+        "The opening is an intentional partial-face crop. A full facial proportion inspection is impossible from this scene; approve retaining that crop or choose another opening explicitly."
+      ],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1620,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": true,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1413,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1413,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1413,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1414,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-717396089efc644caf411c79",
+      "currentTitle": "Hook 86",
+      "sourceSha256": "04ea856056ca2deb3f84af7c02d81e565c7dcf8858fbdc4c9a68d37afa893df5",
+      "sourceDurationSeconds": 5.133984,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1858,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1315,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1315,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1315,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1316,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-164ad3e6923d5d0d576114a5",
+      "currentTitle": "Hook 87",
+      "sourceSha256": "22ca3cffd2aac8e07271d24b7ea24ccb6989c85b4b4fc28cbf1fdd3803e21b34",
+      "sourceDurationSeconds": 2.866016,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1826,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1299,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1299,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1299,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1300,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-8be7bcb3444ae4ef4d21b7ea",
+      "currentTitle": "Hook 88",
+      "sourceSha256": "840c3df6df5ab79744812556d1da4e53134fde7d5ca033270c83cb739a12b300",
+      "sourceDurationSeconds": 2.733333,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1845,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1352,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1352,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1352,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1353,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-349e499826f7491d91f6b712",
+      "currentTitle": "Hook 90",
+      "sourceSha256": "2a7b50e5af6a4ae022ce388de44598b7c5de4a67e7b9bf06e33b076df8fbe02a",
+      "sourceDurationSeconds": 4.6,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1879,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1386,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1386,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1386,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1387,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-88b4f433fe4fcb0504aca67f",
+      "currentTitle": "Hook 91",
+      "sourceSha256": "3fd1ed03b048203fddd4df7fdae61b2980a0e4eabc8b4d376ac66e9615baa5aa",
+      "sourceDurationSeconds": 3.3,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1878,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1399,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1399,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1399,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1400,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-c5e3806f418bbe37e864485a",
+      "currentTitle": "Hook 92",
+      "sourceSha256": "66bb907a5d4ada74dc2a5312fb098efb056c8dee007212e8bda29c8424fc8b0d",
+      "sourceDurationSeconds": 3.566016,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1855,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1318,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1318,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1318,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1319,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-095c5d08848977c4a1dda973",
+      "currentTitle": "Hook 95",
+      "sourceSha256": "6033dbd8c2a2c8fb849b37224d798bde39f492b2702bd5b58f5a9f1cf74cbad0",
+      "sourceDurationSeconds": 3.5,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1948,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1392,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1392,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1392,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1393,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-2822e820228a01fb4c4273a1",
+      "currentTitle": "Hook 97",
+      "sourceSha256": "a94d5b7f3fab41fbf5e10d4e3c03fc1f6469b40839fdf5d6b7a7e72060491466",
+      "sourceDurationSeconds": 4,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1898,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1427,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1427,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1427,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1428,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-a9289ca5bd17288593e63eee",
+      "currentTitle": "Hook 98",
+      "sourceSha256": "df879f22de59f37d4556ee97e831745382c60f2273bc51b8fa0a16fe9c2ae87e",
+      "sourceDurationSeconds": 3.633008,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1912,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1525,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1525,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1525,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1526,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-17133540b2315e0a3a05bfbd",
+      "currentTitle": "Hook 99",
+      "sourceSha256": "fef0dfdcf3482917368e74bea434b0918144662f5924ccc6b05c4eff86beb9fd",
+      "sourceDurationSeconds": 4.1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1860,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1549,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1549,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1549,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1550,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-4d44e59d5acbbad7f138d3a3",
+      "currentTitle": "Hook 102",
+      "sourceSha256": "ddb24f03edb483ef194be7cbe0c74d26a9ec4ae39507642efd2d334759fddf35",
+      "sourceDurationSeconds": 2.766016,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1920,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1594,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1594,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1594,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1595,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-20d3e0c0a3051477008bd86b",
+      "currentTitle": "Hook 103",
+      "sourceSha256": "109ec5d49c4f33800c23a26329107d1ffd26d98b5048c8a210d8534164a1e7c6",
+      "sourceDurationSeconds": 2.966016,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1973,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1635,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1635,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1635,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1636,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-3cddc94937cdb32947f9e0c2",
+      "currentTitle": "Hook 105",
+      "sourceSha256": "05738540ee02c011cf73cfe2db7cae40b88c0886af99c23a99704e630bbfc955",
+      "sourceDurationSeconds": 1.833008,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1913,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1530,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1530,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1530,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1531,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-44d165d51084f977f5146f69",
+      "currentTitle": "Hook 106",
+      "sourceSha256": "b9b0c519f1e061ae9cdc91965cb6797777cee0f763d1e1f94cf0614f1d438f06",
+      "sourceDurationSeconds": 2.8,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1926,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1582,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1582,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1582,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1583,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "public",
+      "referenceId": "explore-paired-hook-c15a0f9f2a7c4a28d5330825",
+      "currentTitle": "Hook 107",
+      "sourceSha256": "3b75bff5ce95145b5779f91b8bb9a235009e69f4829d756679ee1b6cc0ee79a2",
+      "sourceDurationSeconds": 1,
+      "sourceHashMatchesEvidence": true,
+      "sourceHashMatchesRewrite": true,
+      "status": "static_reviewed",
+      "issues": [],
+      "openingDefined": true,
+      "endingDefined": true,
+      "cameraDefined": true,
+      "numericActionTimeline": false,
+      "imagePromptCharacters": 1975,
+      "imagePromptHasLaterAnchorRole": false,
+      "phaseCount": 3,
+      "previewBlocked": false,
+      "previewDurationSeconds": 4,
+      "customTextPreserved": true,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 1626,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 1626,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 1626,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 1627,
+          "declaresOutputDuration": true,
+          "hasNumericActions": false
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "private",
+      "referenceId": "creator-account-1-04",
+      "currentTitle": "creator-account-1-04",
+      "sourceSha256": "9586eabc2b9d3bb70efeee2738685e2e9fc55a94c6840b18fc81710987bb63a8",
+      "sourceDurationSeconds": 2.3,
+      "sourceHashMatchesEvidence": true,
+      "status": "legacy_four_sample_review",
+      "numericActionTimeline": false,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 928
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 928
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 928
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 929
+        }
+      ],
+      "visualQualification": "not_tested"
+    },
+    {
+      "dataset": "private",
+      "referenceId": "creator-account-1-05",
+      "currentTitle": "creator-account-1-05",
+      "sourceSha256": "5b8cc86082b035850ce567d46658c6cc76e5c92820e631aa24dff8eb0c87ea82",
+      "sourceDurationSeconds": 2.634,
+      "sourceHashMatchesEvidence": true,
+      "status": "legacy_four_sample_review",
+      "numericActionTimeline": false,
+      "compilations": [
+        {
+          "duration": 3,
+          "status": "compiles",
+          "characters": 925
+        },
+        {
+          "duration": 4,
+          "status": "compiles",
+          "characters": 925
+        },
+        {
+          "duration": 8,
+          "status": "compiles",
+          "characters": 925
+        },
+        {
+          "duration": 10,
+          "status": "compiles",
+          "characters": 926
+        }
+      ],
+      "visualQualification": "not_tested"
+    }
+  ]
+}

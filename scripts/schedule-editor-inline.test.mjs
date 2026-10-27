@@ -8,6 +8,7 @@ import * as platformSettings from "../lib/scheduling/platform-settings.ts";
 import * as connectionPolicy from "../lib/scheduling/social-connection-policy.ts";
 import * as accountPicker from "../lib/scheduling/account-picker.ts";
 import * as scheduleTypes from "../lib/scheduling/types.ts";
+import * as timeDisplay from "../lib/scheduling/time-display.ts";
 import * as scheduleTime from "../lib/scheduling/schedule-time.ts";
 import * as tiktok from "../lib/social/tiktok-publishing.ts";
 import { withReadDeadline } from "../lib/http/read-deadline.ts";
@@ -37,6 +38,9 @@ function fixture(overrides = {}, instant = Date.now()) {
   const document = { activeElement: null, body: { style: { get overflow() { return browser.overflow; }, set overflow(value) { browser.overflow = value; } } },
     addEventListener() { browser.listeners++; }, removeEventListener() { browser.listeners--; } };
   const imports = {
+    "@/components/scheduling/schedule-quick-actions": { ScheduleQuickActions: "quick-actions" },
+    "./use-device-time-format": { useDeviceTimeFormat: () => overrides.hour12 === true },
+    "@/lib/scheduling/time-display": timeDisplay,
     "./schedule-editor.module.css": { default: { refreshAccounts: "refreshAccounts" } },
     react, "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     "lucide-react": new Proxy({}, { get: (_, name) => name }),
@@ -70,7 +74,7 @@ function fixture(overrides = {}, instant = Date.now()) {
     },
   });
   const accounts = ["instagram", "tiktok", "youtube"].map((platform, i) => ({ id: `00000000-0000-4000-8000-00000000000${i + 1}`, platform, status: "connected", scopes: [platform === "instagram" ? "instagram_business_content_publish" : platform === "tiktok" ? "video.publish" : "https://www.googleapis.com/auth/youtube.upload"], supportsBackgroundRefresh: true }));
-  const props = { presentation: "inline", finalVideo, demoMediaOptions: [finalVideo], hookMediaOptions: [], editingIsCombinedVideo: false, editingPlannedPlatforms: [], editingSchedule: null, editingScheduledDate: null, editingScheduledTime: null, errorMessage: null,
+  const props = { initialUseDefaultScheduleTime: false, presentation: "inline", finalVideo, demoMediaOptions: [finalVideo], hookMediaOptions: [], editingIsCombinedVideo: false, editingPlannedPlatforms: [], editingSchedule: null, editingScheduledDate: null, editingScheduledTime: null, errorMessage: null,
     initialClipSelection: "secondary_only", initialDemoMediaId: finalVideo.id, initialHookMediaId: "", initialCaption: "My exact caption", initialPlannedTargets: [{ connectionId: accounts[0].id, platform: "instagram", settings: { shareToFeed: false } }], initialScheduledDate: "2099-12-01", initialScheduledTime: "16:30", minimumScheduleLeadMinutes: 5, requireScheduleTarget: true, saving: false, socialConnections: accounts, tiktokBetaEnabled: true, youtubeBetaEnabled: true,
     onClose() { browser.closed++; }, onCloseDraft(value) { snapshots.push(value); }, onRefreshMedia: async () => true, onRefreshConnections: async () => true, onSave(value) { submitted.push(value); }, ...overrides };
   return { props, browser, submitted, snapshots, calls,
@@ -423,4 +427,54 @@ test("submission revalidates a sleeping tab and minute refresh disables a newly 
     assert.match(text(h.nodes().find(node => node.props?.id === "schedule-clock-help")), /Earliest: 2026-10-14 14:47/);
     h.unmount();
   }
+});
+
+
+test("default Post now is a single action, resolves at click time and retains optional manual scheduling", async () => {
+  const h=fixture({initialUseDefaultScheduleTime:true,initialScheduledDate:"2000-01-01",initialScheduledTime:"21:30"});await renderSettled(h);
+  assert.equal(h.nodes().filter(node=>node.props?.["aria-label"]==="Publishing time").length,0);
+  assert.equal(h.nodes().filter(node=>node.type==="SharedButton"&&text(node).includes("Post now")).length,1);
+  assert.equal(h.submitted.length,0);assert.equal(h.save().props.disabled,false);
+  h.advance(3600000);h.render();h.save().props.onClick();assert.equal(h.submitted[0].useDefaultScheduleTime,true);
+  control(h,"ScheduleTimePicker").props.onChange("21:30");h.render();assert.equal(h.save().props.disabled,true);h.unmount();
+});
+
+test("Post now cannot silently create a targetless draft in generic Scheduling", async () => {
+  const h=fixture({requireScheduleTarget:false,initialPlannedTargets:[],initialUseDefaultScheduleTime:true});await renderSettled(h);
+  assert.equal(h.save().props.disabled,true);h.save().props.onClick();assert.equal(h.submitted.length,0);h.unmount();
+});
+
+test("five-minute shortcut resolves at final click and either manual field restores exact scheduling", async () => {
+  for (const manual of [null, "date", "time", "other-preset"]) {
+    const h = fixture({ presentation: "workflow", initialUseDefaultScheduleTime: true, initialTimezone: "Asia/Calcutta" }, Date.parse("2026-10-26T12:00:30Z"));
+    await renderSettled(h);
+    h.nodes().find(node => node.type === "quick-actions").props.onSelect({ date: "2026-10-26", time: "17:36" }, 5); h.render();
+    assert.equal(text(h.save()), "Schedule post", "Retain the existing final button label");
+    assert.equal(h.submitted.length, 0);
+    h.advance(20 * 60_000); h.render();
+    if (manual === "date") h.nodes().find(node => node.props?.name === "scheduledDate").props.onChange({ target: { value: "2026-10-27" } });
+    if (manual === "time") control(h, "ScheduleTimePicker").props.onChange("21:30");
+    if (manual === "other-preset") h.nodes().find(node => node.type === "quick-actions").props.onSelect({ date: "2026-10-26", time: "19:00" }, 60);
+    h.render(); assert.equal(h.save().props.disabled, false); h.save().props.onClick();
+    const result = h.submitted[0];
+    assert.equal(result.caption, "My exact caption"); assert.equal(result.scheduledSource.id, finalVideo.id);
+    assert.equal(result.useDefaultScheduleTime, manual ? undefined : true);
+    assert.equal(result.scheduledFor, manual === "date" ? "2026-10-27T12:06:00.000Z" : manual === "time" ? "2026-10-26T16:00:00.000Z" : manual === "other-preset" ? "2026-10-26T13:30:00.000Z" : "2026-10-26T12:26:00.000Z");
+    h.unmount();
+  }
+});
+
+
+test("12-hour rail preserves midnight/noon and converts AM/PM without changing wall-clock storage", () => {
+  const h=fixture({hour12:true});let next;
+  h.picker("00:30",value=>next=value);
+  assert.match(text(h.nodes().find(node=>node.type==="PopoverTrigger")),/12:30.*AM/i);
+  const rails=h.nodes().filter(node=>node.type?.name==="ScheduleTimeRail");
+  assert.equal(rails.find(node=>node.props.label==="Hour").props.values.length,12);
+  rails.find(node=>node.props.label==="AM/PM").props.onSelect("PM");assert.equal(next,"12:30");
+  h.picker("21:30",value=>next=value);
+  assert.match(text(h.nodes().find(node=>node.type==="PopoverTrigger")),/9:30.*PM/i);
+  h.nodes().find(node=>node.props?.label==="Hour").props.onSelect("12");assert.equal(next,"12:30");
+  h.nodes().find(node=>node.props?.label==="AM/PM").props.onSelect("AM");assert.equal(next,"09:30");
+  h.unmount();
 });

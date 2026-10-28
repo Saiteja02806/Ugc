@@ -1211,3 +1211,8 @@ UGC-UI-047-WALL-HEADING local fix: new structured plans freeze heading-fit v1; e
 - Root cause: UNKNOWN. Production has the atomic apply function and its onboarding guard; their presence alone does not prove the user's request succeeded.
 - Expected: a confirmed apply persists the edited owner-scoped context and version, survives reload, and is used for future content without changing existing pinned content.
 - Regression: exercise Settings through the authenticated API and persistence boundary, including direct apply, stale revisions, reload, and future-context selection.
+
+UGC-OPS-014 local follow-up 2026-10-28: the user supplied the production 400 message, "Send a valid Business Context action." The existing form permitted text exceeding the API schema and silently clipped extra list lines. The rejected payload is unavailable, so its exact invalid field remains UNKNOWN. Settings now preserves all lines, reports the specific invalid field and existing limit, normalizes blank optional fields, and leaves valid changes on the existing atomic apply path. Focused form tests and an actual Settings route + PGlite persistence/reload/stale-revision integration pass. Authenticated production acceptance remains OPEN.
+
+## UGC-OPS-015 — Worker release build omits cross-project test fixtures (2026-10-28)
+- Status: OPEN / CODE CONFIRMED. Cloud Build 7377495d-f989-48d8-b578-2dc08ca9b0c9 failed because four Wall layout tests import application sources outside the worker-only Docker context. The worker-only compiler now excludes those four test files; `npm run test:worker-cross-project-wall` executes them separately against the full checkout (23/23 pass). The worker image must still build and be verified before release.

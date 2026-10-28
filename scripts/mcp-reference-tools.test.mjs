@@ -144,6 +144,7 @@ test("invalid/manual/reference/oversized inputs and quota fail before provider c
   quotaError=true;assert.equal(error(await call("remix_reference_text",input())).code,"RATE_LIMITED");assert.equal(providerCalls,0);
 });
 test("requested manual copy shares website validation and saved business grounding",async()=>{
+  providerOutput = { blocks: ["Plan more calmly"], heading: "", body: "" };
   const result=(await call("remix_reference_text",{...input(),referenceId:null,format:"hook",referenceBlocks:["Try calmer planning"]})).structuredContent;
   assert.equal(result.outcome,"completed");assert.equal(result.source.referenceId,"manual:hook");
   assert.deepEqual(JSON.parse(providerRequest.messages[1].content).businessContext,profile.context);assert.equal(providerCalls,1);

@@ -1216,3 +1216,7 @@ UGC-OPS-014 local follow-up 2026-10-28: the user supplied the production 400 mes
 
 ## UGC-OPS-015 — Worker release build omits cross-project test fixtures (2026-10-28)
 - Status: OPEN / CODE CONFIRMED. Cloud Build 7377495d-f989-48d8-b578-2dc08ca9b0c9 failed because four Wall layout tests import application sources outside the worker-only Docker context. The worker-only compiler now excludes those four test files; `npm run test:worker-cross-project-wall` executes them separately against the full checkout (23/23 pass). The worker image must still build and be verified before release.
+
+## UGC-OPS-016 — MCP manual Hook test fixture exceeds source-relative limit (2026-10-28)
+- Status: OPEN / TEST CONFIRMED. The release MCP suite's manual Hook fixture returned longer generated text than its supplied source, so the existing source-relative validation correctly rejected the simulated provider output. This is a fixture mismatch, not evidence of a production provider failure.
+- Regression: `scripts/mcp-reference-tools.test.mjs` must pass with a source-compliant output while `lib/explore/remix-text-api.test.mjs` continues to reject overlong outputs.
